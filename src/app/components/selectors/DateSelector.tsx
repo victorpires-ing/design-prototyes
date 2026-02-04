@@ -24,14 +24,14 @@ const DateBox = ({
 }: DateBoxProps) => {
   
   const getColors = () => {
-    if (disabled) return 'text-gray-200 border-transparent bg-gray-50';
-    if (isBlocked) return 'text-gray-200 border-transparent bg-transparent opacity-30 cursor-default';
+    if (disabled) return 'text-gray-500 border-transparent bg-gray-50';
+    if (isBlocked) return 'text-gray-500 border-transparent bg-transparent opacity-30 cursor-default';
     if (isDimmed) return 'bg-white border-gray-100 text-gray-300';
     
     if (isSelected) {
       return variantStyle === 'orange' 
         ? 'bg-[#ff6101] border-[#ff6101] text-white shadow-lg shadow-orange-100 scale-105'
-        : 'bg-gray-900 border-gray-900 text-white shadow-md';
+        : 'bg-[#ff6101] border-[#ff6101] text-white shadow-md';
     }
     return 'bg-white border-gray-100 text-gray-900 hover:border-gray-200';
   };
@@ -40,9 +40,12 @@ const DateBox = ({
     <button
       onClick={disabled || isBlocked ? undefined : onClick}
       disabled={disabled || isBlocked}
-      className={`relative flex-none min-w-[45px] aspect-square flex flex-col items-center justify-center rounded-md border transition-all duration-200 ${getColors()}`}
+      className={`relative flex-none min-w-[45px] w-[56px] h-[56px] aspect-square flex flex-col items-center justify-center rounded-md border transition-all duration-200 ${getColors()}`}
     >
-      <span className="text-[10px] font-black">{date.getDate()}</span>
+      <span className="text-[12px] font-medium uppercase opacity-70">
+        {date.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0, 3)}
+      </span>
+      <span className="text-base font-black">{date.getDate()}</span>
       {count > 0 && (
         <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold 
           ${isSelected ? (variantStyle === 'orange' ? 'bg-white text-[#ff6101]' : 'bg-[#ff6101] text-white') : 'bg-gray-100 text-gray-600'}`}>
@@ -119,7 +122,7 @@ const PassportCardCompact = ({ dates, isSelected, onClick, tag }: PassportCardPr
 const ActionButton = ({ onClick, label }: { onClick: () => void, label: React.ReactNode }) => (
   <button 
     onClick={onClick} 
-    className="flex-none w-[85px] h-[85px] rounded-md border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-[#ff6101] hover:text-[#ff6101] hover:bg-orange-50 transition-all bg-white gap-1"
+    className="flex-none w-[64px] h-[56px] rounded-md border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-[#ff6101] hover:text-[#ff6101] hover:bg-orange-50 transition-all bg-white gap-1"
   >
     <Calendar size={20} />
     <span className="text-[9px] font-bold uppercase text-center leading-tight">{label}</span>

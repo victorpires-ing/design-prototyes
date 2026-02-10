@@ -535,7 +535,7 @@ export const DateSelector = ({
       
       <div className="flex items-end w-full justify-between mb-6">
         <div className="flex flex-col flex-1">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Data em foco</p>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{selectedDate.toLocaleDateString('pt-BR', { weekday: 'long' })}</p>
           <div className="flex items-center gap-2">
             <h2 className="font-bold text-gray-900 text-xl capitalize">{selectedDate ? formatDate(selectedDate) : "Selecione..."}</h2>
           </div>

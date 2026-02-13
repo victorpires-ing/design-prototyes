@@ -58,7 +58,7 @@ export const TimePickerModal = ({ isOpen, onClose, availableTimes, activeTimes, 
                           <button 
                             key={time} 
                             onClick={() => onToggleTime(time)} 
-                            className={`p-4 rounded-md border-2 font-bold text-sm transition-all flex items-center justify-between 
+                            className={`p-4 rounded-md boder-1 font-bold text-sm transition-all flex items-center justify-between 
                               ${isActive ? 'border-[#ff6101] bg-orange-50 text-[#ff6101]' : 'border-gray-100 text-gray-500 bg-white'}`}
                           >
                             {time} {isActive && <Check size={16} />}

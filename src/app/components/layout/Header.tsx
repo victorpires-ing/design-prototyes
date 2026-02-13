@@ -1,58 +1,44 @@
-import { ChevronDown, EllipsisVertical } from "lucide-react";
-import { ScenarioControls } from '../ui/ScenarioControls';
+import Flag from '../../../assets/Brazil flag.svg';
+import Logo from '../../../assets/logo-ingresse.svg';
+import Cover from '../../../assets/event-cover.png';
+import { MapPin, ChevronDown } from 'lucide-react';
 
 
-function UserContent() {
+export default function Header() {
+
   return (
-    <div className="flex flex-1 items-center justify-end gap-4" data-name="content">
-      <div className="flex items-center gap-1 shrink-0" data-name="User">
-        <p className="font-['Switzer_Variable',sans-serif] font-medium text-[12px] leading-4 text-[#f8f8f8] tracking-[0.24px]">
-          Luciana Santos
-        </p>
-        <ChevronDown color='#fff' size={16} />
+    <header className=" top-0 left-0 right-0 z-[1] flex flex-col items-center w-full bg-white border-b border-gray-200">
+      {/* Barra superior preta */}
+      <div className="w-full bg-black  py-3 flex justify-center">
+        <div className="w-full max-w-[1440px] px-4 flex justify-between items-center text-white">
+          <img src={Logo} className="h-6" alt="Logo Ingresse" />
+          <div className="flex items-center gap-2 font-medium text-sm">
+            <img src={Flag} alt="Brasil" />
+            PT-BR
+            <ChevronDown size={16} />
+          </div>
+        </div>
       </div>
-      <img src='/Brazil flag.svg' alt="BR" className="w-5 h-5" />
-    </div>
-  );
-}
 
-function Brand() {
-  return (
-    <div className="h-[48px] relative w-full shrink-0" data-name="brand">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <img alt="" className="absolute w-full h-[330%] left-0 top-0 object-cover" src="/event-cover.png" />
-        <div 
-          className="absolute backdrop-blur-[32px] inset-0" 
-          data-name="gradient-blur" 
-          style={{ backgroundImage: "linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.59) 100%)" }} 
-        />
+      {/* Info do Evento */}
+      <div className="w-full max-w-[1440px] text-gray-900 px-4 py-3 flex items-center">
+          <img src={Cover} className="h-22 w-18 rounded-md object-cover" alt="Capa do evento" />
+
+        <div className="flex flex-col pl-4 gap-1">
+          <h1 className="font-bold text-lg leading-tight text-gray-900">
+            Pagode da Vitória Carnaval 2026
+          </h1>
+          
+            <div className="flex items-center text-gray-500">
+              <MapPin size={14} className="mr-1 text-red-500" />
+              <p className="text-sm">Mogi das Cruzes, SP</p>
+            </div>
+            
+            <button className="mt-0 w-fit mt-1 px-3 py-1 border border-gray-200 rounded-full text-[10px] font-bold uppercase tracking-wider text-gray-600 hover:bg-gray-50 transition-colors">
+              Ativar código
+            </button>
+        </div>
       </div>
-      <div className="relative z-10 flex items-center h-full px-5">
-        <img src="/logo-ingresse.svg" alt="Logo Ingresse" className='h-5' />
-        <UserContent />
-      </div>
-    </div>
-  );
-}
-
-function Tile() {
-  return (
-    <div className="bg-white py-3 px-4 flex items-center justify-between w-full border-b border-gray-100 shrink-0" data-name="tile">
-      <p className="min-w-0 flex-1 truncate font-bold text-[#181818] text-[15px]">
-        Bahia x EC Vitória - Campeonato Baiano 2026
-      </p>
-      <EllipsisVertical size={20} className="shrink-0 ml-2 text-gray-400" />
-    </div>
-  );
-}
-
-// --- HEADER UNIFICADO ---
-export default function Header({ params, setParams }: any) {
-  return (
-    <header className="fixed top-0 left-0 w-full flex flex-col shadow-sm z-[50]" data-name="header">
-      <ScenarioControls params={params} setParams={setParams} />
-      <Brand />
-      <Tile />
     </header>
   );
 }

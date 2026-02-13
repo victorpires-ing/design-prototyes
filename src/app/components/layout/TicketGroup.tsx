@@ -184,7 +184,7 @@ export default function TicketGroup({
 
         const containerClasses = hideBorders
           ? `bg-white overflow-hidden transition-all`
-          : `border rounded-md bg-white overflow-hidden transition-all ${isExpanded ? 'border-gray-400 shadow-sm' : 'border-gray-200'}`;
+          : `border rounded-md bg-white overflow-hidden transition-all ${isExpanded ? 'border-gray-200' : 'border-gray-200'}`;
 
         const buttonPadding = hideBorders ? 'py-4 px-0' : 'p-4';
 
@@ -195,7 +195,7 @@ export default function TicketGroup({
               {/* HEADER DO GRUPO */}
               <button 
                 onClick={() => toggleGroup(group.id)}
-                className={`w-full ${buttonPadding} flex items-start justify-between bg-white hover:bg-gray-50 transition-colors rounded-lg`}
+                className={`w-full ${buttonPadding} flex items-start justify-between bg-white hover:bg-gray-50 transition-colors rounded-lg cursor-pointer`}
               >
                 <div className="flex flex-col items-start gap-1.5">
                   <div className="flex items-center gap-2">
@@ -248,7 +248,7 @@ export default function TicketGroup({
                                 {/* Botão Menos: Só desabilita se qty for 0 */}
                                 <button 
                                   onClick={() => onUpdateTicket(dayIdx, time, ticket.id, -1)}
-                                  className={`w-10 h-10 flex items-center justify-center transition-all active:scale-90 ${qty > 0 ? 'text-gray-400 hover:text-[#ff6101]' : 'opacity-0 pointer-events-none'}`}
+                                  className={`w-10 h-10 flex items-center justify-center transition-all active:scale-90 ${qty > 0 ? 'text-gray-400 hover:text-[#ff6101] cursor-pointer' : 'opacity-0 pointer-events-none'}`}
                                   disabled={qty === 0}
                                 >
                                   <Minus size={18} />
@@ -263,7 +263,7 @@ export default function TicketGroup({
                                   disabled={isLocked}
                                   className={`w-8 h-8 rounded-lg flex items-center justify-center text-white active:scale-95 transition-transform transition-colors
                                     ${isComboGroup ? 'bg-purple-600' : 'bg-[#ff6101]'}
-                                    ${isLocked ? 'opacity-50 cursor-not-allowed bg-gray-300' : 'hover:brightness-110'}
+                                    ${isLocked ? 'opacity-50 cursor-not-allowed bg-gray-300' : 'hover:brightness-110 cursor-pointer'}
                                   `}
                                 >
                                   <Plus size={18} />

@@ -26,15 +26,14 @@ export function CartFooter({ step, cart, totals, derivedData, onNext, handlers }
 
       <motion.div 
         initial={{ y: 100 }} animate={{ y: 0 }}
-        className={`fixed bottom-0 left-0 right-0 bg-white z-[50] lg:hidden shadow-[0_-5px_30px_rgba(0,0,0,0.15)] transition-all duration-300 rounded-t-2xl overflow-hidden flex flex-col
+        className={`fixed bottom-0 left-0 right-0 bg-white z-[50] lg:hidden shadow-[0_-2px_5px_rgba(0,0,0,0.150)] transition-all duration-300 rounded-t-2xl overflow-hidden flex flex-col
           ${isOpen ? 'max-h-[85vh]' : 'max-h-auto'}`}
       >
         
         <div onClick={() => setIsOpen(!isOpen)} className="w-full bg-white p-2 flex flex-col items-center justify-center cursor-pointer border-b border-transparent active:bg-gray-50">
-          <div className="w-12 h-1.5 bg-gray-200 rounded-full mb-2" />
           {!isOpen && (
-            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-wide">
-              Detalhes da compra ({totalItems}) <ChevronUp size={14} />
+            <div className="flex items-center gap-1.5 text-sm font-bold text-gray-500 tracking-wide">
+              Seu carrinho <ChevronUp size={14} />
             </div>
           )}
         </div>
@@ -45,9 +44,9 @@ export function CartFooter({ step, cart, totals, derivedData, onNext, handlers }
               initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
               className="px-6 pb-6 overflow-y-auto"
             >
-              <div className="flex items-center justify-between mb-6 pt-2">
+              <div onClick={() => setIsOpen(false)} className="flex items-center justify-between mb-6 pb-4 -mx-6 px-6 border-b-1 border-b-[#E6E6E6]">
                 <h3 className="font-bold text-lg text-gray-900">Seu Carrinho</h3>
-                <button onClick={() => setIsOpen(false)} className="p-1  rounded-full">
+                <button  className="p-1  rounded-full">
                   <ChevronDown size={20} className="text-gray-600"/>
                 </button>
               </div>
@@ -60,27 +59,23 @@ export function CartFooter({ step, cart, totals, derivedData, onNext, handlers }
                 onUpdateProduct={handlers.updateProduct}
               />
               
-              <div className="border-t border-gray-100 mt-6 pt-4 flex justify-between items-center">
-                 <span className="text-gray-500 text-sm font-medium">Total de Itens</span>
-                 <span className="text-gray-900 font-bold">{totalItems}</span>
-              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <div className="p-4 bg-white border-t border-gray-100 flex items-center justify-between gap-4 relative z-10">
+        <div className="h-20 p-4 bg-white border-t border-gray-100 flex items-center justify-between gap-4 relative z-10">
           <div className="flex flex-col" onClick={() => !isOpen && setIsOpen(true)}>
-            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Total a pagar</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-black text-gray-900 leading-none">
-                R$ {totals.grandTotal.toFixed(2).replace('.', ',')}
-              </span>
-              {!isOpen && <ChevronUp size={16} className="text-gray-400" />}
-            </div>
+            <p id="totalPrice" className="text-content-primary text-base font-medium">
+              R$ {totals.grandTotal.toFixed(2).replace('.', ',')}
+              <span className="text-gray-400 text-sm font-normal"> + taxas</span>
+            </p>
+            { totalItems > 0 && (
+              <span className="text-gray-400 text-sm font-normal">{totalItems} {totalItems > 1 ? 'itens' : 'item'}</span>
+            )}
           </div>
 
-          <button onClick={onNext} className="bg-[#ff6101] text-white px-8 py-3.5 rounded-md font-black text-sm uppercase shadow-lg shadow-orange-100 active:scale-95 transition-all">
-            {step === 1 ? 'Continuar' : 'Pagar'}
+          <button onClick={onNext} className="bg-[#ff6101] text-white px-3 py-3.5 rounded-md font-semibold text-sm shadow-orange-100 active:scale-95 transition-all">
+            {step === 1 ? 'Continuar' : 'Continuar'}
           </button>
         </div>
 

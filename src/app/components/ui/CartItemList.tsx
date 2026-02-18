@@ -127,14 +127,14 @@ export const CartItemList = ({ cart, derivedData, onUpdateTicket, onUpdateProduc
               <div className="flex items-center bg-[#F4F4F4] rounded-md px-1 py-1 w-fit gap-0">
                 <button 
                   onClick={() => handleTicketChange(key, qty, -1, name, [parseInt(dayIdx), time, ticketId])}
-                  className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90"
+                  className="w-10 h-10 md:w-7 md:h-7 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90"
                 >
                   {qty === 1 ? <Trash2 size={14} /> : <Minus size={14} />}
                 </button>
                 <span className="w-4 text-center text-sm font-semibold text-[#181818]">{qty}</span>
                 <button 
                   onClick={() => onUpdateTicket(parseInt(dayIdx), time, ticketId, 1)}
-                  className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90"
+                  className="w-10 h-10 md:w-7 md:h-7 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90"
                 >
                   <Plus size={14} />
                 </button>
@@ -169,7 +169,7 @@ export const CartItemList = ({ cart, derivedData, onUpdateTicket, onUpdateProduc
 
                 {/* Mostra a Variante se existir, senão a descrição curta */}
                 {variantLabel ? (
-                  <p className="text-sm font-medium text-[#909090] mb-0">{variantLabel}</p>
+                  <p className="text-sm font-medium text-[#909090] mb-1">{variantLabel}</p>
                 ) : (
                   <p className="text-sm text-gray-400 mb-0 line-clamp-1">{product.description}</p>
                 )}
@@ -180,14 +180,14 @@ export const CartItemList = ({ cart, derivedData, onUpdateTicket, onUpdateProduc
               <div className="flex items-center bg-[#F4F4F4] rounded-md px-1 py-1 w-fit gap-0">
                 <button 
                   onClick={() => handleProductChange(fullId, qty, -1, product.name)}
-                  className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90"
+                  className="w-10 h-10 md:w-7 md:h-7 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90"
                 >
                   {qty === 1 ? <Trash2 size={15} /> : <Minus size={18} />}
                 </button>
                 <span className="w-4 text-center text-sm font-semibold text-[#181818]">{qty}</span>
                 <button 
                   onClick={() => onUpdateProduct(fullId, 1)}
-                  className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90"
+                  className="w-10 h-10 md:w-7 md:h-7 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90"
                 >
                   <Plus size={18} />
                 </button>

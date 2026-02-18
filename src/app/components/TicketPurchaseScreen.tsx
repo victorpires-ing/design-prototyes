@@ -22,7 +22,7 @@ export function TicketPurchaseScreen({ scenario }: any) {
   const handleNext = () => step === 1 ? setStep(2) : alert("Ir para Checkout");
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#f7f8fa] font-sans">
+    <div className="flex flex-col min-h-screen bg-[#f7f8fa] font-sans pb-30">
 
       {/* Container Principal: Responsivo */}
       <Header />

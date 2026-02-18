@@ -59,7 +59,7 @@ const ProductCard = ({ product, totalQty, onOpenModal, onQuickUpdate }: any) => 
       }
 
       {/* --- ÁREA DA IMAGEM (CARROSSEL) --- */}
-      <div className="relative h-44 bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
+      <div className="relative h-44 bg-[#f4f4f4] flex items-center justify-center p-4 overflow-hidden">
         
         <motion.img 
           key={currentImgIndex} // A chave força o re-render animado
@@ -104,7 +104,7 @@ const ProductCard = ({ product, totalQty, onOpenModal, onQuickUpdate }: any) => 
 
         {/* Indicador de Variação (Mantido) */}
         {hasVariations && (
-          <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold text-gray-600 uppercase tracking-wide border border-gray-200 shadow-sm z-10">
+          <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold text-gray-600 uppercase tracking-wide border border-gray-200 z-10">
             + Opções
           </div>
         )}
@@ -122,13 +122,13 @@ const ProductCard = ({ product, totalQty, onOpenModal, onQuickUpdate }: any) => 
         </div>
         
         <div className="mb-4">
-          <span className="text-lg font-black text-gray-900 tracking-tight">
+          <span className="text-lg font-bold text-gray-900 tracking-tight">
             R$ {product.price.toFixed(2).replace('.', ',')}
           </span>
         </div>
 
         {/* --- ÁREA DE AÇÃO (Inalterada) --- */}
-        <div className="mt-auto pt-1 border-t border-gray-50">
+        <div className="mt-auto">
           {!hasVariations && totalQty > 0 ? (
             <div className="flex items-center h-10 justify-between bg-[#F4F4F4] rounded-md p-1" onClick={(e) => e.stopPropagation()}>
               <button 
@@ -154,19 +154,12 @@ const ProductCard = ({ product, totalQty, onOpenModal, onQuickUpdate }: any) => 
                 <Plus size={16} /> {hasVariations ? 'Selecionar' : 'Adicionar'}
               </button>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="">
                 <button 
                   onClick={(e) => { e.stopPropagation(); onOpenModal(); }}
-                  className="py-2.5 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 transition-all secondary-buttom"
+                  className="py-2.5 w-full rounded-md text-xs font-bold flex items-center justify-center gap-1.5 transition-all secondary-buttom"
                 >
-                  <Edit3 size={14} /> Editar
-                </button>
-                
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onOpenModal(); }}
-                  className="py-2.5 bg-[#fff] text-[#181818] rounded-md border border-[#D5D5D5] text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[#E2E2E2] transition-all active:scale-95"
-                >
-                  <Plus size={14} /> Adicionar
+                  <Edit3 size={14} /> Editar seleção
                 </button>
               </div>
             )
@@ -212,7 +205,7 @@ export function StepProducts({ combos, productSelection, onUpdate, onBack }: any
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-6">
         {combos.map((product: any) => (
           <ProductCard 
             key={product.id} 

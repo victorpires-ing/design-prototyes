@@ -1,3 +1,41 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+
+
+button {
+  cursor: pointer;
+}
+
+button:active {
+  cursor: pointer;
+  transform: scale(0.95);
+}
+
+.primary-buttom {
+  border: none;
+  background: #FF6101;
+  color: #fff;
+}
+
+.primary-buttom:hover {
+  background: #EC5B02;
+}
+
+.primary-buttom:active {
+  background: #EC5B02;
+}
+
+.secondary-buttom {
+  border: solid 1px #D5D5D5;
+  background: #fff;
+  color: #181818;
+}
+
+.secondary-buttom:hover {
+  background: #E2E2E2;
+}
+
+.secondary-buttom:active {
+  background: #D2D2D2;
+}

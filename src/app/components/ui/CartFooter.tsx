@@ -34,7 +34,7 @@ export function CartFooter({ step, cart, totals, derivedData, onNext, handlers }
           <div className="w-12 h-1.5 bg-gray-200 rounded-full mb-2" />
           {!isOpen && (
             <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-wide">
-              <ShoppingBag size={14} /> Ver detalhes ({totalItems}) <ChevronUp size={14} />
+              Detalhes da compra ({totalItems}) <ChevronUp size={14} />
             </div>
           )}
         </div>
@@ -47,7 +47,7 @@ export function CartFooter({ step, cart, totals, derivedData, onNext, handlers }
             >
               <div className="flex items-center justify-between mb-6 pt-2">
                 <h3 className="font-bold text-lg text-gray-900">Seu Carrinho</h3>
-                <button onClick={() => setIsOpen(false)} className="p-1 bg-gray-100 rounded-full">
+                <button onClick={() => setIsOpen(false)} className="p-1  rounded-full">
                   <ChevronDown size={20} className="text-gray-600"/>
                 </button>
               </div>

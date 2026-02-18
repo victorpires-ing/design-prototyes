@@ -47,7 +47,11 @@ export function useTicketCart(scenario: any) {
           id: 'prod_shirt', 
           name: 'Camisa Oficial #BGS26', 
           description: 'Design personalizado e conforto absoluto com 100% algodão. Feita para gamers que vivem o game, dentro e fora das telas.',
-          price: 99.90, 
+          price: 119.90,
+          tag: {
+            content:'Acabando rápido',
+            color: '#155dfc', 
+          },
           image: 'https://images.tcdn.com.br/img/img_prod/782660/camisa_oficial_bgs25_1445_1_ec6cd82424aee5a15484dfa98b9ce670.png',
           images: mockImages('https://images.tcdn.com.br/img/img_prod/782660/camisa_oficial_bgs25_1445_1_ec6cd82424aee5a15484dfa98b9ce670.png')
         },
@@ -55,7 +59,7 @@ export function useTicketCart(scenario: any) {
           id: 'prod_cup', 
           name: 'Copo Oficial #BGS2026', 
           description: 'Leve, resistente e com design personalizado, um item essencial pra quem vive a BGS e coleciona cada momento.',
-          price: 35.00, 
+          price: 19.00, 
           image: 'https://images.tcdn.com.br/img/img_prod/782660/copo_nova_fase_bgs25_1537_1_93242e2d2e392e8183757efb9345fa61.png',
           images: mockImages('https://images.tcdn.com.br/img/img_prod/782660/copo_nova_fase_bgs25_1537_1_93242e2d2e392e8183757efb9345fa61.png')
         },
@@ -79,7 +83,7 @@ export function useTicketCart(scenario: any) {
           id: 'prod_bag', 
           name: 'Sacochila #BGS2026', 
           description: 'Compacta, leve e pronta pra tudo, perfeita pra levar o essencial e guardar os brindes da BGS.',
-          price: 49.90, 
+          price: 29.90, 
           image: 'https://images.tcdn.com.br/img/img_prod/782660/sacochila_brasil_game_show_1425_1_e5ae6b4f72d4d14b3ca798ba39adaf2d.png',
           images: mockImages('https://images.tcdn.com.br/img/img_prod/782660/sacochila_brasil_game_show_1425_1_e5ae6b4f72d4d14b3ca798ba39adaf2d.png')
         },

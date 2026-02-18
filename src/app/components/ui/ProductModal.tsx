@@ -151,10 +151,10 @@ export const ProductModal = ({ isOpen, onClose, product, productSelection, onUpd
                                 key={s}
                                 onClick={() => setSize(s as any)}
                                 className={`
-                                  flex-1 h-12 rounded-md text-sm font-medium boder-1 transition-all flex items-center justify-center
+                                  h-12 w-15 rounded-md text-sm font-medium boder-1 transition-all flex items-center justify-center
                                   ${isSelected 
-                                    ? 'border-[#ff6101] bg-[#ff6101] text-white scale-105' 
-                                    : 'border-gray-100 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'}
+                                    ? 'primary-buttom' 
+                                    : 'secondary-buttom'}
                                 `}
                               >
                                 {s}
@@ -171,7 +171,7 @@ export const ProductModal = ({ isOpen, onClose, product, productSelection, onUpd
                             className={`
                               h-[44px] bg-gray-900 text-white rounded-md font-medium text-sm uppercase tracking-wider
                               disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-2
-                              w-full md:w-50
+                              w-full md:w-50 secondary-buttom
                             `}
                           >
                             <Plus size={16} /> Adicionar {size ? `Tam. ${size}` : ''}
@@ -186,8 +186,8 @@ export const ProductModal = ({ isOpen, onClose, product, productSelection, onUpd
                             initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
                             className="pt-2"
                           >
-                            <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wide mb-3 border-t border-gray-100 pt-4">
-                              <ShoppingBag size={14} /> Itens Selecionados ({selectedVariants.reduce((a:any,b:any)=>a+b.qty,0)})
+                            <div className="flex items-center gap-2 text-xs font-semibold text-[#464646] uppercase tracking-wide mb-3 border-t border-gray-100 pt-4">
+                              Itens Selecionados ({selectedVariants.reduce((a:any,b:any)=>a+b.qty,0)})
                             </div>
                             
                             <div className="space-y-2">
@@ -195,18 +195,18 @@ export const ProductModal = ({ isOpen, onClose, product, productSelection, onUpd
                                 <motion.div 
                                   key={item.id} layout
                                   initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.9 }}
-                                  className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md shadow-sm"
+                                  className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md"
                                 >
                                   <div className="flex flex-col">
-                                    <span className="text-sm font-bold text-gray-900">{getLabel(item.size)}</span>
+                                    <span className="text-sm font-semibold pb-1 text-gray-900">{getLabel(item.size)}</span>
                                     <span className="text-xs text-gray-400">R$ {(item.qty * product.price).toFixed(2)}</span>
                                   </div>
-                                  <div className="flex items-center bg-gray-50 rounded-lg p-1 border border-gray-100">
-                                    <button onClick={() => onUpdate(item.id, -1)} className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-white rounded-md transition-all active:scale-90">
+                                  <div className="flex items-center bg-[#F4F4F4] rounded-md p-1">
+                                    <button onClick={() => onUpdate(item.id, -1)} className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90">
                                       {item.qty === 1 ? <Trash2 size={14} /> : <Minus size={14} />}
                                     </button>
-                                    <span className="w-8 text-center text-sm font-bold text-gray-900">{item.qty}</span>
-                                    <button onClick={() => onUpdate(item.id, 1)} className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#ff6101] hover:bg-white rounded-md transition-all active:scale-90">
+                                    <span className="w-8 text-center text-sm font-semibold text-[#181818]">{item.qty}</span>
+                                    <button onClick={() => onUpdate(item.id, 1)} className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90">
                                       <Plus size={14} />
                                     </button>
                                   </div>
@@ -240,8 +240,8 @@ export const ProductModal = ({ isOpen, onClose, product, productSelection, onUpd
               
               {/* --- BARRA FIXA "CONCLUIR" (Footer) --- */}
               <div className="p-4 border-t border-gray-100 bg-white shrink-0 safe-area-pb z-20">
-                <button onClick={onClose} className="w-full py-4 bg-gray-100 text-gray-900 font-black rounded-md active:bg-gray-200 hover:bg-gray-200 tracking-wide text-sm transition-colors">
-                  Concluir Edição
+                <button onClick={onClose} className="w-full py-4 font-bold rounded-md tracking-wide text-sm transition-colors primary-buttom">
+                  Concluir Seleção
                 </button>
               </div>
 

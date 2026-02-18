@@ -46,19 +46,17 @@ const ProductCard = ({ product, totalQty, onOpenModal, onQuickUpdate }: any) => 
       className={`
         relative flex flex-col rounded-md boder-1 transition-all duration-200 bg-white h-full cursor-pointer group overflow-hidden
         ${totalQty > 0 
-          ? 'border-orange-500 shadow-md ring-1 ring-orange-500/10' 
-          : 'border-gray-100 hover:border-gray-300 hover:shadow-lg'}
+          ? 'border-orange-500 border-1' 
+          : 'border-gray-200 border-1 hover:border-gray-200'}
       `}
     >
-      <div className="absolute top-3 right-3 bg-blue-600 text-white text-[10px] uppercase font-medium px-2.5 py-1 rounded-full shadow-sm z-10 animate-in zoom-in">
-          Acabando rápido
-        </div>
-      {/* {totalQty > 0 && (
-        <div className="absolute top-3 right-3 bg-[#ff6101] text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-10 animate-in zoom-in">
-          {totalQty} no carrinho
-        </div>
-      )} */}
-      
+      {product.tag?.content && (
+        <div
+          style={{backgroundColor: `${product.tag.color}`}}
+          className="absolute top-3 right-3 text-white text-[10px] uppercase font-medium px-2.5 py-1 rounded-full shadow-sm z-10 animate-in zoom-in">
+            {product.tag.content}
+        </div>) 
+      }
 
       {/* --- ÁREA DA IMAGEM (CARROSSEL) --- */}
       <div className="relative h-44 bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
@@ -130,19 +128,19 @@ const ProductCard = ({ product, totalQty, onOpenModal, onQuickUpdate }: any) => 
         </div>
 
         {/* --- ÁREA DE AÇÃO (Inalterada) --- */}
-        <div className="mt-auto pt-3 border-t border-gray-50">
+        <div className="mt-auto pt-1 border-t border-gray-50">
           {!hasVariations && totalQty > 0 ? (
-            <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-1" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center h-10 justify-between bg-[#F4F4F4] rounded-md p-1" onClick={(e) => e.stopPropagation()}>
               <button 
                 onClick={handleQuickRemove} 
-                className="w-9 h-9 flex items-center justify-center bg-white rounded-md shadow-sm text-gray-600 active:scale-90 transition-transform hover:text-red-500"
+                className="w-8 h-8 flex items-center justify-center rounded-sm transition-transform secondary-buttom"
               >
                 <Minus size={16} strokeWidth={2.5} />
               </button>
-              <span className="font-bold text-sm text-gray-900 min-w-[20px] text-center">{totalQty}</span>
+              <span className="font-semibold text-md text-[#181818] min-w-[20px] text-center">{totalQty}</span>
               <button 
                 onClick={handlePrimaryAction} 
-                className="w-9 h-9 flex items-center justify-center bg-[#ff6101] text-white rounded-md shadow-sm shadow-orange-200 active:scale-90 transition-transform hover:bg-orange-600"
+                className="w-8 h-8 flex items-center justify-center rounded-sm transition-transform primary-buttom"
               >
                 <Plus size={16} strokeWidth={2.5} />
               </button>
@@ -151,7 +149,7 @@ const ProductCard = ({ product, totalQty, onOpenModal, onQuickUpdate }: any) => 
             totalQty === 0 ? (
               <button 
                 onClick={handlePrimaryAction}
-                className="w-full py-3 bg-gray-900 hover:bg-black text-white rounded-md text-xs font-bold uppercase tracking-wider transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-2"
+                className="w-full py-3 h-10 rounded-md text-xs font-bold tracking-wider transition-all flex items-center justify-center gap-2 secondary-buttom"
               >
                 <Plus size={16} /> {hasVariations ? 'Selecionar' : 'Adicionar'}
               </button>
@@ -159,14 +157,14 @@ const ProductCard = ({ product, totalQty, onOpenModal, onQuickUpdate }: any) => 
               <div className="grid grid-cols-2 gap-2">
                 <button 
                   onClick={(e) => { e.stopPropagation(); onOpenModal(); }}
-                  className="py-2.5 bg-white border border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                  className="py-2.5 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 transition-all secondary-buttom"
                 >
                   <Edit3 size={14} /> Editar
                 </button>
                 
                 <button 
                   onClick={(e) => { e.stopPropagation(); onOpenModal(); }}
-                  className="py-2.5 bg-[#ff6101] text-white rounded-md text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-orange-100 hover:bg-orange-600 transition-all active:scale-95"
+                  className="py-2.5 bg-[#fff] text-[#181818] rounded-md border border-[#D5D5D5] text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[#E2E2E2] transition-all active:scale-95"
                 >
                   <Plus size={14} /> Adicionar
                 </button>

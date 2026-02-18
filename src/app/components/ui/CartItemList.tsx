@@ -107,41 +107,37 @@ export const CartItemList = ({ cart, derivedData, onUpdateTicket, onUpdateProduc
           
           return (
             <div key={key} className="flex gap-3 items-start w-full animate-in slide-in-from-bottom-2">
-              <div className="flex-none w-10 h-10 rounded-lg bg-orange-50 text-[#ff6101] flex items-center justify-center mt-1">
+              <div className="flex-none w-8 h-8 rounded-sm bg-orange-50 text-[#ff6101] flex items-center justify-center mt-1">
                 <Ticket size={18} />
               </div>
 
               <div className="flex-1 min-w-0 flex flex-col">
-                <div className="flex justify-between items-start gap-2 mb-1">
-                  <span className="font-bold text-sm text-gray-900 leading-tight truncate">{name}</span>
-                  <span className="font-bold text-sm text-gray-900 whitespace-nowrap shrink-0">{formatPrice(price * qty)}</span>
-                </div>
+                <span className="font-bold text-sm text-gray-900 mb-1 leading-tight w-full line-clamp-1">{name}</span>
                 
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-medium bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded uppercase tracking-wide">
-                    {date ? date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : 'Data'}
-                  </span>
-                  <span className="text-[10px] font-medium border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded">
-                    {time}h
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[12px] font-medium text-[#909090] tracking-wide">
+                    {date ? date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : 'Data'} - {time}h
                   </span>
                 </div>
 
-                {/* Stepper Ingresso */}
-                <div className="flex items-center gap-3 bg-gray-50 w-fit rounded-lg px-1 border border-gray-100">
-                  <button 
-                    onClick={() => handleTicketChange(key, qty, -1, name, [parseInt(dayIdx), time, ticketId])}
-                    className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors active:scale-90"
-                  >
-                    {qty === 1 ? <Trash2 size={14} /> : <Minus size={14} />}
-                  </button>
-                  <span className="text-xs font-bold text-gray-900 w-4 text-center">{qty}</span>
-                  <button 
-                    onClick={() => onUpdateTicket(parseInt(dayIdx), time, ticketId, 1)}
-                    className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#ff6101] transition-colors active:scale-90"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
+                <span className="font-medium text-sm text-gray-900 whitespace-nowrap shrink-0">{formatPrice(price * qty)}</span>
+              </div>
+
+              {/* Stepper Ingresso */}
+              <div className="flex items-center bg-[#F4F4F4] rounded-md px-1 py-1 w-fit gap-0">
+                <button 
+                  onClick={() => handleTicketChange(key, qty, -1, name, [parseInt(dayIdx), time, ticketId])}
+                  className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90"
+                >
+                  {qty === 1 ? <Trash2 size={14} /> : <Minus size={14} />}
+                </button>
+                <span className="w-4 text-center text-sm font-semibold text-[#181818]">{qty}</span>
+                <button 
+                  onClick={() => onUpdateTicket(parseInt(dayIdx), time, ticketId, 1)}
+                  className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90"
+                >
+                  <Plus size={14} />
+                </button>
               </div>
             </div>
           );
@@ -165,7 +161,7 @@ export const CartItemList = ({ cart, derivedData, onUpdateTicket, onUpdateProduc
               <img 
                 src={product.image} 
                 alt={product.name} 
-                className="flex-none w-12 h-12 rounded-lg object-cover border border-gray-100 bg-white mt-1"
+                className="flex-none w-12 h-12 rounded-sm object-cover border border-gray-100 bg-white mt-1"
               />
 
               <div className='w-full'>
@@ -173,25 +169,25 @@ export const CartItemList = ({ cart, derivedData, onUpdateTicket, onUpdateProduc
 
                 {/* Mostra a Variante se existir, senão a descrição curta */}
                 {variantLabel ? (
-                  <p className="text-sm font-medium text-gray-400 mb-1">{variantLabel}</p>
+                  <p className="text-sm font-medium text-[#909090] mb-0">{variantLabel}</p>
                 ) : (
-                  <p className="text-sm text-gray-400 mb-1 line-clamp-1">{product.description}</p>
+                  <p className="text-sm text-gray-400 mb-0 line-clamp-1">{product.description}</p>
                 )}
 
                 <span className="font-medium text-sm text-gray-900 whitespace-nowrap shrink-0">{formatPrice(product.price * qty)}</span>
               </div>
 
-              <div className="flex items-center border-1 border-gray-200  gap-2 bg-gray-50 w-fit rounded-sm px-0">
+              <div className="flex items-center bg-[#F4F4F4] rounded-md px-1 py-1 w-fit gap-0">
                 <button 
                   onClick={() => handleProductChange(fullId, qty, -1, product.name)}
-                  className="w-7 h-7 flex items-center cursor-pointer justify-center text-gray-400 hover:text-red-500 transition-colors active:scale-90"
+                  className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90"
                 >
                   {qty === 1 ? <Trash2 size={15} /> : <Minus size={18} />}
                 </button>
-                <span className="text-xm font-semibold text-gray-900 w-4 text-center">{qty}</span>
+                <span className="w-4 text-center text-sm font-semibold text-[#181818]">{qty}</span>
                 <button 
                   onClick={() => onUpdateProduct(fullId, 1)}
-                  className="w-7 h-7 flex cursor-pointer items-center justify-center text-gray-400 hover:text-[#ff6101] transition-colors active:scale-90"
+                  className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-[#FF6101] rounded-md transition-all active:scale-90"
                 >
                   <Plus size={18} />
                 </button>

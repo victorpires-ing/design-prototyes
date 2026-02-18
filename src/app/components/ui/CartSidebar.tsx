@@ -19,7 +19,7 @@ export function CartSidebar({ step, cart, totals, derivedData, onNext, handlers 
         {/* HEADER: Fixo (shrink-0) */}
         <div className="p-5 border-b border-gray-100 flex items-center gap-2 bg-gray-50/50 shrink-0">
           <FileText size={18} className="text-gray-500" />
-          <h3 className="font-bold text-gray-900 text-base uppercase tracking-wide">Resumo do Pedido</h3>
+          <h3 className="font-bold text-gray-900 text-base tracking-wide">Resumo do Pedido</h3>
         </div>
 
         {/* CORPO: Rolagem (flex-1 overflow-y-auto) */}

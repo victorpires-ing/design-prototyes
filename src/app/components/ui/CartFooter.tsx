@@ -33,7 +33,7 @@ export function CartFooter({ step, cart, totals, derivedData, onNext, handlers }
         <div onClick={() => setIsOpen(!isOpen)} className="w-full bg-white p-2 flex flex-col items-center justify-center cursor-pointer border-b border-transparent active:bg-gray-50">
           {!isOpen && (
             <div className="flex items-center gap-1.5 text-sm font-bold text-gray-500 tracking-wide">
-              Seu carrinho <ChevronUp size={14} />
+              Resumo da compra <ChevronUp size={14} />
             </div>
           )}
         </div>
@@ -44,8 +44,8 @@ export function CartFooter({ step, cart, totals, derivedData, onNext, handlers }
               initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
               className="px-6 pb-6 overflow-y-auto"
             >
-              <div onClick={() => setIsOpen(false)} className="flex items-center justify-between mb-6 pb-4 -mx-6 px-6 border-b-1 border-b-[#E6E6E6]">
-                <h3 className="font-bold text-lg text-gray-900">Seu Carrinho</h3>
+              <div onClick={() => setIsOpen(false)} className="flex cursor-pointer items-center justify-between mb-6 pb-4 -mx-6 px-6 border-b-1 border-b-[#E6E6E6]">
+                <h3 className="font-bold text-lg text-gray-900">Resumo da compra</h3>
                 <button  className="p-1  rounded-full">
                   <ChevronDown size={20} className="text-gray-600"/>
                 </button>

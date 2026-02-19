@@ -18,8 +18,8 @@ export function CartSidebar({ step, cart, totals, derivedData, onNext, handlers 
         
         {/* HEADER: Fixo (shrink-0) */}
         <div className="p-5 border-b border-gray-100 flex items-center gap-2 bg-gray-50/50 shrink-0">
-          <FileText size={18} className="text-gray-500" />
-          <h3 className="font-bold text-gray-900 text-base tracking-wide">Resumo do Pedido</h3>
+          {/*<FileText size={18} className="text-gray-500" />*/}
+          <h3 className="font-bold text-gray-900 text-base tracking-wide">Resumo da compra</h3>
         </div>
 
         {/* CORPO: Rolagem (flex-1 overflow-y-auto) */}
@@ -48,30 +48,30 @@ export function CartSidebar({ step, cart, totals, derivedData, onNext, handlers 
         </div>
 
         {/* FOOTER: Fixo (shrink-0) */}
-        <div className="p-6 bg-gray-50 border-t border-gray-100 space-y-4 shrink-0">
-          <div className="flex justify-between items-center text-sm">
-            <span className="font-medium text-gray-500">Qtd. Itens</span>
-            <span className="font-bold text-gray-900">{totalItems}</span>
-          </div>
-          
-          <div className="flex justify-between items-end">
-            <span className="text-sm font-medium text-gray-500 pb-1">Total Geral</span>
-            <span className="text-2xl font-black text-gray-900 leading-none">
-              R$ {totals.grandTotal.toFixed(2).replace('.',',')}
-            </span>
+        <div className="h-20 p-4 bg-white border-t border-gray-100 flex items-center justify-between gap-4 relative z-10">
+
+          <div className="flex flex-col">
+            <p id="totalPrice" className="text-content-primary text-base font-medium">
+              R$ {totals.grandTotal.toFixed(2).replace('.', ',')}
+              <span className="text-gray-400 text-sm font-normal"> + taxas</span>
+            </p>
+            { totalItems > 0 && (
+              <span className="text-gray-400 text-sm font-normal">{totalItems} {totalItems > 1 ? 'itens' : 'item'}</span>
+            )}
           </div>
 
           <button
             onClick={isEmpty ? undefined : onNext}
             disabled={isEmpty}
-            className={`w-full py-4 rounded-md font-medium text-sm tracking-wider transition-all shadow-lg
+            className={`px-3 py-3.5 rounded-md font-semibold text-sm shadow-orange-100 active:scale-95 transition-all
               ${isEmpty 
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
                 : 'bg-[#ff6101] text-white hover:bg-orange-600 active:scale-[0.98]'
               }`}
-          >
+            >              
             {step === 1 ? 'Continuar' : 'Continuar'}
           </button>
+
         </div>
 
       </div>

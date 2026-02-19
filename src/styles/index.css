@@ -39,3 +39,16 @@ button:active {
 .secondary-buttom:active {
   background: #D2D2D2;
 }
+
+.ghost-buttom {
+  background: #fff;
+  color: #181818;
+}
+
+.ghost-buttom:hover {
+  background: #E2E2E2;
+}
+
+.ghost-buttom:active {
+  background: #D2D2D2;
+}

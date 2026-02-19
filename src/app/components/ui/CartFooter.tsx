@@ -44,7 +44,7 @@ export function CartFooter({ step, cart, totals, derivedData, onNext, handlers }
               initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
               className="px-6 pb-6 overflow-y-auto"
             >
-              <div onClick={() => setIsOpen(false)} className="flex cursor-pointer items-center justify-between mb-6 pb-4 -mx-6 px-6 border-b-1 border-b-[#E6E6E6]">
+              <div onClick={() => setIsOpen(false)} className="fixed  bg-white w-full flex cursor-pointer items-center justify-between mb-6 pb-4 -mx-6 px-6 border-b-1 border-b-[#E6E6E6]">
                 <h3 className="font-bold text-lg text-gray-900">Resumo da compra</h3>
                 <button  className="p-1  rounded-full">
                   <ChevronDown size={20} className="text-gray-600"/>
@@ -52,12 +52,14 @@ export function CartFooter({ step, cart, totals, derivedData, onNext, handlers }
               </div>
 
               {/* --- CONEXÃO FEITA AQUI --- */}
+              <div className='pt-15'>
               <CartItemList 
                 cart={cart} 
                 derivedData={derivedData} 
                 onUpdateTicket={handlers.updateTicket}
                 onUpdateProduct={handlers.updateProduct}
               />
+              </div>
               
             </motion.div>
           )}

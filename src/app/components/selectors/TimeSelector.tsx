@@ -93,10 +93,10 @@ export const TimeSelector = ({
     return (
       <div className="flex flex-col mt-6 animate-in fade-in duration-500">
         <div className="flex items-center justify-between mb-2 px-1">
-          <p className="text-sm font-medium text-gray-500 tracking-wide">Selecione um horário</p>
+          <p className="text-sm h-6 font-medium text-gray-500 tracking-wide">Selecione um horário</p>
           <AnimatePresence>
             {getPeriodTotalCount(activeTab) > 0 && (
-              <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => availableTimes.filter(t => getTimePeriod(t) === activeTab).forEach(time => onClearTime(time))} className="flex items-center gap-1.5 text-xs font-bold text-red-500 hover:text-red-700 transition-colors bg-red-50 px-2 py-1 rounded-md">
+              <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => availableTimes.filter(t => getTimePeriod(t) === activeTab).forEach(time => onClearTime(time))} className="flex items-center gap-1.5 text-xs font-bold text-red-500 hover:text-red-700 transition-colors px-2 py-1 rounded-md">
                 <Trash2 size={12} /> Limpar período
               </motion.button>
             )}
@@ -202,13 +202,13 @@ export const TimeSelector = ({
   return (
     <div className="flex flex-col mt-4 animate-in fade-in duration-500">
       <div className="flex items-center justify-between mb-3 px-1">
-        <p className="text-sm font-medium text-gray-500 tracking-wide">
+        <p className="text-sm h-6 font-medium text-gray-500 tracking-wide">
           Horários disponíveis
         </p>
         <AnimatePresence>
           {selectedTime && getBadgeCount(selectedTime) > 0 && (
-            <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => onClearTime(selectedTime)} className="flex cursor-pointer items-center gap-1 text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded-md transition-colors">
-              <Trash2 size={12} /> Limpar seleção
+            <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => onClearTime(selectedTime)} className="flex cursor-pointer text-xs font-medium text-red-500 rounded-md transition-colors">
+              Limpar seleção
             </motion.button>
           )}
         </AnimatePresence>

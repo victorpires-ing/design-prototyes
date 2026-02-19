@@ -59,29 +59,26 @@ export const TicketSelectionSheet = ({
             // Desktop: w-[480px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl
             className={`
               fixed z-[1000] bg-white overflow-hidden shadow-2xl flex flex-col
-              w-full bottom-0 rounded-t-[32px] max-h-[85vh]
-              md:w-[480px] md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[32px] md:h-auto md:max-h-[80vh]
+              w-full bottom-0 rounded-t-[16px] max-h-[85vh] left-0
+              md:w-[480px] md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[16px] md:h-auto md:max-h-[80vh]
             `}
           >
             {/* Header */}
-            <div className="p-6 pb-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
+            <div className="px-3 pt-3 pb-2 border-b border-[#E6E6E6]  flex justify-between items-start bg-white sticky top-0 z-10">
               <div>
-                <div className="flex items-center gap-2 text-[#ff6101] mb-1">
-                  <Clock size={16} />
-                  <span className="text-sm font-bold uppercase tracking-wider">Horário Selecionado</span>
-                </div>
-                <h2 className="text-2xl font-black text-gray-900">{time}</h2>
+                <h2 className="text-base font-bold text-[#181818] mb-1">Escolha seus itens</h2>
+                <p className="text-sm font-base text-[#909090]">Selecionando para o horário das <b>{time}</b></p>
               </div>
               <button 
                 onClick={onClose} 
-                className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
+                className="p-2 text-[#181818] cursor-pointer"
               >
-                <X size={24} />
+                <X size={16} />
               </button>
             </div>
 
             {/* Conteúdo com Scroll */}
-            <div className="flex-1 overflow-y-auto p-6 pt-4">
+            <div className="flex-1 overflow-y-auto p-3 pt-4">
               <TicketGroup
                 limits={limits}
                 dayIdx={dayIdx}
@@ -95,12 +92,12 @@ export const TicketSelectionSheet = ({
             </div>
 
             {/* Footer com Botão de Fechar/Confirmar */}
-            <div className="p-6 border-t border-gray-50 bg-white">
+            <div className="p-3 border-t border-[#E6E6E6] bg-white">
               <button 
                 onClick={onClose}
-                className="w-full bg-gray-900 text-white py-4 rounded-md font-bold text-sm uppercase tracking-widest hover:bg-gray-800 transition-all active:scale-[0.98]"
+                className="w-full py-4 primary-buttom text-sm rounded-lg"
               >
-                Confirmar Seleção
+                Confirmar itens
               </button>
             </div>
 

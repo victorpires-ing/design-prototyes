@@ -10,29 +10,39 @@ const RemovalConfirmModal = ({ isOpen, onClose, onConfirm, itemName }: any) => {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm "
             onClick={onClose}
           />
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl relative z-10"
+            className="w-full max-w-sm shadow-2xl relative z-10 bg-white rounded-xl"
           >
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-1">
-                <Trash2 size={24} />
+            <div className="flex flex-col items-center text-center gap-3">              
+
+              <div className="w-full px-3 pt-3 pb-2 border-b border-[#E6E6E6] flex justify-between items-start sticky top-0 z-10 ">
+                  <h2 className="text-base font-bold text-[#181818] mb-1">Remover item</h2>
               </div>
-              <h3 className="text-lg font-black text-gray-900 leading-tight">Remover item?</h3>
-              <p className="text-sm text-gray-500">
-                Deseja remover <strong>{itemName}</strong> do seu carrinho?
+
+              <p className="flex-1 text-left overflow-y-auto p-3 pt-4 text-base text-[#181818]">
+              Deseja remover o item <strong>{itemName}</strong> do seu carrinho?
               </p>
-              <div className="grid grid-cols-2 gap-3 w-full mt-4">
-                <button onClick={onClose} className="py-3 rounded-md font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
-                  Cancelar
+
+              <div className="p-3 flex w-full border-t border-[#E6E6E6]">
+                <button 
+                  onClick={onClose}
+                  className="w-full py-4 text-sm rounded-lg outline-buttom"
+                >
+                  Manter item
                 </button>
-                <button onClick={onConfirm} className="py-3 rounded-md font-bold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-lg shadow-red-200">
-                  Remover
+
+                <button 
+                  onClick={onConfirm}
+                  className="w-full py-4 primary-buttom text-sm rounded-lg"
+                >
+                  Remover item
                 </button>
               </div>
+              
             </div>
           </motion.div>
         </div>

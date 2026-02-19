@@ -17,7 +17,7 @@ export const TicketRemovalModal = ({ isOpen, onClose, onConfirm, targetName, isD
           {/* Backdrop */}
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-            className="fixed inset-0 bg-black/60 z-[90] backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 z-[90] backdrop-blur-sm "
             onClick={onClose}
           />
           

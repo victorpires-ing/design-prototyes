@@ -21,6 +21,7 @@ import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/but
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
+import { Select } from "@/components/base/select/select";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
@@ -63,6 +64,14 @@ interface RouteState {
 
 const DEFAULT_PAGE_SIZE = 10;
 
+type CadastroFilter = "all" | "com" | "sem";
+
+const CADASTRO_FILTER_OPTIONS = [
+    { id: "all", label: "Todos os cadastros" },
+    { id: "com", label: "Apenas cadastrados" },
+    { id: "sem", label: "Apenas sem cadastro" },
+];
+
 const FALLBACK_EMAILS = Array.from(
     { length: 24 },
     (_, i) => `convidado${String(i + 1).padStart(3, "0")}@exemplo.com`,
@@ -100,6 +109,7 @@ export function VerificacaoFinal() {
     const [viewMode, setViewMode] = useState<"list" | "table">("table");
     const [editingEmail, setEditingEmail] = useState<string | null>(null);
     const [removingEmail, setRemovingEmail] = useState<string | null>(null);
+    const [cadastroFilter, setCadastroFilter] = useState<CadastroFilter>("all");
 
     // Group the selected items by kind once.
     const groupedItems = useMemo(() => {
@@ -130,9 +140,18 @@ export function VerificacaoFinal() {
 
     const filteredEmails = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
-        if (!q) return activeEmails;
-        return activeEmails.filter((e) => e.toLowerCase().includes(q));
-    }, [activeEmails, searchQuery]);
+        return activeEmails.filter((e) => {
+            // Cadastro filter
+            if (cadastroFilter !== "all") {
+                const hasCad = emailHasCadastro(e);
+                if (cadastroFilter === "com" && !hasCad) return false;
+                if (cadastroFilter === "sem" && hasCad) return false;
+            }
+            // Search filter
+            if (q && !e.toLowerCase().includes(q)) return false;
+            return true;
+        });
+    }, [activeEmails, searchQuery, cadastroFilter]);
 
     const totalPages = Math.max(1, Math.ceil(filteredEmails.length / pageSize));
     const safePage = Math.min(page, totalPages - 1);
@@ -206,19 +225,42 @@ export function VerificacaoFinal() {
                         className="w-full md:hidden"
                     />
 
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-4 -mb-4">
                         <h2 className="text-xl font-semibold text-primary">Revise os envios</h2>
 
-                        <Input
-                            label="Busca"
-                            icon={SearchLg}
-                            placeholder="Busque por e-mail"
-                            value={searchQuery}
-                            onChange={(v) => {
-                                setSearchQuery(v);
-                                setPage(0);
-                            }}
-                        />
+                        {viewMode === "list" && (
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                    <Input
+                                        size="sm"
+                                        icon={SearchLg}
+                                        placeholder="Busque por e-mail"
+                                        aria-label="Busque por e-mail"
+                                        value={searchQuery}
+                                        onChange={(v: string) => {
+                                            setSearchQuery(v);
+                                            setPage(0);
+                                        }}
+                                    />
+                                </div>
+                                <div className="w-full sm:w-56">
+                                    <Select
+                                        size="sm"
+                                        aria-label="Filtrar por cadastro"
+                                        selectedKey={cadastroFilter}
+                                        onSelectionChange={(key: Key) => {
+                                            setCadastroFilter(key as CadastroFilter);
+                                            setPage(0);
+                                        }}
+                                        items={CADASTRO_FILTER_OPTIONS}
+                                    >
+                                        {(item: { id: string; label: string }) => (
+                                            <Select.Item id={item.id}>{item.label}</Select.Item>
+                                        )}
+                                    </Select>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <Checkbox
@@ -289,6 +331,16 @@ export function VerificacaoFinal() {
                             onPageChange={(p) => setPage(p - 1)}
                             onPageSizeChange={(size) => {
                                 setPageSize(size);
+                                setPage(0);
+                            }}
+                            searchQuery={searchQuery}
+                            onSearchChange={(v: string) => {
+                                setSearchQuery(v);
+                                setPage(0);
+                            }}
+                            cadastroFilter={cadastroFilter}
+                            onCadastroFilterChange={(value: CadastroFilter) => {
+                                setCadastroFilter(value);
                                 setPage(0);
                             }}
                             onEdit={handleEdit}
@@ -479,6 +531,10 @@ interface RecipientTableProps {
     pageSize: number;
     onPageChange: (page: number) => void;
     onPageSizeChange: (size: number) => void;
+    searchQuery: string;
+    onSearchChange: (value: string) => void;
+    cadastroFilter: CadastroFilter;
+    onCadastroFilterChange: (value: CadastroFilter) => void;
     onEdit: (email: string) => void;
     onRemove: (email: string) => void;
 }
@@ -491,10 +547,41 @@ const RecipientTable = ({
     pageSize,
     onPageChange,
     onPageSizeChange,
+    searchQuery,
+    onSearchChange,
+    cadastroFilter,
+    onCadastroFilterChange,
     onEdit,
     onRemove,
 }: RecipientTableProps) => (
     <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-secondary px-4 py-3 md:px-6">
+            <div className="min-w-0 flex-1">
+                <Input
+                    size="sm"
+                    icon={SearchLg}
+                    placeholder="Busque por e-mail"
+                    aria-label="Busque por e-mail"
+                    value={searchQuery}
+                    onChange={onSearchChange}
+                />
+            </div>
+            <div className="w-full sm:w-56">
+                <Select
+                    size="sm"
+                    aria-label="Filtrar por cadastro"
+                    selectedKey={cadastroFilter}
+                    onSelectionChange={(key: Key) =>
+                        onCadastroFilterChange(key as CadastroFilter)
+                    }
+                    items={CADASTRO_FILTER_OPTIONS}
+                >
+                    {(item: { id: string; label: string }) => (
+                        <Select.Item id={item.id}>{item.label}</Select.Item>
+                    )}
+                </Select>
+            </div>
+        </div>
         <table className="w-full border-collapse">
             <thead>
                 <tr className="border-b border-secondary bg-secondary_subtle text-left">

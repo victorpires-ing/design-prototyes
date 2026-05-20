@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Route, Routes } from 'react-router';
+import { Toaster } from 'sonner';
 import { ScenarioControls } from '../app/components/ui/ScenarioControls';
 import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
 import { EmissaoCortesias } from '../app/pages/EmissaoCortesias';
@@ -28,11 +29,14 @@ function HomeScreen() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<SelecaoItens />} />
-      <Route path="/backstage" element={<SelecaoItens />} />
-      <Route path="/backstage/destinatarios" element={<EmissaoCortesias />} />
-      <Route path="/backstage/verificacao" element={<VerificacaoFinal />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<SelecaoItens />} />
+        <Route path="/backstage" element={<SelecaoItens />} />
+        <Route path="/backstage/destinatarios" element={<EmissaoCortesias />} />
+        <Route path="/backstage/verificacao" element={<VerificacaoFinal />} />
+      </Routes>
+      <Toaster position="bottom-right" />
+    </>
   );
 }

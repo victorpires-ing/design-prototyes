@@ -3,9 +3,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { AlertCircle, AlertTriangle } from "@untitledui/icons";
 import { BadgeIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { FileTrigger } from "@/components/base/file-upload-trigger/file-upload-trigger";
 import { InputTags } from "@/components/base/input/input-tags";
 import { cx } from "@/utils/cx";
+import { ImportEmailsModal } from "./ImportEmailsModal";
+import { showErrorToast, showSuccessToast } from "../utils/toast";
 
 const MAX_EMAILS = 100;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -16,6 +17,55 @@ const parseRawEmails = (raw: string): string[] =>
         .split(DELIMITER_REGEX)
         .map((s) => s.trim())
         .filter(Boolean);
+
+type SheetParseResult =
+    | { ok: true; emails: string[] }
+    | { ok: false; reason: "no-email-column" | "no-contacts" };
+
+/**
+ * Parse the raw text of a CSV/TXT spreadsheet into a list of e-mails.
+ *
+ * Strategy:
+ *  - If the first line looks like a header with an "email" column, pull values
+ *    from that column on the subsequent rows.
+ *  - Else if the file is a single-column list of e-mails (every non-empty line
+ *    looks like an e-mail), accept it.
+ *  - Else, report "no-email-column".
+ */
+function parseEmailsFromSheet(raw: string): SheetParseResult {
+    const lines = raw
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+
+    if (lines.length === 0) return { ok: false, reason: "no-contacts" };
+
+    const splitCells = (line: string) => line.split(/[,;\t]/).map((c) => c.trim());
+
+    const headerCells = splitCells(lines[0]).map((c) => c.toLowerCase());
+    const emailColIdx = headerCells.findIndex(
+        (h) => h === "email" || h === "e-mail" || h === '"email"' || h === "'email'",
+    );
+
+    if (emailColIdx !== -1) {
+        const emails = lines
+            .slice(1)
+            .map((line) => splitCells(line)[emailColIdx] ?? "")
+            .map((v) => v.replace(/^["']|["']$/g, "").trim())
+            .filter(Boolean);
+        if (emails.length === 0) return { ok: false, reason: "no-contacts" };
+        return { ok: true, emails };
+    }
+
+    // No header — accept if it looks like a flat single-column list of e-mails.
+    const singleColumnEmails = lines.flatMap((line) => splitCells(line)).filter(Boolean);
+    const looksLikeEmails = singleColumnEmails.length > 0 && singleColumnEmails.every((v) => v.includes("@"));
+    if (looksLikeEmails) {
+        return { ok: true, emails: singleColumnEmails };
+    }
+
+    return { ok: false, reason: "no-email-column" };
+}
 
 const computeDuplicateIndices = (emails: string[]): Set<number> => {
     const seen = new Map<string, number[]>();
@@ -53,6 +103,7 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
     const [draftEmails, setDraftEmails] = useState<string[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [confirmingClear, setConfirmingClear] = useState(false);
+    const [importModalOpen, setImportModalOpen] = useState(false);
 
     const dupeIndices = useMemo(() => computeDuplicateIndices(draftEmails), [draftEmails]);
     const errorIndices = useMemo(() => computeErrorIndices(draftEmails), [draftEmails]);
@@ -77,15 +128,66 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
         if (count === 0 && confirmingClear) setConfirmingClear(false);
     }, [count, confirmingClear]);
 
-    const handleFileSelect = useCallback(async (files: FileList | null) => {
-        const file = files?.[0];
-        if (!file) return;
-        const text = await file.text();
-        const parsed = parseRawEmails(text);
-        if (parsed.length === 0) return;
-        // Append imported e-mails as new tags, capped at MAX_EMAILS.
-        setDraftEmails((prev) => [...prev, ...parsed].slice(0, MAX_EMAILS));
-    }, []);
+    const handleFileSelect = useCallback(
+        async (files: FileList | null) => {
+            const file = files?.[0];
+            if (!file) return;
+            const text = await file.text();
+            const parseResult = parseEmailsFromSheet(text);
+
+            if (!parseResult.ok) {
+                if (parseResult.reason === "no-email-column") {
+                    showErrorToast(
+                        'Não encontramos a coluna "email"',
+                        'Para importar contatos, a planilha precisa ter uma coluna chamada "email". Revise o arquivo e envie novamente.',
+                    );
+                } else {
+                    showErrorToast(
+                        "Não encontramos contatos para importar",
+                        "A planilha não tem contatos preenchidos na coluna email. Adicione pelo menos um e-mail e envie o arquivo novamente.",
+                    );
+                }
+                return;
+            }
+
+            const sheetEmails = parseResult.emails;
+
+            if (sheetEmails.length > MAX_EMAILS) {
+                showErrorToast(
+                    `A planilha ultrapassa o limite de ${MAX_EMAILS} contatos`,
+                    `Encontramos ${sheetEmails.length} contatos na planilha. Para continuar, mantenha até ${MAX_EMAILS} contatos e envie o arquivo novamente.`,
+                );
+                return;
+            }
+
+            const existingCount = draftEmails.length;
+            const available = MAX_EMAILS - existingCount;
+            if (sheetEmails.length > available) {
+                showErrorToast(
+                    "A importação ultrapassa o limite de contatos",
+                    `Sua lista já tem ${existingCount} contatos. Para manter o limite de ${MAX_EMAILS} contatos, esta planilha pode ter no máximo ${available} contatos.`,
+                );
+                return;
+            }
+
+            setDraftEmails((prev) => [...prev, ...sheetEmails]);
+            setImportModalOpen(false);
+            showSuccessToast(
+                "Contatos importados",
+                `${sheetEmails.length} ${sheetEmails.length === 1 ? "contato foi adicionado" : "contatos foram adicionados"} à lista.`,
+            );
+        },
+        [draftEmails.length],
+    );
+
+    const handleModalImport = useCallback(
+        (file: File) => {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            handleFileSelect(dt.files);
+        },
+        [handleFileSelect],
+    );
 
     const handleClearAll = useCallback(() => {
         setDraftEmails([]);
@@ -119,18 +221,14 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
             <div className="flex w-full flex-col gap-3">
                 {/* Action row above the input */}
                 <div className="flex items-center justify-between gap-3">
-                    <FileTrigger
-                        acceptedFileTypes={[".csv", ".xlsx", ".txt"]}
-                        onSelect={handleFileSelect}
+                    <Button
+                        size="sm"
+                        color="secondary"
+                        iconLeading={<XlsFileIcon data-icon className="size-5" />}
+                        onClick={() => setImportModalOpen(true)}
                     >
-                        <Button
-                            size="sm"
-                            color="secondary"
-                            iconLeading={<XlsFileIcon data-icon className="size-5" />}
-                        >
-                            Importar de planilha
-                        </Button>
-                    </FileTrigger>
+                        Importar de planilha
+                    </Button>
 
                     {count > 0 && (
                         <AnimatePresence mode="wait" initial={false}>
@@ -286,6 +384,12 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
                     </p>
                 </div>
             </div>
+
+            <ImportEmailsModal
+                isOpen={importModalOpen}
+                onClose={() => setImportModalOpen(false)}
+                onImport={handleModalImport}
+            />
         </div>
     );
 }

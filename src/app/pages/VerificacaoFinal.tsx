@@ -451,22 +451,16 @@ const RecipientCard = ({
                 />
             </div>
         </header>
-        <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-3">
-            <ItemColumn>
-                {tickets.map((t) => (
-                    <TicketLine key={t.id} item={t} />
-                ))}
-            </ItemColumn>
-            <ItemColumn>
-                {products.map((p) => (
-                    <ProductLine key={p.id} item={p} />
-                ))}
-            </ItemColumn>
-            <ItemColumn>
-                {combos.map((c) => (
-                    <ComboLine key={c.id} item={c} />
-                ))}
-            </ItemColumn>
+        <div className="grid grid-cols-1 gap-x-6 gap-y-3 p-4 md:grid-cols-2 lg:grid-cols-3">
+            {tickets.map((t) => (
+                <TicketLine key={t.id} item={t} />
+            ))}
+            {products.map((p) => (
+                <ProductLine key={p.id} item={p} />
+            ))}
+            {combos.map((c) => (
+                <ComboLine key={c.id} item={c} />
+            ))}
         </div>
     </div>
 );
@@ -474,10 +468,6 @@ const RecipientCard = ({
 /* ------------------------------------------------------------------ */
 /*  Item lines (per kind)                                             */
 /* ------------------------------------------------------------------ */
-
-const ItemColumn = ({ children }: { children: React.ReactNode }) => (
-    <div className="flex flex-col gap-2.5">{children}</div>
-);
 
 const Quantity = ({ value = 1 }: { value?: number }) => (
     <span className="text-xs text-tertiary">{value}x</span>

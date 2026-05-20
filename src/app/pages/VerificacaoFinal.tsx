@@ -1,0 +1,662 @@
+import { useCallback, useMemo, useState, type Key } from "react";
+import { useLocation, useNavigate } from "react-router";
+import {
+    ArrowLeft,
+    CheckCircle,
+    ChevronLeft,
+    ChevronLeftDouble,
+    ChevronRight,
+    ChevronRightDouble,
+    Edit01,
+    Menu02,
+    SearchLg,
+    ShoppingCart01,
+    Table,
+    Trash01,
+    Users01,
+} from "@untitledui/icons";
+import { Badge } from "@/components/base/badges/badges";
+import { Button } from "@/components/base/buttons/button";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { Input } from "@/components/base/input/input";
+import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
+import { Progress } from "@/components/application/progress-steps/progress-steps";
+import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
+import { cx } from "@/utils/cx";
+import { BackstageLayout } from "../components/Backstage";
+import { ConfirmRemoveEmailModal, EditEmailModal } from "../components/EmailModals";
+import {
+    getItemDetails,
+    type ComboItemDetails,
+    type ItemDetails,
+    type ProductItemDetails,
+    type TicketItemDetails,
+} from "../data/cortesia-items";
+
+const steps: ProgressFeaturedIconType[] = [
+    {
+        title: "Itens",
+        description: "Defina a quantidade e tipo de itens",
+        status: "complete",
+        icon: ShoppingCart01,
+    },
+    {
+        title: "Destinatários",
+        description: "Escolha para quem vai enviar",
+        status: "complete",
+        icon: Users01,
+    },
+    {
+        title: "Verificação final",
+        description: "Revisão dos destinatários e itens",
+        status: "current",
+        icon: CheckCircle,
+    },
+];
+
+interface RouteState {
+    itemIds?: string[];
+    emails?: string[];
+}
+
+const DEFAULT_PAGE_SIZE = 10;
+
+const FALLBACK_EMAILS = Array.from(
+    { length: 24 },
+    (_, i) => `convidado${String(i + 1).padStart(3, "0")}@exemplo.com`,
+);
+const FALLBACK_ITEM_IDS = ["tk-1-1", "tk-1-4", "prod-1", "combo-1"];
+
+/** Deterministic hash for stable "tem/sem cadastro" assignment per e-mail. */
+function emailHash(email: string): number {
+    let h = 0;
+    for (let i = 0; i < email.length; i++) {
+        h = ((h << 5) - h + email.charCodeAt(i)) | 0;
+    }
+    return Math.abs(h);
+}
+
+/** ~40% of e-mails are marked "sem cadastro" (deterministic, hash-based). */
+function emailHasCadastro(email: string): boolean {
+    return emailHash(email) % 10 >= 4;
+}
+
+
+export function VerificacaoFinal() {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const routeState = (location.state as RouteState | null) ?? {};
+
+    const itemIds = routeState.itemIds?.length ? routeState.itemIds : FALLBACK_ITEM_IDS;
+    const incomingEmails = routeState.emails?.length ? routeState.emails : FALLBACK_EMAILS;
+
+    const [emails, setEmails] = useState<string[]>(incomingEmails);
+    const [sendQrCode, setSendQrCode] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [page, setPage] = useState(0);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [viewMode, setViewMode] = useState<"list" | "table">("table");
+    const [editingEmail, setEditingEmail] = useState<string | null>(null);
+    const [removingEmail, setRemovingEmail] = useState<string | null>(null);
+
+    // Group the selected items by kind once.
+    const groupedItems = useMemo(() => {
+        const tickets: TicketItemDetails[] = [];
+        const products: ProductItemDetails[] = [];
+        const combos: ComboItemDetails[] = [];
+        for (const id of itemIds) {
+            const details = getItemDetails(id);
+            if (!details) continue;
+            if (details.kind === "ticket") tickets.push(details);
+            else if (details.kind === "product") products.push(details);
+            else combos.push(details);
+        }
+        return { tickets, products, combos };
+    }, [itemIds]);
+
+    const itemsPerRecipient = itemIds.length;
+
+    const activeEmails = useMemo(() => {
+        // Sort: "sem cadastro" first, then alphabetical (so duplicates land together).
+        return [...emails].sort((a, b) => {
+            const aCad = emailHasCadastro(a);
+            const bCad = emailHasCadastro(b);
+            if (aCad !== bCad) return aCad ? 1 : -1; // sem cadastro (false) first
+            return a.localeCompare(b);
+        });
+    }, [emails]);
+
+    const filteredEmails = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return activeEmails;
+        return activeEmails.filter((e) => e.toLowerCase().includes(q));
+    }, [activeEmails, searchQuery]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredEmails.length / pageSize));
+    const safePage = Math.min(page, totalPages - 1);
+    const visibleEmails = filteredEmails.slice(
+        safePage * pageSize,
+        (safePage + 1) * pageSize,
+    );
+
+    // Trash button → open confirm modal (does not remove yet).
+    const handleRemove = useCallback((email: string) => {
+        setRemovingEmail(email);
+    }, []);
+
+    // Pencil button → open edit modal (only "sem cadastro" reach this handler).
+    const handleEdit = useCallback((email: string) => {
+        setEditingEmail(email);
+    }, []);
+
+    const handleConfirmRemove = useCallback(() => {
+        if (!removingEmail) return;
+        setEmails((prev) => prev.filter((e) => e !== removingEmail));
+        setRemovingEmail(null);
+    }, [removingEmail]);
+
+    const handleSaveEdit = useCallback((newEmail: string) => {
+        setEmails((prev) => {
+            if (!editingEmail) return prev;
+            // Drop duplicates that would result from the rename.
+            const seen = new Set<string>();
+            const out: string[] = [];
+            for (const e of prev) {
+                const next = e === editingEmail ? newEmail : e;
+                if (seen.has(next)) continue;
+                seen.add(next);
+                out.push(next);
+            }
+            return out;
+        });
+        setEditingEmail(null);
+    }, [editingEmail]);
+
+    const handleSubmit = useCallback(() => {
+        console.log("Enviar cortesias", {
+            emails: activeEmails,
+            itemIds,
+            sendQrCode,
+        });
+    }, [activeEmails, itemIds, sendQrCode]);
+
+    const handleBack = useCallback(() => {
+        navigate("/backstage/destinatarios", { state: { itemIds } });
+    }, [itemIds, navigate]);
+
+    return (
+        <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
+            <div className="flex min-w-0 flex-1 flex-col">
+                <PageHeader onBack={handleBack} onSubmit={handleSubmit} />
+                <main className="flex flex-1 flex-col gap-8 px-6 py-6">
+                    <Progress.IconsWithText
+                        items={steps}
+                        size="sm"
+                        type="number"
+                        orientation="horizontal"
+                        className="max-w-[760px] self-center max-md:hidden"
+                    />
+                    <Progress.IconsWithText
+                        items={steps}
+                        size="sm"
+                        type="number"
+                        orientation="vertical"
+                        className="w-full md:hidden"
+                    />
+
+                    <div className="flex flex-col gap-4">
+                        <h2 className="text-xl font-semibold text-primary">Revise os envios</h2>
+
+                        <Input
+                            label="Busca"
+                            icon={SearchLg}
+                            placeholder="Busque por e-mail"
+                            value={searchQuery}
+                            onChange={(v) => {
+                                setSearchQuery(v);
+                                setPage(0);
+                            }}
+                        />
+
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <Checkbox
+                                isSelected={sendQrCode}
+                                onChange={setSendQrCode}
+                                label="Também enviar QR Code por e-mail"
+                            />
+                            <div className="flex items-center gap-4">
+                                <p className="text-sm text-tertiary">
+                                    Cada um dos{" "}
+                                    <span className="font-semibold text-primary">
+                                        {activeEmails.length}
+                                    </span>{" "}
+                                    destinatários receberá{" "}
+                                    <span className="font-semibold text-primary">
+                                        {itemsPerRecipient}{" "}
+                                        {itemsPerRecipient === 1 ? "item" : "itens"}
+                                    </span>{" "}
+                                    por e-mail
+                                </p>
+                                <ButtonGroup
+                                    size="sm"
+                                    selectedKeys={new Set([viewMode])}
+                                    onSelectionChange={(keys) => {
+                                        const k = Array.from(keys as Set<Key>)[0];
+                                        if (k) setViewMode(k as "list" | "table");
+                                    }}
+                                    disallowEmptySelection
+                                    aria-label="Alternar visualização"
+                                >
+                                    <ButtonGroupItem id="list" iconLeading={Menu02} aria-label="Lista" />
+                                    <ButtonGroupItem id="table" iconLeading={Table} aria-label="Tabela" />
+                                </ButtonGroup>
+                            </div>
+                        </div>
+                    </div>
+
+                    {visibleEmails.length === 0 ? (
+                        <div className="rounded-xl bg-secondary_subtle px-6 py-16 text-center text-sm text-tertiary ring-1 ring-border-secondary">
+                            Nenhum destinatário encontrado.
+                        </div>
+                    ) : viewMode === "list" ? (
+                        <div className="flex flex-col gap-4">
+                            {visibleEmails.map((email) => (
+                                <RecipientCard
+                                    key={email}
+                                    email={email}
+                                    hasCadastro={emailHasCadastro(email)}
+                                    tickets={groupedItems.tickets}
+                                    products={groupedItems.products}
+                                    combos={groupedItems.combos}
+                                    onEdit={() => handleEdit(email)}
+                                    onRemove={() => handleRemove(email)}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <RecipientTable
+                            emails={visibleEmails}
+                            items={[
+                                ...groupedItems.tickets,
+                                ...groupedItems.products,
+                                ...groupedItems.combos,
+                            ]}
+                            page={safePage + 1}
+                            total={totalPages}
+                            pageSize={pageSize}
+                            onPageChange={(p) => setPage(p - 1)}
+                            onPageSizeChange={(size) => {
+                                setPageSize(size);
+                                setPage(0);
+                            }}
+                            onEdit={handleEdit}
+                            onRemove={handleRemove}
+                        />
+                    )}
+
+                    {viewMode === "list" && totalPages > 1 && (
+                        <Pagination
+                            page={safePage}
+                            totalPages={totalPages}
+                            onChange={setPage}
+                        />
+                    )}
+                </main>
+            </div>
+
+            <EditEmailModal
+                isOpen={editingEmail !== null}
+                email={editingEmail ?? ""}
+                onClose={() => setEditingEmail(null)}
+                onSave={handleSaveEdit}
+            />
+            <ConfirmRemoveEmailModal
+                isOpen={removingEmail !== null}
+                email={removingEmail ?? ""}
+                onClose={() => setRemovingEmail(null)}
+                onConfirm={handleConfirmRemove}
+            />
+        </BackstageLayout>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page header                                                       */
+/* ------------------------------------------------------------------ */
+
+interface PageHeaderProps {
+    onBack: () => void;
+    onSubmit: () => void;
+}
+
+const PageHeader = ({ onBack, onSubmit }: PageHeaderProps) => (
+    <header className="flex items-center justify-between gap-3 px-6 py-6">
+        <div className="flex items-center gap-3">
+            <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={onBack}>
+                Destinatários
+            </Button>
+            <h1 className="text-display-xs font-bold text-primary">Enviar cortesia</h1>
+        </div>
+        <Button size="md" color="primary" onClick={onSubmit}>
+            Enviar
+        </Button>
+    </header>
+);
+
+/* ------------------------------------------------------------------ */
+/*  Recipient card                                                    */
+/* ------------------------------------------------------------------ */
+
+interface RecipientCardProps {
+    email: string;
+    hasCadastro: boolean;
+    tickets: TicketItemDetails[];
+    products: ProductItemDetails[];
+    combos: ComboItemDetails[];
+    onEdit: () => void;
+    onRemove: () => void;
+}
+
+const RecipientCard = ({
+    email,
+    hasCadastro,
+    tickets,
+    products,
+    combos,
+    onEdit,
+    onRemove,
+}: RecipientCardProps) => (
+    <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+        <header className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-sm font-medium text-primary">{email}</span>
+                <Badge
+                    size="sm"
+                    type="pill-color"
+                    color={hasCadastro ? "gray" : "warning"}
+                >
+                    {hasCadastro ? "Cadastrado" : "Sem cadastro"}
+                </Badge>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+                {!hasCadastro && (
+                    <ButtonUtility
+                        size="xs"
+                        color="tertiary"
+                        icon={Edit01}
+                        tooltip="Editar"
+                        onClick={onEdit}
+                    />
+                )}
+                <ButtonUtility
+                    size="xs"
+                    color="tertiary"
+                    icon={Trash01}
+                    tooltip="Remover"
+                    onClick={onRemove}
+                />
+            </div>
+        </header>
+        <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-3">
+            <ItemColumn>
+                {tickets.map((t) => (
+                    <TicketLine key={t.id} item={t} />
+                ))}
+            </ItemColumn>
+            <ItemColumn>
+                {products.map((p) => (
+                    <ProductLine key={p.id} item={p} />
+                ))}
+            </ItemColumn>
+            <ItemColumn>
+                {combos.map((c) => (
+                    <ComboLine key={c.id} item={c} />
+                ))}
+            </ItemColumn>
+        </div>
+    </div>
+);
+
+/* ------------------------------------------------------------------ */
+/*  Item lines (per kind)                                             */
+/* ------------------------------------------------------------------ */
+
+const ItemColumn = ({ children }: { children: React.ReactNode }) => (
+    <div className="flex flex-col gap-2.5">{children}</div>
+);
+
+const Quantity = ({ value = 1 }: { value?: number }) => (
+    <span className="text-xs text-tertiary">{value}x</span>
+);
+
+const TicketLine = ({ item }: { item: TicketItemDetails }) => (
+    <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 items-baseline gap-1.5">
+            <Quantity />
+            <span className="truncate text-sm font-medium text-primary">
+                {item.name} <span className="text-tertiary">- {item.ticketType}</span>
+            </span>
+        </div>
+        <span className="truncate pl-5 text-xs text-tertiary">
+            {item.groupName} · {item.sessionDate}
+        </span>
+    </div>
+);
+
+const ProductLine = ({ item }: { item: ProductItemDetails }) => (
+    <div className="flex min-w-0 items-center gap-2">
+        <img
+            src={item.imageUrl}
+            alt=""
+            className="size-8 shrink-0 rounded-md object-cover ring-1 ring-secondary"
+        />
+        <Quantity />
+        <span className="truncate text-sm font-medium text-primary">{item.name}</span>
+    </div>
+);
+
+const ComboLine = ({ item }: { item: ComboItemDetails }) => (
+    <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 items-baseline gap-1.5">
+            <Quantity />
+            <span className="truncate text-sm font-medium text-primary">{item.name}</span>
+        </div>
+        <span className="truncate pl-5 text-xs text-tertiary">{item.subtitle}</span>
+    </div>
+);
+
+/* ------------------------------------------------------------------ */
+/*  Recipient table (alternative view)                                */
+/* ------------------------------------------------------------------ */
+
+interface RecipientTableProps {
+    emails: string[];
+    items: ItemDetails[];
+    page: number;
+    total: number;
+    pageSize: number;
+    onPageChange: (page: number) => void;
+    onPageSizeChange: (size: number) => void;
+    onEdit: (email: string) => void;
+    onRemove: (email: string) => void;
+}
+
+const RecipientTable = ({
+    emails,
+    items,
+    page,
+    total,
+    pageSize,
+    onPageChange,
+    onPageSizeChange,
+    onEdit,
+    onRemove,
+}: RecipientTableProps) => (
+    <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+        <table className="w-full border-collapse">
+            <thead>
+                <tr className="border-b border-secondary bg-secondary_subtle text-left">
+                    <th className="px-4 py-3 text-xs font-semibold text-tertiary">Destinatário</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-tertiary">Item</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-tertiary">Cadastro</th>
+                    <th className="w-24 px-4 py-3" aria-label="Ações" />
+                </tr>
+            </thead>
+            <tbody>
+                {emails.flatMap((email, emailIndex) => {
+                    const hasCadastro = emailHasCadastro(email);
+                    return items.map((item, itemIndex) => {
+                        const isFirstItem = itemIndex === 0;
+                        const isLastItemOfLastEmail =
+                            itemIndex === items.length - 1 && emailIndex === emails.length - 1;
+                        const isLastItemOfEmail = itemIndex === items.length - 1;
+                        return (
+                            <tr
+                                key={`${email}::${item.id}`}
+                                className={cx(
+                                    "transition duration-100 ease-linear hover:bg-primary_hover",
+                                    !isLastItemOfLastEmail && "border-b",
+                                    isLastItemOfEmail ? "border-secondary" : "border-secondary/40",
+                                )}
+                            >
+                                <td className="px-4 py-3 align-top">
+                                    {isFirstItem && (
+                                        <span className="text-sm font-medium text-primary">
+                                            {email}
+                                        </span>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                    <span className="text-sm text-primary">
+                                        <span className="text-tertiary">1x </span>
+                                        {itemDisplayName(item)}
+                                    </span>
+                                    {itemDisplaySublabel(item) && (
+                                        <p className="text-xs text-tertiary">
+                                            {itemDisplaySublabel(item)}
+                                        </p>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                    {isFirstItem && (
+                                        <Badge
+                                            size="sm"
+                                            type="pill-color"
+                                            color={hasCadastro ? "gray" : "warning"}
+                                        >
+                                            {hasCadastro ? "Cadastrado" : "Sem cadastro"}
+                                        </Badge>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3 align-top text-right">
+                                    {isFirstItem && (
+                                        <div className="flex justify-end gap-1">
+                                            {!hasCadastro && (
+                                                <ButtonUtility
+                                                    size="xs"
+                                                    color="tertiary"
+                                                    icon={Edit01}
+                                                    tooltip="Editar"
+                                                    onClick={() => onEdit(email)}
+                                                />
+                                            )}
+                                            <ButtonUtility
+                                                size="xs"
+                                                color="tertiary"
+                                                icon={Trash01}
+                                                tooltip="Remover"
+                                                onClick={() => onRemove(email)}
+                                            />
+                                        </div>
+                                    )}
+                                </td>
+                            </tr>
+                        );
+                    });
+                })}
+            </tbody>
+        </table>
+        <PaginationCardAdvanced
+            page={page}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+        />
+    </div>
+);
+
+function itemDisplayName(item: ItemDetails): string {
+    if (item.kind === "ticket") return `${item.name} - ${item.ticketType}`;
+    return item.name;
+}
+
+function itemDisplaySublabel(item: ItemDetails): string | null {
+    if (item.kind === "ticket") return `${item.groupName} · ${item.sessionDate}`;
+    if (item.kind === "combo") return item.subtitle;
+    return null;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Pagination                                                        */
+/* ------------------------------------------------------------------ */
+
+interface PaginationProps {
+    page: number;
+    totalPages: number;
+    onChange: (page: number) => void;
+}
+
+const Pagination = ({ page, totalPages, onChange }: PaginationProps) => {
+    const atFirst = page <= 0;
+    const atLast = page >= totalPages - 1;
+
+    return (
+        <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center gap-1">
+                <ButtonUtility
+                    size="sm"
+                    color="secondary"
+                    icon={ChevronLeftDouble}
+                    tooltip="Primeira página"
+                    isDisabled={atFirst}
+                    onClick={() => onChange(0)}
+                />
+                <ButtonUtility
+                    size="sm"
+                    color="secondary"
+                    icon={ChevronLeft}
+                    tooltip="Página anterior"
+                    isDisabled={atFirst}
+                    onClick={() => onChange(Math.max(0, page - 1))}
+                />
+            </div>
+
+            <span className={cx("min-w-[120px] text-center text-sm text-tertiary")}>
+                Página <span className="font-semibold text-primary">{page + 1}</span> de{" "}
+                <span className="font-semibold text-primary">{totalPages}</span>
+            </span>
+
+            <div className="flex items-center gap-1">
+                <ButtonUtility
+                    size="sm"
+                    color="secondary"
+                    icon={ChevronRight}
+                    tooltip="Próxima página"
+                    isDisabled={atLast}
+                    onClick={() => onChange(Math.min(totalPages - 1, page + 1))}
+                />
+                <ButtonUtility
+                    size="sm"
+                    color="secondary"
+                    icon={ChevronRightDouble}
+                    tooltip="Última página"
+                    isDisabled={atLast}
+                    onClick={() => onChange(totalPages - 1)}
+                />
+            </div>
+        </div>
+    );
+};

@@ -1,0 +1,48 @@
+@import "./uui-theme.css";
+@import "./uui-typography.css";
+
+@plugin "@tailwindcss/typography";
+@plugin "tailwindcss-react-aria-components";
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:where(.dark-mode, .dark-mode *));
+@custom-variant label (& [data-label]);
+@custom-variant focus-input-within (&:has(input:focus));
+
+@utility scrollbar-hide {
+    &::-webkit-scrollbar {
+        display: none;
+        -webkit-appearance: none;
+    }
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+@utility transition-inherit-all {
+    transition-property: inherit;
+    transition-duration: inherit;
+    transition-timing-function: inherit;
+}
+
+details summary::-webkit-details-marker {
+    display: none;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+}
+
+.recharts-surface,
+.recharts-surface g,
+.recharts-surface path {
+    outline: none;
+}

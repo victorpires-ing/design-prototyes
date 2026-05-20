@@ -186,7 +186,7 @@ export default function TicketGroup({
           ? `bg-white overflow-hidden transition-all`
           : `border rounded-md bg-white overflow-hidden transition-all ${isExpanded ? 'border-gray-200' : 'border-gray-200'}`;
 
-        const buttonPadding = hideBorders ? 'py-4 px-0' : 'p-4';
+        const buttonPadding = hideBorders ? 'py-4 px-0' : 'py-4 px-4';
 
         return (
           <div key={group.id} className="flex flex-col">

@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { ScenarioControls } from '../app/components/ui/ScenarioControls'
-import { TicketPurchaseScreen } from "../app/components/TicketPurchaseScreen";
+import { Route, Routes } from 'react-router';
+import { ScenarioControls } from '../app/components/ui/ScenarioControls';
+import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
+import { EmissaoCortesias } from '../app/pages/EmissaoCortesias';
+import { SelecaoItens } from '../app/pages/SelecaoItens';
+import { VerificacaoFinal } from '../app/pages/VerificacaoFinal';
 
-export default function App() {
-  const [params, setParams] = useState({ 
-    dates: 'unica', 
-    times: 'unico', 
-    maps: 'nenhum', 
+function HomeScreen() {
+  const [params, setParams] = useState({
+    dates: 'unica',
+    times: 'unico',
+    maps: 'nenhum',
     customStartDate: new Date().toISOString().split('T')[0],
     customEndDate: '',
     unavailableDates: [] as string[],
@@ -19,5 +23,16 @@ export default function App() {
       <ScenarioControls params={params} setParams={setParams} />
       <TicketPurchaseScreen scenario={params} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomeScreen />} />
+      <Route path="/backstage" element={<SelecaoItens />} />
+      <Route path="/backstage/destinatarios" element={<EmissaoCortesias />} />
+      <Route path="/backstage/verificacao" element={<VerificacaoFinal />} />
+    </Routes>
   );
 }

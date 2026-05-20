@@ -29,7 +29,7 @@ function HomeScreen() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomeScreen />} />
+      <Route path="/" element={<SelecaoItens />} />
       <Route path="/backstage" element={<SelecaoItens />} />
       <Route path="/backstage/destinatarios" element={<EmissaoCortesias />} />
       <Route path="/backstage/verificacao" element={<VerificacaoFinal />} />

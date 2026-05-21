@@ -19,6 +19,7 @@ import {
     SearchLg,
     SlashCircle01,
     XClose,
+    SwitchHorizontal01
 } from "@untitledui/icons";
 import type { Selection } from "react-aria-components";
 import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
@@ -30,6 +31,7 @@ import { MultiSelect } from "@/components/base/select/multi-select";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { cx } from "@/utils/cx";
+import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { BackstageLayout } from "../components/Backstage";
 import { CancelConfirmModal } from "../components/CancelConfirmModal";
 import { ItemDetailsSlideOut } from "../components/ItemDetailsSlideOut";
@@ -45,6 +47,7 @@ import {
     type PedidoStatus,
 } from "../data/cortesias-store";
 import { showSuccessToast } from "../utils/toast";
+
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                         */
@@ -1267,9 +1270,14 @@ const ItensTable = ({
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm text-primary">{row.email}</span>
                                             {row.transferido && (
-                                                <Badge size="sm" color="gray" type="modern">
-                                                    Transferido
-                                                </Badge>
+                                                <Tooltip title="Transferido">
+                                                    <TooltipTrigger>
+                                                        <SwitchHorizontal01
+                                                            aria-label="Transferido"
+                                                            className="size-4 text-utility-sky-500"
+                                                        />
+                                                    </TooltipTrigger>
+                                                </Tooltip>
                                             )}
                                         </div>
                                         <span className="text-xs text-tertiary">

@@ -127,15 +127,21 @@ export function VerificacaoFinal() {
 
     const itemsPerRecipient = itemIds.length;
 
+    const emailOccurrences = useMemo(() => {
+        const map = new Map<string, number>();
+        for (const e of emails) map.set(e, (map.get(e) ?? 0) + 1);
+        return map;
+    }, [emails]);
+
     const activeEmails = useMemo(() => {
-        // Sort: "sem cadastro" first, then alphabetical (so duplicates land together).
-        return [...emails].sort((a, b) => {
+        // Unique emails, sorted: "sem cadastro" first, then alphabetical.
+        return Array.from(emailOccurrences.keys()).sort((a, b) => {
             const aCad = emailHasCadastro(a);
             const bCad = emailHasCadastro(b);
-            if (aCad !== bCad) return aCad ? 1 : -1; // sem cadastro (false) first
+            if (aCad !== bCad) return aCad ? 1 : -1;
             return a.localeCompare(b);
         });
-    }, [emails]);
+    }, [emailOccurrences]);
 
     const filteredEmails = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
@@ -197,7 +203,7 @@ export function VerificacaoFinal() {
     const handleSubmit = useCallback(() => {
         addPedido({
             nome: orderName,
-            emails: activeEmails,
+            emails,
             itemIds,
         });
         showSuccessToast(
@@ -207,7 +213,7 @@ export function VerificacaoFinal() {
             }.`,
         );
         navigate("/backstage/cortesias");
-    }, [orderName, activeEmails, itemIds, addPedido, navigate]);
+    }, [orderName, emails, activeEmails, itemIds, addPedido, navigate]);
 
     const handleBack = useCallback(() => {
         navigate("/backstage/destinatarios", { state: { itemIds } });
@@ -323,6 +329,7 @@ export function VerificacaoFinal() {
                                 <RecipientCard
                                     key={email}
                                     email={email}
+                                    quantity={emailOccurrences.get(email) ?? 1}
                                     hasCadastro={emailHasCadastro(email)}
                                     tickets={groupedItems.tickets}
                                     products={groupedItems.products}
@@ -335,6 +342,7 @@ export function VerificacaoFinal() {
                     ) : (
                         <RecipientTable
                             emails={visibleEmails}
+                            occurrences={emailOccurrences}
                             items={[
                                 ...groupedItems.tickets,
                                 ...groupedItems.products,
@@ -407,6 +415,7 @@ const PageHeader = ({ onBack, onSubmit }: PageHeaderProps) => (
 
 interface RecipientCardProps {
     email: string;
+    quantity: number;
     hasCadastro: boolean;
     tickets: TicketItemDetails[];
     products: ProductItemDetails[];
@@ -417,6 +426,7 @@ interface RecipientCardProps {
 
 const RecipientCard = ({
     email,
+    quantity,
     hasCadastro,
     tickets,
     products,
@@ -458,13 +468,13 @@ const RecipientCard = ({
         <div className="mx-2 mb-2 rounded-lg bg-primary p-4">
             <div className="grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2 lg:grid-cols-3">
                 {tickets.map((t) => (
-                    <TicketLine key={t.id} item={t} />
+                    <TicketLine key={t.id} item={t} quantity={quantity} />
                 ))}
                 {products.map((p) => (
-                    <ProductLine key={p.id} item={p} />
+                    <ProductLine key={p.id} item={p} quantity={quantity} />
                 ))}
                 {combos.map((c) => (
-                    <ComboLine key={c.id} item={c} />
+                    <ComboLine key={c.id} item={c} quantity={quantity} />
                 ))}
             </div>
         </div>
@@ -479,10 +489,16 @@ const Quantity = ({ value = 1 }: { value?: number }) => (
     <span className="text-xs text-tertiary">{value}x</span>
 );
 
-const TicketLine = ({ item }: { item: TicketItemDetails }) => (
+const TicketLine = ({
+    item,
+    quantity = 1,
+}: {
+    item: TicketItemDetails;
+    quantity?: number;
+}) => (
     <div className="flex min-w-0 flex-col">
         <div className="flex min-w-0 items-baseline gap-1.5">
-            <Quantity />
+            <Quantity value={quantity} />
             <span className="truncate text-sm font-medium text-primary">
                 {item.name} <span className="text-tertiary">- {item.ticketType}</span>
             </span>
@@ -493,22 +509,34 @@ const TicketLine = ({ item }: { item: TicketItemDetails }) => (
     </div>
 );
 
-const ProductLine = ({ item }: { item: ProductItemDetails }) => (
+const ProductLine = ({
+    item,
+    quantity = 1,
+}: {
+    item: ProductItemDetails;
+    quantity?: number;
+}) => (
     <div className="flex min-w-0 items-center gap-2">
         <img
             src={item.imageUrl}
             alt=""
             className="size-8 shrink-0 rounded-md object-cover ring-1 ring-secondary"
         />
-        <Quantity />
+        <Quantity value={quantity} />
         <span className="truncate text-sm font-medium text-primary">{item.name}</span>
     </div>
 );
 
-const ComboLine = ({ item }: { item: ComboItemDetails }) => (
+const ComboLine = ({
+    item,
+    quantity = 1,
+}: {
+    item: ComboItemDetails;
+    quantity?: number;
+}) => (
     <div className="flex min-w-0 flex-col">
         <div className="flex min-w-0 items-baseline gap-1.5">
-            <Quantity />
+            <Quantity value={quantity} />
             <span className="truncate text-sm font-medium text-primary">{item.name}</span>
         </div>
         <span className="truncate pl-5 text-xs text-tertiary">{item.subtitle}</span>
@@ -521,6 +549,7 @@ const ComboLine = ({ item }: { item: ComboItemDetails }) => (
 
 interface RecipientTableProps {
     emails: string[];
+    occurrences: Map<string, number>;
     items: ItemDetails[];
     onEdit: (email: string) => void;
     onRemove: (email: string) => void;
@@ -528,6 +557,7 @@ interface RecipientTableProps {
 
 const RecipientTable = ({
     emails,
+    occurrences,
     items,
     onEdit,
     onRemove,
@@ -545,6 +575,7 @@ const RecipientTable = ({
             <tbody>
                 {emails.flatMap((email, emailIndex) => {
                     const hasCadastro = emailHasCadastro(email);
+                    const quantity = occurrences.get(email) ?? 1;
                     return items.map((item, itemIndex) => {
                         const isFirstItem = itemIndex === 0;
                         const isLastItemOfLastEmail =
@@ -568,7 +599,7 @@ const RecipientTable = ({
                                 </td>
                                 <td className="px-4 py-3 align-top">
                                     <span className="text-sm text-primary">
-                                        <span className="text-tertiary">1x </span>
+                                        <span className="text-tertiary">{quantity}x </span>
                                         {itemDisplayName(item)}
                                     </span>
                                     {itemDisplaySublabel(item) && (

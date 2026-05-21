@@ -1,12 +1,24 @@
-import { useCallback, useMemo, useState, type Key } from "react";
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+    type Key,
+    type KeyboardEvent,
+} from "react";
 import { useNavigate } from "react-router";
 import {
+    Check,
     DownloadCloud01,
+    Edit01,
     Eye,
     HelpCircle,
     RefreshCcw01,
     SearchLg,
     SlashCircle01,
+    XClose,
 } from "@untitledui/icons";
 import type { Selection } from "react-aria-components";
 import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
@@ -377,6 +389,7 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
         pedidos,
         cancelPedido: storeCancelPedido,
         cancelPedidos: storeCancelPedidos,
+        renamePedido,
     } = useCortesiasStore();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [search, setSearch] = useState("");
@@ -569,6 +582,7 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
                     onToggleAllOnPage={toggleAllOnPage}
                     onCancel={requestCancelPedido}
                     onDetails={handleDetails}
+                    onRename={renamePedido}
                 />
 
                 <PaginationCardAdvanced
@@ -632,6 +646,98 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
 /*  Pedidos table                                                     */
 /* ------------------------------------------------------------------ */
 
+interface EditableNomeCellProps {
+    value: string;
+    onSave: (nome: string) => void;
+}
+
+const EditableNomeCell = ({ value, onSave }: EditableNomeCellProps) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [draft, setDraft] = useState(value);
+    const inputRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+        if (!isEditing) setDraft(value);
+    }, [value, isEditing]);
+
+    useLayoutEffect(() => {
+        if (isEditing && inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.select();
+        }
+    }, [isEditing]);
+
+    const commit = () => {
+        const next = draft.trim();
+        if (next && next !== value) onSave(next);
+        setIsEditing(false);
+    };
+
+    const cancel = () => {
+        setDraft(value);
+        setIsEditing(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            cancel();
+        }
+    };
+
+    if (isEditing) {
+        return (
+            <div className="flex max-w-[320px] items-center gap-1">
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onBlur={commit}
+                    aria-label="Nome do pedido"
+                    className="min-w-0 flex-1 rounded-md bg-primary px-2 py-1 text-sm text-primary outline-none ring-1 ring-brand"
+                />
+                <ButtonUtility
+                    size="xs"
+                    color="tertiary"
+                    icon={Check}
+                    tooltip="Salvar"
+                    onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
+                    onClick={commit}
+                />
+                <ButtonUtility
+                    size="xs"
+                    color="tertiary"
+                    icon={XClose}
+                    tooltip="Cancelar"
+                    onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
+                    onClick={cancel}
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div className="group/nome flex max-w-[320px] items-center gap-2">
+            <span className="block min-w-0 flex-1 truncate" title={value}>
+                {value}
+            </span>
+            <ButtonUtility
+                size="xs"
+                color="tertiary"
+                icon={Edit01}
+                tooltip="Editar nome"
+                className="opacity-0 transition group-hover/nome:opacity-100 focus-visible:opacity-100"
+                onClick={() => setIsEditing(true)}
+            />
+        </div>
+    );
+};
+
 interface PedidosTableProps {
     rows: Pedido[];
     selectedIds: Set<string>;
@@ -641,6 +747,7 @@ interface PedidosTableProps {
     onToggleAllOnPage: (selected: boolean) => void;
     onCancel: (id: string) => void;
     onDetails: (id: string) => void;
+    onRename: (id: string, nome: string) => void;
 }
 
 const PedidosTable = ({
@@ -652,6 +759,7 @@ const PedidosTable = ({
     onToggleAllOnPage,
     onCancel,
     onDetails,
+    onRename,
 }: PedidosTableProps) => {
     if (rows.length === 0) {
         return (
@@ -713,9 +821,10 @@ const PedidosTable = ({
                                     </span>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-primary">
-                                    <span className="block max-w-[260px] truncate" title={row.nome}>
-                                        {row.nome}
-                                    </span>
+                                    <EditableNomeCell
+                                        value={row.nome}
+                                        onSave={(nome) => onRename(row.id, nome)}
+                                    />
                                 </td>
                                 <td className="px-4 py-3 text-sm text-secondary">{row.emissor}</td>
                                 <td className="px-4 py-3">

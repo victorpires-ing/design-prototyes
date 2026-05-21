@@ -240,7 +240,7 @@ export function VerificacaoFinal() {
                     />
 
                     <div className="flex flex-col gap-4 -mb-4">
-                        <div className="flex max-w-md flex-col">
+                        <div className="flex max-w-md flex-col mt-8 mb-5">
                             <Input
                                 label="Nome do pedido"
                                 isRequired

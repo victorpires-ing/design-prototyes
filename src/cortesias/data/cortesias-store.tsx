@@ -32,6 +32,7 @@ interface CortesiasStoreValue {
     cancelPedidos: (ids: Set<string>) => void;
     cancelItem: (id: string) => void;
     cancelItens: (ids: Set<string>) => void;
+    renamePedido: (id: string, nome: string) => void;
 }
 
 const CortesiasContext = createContext<CortesiasStoreValue | null>(null);
@@ -211,6 +212,14 @@ export function CortesiasProvider({ children }: { children: ReactNode }) {
         );
     }, []);
 
+    const renamePedido = useCallback((id: string, nome: string) => {
+        const next = nome.trim();
+        if (!next) return;
+        setPedidos((prev) =>
+            prev.map((p) => (p.id === id ? { ...p, nome: next } : p)),
+        );
+    }, []);
+
     return (
         <CortesiasContext.Provider
             value={{
@@ -221,6 +230,7 @@ export function CortesiasProvider({ children }: { children: ReactNode }) {
                 cancelPedidos,
                 cancelItem,
                 cancelItens,
+                renamePedido,
             }}
         >
             {children}

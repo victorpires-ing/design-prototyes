@@ -256,7 +256,7 @@ export function ItemDetailsSlideOut({
                                         ticketDateTime={ticketDateTime}
                                     />
 
-                                    <dl className="flex flex-col gap-2">
+                                    <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
                                         <DetailRow label="Status:">
                                             {statusMeta && (
                                                 <BadgeWithDot
@@ -273,17 +273,17 @@ export function ItemDetailsSlideOut({
                                                 {item.emissor}
                                             </span>
                                         </DetailRow>
-                                        <DetailRow label="Destinatário:">
-                                            <span className="text-sm text-secondary">
-                                                {item.email}
-                                            </span>
-                                        </DetailRow>
                                         <DetailRow label="ID do pedido:">
                                             <span
                                                 className="text-sm break-all text-secondary"
                                                 title={item.pedidoId}
                                             >
                                                 {item.pedidoId}
+                                            </span>
+                                        </DetailRow>
+                                        <DetailRow label="Destinatário:">
+                                            <span className="text-sm text-secondary">
+                                                {item.email}
                                             </span>
                                         </DetailRow>
                                     </dl>

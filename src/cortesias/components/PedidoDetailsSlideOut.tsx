@@ -254,10 +254,10 @@ export function PedidoDetailsSlideOut({
                         {pedido && (
                             <div className="flex flex-col gap-4 px-6 pt-6 pb-5">
                                 <h3
-                                    className="text-md font-semibold break-all text-primary"
-                                    title={pedido.id}
+                                    className="text-md font-semibold break-words text-primary"
+                                    title={pedido.nome}
                                 >
-                                    {pedido.id}
+                                    {pedido.nome}
                                 </h3>
                                 <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
                                     <DetailRow label="Status:">
@@ -271,12 +271,17 @@ export function PedidoDetailsSlideOut({
                                             </BadgeWithDot>
                                         )}
                                     </DetailRow>
-                                    <DetailRow label="nome:">
-                                        <span className="text-sm text-secondary">{pedido.nome}</span>
-                                    </DetailRow>
                                     <DetailRow label="Emissor responsável:">
                                         <span className="text-sm text-secondary">
                                             {pedido.emissor}
+                                        </span>
+                                    </DetailRow>
+                                    <DetailRow label="ID do pedido:">
+                                        <span
+                                            className="text-sm break-all text-secondary"
+                                            title={pedido.id}
+                                        >
+                                            {pedido.id}
                                         </span>
                                     </DetailRow>
                                     <DetailRow label="Data de envio:">

@@ -346,7 +346,19 @@ Select.ComboBox = ComboBox;
 
 ### When Adding New Backstage Pages
 
-**IMPORTANT**: All pages inside the `/backstage` area share a fixed sidebar layout (producer rail + event rail). This layout is implemented in `src/app/components/Backstage.tsx` as `BackstageLayout`. Page content is passed as `children`.
+**IMPORTANT**: All cortesia-related code lives in `src/cortesias/` as a portable module:
+
+```
+src/cortesias/
+├── pages/         # Route components (SelecaoItens, EmissaoCortesias, VerificacaoFinal, RelatorioPedidos)
+├── components/    # Cortesia-specific custom components (Backstage layout, modals, slideouts, panels, ThemeToggle)
+├── data/          # Mock data (cortesia-items.ts)
+└── utils/         # Cortesia-only utilities (toast.tsx)
+```
+
+This folder is intentionally self-contained so it can be lifted into another project that shares the same architecture. External dependencies are limited to `@/components/base/*`, `@/components/application/*`, `@/components/foundations/*`, `@/utils/cx`, `@/providers/theme-provider`, and the usual third-party libs (`react-aria-components`, `@untitledui/icons`, `motion/react`, `sonner`). Do not import non-cortesia app code into this folder.
+
+All pages inside the `/backstage` area share a fixed sidebar layout (producer rail + event rail). This layout is implemented in `src/cortesias/components/Backstage.tsx` as `BackstageLayout`. Page content is passed as `children`.
 
 **The ONLY things that change between pages are:**
 - `activeSection` — which top-level menu entry is open (e.g. `"cortesias"`)
@@ -357,7 +369,7 @@ Everything else (the producer rail, the event details card, the theme toggle at 
 **Pattern for a new page:**
 
 ```tsx
-// src/app/pages/MyNewPage.tsx
+// src/cortesias/pages/MyNewPage.tsx
 import { BackstageLayout } from "../components/Backstage";
 
 export function MyNewPage() {
@@ -372,7 +384,7 @@ export function MyNewPage() {
 }
 ```
 
-Then register the page in `src/app/App.tsx` as a route. Use the existing `EmissaoCortesias` page as a reference for the inner structure (page header + stepper + content section).
+Then register the page in `src/app/App.tsx` as a route (import from `../cortesias/pages/...`). Use the existing `EmissaoCortesias` page as a reference for the inner structure (page header + stepper + content section).
 
 **Adding new menu entries:** if the new page belongs to a section/item not yet in `BackstageSection` / `BackstageItem`, extend those union types in `Backstage.tsx` and add the entry to the `functionalities` array there — do NOT hardcode the menu inside the page.
 

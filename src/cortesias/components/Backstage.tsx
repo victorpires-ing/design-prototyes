@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/base/buttons/button";
 import { Badge } from "@/components/base/badges/badges";
 import { cx } from "@/utils/cx";
-import { ThemeToggle } from "./ui/ThemeToggle";
+import { ThemeToggle } from "./ThemeToggle";
 
 export type BackstageSection =
     | "informacoes-evento"

@@ -3,10 +3,6 @@ import { useLocation, useNavigate } from "react-router";
 import {
     ArrowLeft,
     CheckCircle,
-    ChevronLeft,
-    ChevronLeftDouble,
-    ChevronRight,
-    ChevronRightDouble,
     Edit01,
     Menu02,
     SearchLg,
@@ -36,6 +32,7 @@ import {
     type ProductItemDetails,
     type TicketItemDetails,
 } from "../data/cortesia-items";
+import { useCortesiasStore } from "../data/cortesias-store";
 
 const steps: ProgressFeaturedIconType[] = [
     {
@@ -103,12 +100,12 @@ export function VerificacaoFinal() {
     const incomingEmails = routeState.emails?.length ? routeState.emails : FALLBACK_EMAILS;
 
     const [emails, setEmails] = useState<string[]>(incomingEmails);
-    const [orderName, setOrderName] = useState("");
+    const [orderName, setOrderName] = useState("Envio de cortesia");
     const [sendQrCode, setSendQrCode] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-    const [viewMode, setViewMode] = useState<"list" | "table">("table");
+    const [viewMode, setViewMode] = useState<"list" | "table">("list");
     const [editingEmail, setEditingEmail] = useState<string | null>(null);
     const [removingEmail, setRemovingEmail] = useState<string | null>(null);
     const [cadastroFilter, setCadastroFilter] = useState<CadastroFilter>("all");
@@ -195,12 +192,13 @@ export function VerificacaoFinal() {
         setEditingEmail(null);
     }, [editingEmail]);
 
+    const { addPedido } = useCortesiasStore();
+
     const handleSubmit = useCallback(() => {
-        console.log("Enviar cortesias", {
-            orderName,
+        addPedido({
+            nome: orderName,
             emails: activeEmails,
             itemIds,
-            sendQrCode,
         });
         showSuccessToast(
             "Pedido enviado",
@@ -209,7 +207,7 @@ export function VerificacaoFinal() {
             }.`,
         );
         navigate("/backstage/cortesias");
-    }, [orderName, activeEmails, itemIds, sendQrCode, navigate]);
+    }, [orderName, activeEmails, itemIds, addPedido, navigate]);
 
     const handleBack = useCallback(() => {
         navigate("/backstage/destinatarios", { state: { itemIds } });
@@ -236,17 +234,16 @@ export function VerificacaoFinal() {
                     />
 
                     <div className="flex flex-col gap-4 -mb-4">
-                        {/* TODO: reativar quando definirmos a melhor posição/UX
-                        <Input
-                            label="Nome do pedido"
-                            isRequired
-                            className="max-w-[320px]"
-                            placeholder="Envio da Inteira"
-                            hint="Esse nome será exibido apenas no backstage"
-                            value={orderName}
-                            onChange={(v: string) => setOrderName(v)}
-                        />
-                        */}
+                        <div className="flex max-w-md flex-col">
+                            <Input
+                                label="Nome do pedido"
+                                isRequired
+                                placeholder="Envio de cortesia"
+                                hint="Esse nome será exibido apenas no backstage"
+                                value={orderName}
+                                onChange={(v: string) => setOrderName(v)}
+                            />
+                        </div>
 
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="min-w-0 flex-1">
@@ -343,25 +340,24 @@ export function VerificacaoFinal() {
                                 ...groupedItems.products,
                                 ...groupedItems.combos,
                             ]}
-                            page={safePage + 1}
-                            total={totalPages}
-                            pageSize={pageSize}
-                            onPageChange={(p) => setPage(p - 1)}
-                            onPageSizeChange={(size) => {
-                                setPageSize(size);
-                                setPage(0);
-                            }}
                             onEdit={handleEdit}
                             onRemove={handleRemove}
                         />
                     )}
 
-                    {viewMode === "list" && totalPages > 1 && (
-                        <Pagination
-                            page={safePage}
-                            totalPages={totalPages}
-                            onChange={setPage}
-                        />
+                    {visibleEmails.length > 0 && (
+                        <div className="rounded-xl bg-primary ring-1 ring-border-secondary">
+                            <PaginationCardAdvanced
+                                page={safePage + 1}
+                                total={totalPages}
+                                pageSize={pageSize}
+                                onPageChange={(p) => setPage(p - 1)}
+                                onPageSizeChange={(size) => {
+                                    setPageSize(size);
+                                    setPage(0);
+                                }}
+                            />
+                        </div>
                     )}
                 </main>
             </div>
@@ -526,11 +522,6 @@ const ComboLine = ({ item }: { item: ComboItemDetails }) => (
 interface RecipientTableProps {
     emails: string[];
     items: ItemDetails[];
-    page: number;
-    total: number;
-    pageSize: number;
-    onPageChange: (page: number) => void;
-    onPageSizeChange: (size: number) => void;
     onEdit: (email: string) => void;
     onRemove: (email: string) => void;
 }
@@ -538,11 +529,6 @@ interface RecipientTableProps {
 const RecipientTable = ({
     emails,
     items,
-    page,
-    total,
-    pageSize,
-    onPageChange,
-    onPageSizeChange,
     onEdit,
     onRemove,
 }: RecipientTableProps) => (
@@ -630,13 +616,6 @@ const RecipientTable = ({
                 })}
             </tbody>
         </table>
-        <PaginationCardAdvanced
-            page={page}
-            total={total}
-            pageSize={pageSize}
-            onPageChange={onPageChange}
-            onPageSizeChange={onPageSizeChange}
-        />
     </div>
 );
 
@@ -651,64 +630,3 @@ function itemDisplaySublabel(item: ItemDetails): string | null {
     return null;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Pagination                                                        */
-/* ------------------------------------------------------------------ */
-
-interface PaginationProps {
-    page: number;
-    totalPages: number;
-    onChange: (page: number) => void;
-}
-
-const Pagination = ({ page, totalPages, onChange }: PaginationProps) => {
-    const atFirst = page <= 0;
-    const atLast = page >= totalPages - 1;
-
-    return (
-        <div className="flex items-center justify-center gap-3">
-            <div className="flex items-center gap-1">
-                <ButtonUtility
-                    size="sm"
-                    color="secondary"
-                    icon={ChevronLeftDouble}
-                    tooltip="Primeira página"
-                    isDisabled={atFirst}
-                    onClick={() => onChange(0)}
-                />
-                <ButtonUtility
-                    size="sm"
-                    color="secondary"
-                    icon={ChevronLeft}
-                    tooltip="Página anterior"
-                    isDisabled={atFirst}
-                    onClick={() => onChange(Math.max(0, page - 1))}
-                />
-            </div>
-
-            <span className={cx("min-w-[120px] text-center text-sm text-tertiary")}>
-                Página <span className="font-semibold text-primary">{page + 1}</span> de{" "}
-                <span className="font-semibold text-primary">{totalPages}</span>
-            </span>
-
-            <div className="flex items-center gap-1">
-                <ButtonUtility
-                    size="sm"
-                    color="secondary"
-                    icon={ChevronRight}
-                    tooltip="Próxima página"
-                    isDisabled={atLast}
-                    onClick={() => onChange(Math.min(totalPages - 1, page + 1))}
-                />
-                <ButtonUtility
-                    size="sm"
-                    color="secondary"
-                    icon={ChevronRightDouble}
-                    tooltip="Última página"
-                    isDisabled={atLast}
-                    onClick={() => onChange(totalPages - 1)}
-                />
-            </div>
-        </div>
-    );
-};

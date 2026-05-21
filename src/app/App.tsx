@@ -3,10 +3,11 @@ import { Route, Routes } from 'react-router';
 import { Toaster } from 'sonner';
 import { ScenarioControls } from '../app/components/ui/ScenarioControls';
 import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
-import { EmissaoCortesias } from '../app/pages/EmissaoCortesias';
-import { RelatorioPedidos } from '../app/pages/RelatorioPedidos';
-import { SelecaoItens } from '../app/pages/SelecaoItens';
-import { VerificacaoFinal } from '../app/pages/VerificacaoFinal';
+import { CortesiasProvider } from '../cortesias/data/cortesias-store';
+import { EmissaoCortesias } from '../cortesias/pages/EmissaoCortesias';
+import { RelatorioPedidos } from '../cortesias/pages/RelatorioPedidos';
+import { SelecaoItens } from '../cortesias/pages/SelecaoItens';
+import { VerificacaoFinal } from '../cortesias/pages/VerificacaoFinal';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -30,15 +31,16 @@ function HomeScreen() {
 
 export default function App() {
   return (
-    <>
+    <CortesiasProvider>
       <Routes>
-        <Route path="/" element={<SelecaoItens />} />
-        <Route path="/backstage" element={<SelecaoItens />} />
+        <Route path="/" element={<RelatorioPedidos />} />
+        <Route path="/backstage" element={<RelatorioPedidos />} />
+        <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
+        <Route path="/backstage/itens" element={<SelecaoItens />} />
         <Route path="/backstage/destinatarios" element={<EmissaoCortesias />} />
         <Route path="/backstage/verificacao" element={<VerificacaoFinal />} />
-        <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
       </Routes>
       <Toaster position="bottom-right" />
-    </>
+    </CortesiasProvider>
   );
 }

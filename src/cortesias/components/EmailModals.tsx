@@ -119,7 +119,7 @@ export function ConfirmRemoveEmailModal({
                             <FeaturedIcon
                                 icon={SlashCircle01}
                                 color="error"
-                                theme="dark"
+                                theme="modern"
                                 size="lg"
                             />
                             <div className="min-w-0 flex-1">

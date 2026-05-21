@@ -48,7 +48,7 @@ export function EmissaoCortesias() {
     }, []);
 
     const handleBack = useCallback(() => {
-        navigate("/backstage", { state: { itemIds: incomingItemIds } });
+        navigate("/backstage/itens", { state: { itemIds: incomingItemIds } });
     }, [navigate, incomingItemIds]);
 
     const handleAdvance = useCallback(() => {

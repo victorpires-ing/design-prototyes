@@ -395,24 +395,24 @@ export const PaginationCardAdvanced = ({
                 className={cx("flex items-center gap-3", align === "center" && "justify-between")}
             >
                 <div className="hidden items-center gap-2 text-sm font-medium whitespace-nowrap text-fg-secondary md:flex">
-                    Page
+                    Página
                     <InputBase
-                        aria-label="Page"
+                        aria-label="Página"
                         value={page.toString()}
                         onChange={(event) => onPageChange?.(Number(event.target.value))}
                         size="sm"
                         wrapperClassName="min-w-9"
                         inputClassName="text-center min-w-9 field-sizing-content"
                     />
-                    of {total}
+                    de {total}
                 </div>
 
                 <hr className={cx("mx-1 h-4 w-px border-l border-primary max-md:hidden", align === "center" && "hidden")} />
 
                 <div className={cx("hidden items-center gap-2 md:flex", align === "center" && "order-last")}>
-                    <span className="text-sm font-medium whitespace-nowrap text-secondary">Rows per page</span>
+                    <span className="text-sm font-medium whitespace-nowrap text-secondary">Linhas por página</span>
                     <Select
-                        aria-label="Page Size"
+                        aria-label="Tamanho da página"
                         value={pageSize}
                         onChange={(value) => onPageSizeChange?.(value as number)}
                         size="sm"
@@ -455,7 +455,7 @@ export const PaginationCardAdvanced = ({
                                 </div>
 
                                 <div className="flex flex-1 justify-center text-sm whitespace-pre text-fg-secondary md:hidden">
-                                    Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{total}</span>
+                                    Página <span className="font-medium">{currentPage}</span> de <span className="font-medium">{total}</span>
                                 </div>
                             </>
                         )}

@@ -16,7 +16,7 @@ const ToastCard = ({ variant, title, description, onClose }: ToastCardProps) => 
         <FeaturedIcon
             icon={variant === "success" ? CheckCircle : SlashCircle01}
             color={variant === "success" ? "success" : "error"}
-            theme="dark"
+            theme="gradient"
             size="md"
         />
         <div className="min-w-0 flex-1">

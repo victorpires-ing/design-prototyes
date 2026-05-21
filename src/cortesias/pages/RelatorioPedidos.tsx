@@ -19,107 +19,23 @@ import { Tabs } from "@/components/application/tabs/tabs";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../components/Backstage";
+import { CancelConfirmModal } from "../components/CancelConfirmModal";
+import { ItemDetailsSlideOut } from "../components/ItemDetailsSlideOut";
+import { PedidoDetailsSlideOut } from "../components/PedidoDetailsSlideOut";
+import {
+    ITEM_STATUS_META,
+    ITEM_STATUS_OPTIONS,
+    type CortesiaItem,
+} from "../data/item-types";
+import {
+    useCortesiasStore,
+    type Pedido,
+    type PedidoStatus,
+} from "../data/cortesias-store";
 
 /* ------------------------------------------------------------------ */
-/*  Shared mock helpers                                               */
+/*  Constants                                                         */
 /* ------------------------------------------------------------------ */
-
-const MOCK_EMISSORES = [
-    "Maria Silva",
-    "João Souza",
-    "Ana Costa",
-    "Pedro Lima",
-    "Camila Almeida",
-];
-
-const MOCK_NOMES = [
-    "Cortesias de imprensa — Sessão noite",
-    "Convidados VIP camarote duplo",
-    "Equipe de produção — turno 1",
-    "Patrocinadores ouro",
-    "Influenciadores parceiros 2026",
-    "Convidados do palco",
-    "Cortesias para retransmissão",
-    "Equipe de segurança",
-    "Imprensa local — abertura",
-    "Convidados especiais do festival",
-];
-
-const MOCK_ITENS = [
-    { nome: "Pista — Inteira", sub: "Festival Multidate · 21/05" },
-    { nome: "Camarote — Meia", sub: "Festival Multidate · 21/05" },
-    { nome: "VIP — Cortesia", sub: "Festival Multidate · 22/05" },
-    { nome: "Pista Premium — Inteira", sub: "Festival Multidate · 22/05" },
-    { nome: "Backstage — Cortesia", sub: "Festival Multidate · 23/05" },
-    { nome: "Camarote Open Bar — Inteira", sub: "Festival Multidate · 23/05" },
-];
-
-const MOCK_DESTINATARIOS = [
-    "olivia.rhye@untitledui.com",
-    "phoenix.baker@untitledui.com",
-    "lana.steiner@untitledui.com",
-    "demi.wilkinson@untitledui.com",
-    "candice.wu@untitledui.com",
-    "natali.craig@untitledui.com",
-    "drew.cano@untitledui.com",
-    "orlando.diggs@untitledui.com",
-    "andi.lane@untitledui.com",
-    "kate.morrison@untitledui.com",
-];
-
-function pad(n: number, length: number) {
-    return n.toString().padStart(length, "0");
-}
-
-function makeMockUuid(seed: number): string {
-    const a = pad((seed * 16807) % 0xffffffff, 8);
-    const b = pad((seed * 48271) % 0xffff, 4);
-    const c = pad((seed * 17389) % 0xffff, 4);
-    return `${a.slice(0, 8)}-${b}-${c.slice(0, 4)}-${pad(seed % 0xffff, 4)}-${pad(
-        (seed * 7919) % 0xffffffffff,
-        12,
-    ).slice(0, 12)}`;
-}
-
-function formatDate(base: Date, offsetDays: number, offsetHours: number) {
-    const d = new Date(base);
-    d.setDate(d.getDate() - offsetDays);
-    d.setHours(d.getHours() - offsetHours);
-    return `${pad(d.getDate(), 2)}/${pad(d.getMonth() + 1, 2)}/${d.getFullYear()} ${pad(
-        d.getHours(),
-        2,
-    )}:${pad(d.getMinutes(), 2)}`;
-}
-
-function makeMockDoc(seed: number) {
-    const raw = pad(((seed * 13) % 1_000_000_000) + 100_000_000, 11);
-    return `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6, 9)}-${raw.slice(9, 11)}`;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Pedidos                                                           */
-/* ------------------------------------------------------------------ */
-
-type PedidoStatus = "emitido" | "cancelado";
-
-interface Pedido {
-    id: string;
-    nome: string;
-    emissor: string;
-    status: PedidoStatus;
-    dataEnvio: string;
-}
-
-function buildMockPedidos(): Pedido[] {
-    const base = new Date("2026-05-21T18:30:00");
-    return Array.from({ length: 100 }, (_, i) => ({
-        id: makeMockUuid(i + 1),
-        nome: MOCK_NOMES[i % MOCK_NOMES.length],
-        emissor: MOCK_EMISSORES[i % MOCK_EMISSORES.length],
-        status: i % 9 === 0 ? "cancelado" : "emitido",
-        dataEnvio: formatDate(base, i, i * 2),
-    }));
-}
 
 const PEDIDO_STATUS_OPTIONS = [
     { id: "emitido", label: "Emitido" },
@@ -134,83 +50,7 @@ const PEDIDO_STATUS_META: Record<
     cancelado: { label: "Cancelado", color: "error" },
 };
 
-/* ------------------------------------------------------------------ */
-/*  Itens                                                             */
-/* ------------------------------------------------------------------ */
-
-type ItemStatus = "aceito" | "cancelado" | "pendente" | "processando" | "erro";
-
-interface CortesiaItem {
-    id: string;
-    nome: string;
-    subtitulo: string;
-    status: ItemStatus;
-    emissor: string;
-    email: string;
-    documento: string;
-    transferido: boolean;
-}
-
-const ITEM_STATUS_META: Record<
-    ItemStatus,
-    {
-        label: string;
-        color: "success" | "error" | "warning" | "blue" | "gray" | "brand";
-    }
-> = {
-    aceito: { label: "Aceito", color: "success" },
-    cancelado: { label: "Cancelado", color: "error" },
-    pendente: { label: "Pendente de cadastro", color: "warning" },
-    processando: { label: "Processando", color: "blue" },
-    erro: { label: "Erro", color: "error" },
-};
-
-const ITEM_STATUS_ORDER: ItemStatus[] = [
-    "aceito",
-    "cancelado",
-    "pendente",
-    "processando",
-    "erro",
-];
-
-const ITEM_STATUS_OPTIONS = ITEM_STATUS_ORDER.map((id) => ({
-    id,
-    label: ITEM_STATUS_META[id].label,
-}));
-
-function pickItemStatus(seed: number): ItemStatus {
-    const m = seed % 11;
-    if (m === 0 || m === 3) return "aceito";
-    if (m === 1) return "cancelado";
-    if (m === 5) return "pendente";
-    if (m === 7) return "processando";
-    if (m === 9) return "erro";
-    return "aceito";
-}
-
-function buildMockItens(): CortesiaItem[] {
-    return Array.from({ length: 100 }, (_, i) => {
-        const item = MOCK_ITENS[i % MOCK_ITENS.length];
-        return {
-            id: makeMockUuid(i + 1),
-            nome: item.nome,
-            subtitulo: item.sub,
-            status: pickItemStatus(i + 1),
-            emissor: MOCK_EMISSORES[i % MOCK_EMISSORES.length],
-            email: MOCK_DESTINATARIOS[i % MOCK_DESTINATARIOS.length],
-            documento: makeMockDoc(i + 1),
-            transferido: i % 6 === 0,
-        };
-    });
-}
-
-/* ------------------------------------------------------------------ */
-/*  Constants                                                         */
-/* ------------------------------------------------------------------ */
-
 const DEFAULT_PAGE_SIZE = 100;
-
-const EMISSOR_OPTIONS = MOCK_EMISSORES.map((name) => ({ id: name, label: name }));
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                              */
@@ -218,36 +58,102 @@ const EMISSOR_OPTIONS = MOCK_EMISSORES.map((name) => ({ id: name, label: name })
 
 export function RelatorioPedidos() {
     const navigate = useNavigate();
+    const { pedidos } = useCortesiasStore();
     const [activeTab, setActiveTab] = useState<"pedidos" | "itens">("pedidos");
 
-    const handleEmitir = useCallback(() => navigate("/backstage"), [navigate]);
+    const handleEmitir = useCallback(() => navigate("/backstage/itens"), [navigate]);
     const handleExport = useCallback(() => console.log("Exportar relatório"), []);
+
+    const isEmpty = pedidos.length === 0;
 
     return (
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
             <div className="flex min-w-0 flex-1 flex-col">
-                <PageHeader onEmitir={handleEmitir} />
-                <main className="flex flex-1 flex-col gap-6 px-6 py-6">
-                    <Tabs
-                        selectedKey={activeTab}
-                        onSelectionChange={(key: Key) => setActiveTab(key as "pedidos" | "itens")}
-                    >
-                        <Tabs.List type="underline" size="sm">
-                            <Tabs.Item id="pedidos">Pedidos</Tabs.Item>
-                            <Tabs.Item id="itens">Itens</Tabs.Item>
-                        </Tabs.List>
-                    </Tabs>
+                {isEmpty ? (
+                    <EmptyState onEmitir={handleEmitir} />
+                ) : (
+                    <>
+                        <PageHeader onEmitir={handleEmitir} />
+                        <main className="flex flex-1 flex-col gap-6 px-6 py-6">
+                            <Tabs
+                                selectedKey={activeTab}
+                                onSelectionChange={(key: Key) =>
+                                    setActiveTab(key as "pedidos" | "itens")
+                                }
+                            >
+                                <Tabs.List type="underline" size="sm">
+                                    <Tabs.Item id="pedidos">Pedidos</Tabs.Item>
+                                    <Tabs.Item id="itens">Itens</Tabs.Item>
+                                </Tabs.List>
+                            </Tabs>
 
-                    {activeTab === "pedidos" ? (
-                        <PedidosTabView onExport={handleExport} />
-                    ) : (
-                        <ItensTabView onExport={handleExport} />
-                    )}
-                </main>
+                            {activeTab === "pedidos" ? (
+                                <PedidosTabView onExport={handleExport} />
+                            ) : (
+                                <ItensTabView onExport={handleExport} />
+                            )}
+                        </main>
+                    </>
+                )}
             </div>
         </BackstageLayout>
     );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Empty state                                                       */
+/* ------------------------------------------------------------------ */
+
+interface EmptyStateProps {
+    onEmitir: () => void;
+}
+
+const EmptyState = ({ onEmitir }: EmptyStateProps) => (
+    <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-6 py-16">
+        <div className="z-10 flex max-w-xl flex-col items-center gap-6 text-center">
+            <div className="flex flex-col items-center gap-1">
+                <p className="text-display-md font-normal italic text-tertiary">
+                    Distribua itens
+                </p>
+                <h2 className="text-display-md font-bold text-primary">
+                    para convidados especiais
+                </h2>
+            </div>
+            <p className="max-w-md text-md text-tertiary">
+                Leve mais pessoas para o seu evento com convites exclusivos e fáceis de
+                enviar.
+            </p>
+            <Button size="lg" color="primary" onClick={onEmitir}>
+                Emitir cortesias
+            </Button>
+        </div>
+
+        <EmptyStateIllustration />
+    </main>
+);
+
+const EmptyStateIllustration = () => (
+    <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-1/2 flex w-[640px] max-w-full -translate-x-1/2 flex-col gap-3 opacity-30"
+    >
+        {[0, 1].map((card) => (
+            <div
+                key={card}
+                className="flex flex-col gap-3 rounded-2xl border border-secondary bg-secondary_subtle p-5"
+                style={{ transform: `translateX(${card === 0 ? "-12px" : "12px"})` }}
+            >
+                {[0, 1, 2].map((row) => (
+                    <div key={row} className="flex items-center gap-3">
+                        <div className="h-3 w-24 rounded-full bg-quaternary" />
+                        <div className="h-3 flex-1 rounded-full bg-quaternary" />
+                        <div className="h-3 w-16 rounded-full bg-quaternary" />
+                    </div>
+                ))}
+            </div>
+        ))}
+    </div>
+);
 
 /* ------------------------------------------------------------------ */
 /*  Page header                                                       */
@@ -306,6 +212,7 @@ interface FiltersBarProps {
     statusOptions: { id: string; label: string }[];
     emissorKeys: Set<string>;
     onEmissorKeysChange: (keys: Set<string>) => void;
+    emissorOptions: { id: string; label: string }[];
 }
 
 const FiltersBar = ({
@@ -317,6 +224,7 @@ const FiltersBar = ({
     statusOptions,
     emissorKeys,
     onEmissorKeysChange,
+    emissorOptions,
 }: FiltersBarProps) => {
     const handleStatusSelection = (selection: Selection) => {
         if (selection === "all") {
@@ -328,14 +236,14 @@ const FiltersBar = ({
 
     const handleEmissorSelection = (selection: Selection) => {
         if (selection === "all") {
-            onEmissorKeysChange(new Set(EMISSOR_OPTIONS.map((o) => o.id)));
+            onEmissorKeysChange(new Set(emissorOptions.map((o) => o.id)));
         } else {
             onEmissorKeysChange(new Set(Array.from(selection).map(String)));
         }
     };
 
     return (
-        <div className="grid grid-cols-1 gap-3 border-b border-secondary px-4 py-4 md:grid-cols-[1fr_220px_240px] md:px-6">
+        <div className="grid grid-cols-1 gap-3 border-b border-secondary px-4 py-4 md:grid-cols-[minmax(0,350px)_220px_240px] md:px-6">
             <Input
                 label="Busca"
                 size="sm"
@@ -378,15 +286,15 @@ const FiltersBar = ({
                 size="sm"
                 aria-label="Emissor responsável"
                 placeholder="Todos"
-                items={EMISSOR_OPTIONS}
+                items={emissorOptions}
                 selectedKeys={emissorKeys}
                 onSelectionChange={handleEmissorSelection}
                 onReset={() => onEmissorKeysChange(new Set())}
                 onSelectAll={() =>
-                    onEmissorKeysChange(new Set(EMISSOR_OPTIONS.map((o) => o.id)))
+                    onEmissorKeysChange(new Set(emissorOptions.map((o) => o.id)))
                 }
                 selectedCountFormatter={(count) =>
-                    count === EMISSOR_OPTIONS.length
+                    count === emissorOptions.length
                         ? "Todos"
                         : `${count} ${count === 1 ? "selecionado" : "selecionados"}`
                 }
@@ -464,13 +372,25 @@ interface PedidosTabViewProps {
 }
 
 const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
-    const [pedidos, setPedidos] = useState<Pedido[]>(() => buildMockPedidos());
+    const {
+        pedidos,
+        cancelPedido: storeCancelPedido,
+        cancelPedidos: storeCancelPedidos,
+    } = useCortesiasStore();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [search, setSearch] = useState("");
     const [statusKeys, setStatusKeys] = useState<Set<string>>(new Set());
     const [emissorKeys, setEmissorKeys] = useState<Set<string>>(new Set());
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [detailsPedidoId, setDetailsPedidoId] = useState<string | null>(null);
+    const [pendingCancelPedidoId, setPendingCancelPedidoId] = useState<string | null>(null);
+    const [showCancelSelectedConfirm, setShowCancelSelectedConfirm] = useState(false);
+
+    const emissorOptions = useMemo(() => {
+        const names = Array.from(new Set(pedidos.map((p) => p.emissor)));
+        return names.sort().map((name) => ({ id: name, label: name }));
+    }, [pedidos]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -504,6 +424,7 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
             setSelectedIds((prev) => {
                 const next = new Set(prev);
                 for (const row of visibleRows) {
+                    if (row.status === "cancelado") continue;
                     if (isSelected) next.add(row.id);
                     else next.delete(row.id);
                 }
@@ -515,42 +436,80 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
 
     const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
-    const cancelPedido = useCallback((id: string) => {
-        setPedidos((prev) =>
-            prev.map((p) => (p.id === id ? { ...p, status: "cancelado" as const } : p)),
-        );
+    const cancelPedidoNow = useCallback(
+        (id: string) => storeCancelPedido(id),
+        [storeCancelPedido],
+    );
+
+    const requestCancelPedido = useCallback((id: string) => {
+        setPendingCancelPedidoId(id);
     }, []);
 
-    const cancelSelected = useCallback(() => {
+    const confirmCancelPedido = useCallback(() => {
+        if (pendingCancelPedidoId) cancelPedidoNow(pendingCancelPedidoId);
+        setPendingCancelPedidoId(null);
+    }, [pendingCancelPedidoId, cancelPedidoNow]);
+
+    const requestCancelSelected = useCallback(() => {
         if (selectedIds.size === 0) return;
-        setPedidos((prev) =>
-            prev.map((p) =>
-                selectedIds.has(p.id) ? { ...p, status: "cancelado" as const } : p,
-            ),
-        );
-        setSelectedIds(new Set());
+        setShowCancelSelectedConfirm(true);
     }, [selectedIds]);
 
+    const confirmCancelSelected = useCallback(() => {
+        storeCancelPedidos(selectedIds);
+        setSelectedIds(new Set());
+        setShowCancelSelectedConfirm(false);
+    }, [selectedIds, storeCancelPedidos]);
+
     const handleDetails = useCallback((id: string) => {
-        console.log("Detalhes do pedido", id);
+        setDetailsPedidoId(id);
     }, []);
+
+    const handleCloseDetails = useCallback(() => setDetailsPedidoId(null), []);
+
+    const detailsPedido = useMemo(
+        () => (detailsPedidoId ? pedidos.find((p) => p.id === detailsPedidoId) ?? null : null),
+        [detailsPedidoId, pedidos],
+    );
+
+    const pendingCancelPedido = useMemo(
+        () =>
+            pendingCancelPedidoId
+                ? pedidos.find((p) => p.id === pendingCancelPedidoId) ?? null
+                : null,
+        [pendingCancelPedidoId, pedidos],
+    );
+
+    const selectedPedidosList = useMemo(
+        () => pedidos.filter((p) => selectedIds.has(p.id)),
+        [pedidos, selectedIds],
+    );
 
     const metrics = useMemo<Metric[]>(
         () => [
-            { label: "Itens emitidos", value: 12_444 },
-            { label: "Itens pendentes de cadastro", value: 96 },
-            { label: "Itens cancelados", value: 96 },
-            { label: "Itens validados", value: 96 },
+            {
+                label: "Pedidos emitidos",
+                value: pedidos.filter((p) => p.status === "emitido").length,
+            },
+            {
+                label: "Pedidos cancelados",
+                value: pedidos.filter((p) => p.status === "cancelado").length,
+            },
         ],
-        [],
+        [pedidos],
     );
 
-    const pageSelectedCount = visibleRows.reduce(
+    const selectableVisibleRows = useMemo(
+        () => visibleRows.filter((r) => r.status !== "cancelado"),
+        [visibleRows],
+    );
+    const pageSelectedCount = selectableVisibleRows.reduce(
         (acc, r) => acc + (selectedIds.has(r.id) ? 1 : 0),
         0,
     );
     const allOnPageSelected =
-        visibleRows.length > 0 && pageSelectedCount === visibleRows.length;
+        selectableVisibleRows.length > 0 &&
+        pageSelectedCount === selectableVisibleRows.length;
     const someOnPageSelected = pageSelectedCount > 0 && !allOnPageSelected;
 
     return (
@@ -587,6 +546,7 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
                         setEmissorKeys(keys);
                         setPage(0);
                     }}
+                    emissorOptions={emissorOptions}
                 />
 
                 <SelectionBar
@@ -596,7 +556,7 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
                     plural="pedidos selecionados"
                     cancelLabel="Cancelar pedidos selecionados"
                     onClear={clearSelection}
-                    onCancel={cancelSelected}
+                    onCancel={requestCancelSelected}
                 />
 
                 <PedidosTable
@@ -606,7 +566,7 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
                     someOnPageSelected={someOnPageSelected}
                     onToggleSelect={toggleSelect}
                     onToggleAllOnPage={toggleAllOnPage}
-                    onCancel={cancelPedido}
+                    onCancel={requestCancelPedido}
                     onDetails={handleDetails}
                 />
 
@@ -621,6 +581,48 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
                     }}
                 />
             </div>
+
+            <PedidoDetailsSlideOut
+                isOpen={detailsPedido !== null}
+                pedido={detailsPedido}
+                onClose={handleCloseDetails}
+                onCancelPedido={cancelPedidoNow}
+            />
+
+            <CancelConfirmModal
+                isOpen={pendingCancelPedido !== null}
+                onClose={() => setPendingCancelPedidoId(null)}
+                onConfirm={confirmCancelPedido}
+                title="Cancelar este pedido de cortesia?"
+                description={
+                    <>
+                        Você está prestes a cancelar o pedido{" "}
+                        <span className="font-medium text-primary">
+                            {pendingCancelPedido?.id}
+                        </span>
+                        . Isso interromperá o envio para todos os destinatários vinculados
+                        a este pedido. Esta ação não pode ser desfeita.
+                    </>
+                }
+                confirmLabel="Cancelar pedido"
+                cancelLabel="Manter pedido"
+            />
+
+            <CancelConfirmModal
+                isOpen={showCancelSelectedConfirm}
+                onClose={() => setShowCancelSelectedConfirm(false)}
+                onConfirm={confirmCancelSelected}
+                title={`Cancelar ${selectedPedidosList.length} ${selectedPedidosList.length === 1 ? "pedido selecionado" : "pedidos selecionados"}?`}
+                description="Os itens dos pedidos selecionados terão os QR codes invalidados e você precisará gerar novos convites caso mude de ideia."
+                listLabel="Pedidos cancelados"
+                listItems={selectedPedidosList.map((p) => (
+                    <span className="block truncate" title={p.id}>
+                        {p.id}
+                    </span>
+                ))}
+                confirmLabel="Cancelar pedidos"
+                cancelLabel="Manter pedidos"
+            />
         </>
     );
 };
@@ -700,6 +702,7 @@ const PedidosTable = ({
                                     <Checkbox
                                         aria-label={`Selecionar pedido ${row.id}`}
                                         isSelected={isSelected}
+                                        isDisabled={isCancelled}
                                         onChange={(s) => onToggleSelect(row.id, s)}
                                     />
                                 </td>
@@ -715,7 +718,7 @@ const PedidosTable = ({
                                 </td>
                                 <td className="px-4 py-3 text-sm text-secondary">{row.emissor}</td>
                                 <td className="px-4 py-3">
-                                    <BadgeWithDot size="sm" type="pill-color" color={meta.color}>
+                                    <BadgeWithDot size="sm" type="modern" color={meta.color}>
                                         {meta.label}
                                     </BadgeWithDot>
                                 </td>
@@ -759,13 +762,25 @@ interface ItensTabViewProps {
 }
 
 const ItensTabView = ({ onExport }: ItensTabViewProps) => {
-    const [itens, setItens] = useState<CortesiaItem[]>(() => buildMockItens());
+    const {
+        itens,
+        cancelItem: storeCancelItem,
+        cancelItens: storeCancelItens,
+    } = useCortesiasStore();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [search, setSearch] = useState("");
     const [statusKeys, setStatusKeys] = useState<Set<string>>(new Set());
     const [emissorKeys, setEmissorKeys] = useState<Set<string>>(new Set());
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [pendingCancelItemId, setPendingCancelItemId] = useState<string | null>(null);
+    const [showCancelSelectedConfirm, setShowCancelSelectedConfirm] = useState(false);
+    const [detailsItemId, setDetailsItemId] = useState<string | null>(null);
+
+    const emissorOptions = useMemo(() => {
+        const names = Array.from(new Set(itens.map((it) => it.emissor)));
+        return names.sort().map((name) => ({ id: name, label: name }));
+    }, [itens]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -802,6 +817,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
             setSelectedIds((prev) => {
                 const next = new Set(prev);
                 for (const row of visibleRows) {
+                    if (row.status === "cancelado" || row.status === "erro") continue;
                     if (isSelected) next.add(row.id);
                     else next.delete(row.id);
                 }
@@ -813,46 +829,93 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
 
     const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
-    const cancelItem = useCallback((id: string) => {
-        setItens((prev) =>
-            prev.map((it) => (it.id === id ? { ...it, status: "cancelado" as const } : it)),
-        );
+    const cancelItemNow = useCallback(
+        (id: string) => storeCancelItem(id),
+        [storeCancelItem],
+    );
+
+    const requestCancelItem = useCallback((id: string) => {
+        setPendingCancelItemId(id);
     }, []);
 
-    const cancelSelected = useCallback(() => {
+    const confirmCancelItem = useCallback(() => {
+        if (pendingCancelItemId) cancelItemNow(pendingCancelItemId);
+        setPendingCancelItemId(null);
+    }, [pendingCancelItemId, cancelItemNow]);
+
+    const requestCancelSelected = useCallback(() => {
         if (selectedIds.size === 0) return;
-        setItens((prev) =>
-            prev.map((it) =>
-                selectedIds.has(it.id) ? { ...it, status: "cancelado" as const } : it,
-            ),
-        );
-        setSelectedIds(new Set());
+        setShowCancelSelectedConfirm(true);
     }, [selectedIds]);
+
+    const confirmCancelSelected = useCallback(() => {
+        storeCancelItens(selectedIds);
+        setSelectedIds(new Set());
+        setShowCancelSelectedConfirm(false);
+    }, [selectedIds, storeCancelItens]);
+
+    const pendingCancelItem = useMemo(
+        () =>
+            pendingCancelItemId
+                ? itens.find((it) => it.id === pendingCancelItemId) ?? null
+                : null,
+        [pendingCancelItemId, itens],
+    );
+
+    const selectedItensList = useMemo(
+        () => itens.filter((it) => selectedIds.has(it.id)),
+        [itens, selectedIds],
+    );
 
     const handleResend = useCallback((id: string) => {
         console.log("Reenviar item", id);
     }, []);
 
     const handleDetails = useCallback((id: string) => {
-        console.log("Detalhes do item", id);
+        setDetailsItemId(id);
     }, []);
+
+    const detailsItem = useMemo(
+        () => (detailsItemId ? itens.find((it) => it.id === detailsItemId) ?? null : null),
+        [detailsItemId, itens],
+    );
 
     const metrics = useMemo<Metric[]>(
         () => [
-            { label: "Emitidas", value: 12_444 },
-            { label: "Pendente de cadastro", value: 96 },
-            { label: "Canceladas", value: 96 },
-            { label: "Validadas", value: 9_624 },
+            {
+                label: "Itens totais",
+                value: itens.length,
+            },
+            {
+                label: "Itens com cadastro pendente",
+                value: itens.filter((it) => it.status === "pendente").length,
+            },
+            {
+                label: "Itens cancelados",
+                value: itens.filter((it) => it.status === "cancelado").length,
+            },
+            {
+                label: "Itens validados",
+                value: itens.filter((it) => it.status === "aceito").length,
+            },
         ],
-        [],
+        [itens],
     );
 
-    const pageSelectedCount = visibleRows.reduce(
+    const selectableVisibleRows = useMemo(
+        () =>
+            visibleRows.filter(
+                (r) => r.status !== "cancelado" && r.status !== "erro",
+            ),
+        [visibleRows],
+    );
+    const pageSelectedCount = selectableVisibleRows.reduce(
         (acc, r) => acc + (selectedIds.has(r.id) ? 1 : 0),
         0,
     );
     const allOnPageSelected =
-        visibleRows.length > 0 && pageSelectedCount === visibleRows.length;
+        selectableVisibleRows.length > 0 &&
+        pageSelectedCount === selectableVisibleRows.length;
     const someOnPageSelected = pageSelectedCount > 0 && !allOnPageSelected;
 
     return (
@@ -889,6 +952,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
                         setEmissorKeys(keys);
                         setPage(0);
                     }}
+                    emissorOptions={emissorOptions}
                 />
 
                 <SelectionBar
@@ -898,7 +962,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
                     plural="itens selecionados"
                     cancelLabel="Cancelar itens selecionados"
                     onClear={clearSelection}
-                    onCancel={cancelSelected}
+                    onCancel={requestCancelSelected}
                 />
 
                 <ItensTable
@@ -908,7 +972,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
                     someOnPageSelected={someOnPageSelected}
                     onToggleSelect={toggleSelect}
                     onToggleAllOnPage={toggleAllOnPage}
-                    onCancel={cancelItem}
+                    onCancel={requestCancelItem}
                     onResend={handleResend}
                     onDetails={handleDetails}
                 />
@@ -924,6 +988,55 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
                     }}
                 />
             </div>
+
+            <CancelConfirmModal
+                isOpen={pendingCancelItem !== null}
+                onClose={() => setPendingCancelItemId(null)}
+                onConfirm={confirmCancelItem}
+                title="Cancelar este item?"
+                description={
+                    pendingCancelItem ? (
+                        <>
+                            <span className="font-medium text-primary">
+                                {pendingCancelItem.email}
+                            </span>{" "}
+                            terá o QR code para{" "}
+                            <span className="font-medium text-primary">
+                                {pendingCancelItem.nome}
+                            </span>{" "}
+                            invalidado e você precisará gerar novos convites caso mude de ideia.
+                            Esta ação não pode ser desfeita.
+                        </>
+                    ) : null
+                }
+                confirmLabel="Cancelar cortesia"
+                cancelLabel="Manter cortesia"
+            />
+
+            <CancelConfirmModal
+                isOpen={showCancelSelectedConfirm}
+                onClose={() => setShowCancelSelectedConfirm(false)}
+                onConfirm={confirmCancelSelected}
+                title={`Cancelar ${selectedItensList.length} ${selectedItensList.length === 1 ? "item selecionado" : "itens selecionados"}?`}
+                description="Os itens selecionados terão os QR codes invalidados e você precisará gerar novos convites caso mude de ideia."
+                listLabel="Itens cancelados"
+                listItems={selectedItensList.map((it) => (
+                    <div className="flex flex-col">
+                        <span className="font-medium text-primary">{it.nome}</span>
+                        <span className="text-xs text-tertiary">{it.subtitulo}</span>
+                    </div>
+                ))}
+                confirmLabel="Cancelar itens"
+                cancelLabel="Manter itens"
+            />
+
+            <ItemDetailsSlideOut
+                isOpen={detailsItem !== null}
+                item={detailsItem}
+                onClose={() => setDetailsItemId(null)}
+                onCancel={cancelItemNow}
+                onResend={handleResend}
+            />
         </>
     );
 };
@@ -997,6 +1110,7 @@ const ItensTable = ({
                     {rows.map((row, i) => {
                         const isSelected = selectedIds.has(row.id);
                         const isCancelled = row.status === "cancelado";
+                        const isErro = row.status === "erro";
                         const meta = ITEM_STATUS_META[row.status];
                         return (
                             <tr
@@ -1010,6 +1124,7 @@ const ItensTable = ({
                                     <Checkbox
                                         aria-label={`Selecionar item ${row.id}`}
                                         isSelected={isSelected}
+                                        isDisabled={isCancelled || isErro}
                                         onChange={(s) => onToggleSelect(row.id, s)}
                                     />
                                 </td>
@@ -1024,7 +1139,7 @@ const ItensTable = ({
                                     </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                    <BadgeWithDot size="sm" type="pill-color" color={meta.color}>
+                                    <BadgeWithDot size="sm" type="modern" color={meta.color}>
                                         {meta.label}
                                     </BadgeWithDot>
                                 </td>

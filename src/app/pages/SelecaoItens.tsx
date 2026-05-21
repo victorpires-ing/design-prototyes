@@ -9,6 +9,7 @@ import {
     ShoppingCart01,
     Users01,
 } from "@untitledui/icons";
+import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
@@ -27,6 +28,7 @@ import {
     type ProductEntry,
     type SessionSection,
 } from "../data/cortesia-items";
+import { FeaturedIcon } from "../../components/foundations/featured-icon/featured-icon";
 
 const steps: ProgressFeaturedIconType[] = [
     {
@@ -140,25 +142,23 @@ export function SelecaoItens() {
                     <Progress.IconsWithText
                         items={steps}
                         size="sm"
-                        type="number"
+                        type="icon"
                         orientation="horizontal"
                         className="max-w-[760px] self-center max-md:hidden"
                     />
                     <Progress.IconsWithText
                         items={steps}
                         size="sm"
-                        type="number"
+                        type="icon"
                         orientation="vertical"
                         className="w-full md:hidden"
                     />
 
                     <div className="flex w-full gap-6">
                         <section className="flex min-w-0 flex-1 flex-col gap-4">
-                            <h2 className="text-xl font-semibold text-primary">
-                                Cortesias por destinatário
-                            </h2>
                             <Input
                                 icon={SearchLg}
+                                label="Buscar itens"
                                 placeholder="Busque por nome de grupo, item ou lote"
                                 value={searchQuery}
                                 onChange={setSearchQuery}
@@ -205,7 +205,7 @@ export function SelecaoItens() {
                             selectedIds={selectedIds}
                             onRemove={removeSelection}
                             onRemoveMany={removeManySelections}
-                            className="lg:mt-[46px]"
+                            className="lg:mt-[24px]"
                         />
                     </div>
                 </main>
@@ -225,12 +225,12 @@ interface PageHeaderProps {
 }
 
 const PageHeader = ({ canAdvance, onAdvance, onBack }: PageHeaderProps) => (
-    <header className="flex items-center justify-between gap-3 px-6 py-6">
-        <div className="flex items-center gap-3">
-            <ButtonUtility size="sm" color="secondary" icon={ChevronLeft} tooltip="Voltar" onClick={onBack} />
-            <h1 className="text-display-xs font-bold text-primary">Enviar cortesia</h1>
-        </div>
-        <Button size="md" color="secondary" isDisabled={!canAdvance} onClick={onAdvance}>
+    <header className="relative flex items-center justify-between gap-3 px-6 py-6">
+        <ButtonUtility size="sm" color="secondary" icon={ChevronLeft} tooltip="Voltar" onClick={onBack} />
+        <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary">
+            Enviar cortesias
+        </h1>
+        <Button size="md" color="primary" isDisabled={!canAdvance} onClick={onAdvance}>
             Avançar
         </Button>
     </header>
@@ -248,8 +248,8 @@ interface ItemCardShellProps {
 
 const ItemCardShell = ({ icon: Icon, title, children }: ItemCardShellProps) => (
     <div className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
-        <header className="flex items-center gap-2 border-b border-secondary px-4 py-3">
-            <Icon className="size-4 text-fg-quaternary" />
+        <header className="flex items-center gap-3 border-b border-secondary px-4 py-3">
+            <FeaturedIcon icon={Icon} color="gray" size="sm" theme="modern" />
             <h3 className="text-sm font-semibold text-primary">{title}</h3>
         </header>
         <div className="flex flex-col gap-4 p-4">{children}</div>
@@ -271,20 +271,24 @@ const SessionCard = ({ session, selectedIds, onToggle, reachedLimit }: SessionCa
     <ItemCardShell icon={Calendar} title={session.datetime}>
         {session.groups.map((group) => (
             <div key={group.name} className="flex flex-col gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-tertiary">
+                <p className="text-sm font-semibold tracking-wide text-primary">
                     {group.name}
                 </p>
                 <div className="flex flex-col gap-1">
                     {group.tickets.map((ticket) => (
-                        <CheckboxRow
-                            key={ticket.id}
-                            id={ticket.id}
-                            label={ticket.name}
-                            sublabel={ticket.type}
-                            isSelected={selectedIds.has(ticket.id)}
-                            isDisabledByLimit={reachedLimit}
-                            onToggle={onToggle}
-                        />
+                        <div className="flex items-center" key={ticket.id}>
+                            <CheckboxRow
+                                id={ticket.id}
+                                label={ticket.name}
+                                sublabel={''}
+                                isSelected={selectedIds.has(ticket.id)}
+                                isDisabledByLimit={reachedLimit}
+                                onToggle={onToggle}
+                            />
+                            <Badge type="pill-color" color="gray" size="sm">
+                                {ticket.name}
+                            </Badge>
+                        </div>
                     ))}
                 </div>
             </div>
@@ -356,7 +360,7 @@ const CombosCard = ({ combos, selectedIds, onToggle, reachedLimit }: CombosCardP
                     <div
                         key={combo.id}
                         className={cx(
-                            "flex flex-col gap-3 rounded-lg bg-secondary_subtle p-3 ring-1 ring-secondary",
+                            "flex flex-col gap-2 rounded-lg bg-secondary_subtle",
                             disabled && "opacity-50",
                         )}
                     >
@@ -377,20 +381,23 @@ const CombosCard = ({ combos, selectedIds, onToggle, reachedLimit }: CombosCardP
                                 }
                             />
                         </label>
-                        <ul className="flex flex-col gap-1.5 border-t border-secondary pt-3">
+                        <ul className="flex flex-col gap-1.5 ml-4">
                             {combo.subItems.map((item, i) => (
                                 <li
                                     key={`${combo.id}-${i}`}
-                                    className="flex items-center gap-2 text-xs text-secondary"
+                                    className="flex items-start gap-2 text-xs text-secondary"
                                 >
                                     <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-tertiary text-[10px] font-semibold text-secondary">
                                         {i + 1}
                                     </span>
-                                    <span className="font-medium text-primary">{item.name}</span>
-                                    <span className="text-tertiary">·</span>
-                                    <span>{item.type}</span>
-                                    <span className="text-tertiary">·</span>
-                                    <span>{item.date}</span>
+                                    <div className="flex flex-col">
+                                        <span>
+                                        <span className="font-medium text-primary">{item.name}</span>
+                                        <span> - </span>
+                                        <span className="text-secondary">{item.type}</span>
+                                        </span>
+                                        <span>{item.date}</span>
+                                    </div>
                                 </li>
                             ))}
                         </ul>

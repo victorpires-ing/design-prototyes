@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertCircle, AlertTriangle } from "@untitledui/icons";
+import { AlertCircle, InfoCircle } from "@untitledui/icons";
 import { BadgeIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { InputTags } from "@/components/base/input/input-tags";
@@ -67,18 +67,30 @@ function parseEmailsFromSheet(raw: string): SheetParseResult {
     return { ok: false, reason: "no-email-column" };
 }
 
-const computeDuplicateIndices = (emails: string[]): Set<number> => {
-    const seen = new Map<string, number[]>();
-    emails.forEach((email, i) => {
-        const key = email.trim().toLowerCase();
-        if (!seen.has(key)) seen.set(key, []);
-        seen.get(key)!.push(i);
-    });
-    const dupes = new Set<number>();
-    for (const [, idxs] of seen) {
-        if (idxs.length > 1) idxs.forEach((i) => dupes.add(i));
+interface DuplicateInfo {
+    /** Lowercased e-mail values that appear more than once. */
+    labels: Set<string>;
+    /** Total number of occurrences (every duplicate row counts). */
+    totalOccurrences: number;
+}
+
+const normalizeEmail = (s: string) => s.trim().toLowerCase();
+
+const computeDuplicateInfo = (emails: string[]): DuplicateInfo => {
+    const counts = new Map<string, number>();
+    for (const email of emails) {
+        const key = normalizeEmail(email);
+        counts.set(key, (counts.get(key) ?? 0) + 1);
     }
-    return dupes;
+    const labels = new Set<string>();
+    let totalOccurrences = 0;
+    for (const [key, count] of counts) {
+        if (count > 1) {
+            labels.add(key);
+            totalOccurrences += count;
+        }
+    }
+    return { labels, totalOccurrences };
 };
 
 const computeErrorIndices = (emails: string[]): Set<number> => {
@@ -105,7 +117,7 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
     const [confirmingClear, setConfirmingClear] = useState(false);
     const [importModalOpen, setImportModalOpen] = useState(false);
 
-    const dupeIndices = useMemo(() => computeDuplicateIndices(draftEmails), [draftEmails]);
+    const dupeInfo = useMemo(() => computeDuplicateInfo(draftEmails), [draftEmails]);
     const errorIndices = useMemo(() => computeErrorIndices(draftEmails), [draftEmails]);
 
     const count = draftEmails.length;
@@ -211,12 +223,6 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
 
     return (
         <div className="flex w-full flex-col items-center gap-6">
-            <header className="flex flex-col items-center gap-1 text-center">
-                <h2 className="text-xl font-semibold text-primary">Adicionar destinatários</h2>
-                <p className="text-sm text-tertiary">
-                    Importe uma planilha, cole ou escreva e-mails manualmente
-                </p>
-            </header>
 
             <div className="flex w-full flex-col gap-3">
                 {/* Action row above the input */}
@@ -267,10 +273,10 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
                                 >
                                     <Button
                                         size="sm"
-                                        color="link-gray"
+                                        color="tertiary-destructive"
                                         onClick={() => setConfirmingClear(true)}
                                     >
-                                        Limpar e-mails preenchidos
+                                        Excluir e-mails
                                     </Button>
                                 </motion.div>
                             )}
@@ -294,7 +300,7 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
                         allowDuplicates
                         maxTags={MAX_EMAILS}
                         size="md"
-                        className="[&_[role=group]]:min-h-[180px] [&_[role=group]]:max-h-[500px] [&_[role=group]]:overflow-y-auto [&_[role=group]]:items-start!"
+                        className="[&_[role=group]]:min-h-[180px] [&_[role=group]]:max-h-[45vh] [&_[role=group]]:overflow-y-auto [&_[role=group]]:items-start!"
                         placeholder="Cole ou digite os e-mails separados por vírgula ou Enter."
                         renderTag={(label: string, idx: number) => (
                             <span className="flex items-center gap-1">
@@ -303,9 +309,9 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
                                         className="size-3 shrink-0 text-error-primary"
                                         aria-label="Erro de formato"
                                     />
-                                ) : dupeIndices.has(idx) ? (
-                                    <AlertTriangle
-                                        className="size-3 shrink-0 text-warning-primary"
+                                ) : dupeInfo.labels.has(normalizeEmail(label)) ? (
+                                    <InfoCircle
+                                        className="size-3 shrink-0 text-utility-sky-500"
                                         aria-label="E-mail duplicado"
                                     />
                                 ) : null}
@@ -322,66 +328,58 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
                     )}
                 </div>
 
-                {/* Summary row below the input: warnings on the left, counter on the right */}
-                <div className="flex items-start justify-between gap-4">
+                {/* Summary rows below the input */}
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 flex-1 items-start gap-2 text-sm text-primary">
+                            <BadgeIcon
+                                type="color"
+                                size="sm"
+                                color="sky"
+                                icon={InfoCircle}
+                            />
+                            <span>
+                                E-mails repetidos receberão cortesias para cada ocorrência na
+                                lista
+                            </span>
+                        </div>
+                        <p
+                            className={cx(
+                                "shrink-0 whitespace-nowrap text-xs",
+                                reachedLimit ? "text-warning-primary" : "text-tertiary",
+                            )}
+                        >
+                            {count} de {MAX_EMAILS} e-mails adicionados
+                            {reachedLimit && " — limite atingido"}
+                        </p>
+                    </div>
+
                     <AnimatePresence initial={false}>
-                        {dupeIndices.size > 0 || errorIndices.size > 0 ? (
+                        {errorIndices.size > 0 && (
                             <motion.div
-                                key="warnings"
+                                key="error-warning"
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: "auto" }}
                                 exit={{ opacity: 0, height: 0 }}
                                 transition={{ duration: 0.18, ease: "easeOut" }}
-                                className="flex min-w-0 flex-1 flex-col gap-2 overflow-hidden"
+                                className="flex items-start gap-2 overflow-hidden text-sm text-primary"
                             >
-                                {dupeIndices.size > 0 && (
-                                    <div className="flex items-start gap-2 text-sm text-primary">
-                                        <BadgeIcon
-                                            type="color"
-                                            size="sm"
-                                            color="warning"
-                                            icon={AlertTriangle}
-                                        />
-                                        <span>
-                                            {dupeIndices.size}{" "}
-                                            {dupeIndices.size === 1
-                                                ? "e-mail repetido. Se continuar, esse e-mail receberá cortesias para cada ocorrência na lista"
-                                                : "e-mails repetidos. Se continuar, esses e-mails receberão cortesias para cada ocorrência na lista"}
-                                        </span>
-                                    </div>
-                                )}
-                                {errorIndices.size > 0 && (
-                                    <div className="flex items-start gap-2 text-sm text-primary">
-                                        <BadgeIcon
-                                            type="color"
-                                            size="sm"
-                                            color="error"
-                                            icon={AlertCircle}
-                                        />
-                                        <span>
-                                            {errorIndices.size}{" "}
-                                            {errorIndices.size === 1
-                                                ? "e-mail inválido"
-                                                : "e-mails inválidos"}
-                                            , corrija para poder avançar
-                                        </span>
-                                    </div>
-                                )}
+                                <BadgeIcon
+                                    type="color"
+                                    size="sm"
+                                    color="error"
+                                    icon={AlertCircle}
+                                />
+                                <span>
+                                    {errorIndices.size}{" "}
+                                    {errorIndices.size === 1
+                                        ? "e-mail inválido"
+                                        : "e-mails inválidos"}
+                                    , corrija para poder avançar
+                                </span>
                             </motion.div>
-                        ) : (
-                            <span key="placeholder" />
                         )}
                     </AnimatePresence>
-
-                    <p
-                        className={cx(
-                            "shrink-0 whitespace-nowrap text-xs",
-                            reachedLimit ? "text-warning-primary" : "text-tertiary",
-                        )}
-                    >
-                        {count} de {MAX_EMAILS} e-mails adicionados
-                        {reachedLimit && " — limite atingido"}
-                    </p>
                 </div>
             </div>
 

@@ -126,7 +126,11 @@ export const InputTags = ({
             const oldIndex = oldEntries.findIndex((e, i) => e.label === label && !usedOldIndices.has(i));
             if (oldIndex !== -1) {
                 usedOldIndices.add(oldIndex);
-                newEntries.push(oldEntries[oldIndex]);
+                // Create a NEW reference (preserving id+label) so react-aria's
+                // Collection re-invokes the children render function — this lets
+                // external state (e.g. duplicate detection) update on every chip,
+                // not only on freshly inserted ones.
+                newEntries.push({ ...oldEntries[oldIndex] });
             } else {
                 newEntries.push({ id: nextId(), label });
             }

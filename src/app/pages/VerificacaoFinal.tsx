@@ -28,6 +28,7 @@ import type { ProgressFeaturedIconType } from "@/components/application/progress
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../components/Backstage";
 import { ConfirmRemoveEmailModal, EditEmailModal } from "../components/EmailModals";
+import { showSuccessToast } from "../utils/toast";
 import {
     getItemDetails,
     type ComboItemDetails,
@@ -102,6 +103,7 @@ export function VerificacaoFinal() {
     const incomingEmails = routeState.emails?.length ? routeState.emails : FALLBACK_EMAILS;
 
     const [emails, setEmails] = useState<string[]>(incomingEmails);
+    const [orderName, setOrderName] = useState("");
     const [sendQrCode, setSendQrCode] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [page, setPage] = useState(0);
@@ -195,11 +197,19 @@ export function VerificacaoFinal() {
 
     const handleSubmit = useCallback(() => {
         console.log("Enviar cortesias", {
+            orderName,
             emails: activeEmails,
             itemIds,
             sendQrCode,
         });
-    }, [activeEmails, itemIds, sendQrCode]);
+        showSuccessToast(
+            "Pedido enviado",
+            `${activeEmails.length} ${
+                activeEmails.length === 1 ? "destinatário foi notificado" : "destinatários foram notificados"
+            }.`,
+        );
+        navigate("/backstage/cortesias");
+    }, [orderName, activeEmails, itemIds, sendQrCode, navigate]);
 
     const handleBack = useCallback(() => {
         navigate("/backstage/destinatarios", { state: { itemIds } });
@@ -213,54 +223,62 @@ export function VerificacaoFinal() {
                     <Progress.IconsWithText
                         items={steps}
                         size="sm"
-                        type="number"
+                        type="icon"
                         orientation="horizontal"
                         className="max-w-[760px] self-center max-md:hidden"
                     />
                     <Progress.IconsWithText
                         items={steps}
                         size="sm"
-                        type="number"
+                        type="icon"
                         orientation="vertical"
                         className="w-full md:hidden"
                     />
 
                     <div className="flex flex-col gap-4 -mb-4">
-                        <h2 className="text-xl font-semibold text-primary">Revise os envios</h2>
+                        {/* TODO: reativar quando definirmos a melhor posição/UX
+                        <Input
+                            label="Nome do pedido"
+                            isRequired
+                            className="max-w-[320px]"
+                            placeholder="Envio da Inteira"
+                            hint="Esse nome será exibido apenas no backstage"
+                            value={orderName}
+                            onChange={(v: string) => setOrderName(v)}
+                        />
+                        */}
 
-                        {viewMode === "list" && (
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div className="min-w-0 flex-1">
-                                    <Input
-                                        size="sm"
-                                        icon={SearchLg}
-                                        placeholder="Busque por e-mail"
-                                        aria-label="Busque por e-mail"
-                                        value={searchQuery}
-                                        onChange={(v: string) => {
-                                            setSearchQuery(v);
-                                            setPage(0);
-                                        }}
-                                    />
-                                </div>
-                                <div className="w-full sm:w-56">
-                                    <Select
-                                        size="sm"
-                                        aria-label="Filtrar por cadastro"
-                                        selectedKey={cadastroFilter}
-                                        onSelectionChange={(key: Key) => {
-                                            setCadastroFilter(key as CadastroFilter);
-                                            setPage(0);
-                                        }}
-                                        items={CADASTRO_FILTER_OPTIONS}
-                                    >
-                                        {(item: { id: string; label: string }) => (
-                                            <Select.Item id={item.id}>{item.label}</Select.Item>
-                                        )}
-                                    </Select>
-                                </div>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                                <Input
+                                    size="sm"
+                                    icon={SearchLg}
+                                    placeholder="Busque por e-mail"
+                                    aria-label="Busque por e-mail"
+                                    value={searchQuery}
+                                    onChange={(v: string) => {
+                                        setSearchQuery(v);
+                                        setPage(0);
+                                    }}
+                                />
                             </div>
-                        )}
+                            <div className="w-full sm:w-56">
+                                <Select
+                                    size="sm"
+                                    aria-label="Filtrar por cadastro"
+                                    selectedKey={cadastroFilter}
+                                    onSelectionChange={(key: Key) => {
+                                        setCadastroFilter(key as CadastroFilter);
+                                        setPage(0);
+                                    }}
+                                    items={CADASTRO_FILTER_OPTIONS}
+                                >
+                                    {(item: { id: string; label: string }) => (
+                                        <Select.Item id={item.id}>{item.label}</Select.Item>
+                                    )}
+                                </Select>
+                            </div>
+                        </div>
 
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <Checkbox
@@ -333,16 +351,6 @@ export function VerificacaoFinal() {
                                 setPageSize(size);
                                 setPage(0);
                             }}
-                            searchQuery={searchQuery}
-                            onSearchChange={(v: string) => {
-                                setSearchQuery(v);
-                                setPage(0);
-                            }}
-                            cadastroFilter={cadastroFilter}
-                            onCadastroFilterChange={(value: CadastroFilter) => {
-                                setCadastroFilter(value);
-                                setPage(0);
-                            }}
                             onEdit={handleEdit}
                             onRemove={handleRemove}
                         />
@@ -384,15 +392,15 @@ interface PageHeaderProps {
 }
 
 const PageHeader = ({ onBack, onSubmit }: PageHeaderProps) => (
-    <header className="flex items-center justify-between gap-3 px-6 py-6">
-        <div className="flex items-center gap-3">
-            <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={onBack}>
-                Destinatários
-            </Button>
-            <h1 className="text-display-xs font-bold text-primary">Enviar cortesia</h1>
-        </div>
+    <header className="relative flex items-center justify-between gap-3 px-6 py-6">
+        <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={onBack}>
+            Destinatários
+        </Button>
+        <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary">
+            Enviar cortesias
+        </h1>
         <Button size="md" color="primary" onClick={onSubmit}>
-            Enviar
+            Enviar cortesias
         </Button>
     </header>
 );
@@ -420,8 +428,8 @@ const RecipientCard = ({
     onEdit,
     onRemove,
 }: RecipientCardProps) => (
-    <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-        <header className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-3">
+    <div className="rounded-xl bg-secondary ring-1 ring-border-secondary">
+        <header className="flex items-center justify-between gap-3 px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-sm font-medium text-primary">{email}</span>
                 <Badge
@@ -451,16 +459,18 @@ const RecipientCard = ({
                 />
             </div>
         </header>
-        <div className="grid grid-cols-1 gap-x-6 gap-y-3 p-4 md:grid-cols-2 lg:grid-cols-3">
-            {tickets.map((t) => (
-                <TicketLine key={t.id} item={t} />
-            ))}
-            {products.map((p) => (
-                <ProductLine key={p.id} item={p} />
-            ))}
-            {combos.map((c) => (
-                <ComboLine key={c.id} item={c} />
-            ))}
+        <div className="mx-2 mb-2 rounded-lg bg-primary p-4">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2 lg:grid-cols-3">
+                {tickets.map((t) => (
+                    <TicketLine key={t.id} item={t} />
+                ))}
+                {products.map((p) => (
+                    <ProductLine key={p.id} item={p} />
+                ))}
+                {combos.map((c) => (
+                    <ComboLine key={c.id} item={c} />
+                ))}
+            </div>
         </div>
     </div>
 );
@@ -521,10 +531,6 @@ interface RecipientTableProps {
     pageSize: number;
     onPageChange: (page: number) => void;
     onPageSizeChange: (size: number) => void;
-    searchQuery: string;
-    onSearchChange: (value: string) => void;
-    cadastroFilter: CadastroFilter;
-    onCadastroFilterChange: (value: CadastroFilter) => void;
     onEdit: (email: string) => void;
     onRemove: (email: string) => void;
 }
@@ -537,41 +543,10 @@ const RecipientTable = ({
     pageSize,
     onPageChange,
     onPageSizeChange,
-    searchQuery,
-    onSearchChange,
-    cadastroFilter,
-    onCadastroFilterChange,
     onEdit,
     onRemove,
 }: RecipientTableProps) => (
     <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-secondary px-4 py-3 md:px-6">
-            <div className="min-w-0 flex-1">
-                <Input
-                    size="sm"
-                    icon={SearchLg}
-                    placeholder="Busque por e-mail"
-                    aria-label="Busque por e-mail"
-                    value={searchQuery}
-                    onChange={onSearchChange}
-                />
-            </div>
-            <div className="w-full sm:w-56">
-                <Select
-                    size="sm"
-                    aria-label="Filtrar por cadastro"
-                    selectedKey={cadastroFilter}
-                    onSelectionChange={(key: Key) =>
-                        onCadastroFilterChange(key as CadastroFilter)
-                    }
-                    items={CADASTRO_FILTER_OPTIONS}
-                >
-                    {(item: { id: string; label: string }) => (
-                        <Select.Item id={item.id}>{item.label}</Select.Item>
-                    )}
-                </Select>
-            </div>
-        </div>
         <table className="w-full border-collapse">
             <thead>
                 <tr className="border-b border-secondary bg-secondary_subtle text-left">

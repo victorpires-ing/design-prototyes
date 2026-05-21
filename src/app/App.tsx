@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { ScenarioControls } from '../app/components/ui/ScenarioControls';
 import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
 import { EmissaoCortesias } from '../app/pages/EmissaoCortesias';
+import { RelatorioPedidos } from '../app/pages/RelatorioPedidos';
 import { SelecaoItens } from '../app/pages/SelecaoItens';
 import { VerificacaoFinal } from '../app/pages/VerificacaoFinal';
 
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/backstage" element={<SelecaoItens />} />
         <Route path="/backstage/destinatarios" element={<EmissaoCortesias />} />
         <Route path="/backstage/verificacao" element={<VerificacaoFinal />} />
+        <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
       </Routes>
       <Toaster position="bottom-right" />
     </>

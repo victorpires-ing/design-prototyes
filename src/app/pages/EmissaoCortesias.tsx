@@ -73,14 +73,14 @@ export function EmissaoCortesias() {
                     <Progress.IconsWithText
                         items={steps}
                         size="sm"
-                        type="number"
+                        type="icon"
                         orientation="horizontal"
                         className="max-w-[760px] max-md:hidden"
                     />
                     <Progress.IconsWithText
                         items={steps}
                         size="sm"
-                        type="number"
+                        type="icon"
                         orientation="vertical"
                         className="w-full md:hidden"
                     />
@@ -100,14 +100,14 @@ interface PageHeaderProps {
 }
 
 const PageHeader = ({ canAdvance, onAdvance, onBack }: PageHeaderProps) => (
-    <header className="flex items-center justify-between gap-3 px-6 py-6">
-        <div className="flex items-center gap-3">
-            <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={onBack}>
-                Itens
-            </Button>
-            <h1 className="text-display-xs font-bold text-primary">Emitir cortesias</h1>
-        </div>
-        <Button size="md" color="secondary" isDisabled={!canAdvance} onClick={onAdvance}>
+    <header className="relative flex items-center justify-between gap-3 px-6 py-6">
+        <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={onBack}>
+            Itens
+        </Button>
+        <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary">
+            Enviar cortesias
+        </h1>
+        <Button size="md" color="primary" isDisabled={!canAdvance} onClick={onAdvance}>
             Avançar
         </Button>
     </header>

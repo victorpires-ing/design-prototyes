@@ -47,7 +47,7 @@ export function CortesiaSelectionPanel({
                 className,
             )}
         >
-            <header className="flex shrink-0 items-baseline justify-between gap-2 border-b border-secondary px-4 py-3.5">
+            <header className="flex bg-secondary shrink-0 items-baseline justify-between gap-2 border-b border-secondary px-4 py-3.5">
                 <h3 className="text-sm font-semibold text-primary">Cortesias</h3>
                 <span className="text-xs text-tertiary">
                     {count} de {MAX_SELECTIONS} cortesias selecionadas
@@ -56,9 +56,9 @@ export function CortesiaSelectionPanel({
 
             {isEmpty ? (
                 <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-                    <FeaturedIcon icon={Ticket01} color="brand" theme="dark" size="xl" />
-                    <p className="text-sm text-tertiary">
-                        Você ainda não selecionou cortesias
+                    <FeaturedIcon icon={Ticket01} color="brand" theme="gradient" size="xl" />
+                    <p className="text-md text-primary">
+                        Você ainda não <br />selecionou cortesias
                     </p>
                 </div>
             ) : (
@@ -176,7 +176,7 @@ const ComboRow = ({ item, onRemove }: RowProps<ComboItemDetails>) => (
         <ul className="flex flex-col gap-2.5">
             {item.subItems.map((sub, i) => (
                 <li key={`${item.id}-sub-${i}`} className="flex items-start gap-2.5">
-                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-solid text-[10px] font-semibold text-white">
+                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-quaternary text-[10px] font-semibold text-white">
                         {i + 1}
                     </span>
                     <div className="flex min-w-0 flex-1 flex-col">
@@ -184,7 +184,9 @@ const ComboRow = ({ item, onRemove }: RowProps<ComboItemDetails>) => (
                             {sub.name}
                         </span>
                         <span className="truncate text-sm text-tertiary">{sub.type}</span>
-                        <span className="truncate text-xs text-tertiary">{sub.date}</span>
+                        {sub.date && (
+                            <span className="truncate text-xs text-tertiary">{sub.date}</span>
+                        )} 
                     </div>
                 </li>
             ))}

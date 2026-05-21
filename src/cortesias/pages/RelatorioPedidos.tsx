@@ -32,6 +32,7 @@ import {
     type Pedido,
     type PedidoStatus,
 } from "../data/cortesias-store";
+import { showSuccessToast } from "../utils/toast";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                         */
@@ -867,9 +868,17 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
         [itens, selectedIds],
     );
 
-    const handleResend = useCallback((id: string) => {
-        console.log("Reenviar item", id);
-    }, []);
+    const handleResend = useCallback(
+        (id: string) => {
+            const item = itens.find((it) => it.id === id);
+            if (!item) return;
+            showSuccessToast(
+                "Cortesia reenviada",
+                `Reenviamos ${item.nome} para ${item.email}`,
+            );
+        },
+        [itens],
+    );
 
     const handleDetails = useCallback((id: string) => {
         setDetailsItemId(id);

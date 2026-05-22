@@ -22,7 +22,7 @@ import { PaginationCardAdvanced } from "@/components/application/pagination/pagi
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
 import { cx } from "@/utils/cx";
-import { BackstageLayout } from "../components/Backstage";
+import { BackstageLayout } from "../../components/Backstage";
 import { ConfirmRemoveEmailModal, EditEmailModal } from "../components/EmailModals";
 import { showSuccessToast } from "../utils/toast";
 import {

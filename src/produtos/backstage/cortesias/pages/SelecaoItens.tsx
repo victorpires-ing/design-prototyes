@@ -17,7 +17,7 @@ import { Input } from "@/components/base/input/input";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
 import { cx } from "@/utils/cx";
-import { BackstageLayout } from "../components/Backstage";
+import { BackstageLayout } from "../../components/Backstage";
 import { CortesiaSelectionPanel } from "../components/CortesiaSelectionPanel";
 import {
     COMBOS,
@@ -28,7 +28,7 @@ import {
     type ProductEntry,
     type SessionSection,
 } from "../data/cortesia-items";
-import { FeaturedIcon } from "../../components/foundations/featured-icon/featured-icon";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 
 const steps: ProgressFeaturedIconType[] = [
     {

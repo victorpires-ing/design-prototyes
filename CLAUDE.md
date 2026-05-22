@@ -344,21 +344,38 @@ Select.ComboBox = ComboBox;
 6. Follow the naming conventions
 7. Add components to appropriate folders (`base/`, `application/`, etc.)
 
+### Products and projects (`src/produtos/`)
+
+All prototype work lives under `src/produtos/<produto>/<projeto>/`. A **product** is the surface (e.g. `backstage`); a **project** is a feature flow inside that product (e.g. `cortesias`). The design system in `src/components/` is NEVER touched by prototypes — it's shared across products.
+
+```
+src/produtos/
+├── _template/                  # Reference skeleton — DO NOT edit. Duplicate to start a new product.
+└── backstage/                  # Product: Backstage
+    ├── components/             # Components shared across ALL projects within Backstage
+    │   ├── Backstage.tsx       #   BackstageLayout (producer rail + event rail + sidebar)
+    │   └── ThemeToggle.tsx
+    └── cortesias/              # Project: cortesias (emission flow)
+        ├── pages/              #   Route components (SelecaoItens, EmissaoCortesias, VerificacaoFinal, RelatorioPedidos)
+        ├── components/         #   Cortesia-only custom components (modals, slideouts, panels)
+        ├── data/               #   Mock data and stores
+        └── utils/              #   Cortesia-only utilities
+```
+
+**Allowed imports from inside a project:**
+- `@/components/base/*`, `@/components/application/*`, `@/components/foundations/*`
+- `@/utils/cx`, `@/providers/theme-provider`
+- The product's own shared `components/` (e.g. `../../components/Backstage` from `backstage/cortesias/pages/`)
+- Third-party libs (`react-aria-components`, `@untitledui/icons`, `motion/react`, `sonner`)
+
+**Forbidden:**
+- Importing from another product (`src/produtos/outro-produto/...`)
+- Importing from a sibling project (cortesias must not import from a future `relatorios/`, except through the shared `<produto>/components/`)
+- Editing `src/components/` (design system)
+
 ### When Adding New Backstage Pages
 
-**IMPORTANT**: All cortesia-related code lives in `src/cortesias/` as a portable module:
-
-```
-src/cortesias/
-├── pages/         # Route components (SelecaoItens, EmissaoCortesias, VerificacaoFinal, RelatorioPedidos)
-├── components/    # Cortesia-specific custom components (Backstage layout, modals, slideouts, panels, ThemeToggle)
-├── data/          # Mock data (cortesia-items.ts)
-└── utils/         # Cortesia-only utilities (toast.tsx)
-```
-
-This folder is intentionally self-contained so it can be lifted into another project that shares the same architecture. External dependencies are limited to `@/components/base/*`, `@/components/application/*`, `@/components/foundations/*`, `@/utils/cx`, `@/providers/theme-provider`, and the usual third-party libs (`react-aria-components`, `@untitledui/icons`, `motion/react`, `sonner`). Do not import non-cortesia app code into this folder.
-
-All pages inside the `/backstage` area share a fixed sidebar layout (producer rail + event rail). This layout is implemented in `src/cortesias/components/Backstage.tsx` as `BackstageLayout`. Page content is passed as `children`.
+All pages inside the `/backstage` area share a fixed sidebar layout (producer rail + event rail). This layout is implemented in `src/produtos/backstage/components/Backstage.tsx` as `BackstageLayout`. Page content is passed as `children`.
 
 **The ONLY things that change between pages are:**
 - `activeSection` — which top-level menu entry is open (e.g. `"cortesias"`)
@@ -366,11 +383,11 @@ All pages inside the `/backstage` area share a fixed sidebar layout (producer ra
 
 Everything else (the producer rail, the event details card, the theme toggle at the bottom of the producer rail, the list of functionalities) is **fixed** and must not be duplicated or re-implemented inside the page file.
 
-**Pattern for a new page:**
+**Pattern for a new page inside the `cortesias` project:**
 
 ```tsx
-// src/cortesias/pages/MyNewPage.tsx
-import { BackstageLayout } from "../components/Backstage";
+// src/produtos/backstage/cortesias/pages/MyNewPage.tsx
+import { BackstageLayout } from "../../components/Backstage";
 
 export function MyNewPage() {
     return (
@@ -384,7 +401,7 @@ export function MyNewPage() {
 }
 ```
 
-Then register the page in `src/app/App.tsx` as a route (import from `../cortesias/pages/...`). Use the existing `EmissaoCortesias` page as a reference for the inner structure (page header + stepper + content section).
+Then register the page in `src/app/App.tsx` as a route (import from `../produtos/backstage/cortesias/pages/...`). Use the existing `EmissaoCortesias` page as a reference for the inner structure (page header + stepper + content section).
 
 **Adding new menu entries:** if the new page belongs to a section/item not yet in `BackstageSection` / `BackstageItem`, extend those union types in `Backstage.tsx` and add the entry to the `functionalities` array there — do NOT hardcode the menu inside the page.
 

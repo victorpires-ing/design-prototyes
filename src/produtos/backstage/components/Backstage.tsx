@@ -1,10 +1,10 @@
-import { type ComponentType, type ReactNode } from "react";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import type { Key } from "react-aria-components";
 import {
     Announcement01,
     Bank,
     Calendar,
     ChevronDown,
-    ChevronUp,
     Eye,
     File03,
     InfoCircle,
@@ -16,6 +16,7 @@ import {
 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Badge } from "@/components/base/badges/badges";
+import { TreeView } from "@/components/application/tree-view/tree-view";
 import { cx } from "@/utils/cx";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -26,7 +27,16 @@ export type BackstageSection =
     | "relatorios"
     | "marketing";
 
-export type BackstageItem = "permissao-envio" | "emissao-cortesias";
+export type BackstageItem =
+    | "permissao-envio"
+    | "emissao-cortesias"
+    | "vendas-por-grupo"
+    | "transacoes"
+    | "acesso"
+    | "bordero"
+    | "transferencias";
+
+const DISABLED_KEYS: Key[] = ["informacoes-evento", "itens", "permissao-envio", "marketing"];
 
 interface BackstageLayoutProps {
     activeSection?: BackstageSection;
@@ -148,79 +158,84 @@ const EventDetailsCard = () => (
     </div>
 );
 
-interface FunctionalitiesItem {
-    id: BackstageSection;
-    label: string;
-    icon: ComponentType<{ className?: string }>;
-    badge?: ReactNode;
-    children?: { id: BackstageItem; label: string }[];
-}
-
-const functionalities: FunctionalitiesItem[] = [
-    { id: "informacoes-evento", label: "Informações do evento", icon: InfoCircle },
-    { id: "itens", label: "Itens", icon: ShoppingCart01 },
-    {
-        id: "cortesias",
-        label: "Cortesias",
-        icon: Ticket01,
-        badge: (
-            <Badge size="sm" type="pill-color" color="error">
-                Novo
-            </Badge>
-        ),
-        children: [
-            { id: "permissao-envio", label: "Permissão de envio" },
-            { id: "emissao-cortesias", label: "Emissão de cortesias" },
-        ],
-    },
-    { id: "relatorios", label: "Relatórios", icon: File03 },
-    { id: "marketing", label: "Marketing", icon: Announcement01 },
-];
-
 interface EventFunctionalitiesListProps {
     activeSection?: BackstageSection;
     activeItem?: BackstageItem;
 }
 
-const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctionalitiesListProps) => (
-    <nav className="flex flex-col gap-1 px-1">
-        {functionalities.map((item) => {
-            const isOpen = activeSection === item.id;
-            const Chevron = isOpen ? ChevronUp : ChevronDown;
-            return (
-                <div key={item.id} className="flex flex-col gap-1">
-                    <button
-                        type="button"
-                        className="flex items-center gap-2 rounded-sm px-2 py-2 text-left text-sm font-semibold text-secondary transition duration-100 ease-linear hover:bg-secondary_hover"
-                    >
-                        <item.icon className="size-4 shrink-0 text-fg-quaternary" />
-                        <span className="flex-1 truncate">{item.label}</span>
-                        {item.badge}
-                        <Chevron className="size-4 shrink-0 text-fg-quaternary" />
-                    </button>
-                    {isOpen && item.children && (
-                        <div className="flex flex-col gap-0.5 pl-6">
-                            {item.children.map((child) => {
-                                const isActive = activeItem === child.id;
-                                return (
-                                    <button
-                                        key={child.id}
-                                        type="button"
-                                        className={cx(
-                                            "rounded-sm px-2 py-2 text-left text-sm font-semibold transition duration-100 ease-linear",
-                                            isActive
-                                                ? "bg-tertiary text-secondary_hover"
-                                                : "text-tertiary hover:bg-secondary_hover hover:text-secondary_hover",
-                                        )}
-                                    >
-                                        {child.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            );
-        })}
-    </nav>
-);
+const ACTIVE_CLASS = "bg-tertiary hover:bg-tertiary";
+
+const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctionalitiesListProps) => {
+    const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(
+        () => new Set(activeSection ? [activeSection] : []),
+    );
+
+    useEffect(() => {
+        if (activeSection) {
+            setExpandedKeys((prev) => (prev.has(activeSection) ? prev : new Set([...prev, activeSection])));
+        }
+    }, [activeSection]);
+
+    const itemClass = (id: BackstageItem) => (activeItem === id ? ACTIVE_CLASS : undefined);
+
+    return (
+        <TreeView
+            aria-label="Funcionalidades do evento"
+            size="sm"
+            selectionMode="none"
+            disabledKeys={DISABLED_KEYS}
+            expandedKeys={expandedKeys}
+            onExpandedChange={(keys: Set<Key>) => setExpandedKeys(new Set(keys))}
+        >
+            <TreeView.Item id="informacoes-evento" textValue="Informações do evento">
+                <TreeView.ItemContent icon={InfoCircle}>Informações do evento</TreeView.ItemContent>
+            </TreeView.Item>
+
+            <TreeView.Item id="itens" textValue="Itens">
+                <TreeView.ItemContent icon={ShoppingCart01}>Itens</TreeView.ItemContent>
+            </TreeView.Item>
+
+            <TreeView.Item id="cortesias" textValue="Cortesias">
+                <TreeView.ItemContent
+                    icon={Ticket01}
+                    action={
+                        <Badge size="sm" type="pill-color" color="error">
+                            Novo
+                        </Badge>
+                    }
+                >
+                    Cortesias
+                </TreeView.ItemContent>
+                <TreeView.Item id="permissao-envio" textValue="Permissão de envio">
+                    <TreeView.ItemContent>Permissão de envio</TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="emissao-cortesias" textValue="Emissão de cortesias" href="/backstage/cortesias">
+                    <TreeView.ItemContent className={itemClass("emissao-cortesias")}>Emissão de cortesias</TreeView.ItemContent>
+                </TreeView.Item>
+            </TreeView.Item>
+
+            <TreeView.Item id="relatorios" textValue="Relatórios">
+                <TreeView.ItemContent icon={File03}>Relatórios</TreeView.ItemContent>
+                <TreeView.Item id="vendas-por-grupo" textValue="Vendas por grupo" href="/backstage/relatorios/vendas-por-grupo">
+                    <TreeView.ItemContent className={itemClass("vendas-por-grupo")}>Vendas por grupo</TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="transacoes" textValue="Transações" href="/backstage/relatorios/transacoes">
+                    <TreeView.ItemContent className={itemClass("transacoes")}>Transações</TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="acesso" textValue="Acesso" href="/backstage/relatorios/acesso">
+                    <TreeView.ItemContent className={itemClass("acesso")}>Acesso</TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="bordero" textValue="Borderô" href="/backstage/relatorios/bordero">
+                    <TreeView.ItemContent className={itemClass("bordero")}>Borderô</TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="transferencias" textValue="Transferências" href="/backstage/relatorios/transferencias">
+                    <TreeView.ItemContent className={itemClass("transferencias")}>Transferências</TreeView.ItemContent>
+                </TreeView.Item>
+            </TreeView.Item>
+
+            <TreeView.Item id="marketing" textValue="Marketing">
+                <TreeView.ItemContent icon={Announcement01}>Marketing</TreeView.ItemContent>
+            </TreeView.Item>
+        </TreeView>
+    );
+};

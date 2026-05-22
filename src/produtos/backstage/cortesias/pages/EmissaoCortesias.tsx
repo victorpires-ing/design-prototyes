@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle, ShoppingCart01, Users01 } from "@untitledui/ico
 import { Button } from "@/components/base/buttons/button";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
-import { BackstageLayout } from "../components/Backstage";
+import { BackstageLayout } from "../../components/Backstage";
 import { EmailListManager, type EmailListValidity } from "../components/EmailListManager";
 
 const steps: ProgressFeaturedIconType[] = [

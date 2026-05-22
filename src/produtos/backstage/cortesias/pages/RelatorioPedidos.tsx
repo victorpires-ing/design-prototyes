@@ -32,7 +32,7 @@ import { Tabs } from "@/components/application/tabs/tabs";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { cx } from "@/utils/cx";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
-import { BackstageLayout } from "../components/Backstage";
+import { BackstageLayout } from "../../components/Backstage";
 import { CancelConfirmModal } from "../components/CancelConfirmModal";
 import { ItemDetailsSlideOut } from "../components/ItemDetailsSlideOut";
 import { PedidoDetailsSlideOut } from "../components/PedidoDetailsSlideOut";

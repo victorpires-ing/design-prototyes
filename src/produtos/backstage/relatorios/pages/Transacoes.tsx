@@ -4,7 +4,6 @@ import {
     Bank,
     CheckCircle,
     ChevronDown,
-    ChevronUp,
     ClockFastForward,
     CreditCard02,
     FilterLines,
@@ -28,6 +27,8 @@ import {
     type FilterRow,
 } from "@/components/application/filter-bar/filter-dropdown-menu";
 import { MetricsSimple } from "@/components/application/metrics/metrics";
+import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
+import { TabList, Tabs } from "@/components/application/tabs/tabs";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { MultiSelect } from "@/components/base/select/multi-select";
@@ -667,10 +668,10 @@ export function Transacoes() {
                         </FilterDropdown>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                         <TotalTransacionadoCard total={totalFinal} />
-                        <IngressosValorPorStatusCard rows={filteredStatus} />
                     </div>
+                        <IngressosValorPorStatusCard rows={filteredStatus} />
 
                     <TransacionadoChartCard />
                     <MeioPagamentosCard rows={filteredMeios} />
@@ -864,7 +865,7 @@ const IngressosValorPorStatusCard = ({ rows }: IngressosValorPorStatusCardProps)
                         <div
                             key={row.id}
                             className={cx(
-                                "flex flex-col gap-4 px-4 py-4 md:flex-row md:items-center",
+                                "flex flex-col gap-4 px-4 py-4 transition duration-100 ease-linear hover:bg-primary_hover md:flex-row md:items-center",
                                 i !== rows.length - 1 && "border-b border-secondary",
                             )}
                         >
@@ -872,7 +873,7 @@ const IngressosValorPorStatusCard = ({ rows }: IngressosValorPorStatusCardProps)
                                 <FeaturedIcon
                                     icon={meta.icon}
                                     color={meta.color === "gray" ? "gray" : meta.color}
-                                    theme="modern"
+                                    theme="gradient"
                                     size="md"
                                 />
                                 <p className="min-w-0 flex-1 truncate text-sm font-medium text-primary">
@@ -899,15 +900,66 @@ const IngressosValorPorStatusCard = ({ rows }: IngressosValorPorStatusCardProps)
 /*  Chart                                                             */
 /* ------------------------------------------------------------------ */
 
+type ChartRange = "7days" | "15days" | "30days" | "all";
+
 const TransacionadoChartCard = () => {
     const isMobile = useIsMobile();
     const fontSize = isMobile ? 10 : 12;
+    const [selectedTab, setSelectedTab] = useState<ChartRange>("all");
+
+    const visibleChartData = useMemo(() => {
+        if (selectedTab === "all") return chartData;
+        const days = selectedTab === "7days" ? 7 : selectedTab === "15days" ? 15 : 30;
+        return chartData.slice(-days);
+    }, [selectedTab]);
+
     return (
         <Card title="Total transacionado e número de ingressos">
+            <div className="flex justify-start px-4 pt-3">
+                <Tabs
+                    selectedKey={selectedTab}
+                    onSelectionChange={(value: React.Key) => setSelectedTab(value as ChartRange)}
+                    className="w-auto"
+                >
+                    <TabList
+                        type="button-minimal"
+                        items={[
+                            {
+                                id: "7days",
+                                label: (
+                                    <>
+                                        <span className="max-md:hidden">7 dias</span>
+                                        <span className="md:hidden">7d</span>
+                                    </>
+                                ),
+                            },
+                            {
+                                id: "15days",
+                                label: (
+                                    <>
+                                        <span className="max-md:hidden">15 dias</span>
+                                        <span className="md:hidden">15d</span>
+                                    </>
+                                ),
+                            },
+                            {
+                                id: "30days",
+                                label: (
+                                    <>
+                                        <span className="max-md:hidden">30 dias</span>
+                                        <span className="md:hidden">30d</span>
+                                    </>
+                                ),
+                            },
+                            { id: "all", label: "Todos" },
+                        ]}
+                    />
+                </Tabs>
+            </div>
             <div className="h-[280px] w-full px-2 py-4 md:h-[420px] md:px-4">
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
-                        data={chartData}
+                        data={visibleChartData}
                         margin={{
                             top: isMobile ? 12 : 30,
                             right: isMobile ? 4 : 20,
@@ -1050,10 +1102,10 @@ interface MeioPagamentosCardProps {
 
 const MeioPagamentosCard = ({ rows }: MeioPagamentosCardProps) => (
     <Card title="Meio de Pagamentos">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-clip">
             <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-secondary bg-secondary_subtle text-left">
+                <thead className="sticky top-0 z-10 bg-secondary">
+                    <tr className="border-b border-secondary bg-secondary text-left">
                         <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary">
                             <SortableHeader label="Meio de Pagamento" />
                         </th>
@@ -1092,6 +1144,7 @@ const MeioPagamentosCard = ({ rows }: MeioPagamentosCardProps) => (
                         <tr
                             key={row.id}
                             className={cx(
+                                "transition duration-100 ease-linear hover:bg-primary_hover",
                                 i !== rows.length - 1 && "border-b border-secondary",
                             )}
                         >
@@ -1135,27 +1188,27 @@ const MeioPagamentosCard = ({ rows }: MeioPagamentosCardProps) => (
 /* ------------------------------------------------------------------ */
 
 const TRANSACAO_COLUMNS: Array<{ key: keyof Transacao | "status"; label: string; align?: "right" }> = [
-    { key: "id", label: "id" },
-    { key: "dataCriacao", label: "Data Criação" },
-    { key: "ultimaAtualizacao", label: "Última atualização" },
+    { key: "id", label: "ID" },
+    { key: "dataCriacao", label: "Data de Criação" },
+    { key: "ultimaAtualizacao", label: "Última Atualização" },
     { key: "status", label: "Status" },
-    { key: "nomeIngresso", label: "Nome do ingresso" },
+    { key: "nomeIngresso", label: "Nome do Ingresso" },
     { key: "setor", label: "Setor" },
     { key: "lote", label: "Lote" },
     { key: "comprador", label: "Comprador" },
-    { key: "cpf", label: "Comprador CPF" },
-    { key: "telefone", label: "Comprador Telefone" },
-    { key: "email", label: "Comprador Email" },
+    { key: "cpf", label: "CPF do Comprador" },
+    { key: "telefone", label: "Telefone do Comprador" },
+    { key: "email", label: "Email do Comprador" },
     { key: "canal", label: "Canal" },
-    { key: "tipoPagamento", label: "Tipo Pagamento" },
+    { key: "tipoPagamento", label: "Tipo de Pagamento" },
     { key: "estado", label: "Estado" },
     { key: "cidade", label: "Cidade" },
-    { key: "operadorVendas", label: "OperadorVendas" },
+    { key: "operadorVendas", label: "Operador de Vendas" },
     { key: "valor", label: "Valor", align: "right" },
     { key: "cupom", label: "Cupom" },
     { key: "valorDesconto", label: "Valor Desconto", align: "right" },
     { key: "valorFinal", label: "Valor Final", align: "right" },
-    { key: "qtdItem", label: "Qtd Item", align: "right" },
+    { key: "qtdItem", label: "Qtd. de Itens", align: "right" },
     { key: "passkey", label: "Passkey" },
     { key: "pdv", label: "PDV" },
     { key: "bundle", label: "Bundle" },
@@ -1180,64 +1233,85 @@ interface ListaTransacoesCardProps {
     rows: Transacao[];
 }
 
-const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => (
-    <Card
-        title={`Lista de transações${rows.length ? ` (${numberFormatter.format(rows.length)})` : ""}`}
-    >
-        <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-secondary bg-secondary_subtle text-left">
-                        {TRANSACAO_COLUMNS.map((col) => (
-                            <th
-                                key={String(col.key)}
-                                className={cx(
-                                    "whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary",
-                                    col.align === "right" && "text-right",
-                                )}
-                            >
-                                <SortableHeader label={col.label} align={col.align} />
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.length === 0 && (
-                        <tr>
-                            <td
-                                colSpan={TRANSACAO_COLUMNS.length}
-                                className="px-4 py-12 text-center text-sm text-tertiary"
-                            >
-                                Nenhuma transação corresponde aos filtros aplicados.
-                            </td>
-                        </tr>
-                    )}
-                    {rows.map((row, i) => (
-                        <tr
-                            key={row.id}
-                            className={cx(
-                                i !== rows.length - 1 && "border-b border-secondary",
-                            )}
-                        >
+const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
+
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    const safePage = Math.min(page, totalPages);
+    const visibleRows = useMemo(() => {
+        const start = (safePage - 1) * pageSize;
+        return rows.slice(start, start + pageSize);
+    }, [rows, safePage, pageSize]);
+
+    return (
+        <Card title="Lista de transações">
+            <div className="overflow-x-auto overflow-y-clip">
+                <table className="w-full border-collapse">
+                    <thead className="sticky top-0 z-10 bg-secondary">
+                        <tr className="border-b border-secondary bg-secondary text-left">
                             {TRANSACAO_COLUMNS.map((col) => (
-                                <td
+                                <th
                                     key={String(col.key)}
                                     className={cx(
-                                        "whitespace-nowrap px-4 py-4 text-sm text-tertiary",
+                                        "whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary",
                                         col.align === "right" && "text-right",
-                                        col.key === "id" && "font-mono text-xs text-secondary",
                                     )}
                                 >
-                                    {renderTransacaoCell(row, col.key)}
-                                </td>
+                                    <SortableHeader label={col.label} align={col.align} />
+                                </th>
                             ))}
                         </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    </Card>
-);
+                    </thead>
+                    <tbody>
+                        {visibleRows.length === 0 && (
+                            <tr>
+                                <td
+                                    colSpan={TRANSACAO_COLUMNS.length}
+                                    className="px-4 py-12 text-center text-sm text-tertiary"
+                                >
+                                    Nenhuma transação corresponde aos filtros aplicados.
+                                </td>
+                            </tr>
+                        )}
+                        {visibleRows.map((row, i) => (
+                            <tr
+                                key={row.id}
+                                className={cx(
+                                    "transition duration-100 ease-linear hover:bg-primary_hover",
+                                    i !== visibleRows.length - 1 && "border-b border-secondary",
+                                )}
+                            >
+                                {TRANSACAO_COLUMNS.map((col) => (
+                                    <td
+                                        key={String(col.key)}
+                                        className={cx(
+                                            "whitespace-nowrap px-4 py-4 text-sm text-tertiary",
+                                            col.align === "right" && "text-right",
+                                            col.key === "id" && "font-mono text-xs text-secondary",
+                                        )}
+                                    >
+                                        {renderTransacaoCell(row, col.key)}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <PaginationCardAdvanced
+                page={safePage}
+                total={totalPages}
+                pageSize={pageSize}
+                onPageChange={(p: number) => setPage(p)}
+                onPageSizeChange={(size: number) => {
+                    setPageSize(size);
+                    setPage(1);
+                }}
+            />
+        </Card>
+    );
+};
 
 /* ------------------------------------------------------------------ */
 /*  Shared primitives (consistency with VendasPorGrupo)               */
@@ -1249,7 +1323,7 @@ interface CardProps {
 }
 
 const Card = ({ title, children }: CardProps) => (
-    <section className="overflow-hidden rounded-xl bg-primary_alt ring-1 ring-border-secondary">
+    <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
         <header className="border-b border-secondary px-4 py-4">
             <h3 className="text-md font-semibold text-primary">{title}</h3>
         </header>
@@ -1275,13 +1349,7 @@ interface SortableHeaderProps {
 }
 
 const SortableHeader = ({ label, align = "left" }: SortableHeaderProps) => (
-    <span
-        className={cx(
-            "inline-flex items-center gap-1",
-            align === "right" && "flex-row-reverse",
-        )}
-    >
-        <ChevronUp className="size-3 text-fg-quaternary" />
+    <span className={cx("inline-flex items-center", align === "right" && "justify-end")}>
         {label}
     </span>
 );

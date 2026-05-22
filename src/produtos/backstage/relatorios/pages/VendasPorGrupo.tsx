@@ -1,9 +1,5 @@
 import { Fragment, useState } from "react";
-import {
-    ChevronDown,
-    ChevronUp,
-    Ticket01,
-} from "@untitledui/icons";
+import { ChevronDown, ChevronUp, Ticket01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { MetricsSimple } from "@/components/application/metrics/metrics";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -274,7 +270,7 @@ interface CardProps {
 }
 
 const Card = ({ title, children }: CardProps) => (
-    <section className="overflow-hidden rounded-xl bg-primary_alt ring-1 ring-border-secondary">
+    <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
         <header className="border-b border-secondary px-4 py-4">
             <h3 className="text-md font-semibold text-primary">{title}</h3>
         </header>
@@ -293,7 +289,7 @@ const DetalhePorItemCard = () => (
                 <div
                     key={item.id}
                     className={cx(
-                        "flex flex-col gap-4 px-4 py-4 md:flex-row md:items-center",
+                        "flex flex-col gap-4 px-4 py-4 transition duration-100 ease-linear hover:bg-primary_hover md:flex-row md:items-center",
                         i !== detalheItens.length - 1 && "border-b border-secondary",
                     )}
                 >
@@ -301,7 +297,7 @@ const DetalhePorItemCard = () => (
                         <FeaturedIcon
                             icon={Ticket01}
                             color="gray"
-                            theme="modern"
+                            theme="gradient"
                             size="md"
                         />
                         <p className="min-w-0 flex-1 truncate text-sm font-medium text-primary">
@@ -360,8 +356,8 @@ const OcupacaoPorSetorCard = () => {
                     <col />
                     <col className="w-10 md:w-32" />
                 </colgroup>
-                <thead>
-                    <tr className="border-b border-secondary bg-secondary_subtle text-left">
+                <thead className="sticky top-0 z-10 bg-secondary">
+                    <tr className="border-b border-secondary bg-secondary text-left">
                         <th className="px-4 py-3 text-xs font-semibold text-tertiary">Setor</th>
                         <th className="hidden px-4 py-3 text-right text-xs font-semibold text-tertiary md:table-cell">
                             Estoque
@@ -386,6 +382,7 @@ const OcupacaoPorSetorCard = () => {
                             <Fragment key={setor.id}>
                                 <tr
                                     className={cx(
+                                        "transition duration-100 ease-linear hover:bg-primary_hover",
                                         !isLast && !isExpanded && "border-b border-secondary",
                                         isExpanded && "border-b border-secondary",
                                     )}
@@ -424,7 +421,7 @@ const OcupacaoPorSetorCard = () => {
                                             <tr
                                                 key={ingresso.id}
                                                 className={cx(
-                                                    "bg-secondary_subtle",
+                                                    "bg-secondary transition duration-100 ease-linear hover:bg-secondary",
                                                     isLastIngresso && !isLast && "border-b border-secondary",
                                                 )}
                                             >
@@ -483,10 +480,10 @@ const OccupancyBar = ({ value, total }: OccupancyBarProps) => {
 
 const QuantidadeIngressosPorSetorCard = () => (
     <Card title="Quantidade de Ingresso por Setor">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-clip">
             <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-secondary bg-secondary_subtle text-left">
+                <thead className="sticky top-0 z-10 bg-secondary">
+                    <tr className="border-b border-secondary bg-secondary text-left">
                         <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary">
                             <SortableHeader label="Setor" />
                         </th>
@@ -512,6 +509,7 @@ const QuantidadeIngressosPorSetorCard = () => (
                         <tr
                             key={row.id}
                             className={cx(
+                                "transition duration-100 ease-linear hover:bg-primary_hover",
                                 i !== ingressosPorSetor.length - 1 && "border-b border-secondary",
                             )}
                         >
@@ -551,13 +549,7 @@ interface SortableHeaderProps {
 }
 
 const SortableHeader = ({ label, align = "left" }: SortableHeaderProps) => (
-    <span
-        className={cx(
-            "inline-flex items-center gap-1",
-            align === "right" && "flex-row-reverse",
-        )}
-    >
-        <ChevronUp className="size-3 text-fg-quaternary" />
+    <span className={cx("inline-flex items-center", align === "right" && "justify-end")}>
         {label}
     </span>
 );
@@ -568,10 +560,10 @@ const SortableHeader = ({ label, align = "left" }: SortableHeaderProps) => (
 
 const ComboCard = () => (
     <Card title="Combo">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-clip">
             <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-secondary bg-secondary_subtle text-left">
+                <thead className="sticky top-0 z-10 bg-secondary">
+                    <tr className="border-b border-secondary bg-secondary text-left">
                         <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary">
                             <SortableHeader label="Item Combo" />
                         </th>
@@ -594,6 +586,7 @@ const ComboCard = () => (
                         <tr
                             key={row.id}
                             className={cx(
+                                "transition duration-100 ease-linear hover:bg-primary_hover",
                                 i !== combos.length - 1 && "border-b border-secondary",
                             )}
                         >
@@ -626,10 +619,10 @@ const ComboCard = () => (
 
 const ProdutosCard = () => (
     <Card title="Produtos">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-clip">
             <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-secondary bg-secondary_subtle text-left">
+                <thead className="sticky top-0 z-10 bg-secondary">
+                    <tr className="border-b border-secondary bg-secondary text-left">
                         <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary">
                             <SortableHeader label="Produto" />
                         </th>
@@ -652,6 +645,7 @@ const ProdutosCard = () => (
                         <tr
                             key={row.id}
                             className={cx(
+                                "transition duration-100 ease-linear hover:bg-primary_hover",
                                 i !== produtos.length - 1 && "border-b border-secondary",
                             )}
                         >
@@ -684,10 +678,10 @@ const ProdutosCard = () => (
 
 const IngressosComCupomCard = () => (
     <Card title="Quantidade de ingressos com cupom">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-clip">
             <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-secondary bg-secondary_subtle text-left">
+                <thead className="sticky top-0 z-10 bg-secondary">
+                    <tr className="border-b border-secondary bg-secondary text-left">
                         <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary">
                             <SortableHeader label="Cupom" />
                         </th>
@@ -710,6 +704,7 @@ const IngressosComCupomCard = () => (
                         <tr
                             key={row.id}
                             className={cx(
+                                "transition duration-100 ease-linear hover:bg-primary_hover",
                                 i !== cupons.length - 1 && "border-b border-secondary",
                             )}
                         >

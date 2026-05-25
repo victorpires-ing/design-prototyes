@@ -28,7 +28,6 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
 import { MultiSelect } from "@/components/base/select/multi-select";
-import { Select } from "@/components/base/select/select";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { cx } from "@/utils/cx";
@@ -41,11 +40,9 @@ import {
     ITEM_STATUS_META,
     ITEM_STATUS_OPTIONS,
     type CortesiaItem,
-    type ItemKind,
 } from "../data/item-types";
 import {
     useCortesiasStore,
-    type Pedido,
     type PedidoStatus,
 } from "../data/cortesias-store";
 import { showSuccessToast } from "../utils/toast";
@@ -389,11 +386,24 @@ interface PedidosTabViewProps {
     onExport: () => void;
 }
 
+interface DestinatarioRow {
+    rowId: string; // composite "pedidoId|email"
+    pedidoId: string;
+    pedidoNome: string;
+    emissor: string;
+    dataEnvio: string;
+    email: string;
+    documento: string;
+    status: PedidoStatus;
+    itemIds: string[];
+    itemCount: number;
+}
+
 const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
     const {
         pedidos,
-        cancelPedido: storeCancelPedido,
-        cancelPedidos: storeCancelPedidos,
+        itens,
+        cancelItens: storeCancelItens,
         renamePedido,
     } = useCortesiasStore();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -402,28 +412,60 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
     const [emissorKeys, setEmissorKeys] = useState<Set<string>>(new Set());
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-    const [detailsPedidoId, setDetailsPedidoId] = useState<string | null>(null);
-    const [pendingCancelPedidoId, setPendingCancelPedidoId] = useState<string | null>(null);
+    const [detailsRowId, setDetailsRowId] = useState<string | null>(null);
+    const [pendingCancelRowId, setPendingCancelRowId] = useState<string | null>(null);
     const [showCancelSelectedConfirm, setShowCancelSelectedConfirm] = useState(false);
 
+    const destinatarios = useMemo<DestinatarioRow[]>(() => {
+        const pedidoById = new Map(pedidos.map((p) => [p.id, p]));
+        const groups = new Map<string, DestinatarioRow>();
+        for (const item of itens) {
+            const pedido = pedidoById.get(item.pedidoId);
+            if (!pedido) continue;
+            const key = `${item.pedidoId}|${item.email}`;
+            const existing = groups.get(key);
+            if (existing) {
+                existing.itemIds.push(item.id);
+                existing.itemCount += 1;
+            } else {
+                groups.set(key, {
+                    rowId: key,
+                    pedidoId: pedido.id,
+                    pedidoNome: pedido.nome,
+                    emissor: pedido.emissor,
+                    dataEnvio: pedido.dataEnvio,
+                    email: item.email,
+                    documento: item.documento,
+                    status: pedido.status,
+                    itemIds: [item.id],
+                    itemCount: 1,
+                });
+            }
+        }
+        return Array.from(groups.values());
+    }, [pedidos, itens]);
+
     const emissorOptions = useMemo(() => {
-        const names = Array.from(new Set(pedidos.map((p) => p.emissor)));
+        const names = Array.from(new Set(destinatarios.map((d) => d.emissor)));
         return names.sort().map((name) => ({ id: name, label: name }));
-    }, [pedidos]);
+    }, [destinatarios]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
-        return pedidos.filter((p) => {
-            if (statusKeys.size > 0 && !statusKeys.has(p.status)) return false;
-            if (emissorKeys.size > 0 && !emissorKeys.has(p.emissor)) return false;
+        return destinatarios.filter((d) => {
+            if (statusKeys.size > 0 && !statusKeys.has(d.status)) return false;
+            if (emissorKeys.size > 0 && !emissorKeys.has(d.emissor)) return false;
             if (q) {
                 const matches =
-                    p.id.toLowerCase().includes(q) || p.nome.toLowerCase().includes(q);
+                    d.pedidoId.toLowerCase().includes(q) ||
+                    d.pedidoNome.toLowerCase().includes(q) ||
+                    d.email.toLowerCase().includes(q) ||
+                    d.documento.toLowerCase().includes(q);
                 if (!matches) return false;
             }
             return true;
         });
-    }, [pedidos, search, statusKeys, emissorKeys]);
+    }, [destinatarios, search, statusKeys, emissorKeys]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const safePage = Math.min(page, totalPages - 1);
@@ -444,8 +486,8 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
                 const next = new Set(prev);
                 for (const row of visibleRows) {
                     if (row.status === "cancelado") continue;
-                    if (isSelected) next.add(row.id);
-                    else next.delete(row.id);
+                    if (isSelected) next.add(row.rowId);
+                    else next.delete(row.rowId);
                 }
                 return next;
             });
@@ -455,19 +497,16 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
 
     const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
-    const cancelPedidoNow = useCallback(
-        (id: string) => storeCancelPedido(id),
-        [storeCancelPedido],
-    );
-
-    const requestCancelPedido = useCallback((id: string) => {
-        setPendingCancelPedidoId(id);
+    const requestCancelRow = useCallback((rowId: string) => {
+        setPendingCancelRowId(rowId);
     }, []);
 
-    const confirmCancelPedido = useCallback(() => {
-        if (pendingCancelPedidoId) cancelPedidoNow(pendingCancelPedidoId);
-        setPendingCancelPedidoId(null);
-    }, [pendingCancelPedidoId, cancelPedidoNow]);
+    const confirmCancelRow = useCallback(() => {
+        if (!pendingCancelRowId) return;
+        const row = destinatarios.find((d) => d.rowId === pendingCancelRowId);
+        if (row) storeCancelItens(new Set(row.itemIds));
+        setPendingCancelRowId(null);
+    }, [pendingCancelRowId, destinatarios, storeCancelItens]);
 
     const requestCancelSelected = useCallback(() => {
         if (selectedIds.size === 0) return;
@@ -475,33 +514,44 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
     }, [selectedIds]);
 
     const confirmCancelSelected = useCallback(() => {
-        storeCancelPedidos(selectedIds);
+        const itemIds = new Set<string>();
+        for (const row of destinatarios) {
+            if (selectedIds.has(row.rowId)) {
+                for (const id of row.itemIds) itemIds.add(id);
+            }
+        }
+        storeCancelItens(itemIds);
         setSelectedIds(new Set());
         setShowCancelSelectedConfirm(false);
-    }, [selectedIds, storeCancelPedidos]);
+    }, [selectedIds, destinatarios, storeCancelItens]);
 
-    const handleDetails = useCallback((id: string) => {
-        setDetailsPedidoId(id);
+    const handleDetails = useCallback((rowId: string) => {
+        setDetailsRowId(rowId);
     }, []);
 
-    const handleCloseDetails = useCallback(() => setDetailsPedidoId(null), []);
+    const handleCloseDetails = useCallback(() => setDetailsRowId(null), []);
+
+    const detailsRow = useMemo(
+        () => (detailsRowId ? destinatarios.find((d) => d.rowId === detailsRowId) ?? null : null),
+        [detailsRowId, destinatarios],
+    );
 
     const detailsPedido = useMemo(
-        () => (detailsPedidoId ? pedidos.find((p) => p.id === detailsPedidoId) ?? null : null),
-        [detailsPedidoId, pedidos],
+        () => (detailsRow ? pedidos.find((p) => p.id === detailsRow.pedidoId) ?? null : null),
+        [detailsRow, pedidos],
     );
 
-    const pendingCancelPedido = useMemo(
+    const pendingCancelRow = useMemo(
         () =>
-            pendingCancelPedidoId
-                ? pedidos.find((p) => p.id === pendingCancelPedidoId) ?? null
+            pendingCancelRowId
+                ? destinatarios.find((d) => d.rowId === pendingCancelRowId) ?? null
                 : null,
-        [pendingCancelPedidoId, pedidos],
+        [pendingCancelRowId, destinatarios],
     );
 
-    const selectedPedidosList = useMemo(
-        () => pedidos.filter((p) => selectedIds.has(p.id)),
-        [pedidos, selectedIds],
+    const selectedRowsList = useMemo(
+        () => destinatarios.filter((d) => selectedIds.has(d.rowId)),
+        [destinatarios, selectedIds],
     );
 
     const metrics = useMemo<Metric[]>(
@@ -523,7 +573,7 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
         [visibleRows],
     );
     const pageSelectedCount = selectableVisibleRows.reduce(
-        (acc, r) => acc + (selectedIds.has(r.id) ? 1 : 0),
+        (acc, r) => acc + (selectedIds.has(r.rowId) ? 1 : 0),
         0,
     );
     const allOnPageSelected =
@@ -570,10 +620,10 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
 
                 <SelectionBar
                     selectedCount={selectedIds.size}
-                    emptyLabel="Nenhum pedido selecionado"
-                    singular="pedido selecionado"
-                    plural="pedidos selecionados"
-                    cancelLabel="Cancelar pedidos selecionados"
+                    emptyLabel="Nenhum destinatário selecionado"
+                    singular="destinatário selecionado"
+                    plural="destinatários selecionados"
+                    cancelLabel="Cancelar destinatários selecionados"
                     onClear={clearSelection}
                     onCancel={requestCancelSelected}
                 />
@@ -585,7 +635,7 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
                     someOnPageSelected={someOnPageSelected}
                     onToggleSelect={toggleSelect}
                     onToggleAllOnPage={toggleAllOnPage}
-                    onCancel={requestCancelPedido}
+                    onCancel={requestCancelRow}
                     onDetails={handleDetails}
                     onRename={renamePedido}
                 />
@@ -605,43 +655,49 @@ const PedidosTabView = ({ onExport }: PedidosTabViewProps) => {
             <PedidoDetailsSlideOut
                 isOpen={detailsPedido !== null}
                 pedido={detailsPedido}
+                destinatarioEmail={detailsRow?.email ?? null}
                 onClose={handleCloseDetails}
-                onCancelPedido={cancelPedidoNow}
+                onCancelPedido={() => {
+                    if (detailsRow) storeCancelItens(new Set(detailsRow.itemIds));
+                }}
             />
 
             <CancelConfirmModal
-                isOpen={pendingCancelPedido !== null}
-                onClose={() => setPendingCancelPedidoId(null)}
-                onConfirm={confirmCancelPedido}
-                title="Cancelar este pedido de cortesia?"
+                isOpen={pendingCancelRow !== null}
+                onClose={() => setPendingCancelRowId(null)}
+                onConfirm={confirmCancelRow}
+                title="Cancelar este destinatário?"
                 description={
                     <>
-                        Você está prestes a cancelar o pedido{" "}
+                        Você está prestes a cancelar os itens enviados para{" "}
                         <span className="font-medium text-primary">
-                            {pendingCancelPedido?.id}
+                            {pendingCancelRow?.email}
+                        </span>{" "}
+                        no pedido{" "}
+                        <span className="font-medium text-primary">
+                            {pendingCancelRow?.pedidoNome}
                         </span>
-                        . Isso interromperá o envio para todos os destinatários vinculados
-                        a este pedido. Esta ação não pode ser desfeita.
+                        . Os QR codes serão invalidados e essa ação não pode ser desfeita.
                     </>
                 }
-                confirmLabel="Cancelar pedido"
-                cancelLabel="Manter pedido"
+                confirmLabel="Cancelar destinatário"
+                cancelLabel="Manter destinatário"
             />
 
             <CancelConfirmModal
                 isOpen={showCancelSelectedConfirm}
                 onClose={() => setShowCancelSelectedConfirm(false)}
                 onConfirm={confirmCancelSelected}
-                title={`Cancelar ${selectedPedidosList.length} ${selectedPedidosList.length === 1 ? "pedido selecionado" : "pedidos selecionados"}?`}
-                description="Os itens dos pedidos selecionados terão os QR codes invalidados e você precisará gerar novos convites caso mude de ideia."
-                listLabel="Pedidos cancelados"
-                listItems={selectedPedidosList.map((p) => (
-                    <span className="block truncate" title={p.id}>
-                        {p.id}
+                title={`Cancelar ${selectedRowsList.length} ${selectedRowsList.length === 1 ? "destinatário selecionado" : "destinatários selecionados"}?`}
+                description="Os itens dos destinatários selecionados terão os QR codes invalidados e você precisará gerar novos convites caso mude de ideia."
+                listLabel="Destinatários cancelados"
+                listItems={selectedRowsList.map((d) => (
+                    <span className="block truncate" title={d.email}>
+                        {d.email}
                     </span>
                 ))}
-                confirmLabel="Cancelar pedidos"
-                cancelLabel="Manter pedidos"
+                confirmLabel="Cancelar destinatários"
+                cancelLabel="Manter destinatários"
             />
         </>
     );
@@ -744,15 +800,15 @@ const EditableNomeCell = ({ value, onSave }: EditableNomeCellProps) => {
 };
 
 interface PedidosTableProps {
-    rows: Pedido[];
+    rows: DestinatarioRow[];
     selectedIds: Set<string>;
     allOnPageSelected: boolean;
     someOnPageSelected: boolean;
     onToggleSelect: (id: string, selected: boolean) => void;
     onToggleAllOnPage: (selected: boolean) => void;
-    onCancel: (id: string) => void;
-    onDetails: (id: string) => void;
-    onRename: (id: string, nome: string) => void;
+    onCancel: (rowId: string) => void;
+    onDetails: (rowId: string) => void;
+    onRename: (pedidoId: string, nome: string) => void;
 }
 
 const PedidosTable = ({
@@ -769,7 +825,7 @@ const PedidosTable = ({
     if (rows.length === 0) {
         return (
             <div className="px-6 py-16 text-center text-sm text-tertiary">
-                Nenhum pedido encontrado.
+                Nenhum destinatário encontrado.
             </div>
         );
     }
@@ -787,8 +843,9 @@ const PedidosTable = ({
                                 onChange={(s) => onToggleAllOnPage(s)}
                             />
                         </th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">id</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">Nome</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">Destinatário</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">Pedido</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">Itens</th>
                         <th className="px-4 py-3 text-xs font-semibold text-tertiary">
                             Emissor responsável
                         </th>
@@ -801,12 +858,12 @@ const PedidosTable = ({
                 </thead>
                 <tbody>
                     {rows.map((row, i) => {
-                        const isSelected = selectedIds.has(row.id);
+                        const isSelected = selectedIds.has(row.rowId);
                         const isCancelled = row.status === "cancelado";
                         const meta = PEDIDO_STATUS_META[row.status];
                         return (
                             <tr
-                                key={row.id}
+                                key={row.rowId}
                                 className={cx(
                                     "transition duration-100 ease-linear hover:bg-primary_hover",
                                     i !== rows.length - 1 && "border-b border-secondary",
@@ -814,22 +871,38 @@ const PedidosTable = ({
                             >
                                 <td className="px-4 py-3 md:px-6">
                                     <Checkbox
-                                        aria-label={`Selecionar pedido ${row.id}`}
+                                        aria-label={`Selecionar destinatário ${row.email}`}
                                         isSelected={isSelected}
                                         isDisabled={isCancelled}
-                                        onChange={(s) => onToggleSelect(row.id, s)}
+                                        onChange={(s) => onToggleSelect(row.rowId, s)}
                                     />
                                 </td>
-                                <td className="px-4 py-3 text-sm text-tertiary">
-                                    <span className="block max-w-[160px] truncate" title={row.id}>
-                                        {row.id}
-                                    </span>
+                                <td className="px-4 py-3">
+                                    <div className="flex flex-col gap-0.5">
+                                        <span className="text-sm font-medium text-primary">
+                                            {row.email}
+                                        </span>
+                                        <span className="text-xs text-tertiary">
+                                            Documento: {row.documento}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-primary">
-                                    <EditableNomeCell
-                                        value={row.nome}
-                                        onSave={(nome) => onRename(row.id, nome)}
-                                    />
+                                    <div className="flex flex-col gap-0.5">
+                                        <EditableNomeCell
+                                            value={row.pedidoNome}
+                                            onSave={(nome) => onRename(row.pedidoId, nome)}
+                                        />
+                                        <span
+                                            className="block max-w-[200px] truncate text-xs text-tertiary"
+                                            title={row.pedidoId}
+                                        >
+                                            ID: {row.pedidoId}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3 text-sm whitespace-nowrap text-tertiary">
+                                    {row.itemCount}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-secondary">{row.emissor}</td>
                                 <td className="px-4 py-3">
@@ -848,14 +921,14 @@ const PedidosTable = ({
                                             icon={SlashCircle01}
                                             tooltip="Cancelar"
                                             isDisabled={isCancelled}
-                                            onClick={() => onCancel(row.id)}
+                                            onClick={() => onCancel(row.rowId)}
                                         />
                                         <ButtonUtility
                                             size="xs"
                                             color="tertiary"
                                             icon={Eye}
                                             tooltip="Detalhes"
-                                            onClick={() => onDetails(row.id)}
+                                            onClick={() => onDetails(row.rowId)}
                                         />
                                     </div>
                                 </td>
@@ -876,12 +949,6 @@ interface ItensTabViewProps {
     onExport: () => void;
 }
 
-const ITEM_KIND_OPTIONS: { id: ItemKind; label: string }[] = [
-    { id: "ticket", label: "Ingressos" },
-    { id: "combo", label: "Combos" },
-    { id: "product", label: "Produtos" },
-];
-
 const ItensTabView = ({ onExport }: ItensTabViewProps) => {
     const {
         itens,
@@ -892,7 +959,6 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
     const [search, setSearch] = useState("");
     const [statusKeys, setStatusKeys] = useState<Set<string>>(new Set());
     const [emissorKeys, setEmissorKeys] = useState<Set<string>>(new Set());
-    const [tipoItem, setTipoItem] = useState<ItemKind>("ticket");
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
     const [pendingCancelItemId, setPendingCancelItemId] = useState<string | null>(null);
@@ -907,7 +973,6 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         return itens.filter((it) => {
-            if (it.kind !== tipoItem) return false;
             if (statusKeys.size > 0 && !statusKeys.has(it.status)) return false;
             if (emissorKeys.size > 0 && !emissorKeys.has(it.emissor)) return false;
             if (q) {
@@ -920,7 +985,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
             }
             return true;
         });
-    }, [itens, search, statusKeys, emissorKeys, tipoItem]);
+    }, [itens, search, statusKeys, emissorKeys]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const safePage = Math.min(page, totalPages - 1);
@@ -1053,26 +1118,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
         <>
             <MetricsRow metrics={metrics} />
 
-            <div className="flex flex-wrap items-end justify-between gap-3">
-                <Select
-                    aria-label="Tipo de item"
-                    label="Exibir"
-                    size="sm"
-                    placeholder="Selecione"
-                    items={ITEM_KIND_OPTIONS}
-                    selectedKey={tipoItem}
-                    onSelectionChange={(key: React.Key | null) => {
-                        if (key) {
-                            setTipoItem(key as ItemKind);
-                            setPage(0);
-                        }
-                    }}
-                    className="min-w-[200px]"
-                >
-                    {(item: { id: ItemKind; label: string }) => (
-                        <Select.Item id={item.id}>{item.label}</Select.Item>
-                    )}
-                </Select>
+            <div className="flex justify-end">
                 <Button
                     size="sm"
                     color="secondary"

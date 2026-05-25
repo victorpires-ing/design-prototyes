@@ -69,6 +69,8 @@ const DEFAULT_PAGE_SIZE = 100;
 export interface PedidoDetailsSlideOutProps {
     isOpen: boolean;
     pedido: PedidoSummary | null;
+    /** If provided, only items for this destinatário are shown / cancellable. */
+    destinatarioEmail?: string | null;
     onClose: () => void;
     onCancelPedido: (id: string) => void;
 }
@@ -76,6 +78,7 @@ export interface PedidoDetailsSlideOutProps {
 export function PedidoDetailsSlideOut({
     isOpen,
     pedido,
+    destinatarioEmail,
     onClose,
     onCancelPedido,
 }: PedidoDetailsSlideOutProps) {
@@ -91,10 +94,14 @@ export function PedidoDetailsSlideOut({
     const [showCancelPedidoConfirm, setShowCancelPedidoConfirm] = useState(false);
     const [showCancelSelectedConfirm, setShowCancelSelectedConfirm] = useState(false);
 
-    const itens = useMemo(
-        () => (pedido ? allItens.filter((it) => it.pedidoId === pedido.id) : []),
-        [allItens, pedido],
-    );
+    const itens = useMemo(() => {
+        if (!pedido) return [];
+        return allItens.filter((it) => {
+            if (it.pedidoId !== pedido.id) return false;
+            if (destinatarioEmail && it.email !== destinatarioEmail) return false;
+            return true;
+        });
+    }, [allItens, pedido, destinatarioEmail]);
 
     // Reset transient state every time the slideout opens for a different pedido.
     useEffect(() => {
@@ -106,7 +113,7 @@ export function PedidoDetailsSlideOut({
             setShowCancelPedidoConfirm(false);
             setShowCancelSelectedConfirm(false);
         }
-    }, [isOpen, pedido]);
+    }, [isOpen, pedido, destinatarioEmail]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();

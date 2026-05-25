@@ -8,11 +8,13 @@ import {
     Eye,
     File03,
     InfoCircle,
+    Menu02,
     Settings01,
     ShoppingCart01,
     Ticket01,
     Users01,
     UsersPlus,
+    XClose,
 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Badge } from "@/components/base/badges/badges";
@@ -45,9 +47,32 @@ interface BackstageLayoutProps {
 }
 
 export function BackstageLayout({ activeSection, activeItem, children }: BackstageLayoutProps) {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    useEffect(() => {
+        if (!isMobileMenuOpen) return;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setIsMobileMenuOpen(false);
+        };
+        window.addEventListener("keydown", onKey);
+        return () => {
+            document.body.style.overflow = prev;
+            window.removeEventListener("keydown", onKey);
+        };
+    }, [isMobileMenuOpen]);
+
     return (
         <div className="min-h-screen bg-primary">
-            <div className="flex min-h-screen gap-3 px-3 py-6">
+            <MobileTopBar onOpenMenu={() => setIsMobileMenuOpen(true)} />
+            <MobileDrawer
+                isOpen={isMobileMenuOpen}
+                onClose={() => setIsMobileMenuOpen(false)}
+                activeSection={activeSection}
+                activeItem={activeItem}
+            />
+            <div className="flex min-h-screen gap-3 px-3 py-3 md:py-6">
                 <ProducerRail />
                 <EventRail activeSection={activeSection} activeItem={activeItem} />
                 {children}
@@ -55,6 +80,116 @@ export function BackstageLayout({ activeSection, activeItem, children }: Backsta
         </div>
     );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Mobile top bar + drawer                                           */
+/* ------------------------------------------------------------------ */
+
+const MobileTopBar = ({ onOpenMenu }: { onOpenMenu: () => void }) => (
+    <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-secondary bg-primary px-4 py-3 md:hidden">
+        <button
+            type="button"
+            onClick={onOpenMenu}
+            aria-label="Abrir menu"
+            className="flex size-9 shrink-0 items-center justify-center rounded-md text-fg-secondary transition duration-100 ease-linear hover:bg-secondary"
+        >
+            <Menu02 className="size-5" />
+        </button>
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+            <img
+                src="/event-cover.png"
+                alt=""
+                className="size-9 shrink-0 rounded-md object-cover"
+            />
+            <div className="flex min-w-0 flex-col">
+                <span className="truncate text-sm font-semibold text-primary">
+                    Semana Santa dos Milagres 2026
+                </span>
+                <span className="truncate text-xs text-tertiary">ID: 1234 · Rascunho</span>
+            </div>
+        </div>
+    </header>
+);
+
+interface MobileDrawerProps {
+    isOpen: boolean;
+    onClose: () => void;
+    activeSection?: BackstageSection;
+    activeItem?: BackstageItem;
+}
+
+const MobileDrawer = ({ isOpen, onClose, activeSection, activeItem }: MobileDrawerProps) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+            <button
+                type="button"
+                aria-label="Fechar menu"
+                onClick={onClose}
+                className="absolute inset-0 bg-overlay"
+            />
+            <aside className="relative flex h-full w-[85%] max-w-[340px] flex-col gap-3 overflow-y-auto bg-secondary p-3 shadow-xl">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="relative">
+                        <span className="flex size-10 items-center justify-center overflow-hidden rounded-lg bg-secondary-solid text-xs font-bold text-white">
+                            eng
+                        </span>
+                        <button
+                            type="button"
+                            className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-primary ring-1 ring-secondary"
+                            aria-label="Trocar produtor"
+                        >
+                            <ChevronDown className="size-3 text-fg-quaternary" />
+                        </button>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Fechar menu"
+                        className="flex size-9 items-center justify-center rounded-md text-fg-secondary transition duration-100 ease-linear hover:bg-tertiary"
+                    >
+                        <XClose className="size-5" />
+                    </button>
+                </div>
+
+                <nav className="grid grid-cols-5 gap-1 rounded-xl bg-tertiary p-2">
+                    <MobileProducerNavItem icon={Calendar} label="Eventos" isActive />
+                    <MobileProducerNavItem icon={UsersPlus} label="Equipe" />
+                    <MobileProducerNavItem icon={Bank} label="Finanças" />
+                    <MobileProducerNavItem icon={Users01} label="Público" />
+                    <MobileProducerNavItem icon={Settings01} label="Ajustes" />
+                </nav>
+
+                <EventDetailsCard />
+                <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
+
+                <div className="mt-auto pt-2">
+                    <ThemeToggle />
+                </div>
+            </aside>
+        </div>
+    );
+};
+
+const MobileProducerNavItem = ({ icon: Icon, label, isActive }: ProducerRailItemProps) => (
+    <button
+        type="button"
+        className={cx(
+            "flex flex-col items-center gap-1 rounded-md px-1 py-2 transition duration-100 ease-linear",
+            isActive ? "text-secondary" : "text-tertiary hover:text-secondary_hover",
+        )}
+    >
+        <span
+            className={cx(
+                "flex size-9 items-center justify-center rounded-lg transition duration-100 ease-linear",
+                isActive ? "bg-primary" : "hover:bg-secondary_hover",
+            )}
+        >
+            <Icon className="size-5" />
+        </span>
+        <span className="truncate text-[10px] font-medium">{label}</span>
+    </button>
+);
 
 interface ProducerRailItemProps {
     icon: ComponentType<{ className?: string }>;

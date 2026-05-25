@@ -296,7 +296,7 @@ const DetalhePorItemCard = () => (
                     <div className="flex min-w-0 items-center gap-3 md:flex-1">
                         <FeaturedIcon
                             icon={Ticket01}
-                            color="gray"
+                            color="brand"
                             theme="gradient"
                             size="md"
                         />

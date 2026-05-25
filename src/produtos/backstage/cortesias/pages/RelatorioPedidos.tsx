@@ -28,6 +28,7 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
 import { MultiSelect } from "@/components/base/select/multi-select";
+import { Select } from "@/components/base/select/select";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { cx } from "@/utils/cx";
@@ -40,6 +41,7 @@ import {
     ITEM_STATUS_META,
     ITEM_STATUS_OPTIONS,
     type CortesiaItem,
+    type ItemKind,
 } from "../data/item-types";
 import {
     useCortesiasStore,
@@ -874,6 +876,12 @@ interface ItensTabViewProps {
     onExport: () => void;
 }
 
+const ITEM_KIND_OPTIONS: { id: ItemKind; label: string }[] = [
+    { id: "ticket", label: "Ingressos" },
+    { id: "combo", label: "Combos" },
+    { id: "product", label: "Produtos" },
+];
+
 const ItensTabView = ({ onExport }: ItensTabViewProps) => {
     const {
         itens,
@@ -884,6 +892,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
     const [search, setSearch] = useState("");
     const [statusKeys, setStatusKeys] = useState<Set<string>>(new Set());
     const [emissorKeys, setEmissorKeys] = useState<Set<string>>(new Set());
+    const [tipoItem, setTipoItem] = useState<ItemKind>("ticket");
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
     const [pendingCancelItemId, setPendingCancelItemId] = useState<string | null>(null);
@@ -898,6 +907,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         return itens.filter((it) => {
+            if (it.kind !== tipoItem) return false;
             if (statusKeys.size > 0 && !statusKeys.has(it.status)) return false;
             if (emissorKeys.size > 0 && !emissorKeys.has(it.emissor)) return false;
             if (q) {
@@ -910,7 +920,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
             }
             return true;
         });
-    }, [itens, search, statusKeys, emissorKeys]);
+    }, [itens, search, statusKeys, emissorKeys, tipoItem]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const safePage = Math.min(page, totalPages - 1);
@@ -1043,7 +1053,26 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
         <>
             <MetricsRow metrics={metrics} />
 
-            <div className="flex justify-end">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+                <Select
+                    aria-label="Tipo de item"
+                    label="Exibir"
+                    size="sm"
+                    placeholder="Selecione"
+                    items={ITEM_KIND_OPTIONS}
+                    selectedKey={tipoItem}
+                    onSelectionChange={(key: React.Key | null) => {
+                        if (key) {
+                            setTipoItem(key as ItemKind);
+                            setPage(0);
+                        }
+                    }}
+                    className="min-w-[200px]"
+                >
+                    {(item: { id: ItemKind; label: string }) => (
+                        <Select.Item id={item.id}>{item.label}</Select.Item>
+                    )}
+                </Select>
                 <Button
                     size="sm"
                     color="secondary"

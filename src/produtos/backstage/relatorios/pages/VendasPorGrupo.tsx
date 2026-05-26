@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { ChevronDown, ChevronUp, Ticket01 } from "@untitledui/icons";
+import { ChevronDown, ChevronUp, Ticket02 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { MetricsSimple } from "@/components/application/metrics/metrics";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -239,13 +239,17 @@ export function VendasPorGrupo() {
 const HIDE_TREND_AND_MENU =
     "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
+const VALOR_TOTAL = 2888877.13;
+const TOTAL_ITENS = 37307;
+const TICKET_MEDIO = VALOR_TOTAL / TOTAL_ITENS;
+
 const MetricsRow = () => (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <MetricsSimple
             type="modern"
             trend="positive"
             subtitle="Valor total"
-            title={currencyFormatter.format(2888877.13)}
+            title={currencyFormatter.format(VALOR_TOTAL)}
             footer={null}
             className={HIDE_TREND_AND_MENU}
         />
@@ -253,7 +257,15 @@ const MetricsRow = () => (
             type="modern"
             trend="positive"
             subtitle="Total de itens"
-            title={numberFormatter.format(37307)}
+            title={numberFormatter.format(TOTAL_ITENS)}
+            footer={null}
+            className={HIDE_TREND_AND_MENU}
+        />
+        <MetricsSimple
+            type="modern"
+            trend="positive"
+            subtitle="Ticket médio"
+            title={currencyFormatter.format(TICKET_MEDIO)}
             footer={null}
             className={HIDE_TREND_AND_MENU}
         />
@@ -295,7 +307,7 @@ const DetalhePorItemCard = () => (
                 >
                     <div className="flex min-w-0 items-center gap-3 md:flex-1">
                         <FeaturedIcon
-                            icon={Ticket01}
+                            icon={Ticket02}
                             color="brand"
                             theme="gradient"
                             size="md"

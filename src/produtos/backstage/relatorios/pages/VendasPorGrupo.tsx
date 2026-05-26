@@ -1,6 +1,5 @@
 import { Fragment, useState } from "react";
-import { ChevronDown, ChevronUp, Ticket02 } from "@untitledui/icons";
-import { Button } from "@/components/base/buttons/button";
+import { ChevronDown, Ticket02 } from "@untitledui/icons";
 import { MetricsSimple } from "@/components/application/metrics/metrics";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
@@ -362,14 +361,15 @@ const OcupacaoPorSetorCard = () => {
         <Card title="Ocupação por setor">
             <table className="w-full table-fixed border-collapse">
                 <colgroup>
+                    <col className="w-10 md:w-12" />
                     <col className="w-[38%] md:w-auto" />
                     <col className="hidden md:table-column" />
                     <col className="hidden md:table-column" />
                     <col />
-                    <col className="w-10 md:w-32" />
                 </colgroup>
                 <thead className="sticky top-0 z-10 bg-secondary">
                     <tr className="border-b border-secondary bg-secondary text-left">
+                        <th className="px-2 py-3 md:px-4" aria-hidden="true" />
                         <th className="px-4 py-3 text-xs font-semibold text-tertiary">Setor</th>
                         <th className="hidden px-4 py-3 text-right text-xs font-semibold text-tertiary md:table-cell">
                             Estoque
@@ -382,7 +382,6 @@ const OcupacaoPorSetorCard = () => {
                                 Taxa de ocupação <ChevronDown className="size-3.5" />
                             </span>
                         </th>
-                        <th className="px-2 py-3 md:px-4" aria-label="Ações" />
                     </tr>
                 </thead>
                 <tbody>
@@ -393,12 +392,43 @@ const OcupacaoPorSetorCard = () => {
                         return (
                             <Fragment key={setor.id}>
                                 <tr
+                                    role={hasIngressos ? "button" : undefined}
+                                    tabIndex={hasIngressos ? 0 : undefined}
+                                    aria-expanded={hasIngressos ? isExpanded : undefined}
+                                    onClick={
+                                        hasIngressos
+                                            ? () => toggleExpanded(setor.id)
+                                            : undefined
+                                    }
+                                    onKeyDown={
+                                        hasIngressos
+                                            ? (e) => {
+                                                  if (e.key === "Enter" || e.key === " ") {
+                                                      e.preventDefault();
+                                                      toggleExpanded(setor.id);
+                                                  }
+                                              }
+                                            : undefined
+                                    }
                                     className={cx(
-                                        "transition duration-100 ease-linear hover:bg-primary_hover",
+                                        "transition duration-100 ease-linear",
+                                        hasIngressos &&
+                                            "cursor-pointer hover:bg-primary_hover",
                                         !isLast && !isExpanded && "border-b border-secondary",
                                         isExpanded && "border-b border-secondary",
                                     )}
                                 >
+                                    <td className="px-2 py-4 md:px-4">
+                                        {hasIngressos && (
+                                            <ChevronDown
+                                                aria-hidden="true"
+                                                className={cx(
+                                                    "size-4 text-fg-quaternary transition-transform duration-150",
+                                                    isExpanded && "rotate-180",
+                                                )}
+                                            />
+                                        )}
+                                    </td>
                                     <td className="px-4 py-4 text-sm text-primary">
                                         <span className="line-clamp-2">{setor.nome}</span>
                                     </td>
@@ -409,36 +439,59 @@ const OcupacaoPorSetorCard = () => {
                                         {numberFormatter.format(setor.vendida)}
                                     </td>
                                     <td className="px-4 py-4">
-                                        <OccupancyBar value={setor.vendida} total={setor.estoque} />
-                                    </td>
-                                    <td className="px-2 py-4 md:px-4">
-                                        <div className="flex justify-end">
-                                            <Button
-                                                size="sm"
-                                                color="link-gray"
-                                                iconTrailing={isExpanded ? ChevronUp : ChevronDown}
-                                                isDisabled={!hasIngressos}
-                                                onClick={() => toggleExpanded(setor.id)}
-                                                aria-label={isExpanded ? "Ocultar detalhes" : "Ver detalhes"}
-                                            >
-                                                <span className="hidden md:inline">Detalhes</span>
-                                            </Button>
-                                        </div>
+                                        <OccupancyBar
+                                            value={setor.vendida}
+                                            total={setor.estoque}
+                                        />
                                     </td>
                                 </tr>
                                 {isExpanded &&
-                                    setor.ingressos?.map((ingresso, j) => {
-                                        const isLastIngresso = j === setor.ingressos!.length - 1;
+                                    setor.ingressos?.map((ingresso, j, arr) => {
+                                        const isLastIngresso = j === arr.length - 1;
+                                        const previousSum = arr
+                                            .slice(0, j)
+                                            .reduce((sum, prev) => sum + prev.vendida, 0);
+                                        const offsetPct =
+                                            setor.estoque === 0
+                                                ? 0
+                                                : (previousSum / setor.estoque) * 100;
+                                        const widthPct =
+                                            setor.estoque === 0
+                                                ? 0
+                                                : (ingresso.vendida / setor.estoque) * 100;
+                                        const filledPct =
+                                            setor.estoque === 0
+                                                ? 0
+                                                : (setor.vendida / setor.estoque) * 100;
+                                        const labelPct =
+                                            setor.vendida === 0
+                                                ? 0
+                                                : (ingresso.vendida / setor.vendida) * 100;
+                                        const boundaries = arr
+                                            .slice(0, -1)
+                                            .map((_, idx) => {
+                                                const sum = arr
+                                                    .slice(0, idx + 1)
+                                                    .reduce((s, x) => s + x.vendida, 0);
+                                                return setor.estoque === 0
+                                                    ? 0
+                                                    : (sum / setor.estoque) * 100;
+                                            });
                                         return (
                                             <tr
                                                 key={ingresso.id}
                                                 className={cx(
-                                                    "bg-secondary transition duration-100 ease-linear hover:bg-secondary",
-                                                    isLastIngresso && !isLast && "border-b border-secondary",
+                                                    "bg-secondary",
+                                                    isLastIngresso &&
+                                                        !isLast &&
+                                                        "border-b border-secondary",
                                                 )}
                                             >
+                                                <td className="px-2 py-3 md:px-4" />
                                                 <td className="px-4 py-3 pl-10 text-sm text-secondary">
-                                                    <span className="line-clamp-2">{ingresso.nome}</span>
+                                                    <span className="line-clamp-2">
+                                                        {ingresso.nome}
+                                                    </span>
                                                 </td>
                                                 <td className="hidden px-4 py-3 text-right text-sm text-tertiary md:table-cell">
                                                     {numberFormatter.format(ingresso.estoque)}
@@ -447,12 +500,14 @@ const OcupacaoPorSetorCard = () => {
                                                     {numberFormatter.format(ingresso.vendida)}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <OccupancyBar
-                                                        value={ingresso.vendida}
-                                                        total={setor.vendida}
+                                                    <SegmentedOccupancyBar
+                                                        offsetPct={offsetPct}
+                                                        widthPct={widthPct}
+                                                        filledPct={filledPct}
+                                                        labelPct={labelPct}
+                                                        boundaries={boundaries}
                                                     />
                                                 </td>
-                                                <td className="px-2 py-3 md:px-4" />
                                             </tr>
                                         );
                                     })}
@@ -475,13 +530,63 @@ const OccupancyBar = ({ value, total }: OccupancyBarProps) => {
     const clamped = Math.min(100, Math.max(0, pct));
     return (
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
-            <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-quaternary">
+            <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-tertiary/90">
                 <div
                     className="h-full rounded-full bg-brand-solid transition-all"
                     style={{ width: `${clamped}%` }}
                 />
             </div>
             <span className="w-10 shrink-0 text-right text-sm text-tertiary">{clamped}%</span>
+        </div>
+    );
+};
+
+interface SegmentedOccupancyBarProps {
+    offsetPct: number;
+    widthPct: number;
+    /** Total filled portion of the parent setor (vendida / estoque %). */
+    filledPct: number;
+    /** Percentage shown as the textual label (defaults to widthPct). */
+    labelPct?: number;
+    /** Vertical dashed guides at these % positions across the bar. */
+    boundaries?: number[];
+}
+
+const SegmentedOccupancyBar = ({
+    offsetPct,
+    widthPct,
+    filledPct,
+    labelPct,
+    boundaries = [],
+}: SegmentedOccupancyBarProps) => {
+    const clampedOffset = Math.min(100, Math.max(0, offsetPct));
+    const clampedWidth = Math.min(100 - clampedOffset, Math.max(0, widthPct));
+    const clampedFilled = Math.min(100, Math.max(0, filledPct));
+    const display = Math.round(labelPct ?? widthPct);
+    return (
+        <div className="flex min-w-0 items-center gap-2 md:gap-3">
+            <div className="relative h-2 min-w-0 flex-1 overflow-visible rounded-full bg-tertiary/90">
+                {/* Tertiary fill — total filled in details (parent's vendida / estoque). */}
+                <div
+                    className="absolute h-full rounded-full bg-quaternary transition-all"
+                    style={{ left: 0, width: `${clampedFilled}%` }}
+                />
+                {/* Brand-colored slice — this ingresso's portion. */}
+                <div
+                    className="absolute h-full rounded-full bg-brand-solid transition-all"
+                    style={{ left: `${clampedOffset}%`, width: `${clampedWidth}%` }}
+                />
+                {/* Vertical dashed guides at segment boundaries. */}
+                {boundaries.map((pos) => (
+                    <span
+                        key={pos}
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -top-2 -bottom-2"
+                        style={{ left: `${Math.min(100, Math.max(0, pos))}%` }}
+                    />
+                ))}
+            </div>
+            <span className="w-10 shrink-0 text-right text-sm text-tertiary">{display}%</span>
         </div>
     );
 };

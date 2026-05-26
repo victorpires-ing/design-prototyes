@@ -15,7 +15,6 @@ import {
     CartesianGrid,
     ComposedChart,
     LabelList,
-    Legend,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -900,11 +899,82 @@ const IngressosValorPorStatusCard = ({ rows }: IngressosValorPorStatusCardProps)
 /*  Chart                                                             */
 /* ------------------------------------------------------------------ */
 
+interface ChartTooltipPayloadEntry {
+    dataKey: string;
+    name: string;
+    value: number | string;
+    color: string;
+}
+
+interface ChartTooltipProps {
+    active?: boolean;
+    label?: string;
+    payload?: ChartTooltipPayloadEntry[];
+}
+
+const ChartTooltip = ({ active, label, payload }: ChartTooltipProps) => {
+    if (!active || !payload || payload.length === 0) return null;
+    // Bars render first → ensure line/area appears last in the list
+    const ordered = [...payload].sort((a, b) =>
+        a.dataKey === "total" ? -1 : b.dataKey === "total" ? 1 : 0,
+    );
+    return (
+        <div className="rounded-lg bg-primary-solid px-3 py-2.5 shadow-xl ring-1 ring-secondary_alt">
+            <p className="mb-1.5 text-sm font-semibold text-white">{label}</p>
+            <ul className="flex flex-col gap-1">
+                {ordered.map((entry) => {
+                    const isMonetary = entry.dataKey === "total";
+                    const formatted = isMonetary
+                        ? currencyFormatter.format(Number(entry.value))
+                        : numberFormatter.format(Number(entry.value));
+                    return (
+                        <li
+                            key={entry.dataKey}
+                            className="flex items-center gap-2 text-xs"
+                        >
+                            <span
+                                aria-hidden="true"
+                                className="size-2 shrink-0 rounded-full"
+                                style={{ background: entry.color }}
+                            />
+                            <span className="text-white/70">{entry.name}:</span>
+                            <span className="font-semibold text-white">
+                                {formatted}
+                            </span>
+                        </li>
+                    );
+                })}
+            </ul>
+        </div>
+    );
+};
+
+interface ChartCursorProps {
+    points?: { x: number; y: number }[];
+    top?: number;
+    height?: number;
+}
+
+const ChartCursor = ({ points, top = 0, height = 0 }: ChartCursorProps) => {
+    if (!points || points.length === 0) return null;
+    const x = points[0].x;
+    return (
+        <line
+            x1={x}
+            x2={x}
+            y1={top}
+            y2={top + height}
+            stroke="var(--color-border-primary)"
+            strokeWidth={1}
+        />
+    );
+};
+
 type ChartRange = "7days" | "15days" | "30days" | "all";
 
 const TransacionadoChartCard = () => {
     const isMobile = useIsMobile();
-    const fontSize = isMobile ? 10 : 12;
+    const fontSize = isMobile ? 10 : 11;
     const [selectedTab, setSelectedTab] = useState<ChartRange>("all");
 
     const visibleChartData = useMemo(() => {
@@ -914,12 +984,22 @@ const TransacionadoChartCard = () => {
     }, [selectedTab]);
 
     return (
-        <Card title="Total transacionado e número de ingressos">
-            <div className="flex justify-start px-4 pt-3">
+        <section className="overflow-clip rounded-xl bg-primary_alt ring-1 ring-border-secondary">
+            <header className="flex flex-col gap-3 border-b border-secondary px-5 pt-4 pb-4 md:flex-row md:items-start md:justify-between">
+                <div className="flex flex-col gap-1">
+                    <h3 className="text-md font-semibold text-primary">
+                        Total transacionado e número de ingressos
+                    </h3>
+                    <p className="text-sm text-tertiary">
+                        Distribuição diária de transações e ingressos vendidos
+                    </p>
+                </div>
                 <Tabs
                     selectedKey={selectedTab}
-                    onSelectionChange={(value: React.Key) => setSelectedTab(value as ChartRange)}
-                    className="w-auto"
+                    onSelectionChange={(value: React.Key) =>
+                        setSelectedTab(value as ChartRange)
+                    }
+                    className="w-auto shrink-0"
                 >
                     <TabList
                         type="button-minimal"
@@ -955,41 +1035,47 @@ const TransacionadoChartCard = () => {
                         ]}
                     />
                 </Tabs>
-            </div>
-            <div className="h-[280px] w-full px-2 py-4 md:h-[420px] md:px-4">
+            </header>
+
+            <div className="h-[280px] w-full px-2 pt-5 pb-2 md:h-[380px] md:px-4">
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
                         data={visibleChartData}
                         margin={{
-                            top: isMobile ? 12 : 30,
-                            right: isMobile ? 4 : 20,
-                            bottom: isMobile ? 4 : 8,
-                            left: isMobile ? 4 : 8,
+                            top: isMobile ? 16 : 28,
+                            right: isMobile ? 8 : 16,
+                            bottom: isMobile ? 0 : 4,
+                            left: isMobile ? 0 : 4,
                         }}
                     >
+                        <defs>
+                            <linearGradient id="qtdAreaFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop
+                                    offset="0%"
+                                    stopColor="var(--color-fg-white)"
+                                    stopOpacity={0.28}
+                                />
+                                <stop
+                                    offset="80%"
+                                    stopColor="var(--color-fg-white)"
+                                    stopOpacity={0}
+                                />
+                            </linearGradient>
+                        </defs>
                         <CartesianGrid
                             stroke="var(--color-border-secondary)"
-                            strokeDasharray="3 3"
+                            strokeDasharray="2 4"
+                            strokeOpacity={0.6}
                             vertical={false}
                         />
                         <XAxis
                             dataKey="data"
                             tick={{ fill: "var(--color-text-tertiary)", fontSize }}
                             tickLine={false}
-                            axisLine={{ stroke: "var(--color-border-secondary)" }}
+                            axisLine={false}
+                            tickMargin={10}
                             interval={isMobile ? "preserveStartEnd" : "preserveStart"}
-                            minTickGap={isMobile ? 24 : 8}
-                            label={
-                                isMobile
-                                    ? undefined
-                                    : {
-                                          value: "Data da Compra",
-                                          position: "insideBottom",
-                                          offset: -8,
-                                          fill: "var(--color-text-tertiary)",
-                                          fontSize: 12,
-                                      }
-                            }
+                            minTickGap={isMobile ? 24 : 12}
                         />
                         <YAxis
                             yAxisId="total"
@@ -998,7 +1084,8 @@ const TransacionadoChartCard = () => {
                             tick={{ fill: "var(--color-text-tertiary)", fontSize }}
                             tickLine={false}
                             axisLine={false}
-                            width={isMobile ? 40 : 60}
+                            tickMargin={8}
+                            width={isMobile ? 44 : 56}
                         />
                         <YAxis
                             yAxisId="qtd"
@@ -1007,88 +1094,82 @@ const TransacionadoChartCard = () => {
                             tick={{ fill: "var(--color-text-tertiary)", fontSize }}
                             tickLine={false}
                             axisLine={false}
-                            width={isMobile ? 36 : 50}
+                            tickMargin={8}
+                            width={isMobile ? 36 : 44}
                         />
-                        <Tooltip
-                            cursor={{ fill: "var(--color-bg-secondary)", opacity: 0.4 }}
-                            contentStyle={{
-                                background: "var(--color-bg-primary-solid)",
-                                border: "1px solid var(--color-border-secondary)",
-                                borderRadius: 8,
-                                color: "var(--color-text-primary)",
-                                fontSize: 12,
-                            }}
-                            formatter={(value, name) => {
-                                if (name === "Total Transacionado")
-                                    return [currencyFormatter.format(Number(value)), name];
-                                return [numberFormatter.format(Number(value)), name];
-                            }}
-                        />
-                        <Legend
-                            verticalAlign="top"
-                            height={isMobile ? 28 : 36}
-                            wrapperStyle={{
-                                fontSize,
-                                color: "var(--color-text-tertiary)",
-                            }}
-                            iconType="circle"
-                        />
-                        <defs>
-                            <linearGradient
-                                id="quantidadeAreaFill"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
-                            >
-                                <stop
-                                    offset="0%"
-                                    stopColor="var(--color-brand-600)"
-                                    stopOpacity={0.35}
-                                />
-                                <stop
-                                    offset="100%"
-                                    stopColor="var(--color-brand-600)"
-                                    stopOpacity={0}
-                                />
-                            </linearGradient>
-                        </defs>
+                        <Tooltip content={<ChartTooltip />} cursor={<ChartCursor />} />
                         <Bar
                             yAxisId="total"
                             dataKey="total"
                             name="Total Transacionado"
-                            fill="var(--color-utility-blue-400)"
-                            radius={[4, 4, 0, 0]}
-                            maxBarSize={isMobile ? 14 : 28}
+                            fill="var(--color-brand-600)"
+                            radius={[3, 3, 0, 0]}
+                            maxBarSize={isMobile ? 10 : 18}
                         />
                         <Area
                             yAxisId="qtd"
                             type="monotone"
                             dataKey="quantidade"
                             name="Quantidade de Ingressos"
-                            stroke="var(--color-brand-600)"
+                            stroke="var(--color-fg-white)"
                             strokeWidth={2.5}
-                            fill="url(#quantidadeAreaFill)"
-                            dot={{ r: isMobile ? 2 : 3, fill: "var(--color-brand-600)" }}
-                            activeDot={{ r: 5 }}
+                            fill="url(#qtdAreaFill)"
+                            dot={{
+                                r: isMobile ? 3 : 4,
+                                fill: "var(--color-bg-primary)",
+                                stroke: "var(--color-fg-white)",
+                                strokeWidth: 2,
+                            }}
+                            activeDot={{
+                                r: 6,
+                                fill: "var(--color-fg-white)",
+                                stroke: "var(--color-bg-primary)",
+                                strokeWidth: 2,
+                            }}
                         >
                             {!isMobile && (
                                 <LabelList
                                     dataKey="quantidade"
                                     position="top"
-                                    fill="var(--color-text-secondary)"
-                                    fontSize={10}
-                                    formatter={(v) => {
-                                        const n = Number(v);
-                                        return n >= 80 ? numberFormatter.format(n) : "";
-                                    }}
+                                    fill="var(--color-fg-white)"
+                                    fontSize={11}
+                                    fontWeight={600}
+                                    offset={10}
+                                    formatter={(v) =>
+                                        numberFormatter.format(Number(v))
+                                    }
                                 />
                             )}
                         </Area>
                     </ComposedChart>
                 </ResponsiveContainer>
             </div>
-        </Card>
+
+            <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary px-5 py-3">
+                <div className="flex flex-wrap items-center gap-4 text-xs text-tertiary">
+                    <span className="flex items-center gap-1.5">
+                        <span
+                            aria-hidden="true"
+                            className="size-2.5 rounded-sm"
+                            style={{ background: "var(--color-brand-600)" }}
+                        />
+                        Total Transacionado
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                        <span
+                            aria-hidden="true"
+                            className="size-2.5 rounded-full"
+                            style={{ background: "var(--color-fg-white)" }}
+                        />
+                        Quantidade de Ingressos
+                    </span>
+                </div>
+                <span className="text-xs text-tertiary">
+                    {visibleChartData.length} dia
+                    {visibleChartData.length === 1 ? "" : "s"}
+                </span>
+            </footer>
+        </section>
     );
 };
 

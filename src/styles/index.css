@@ -39,11 +39,6 @@ button {
   cursor: pointer;
 }
 
-button:active {
-  cursor: pointer;
-  transform: scale(0.95);
-}
-
 .primary-buttom {
   border: none;
   background: #FF6101;

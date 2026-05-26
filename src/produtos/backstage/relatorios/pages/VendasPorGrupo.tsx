@@ -4,6 +4,7 @@ import { MetricsSimple } from "@/components/application/metrics/metrics";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Formatters                                                        */
@@ -31,14 +32,14 @@ interface IngressoRow {
     id: string;
     nome: string;
     estoque: number;
-    vendida: number;
+    vendido: number;
 }
 
 interface SetorRow {
     id: string;
     nome: string;
     estoque: number;
-    vendida: number;
+    vendido: number;
     ingressos?: IngressoRow[];
 }
 
@@ -101,61 +102,61 @@ const setores: SetorRow[] = [
         id: "vip",
         nome: "VIP",
         estoque: 2000,
-        vendida: 1800,
+        vendido: 1800,
         ingressos: [
-            { id: "vip-1l-int", nome: "VIP - 1º Lote (Inteira)", estoque: 800, vendida: 800 },
-            { id: "vip-1l-mei", nome: "VIP - 1º Lote (Meia)", estoque: 400, vendida: 400 },
-            { id: "vip-2l-int", nome: "VIP - 2º Lote (Inteira)", estoque: 500, vendida: 380 },
-            { id: "vip-2l-mei", nome: "VIP - 2º Lote (Meia)", estoque: 300, vendida: 220 },
+            { id: "vip-1l-int", nome: "VIP - 1º Lote (Inteira)", estoque: 800, vendido: 800 },
+            { id: "vip-1l-mei", nome: "VIP - 1º Lote (Meia)", estoque: 400, vendido: 400 },
+            { id: "vip-2l-int", nome: "VIP - 2º Lote (Inteira)", estoque: 500, vendido: 380 },
+            { id: "vip-2l-mei", nome: "VIP - 2º Lote (Meia)", estoque: 300, vendido: 220 },
         ],
     },
     {
         id: "camarote",
         nome: "Camarote Premium",
         estoque: 1500,
-        vendida: 1200,
+        vendido: 1200,
         ingressos: [
-            { id: "cam-1l-int", nome: "Camarote - 1º Lote (Inteira)", estoque: 500, vendida: 500 },
-            { id: "cam-1l-mei", nome: "Camarote - 1º Lote (Meia)", estoque: 300, vendida: 300 },
-            { id: "cam-2l-int", nome: "Camarote - 2º Lote (Inteira)", estoque: 400, vendida: 250 },
-            { id: "cam-2l-mei", nome: "Camarote - 2º Lote (Meia)", estoque: 300, vendida: 150 },
+            { id: "cam-1l-int", nome: "Camarote - 1º Lote (Inteira)", estoque: 500, vendido: 500 },
+            { id: "cam-1l-mei", nome: "Camarote - 1º Lote (Meia)", estoque: 300, vendido: 300 },
+            { id: "cam-2l-int", nome: "Camarote - 2º Lote (Inteira)", estoque: 400, vendido: 250 },
+            { id: "cam-2l-mei", nome: "Camarote - 2º Lote (Meia)", estoque: 300, vendido: 150 },
         ],
     },
     {
         id: "pista-premium",
         nome: "Pista Premium",
         estoque: 8000,
-        vendida: 6400,
+        vendido: 6400,
         ingressos: [
-            { id: "pp-1l-int", nome: "Pista Premium - 1º Lote (Inteira)", estoque: 3000, vendida: 3000 },
-            { id: "pp-1l-mei", nome: "Pista Premium - 1º Lote (Meia)", estoque: 1500, vendida: 1500 },
-            { id: "pp-2l-int", nome: "Pista Premium - 2º Lote (Inteira)", estoque: 2500, vendida: 1400 },
-            { id: "pp-2l-mei", nome: "Pista Premium - 2º Lote (Meia)", estoque: 1000, vendida: 500 },
+            { id: "pp-1l-int", nome: "Pista Premium - 1º Lote (Inteira)", estoque: 3000, vendido: 3000 },
+            { id: "pp-1l-mei", nome: "Pista Premium - 1º Lote (Meia)", estoque: 1500, vendido: 1500 },
+            { id: "pp-2l-int", nome: "Pista Premium - 2º Lote (Inteira)", estoque: 2500, vendido: 1400 },
+            { id: "pp-2l-mei", nome: "Pista Premium - 2º Lote (Meia)", estoque: 1000, vendido: 500 },
         ],
     },
     {
         id: "pista",
         nome: "Pista",
         estoque: 20000,
-        vendida: 18000,
+        vendido: 18000,
         ingressos: [
-            { id: "p-1l-int", nome: "Pista - 1º Lote (Inteira)", estoque: 5000, vendida: 5000 },
-            { id: "p-1l-mei", nome: "Pista - 1º Lote (Meia)", estoque: 4000, vendida: 4000 },
-            { id: "p-2l-int", nome: "Pista - 2º Lote (Inteira)", estoque: 6000, vendida: 5500 },
-            { id: "p-2l-mei", nome: "Pista - 2º Lote (Meia)", estoque: 3000, vendida: 2500 },
-            { id: "p-3l-int", nome: "Pista - 3º Lote (Inteira)", estoque: 2000, vendida: 1000 },
+            { id: "p-1l-int", nome: "Pista - 1º Lote (Inteira)", estoque: 5000, vendido: 5000 },
+            { id: "p-1l-mei", nome: "Pista - 1º Lote (Meia)", estoque: 4000, vendido: 4000 },
+            { id: "p-2l-int", nome: "Pista - 2º Lote (Inteira)", estoque: 6000, vendido: 5500 },
+            { id: "p-2l-mei", nome: "Pista - 2º Lote (Meia)", estoque: 3000, vendido: 2500 },
+            { id: "p-3l-int", nome: "Pista - 3º Lote (Inteira)", estoque: 2000, vendido: 1000 },
         ],
     },
     {
         id: "mezanino",
         nome: "Mezanino",
         estoque: 5807,
-        vendida: 2400,
+        vendido: 2400,
         ingressos: [
-            { id: "mez-1l-int", nome: "Mezanino - 1º Lote (Inteira)", estoque: 2000, vendida: 1500 },
-            { id: "mez-1l-mei", nome: "Mezanino - 1º Lote (Meia)", estoque: 1500, vendida: 600 },
-            { id: "mez-2l-int", nome: "Mezanino - 2º Lote (Inteira)", estoque: 1500, vendida: 200 },
-            { id: "mez-2l-mei", nome: "Mezanino - 2º Lote (Meia)", estoque: 807, vendida: 100 },
+            { id: "mez-1l-int", nome: "Mezanino - 1º Lote (Inteira)", estoque: 2000, vendido: 1500 },
+            { id: "mez-1l-mei", nome: "Mezanino - 1º Lote (Meia)", estoque: 1500, vendido: 600 },
+            { id: "mez-2l-int", nome: "Mezanino - 2º Lote (Inteira)", estoque: 1500, vendido: 200 },
+            { id: "mez-2l-mei", nome: "Mezanino - 2º Lote (Meia)", estoque: 807, vendido: 100 },
         ],
     },
 ];
@@ -212,11 +213,8 @@ export function VendasPorGrupo() {
     return (
         <BackstageLayout activeSection="relatorios" activeItem="vendas-por-grupo">
             <div className="flex min-w-0 flex-1 flex-col">
-                <header className="flex items-center md:px-6 py-6">
-                    <h1 className="text-display-xs font-bold text-primary">Relatórios</h1>
-                </header>
-                <main className="flex flex-1 flex-col gap-6 md:px-6 pb-10">
-                    <h2 className="text-lg font-semibold text-primary">Vendas por grupo</h2>
+                <main className="flex flex-1 flex-col gap-6 py-6 md:px-6 pb-10">
+                    <RelatorioPageHeader title="Vendas por grupo" />
 
                     <MetricsRow />
                     <DetalhePorItemCard />
@@ -375,7 +373,7 @@ const OcupacaoPorSetorCard = () => {
                             Estoque
                         </th>
                         <th className="hidden px-4 py-3 text-right text-xs font-semibold text-tertiary md:table-cell">
-                            Vendida
+                            Vendido
                         </th>
                         <th className="px-4 py-3 text-xs font-semibold text-tertiary">
                             <span className="inline-flex items-center gap-1">
@@ -436,11 +434,11 @@ const OcupacaoPorSetorCard = () => {
                                         {numberFormatter.format(setor.estoque)}
                                     </td>
                                     <td className="hidden px-4 py-4 text-right text-sm text-tertiary md:table-cell">
-                                        {numberFormatter.format(setor.vendida)}
+                                        {numberFormatter.format(setor.vendido)}
                                     </td>
                                     <td className="px-4 py-4">
                                         <OccupancyBar
-                                            value={setor.vendida}
+                                            value={setor.vendido}
                                             total={setor.estoque}
                                         />
                                     </td>
@@ -450,7 +448,7 @@ const OcupacaoPorSetorCard = () => {
                                         const isLastIngresso = j === arr.length - 1;
                                         const previousSum = arr
                                             .slice(0, j)
-                                            .reduce((sum, prev) => sum + prev.vendida, 0);
+                                            .reduce((sum, prev) => sum + prev.vendido, 0);
                                         const offsetPct =
                                             setor.estoque === 0
                                                 ? 0
@@ -458,21 +456,21 @@ const OcupacaoPorSetorCard = () => {
                                         const widthPct =
                                             setor.estoque === 0
                                                 ? 0
-                                                : (ingresso.vendida / setor.estoque) * 100;
+                                                : (ingresso.vendido / setor.estoque) * 100;
                                         const filledPct =
                                             setor.estoque === 0
                                                 ? 0
-                                                : (setor.vendida / setor.estoque) * 100;
+                                                : (setor.vendido / setor.estoque) * 100;
                                         const labelPct =
-                                            setor.vendida === 0
+                                            setor.vendido === 0
                                                 ? 0
-                                                : (ingresso.vendida / setor.vendida) * 100;
+                                                : (ingresso.vendido / setor.vendido) * 100;
                                         const boundaries = arr
                                             .slice(0, -1)
                                             .map((_, idx) => {
                                                 const sum = arr
                                                     .slice(0, idx + 1)
-                                                    .reduce((s, x) => s + x.vendida, 0);
+                                                    .reduce((s, x) => s + x.vendido, 0);
                                                 return setor.estoque === 0
                                                     ? 0
                                                     : (sum / setor.estoque) * 100;
@@ -497,7 +495,7 @@ const OcupacaoPorSetorCard = () => {
                                                     {numberFormatter.format(ingresso.estoque)}
                                                 </td>
                                                 <td className="hidden px-4 py-3 text-right text-sm text-tertiary md:table-cell">
-                                                    {numberFormatter.format(ingresso.vendida)}
+                                                    {numberFormatter.format(ingresso.vendido)}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <SegmentedOccupancyBar
@@ -576,15 +574,6 @@ const SegmentedOccupancyBar = ({
                     className="absolute h-full rounded-full bg-brand-solid transition-all"
                     style={{ left: `${clampedOffset}%`, width: `${clampedWidth}%` }}
                 />
-                {/* Vertical dashed guides at segment boundaries. */}
-                {boundaries.map((pos) => (
-                    <span
-                        key={pos}
-                        aria-hidden="true"
-                        className="pointer-events-none absolute -top-2 -bottom-2"
-                        style={{ left: `${Math.min(100, Math.max(0, pos))}%` }}
-                    />
-                ))}
             </div>
             <span className="w-10 shrink-0 text-right text-sm text-tertiary">{display}%</span>
         </div>

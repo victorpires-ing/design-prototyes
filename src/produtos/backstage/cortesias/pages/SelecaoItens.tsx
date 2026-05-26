@@ -8,7 +8,6 @@ import {
     Package,
     SearchLg,
     ShoppingCart01,
-    Ticket01,
     Users01,
 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
@@ -20,7 +19,7 @@ import { Progress } from "@/components/application/progress-steps/progress-steps
 import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { CortesiaSelectionPanel } from "../components/CortesiaSelectionPanel";
+import { CortesiaSelectionPanel } from  "../components/CortesiaSelectionPanel";
 import {
     COMBOS,
     MAX_SELECTIONS,
@@ -176,38 +175,27 @@ export function SelecaoItens() {
                                 onChange={setSearchQuery}
                             />
 
-                            {filteredSessions.length > 0 && (
+                            {filteredSessions.map((session) => (
                                 <AccordionShell
-                                    icon={Ticket01}
-                                    title="Ingressos"
-                                    isOpen={query !== "" || openAccordions.has("ingressos")}
-                                    onToggle={() => toggleAccordion("ingressos")}
+                                    key={session.id}
+                                    icon={Calendar}
+                                    title={session.datetime}
+                                    isOpen={
+                                        query !== "" ||
+                                        openAccordions.has(`session-${session.id}`)
+                                    }
+                                    onToggle={() =>
+                                        toggleAccordion(`session-${session.id}`)
+                                    }
                                 >
-                                    <div className="flex flex-col gap-3">
-                                        {filteredSessions.map((session) => (
-                                            <NestedAccordion
-                                                key={session.id}
-                                                icon={Calendar}
-                                                title={session.datetime}
-                                                isOpen={
-                                                    query !== "" ||
-                                                    openAccordions.has(`session-${session.id}`)
-                                                }
-                                                onToggle={() =>
-                                                    toggleAccordion(`session-${session.id}`)
-                                                }
-                                            >
-                                                <SessionContent
-                                                    session={session}
-                                                    selectedIds={selectedIds}
-                                                    onToggle={toggleSelection}
-                                                    reachedLimit={reachedLimit}
-                                                />
-                                            </NestedAccordion>
-                                        ))}
-                                    </div>
+                                    <SessionContent
+                                        session={session}
+                                        selectedIds={selectedIds}
+                                        onToggle={toggleSelection}
+                                        reachedLimit={reachedLimit}
+                                    />
                                 </AccordionShell>
-                            )}
+                            ))}
 
                             {filteredCombos.length > 0 && (
                                 <AccordionShell
@@ -298,14 +286,14 @@ interface AccordionShellProps {
 }
 
 const AccordionShell = ({ icon: Icon, title, isOpen, onToggle, children }: AccordionShellProps) => (
-    <div className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
+    <div className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary overflow-hidden">
         <button
             type="button"
             onClick={onToggle}
             aria-expanded={isOpen}
             className={cx(
-                "flex items-center gap-3 px-4 py-3 text-left transition duration-100 ease-linear hover:bg-primary_hover",
-                isOpen && "border-b border-secondary",
+                "flex items-center gap-3 px-4 py-3 text-left hover:bg-primary_hover",
+                isOpen && "border-b border-secondary ",
             )}
         >
             <FeaturedIcon icon={Icon} color="gray" size="sm" theme="modern" />
@@ -313,45 +301,12 @@ const AccordionShell = ({ icon: Icon, title, isOpen, onToggle, children }: Accor
             <ChevronDown
                 aria-hidden="true"
                 className={cx(
-                    "size-4 shrink-0 text-fg-quaternary transition-transform duration-150",
+                    "size-4 shrink-0 text-fg-quaternary",
                     isOpen && "rotate-180",
                 )}
             />
         </button>
         {isOpen && <div className="flex flex-col gap-4 p-4">{children}</div>}
-    </div>
-);
-
-interface NestedAccordionProps {
-    icon: React.FC<{ className?: string }>;
-    title: string;
-    isOpen: boolean;
-    onToggle: () => void;
-    children: React.ReactNode;
-}
-
-const NestedAccordion = ({ icon: Icon, title, isOpen, onToggle, children }: NestedAccordionProps) => (
-    <div className="flex flex-col rounded-lg bg-secondary_subtle ring-1 ring-border-secondary">
-        <button
-            type="button"
-            onClick={onToggle}
-            aria-expanded={isOpen}
-            className={cx(
-                "flex items-center gap-2 px-3 py-2.5 text-left transition duration-100 ease-linear hover:bg-secondary",
-                isOpen && "border-b border-secondary",
-            )}
-        >
-            <Icon className="size-4 text-fg-quaternary" />
-            <h4 className="flex-1 text-sm font-medium text-primary">{title}</h4>
-            <ChevronDown
-                aria-hidden="true"
-                className={cx(
-                    "size-4 shrink-0 text-fg-quaternary transition-transform duration-150",
-                    isOpen && "rotate-180",
-                )}
-            />
-        </button>
-        {isOpen && <div className="flex flex-col gap-4 p-3">{children}</div>}
     </div>
 );
 
@@ -375,7 +330,7 @@ const SessionContent = ({ session, selectedIds, onToggle, reachedLimit }: Sessio
                 </p>
                 <div className="flex flex-col gap-1">
                     {group.tickets.map((ticket) => (
-                        <div className="flex items-center" key={ticket.id}>
+                        <div className="flex items-center gap-2" key={ticket.id}>
                             <CheckboxRow
                                 id={ticket.id}
                                 label={ticket.name}
@@ -385,7 +340,7 @@ const SessionContent = ({ session, selectedIds, onToggle, reachedLimit }: Sessio
                                 onToggle={onToggle}
                             />
                             <Badge type="pill-color" color="gray" size="sm">
-                                {ticket.name}
+                                {ticket.type}
                             </Badge>
                         </div>
                     ))}

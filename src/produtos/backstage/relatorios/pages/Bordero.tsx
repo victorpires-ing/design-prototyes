@@ -3,6 +3,7 @@ import { MetricsSimple } from "@/components/application/metrics/metrics";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Shared constants                                                  */
@@ -73,11 +74,8 @@ export function Bordero() {
     return (
         <BackstageLayout activeSection="relatorios" activeItem="bordero">
             <div className="flex min-w-0 flex-1 flex-col">
-                <header className="flex items-center py-6 md:px-6">
-                    <h1 className="text-display-xs font-bold text-primary">Relatórios</h1>
-                </header>
-                <main className="flex flex-1 flex-col gap-6 pb-10 md:px-6">
-                    <h2 className="text-lg font-semibold text-primary">Borderô do Evento</h2>
+                <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                    <RelatorioPageHeader title="Borderô do Evento" />
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         <MetricsSimple

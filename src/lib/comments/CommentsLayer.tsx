@@ -1007,9 +1007,11 @@ const CommentDraftForm = ({
         viewportVersion,
     );
 
+    // Focus the textarea as soon as it's mounted (position becomes non-null).
     useEffect(() => {
+        if (!position) return;
         inputRef.current?.focus();
-    }, []);
+    }, [position]);
 
     useEffect(() => {
         const rect = containerRef.current?.getBoundingClientRect() ?? null;
@@ -1066,6 +1068,7 @@ const CommentDraftForm = ({
             >
                 <textarea
                     ref={inputRef}
+                    autoFocus
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     onKeyDown={handleKeyDown}

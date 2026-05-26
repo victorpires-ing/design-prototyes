@@ -11,6 +11,7 @@ import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Mock data                                                         */
@@ -353,13 +354,8 @@ export function Transferencias() {
     return (
         <BackstageLayout activeSection="relatorios" activeItem="transferencias">
             <div className="flex min-w-0 flex-1 flex-col">
-                <header className="flex items-center py-6 md:px-6">
-                    <h1 className="text-display-xs font-bold text-primary">Relatórios</h1>
-                </header>
-                <main className="flex flex-1 flex-col gap-6 pb-10 md:px-6">
-                    <h2 className="text-lg font-semibold text-primary">
-                        Transferências do Evento
-                    </h2>
+                <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                    <RelatorioPageHeader title="Transferências do Evento" />
                     <div className="flex justify-start">
                         <FilterDropdown
                             filters={filters}

@@ -23,7 +23,11 @@ import { Progress } from "@/components/application/progress-steps/progress-steps
 import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { ConfirmRemoveEmailModal, EditEmailModal } from "../components/EmailModals";
+import {
+    ConfirmRemoveEmailModal,
+    ConfirmSendCortesiasModal,
+    EditEmailModal,
+} from "../components/EmailModals";
 import { showSuccessToast } from "../utils/toast";
 import {
     getItemDetails,
@@ -101,7 +105,7 @@ export function VerificacaoFinal() {
 
     const [emails, setEmails] = useState<string[]>(incomingEmails);
     const [orderName, setOrderName] = useState("Envio de cortesia");
-    const [sendQrCode, setSendQrCode] = useState(true);
+    const [sendQrCode, setSendQrCode] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -109,6 +113,7 @@ export function VerificacaoFinal() {
     const [editingEmail, setEditingEmail] = useState<string | null>(null);
     const [removingEmail, setRemovingEmail] = useState<string | null>(null);
     const [cadastroFilter, setCadastroFilter] = useState<CadastroFilter>("all");
+    const [showSendConfirm, setShowSendConfirm] = useState(false);
 
     // Group the selected items by kind once.
     const groupedItems = useMemo(() => {
@@ -201,6 +206,11 @@ export function VerificacaoFinal() {
     const { addPedido } = useCortesiasStore();
 
     const handleSubmit = useCallback(() => {
+        if (activeEmails.length === 0) return;
+        setShowSendConfirm(true);
+    }, [activeEmails]);
+
+    const handleConfirmSend = useCallback(() => {
         addPedido({
             nome: orderName,
             emails,
@@ -209,9 +219,12 @@ export function VerificacaoFinal() {
         showSuccessToast(
             "Pedido enviado",
             `${activeEmails.length} ${
-                activeEmails.length === 1 ? "destinatário foi notificado" : "destinatários foram notificados"
+                activeEmails.length === 1
+                    ? "destinatário foi notificado"
+                    : "destinatários foram notificados"
             }.`,
         );
+        setShowSendConfirm(false);
         navigate("/backstage/cortesias");
     }, [orderName, emails, activeEmails, itemIds, addPedido, navigate]);
 
@@ -381,6 +394,13 @@ export function VerificacaoFinal() {
                 email={removingEmail ?? ""}
                 onClose={() => setRemovingEmail(null)}
                 onConfirm={handleConfirmRemove}
+            />
+            <ConfirmSendCortesiasModal
+                isOpen={showSendConfirm}
+                recipientCount={activeEmails.length}
+                itemsPerRecipient={itemsPerRecipient}
+                onClose={() => setShowSendConfirm(false)}
+                onConfirm={handleConfirmSend}
             />
         </BackstageLayout>
     );

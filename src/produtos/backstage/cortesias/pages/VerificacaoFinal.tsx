@@ -41,20 +41,20 @@ import { useCortesiasStore } from "../data/cortesias-store";
 const steps: ProgressFeaturedIconType[] = [
     {
         title: "Itens",
-        description: "Defina a quantidade e tipo de itens",
-        status: "complete",
+        description: "Escolha quais ingressos deseja enviar",
+        status: "current",
         icon: ShoppingCart01,
     },
     {
         title: "Destinatários",
-        description: "Escolha para quem vai enviar",
-        status: "complete",
+        description: "Informe quem vai receber os itens",
+        status: "incomplete",
         icon: Users01,
     },
     {
         title: "Verificação final",
-        description: "Revisão dos destinatários e itens",
-        status: "current",
+        description: "Confirme se está tudo certo e envie!",
+        status: "incomplete",
         icon: CheckCircle,
     },
 ];

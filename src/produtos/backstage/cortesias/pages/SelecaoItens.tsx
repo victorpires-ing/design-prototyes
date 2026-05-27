@@ -34,19 +34,19 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 const steps: ProgressFeaturedIconType[] = [
     {
         title: "Itens",
-        description: "Defina a quantidade e tipo de itens",
+        description: "Escolha quais ingressos deseja enviar",
         status: "current",
         icon: ShoppingCart01,
     },
     {
         title: "Destinatários",
-        description: "Escolha para quem vai enviar",
+        description: "Informe quem vai receber os itens",
         status: "incomplete",
         icon: Users01,
     },
     {
         title: "Verificação final",
-        description: "Revisão dos destinatários e itens",
+        description: "Confirme se está tudo certo e envie!",
         status: "incomplete",
         icon: CheckCircle,
     },

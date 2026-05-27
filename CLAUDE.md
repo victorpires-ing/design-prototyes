@@ -351,15 +351,18 @@ All prototype work lives under `src/produtos/<produto>/<projeto>/`. A **product*
 ```
 src/produtos/
 ├── _template/                  # Reference skeleton — DO NOT edit. Duplicate to start a new product.
+│   ├── README.md
+│   ├── components/             #   Empty: shared components for the product
+│   └── _projeto/               #   Empty: skeleton for the first project (pages/, components/, data/, utils/)
 └── backstage/                  # Product: Backstage
     ├── components/             # Components shared across ALL projects within Backstage
     │   ├── Backstage.tsx       #   BackstageLayout (producer rail + event rail + sidebar)
     │   └── ThemeToggle.tsx
     └── cortesias/              # Project: cortesias (emission flow)
-        ├── pages/              #   Route components (SelecaoItens, EmissaoCortesias, VerificacaoFinal, RelatorioPedidos)
-        ├── components/         #   Cortesia-only custom components (modals, slideouts, panels)
+        ├── pages/              #   Route components (one file per route)
+        ├── components/         #   Project-only custom components (modals, slideouts, panels)
         ├── data/               #   Mock data and stores
-        └── utils/              #   Cortesia-only utilities
+        └── utils/              #   Project-only utilities
 ```
 
 **Allowed imports from inside a project:**
@@ -372,6 +375,60 @@ src/produtos/
 - Importing from another product (`src/produtos/outro-produto/...`)
 - Importing from a sibling project (cortesias must not import from a future `relatorios/`, except through the shared `<produto>/components/`)
 - Editing `src/components/` (design system)
+
+---
+
+#### MANDATORY: creating a new product or project
+
+When the user asks to **create a new product** (e.g. "novo produto", "create a product") or **create a new project** (e.g. "novo projeto", "adicionar projeto no backstage"), you MUST follow this exact protocol — do not skip steps, do not improvise file structure, do not guess names.
+
+##### Step 1 — Ask the user upfront
+
+Before touching any file, ask via `AskUserQuestion`:
+
+**For a new product:**
+1. Qual o nome do produto? (kebab-case, ex: `organizador`, `ingresse-app`)
+2. Qual o nome do primeiro projeto dentro dele? (kebab-case)
+3. O produto terá layout/navegação compartilhada entre projetos? (Sim → criar `<produto>/components/` com layout shell; Não → manter `components/` vazia por enquanto)
+
+**For a new project inside an existing product:**
+1. Em qual produto? (mostrar opções existentes em `src/produtos/`, excluindo `_template/` e `playground/`)
+2. Qual o nome do projeto? (kebab-case)
+3. Vai reaproveitar o layout compartilhado do produto? (Sim → importar `../components/<Layout>`; Não → página standalone)
+
+NEVER assume product/project names from context. Always ask.
+
+##### Step 2 — Scaffold from `_template/`
+
+- For a new product: copy `src/produtos/_template/` to `src/produtos/<produto>/` and rename `_projeto/` to `<projeto>/`. Delete the copied `README.md` and any placeholder content.
+- For a new project: copy `src/produtos/_template/_projeto/` to `src/produtos/<produto>/<projeto>/`.
+- Resulting layout MUST match exactly:
+  ```
+  <produto>/components/                  (may be empty)
+  <produto>/<projeto>/pages/
+  <produto>/<projeto>/components/
+  <produto>/<projeto>/data/
+  <produto>/<projeto>/utils/
+  ```
+- Never edit `_template/` itself.
+
+##### Step 3 — Create the first page
+
+File: `src/produtos/<produto>/<projeto>/pages/<page-name>.tsx` (kebab-case file, PascalCase export).
+
+If the product has a shared layout, wrap the page in it. Otherwise return a plain `<div className="min-h-screen bg-primary text-primary">…</div>`.
+
+##### Step 4 — Register the route in `src/app/App.tsx`
+
+Add an `import` line and a `<Route>` entry. Route path convention: `/<produto>/<projeto>` (or `/<produto>/<projeto>/<page>` for sub-pages).
+
+##### Step 5 — Verify
+
+Run `npm run build` and confirm it succeeds before reporting the task as complete.
+
+##### Sandbox-only products (`playground/`)
+
+`src/produtos/playground/` is gitignored (see `.gitignore`). Anything placed there is **local-only** and MUST NOT be imported from `src/app/App.tsx` or any tracked file — that breaks the Vercel build. Use playground for personal experiments only; if a route is needed locally, the user adds it manually and does not commit.
 
 ### When Adding New Backstage Pages
 

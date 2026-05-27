@@ -248,15 +248,15 @@ const MetricsRow = () => (
 const OcupacaoMetric = () => (
     <div className="rounded-xl bg-primary shadow-xs ring-1 ring-secondary ring-inset">
         <div className="flex h-full items-center gap-8 px-4 py-5 md:px-5">
-            <div className="relative flex flex-col shrink-0 items-center justify-center">
+            <div className="relative flex flex-col gap-2 shrink-0 items-center justify-center">
                 <ProgressBarHalfCircle
                     size="xs"
                     min={0}
+                    label="Ocupação"
                     max={TOTAL_ESTOQUE}
                     value={TOTAL_VENDIDO}
                     valueFormatter={(_value: number, pct: number) => `${pct}%`}
                 />
-                <span className="text-sm font-medium text-primary">Taxa de ocupação</span>
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <p className="text-lg font-semibold text-primary leading-tight">
@@ -265,9 +265,6 @@ const OcupacaoMetric = () => (
                         {" "}
                         de {numberFormatter.format(TOTAL_ESTOQUE)}
                     </span>
-                </p>
-                <p className="text-xs text-tertiary">
-                    Atualizado há poucos segundos
                 </p>
             </div>
         </div>

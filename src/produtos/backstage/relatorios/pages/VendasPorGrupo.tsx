@@ -1,7 +1,10 @@
 import { Fragment, useState } from "react";
-import { ChevronDown, Ticket02 } from "@untitledui/icons";
+import { ArrowUpRight, ChevronDown, CurrencyDollarCircle, Receipt } from "@untitledui/icons";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import { Badge } from "@/components/base/badges/badges";
+import { ProgressBarHalfCircle } from "@/components/base/progress-indicators/progress-circles";
 import { MetricsSimple } from "@/components/application/metrics/metrics";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
+import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
@@ -19,14 +22,6 @@ const numberFormatter = new Intl.NumberFormat("pt-BR");
 /* ------------------------------------------------------------------ */
 /*  Mock data                                                         */
 /* ------------------------------------------------------------------ */
-
-interface DetalheItem {
-    id: string;
-    nome: string;
-    quantidade: number;
-    gmv: number;
-    gmvComDesconto: number;
-}
 
 interface IngressoRow {
     id: string;
@@ -79,23 +74,6 @@ interface CupomRow {
     valorDesconto: number;
     valorTotal: number;
 }
-
-const detalheItens: DetalheItem[] = [
-    {
-        id: "ingresso-individual",
-        nome: "Ingresso Individual",
-        quantidade: 33500,
-        gmv: 2612500.0,
-        gmvComDesconto: 2479350.0,
-    },
-    {
-        id: "combo-camarote",
-        nome: "Combo Camarote + Open Bar",
-        quantidade: 3807,
-        gmv: 276377.13,
-        gmvComDesconto: 263500.0,
-    },
-];
 
 const setores: SetorRow[] = [
     {
@@ -217,7 +195,7 @@ export function VendasPorGrupo() {
                     <RelatorioPageHeader title="Vendas por grupo" />
 
                     <MetricsRow />
-                    <DetalhePorItemCard />
+                    <MixReceitaCard />
                     <OcupacaoPorSetorCard />
                     <ComboCard />
                     <ProdutosCard />
@@ -240,32 +218,59 @@ const VALOR_TOTAL = 2888877.13;
 const TOTAL_ITENS = 37307;
 const TICKET_MEDIO = VALOR_TOTAL / TOTAL_ITENS;
 
+const TOTAL_ESTOQUE = setores.reduce((s, x) => s + x.estoque, 0);
+const TOTAL_VENDIDO = setores.reduce((s, x) => s + x.vendido, 0);
+
 const MetricsRow = () => (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <MetricsSimple
-            type="modern"
-            trend="positive"
-            subtitle="Valor total"
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <MetricsIcon03
+            icon={CurrencyDollarCircle}
             title={currencyFormatter.format(VALOR_TOTAL)}
-            footer={null}
-            className={HIDE_TREND_AND_MENU}
+            subtitle="Valor total"
+            change={null}
+            changeTrend="positive"
+            actions={false}
+            className="flex-1 max-lg:**:data-featured-icon:hidden md:min-w-[320px] [&_p+div]:hidden"
         />
-        <MetricsSimple
-            type="modern"
-            trend="positive"
-            subtitle="Total de itens"
-            title={numberFormatter.format(TOTAL_ITENS)}
-            footer={null}
-            className={HIDE_TREND_AND_MENU}
-        />
-        <MetricsSimple
-            type="modern"
-            trend="positive"
-            subtitle="Ticket médio"
+        <MetricsIcon03
+            icon={Receipt}
             title={currencyFormatter.format(TICKET_MEDIO)}
-            footer={null}
-            className={HIDE_TREND_AND_MENU}
+            subtitle="Ticket médio"
+            change={null}
+            changeTrend="positive"
+            actions={false}
+            className="flex-1 max-lg:**:data-featured-icon:hidden md:min-w-[320px] [&_p+div]:hidden"
         />
+        <OcupacaoMetric />
+    </div>
+);
+
+const OcupacaoMetric = () => (
+    <div className="rounded-xl bg-primary shadow-xs ring-1 ring-secondary ring-inset">
+        <div className="flex h-full items-center gap-8 px-4 py-5 md:px-5">
+            <div className="relative flex flex-col shrink-0 items-center justify-center">
+                <ProgressBarHalfCircle
+                    size="xs"
+                    min={0}
+                    max={TOTAL_ESTOQUE}
+                    value={TOTAL_VENDIDO}
+                    valueFormatter={(_value: number, pct: number) => `${pct}%`}
+                />
+                <span className="text-sm font-medium text-primary">Taxa de ocupação</span>
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <p className="text-lg font-semibold text-primary leading-tight">
+                    {numberFormatter.format(TOTAL_VENDIDO)}
+                    <span className="font-normal text-tertiary">
+                        {" "}
+                        de {numberFormatter.format(TOTAL_ESTOQUE)}
+                    </span>
+                </p>
+                <p className="text-xs text-tertiary">
+                    Atualizado há poucos segundos
+                </p>
+            </div>
+        </div>
     </div>
 );
 
@@ -288,54 +293,138 @@ const Card = ({ title, children }: CardProps) => (
 );
 
 /* ------------------------------------------------------------------ */
-/*  Detalhe por Item                                                  */
+/*  Mix de receita                                                    */
 /* ------------------------------------------------------------------ */
 
-const DetalhePorItemCard = () => (
-    <Card title="Detalhe por Item">
-        <div className="flex flex-col">
-            {detalheItens.map((item, i) => (
-                <div
-                    key={item.id}
-                    className={cx(
-                        "flex flex-col gap-4 px-4 py-4 transition duration-100 ease-linear hover:bg-primary_hover md:flex-row md:items-center",
-                        i !== detalheItens.length - 1 && "border-b border-secondary",
-                    )}
-                >
-                    <div className="flex min-w-0 items-center gap-3 md:flex-1">
-                        <FeaturedIcon
-                            icon={Ticket02}
-                            color="brand"
-                            theme="gradient"
-                            size="md"
-                        />
-                        <p className="min-w-0 flex-1 truncate text-sm font-medium text-primary">
-                            {item.nome}
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-6 md:gap-8">
-                        <StatBlock label="Quantidade" value={numberFormatter.format(item.quantidade)} />
-                        <StatBlock label="GMV" value={currencyFormatter.format(item.gmv)} />
-                        <StatBlock
-                            label="GMV com Desconto"
-                            value={currencyFormatter.format(item.gmvComDesconto)}
-                        />
-                    </div>
-                </div>
-            ))}
-        </div>
-    </Card>
-);
-
-interface StatBlockProps {
-    label: string;
-    value: string;
+interface MixReceitaItem {
+    id: string;
+    nome: string;
+    quantidade: number;
+    gmv: number;
+    gmvComDesconto: number;
+    fill: string;
 }
 
-const StatBlock = ({ label, value }: StatBlockProps) => (
-    <div className="flex flex-col gap-0.5">
+const mixReceita: MixReceitaItem[] = [
+    {
+        id: "ingressos",
+        nome: "Ingressos",
+        quantidade: 33500,
+        gmv: 2612500.0,
+        gmvComDesconto: 2479350.0,
+        fill: "var(--color-utility-brand-700)",
+    },
+    {
+        id: "combos",
+        nome: "Combos",
+        quantidade: 3807,
+        gmv: 1100000.0,
+        gmvComDesconto: 1043726.0,
+        fill: "var(--color-utility-brand-500)",
+    },
+    {
+        id: "produtos",
+        nome: "Produtos",
+        quantidade: 498,
+        gmv: 48578.9,
+        gmvComDesconto: 45579.2,
+        fill: "var(--color-utility-brand-300)",
+    },
+];
+
+const MixReceitaCard = () => {
+    const totalGmvDesc = mixReceita.reduce((s, x) => s + x.gmvComDesconto, 0);
+    const radialData = mixReceita.map((item) => ({
+        ...item,
+        value: Math.round((item.gmvComDesconto / totalGmvDesc) * 100),
+    }));
+
+    return (
+        <Card title="Mix de receita">
+            <div className="flex flex-col gap-6 px-4 py-5 md:flex-row md:items-center md:gap-8 md:px-5">
+                <div className="flex shrink-0 flex-col items-center gap-2">
+                    <div className="size-44">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={radialData}
+                                    dataKey="gmvComDesconto"
+                                    innerRadius="65%"
+                                    outerRadius="100%"
+                                    paddingAngle={2}
+                                    startAngle={90}
+                                    endAngle={-270}
+                                    stroke="none"
+                                    isAnimationActive={false}
+                                >
+                                    {radialData.map((d) => (
+                                        <Cell key={d.id} fill={d.fill} />
+                                    ))}
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <ul className="flex w-full flex-1 flex-col divide-y divide-secondary">
+                    {radialData.map((item) => (
+                        <li
+                            key={item.id}
+                            className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:gap-4"
+                        >
+                            <div className="flex min-w-0 items-center gap-3 md:flex-1">
+                                <span
+                                    className="size-3 shrink-0 rounded-full"
+                                    style={{ backgroundColor: item.fill }}
+                                />
+                                <div className="flex min-w-0 flex-1 flex-col">
+                                    <span className="text-sm font-semibold text-primary">
+                                        {item.nome}
+                                    </span>
+                                    <span className="text-xs text-tertiary">
+                                        {item.value}% do GMV
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 md:flex md:gap-8">
+                                <MixStat
+                                    className="md:w-20"
+                                    label="Quantidade"
+                                    value={numberFormatter.format(item.quantidade)}
+                                />
+                                <MixStat
+                                    className="md:w-36"
+                                    label="GMV"
+                                    value={currencyFormatter.format(item.gmv)}
+                                />
+                                <MixStat
+                                    className="md:w-36"
+                                    label="GMV c/ desconto"
+                                    value={currencyFormatter.format(item.gmvComDesconto)}
+                                />
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </Card>
+    );
+};
+
+const MixStat = ({
+    label,
+    value,
+    className,
+}: {
+    label: string;
+    value: string;
+    className?: string;
+}) => (
+    <div className={cx("flex flex-col gap-0.5", className)}>
         <span className="text-xs text-tertiary">{label}</span>
-        <span className="text-sm font-medium text-primary">{value}</span>
+        <span className="text-sm font-medium text-primary tabular-nums">
+            {value}
+        </span>
     </div>
 );
 
@@ -377,7 +466,7 @@ const OcupacaoPorSetorCard = () => {
                         </th>
                         <th className="px-4 py-3 text-xs font-semibold text-tertiary">
                             <span className="inline-flex items-center gap-1">
-                                Taxa de ocupação <ChevronDown className="size-3.5" />
+                                Taxa de ocupação
                             </span>
                         </th>
                     </tr>
@@ -491,9 +580,7 @@ const OcupacaoPorSetorCard = () => {
                                                         {ingresso.nome}
                                                     </span>
                                                 </td>
-                                                <td className="hidden px-4 py-3 text-right text-sm text-tertiary md:table-cell">
-                                                    {numberFormatter.format(ingresso.estoque)}
-                                                </td>
+                                                <td className="hidden px-4 py-3 md:table-cell" />
                                                 <td className="hidden px-4 py-3 text-right text-sm text-tertiary md:table-cell">
                                                     {numberFormatter.format(ingresso.vendido)}
                                                 </td>

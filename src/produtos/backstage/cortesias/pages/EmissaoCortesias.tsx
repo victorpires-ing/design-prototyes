@@ -11,13 +11,13 @@ const steps: ProgressFeaturedIconType[] = [
     {
         title: "Itens",
         description: "Escolha quais ingressos deseja enviar",
-        status: "current",
+        status: "complete",
         icon: ShoppingCart01,
     },
     {
         title: "Destinatários",
         description: "Informe quem vai receber os itens",
-        status: "incomplete",
+        status: "current",
         icon: Users01,
     },
     {

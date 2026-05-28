@@ -1,5 +1,6 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, ChevronDown, CurrencyDollarCircle, Receipt } from "@untitledui/icons";
+import { motion } from "motion/react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/base/badges/badges";
 import { ProgressBarHalfCircle } from "@/components/base/progress-indicators/progress-circles";
@@ -196,6 +197,7 @@ export function VendasPorGrupo() {
 
                     <MetricsRow />
                     <MixReceitaCard />
+                    <DrillDownGmvCard />
                     <OcupacaoPorSetorCard />
                     <ComboCard />
                     <ProdutosCard />
@@ -226,7 +228,7 @@ const MetricsRow = () => (
         <MetricsIcon03
             icon={CurrencyDollarCircle}
             title={currencyFormatter.format(VALOR_TOTAL)}
-            subtitle="Valor total"
+            subtitle="GMV"
             change={null}
             changeTrend="positive"
             actions={false}
@@ -278,12 +280,14 @@ const OcupacaoMetric = () => (
 interface CardProps {
     title: string;
     children: React.ReactNode;
+    headerRight?: React.ReactNode;
 }
 
-const Card = ({ title, children }: CardProps) => (
+const Card = ({ title, children, headerRight }: CardProps) => (
     <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-        <header className="border-b border-secondary px-4 py-4">
+        <header className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-4">
             <h3 className="text-md font-semibold text-primary">{title}</h3>
+            {headerRight}
         </header>
         {children}
     </section>
@@ -424,6 +428,335 @@ const MixStat = ({
         </span>
     </div>
 );
+
+/* ------------------------------------------------------------------ */
+/*  Drill-down GMV (data → setor → ingresso → lote → tipo)            */
+/* ------------------------------------------------------------------ */
+
+interface TreeNode {
+    id: string;
+    label: string;
+    value: number;
+    children?: TreeNode[];
+}
+
+const DRILL_LEVELS = ["Data", "Setor", "Ingresso", "Lote", "Tipo"] as const;
+
+// Generates the drill-down tree from realistic-ish numbers.
+const buildDrillTree = (): TreeNode[] => {
+    const tipos = (base: number, id: string): TreeNode[] => [
+        { id: `${id}-int`, label: "Inteira", value: Math.round(base * 0.62) },
+        { id: `${id}-mei`, label: "Meia", value: Math.round(base * 0.3) },
+        { id: `${id}-pro`, label: "Promo", value: Math.round(base * 0.08) },
+    ];
+    const lotes = (base: number, id: string): TreeNode[] => [
+        {
+            id: `${id}-1l`,
+            label: "1º Lote",
+            value: Math.round(base * 0.5),
+            children: tipos(base * 0.5, `${id}-1l`),
+        },
+        {
+            id: `${id}-2l`,
+            label: "2º Lote",
+            value: Math.round(base * 0.35),
+            children: tipos(base * 0.35, `${id}-2l`),
+        },
+        {
+            id: `${id}-3l`,
+            label: "3º Lote",
+            value: Math.round(base * 0.15),
+            children: tipos(base * 0.15, `${id}-3l`),
+        },
+    ];
+    const setoresFor = (
+        dateId: string,
+        weight: number,
+    ): TreeNode[] => {
+        const seeds = [
+            { id: "vip", label: "VIP", base: 420000 },
+            { id: "cam", label: "Camarote Premium", base: 380000 },
+            { id: "pp", label: "Pista Premium", base: 320000 },
+            { id: "p", label: "Pista", base: 250000 },
+            { id: "mez", label: "Mezanino", base: 90000 },
+        ];
+        return seeds.map((s) => {
+            const setorValue = Math.round(s.base * weight);
+            return {
+                id: `${dateId}-${s.id}`,
+                label: s.label,
+                value: setorValue,
+                children: [
+                    {
+                        id: `${dateId}-${s.id}-individual`,
+                        label: `${s.label} Individual`,
+                        value: Math.round(setorValue * 0.62),
+                        children: lotes(
+                            setorValue * 0.62,
+                            `${dateId}-${s.id}-individual`,
+                        ),
+                    },
+                    {
+                        id: `${dateId}-${s.id}-combo`,
+                        label: `Combo ${s.label}`,
+                        value: Math.round(setorValue * 0.38),
+                        children: lotes(
+                            setorValue * 0.38,
+                            `${dateId}-${s.id}-combo`,
+                        ),
+                    },
+                ],
+            };
+        });
+    };
+    const dates: { id: string; label: string; weight: number }[] = [
+        { id: "d1", label: "01 mai", weight: 0.18 },
+        { id: "d2", label: "08 mai", weight: 0.22 },
+        { id: "d3", label: "15 mai", weight: 0.28 },
+        { id: "d4", label: "22 mai", weight: 0.32 },
+    ];
+    return dates.map((d) => {
+        const children = setoresFor(d.id, d.weight);
+        const total = children.reduce((s, x) => s + x.value, 0);
+        return { id: d.id, label: d.label, value: total, children };
+    });
+};
+
+const drillTree = buildDrillTree();
+
+const DrillDownGmvCard = () => {
+    const [path, setPath] = useState<string[]>([]);
+    const innerRef = useRef<HTMLDivElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const itemRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
+    const prevPathLength = useRef(0);
+    const [lines, setLines] = useState<string[]>([]);
+
+    const columns = useMemo(() => {
+        const cols: TreeNode[][] = [drillTree];
+        let parent: TreeNode | undefined;
+        for (let i = 0; i < path.length; i++) {
+            const list = cols[i];
+            parent = list.find((n) => n.id === path[i]);
+            if (!parent?.children?.length) break;
+            cols.push(parent.children);
+        }
+        return cols;
+    }, [path]);
+
+    const computeLines = () => {
+        const inner = innerRef.current;
+        if (!inner) return;
+        const innerRect = inner.getBoundingClientRect();
+        const next: string[] = [];
+        for (let i = 0; i < path.length; i++) {
+            const fromId = path[i];
+            const nextCol = columns[i + 1];
+            if (!nextCol?.length) continue;
+            const toId = nextCol[0].id;
+            const fromEl = itemRefs.current.get(fromId);
+            const toEl = itemRefs.current.get(toId);
+            if (!fromEl || !toEl) continue;
+            const f = fromEl.getBoundingClientRect();
+            const t = toEl.getBoundingClientRect();
+            const x1 = f.right - innerRect.left;
+            const y1 = f.top + f.height / 2 - innerRect.top;
+            const x2 = t.left - innerRect.left;
+            const y2 = t.top + t.height / 2 - innerRect.top;
+            const midX = (x1 + x2) / 2;
+            next.push(`M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2},${y2}`);
+        }
+        setLines(next);
+    };
+
+    useLayoutEffect(() => {
+        computeLines();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [path, columns]);
+
+    useEffect(() => {
+        const handle = () => computeLines();
+        window.addEventListener("resize", handle);
+        return () => window.removeEventListener("resize", handle);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [path, columns]);
+
+    useEffect(() => {
+        if (path.length < prevPathLength.current) {
+            scrollRef.current?.scrollTo({ left: 0, behavior: "smooth" });
+        }
+        prevPathLength.current = path.length;
+    }, [path]);
+
+    const handleSelect = (colIndex: number, id: string) => {
+        setPath((prev) => {
+            const next = prev.slice(0, colIndex);
+            if (prev[colIndex] === id) return next;
+            next[colIndex] = id;
+            return next;
+        });
+    };
+
+    const reset = () => setPath([]);
+
+    return (
+        <Card
+            title="Detalhamento de GMV"
+            headerRight={
+                path.length > 0 ? (
+                    <button
+                        type="button"
+                        onClick={reset}
+                        className="text-sm font-medium text-brand-secondary hover:text-brand-secondary_hover"
+                    >
+                        Limpar seleção
+                    </button>
+                ) : null
+            }
+        >
+            <div ref={scrollRef} className="overflow-x-auto">
+                <div
+                    ref={innerRef}
+                    className="relative min-w-max opacity-100"
+                    style={{
+                        backgroundImage:
+                            "radial-gradient(circle, var(--color-fg-quaternary) 1px, transparent 1px)",
+                        backgroundSize: "16px 16px",
+                        backgroundColor: "rgba(0, 0, 0, 0.6)",
+                        backgroundBlendMode: "overlay"
+                    }}
+                >
+                    <svg
+                        className="pointer-events-none absolute inset-0 size-full"
+                        aria-hidden="true"
+                    >
+                        {lines.map((d, i) => (
+                            <path
+                                key={i}
+                                d={d}
+                                fill="none"
+                                stroke="var(--color-utility-brand-400)"
+                                strokeWidth={2}
+                            />
+                        ))}
+                    </svg>
+
+                    <div className="relative flex items-start gap-8 px-4 py-5 md:px-5">
+                        {columns.map((nodes, colIndex) => {
+                            const selectedId = path[colIndex];
+                            const hasSelection = !!selectedId;
+                            return (
+                                <motion.div
+                                    key={colIndex}
+                                    initial={{ opacity: 0, x: -16 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{
+                                        duration: 0.22,
+                                        ease: "easeOut",
+                                    }}
+                                    onAnimationComplete={computeLines}
+                                    className="flex w-52 shrink-0 flex-col gap-2"
+                                >
+                                    <div className="flex flex-col gap-0.5 pb-2">
+                                        <span className="text-xs font-semibold text-tertiary uppercase tracking-wide">
+                                            {DRILL_LEVELS[colIndex] ?? "Detalhe"}
+                                        </span>
+                                        {colIndex > 0 && path[colIndex - 1] && (
+                                            <span className="truncate text-xs text-tertiary">
+                                                {findNodeLabel(
+                                                    columns[colIndex - 1],
+                                                    path[colIndex - 1],
+                                                )}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <ul className="flex flex-col gap-2">
+                                        {nodes.map((node) => {
+                                            const colSum = nodes.reduce(
+                                                (s, n) => s + n.value,
+                                                0,
+                                            );
+                                            const pct =
+                                                colSum === 0
+                                                    ? 0
+                                                    : (node.value / colSum) * 100;
+                                            const isSelected = node.id === selectedId;
+                                            const dimmed = hasSelection && !isSelected;
+                                            const isLeaf = !node.children?.length;
+                                            return (
+                                                <li key={node.id}>
+                                                    <button
+                                                        ref={(el) => {
+                                                            itemRefs.current.set(
+                                                                node.id,
+                                                                el,
+                                                            );
+                                                        }}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            !isLeaf &&
+                                                            handleSelect(colIndex, node.id)
+                                                        }
+                                                        disabled={isLeaf}
+                                                        className={cx(
+                                                            "flex w-full flex-col gap-1 rounded-md bg-secondary px-3 py-2.5 text-left ring-1 ring-border-secondary transition duration-100 ease-linear",
+                                                            !isLeaf && "hover:bg-secondary_hover",
+                                                            isLeaf && "cursor-default",
+                                                            isSelected &&
+                                                                "ring-2 ring-brand",
+                                                            dimmed && "opacity-50",
+                                                        )}
+                                                    >
+                                                        <span
+                                                            className={cx(
+                                                                "truncate text-xs text-primary",
+                                                                isSelected
+                                                                    ? "font-semibold"
+                                                                    : "font-medium",
+                                                            )}
+                                                        >
+                                                            {node.label}
+                                                        </span>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-quaternary">
+                                                                <div
+                                                                    className={cx(
+                                                                        "h-full rounded-full",
+                                                                        isSelected
+                                                                            ? "bg-fg-brand-primary"
+                                                                            : "bg-utility-brand-400",
+                                                                    )}
+                                                                    style={{
+                                                                        width: `${pct}%`,
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <span className="shrink-0 text-xs font-medium text-primary tabular-nums">
+                                                                {pct.toFixed(1)}%
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-xs text-tertiary tabular-nums">
+                                                            {currencyFormatter.format(
+                                                                node.value,
+                                                            )}
+                                                        </span>
+                                                    </button>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        </Card>
+    );
+};
+
+const findNodeLabel = (nodes: TreeNode[], id: string): string =>
+    nodes.find((n) => n.id === id)?.label ?? "";
 
 /* ------------------------------------------------------------------ */
 /*  Ocupação por setor                                                */

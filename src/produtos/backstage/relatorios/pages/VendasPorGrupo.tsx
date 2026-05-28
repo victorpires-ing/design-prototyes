@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, ChevronDown, CurrencyDollarCircle, Receipt } from "@untitledui/icons";
+import { ArrowUpRight, ChevronDown, CurrencyDollarCircle, CursorClick02, Receipt } from "@untitledui/icons";
 import { motion } from "motion/react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/base/badges/badges";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { ProgressBarHalfCircle } from "@/components/base/progress-indicators/progress-circles";
 import { MetricsSimple } from "@/components/application/metrics/metrics";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
@@ -387,7 +388,7 @@ const MixReceitaCard = () => {
                                     </span>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-4 md:flex md:gap-8">
+                            <div className="flex grid-cols-3 gap-4 md:flex md:gap-8">
                                 <MixStat
                                     className="md:w-20"
                                     label="Quantidade"
@@ -437,10 +438,9 @@ interface TreeNode {
     id: string;
     label: string;
     value: number;
+    childrenLabel?: string;
     children?: TreeNode[];
 }
-
-const DRILL_LEVELS = ["Data", "Setor", "Ingresso", "Lote", "Tipo"] as const;
 
 // Generates the drill-down tree from realistic-ish numbers.
 const buildDrillTree = (): TreeNode[] => {
@@ -454,60 +454,93 @@ const buildDrillTree = (): TreeNode[] => {
             id: `${id}-1l`,
             label: "1º Lote",
             value: Math.round(base * 0.5),
+            childrenLabel: "Tipo",
             children: tipos(base * 0.5, `${id}-1l`),
         },
         {
             id: `${id}-2l`,
             label: "2º Lote",
             value: Math.round(base * 0.35),
+            childrenLabel: "Tipo",
             children: tipos(base * 0.35, `${id}-2l`),
         },
         {
             id: `${id}-3l`,
             label: "3º Lote",
             value: Math.round(base * 0.15),
+            childrenLabel: "Tipo",
             children: tipos(base * 0.15, `${id}-3l`),
         },
     ];
-    const setoresFor = (
-        dateId: string,
-        weight: number,
+    const ingressosPorSetor = (
+        setorValue: number,
+        setorId: string,
+        setorLabel: string,
     ): TreeNode[] => {
         const seeds = [
-            { id: "vip", label: "VIP", base: 420000 },
-            { id: "cam", label: "Camarote Premium", base: 380000 },
-            { id: "pp", label: "Pista Premium", base: 320000 },
-            { id: "p", label: "Pista", base: 250000 },
-            { id: "mez", label: "Mezanino", base: 90000 },
+            { id: "1l-int", label: `${setorLabel} 1º Lote (Inteira)`, w: 0.4 },
+            { id: "1l-mei", label: `${setorLabel} 1º Lote (Meia)`, w: 0.25 },
+            { id: "2l-int", label: `${setorLabel} 2º Lote (Inteira)`, w: 0.2 },
+            { id: "2l-mei", label: `${setorLabel} 2º Lote (Meia)`, w: 0.15 },
+        ];
+        return seeds.map((s) => ({
+            id: `${setorId}-${s.id}`,
+            label: s.label,
+            value: Math.round(setorValue * s.w),
+            childrenLabel: "Lote",
+            children: lotes(setorValue * s.w, `${setorId}-${s.id}`),
+        }));
+    };
+    const setoresFor = (dateId: string, base: number): TreeNode[] => {
+        const seeds = [
+            { id: "vip", label: "VIP", w: 0.28 },
+            { id: "cam", label: "Camarote Premium", w: 0.24 },
+            { id: "pp", label: "Pista Premium", w: 0.22 },
+            { id: "p", label: "Pista", w: 0.2 },
+            { id: "mez", label: "Mezanino", w: 0.06 },
         ];
         return seeds.map((s) => {
-            const setorValue = Math.round(s.base * weight);
+            const setorId = `${dateId}-${s.id}`;
+            const setorValue = Math.round(base * s.w);
             return {
-                id: `${dateId}-${s.id}`,
+                id: setorId,
                 label: s.label,
                 value: setorValue,
-                children: [
-                    {
-                        id: `${dateId}-${s.id}-individual`,
-                        label: `${s.label} Individual`,
-                        value: Math.round(setorValue * 0.62),
-                        children: lotes(
-                            setorValue * 0.62,
-                            `${dateId}-${s.id}-individual`,
-                        ),
-                    },
-                    {
-                        id: `${dateId}-${s.id}-combo`,
-                        label: `Combo ${s.label}`,
-                        value: Math.round(setorValue * 0.38),
-                        children: lotes(
-                            setorValue * 0.38,
-                            `${dateId}-${s.id}-combo`,
-                        ),
-                    },
-                ],
+                childrenLabel: "Ingresso",
+                children: ingressosPorSetor(setorValue, setorId, s.label),
             };
         });
+    };
+    const combosFor = (dateId: string, base: number): TreeNode[] => {
+        const seeds = [
+            { id: "c1", label: "Combo Camarote + Open Bar", w: 0.5 },
+            { id: "c2", label: "Combo VIP + Welcome Drink", w: 0.27 },
+            { id: "c3", label: "Combo Família (4 ingressos)", w: 0.1 },
+            { id: "c4", label: "Combo Premium + Estacionamento", w: 0.07 },
+            { id: "c5", label: "Combo Casal Camarote", w: 0.04 },
+            { id: "c6", label: "Combo VIP Solo + Brinde", w: 0.02 },
+        ];
+        return seeds.map((s) => ({
+            id: `${dateId}-${s.id}`,
+            label: s.label,
+            value: Math.round(base * s.w),
+        }));
+    };
+    const produtosFor = (dateId: string, base: number): TreeNode[] => {
+        const seeds = [
+            { id: "pr1", label: "Kit Oficial #SantaSanta26", w: 0.45 },
+            { id: "pr2", label: "Camisa Oficial - M", w: 0.18 },
+            { id: "pr3", label: "Sacochila Oficial", w: 0.12 },
+            { id: "pr4", label: "Boneco Bot_Gs - Fandom Box", w: 0.1 },
+            { id: "pr5", label: "Camisa Oficial - G", w: 0.08 },
+            { id: "pr6", label: "Camisa Oficial - P", w: 0.04 },
+            { id: "pr7", label: "Copo Oficial", w: 0.03 },
+        ];
+        return seeds.map((s) => ({
+            id: `${dateId}-${s.id}`,
+            label: s.label,
+            value: Math.round(base * s.w),
+        }));
     };
     const dates: { id: string; label: string; weight: number }[] = [
         { id: "d1", label: "01 mai", weight: 0.18 },
@@ -515,10 +548,43 @@ const buildDrillTree = (): TreeNode[] => {
         { id: "d3", label: "15 mai", weight: 0.28 },
         { id: "d4", label: "22 mai", weight: 0.32 },
     ];
+    const baseDay = 1500000;
     return dates.map((d) => {
-        const children = setoresFor(d.id, d.weight);
-        const total = children.reduce((s, x) => s + x.value, 0);
-        return { id: d.id, label: d.label, value: total, children };
+        const dayBase = baseDay * d.weight;
+        const ingressoBase = dayBase * 0.85;
+        const comboBase = dayBase * 0.13;
+        const produtoBase = dayBase * 0.02;
+        const tiposDeItem: TreeNode[] = [
+            {
+                id: `${d.id}-ingressos`,
+                label: "Ingressos",
+                value: Math.round(ingressoBase),
+                childrenLabel: "Setor",
+                children: setoresFor(d.id, ingressoBase),
+            },
+            {
+                id: `${d.id}-combos`,
+                label: "Combos",
+                value: Math.round(comboBase),
+                childrenLabel: "Combo",
+                children: combosFor(d.id, comboBase),
+            },
+            {
+                id: `${d.id}-produtos`,
+                label: "Produtos",
+                value: Math.round(produtoBase),
+                childrenLabel: "Produto",
+                children: produtosFor(d.id, produtoBase),
+            },
+        ];
+        const total = tiposDeItem.reduce((s, x) => s + x.value, 0);
+        return {
+            id: d.id,
+            label: d.label,
+            value: total,
+            childrenLabel: "Tipo do item",
+            children: tiposDeItem,
+        };
     });
 };
 
@@ -529,8 +595,10 @@ const DrillDownGmvCard = () => {
     const innerRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
+    const columnRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
     const prevPathLength = useRef(0);
     const [lines, setLines] = useState<string[]>([]);
+    const [lockedWidth, setLockedWidth] = useState<number | null>(null);
 
     const columns = useMemo(() => {
         const cols: TreeNode[][] = [drillTree];
@@ -582,13 +650,42 @@ const DrillDownGmvCard = () => {
     }, [path, columns]);
 
     useEffect(() => {
-        if (path.length < prevPathLength.current) {
-            scrollRef.current?.scrollTo({ left: 0, behavior: "smooth" });
-        }
         prevPathLength.current = path.length;
-    }, [path]);
+        const container = scrollRef.current;
+        if (!container) return;
+        let target: HTMLDivElement | null | undefined;
+        let left = 0;
+        if (path.length === 0) {
+            left = 0;
+        } else {
+            const lastVisibleIndex = Math.min(path.length, columns.length - 1);
+            target = columnRefs.current.get(lastVisibleIndex);
+            if (!target) return;
+            const RIGHT_PADDING = 48;
+            const desired =
+                target.offsetLeft +
+                target.offsetWidth +
+                RIGHT_PADDING -
+                container.clientWidth;
+            // Use the locked width (when shrinking) to avoid clamping by browser.
+            const innerWidth =
+                lockedWidth ?? innerRef.current?.scrollWidth ?? container.scrollWidth;
+            const maxScroll = Math.max(0, innerWidth - container.clientWidth);
+            left = Math.max(0, Math.min(desired, maxScroll));
+        }
+        container.scrollTo({ left, behavior: "smooth" });
+        const t = setTimeout(() => setLockedWidth(null), 420);
+        return () => clearTimeout(t);
+    }, [path, columns, lockedWidth]);
 
     const handleSelect = (colIndex: number, id: string) => {
+        // When shrinking the path, lock the inner width so the browser doesn't
+        // snap scrollLeft to the new (smaller) maxScroll, killing the animation.
+        const isDeselect = path[colIndex] === id;
+        const willShrink = isDeselect || colIndex < path.length;
+        if (willShrink && innerRef.current) {
+            setLockedWidth(innerRef.current.scrollWidth);
+        }
         setPath((prev) => {
             const next = prev.slice(0, colIndex);
             if (prev[colIndex] === id) return next;
@@ -601,7 +698,7 @@ const DrillDownGmvCard = () => {
 
     return (
         <Card
-            title="Detalhamento de GMV"
+            title="Detalhamento do GMV"
             headerRight={
                 path.length > 0 ? (
                     <button
@@ -619,11 +716,9 @@ const DrillDownGmvCard = () => {
                     ref={innerRef}
                     className="relative min-w-max opacity-100"
                     style={{
-                        backgroundImage:
-                            "radial-gradient(circle, var(--color-fg-quaternary) 1px, transparent 1px)",
+                        backgroundImage: "radial-gradient(circle, color-mix(in srgb, var(--color-fg-quaternary) 25%, transparent) 1px, transparent 1px)",
                         backgroundSize: "16px 16px",
-                        backgroundColor: "rgba(0, 0, 0, 0.6)",
-                        backgroundBlendMode: "overlay"
+                        minWidth: lockedWidth ?? undefined,
                     }}
                 >
                     <svg
@@ -648,6 +743,9 @@ const DrillDownGmvCard = () => {
                             return (
                                 <motion.div
                                     key={colIndex}
+                                    ref={(el) => {
+                                        columnRefs.current.set(colIndex, el);
+                                    }}
                                     initial={{ opacity: 0, x: -16 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{
@@ -659,7 +757,12 @@ const DrillDownGmvCard = () => {
                                 >
                                     <div className="flex flex-col gap-0.5 pb-2">
                                         <span className="text-xs font-semibold text-tertiary uppercase tracking-wide">
-                                            {DRILL_LEVELS[colIndex] ?? "Detalhe"}
+                                            {colIndex === 0
+                                                ? "Data"
+                                                : columns[colIndex - 1].find(
+                                                      (n) =>
+                                                          n.id === path[colIndex - 1],
+                                                  )?.childrenLabel ?? "Detalhe"}
                                         </span>
                                         {colIndex > 0 && path[colIndex - 1] && (
                                             <span className="truncate text-xs text-tertiary">
@@ -748,6 +851,31 @@ const DrillDownGmvCard = () => {
                                 </motion.div>
                             );
                         })}
+                        {path.length === 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, x: -16 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{
+                                    duration: 0.22,
+                                    ease: "easeOut",
+                                    delay: 0.05,
+                                }}
+                                className="flex max-w-[240px] flex-1 flex-col items-center justify-center gap-2 px-6 py-12 text-center"
+                            >
+                                <FeaturedIcon
+                                    icon={CursorClick02}
+                                    color="gray"
+                                    theme="modern"
+                                    size="md"
+                                />
+                                <p className="text-sm font-semibold text-primary">
+                                    Selecione uma data
+                                </p>
+                                <p className="text-xs text-tertiary">
+                                    Escolha um dia na coluna ao lado para ver o detalhamento.
+                                </p>
+                            </motion.div>
+                        )}
                     </div>
                 </div>
             </div>

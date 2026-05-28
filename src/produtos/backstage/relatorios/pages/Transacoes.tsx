@@ -13,13 +13,17 @@ import {
     Area,
     Bar,
     CartesianGrid,
+    Cell,
     ComposedChart,
     LabelList,
+    Pie,
+    PieChart,
     ResponsiveContainer,
     Tooltip,
     XAxis,
     YAxis,
 } from "recharts";
+import { Badge } from "@/components/base/badges/badges";
 import {
     CountBadge,
     FilterDropdown,
@@ -584,86 +588,97 @@ export function Transacoes() {
         <BackstageLayout activeSection="relatorios" activeItem="transacoes">
             <div className="flex min-w-0 flex-1 flex-col">
                 <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
-                    <RelatorioPageHeader title="Transações" />
-                    <div className="flex justify-start">
-                        <FilterDropdown
-                            filters={filters}
-                            appliedCount={appliedCount}
-                            placement="bottom start"
-                            onAddFilter={handleAddFilter}
-                            onRemoveFilter={handleRemoveFilter}
-                            onFilterChange={handleFilterChange}
-                            onApply={handleApply}
-                            onClearAll={handleClearAll}
-                            renderFilterRow={(
-                                filter: FilterRow,
-                                onChange: (patch: Partial<Omit<FilterRow, "id">>) => void,
-                            ) => (
-                                <>
-                                    <Select
-                                        className="max-w-40 flex-1"
-                                        size="sm"
-                                        aria-label="Campo"
-                                        placeholder="Selecione"
-                                        items={FILTER_FIELDS}
-                                        selectedKey={filter.field || null}
-                                        onSelectionChange={(key: React.Key | null) =>
-                                            onChange({
-                                                field: key ? String(key) : "",
-                                                value: "",
-                                            })
-                                        }
-                                    >
-                                        {(item: FilterFieldDef) => (
-                                            <Select.Item id={item.id}>
-                                                {item.label}
-                                            </Select.Item>
-                                        )}
-                                    </Select>
-                                    <Select
-                                        className="max-w-40 flex-1"
-                                        size="sm"
-                                        aria-label="Operador"
-                                        placeholder="Operador"
-                                        items={
-                                            FILTER_FIELDS.find(
-                                                (f) => f.id === filter.field,
-                                            )?.multi
-                                                ? OPERATOR_OPTIONS_MULTI
-                                                : OPERATOR_OPTIONS_TEXT
-                                        }
-                                        selectedKey={filter.operator || null}
-                                        onSelectionChange={(key: React.Key | null) =>
-                                            onChange({ operator: key ? String(key) : "" })
-                                        }
-                                    >
-                                        {(item: { id: string; label: string }) => (
-                                            <Select.Item id={item.id}>
-                                                {item.label}
-                                            </Select.Item>
-                                        )}
-                                    </Select>
-                                    <FilterValueInput filter={filter} onChange={onChange} />
-                                </>
-                            )}
-                        >
-                            <Button
-                                color="secondary"
-                                size="sm"
-                                iconLeading={FilterLines}
-                                iconTrailing={ChevronDown}
-                                className={cx(
-                                    "max-h-9",
-                                    appliedCount > 0 && "bg-primary_hover",
+                    <RelatorioPageHeader
+                        title="Transações"
+                        actions={
+                            <FilterDropdown
+                                filters={filters}
+                                appliedCount={appliedCount}
+                                placement="bottom end"
+                                onAddFilter={handleAddFilter}
+                                onRemoveFilter={handleRemoveFilter}
+                                onFilterChange={handleFilterChange}
+                                onApply={handleApply}
+                                onClearAll={handleClearAll}
+                                renderFilterRow={(
+                                    filter: FilterRow,
+                                    onChange: (
+                                        patch: Partial<Omit<FilterRow, "id">>,
+                                    ) => void,
+                                ) => (
+                                    <>
+                                        <Select
+                                            className="max-w-40 flex-1"
+                                            size="sm"
+                                            aria-label="Campo"
+                                            placeholder="Selecione"
+                                            items={FILTER_FIELDS}
+                                            selectedKey={filter.field || null}
+                                            onSelectionChange={(key: React.Key | null) =>
+                                                onChange({
+                                                    field: key ? String(key) : "",
+                                                    value: "",
+                                                })
+                                            }
+                                        >
+                                            {(item: FilterFieldDef) => (
+                                                <Select.Item id={item.id}>
+                                                    {item.label}
+                                                </Select.Item>
+                                            )}
+                                        </Select>
+                                        <Select
+                                            className="max-w-40 flex-1"
+                                            size="sm"
+                                            aria-label="Operador"
+                                            placeholder="Operador"
+                                            items={
+                                                FILTER_FIELDS.find(
+                                                    (f) => f.id === filter.field,
+                                                )?.multi
+                                                    ? OPERATOR_OPTIONS_MULTI
+                                                    : OPERATOR_OPTIONS_TEXT
+                                            }
+                                            selectedKey={filter.operator || null}
+                                            onSelectionChange={(key: React.Key | null) =>
+                                                onChange({
+                                                    operator: key ? String(key) : "",
+                                                })
+                                            }
+                                        >
+                                            {(item: { id: string; label: string }) => (
+                                                <Select.Item id={item.id}>
+                                                    {item.label}
+                                                </Select.Item>
+                                            )}
+                                        </Select>
+                                        <FilterValueInput
+                                            filter={filter}
+                                            onChange={onChange}
+                                        />
+                                    </>
                                 )}
                             >
-                                <span className="flex items-center gap-1.5">
-                                    Filtros
-                                    {appliedCount > 0 && <CountBadge count={appliedCount} />}
-                                </span>
-                            </Button>
-                        </FilterDropdown>
-                    </div>
+                                <Button
+                                    color="secondary"
+                                    size="sm"
+                                    iconLeading={FilterLines}
+                                    iconTrailing={ChevronDown}
+                                    className={cx(
+                                        "max-h-9",
+                                        appliedCount > 0 && "bg-primary_hover",
+                                    )}
+                                >
+                                    <span className="flex items-center gap-1.5">
+                                        Filtros
+                                        {appliedCount > 0 && (
+                                            <CountBadge count={appliedCount} />
+                                        )}
+                                    </span>
+                                </Button>
+                            </FilterDropdown>
+                        }
+                    />
 
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                         <TotalTransacionadoCard total={totalFinal} />
@@ -848,50 +863,102 @@ interface IngressosValorPorStatusCardProps {
     rows: IngressoStatusRow[];
 }
 
-const IngressosValorPorStatusCard = ({ rows }: IngressosValorPorStatusCardProps) => (
-    <Card title="Quantidade de Ingressos e Valor por status">
-        <div className="flex flex-col">
-            {rows.length === 0 ? (
+const STATUS_FILL: Record<StatusTransacao, string> = {
+    aprovado: "var(--color-utility-green-500)",
+    pendente: "var(--color-utility-yellow-500)",
+    cancelado: "var(--color-utility-red-500)",
+    estornado: "var(--color-utility-neutral-500)",
+};
+
+const IngressosValorPorStatusCard = ({ rows }: IngressosValorPorStatusCardProps) => {
+    if (rows.length === 0) {
+        return (
+            <Card title="Quantidade de Ingressos e Valor por status">
                 <div className="px-4 py-12 text-center text-sm text-tertiary">
                     Nenhum status corresponde aos filtros.
                 </div>
-            ) : (
-                rows.map((row, i) => {
-                    const meta = STATUS_META[row.status];
-                    return (
-                        <div
-                            key={row.id}
-                            className={cx(
-                                "flex flex-col gap-4 px-4 py-4 transition duration-100 ease-linear hover:bg-primary_hover md:flex-row md:items-center",
-                                i !== rows.length - 1 && "border-b border-secondary",
-                            )}
-                        >
-                            <div className="flex min-w-0 items-center gap-3 md:flex-1">
-                                <FeaturedIcon
-                                    icon={meta.icon}
-                                    color={meta.color === "gray" ? "gray" : meta.color}
-                                    theme="gradient"
-                                    size="md"
-                                />
-                                <p className="min-w-0 flex-1 truncate text-sm font-medium text-primary">
-                                    {meta.label}
-                                </p>
-                            </div>
-                            <div className="flex flex-wrap gap-6 md:gap-8">
-                                <StatBlock label="Canal" value={row.canal} />
-                                <StatBlock
-                                    label="Total ingressos"
-                                    value={numberFormatter.format(row.totalIngressos)}
-                                />
-                                <StatBlock label="Total" value={currencyFormatter.format(row.total)} />
-                            </div>
-                        </div>
-                    );
-                })
-            )}
-        </div>
-    </Card>
-);
+            </Card>
+        );
+    }
+    const totalValor = rows.reduce((s, r) => s + r.total, 0);
+    return (
+        <Card title="Quantidade de Ingressos e Valor por status">
+            <div className="flex flex-col gap-6 px-4 py-5 md:flex-row md:items-center md:gap-8 md:px-5">
+                <div className="flex shrink-0 flex-col items-center gap-2">
+                    <div className="size-44">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={rows}
+                                    dataKey="total"
+                                    innerRadius="65%"
+                                    outerRadius="100%"
+                                    paddingAngle={2}
+                                    startAngle={90}
+                                    endAngle={-270}
+                                    stroke="none"
+                                    isAnimationActive={false}
+                                >
+                                    {rows.map((r) => (
+                                        <Cell key={r.id} fill={STATUS_FILL[r.status]} />
+                                    ))}
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <span className="text-xs font-medium text-tertiary">
+                        Distribuição por valor
+                    </span>
+                </div>
+
+                <ul className="flex w-full flex-1 flex-col divide-y divide-secondary">
+                    {rows.map((row) => {
+                        const meta = STATUS_META[row.status];
+                        const pct =
+                            totalValor === 0
+                                ? 0
+                                : Math.round((row.total / totalValor) * 100);
+                        return (
+                            <li
+                                key={row.id}
+                                className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:gap-4"
+                            >
+                                <div className="flex min-w-0 items-center gap-3 md:flex-1">
+                                    <span
+                                        className="size-3 shrink-0 rounded-full"
+                                        style={{
+                                            backgroundColor: STATUS_FILL[row.status],
+                                        }}
+                                    />
+                                    <div className="flex min-w-0 flex-1 flex-col">
+                                        <span className="text-sm font-semibold text-primary">
+                                            {meta.label}
+                                        </span>
+                                        <span className="text-xs text-tertiary">
+                                            {pct}% · {row.canal}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 md:flex md:gap-8">
+                                    <StatBlock
+                                        className="md:w-32"
+                                        label="Total ingressos"
+                                        value={numberFormatter.format(row.totalIngressos)}
+                                    />
+                                    <StatBlock
+                                        className="md:w-36"
+                                        label="Total"
+                                        value={currencyFormatter.format(row.total)}
+                                    />
+                                </div>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </div>
+        </Card>
+    );
+};
 
 /* ------------------------------------------------------------------ */
 /*  Chart                                                             */
@@ -1324,7 +1391,16 @@ const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
     }, [rows, safePage, pageSize]);
 
     return (
-        <Card title="Lista de transações">
+        <Card
+            title={
+                <>
+                    Lista de transações
+                    <Badge size="sm" color="gray" type="pill-color">
+                        {numberFormatter.format(rows.length)}
+                    </Badge>
+                </>
+            }
+        >
             <div className="overflow-x-auto overflow-y-clip">
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
@@ -1397,14 +1473,18 @@ const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
 /* ------------------------------------------------------------------ */
 
 interface CardProps {
-    title: string;
+    title: ReactNode;
     children: ReactNode;
+    headerRight?: ReactNode;
 }
 
-const Card = ({ title, children }: CardProps) => (
+const Card = ({ title, children, headerRight }: CardProps) => (
     <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-        <header className="border-b border-secondary px-4 py-4">
-            <h3 className="text-md font-semibold text-primary">{title}</h3>
+        <header className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-4">
+            <h3 className="flex items-center gap-2 text-md font-semibold text-primary">
+                {title}
+            </h3>
+            {headerRight}
         </header>
         {children}
     </section>
@@ -1413,12 +1493,13 @@ const Card = ({ title, children }: CardProps) => (
 interface StatBlockProps {
     label: string;
     value: string;
+    className?: string;
 }
 
-const StatBlock = ({ label, value }: StatBlockProps) => (
-    <div className="flex flex-col gap-0.5">
+const StatBlock = ({ label, value, className }: StatBlockProps) => (
+    <div className={cx("flex flex-col gap-0.5", className)}>
         <span className="text-xs text-tertiary">{label}</span>
-        <span className="text-sm font-medium text-primary">{value}</span>
+        <span className="text-sm font-medium text-primary tabular-nums">{value}</span>
     </div>
 );
 

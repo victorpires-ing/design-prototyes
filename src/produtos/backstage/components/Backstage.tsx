@@ -7,8 +7,11 @@ import {
     ChevronDown,
     Eye,
     File03,
+    Globe01,
     InfoCircle,
+    LogOut01,
     Menu02,
+    Package,
     Settings01,
     ShoppingCart01,
     Ticket01,
@@ -20,6 +23,7 @@ import { Button } from "@/components/base/buttons/button";
 import { Badge } from "@/components/base/badges/badges";
 import { TreeView } from "@/components/application/tree-view/tree-view";
 import { cx } from "@/utils/cx";
+import Logo from "../../../assets/logo-ingresse.svg";
 import { ThemeToggle } from "./ThemeToggle";
 
 export type BackstageSection =
@@ -69,10 +73,15 @@ export function BackstageLayout({ activeSection, activeItem, children }: Backsta
             <MobileDrawer
                 isOpen={isMobileMenuOpen}
                 onClose={() => setIsMobileMenuOpen(false)}
-                activeSection={activeSection}
-                activeItem={activeItem}
             />
-            <div className="flex min-h-screen gap-3 px-3 py-3 md:py-6">
+            <div className="flex min-h-screen flex-col gap-3 px-3 py-3 md:flex-row md:py-6">
+                <div className="flex flex-col gap-3 md:hidden">
+                    <MobileEventCard />
+                    <MobileSectionSelector
+                        activeSection={activeSection}
+                        activeItem={activeItem}
+                    />
+                </div>
                 <ProducerRail />
                 <EventRail activeSection={activeSection} activeItem={activeItem} />
                 {children}
@@ -86,7 +95,8 @@ export function BackstageLayout({ activeSection, activeItem, children }: Backsta
 /* ------------------------------------------------------------------ */
 
 const MobileTopBar = ({ onOpenMenu }: { onOpenMenu: () => void }) => (
-    <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-secondary bg-primary px-4 py-3 md:hidden">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-secondary bg-primary px-4 py-3 md:hidden">
+        <img src={Logo} alt="Ingresse" className="h-5" />
         <button
             type="button"
             onClick={onOpenMenu}
@@ -95,53 +105,144 @@ const MobileTopBar = ({ onOpenMenu }: { onOpenMenu: () => void }) => (
         >
             <Menu02 className="size-5" />
         </button>
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-            <img
-                src="/event-cover.png"
-                alt=""
-                className="size-9 shrink-0 rounded-md object-cover"
-            />
-            <div className="flex min-w-0 flex-col">
-                <span className="truncate text-sm font-semibold text-primary">
-                    Semana Santa dos Milagres 2026
-                </span>
-                <span className="truncate text-xs text-tertiary">ID: 1234 · Rascunho</span>
-            </div>
-        </div>
     </header>
 );
+
+const MobileEventCard = () => (
+    <div className="flex items-start gap-3 rounded-xl bg-secondary p-3">
+        <img
+            src="/event-cover.png"
+            alt=""
+            className="size-16 shrink-0 rounded-lg object-cover"
+        />
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <div className="flex items-start justify-between gap-2">
+                <span className="text-xs text-tertiary">ID: XWNE7K</span>
+                <Badge size="sm" type="pill-color" color="success">
+                    Publicado
+                </Badge>
+            </div>
+            <p className="text-sm font-semibold leading-snug text-primary line-clamp-2">
+                Semana Santa dos Milagres 2026
+            </p>
+        </div>
+    </div>
+);
+
+const SECTION_LABELS: Record<BackstageSection, string> = {
+    "informacoes-evento": "Informações do evento",
+    itens: "Itens",
+    cortesias: "Cortesias",
+    relatorios: "Relatórios",
+    marketing: "Marketing",
+};
+
+const ITEM_LABELS: Record<BackstageItem, string> = {
+    "permissao-envio": "Permissão de envio",
+    "emissao-cortesias": "Emissão de cortesias",
+    "vendas-por-grupo": "Vendas por grupo",
+    transacoes: "Transações",
+    acesso: "Acesso",
+    bordero: "Borderô",
+    transferencias: "Transferências",
+};
+
+const MobileSectionSelector = ({
+    activeSection,
+    activeItem,
+}: {
+    activeSection?: BackstageSection;
+    activeItem?: BackstageItem;
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const sectionLabel = activeSection ? SECTION_LABELS[activeSection] : null;
+    const itemLabel = activeItem ? ITEM_LABELS[activeItem] : null;
+    const breadcrumb = sectionLabel
+        ? itemLabel
+            ? `${sectionLabel} › ${itemLabel}`
+            : sectionLabel
+        : "Selecionar seção";
+
+    return (
+        <div className="flex flex-col">
+            <button
+                type="button"
+                onClick={() => setIsOpen((v) => !v)}
+                aria-expanded={isOpen}
+                className={cx(
+                    "flex items-center justify-between gap-3 rounded-xl bg-secondary px-4 py-3 text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary_hover",
+                    isOpen && "ring-2 ring-brand",
+                )}
+            >
+                <span className="truncate text-sm font-semibold text-primary">
+                    {breadcrumb}
+                </span>
+                <ChevronDown
+                    className={cx(
+                        "size-5 shrink-0 text-fg-secondary transition-transform duration-150",
+                        isOpen && "rotate-180",
+                    )}
+                />
+            </button>
+            {isOpen && (
+                <div className="mt-2 rounded-xl bg-secondary p-2 ring-1 ring-border-secondary">
+                    <EventFunctionalitiesList
+                        activeSection={activeSection}
+                        activeItem={activeItem}
+                    />
+                </div>
+            )}
+        </div>
+    );
+};
 
 interface MobileDrawerProps {
     isOpen: boolean;
     onClose: () => void;
-    activeSection?: BackstageSection;
-    activeItem?: BackstageItem;
 }
 
-const MobileDrawer = ({ isOpen, onClose, activeSection, activeItem }: MobileDrawerProps) => {
+const PRODUCER_NAV: Array<{
+    id: string;
+    icon: ComponentType<{ className?: string }>;
+    label: string;
+    children?: Array<{ id: string; label: string }>;
+}> = [
+    { id: "eventos", icon: Calendar, label: "Eventos" },
+    { id: "permissao", icon: UsersPlus, label: "Permissão" },
+    { id: "produtos", icon: Package, label: "Produtos" },
+    {
+        id: "publico",
+        icon: Users01,
+        label: "Público",
+        children: [{ id: "segmentos", label: "Segmentos" }],
+    },
+    {
+        id: "ajustes",
+        icon: Settings01,
+        label: "Ajustes",
+        children: [
+            { id: "termos", label: "Termos de uso" },
+            { id: "organizacao", label: "Organização" },
+        ],
+    },
+];
+
+const MobileDrawer = ({ isOpen, onClose }: MobileDrawerProps) => {
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
     if (!isOpen) return null;
+    const toggle = (id: string) =>
+        setExpanded((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+
     return (
         <div className="fixed inset-0 z-50 flex md:hidden">
-            <button
-                type="button"
-                aria-label="Fechar menu"
-                onClick={onClose}
-                className="absolute inset-0 bg-overlay"
-            />
-            <aside className="relative flex h-full w-[85%] max-w-[340px] flex-col gap-3 overflow-y-auto bg-secondary p-3 shadow-xl">
-                <div className="flex items-center justify-between gap-2">
-                    <div className="relative">
-                        <span className="flex size-10 items-center justify-center overflow-hidden rounded-lg bg-secondary-solid text-xs font-bold text-white">
-                            eng
-                        </span>
-                        <button
-                            type="button"
-                            className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-primary ring-1 ring-secondary"
-                            aria-label="Trocar produtor"
-                        >
-                            <ChevronDown className="size-3 text-fg-quaternary" />
-                        </button>
-                    </div>
+            <aside className="relative flex h-full w-[85%] max-w-[340px] flex-col gap-1 overflow-y-auto bg-secondary p-3 shadow-xl">
+                <div className="flex items-center justify-between gap-2 pb-2">
+                    <img src={Logo} alt="Ingresse" className="h-5" />
                     <button
                         type="button"
                         onClick={onClose}
@@ -152,44 +253,102 @@ const MobileDrawer = ({ isOpen, onClose, activeSection, activeItem }: MobileDraw
                     </button>
                 </div>
 
-                <nav className="grid grid-cols-5 gap-1 rounded-xl bg-tertiary p-2">
-                    <MobileProducerNavItem icon={Calendar} label="Eventos" isActive />
-                    <MobileProducerNavItem icon={UsersPlus} label="Equipe" />
-                    <MobileProducerNavItem icon={Bank} label="Finanças" />
-                    <MobileProducerNavItem icon={Users01} label="Público" />
-                    <MobileProducerNavItem icon={Settings01} label="Ajustes" />
+                <nav className="flex flex-col gap-0.5">
+                    {PRODUCER_NAV.map((entry) => {
+                        const isActive = entry.id === "eventos";
+                        const isExpanded = expanded.has(entry.id);
+                        const hasChildren = !!entry.children?.length;
+                        return (
+                            <div key={entry.id} className="flex flex-col">
+                                <button
+                                    type="button"
+                                    onClick={
+                                        hasChildren
+                                            ? () => toggle(entry.id)
+                                            : undefined
+                                    }
+                                    className={cx(
+                                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition duration-100 ease-linear",
+                                        isActive
+                                            ? "bg-tertiary text-primary"
+                                            : "text-secondary hover:bg-tertiary",
+                                    )}
+                                >
+                                    <entry.icon className="size-5 shrink-0 text-fg-secondary" />
+                                    <span className="flex-1 text-sm font-medium">
+                                        {entry.label}
+                                    </span>
+                                    {hasChildren && (
+                                        <ChevronDown
+                                            className={cx(
+                                                "size-4 shrink-0 text-fg-quaternary transition-transform duration-150",
+                                                isExpanded && "rotate-180",
+                                            )}
+                                        />
+                                    )}
+                                </button>
+                                {hasChildren && isExpanded && (
+                                    <div className="flex flex-col gap-0.5 pl-11">
+                                        {entry.children?.map((child) => (
+                                            <button
+                                                key={child.id}
+                                                type="button"
+                                                className="rounded-md px-3 py-2 text-left text-sm text-secondary transition duration-100 ease-linear hover:bg-tertiary"
+                                            >
+                                                {child.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </nav>
 
-                <EventDetailsCard />
-                <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
+                <div className="mt-auto flex flex-col gap-2 pt-4">
+                    <button
+                        type="button"
+                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-secondary transition duration-100 ease-linear hover:bg-tertiary"
+                    >
+                        <Globe01 className="size-5 shrink-0 text-fg-secondary" />
+                        <span className="text-sm font-medium">Alterar idioma</span>
+                    </button>
+                    <button
+                        type="button"
+                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-secondary transition duration-100 ease-linear hover:bg-tertiary"
+                    >
+                        <LogOut01 className="size-5 shrink-0 text-fg-secondary" />
+                        <span className="text-sm font-medium">Sair</span>
+                    </button>
+                    <button
+                        type="button"
+                        className="flex items-center justify-between gap-3 rounded-full bg-tertiary px-3 py-2 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-primary_hover"
+                    >
+                        <span className="flex items-center gap-2">
+                            <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-secondary-solid text-[10px] font-bold text-white">
+                                OR
+                            </span>
+                            <span className="text-sm font-medium text-primary">
+                                {"{org_name}"}
+                            </span>
+                        </span>
+                        <ChevronDown className="size-4 text-fg-quaternary" />
+                    </button>
+                </div>
 
-                <div className="mt-auto pt-2">
+                <div className="pt-2">
                     <ThemeToggle />
                 </div>
             </aside>
+            <button
+                type="button"
+                aria-label="Fechar menu"
+                onClick={onClose}
+                className="flex-1 bg-overlay"
+            />
         </div>
     );
 };
-
-const MobileProducerNavItem = ({ icon: Icon, label, isActive }: ProducerRailItemProps) => (
-    <button
-        type="button"
-        className={cx(
-            "flex flex-col items-center gap-1 rounded-md px-1 py-2 transition duration-100 ease-linear",
-            isActive ? "text-secondary" : "text-tertiary hover:text-secondary_hover",
-        )}
-    >
-        <span
-            className={cx(
-                "flex size-9 items-center justify-center rounded-lg transition duration-100 ease-linear",
-                isActive ? "bg-primary" : "hover:bg-secondary_hover",
-            )}
-        >
-            <Icon className="size-5" />
-        </span>
-        <span className="truncate text-[10px] font-medium">{label}</span>
-    </button>
-);
 
 interface ProducerRailItemProps {
     icon: ComponentType<{ className?: string }>;

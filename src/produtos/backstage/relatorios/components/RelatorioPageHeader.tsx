@@ -22,16 +22,6 @@ export const RelatorioPageHeader = ({ title, actions }: RelatorioPageHeaderProps
                     <Breadcrumbs.Item>{title}</Breadcrumbs.Item>
                 </Breadcrumbs>
             </div>
-            <div className="flex lg:hidden">
-                <Button
-                    color="link-gray"
-                    size="xs"
-                    iconLeading={ArrowLeft}
-                    onClick={() => navigate(-1)}
-                >
-                    Voltar
-                </Button>
-            </div>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <p className="text-xl font-semibold text-primary">{title}</p>
                 {actions && <div className="flex items-start gap-3">{actions}</div>}

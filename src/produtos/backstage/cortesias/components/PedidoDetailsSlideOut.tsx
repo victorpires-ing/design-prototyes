@@ -374,6 +374,7 @@ export function PedidoDetailsSlideOut({
                                         <Button
                                             size="sm"
                                             color="secondary"
+                                            iconLeading={XClose}
                                             isDisabled={selectedIds.size === 0}
                                             onClick={clearSelection}
                                         >
@@ -382,6 +383,7 @@ export function PedidoDetailsSlideOut({
                                         <Button
                                             size="sm"
                                             color="primary-destructive"
+                                            iconLeading={SlashCircle01}
                                             isDisabled={selectedIds.size === 0}
                                             onClick={requestCancelSelected}
                                         >

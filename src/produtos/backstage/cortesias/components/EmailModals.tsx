@@ -3,6 +3,7 @@ import { AlertCircle, SlashCircle01, XClose } from "@untitledui/icons";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 
@@ -164,31 +165,45 @@ export function ConfirmRemoveEmailModal({
 /*  Confirm send cortesias modal                                      */
 /* ------------------------------------------------------------------ */
 
+export interface ConfirmSendCortesiasResult {
+    orderName: string;
+    sendQrCode: boolean;
+}
+
 export interface ConfirmSendCortesiasModalProps {
     isOpen: boolean;
     recipientCount: number;
-    itemsPerRecipient: number;
     onClose: () => void;
-    onConfirm: () => void;
+    onConfirm: (result: ConfirmSendCortesiasResult) => void;
+    defaultOrderName?: string;
 }
 
 export function ConfirmSendCortesiasModal({
     isOpen,
     recipientCount,
-    itemsPerRecipient,
     onClose,
     onConfirm,
+    defaultOrderName = "Envio de cortesia",
 }: ConfirmSendCortesiasModalProps) {
+    const [orderName, setOrderName] = useState(defaultOrderName);
+    const [sendQrCode, setSendQrCode] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setOrderName(defaultOrderName);
+            setSendQrCode(false);
+        }
+    }, [isOpen, defaultOrderName]);
+
     const recipientText: ReactNode = (
-        <span className="font-semibold text-primary">
-            {String(recipientCount).padStart(2, "0")}
-        </span>
+        <span className="font-semibold text-primary">{recipientCount}</span>
     );
-    const itemsText: ReactNode = (
-        <span className="font-semibold text-primary">
-            {itemsPerRecipient} {itemsPerRecipient === 1 ? "item" : "itens"}
-        </span>
-    );
+
+    const handleConfirm = () => {
+        const trimmed = orderName.trim() || defaultOrderName;
+        onConfirm({ orderName: trimmed, sendQrCode });
+    };
+
     return (
         <ModalOverlay
             isOpen={isOpen}
@@ -199,11 +214,11 @@ export function ConfirmSendCortesiasModal({
         >
             <Modal>
                 <Dialog>
-                    <div className="w-full max-w-md rounded-xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                    <div className="w-full max-w-lg rounded-xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex items-start gap-4">
                             <FeaturedIcon
                                 icon={AlertCircle}
-                                color="brand"
+                                color="warning"
                                 theme="modern"
                                 size="lg"
                             />
@@ -221,19 +236,40 @@ export function ConfirmSendCortesiasModal({
                                     />
                                 </div>
                                 <p className="mt-1 text-sm text-tertiary">
-                                    Você está prestes a enviar as cortesias para os
-                                    destinatários selecionados. Cada um dos{" "}
-                                    {recipientText} destinatários receberá {itemsText} por
-                                    e-mail.
+                                    Você está prestes a enviar as cortesias para os{" "}
+                                    {recipientText} destinatários informados.
                                 </p>
-                                <div className="mt-6 flex justify-end gap-3">
-                                    <Button size="md" color="secondary" onClick={onClose}>
-                                        Cancelar
-                                    </Button>
-                                    <Button size="md" color="primary" onClick={onConfirm}>
-                                        Enviar cortesias
-                                    </Button>
+                                <div className="mt-5">
+                                    <Input
+                                        label="Nome do pedido"
+                                        hint="Esse nome será exibido apenas no backstage"
+                                        value={orderName}
+                                        onChange={(v: string) => setOrderName(v)}
+                                    />
                                 </div>
+                            </div>
+                        </div>
+                        <div className="mt-6 flex items-center justify-between gap-3">
+                            <Checkbox
+                                isSelected={sendQrCode}
+                                onChange={setSendQrCode}
+                                label="Enviar QR Code por e-mail"
+                            />
+                            <div className="flex gap-3">
+                                <Button
+                                    size="md"
+                                    color="secondary"
+                                    onClick={onClose}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    size="md"
+                                    color="primary"
+                                    onClick={handleConfirm}
+                                >
+                                    Enviar cortesias
+                                </Button>
                             </div>
                         </div>
                     </div>

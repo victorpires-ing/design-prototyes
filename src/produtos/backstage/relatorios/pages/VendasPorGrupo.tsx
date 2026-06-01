@@ -229,7 +229,7 @@ const MetricsRow = () => (
         <MetricsIcon03
             icon={CurrencyDollarCircle}
             title={currencyFormatter.format(VALOR_TOTAL)}
-            subtitle="GMV"
+            subtitle="Valor total"
             change={null}
             changeTrend="positive"
             actions={false}
@@ -384,7 +384,7 @@ const MixReceitaCard = () => {
                                         {item.nome}
                                     </span>
                                     <span className="text-xs text-tertiary">
-                                        {item.value}% do GMV
+                                        {item.value}% do total
                                     </span>
                                 </div>
                             </div>
@@ -396,12 +396,12 @@ const MixReceitaCard = () => {
                                 />
                                 <MixStat
                                     className="md:w-36"
-                                    label="GMV"
+                                    label="Valor total bruto"
                                     value={currencyFormatter.format(item.gmv)}
                                 />
                                 <MixStat
                                     className="md:w-36"
-                                    label="GMV c/ desconto"
+                                    label="Valor total c/ desconto"
                                     value={currencyFormatter.format(item.gmvComDesconto)}
                                 />
                             </div>
@@ -436,40 +436,47 @@ const MixStat = ({
 
 interface TreeNode {
     id: string;
+    /** Stable key — same across dates so we can aggregate when many dates are selected. */
+    key: string;
     label: string;
     value: number;
     childrenLabel?: string;
     children?: TreeNode[];
 }
 
-// Generates the drill-down tree from realistic-ish numbers.
+// Generates the drill-down tree. Each date is a root; its children are
+// tipo-de-item (Ingressos / Combos / Produtos), and each of those drills
+// further: Ingressos → Setor → Ingresso → Lote → Tipo; Combos/Produtos are leaves.
 const buildDrillTree = (): TreeNode[] => {
-    const tipos = (base: number, id: string): TreeNode[] => [
-        { id: `${id}-int`, label: "Inteira", value: Math.round(base * 0.62) },
-        { id: `${id}-mei`, label: "Meia", value: Math.round(base * 0.3) },
-        { id: `${id}-pro`, label: "Promo", value: Math.round(base * 0.08) },
+    const tipos = (base: number, idPrefix: string): TreeNode[] => [
+        { id: `${idPrefix}-int`, key: "int", label: "Inteira", value: Math.round(base * 0.62) },
+        { id: `${idPrefix}-mei`, key: "mei", label: "Meia", value: Math.round(base * 0.3) },
+        { id: `${idPrefix}-pro`, key: "pro", label: "Promo", value: Math.round(base * 0.08) },
     ];
-    const lotes = (base: number, id: string): TreeNode[] => [
+    const lotes = (base: number, idPrefix: string): TreeNode[] => [
         {
-            id: `${id}-1l`,
+            id: `${idPrefix}-1l`,
+            key: "1l",
             label: "1º Lote",
             value: Math.round(base * 0.5),
             childrenLabel: "Tipo",
-            children: tipos(base * 0.5, `${id}-1l`),
+            children: tipos(base * 0.5, `${idPrefix}-1l`),
         },
         {
-            id: `${id}-2l`,
+            id: `${idPrefix}-2l`,
+            key: "2l",
             label: "2º Lote",
             value: Math.round(base * 0.35),
             childrenLabel: "Tipo",
-            children: tipos(base * 0.35, `${id}-2l`),
+            children: tipos(base * 0.35, `${idPrefix}-2l`),
         },
         {
-            id: `${id}-3l`,
+            id: `${idPrefix}-3l`,
+            key: "3l",
             label: "3º Lote",
             value: Math.round(base * 0.15),
             childrenLabel: "Tipo",
-            children: tipos(base * 0.15, `${id}-3l`),
+            children: tipos(base * 0.15, `${idPrefix}-3l`),
         },
     ];
     const ingressosPorSetor = (
@@ -478,32 +485,34 @@ const buildDrillTree = (): TreeNode[] => {
         setorLabel: string,
     ): TreeNode[] => {
         const seeds = [
-            { id: "1l-int", label: `${setorLabel} 1º Lote (Inteira)`, w: 0.4 },
-            { id: "1l-mei", label: `${setorLabel} 1º Lote (Meia)`, w: 0.25 },
-            { id: "2l-int", label: `${setorLabel} 2º Lote (Inteira)`, w: 0.2 },
-            { id: "2l-mei", label: `${setorLabel} 2º Lote (Meia)`, w: 0.15 },
+            { key: "1l-int", label: `${setorLabel} 1º Lote (Inteira)`, w: 0.4 },
+            { key: "1l-mei", label: `${setorLabel} 1º Lote (Meia)`, w: 0.25 },
+            { key: "2l-int", label: `${setorLabel} 2º Lote (Inteira)`, w: 0.2 },
+            { key: "2l-mei", label: `${setorLabel} 2º Lote (Meia)`, w: 0.15 },
         ];
         return seeds.map((s) => ({
-            id: `${setorId}-${s.id}`,
+            id: `${setorId}-${s.key}`,
+            key: s.key,
             label: s.label,
             value: Math.round(setorValue * s.w),
             childrenLabel: "Lote",
-            children: lotes(setorValue * s.w, `${setorId}-${s.id}`),
+            children: lotes(setorValue * s.w, `${setorId}-${s.key}`),
         }));
     };
     const setoresFor = (dateId: string, base: number): TreeNode[] => {
         const seeds = [
-            { id: "vip", label: "VIP", w: 0.28 },
-            { id: "cam", label: "Camarote Premium", w: 0.24 },
-            { id: "pp", label: "Pista Premium", w: 0.22 },
-            { id: "p", label: "Pista", w: 0.2 },
-            { id: "mez", label: "Mezanino", w: 0.06 },
+            { key: "vip", label: "VIP", w: 0.28 },
+            { key: "cam", label: "Camarote Premium", w: 0.24 },
+            { key: "pp", label: "Pista Premium", w: 0.22 },
+            { key: "p", label: "Pista", w: 0.2 },
+            { key: "mez", label: "Mezanino", w: 0.06 },
         ];
         return seeds.map((s) => {
-            const setorId = `${dateId}-${s.id}`;
+            const setorId = `${dateId}-${s.key}`;
             const setorValue = Math.round(base * s.w);
             return {
                 id: setorId,
+                key: s.key,
                 label: s.label,
                 value: setorValue,
                 childrenLabel: "Ingresso",
@@ -513,31 +522,33 @@ const buildDrillTree = (): TreeNode[] => {
     };
     const combosFor = (dateId: string, base: number): TreeNode[] => {
         const seeds = [
-            { id: "c1", label: "Combo Camarote + Open Bar", w: 0.5 },
-            { id: "c2", label: "Combo VIP + Welcome Drink", w: 0.27 },
-            { id: "c3", label: "Combo Família (4 ingressos)", w: 0.1 },
-            { id: "c4", label: "Combo Premium + Estacionamento", w: 0.07 },
-            { id: "c5", label: "Combo Casal Camarote", w: 0.04 },
-            { id: "c6", label: "Combo VIP Solo + Brinde", w: 0.02 },
+            { key: "c1", label: "Combo Camarote + Open Bar", w: 0.5 },
+            { key: "c2", label: "Combo VIP + Welcome Drink", w: 0.27 },
+            { key: "c3", label: "Combo Família (4 ingressos)", w: 0.1 },
+            { key: "c4", label: "Combo Premium + Estacionamento", w: 0.07 },
+            { key: "c5", label: "Combo Casal Camarote", w: 0.04 },
+            { key: "c6", label: "Combo VIP Solo + Brinde", w: 0.02 },
         ];
         return seeds.map((s) => ({
-            id: `${dateId}-${s.id}`,
+            id: `${dateId}-${s.key}`,
+            key: s.key,
             label: s.label,
             value: Math.round(base * s.w),
         }));
     };
     const produtosFor = (dateId: string, base: number): TreeNode[] => {
         const seeds = [
-            { id: "pr1", label: "Kit Oficial #SantaSanta26", w: 0.45 },
-            { id: "pr2", label: "Camisa Oficial - M", w: 0.18 },
-            { id: "pr3", label: "Sacochila Oficial", w: 0.12 },
-            { id: "pr4", label: "Boneco Bot_Gs - Fandom Box", w: 0.1 },
-            { id: "pr5", label: "Camisa Oficial - G", w: 0.08 },
-            { id: "pr6", label: "Camisa Oficial - P", w: 0.04 },
-            { id: "pr7", label: "Copo Oficial", w: 0.03 },
+            { key: "pr1", label: "Kit Oficial #SantaSanta26", w: 0.45 },
+            { key: "pr2", label: "Camisa Oficial - M", w: 0.18 },
+            { key: "pr3", label: "Sacochila Oficial", w: 0.12 },
+            { key: "pr4", label: "Boneco Bot_Gs - Fandom Box", w: 0.1 },
+            { key: "pr5", label: "Camisa Oficial - G", w: 0.08 },
+            { key: "pr6", label: "Camisa Oficial - P", w: 0.04 },
+            { key: "pr7", label: "Copo Oficial", w: 0.03 },
         ];
         return seeds.map((s) => ({
-            id: `${dateId}-${s.id}`,
+            id: `${dateId}-${s.key}`,
+            key: s.key,
             label: s.label,
             value: Math.round(base * s.w),
         }));
@@ -557,6 +568,7 @@ const buildDrillTree = (): TreeNode[] => {
         const tiposDeItem: TreeNode[] = [
             {
                 id: `${d.id}-ingressos`,
+                key: "ingressos",
                 label: "Ingressos",
                 value: Math.round(ingressoBase),
                 childrenLabel: "Setor",
@@ -564,6 +576,7 @@ const buildDrillTree = (): TreeNode[] => {
             },
             {
                 id: `${d.id}-combos`,
+                key: "combos",
                 label: "Combos",
                 value: Math.round(comboBase),
                 childrenLabel: "Combo",
@@ -571,6 +584,7 @@ const buildDrillTree = (): TreeNode[] => {
             },
             {
                 id: `${d.id}-produtos`,
+                key: "produtos",
                 label: "Produtos",
                 value: Math.round(produtoBase),
                 childrenLabel: "Produto",
@@ -580,6 +594,7 @@ const buildDrillTree = (): TreeNode[] => {
         const total = tiposDeItem.reduce((s, x) => s + x.value, 0);
         return {
             id: d.id,
+            key: d.id,
             label: d.label,
             value: total,
             childrenLabel: "Tipo do item",
@@ -590,22 +605,54 @@ const buildDrillTree = (): TreeNode[] => {
 
 const drillTree = buildDrillTree();
 
+// Combos aren't date-bound — aggregate each combo's value across all dates.
+const aggregatedCombos: TreeNode[] = (() => {
+    const map = new Map<string, TreeNode>();
+    for (const date of drillTree) {
+        const combosNode = date.children?.find((c) => c.key === "combos");
+        for (const combo of combosNode?.children ?? []) {
+            const existing = map.get(combo.key);
+            if (existing) existing.value += combo.value;
+            else
+                map.set(combo.key, {
+                    id: combo.key,
+                    key: combo.key,
+                    label: combo.label,
+                    value: combo.value,
+                });
+        }
+    }
+    return [...map.values()].sort((a, b) => b.value - a.value);
+})();
+
+// Synthetic root node for combos so the user can drill into the list from col 0.
+const COMBOS_ROOT_ID = "combos-all";
+const combosRootNode: TreeNode = {
+    id: COMBOS_ROOT_ID,
+    key: COMBOS_ROOT_ID,
+    label: "Combos",
+    value: aggregatedCombos.reduce((s, c) => s + c.value, 0),
+    childrenLabel: "Combo",
+    children: aggregatedCombos,
+};
+
 const DrillDownGmvCard = () => {
     const [path, setPath] = useState<string[]>([]);
     const innerRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
     const columnRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
-    const prevPathLength = useRef(0);
     const [lines, setLines] = useState<string[]>([]);
     const [lockedWidth, setLockedWidth] = useState<number | null>(null);
 
     const columns = useMemo(() => {
         const cols: TreeNode[][] = [drillTree];
-        let parent: TreeNode | undefined;
         for (let i = 0; i < path.length; i++) {
-            const list = cols[i];
-            parent = list.find((n) => n.id === path[i]);
+            let parent = cols[i].find((n) => n.id === path[i]);
+            // First level can also reference the combos virtual root.
+            if (!parent && i === 0 && path[0] === COMBOS_ROOT_ID) {
+                parent = combosRootNode;
+            }
             if (!parent?.children?.length) break;
             cols.push(parent.children);
         }
@@ -618,12 +665,11 @@ const DrillDownGmvCard = () => {
         const innerRect = inner.getBoundingClientRect();
         const next: string[] = [];
         for (let i = 0; i < path.length; i++) {
-            const fromId = path[i];
+            const fromCol = columns[i];
             const nextCol = columns[i + 1];
-            if (!nextCol?.length) continue;
-            const toId = nextCol[0].id;
-            const fromEl = itemRefs.current.get(fromId);
-            const toEl = itemRefs.current.get(toId);
+            if (!fromCol || !nextCol?.length) continue;
+            const fromEl = itemRefs.current.get(path[i]);
+            const toEl = itemRefs.current.get(nextCol[0].id);
             if (!fromEl || !toEl) continue;
             const f = fromEl.getBoundingClientRect();
             const t = toEl.getBoundingClientRect();
@@ -650,37 +696,34 @@ const DrillDownGmvCard = () => {
     }, [path, columns]);
 
     useEffect(() => {
-        prevPathLength.current = path.length;
         const container = scrollRef.current;
         if (!container) return;
-        let target: HTMLDivElement | null | undefined;
         let left = 0;
         if (path.length === 0) {
             left = 0;
         } else {
-            const lastVisibleIndex = Math.min(path.length, columns.length - 1);
-            target = columnRefs.current.get(lastVisibleIndex);
-            if (!target) return;
-            const RIGHT_PADDING = 48;
-            const desired =
-                target.offsetLeft +
-                target.offsetWidth +
-                RIGHT_PADDING -
-                container.clientWidth;
-            // Use the locked width (when shrinking) to avoid clamping by browser.
-            const innerWidth =
-                lockedWidth ?? innerRef.current?.scrollWidth ?? container.scrollWidth;
-            const maxScroll = Math.max(0, innerWidth - container.clientWidth);
-            left = Math.max(0, Math.min(desired, maxScroll));
+            const target = columnRefs.current.get(path.length);
+            if (target) {
+                const RIGHT_PADDING = 48;
+                const desired =
+                    target.offsetLeft +
+                    target.offsetWidth +
+                    RIGHT_PADDING -
+                    container.clientWidth;
+                const innerWidth =
+                    lockedWidth ??
+                    innerRef.current?.scrollWidth ??
+                    container.scrollWidth;
+                const maxScroll = Math.max(0, innerWidth - container.clientWidth);
+                left = Math.max(0, Math.min(desired, maxScroll));
+            }
         }
         container.scrollTo({ left, behavior: "smooth" });
         const t = setTimeout(() => setLockedWidth(null), 420);
         return () => clearTimeout(t);
-    }, [path, columns, lockedWidth]);
+    }, [path, lockedWidth]);
 
     const handleSelect = (colIndex: number, id: string) => {
-        // When shrinking the path, lock the inner width so the browser doesn't
-        // snap scrollLeft to the new (smaller) maxScroll, killing the animation.
         const isDeselect = path[colIndex] === id;
         const willShrink = isDeselect || colIndex < path.length;
         if (willShrink && innerRef.current) {
@@ -694,11 +737,16 @@ const DrillDownGmvCard = () => {
         });
     };
 
-    const reset = () => setPath([]);
+    const reset = () => {
+        if (innerRef.current) {
+            setLockedWidth(innerRef.current.scrollWidth);
+        }
+        setPath([]);
+    };
 
     return (
         <Card
-            title="Detalhamento do GMV"
+            title="Detalhamento do valor total"
             headerRight={
                 path.length > 0 ? (
                     <button
@@ -716,7 +764,8 @@ const DrillDownGmvCard = () => {
                     ref={innerRef}
                     className="relative min-w-max opacity-100"
                     style={{
-                        backgroundImage: "radial-gradient(circle, color-mix(in srgb, var(--color-fg-quaternary) 25%, transparent) 1px, transparent 1px)",
+                        backgroundImage:
+                            "radial-gradient(circle, color-mix(in srgb, var(--color-fg-quaternary) 25%, transparent) 1px, transparent 1px)",
                         backgroundSize: "16px 16px",
                         minWidth: lockedWidth ?? undefined,
                     }}
@@ -737,9 +786,29 @@ const DrillDownGmvCard = () => {
                     </svg>
 
                     <div className="relative flex items-start gap-8 px-4 py-5 md:px-5">
-                        {columns.map((nodes, colIndex) => {
+                        {columns.map((rawNodes, colIndex) => {
+                            // Combos aren't date-bound: hide them from the date's
+                            // tipo-de-item column (they live in the first column).
+                            const nodes =
+                                colIndex === 1 && path[0] !== COMBOS_ROOT_ID
+                                    ? rawNodes.filter((n) => n.key !== "combos")
+                                    : rawNodes;
                             const selectedId = path[colIndex];
                             const hasSelection = !!selectedId;
+                            const resolveParent = (pi: number) => {
+                                if (path[pi] === COMBOS_ROOT_ID && pi === 0)
+                                    return combosRootNode;
+                                return columns[pi].find((n) => n.id === path[pi]);
+                            };
+                            const headerLabel =
+                                colIndex === 0
+                                    ? "Data"
+                                    : resolveParent(colIndex - 1)?.childrenLabel ??
+                                      "Detalhe";
+                            const parentLabel =
+                                colIndex > 0 && path[colIndex - 1]
+                                    ? resolveParent(colIndex - 1)?.label
+                                    : null;
                             return (
                                 <motion.div
                                     key={colIndex}
@@ -753,58 +822,149 @@ const DrillDownGmvCard = () => {
                                         ease: "easeOut",
                                     }}
                                     onAnimationComplete={computeLines}
-                                    className="flex w-52 shrink-0 flex-col gap-2"
+                                    className="flex w-52 shrink-0 flex-col gap-5"
                                 >
-                                    <div className="flex flex-col gap-0.5 pb-2">
-                                        <span className="text-xs font-semibold text-tertiary uppercase tracking-wide">
-                                            {colIndex === 0
-                                                ? "Data"
-                                                : columns[colIndex - 1].find(
-                                                      (n) =>
-                                                          n.id === path[colIndex - 1],
-                                                  )?.childrenLabel ?? "Detalhe"}
-                                        </span>
-                                        {colIndex > 0 && path[colIndex - 1] && (
-                                            <span className="truncate text-xs text-tertiary">
-                                                {findNodeLabel(
-                                                    columns[colIndex - 1],
-                                                    path[colIndex - 1],
-                                                )}
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex flex-col gap-0.5 pb-2">
+                                            <span className="text-xs font-semibold text-tertiary uppercase tracking-wide">
+                                                {headerLabel}
                                             </span>
-                                        )}
+                                            {parentLabel && (
+                                                <span className="truncate text-xs text-tertiary">
+                                                    {parentLabel}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <ul className="flex flex-col gap-2">
+                                            {nodes.map((node) => {
+                                                const baseSum = nodes.reduce(
+                                                    (s, n) => s + n.value,
+                                                    0,
+                                                );
+                                                // For col 0, denominator includes
+                                                // combos so dates + combos share scale.
+                                                const colSum =
+                                                    colIndex === 0
+                                                        ? baseSum + combosRootNode.value
+                                                        : baseSum;
+                                                const pct =
+                                                    colSum === 0
+                                                        ? 0
+                                                        : (node.value / colSum) * 100;
+                                                const isSelected =
+                                                    node.id === selectedId;
+                                                const dimmed =
+                                                    hasSelection && !isSelected;
+                                                const isLeaf = !node.children?.length;
+                                                return (
+                                                    <li key={node.id}>
+                                                        <button
+                                                            ref={(el) => {
+                                                                itemRefs.current.set(
+                                                                    node.id,
+                                                                    el,
+                                                                );
+                                                            }}
+                                                            type="button"
+                                                            onClick={() =>
+                                                                !isLeaf &&
+                                                                handleSelect(
+                                                                    colIndex,
+                                                                    node.id,
+                                                                )
+                                                            }
+                                                            disabled={isLeaf}
+                                                            className={cx(
+                                                                "flex w-full flex-col gap-1 rounded-md bg-secondary px-3 py-2.5 text-left ring-1 ring-border-secondary transition duration-100 ease-linear",
+                                                                !isLeaf &&
+                                                                    "hover:bg-secondary_hover",
+                                                                isLeaf &&
+                                                                    "cursor-default",
+                                                                isSelected &&
+                                                                    "ring-2 ring-brand",
+                                                                dimmed &&
+                                                                    "opacity-50",
+                                                            )}
+                                                        >
+                                                            <span
+                                                                className={cx(
+                                                                    "truncate text-xs text-primary",
+                                                                    isSelected
+                                                                        ? "font-semibold"
+                                                                        : "font-medium",
+                                                                )}
+                                                            >
+                                                                {node.label}
+                                                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-quaternary">
+                                                                    <div
+                                                                        className={cx(
+                                                                            "h-full rounded-full",
+                                                                            isSelected
+                                                                                ? "bg-fg-brand-primary"
+                                                                                : "bg-utility-brand-400",
+                                                                        )}
+                                                                        style={{
+                                                                            width: `${pct}%`,
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                                <span className="shrink-0 text-xs font-medium text-primary tabular-nums">
+                                                                    {pct.toFixed(1)}%
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-xs text-tertiary tabular-nums">
+                                                                {currencyFormatter.format(
+                                                                    node.value,
+                                                                )}
+                                                            </span>
+                                                        </button>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
                                     </div>
-                                    <ul className="flex flex-col gap-2">
-                                        {nodes.map((node) => {
-                                            const colSum = nodes.reduce(
-                                                (s, n) => s + n.value,
-                                                0,
-                                            );
-                                            const pct =
-                                                colSum === 0
-                                                    ? 0
-                                                    : (node.value / colSum) * 100;
-                                            const isSelected = node.id === selectedId;
-                                            const dimmed = hasSelection && !isSelected;
-                                            const isLeaf = !node.children?.length;
-                                            return (
-                                                <li key={node.id}>
+
+                                    {colIndex === 0 && (
+                                        <div className="flex flex-col gap-2">
+                                            <span className="pb-2 text-xs font-semibold text-tertiary uppercase tracking-wide">
+                                                Combo
+                                            </span>
+                                            {(() => {
+                                                const isSelected =
+                                                    path[0] === COMBOS_ROOT_ID;
+                                                const dimmed =
+                                                    hasSelection && !isSelected;
+                                                const datesTotal = drillTree.reduce(
+                                                    (s, n) => s + n.value,
+                                                    0,
+                                                );
+                                                const grandTotal =
+                                                    datesTotal + combosRootNode.value;
+                                                const pct =
+                                                    grandTotal === 0
+                                                        ? 0
+                                                        : (combosRootNode.value /
+                                                              grandTotal) *
+                                                          100;
+                                                return (
                                                     <button
                                                         ref={(el) => {
                                                             itemRefs.current.set(
-                                                                node.id,
+                                                                COMBOS_ROOT_ID,
                                                                 el,
                                                             );
                                                         }}
                                                         type="button"
                                                         onClick={() =>
-                                                            !isLeaf &&
-                                                            handleSelect(colIndex, node.id)
+                                                            handleSelect(
+                                                                0,
+                                                                COMBOS_ROOT_ID,
+                                                            )
                                                         }
-                                                        disabled={isLeaf}
                                                         className={cx(
-                                                            "flex w-full flex-col gap-1 rounded-md bg-secondary px-3 py-2.5 text-left ring-1 ring-border-secondary transition duration-100 ease-linear",
-                                                            !isLeaf && "hover:bg-secondary_hover",
-                                                            isLeaf && "cursor-default",
+                                                            "flex w-full flex-col gap-1 rounded-md bg-secondary px-3 py-2.5 text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary_hover",
                                                             isSelected &&
                                                                 "ring-2 ring-brand",
                                                             dimmed && "opacity-50",
@@ -818,7 +978,7 @@ const DrillDownGmvCard = () => {
                                                                     : "font-medium",
                                                             )}
                                                         >
-                                                            {node.label}
+                                                            Combos
                                                         </span>
                                                         <div className="flex items-center gap-2">
                                                             <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-quaternary">
@@ -840,17 +1000,18 @@ const DrillDownGmvCard = () => {
                                                         </div>
                                                         <span className="text-xs text-tertiary tabular-nums">
                                                             {currencyFormatter.format(
-                                                                node.value,
+                                                                combosRootNode.value,
                                                             )}
                                                         </span>
                                                     </button>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
                                 </motion.div>
                             );
                         })}
+
                         {path.length === 0 && (
                             <motion.div
                                 initial={{ opacity: 0, x: -16 }}
@@ -872,7 +1033,8 @@ const DrillDownGmvCard = () => {
                                     Selecione uma data
                                 </p>
                                 <p className="text-xs text-tertiary">
-                                    Escolha um dia na coluna ao lado para ver o detalhamento.
+                                    Escolha um dia para ver o detalhamento por tipo, setor,
+                                    ingresso, lote e tipo.
                                 </p>
                             </motion.div>
                         )}
@@ -882,9 +1044,6 @@ const DrillDownGmvCard = () => {
         </Card>
     );
 };
-
-const findNodeLabel = (nodes: TreeNode[], id: string): string =>
-    nodes.find((n) => n.id === id)?.label ?? "";
 
 /* ------------------------------------------------------------------ */
 /*  Ocupação por setor                                                */
@@ -1225,10 +1384,10 @@ const ComboCard = () => (
                             <SortableHeader label="Valor Unitário" align="right" />
                         </th>
                         <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
-                            <SortableHeader label="GMV" align="right" />
+                            <SortableHeader label="Valor total bruto" align="right" />
                         </th>
                         <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
-                            <SortableHeader label="GMV com Desconto" align="right" />
+                            <SortableHeader label="Valor total c/ desconto" align="right" />
                         </th>
                     </tr>
                 </thead>
@@ -1284,10 +1443,10 @@ const ProdutosCard = () => (
                             <SortableHeader label="Valor Unitário" align="right" />
                         </th>
                         <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
-                            <SortableHeader label="GMV" align="right" />
+                            <SortableHeader label="Valor total bruto" align="right" />
                         </th>
                         <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
-                            <SortableHeader label="GMV com Desconto" align="right" />
+                            <SortableHeader label="Valor total c/ desconto" align="right" />
                         </th>
                     </tr>
                 </thead>

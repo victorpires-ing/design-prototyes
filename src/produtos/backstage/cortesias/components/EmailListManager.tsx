@@ -140,65 +140,93 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
         if (count === 0 && confirmingClear) setConfirmingClear(false);
     }, [count, confirmingClear]);
 
-    const handleFileSelect = useCallback(
-        async (files: FileList | null) => {
-            const file = files?.[0];
-            if (!file) return;
+    type ProcessMode = "validate" | "commit";
+
+    /** Parses + validates the file. In "commit" mode also writes the emails
+     *  and closes the modal. Returns the error message (inline-ready) or
+     *  `null` when valid. The `inline` flag controls whether validation errors
+     *  also surface as toasts (used by drag-and-drop on the main input). */
+    const processFile = useCallback(
+        async (
+            file: File,
+            inline: boolean,
+            mode: ProcessMode = "commit",
+        ): Promise<string | null> => {
             const text = await file.text();
             const parseResult = parseEmailsFromSheet(text);
 
             if (!parseResult.ok) {
-                if (parseResult.reason === "no-email-column") {
+                const message =
+                    parseResult.reason === "no-email-column"
+                        ? 'Para importar contatos, a planilha precisa ter uma coluna chamada "email". Revise o arquivo e envie novamente.'
+                        : "A planilha não tem contatos preenchidos na coluna email. Adicione pelo menos um e-mail e envie o arquivo novamente.";
+                if (!inline) {
                     showErrorToast(
-                        'Não encontramos a coluna "email"',
-                        'Para importar contatos, a planilha precisa ter uma coluna chamada "email". Revise o arquivo e envie novamente.',
-                    );
-                } else {
-                    showErrorToast(
-                        "Não encontramos contatos para importar",
-                        "A planilha não tem contatos preenchidos na coluna email. Adicione pelo menos um e-mail e envie o arquivo novamente.",
+                        parseResult.reason === "no-email-column"
+                            ? 'Não encontramos a coluna "email"'
+                            : "Não encontramos contatos para importar",
+                        message,
                     );
                 }
-                return;
+                return message;
             }
 
             const sheetEmails = parseResult.emails;
 
             if (sheetEmails.length > MAX_EMAILS) {
-                showErrorToast(
-                    `A planilha ultrapassa o limite de ${MAX_EMAILS} contatos`,
-                    `Encontramos ${sheetEmails.length} contatos na planilha. Para continuar, mantenha até ${MAX_EMAILS} contatos e envie o arquivo novamente.`,
-                );
-                return;
+                const message = `Encontramos ${sheetEmails.length} contatos na planilha. Para continuar, mantenha até ${MAX_EMAILS} contatos e envie o arquivo novamente.`;
+                if (!inline) {
+                    showErrorToast(
+                        `A planilha ultrapassa o limite de ${MAX_EMAILS} contatos`,
+                        message,
+                    );
+                }
+                return message;
             }
 
             const existingCount = draftEmails.length;
             const available = MAX_EMAILS - existingCount;
             if (sheetEmails.length > available) {
-                showErrorToast(
-                    "A importação ultrapassa o limite de contatos",
-                    `Sua lista já tem ${existingCount} contatos. Para manter o limite de ${MAX_EMAILS} contatos, esta planilha pode ter no máximo ${available} contatos.`,
-                );
-                return;
+                const message = `Sua lista já tem ${existingCount} contatos. Para manter o limite de ${MAX_EMAILS} contatos, esta planilha pode ter no máximo ${available} contatos.`;
+                if (!inline) {
+                    showErrorToast(
+                        "A importação ultrapassa o limite de contatos",
+                        message,
+                    );
+                }
+                return message;
             }
 
-            setDraftEmails((prev) => [...prev, ...sheetEmails]);
-            setImportModalOpen(false);
-            showSuccessToast(
-                "Contatos importados",
-                `${sheetEmails.length} ${sheetEmails.length === 1 ? "contato foi adicionado" : "contatos foram adicionados"} à lista.`,
-            );
+            if (mode === "commit") {
+                setDraftEmails((prev) => [...prev, ...sheetEmails]);
+                setImportModalOpen(false);
+                showSuccessToast(
+                    "Contatos importados",
+                    `${sheetEmails.length} ${sheetEmails.length === 1 ? "contato foi adicionado" : "contatos foram adicionados"} à lista.`,
+                );
+            }
+            return null;
         },
         [draftEmails.length],
     );
 
-    const handleModalImport = useCallback(
-        (file: File) => {
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            handleFileSelect(dt.files);
+    const handleFileSelect = useCallback(
+        async (files: FileList | null) => {
+            const file = files?.[0];
+            if (!file) return;
+            await processFile(file, false, "commit");
         },
-        [handleFileSelect],
+        [processFile],
+    );
+
+    const handleModalValidate = useCallback(
+        (file: File) => processFile(file, true, "validate"),
+        [processFile],
+    );
+
+    const handleModalImport = useCallback(
+        (file: File) => processFile(file, true, "commit"),
+        [processFile],
     );
 
     const handleClearAll = useCallback(() => {
@@ -386,6 +414,7 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
             <ImportEmailsModal
                 isOpen={importModalOpen}
                 onClose={() => setImportModalOpen(false)}
+                onValidate={handleModalValidate}
                 onImport={handleModalImport}
             />
         </div>

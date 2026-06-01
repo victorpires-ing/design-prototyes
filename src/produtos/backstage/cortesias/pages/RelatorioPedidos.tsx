@@ -37,6 +37,7 @@ import { CancelConfirmModal } from "../components/CancelConfirmModal";
 import { ItemDetailsSlideOut } from "../components/ItemDetailsSlideOut";
 import { PedidoDetailsSlideOut } from "../components/PedidoDetailsSlideOut";
 import {
+    ITEM_KIND_OPTIONS,
     ITEM_STATUS_META,
     ITEM_STATUS_OPTIONS,
     type CortesiaItem,
@@ -228,6 +229,10 @@ interface FiltersBarProps {
     emissorKeys: Set<string>;
     onEmissorKeysChange: (keys: Set<string>) => void;
     emissorOptions: { id: string; label: string }[];
+    /** Optional: extra "tipo do item" filter (only shown on the Itens tab). */
+    kindKeys?: Set<string>;
+    onKindKeysChange?: (keys: Set<string>) => void;
+    kindOptions?: { id: string; label: string }[];
 }
 
 const FiltersBar = ({
@@ -240,6 +245,9 @@ const FiltersBar = ({
     emissorKeys,
     onEmissorKeysChange,
     emissorOptions,
+    kindKeys,
+    onKindKeysChange,
+    kindOptions,
 }: FiltersBarProps) => {
     const handleStatusSelection = (selection: Selection) => {
         if (selection === "all") {
@@ -257,8 +265,26 @@ const FiltersBar = ({
         }
     };
 
+    const handleKindSelection = (selection: Selection) => {
+        if (!onKindKeysChange || !kindOptions) return;
+        if (selection === "all") {
+            onKindKeysChange(new Set(kindOptions.map((o) => o.id)));
+        } else {
+            onKindKeysChange(new Set(Array.from(selection).map(String)));
+        }
+    };
+
+    const showKind = !!(kindKeys && onKindKeysChange && kindOptions);
+
     return (
-        <div className="grid grid-cols-1 gap-3 border-b border-secondary px-4 py-4 md:grid-cols-[minmax(0,350px)_220px_240px] md:px-6">
+        <div
+            className={cx(
+                "grid grid-cols-1 gap-3 border-b border-secondary px-4 py-4 md:px-6",
+                showKind
+                    ? "md:grid-cols-[minmax(0,350px)_220px_220px_240px]"
+                    : "md:grid-cols-[minmax(0,350px)_220px_240px]",
+            )}
+        >
             <Input
                 label="Busca"
                 size="sm"
@@ -296,6 +322,37 @@ const FiltersBar = ({
                     </MultiSelect.Item>
                 )}
             </MultiSelect>
+            {showKind && kindKeys && kindOptions && (
+                <MultiSelect
+                    label="Tipo do item"
+                    size="sm"
+                    aria-label="Tipo do item"
+                    placeholder="Todos"
+                    items={kindOptions}
+                    selectedKeys={kindKeys}
+                    onSelectionChange={handleKindSelection}
+                    onReset={() => onKindKeysChange?.(new Set())}
+                    onSelectAll={() =>
+                        onKindKeysChange?.(new Set(kindOptions.map((o) => o.id)))
+                    }
+                    showSearch={false}
+                    selectedCountFormatter={(count: number) =>
+                        count === kindOptions.length
+                            ? "Todos"
+                            : `${count} ${count === 1 ? "selecionado" : "selecionados"}`
+                    }
+                >
+                    {(item: { id: string; label: string }) => (
+                        <MultiSelect.Item
+                            id={item.id}
+                            selectionIndicator="checkbox"
+                            selectionIndicatorAlign="left"
+                        >
+                            {item.label}
+                        </MultiSelect.Item>
+                    )}
+                </MultiSelect>
+            )}
             <MultiSelect
                 label="Emissor responsável"
                 size="sm"
@@ -958,6 +1015,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [search, setSearch] = useState("");
     const [statusKeys, setStatusKeys] = useState<Set<string>>(new Set());
+    const [kindKeys, setKindKeys] = useState<Set<string>>(new Set());
     const [emissorKeys, setEmissorKeys] = useState<Set<string>>(new Set());
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -974,6 +1032,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
         const q = search.trim().toLowerCase();
         return itens.filter((it) => {
             if (statusKeys.size > 0 && !statusKeys.has(it.status)) return false;
+            if (kindKeys.size > 0 && !kindKeys.has(it.kind)) return false;
             if (emissorKeys.size > 0 && !emissorKeys.has(it.emissor)) return false;
             if (q) {
                 const matches =
@@ -985,7 +1044,7 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
             }
             return true;
         });
-    }, [itens, search, statusKeys, emissorKeys]);
+    }, [itens, search, statusKeys, kindKeys, emissorKeys]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const safePage = Math.min(page, totalPages - 1);
@@ -1143,6 +1202,12 @@ const ItensTabView = ({ onExport }: ItensTabViewProps) => {
                         setPage(0);
                     }}
                     statusOptions={ITEM_STATUS_OPTIONS}
+                    kindKeys={kindKeys}
+                    onKindKeysChange={(keys) => {
+                        setKindKeys(keys);
+                        setPage(0);
+                    }}
+                    kindOptions={ITEM_KIND_OPTIONS}
                     emissorKeys={emissorKeys}
                     onEmissorKeysChange={(keys) => {
                         setEmissorKeys(keys);

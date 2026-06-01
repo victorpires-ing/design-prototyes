@@ -116,8 +116,8 @@ const SectionGroup = ({ title, onClear, children }: SectionGroupProps) => (
                 className="flex-1 border-t border-dashed border-secondary"
                 aria-hidden="true"
             />
-            <Button size="xs" color="link-gray" onClick={onClear}>
-                Limpar tudo
+            <Button size="xs" className="underline font-medium" color="link-gray" onClick={onClear}>
+                Remover todos
             </Button>
         </header>
         <div className="flex flex-col gap-4">{children}</div>
@@ -142,7 +142,7 @@ const TicketRow = ({ item, onRemove }: RowProps<TicketItemDetails>) => (
             </span>
             <span className="truncate text-xs text-tertiary">{item.sessionDate}</span>
         </div>
-        <Button size="xs" color="link-gray" onClick={() => onRemove(item.id)}>
+        <Button size="xs" className="underline font-medium" color="link-gray" onClick={() => onRemove(item.id)}>
             Remover
         </Button>
     </div>
@@ -156,7 +156,7 @@ const ProductRow = ({ item, onRemove }: RowProps<ProductItemDetails>) => (
             className="size-10 shrink-0 rounded-md object-cover ring-1 ring-secondary"
         />
         <span className="flex-1 truncate text-sm font-medium text-primary">{item.name}</span>
-        <Button size="xs" color="link-gray" onClick={() => onRemove(item.id)}>
+        <Button size="xs" className="underline" color="link-gray" onClick={() => onRemove(item.id)}>
             Remover
         </Button>
     </div>
@@ -169,7 +169,7 @@ const ComboRow = ({ item, onRemove }: RowProps<ComboItemDetails>) => (
                 <span className="truncate text-sm font-medium text-primary">{item.name}</span>
                 <span className="truncate text-sm text-tertiary">{item.subtitle}</span>
             </div>
-            <Button size="xs" color="link-gray" onClick={() => onRemove(item.id)}>
+            <Button size="xs" className="underline font-medium" color="link-gray" onClick={() => onRemove(item.id)}>
                 Remover
             </Button>
         </div>

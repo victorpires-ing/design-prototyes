@@ -46,3 +46,15 @@ export const ITEM_STATUS_OPTIONS = ITEM_STATUS_ORDER.map((id) => ({
     id,
     label: ITEM_STATUS_META[id].label,
 }));
+
+export const ITEM_KIND_LABEL: Record<ItemKind, string> = {
+    ticket: "Ingresso",
+    combo: "Combo",
+    product: "Produto",
+};
+
+export const ITEM_KIND_OPTIONS: { id: ItemKind; label: string }[] = [
+    { id: "ticket", label: ITEM_KIND_LABEL.ticket },
+    { id: "combo", label: ITEM_KIND_LABEL.combo },
+    { id: "product", label: ITEM_KIND_LABEL.product },
+];

@@ -4,35 +4,30 @@ import {
     ArrowLeft,
     CheckCircle,
     Edit01,
-    Menu02,
     SearchLg,
     ShoppingCart01,
-    Table,
     Trash01,
     Users01,
 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
-import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import {
     ConfirmRemoveEmailModal,
     ConfirmSendCortesiasModal,
     EditEmailModal,
+    type ConfirmSendCortesiasResult,
 } from "../components/EmailModals";
 import { showSuccessToast } from "../utils/toast";
 import {
     getItemDetails,
     type ComboItemDetails,
-    type ItemDetails,
     type ProductItemDetails,
     type TicketItemDetails,
 } from "../data/cortesia-items";
@@ -104,12 +99,9 @@ export function VerificacaoFinal() {
     const incomingEmails = routeState.emails?.length ? routeState.emails : FALLBACK_EMAILS;
 
     const [emails, setEmails] = useState<string[]>(incomingEmails);
-    const [orderName, setOrderName] = useState("Envio de cortesia");
-    const [sendQrCode, setSendQrCode] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-    const [viewMode, setViewMode] = useState<"list" | "table">("list");
     const [editingEmail, setEditingEmail] = useState<string | null>(null);
     const [removingEmail, setRemovingEmail] = useState<string | null>(null);
     const [cadastroFilter, setCadastroFilter] = useState<CadastroFilter>("all");
@@ -210,23 +202,26 @@ export function VerificacaoFinal() {
         setShowSendConfirm(true);
     }, [activeEmails]);
 
-    const handleConfirmSend = useCallback(() => {
-        addPedido({
-            nome: orderName,
-            emails,
-            itemIds,
-        });
-        showSuccessToast(
-            "Pedido enviado",
-            `${activeEmails.length} ${
-                activeEmails.length === 1
-                    ? "destinatário foi notificado"
-                    : "destinatários foram notificados"
-            }.`,
-        );
-        setShowSendConfirm(false);
-        navigate("/backstage/cortesias");
-    }, [orderName, emails, activeEmails, itemIds, addPedido, navigate]);
+    const handleConfirmSend = useCallback(
+        ({ orderName }: ConfirmSendCortesiasResult) => {
+            addPedido({
+                nome: orderName,
+                emails,
+                itemIds,
+            });
+            showSuccessToast(
+                "Pedido enviado",
+                `${activeEmails.length} ${
+                    activeEmails.length === 1
+                        ? "destinatário foi notificado"
+                        : "destinatários foram notificados"
+                }.`,
+            );
+            setShowSendConfirm(false);
+            navigate("/backstage/cortesias");
+        },
+        [emails, activeEmails, itemIds, addPedido, navigate],
+    );
 
     const handleBack = useCallback(() => {
         navigate("/backstage/destinatarios", { state: { itemIds } });
@@ -253,17 +248,6 @@ export function VerificacaoFinal() {
                     />
 
                     <div className="flex flex-col gap-4 -mb-4">
-                        <div className="flex max-w-md flex-col mt-8 mb-5">
-                            <Input
-                                label="Nome do pedido"
-                                isRequired
-                                placeholder="Envio de cortesia"
-                                hint="Esse nome será exibido apenas no backstage"
-                                value={orderName}
-                                onChange={(v: string) => setOrderName(v)}
-                            />
-                        </div>
-
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="min-w-0 flex-1">
                                 <Input
@@ -296,47 +280,13 @@ export function VerificacaoFinal() {
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <Checkbox
-                                isSelected={sendQrCode}
-                                onChange={setSendQrCode}
-                                label="Também enviar QR Code por e-mail"
-                            />
-                            <div className="flex items-center gap-4">
-                                <p className="text-sm text-tertiary">
-                                    Cada um dos{" "}
-                                    <span className="font-semibold text-primary">
-                                        {activeEmails.length}
-                                    </span>{" "}
-                                    destinatários receberá{" "}
-                                    <span className="font-semibold text-primary">
-                                        {itemsPerRecipient}{" "}
-                                        {itemsPerRecipient === 1 ? "item" : "itens"}
-                                    </span>{" "}
-                                    por e-mail
-                                </p>
-                                <ButtonGroup
-                                    size="sm"
-                                    selectedKeys={new Set([viewMode])}
-                                    onSelectionChange={(keys) => {
-                                        const k = Array.from(keys as Set<Key>)[0];
-                                        if (k) setViewMode(k as "list" | "table");
-                                    }}
-                                    disallowEmptySelection
-                                    aria-label="Alternar visualização"
-                                >
-                                    <ButtonGroupItem id="list" iconLeading={Menu02} aria-label="Lista" />
-                                    <ButtonGroupItem id="table" iconLeading={Table} aria-label="Tabela" />
-                                </ButtonGroup>
-                            </div>
-                        </div>
                     </div>
 
                     {visibleEmails.length === 0 ? (
                         <div className="rounded-xl bg-secondary_subtle px-6 py-16 text-center text-sm text-tertiary ring-1 ring-border-secondary">
                             Nenhum destinatário encontrado.
                         </div>
-                    ) : viewMode === "list" ? (
+                    ) : (
                         <div className="flex flex-col gap-4">
                             {visibleEmails.map((email) => (
                                 <RecipientCard
@@ -352,18 +302,6 @@ export function VerificacaoFinal() {
                                 />
                             ))}
                         </div>
-                    ) : (
-                        <RecipientTable
-                            emails={visibleEmails}
-                            occurrences={emailOccurrences}
-                            items={[
-                                ...groupedItems.tickets,
-                                ...groupedItems.products,
-                                ...groupedItems.combos,
-                            ]}
-                            onEdit={handleEdit}
-                            onRemove={handleRemove}
-                        />
                     )}
 
                     {visibleEmails.length > 0 && (
@@ -398,7 +336,6 @@ export function VerificacaoFinal() {
             <ConfirmSendCortesiasModal
                 isOpen={showSendConfirm}
                 recipientCount={activeEmails.length}
-                itemsPerRecipient={itemsPerRecipient}
                 onClose={() => setShowSendConfirm(false)}
                 onConfirm={handleConfirmSend}
             />
@@ -562,122 +499,3 @@ const ComboLine = ({
         <span className="truncate pl-5 text-xs text-tertiary">{item.subtitle}</span>
     </div>
 );
-
-/* ------------------------------------------------------------------ */
-/*  Recipient table (alternative view)                                */
-/* ------------------------------------------------------------------ */
-
-interface RecipientTableProps {
-    emails: string[];
-    occurrences: Map<string, number>;
-    items: ItemDetails[];
-    onEdit: (email: string) => void;
-    onRemove: (email: string) => void;
-}
-
-const RecipientTable = ({
-    emails,
-    occurrences,
-    items,
-    onEdit,
-    onRemove,
-}: RecipientTableProps) => (
-    <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-        <table className="w-full border-collapse">
-            <thead>
-                <tr className="border-b border-secondary bg-secondary_subtle text-left">
-                    <th className="px-4 py-3 text-xs font-semibold text-tertiary">Destinatário</th>
-                    <th className="px-4 py-3 text-xs font-semibold text-tertiary">Item</th>
-                    <th className="px-4 py-3 text-xs font-semibold text-tertiary">Cadastro</th>
-                    <th className="w-24 px-4 py-3" aria-label="Ações" />
-                </tr>
-            </thead>
-            <tbody>
-                {emails.flatMap((email, emailIndex) => {
-                    const hasCadastro = emailHasCadastro(email);
-                    const quantity = occurrences.get(email) ?? 1;
-                    return items.map((item, itemIndex) => {
-                        const isFirstItem = itemIndex === 0;
-                        const isLastItemOfLastEmail =
-                            itemIndex === items.length - 1 && emailIndex === emails.length - 1;
-                        const isLastItemOfEmail = itemIndex === items.length - 1;
-                        return (
-                            <tr
-                                key={`${email}::${item.id}`}
-                                className={cx(
-                                    "transition duration-100 ease-linear hover:bg-primary_hover",
-                                    !isLastItemOfLastEmail && "border-b",
-                                    isLastItemOfEmail ? "border-secondary" : "border-secondary/40",
-                                )}
-                            >
-                                <td className="px-4 py-3 align-top">
-                                    {isFirstItem && (
-                                        <span className="text-sm font-medium text-primary">
-                                            {email}
-                                        </span>
-                                    )}
-                                </td>
-                                <td className="px-4 py-3 align-top">
-                                    <span className="text-sm text-primary">
-                                        <span className="text-tertiary">{quantity}x </span>
-                                        {itemDisplayName(item)}
-                                    </span>
-                                    {itemDisplaySublabel(item) && (
-                                        <p className="text-xs text-tertiary">
-                                            {itemDisplaySublabel(item)}
-                                        </p>
-                                    )}
-                                </td>
-                                <td className="px-4 py-3 align-top">
-                                    {isFirstItem && (
-                                        <Badge
-                                            size="sm"
-                                            type="pill-color"
-                                            color={hasCadastro ? "gray" : "warning"}
-                                        >
-                                            {hasCadastro ? "Cadastrado" : "Sem cadastro"}
-                                        </Badge>
-                                    )}
-                                </td>
-                                <td className="px-4 py-3 align-top text-right">
-                                    {isFirstItem && (
-                                        <div className="flex justify-end gap-1">
-                                            {!hasCadastro && (
-                                                <ButtonUtility
-                                                    size="xs"
-                                                    color="tertiary"
-                                                    icon={Edit01}
-                                                    tooltip="Editar"
-                                                    onClick={() => onEdit(email)}
-                                                />
-                                            )}
-                                            <ButtonUtility
-                                                size="xs"
-                                                color="tertiary"
-                                                icon={Trash01}
-                                                tooltip="Remover"
-                                                onClick={() => onRemove(email)}
-                                            />
-                                        </div>
-                                    )}
-                                </td>
-                            </tr>
-                        );
-                    });
-                })}
-            </tbody>
-        </table>
-    </div>
-);
-
-function itemDisplayName(item: ItemDetails): string {
-    if (item.kind === "ticket") return `${item.name} - ${item.ticketType}`;
-    return item.name;
-}
-
-function itemDisplaySublabel(item: ItemDetails): string | null {
-    if (item.kind === "ticket") return `${item.groupName} · ${item.sessionDate}`;
-    if (item.kind === "combo") return item.subtitle;
-    return null;
-}
-

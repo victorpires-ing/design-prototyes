@@ -140,7 +140,7 @@ const SECTION_LABELS: Record<BackstageSection, string> = {
 const ITEM_LABELS: Record<BackstageItem, string> = {
     "permissao-envio": "Permissão de envio",
     "emissao-cortesias": "Emissão de cortesias",
-    "vendas-por-grupo": "Vendas por grupo",
+    "vendas-por-grupo": "Vendas",
     transacoes: "Transações",
     acesso: "Acesso",
     bordero: "Borderô",
@@ -419,7 +419,7 @@ const EventDetailsCard = () => (
     <div className="flex flex-col gap-4 rounded-2xl bg-tertiary p-3">
         <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-tertiary">
             <img
-                src="/event-cover.png"
+                src="https://ticket-backend-prod.imgix.net/media/event/2787127b-533d-4579-b769-5d01f0355e35/c789f9d2-1004-47af-be40-d53028f5834b.jpeg?h=440&w=330&fit=crop"
                 alt="Semana Santa dos Milagres 2026"
                 className="size-full object-cover"
             />
@@ -434,7 +434,7 @@ const EventDetailsCard = () => (
         </div>
         <div className="flex flex-col gap-0.5 px-1">
             <span className="text-xs text-tertiary">ID: 1234</span>
-            <h3 className="text-md font-bold text-primary">Semana Santa dos Milagres 2026</h3>
+            <h3 className="text-md font-bold text-primary">Réveillon dos Milagres</h3>
             <p className="text-sm text-tertiary">Casa Marceneiro - Milagres - Passo…</p>
         </div>
         <div className="flex items-center gap-2 px-1">
@@ -510,8 +510,8 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
 
             <TreeView.Item id="relatorios" textValue="Relatórios">
                 <TreeView.ItemContent icon={File03}>Relatórios</TreeView.ItemContent>
-                <TreeView.Item id="vendas-por-grupo" textValue="Vendas por grupo" href="/backstage/relatorios/vendas-por-grupo">
-                    <TreeView.ItemContent className={itemClass("vendas-por-grupo")}>Vendas por grupo</TreeView.ItemContent>
+                <TreeView.Item id="vendas-por-grupo" textValue="Vendas" href="/backstage/relatorios/vendas-por-grupo">
+                    <TreeView.ItemContent className={itemClass("vendas-por-grupo")}>Vendas</TreeView.ItemContent>
                 </TreeView.Item>
                 <TreeView.Item id="transacoes" textValue="Transações" href="/backstage/relatorios/transacoes">
                     <TreeView.ItemContent className={itemClass("transacoes")}>Transações</TreeView.ItemContent>

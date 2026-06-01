@@ -83,7 +83,7 @@ export function VendasPorGrupoV2() {
         <BackstageLayout activeSection="relatorios" activeItem="vendas-por-grupo">
             <div className="flex min-w-0 flex-1 flex-col">
                 <main className="flex flex-1 flex-col gap-5 py-6 md:px-6 md:gap-6 pb-10">
-                    <RelatorioPageHeader title="Vendas por grupo" />
+                    <RelatorioPageHeader title="Vendas" />
 
                     <HeroOcupacao />
                     <MixReceitaCard />

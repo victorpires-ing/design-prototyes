@@ -194,7 +194,7 @@ export function VendasPorGrupo() {
         <BackstageLayout activeSection="relatorios" activeItem="vendas-por-grupo">
             <div className="flex min-w-0 flex-1 flex-col">
                 <main className="flex flex-1 flex-col gap-6 py-6 md:px-6 pb-10">
-                    <RelatorioPageHeader title="Vendas por grupo" />
+                    <RelatorioPageHeader title="Vendas" />
 
                     <MetricsRow />
                     <MixReceitaCard />
@@ -439,14 +439,18 @@ interface TreeNode {
     /** Stable key — same across dates so we can aggregate when many dates are selected. */
     key: string;
     label: string;
+    /** Quantity sold (used for sums and proportional %). */
     value: number;
+    /** Total stock available — only set on date nodes (for occupancy display). */
+    estoque?: number;
     childrenLabel?: string;
     children?: TreeNode[];
 }
 
-// Generates the drill-down tree. Each date is a root; its children are
-// tipo-de-item (Ingressos / Combos / Produtos), and each of those drills
-// further: Ingressos → Setor → Ingresso → Lote → Tipo; Combos/Produtos are leaves.
+// Generates the drill-down tree. Each date carries its stock + sold qty.
+// Children: Ingressos and Combos (Produtos are NOT date-bound — they're
+// aggregated separately at the col-0 level). Drill-down for Ingressos:
+// Setor → Ingresso → Lote → Tipo. Combos are leaves.
 const buildDrillTree = (): TreeNode[] => {
     const tipos = (base: number, idPrefix: string): TreeNode[] => [
         { id: `${idPrefix}-int`, key: "int", label: "Inteira", value: Math.round(base * 0.62) },
@@ -536,59 +540,41 @@ const buildDrillTree = (): TreeNode[] => {
             value: Math.round(base * s.w),
         }));
     };
-    const produtosFor = (dateId: string, base: number): TreeNode[] => {
-        const seeds = [
-            { key: "pr1", label: "Kit Oficial #SantaSanta26", w: 0.45 },
-            { key: "pr2", label: "Camisa Oficial - M", w: 0.18 },
-            { key: "pr3", label: "Sacochila Oficial", w: 0.12 },
-            { key: "pr4", label: "Boneco Bot_Gs - Fandom Box", w: 0.1 },
-            { key: "pr5", label: "Camisa Oficial - G", w: 0.08 },
-            { key: "pr6", label: "Camisa Oficial - P", w: 0.04 },
-            { key: "pr7", label: "Copo Oficial", w: 0.03 },
-        ];
-        return seeds.map((s) => ({
-            id: `${dateId}-${s.key}`,
-            key: s.key,
-            label: s.label,
-            value: Math.round(base * s.w),
-        }));
-    };
-    const dates: { id: string; label: string; weight: number }[] = [
-        { id: "d1", label: "01 mai", weight: 0.18 },
-        { id: "d2", label: "08 mai", weight: 0.22 },
-        { id: "d3", label: "15 mai", weight: 0.28 },
-        { id: "d4", label: "22 mai", weight: 0.32 },
+    const dates: {
+        id: string;
+        label: string;
+        estoque: number;
+        ocupacao: number;
+        comboRatio: number;
+    }[] = [
+        // Início devagar
+        { id: "d1", label: "01 mai", estoque: 6000, ocupacao: 0.32, comboRatio: 0.04 },
+        // Lotado (efeito esgotamento)
+        { id: "d2", label: "08 mai", estoque: 12000, ocupacao: 0.94, comboRatio: 0.18 },
+        // Sessão pequena, ocupação média-alta
+        { id: "d3", label: "15 mai", estoque: 4500, ocupacao: 0.71, comboRatio: 0.09 },
+        // Sessão grande, ocupação intermediária
+        { id: "d4", label: "22 mai", estoque: 15000, ocupacao: 0.48, comboRatio: 0.12 },
     ];
-    const baseDay = 1500000;
     return dates.map((d) => {
-        const dayBase = baseDay * d.weight;
-        const ingressoBase = dayBase * 0.85;
-        const comboBase = dayBase * 0.13;
-        const produtoBase = dayBase * 0.02;
+        const ingressosVendidos = Math.round(d.estoque * d.ocupacao);
+        const comboQty = Math.round(ingressosVendidos * d.comboRatio);
         const tiposDeItem: TreeNode[] = [
             {
                 id: `${d.id}-ingressos`,
                 key: "ingressos",
                 label: "Ingressos",
-                value: Math.round(ingressoBase),
+                value: ingressosVendidos,
                 childrenLabel: "Setor",
-                children: setoresFor(d.id, ingressoBase),
+                children: setoresFor(d.id, ingressosVendidos),
             },
             {
                 id: `${d.id}-combos`,
                 key: "combos",
                 label: "Combos",
-                value: Math.round(comboBase),
+                value: comboQty,
                 childrenLabel: "Combo",
-                children: combosFor(d.id, comboBase),
-            },
-            {
-                id: `${d.id}-produtos`,
-                key: "produtos",
-                label: "Produtos",
-                value: Math.round(produtoBase),
-                childrenLabel: "Produto",
-                children: produtosFor(d.id, produtoBase),
+                children: combosFor(d.id, comboQty),
             },
         ];
         const total = tiposDeItem.reduce((s, x) => s + x.value, 0);
@@ -597,6 +583,7 @@ const buildDrillTree = (): TreeNode[] => {
             key: d.id,
             label: d.label,
             value: total,
+            estoque: d.estoque,
             childrenLabel: "Tipo do item",
             children: tiposDeItem,
         };
@@ -605,35 +592,35 @@ const buildDrillTree = (): TreeNode[] => {
 
 const drillTree = buildDrillTree();
 
-// Combos aren't date-bound — aggregate each combo's value across all dates.
-const aggregatedCombos: TreeNode[] = (() => {
-    const map = new Map<string, TreeNode>();
-    for (const date of drillTree) {
-        const combosNode = date.children?.find((c) => c.key === "combos");
-        for (const combo of combosNode?.children ?? []) {
-            const existing = map.get(combo.key);
-            if (existing) existing.value += combo.value;
-            else
-                map.set(combo.key, {
-                    id: combo.key,
-                    key: combo.key,
-                    label: combo.label,
-                    value: combo.value,
-                });
-        }
-    }
-    return [...map.values()].sort((a, b) => b.value - a.value);
+// Produtos aren't date-bound — aggregated qty list (one row per produto).
+const aggregatedProdutos: TreeNode[] = (() => {
+    const seeds = [
+        { key: "pr1", label: "Kit Oficial #SantaSanta26", w: 0.45 },
+        { key: "pr2", label: "Camisa Oficial - M", w: 0.18 },
+        { key: "pr3", label: "Sacochila Oficial", w: 0.12 },
+        { key: "pr4", label: "Boneco Bot_Gs - Fandom Box", w: 0.1 },
+        { key: "pr5", label: "Camisa Oficial - G", w: 0.08 },
+        { key: "pr6", label: "Camisa Oficial - P", w: 0.04 },
+        { key: "pr7", label: "Copo Oficial", w: 0.03 },
+    ];
+    const totalQty = 1200;
+    return seeds.map((s) => ({
+        id: s.key,
+        key: s.key,
+        label: s.label,
+        value: Math.round(totalQty * s.w),
+    }));
 })();
 
-// Synthetic root node for combos so the user can drill into the list from col 0.
-const COMBOS_ROOT_ID = "combos-all";
-const combosRootNode: TreeNode = {
-    id: COMBOS_ROOT_ID,
-    key: COMBOS_ROOT_ID,
-    label: "Combos",
-    value: aggregatedCombos.reduce((s, c) => s + c.value, 0),
-    childrenLabel: "Combo",
-    children: aggregatedCombos,
+// Synthetic root node for produtos so the user can drill into the list from col 0.
+const PRODUTOS_ROOT_ID = "produtos-all";
+const produtosRootNode: TreeNode = {
+    id: PRODUTOS_ROOT_ID,
+    key: PRODUTOS_ROOT_ID,
+    label: "Produtos",
+    value: aggregatedProdutos.reduce((s, c) => s + c.value, 0),
+    childrenLabel: "Produto",
+    children: aggregatedProdutos,
 };
 
 const DrillDownGmvCard = () => {
@@ -650,8 +637,8 @@ const DrillDownGmvCard = () => {
         for (let i = 0; i < path.length; i++) {
             let parent = cols[i].find((n) => n.id === path[i]);
             // First level can also reference the combos virtual root.
-            if (!parent && i === 0 && path[0] === COMBOS_ROOT_ID) {
-                parent = combosRootNode;
+            if (!parent && i === 0 && path[0] === PRODUTOS_ROOT_ID) {
+                parent = produtosRootNode;
             }
             if (!parent?.children?.length) break;
             cols.push(parent.children);
@@ -746,7 +733,7 @@ const DrillDownGmvCard = () => {
 
     return (
         <Card
-            title="Detalhamento do valor total"
+            title="Detalhamento das vendas"
             headerRight={
                 path.length > 0 ? (
                     <button
@@ -786,18 +773,12 @@ const DrillDownGmvCard = () => {
                     </svg>
 
                     <div className="relative flex items-start gap-8 px-4 py-5 md:px-5">
-                        {columns.map((rawNodes, colIndex) => {
-                            // Combos aren't date-bound: hide them from the date's
-                            // tipo-de-item column (they live in the first column).
-                            const nodes =
-                                colIndex === 1 && path[0] !== COMBOS_ROOT_ID
-                                    ? rawNodes.filter((n) => n.key !== "combos")
-                                    : rawNodes;
+                        {columns.map((nodes, colIndex) => {
                             const selectedId = path[colIndex];
                             const hasSelection = !!selectedId;
                             const resolveParent = (pi: number) => {
-                                if (path[pi] === COMBOS_ROOT_ID && pi === 0)
-                                    return combosRootNode;
+                                if (path[pi] === PRODUTOS_ROOT_ID && pi === 0)
+                                    return produtosRootNode;
                                 return columns[pi].find((n) => n.id === path[pi]);
                             };
                             const headerLabel =
@@ -841,16 +822,17 @@ const DrillDownGmvCard = () => {
                                                     (s, n) => s + n.value,
                                                     0,
                                                 );
-                                                // For col 0, denominator includes
-                                                // combos so dates + combos share scale.
-                                                const colSum =
-                                                    colIndex === 0
-                                                        ? baseSum + combosRootNode.value
-                                                        : baseSum;
-                                                const pct =
-                                                    colSum === 0
-                                                        ? 0
-                                                        : (node.value / colSum) * 100;
+                                                const isDateNode =
+                                                    colIndex === 0 &&
+                                                    node.estoque !== undefined;
+                                                // Dates show occupancy (vendido / estoque).
+                                                // Other items: % of column sum.
+                                                const pct = isDateNode
+                                                    ? (node.value / (node.estoque ?? 1)) *
+                                                      100
+                                                    : baseSum === 0
+                                                      ? 0
+                                                      : (node.value / baseSum) * 100;
                                                 const isSelected =
                                                     node.id === selectedId;
                                                 const dimmed =
@@ -915,9 +897,11 @@ const DrillDownGmvCard = () => {
                                                                 </span>
                                                             </div>
                                                             <span className="text-xs text-tertiary tabular-nums">
-                                                                {currencyFormatter.format(
-                                                                    node.value,
-                                                                )}
+                                                                {isDateNode
+                                                                    ? `${numberFormatter.format(node.value)} / ${numberFormatter.format(node.estoque ?? 0)}`
+                                                                    : numberFormatter.format(
+                                                                          node.value,
+                                                                      )}
                                                             </span>
                                                         </button>
                                                     </li>
@@ -929,30 +913,19 @@ const DrillDownGmvCard = () => {
                                     {colIndex === 0 && (
                                         <div className="flex flex-col gap-2">
                                             <span className="pb-2 text-xs font-semibold text-tertiary uppercase tracking-wide">
-                                                Combo
+                                                Produto
                                             </span>
                                             {(() => {
                                                 const isSelected =
-                                                    path[0] === COMBOS_ROOT_ID;
+                                                    path[0] === PRODUTOS_ROOT_ID;
                                                 const dimmed =
                                                     hasSelection && !isSelected;
-                                                const datesTotal = drillTree.reduce(
-                                                    (s, n) => s + n.value,
-                                                    0,
-                                                );
-                                                const grandTotal =
-                                                    datesTotal + combosRootNode.value;
-                                                const pct =
-                                                    grandTotal === 0
-                                                        ? 0
-                                                        : (combosRootNode.value /
-                                                              grandTotal) *
-                                                          100;
+                                                // Produtos don't have estoque — show qty only.
                                                 return (
                                                     <button
                                                         ref={(el) => {
                                                             itemRefs.current.set(
-                                                                COMBOS_ROOT_ID,
+                                                                PRODUTOS_ROOT_ID,
                                                                 el,
                                                             );
                                                         }}
@@ -960,7 +933,7 @@ const DrillDownGmvCard = () => {
                                                         onClick={() =>
                                                             handleSelect(
                                                                 0,
-                                                                COMBOS_ROOT_ID,
+                                                                PRODUTOS_ROOT_ID,
                                                             )
                                                         }
                                                         className={cx(
@@ -978,30 +951,17 @@ const DrillDownGmvCard = () => {
                                                                     : "font-medium",
                                                             )}
                                                         >
-                                                            Combos
+                                                            Produtos
                                                         </span>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-quaternary">
-                                                                <div
-                                                                    className={cx(
-                                                                        "h-full rounded-full",
-                                                                        isSelected
-                                                                            ? "bg-fg-brand-primary"
-                                                                            : "bg-utility-brand-400",
-                                                                    )}
-                                                                    style={{
-                                                                        width: `${pct}%`,
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                            <span className="shrink-0 text-xs font-medium text-primary tabular-nums">
-                                                                {pct.toFixed(1)}%
-                                                            </span>
-                                                        </div>
+                                                        <span className="text-xs text-tertiary">
+                                                            {aggregatedProdutos.length}{" "}
+                                                            itens
+                                                        </span>
                                                         <span className="text-xs text-tertiary tabular-nums">
-                                                            {currencyFormatter.format(
-                                                                combosRootNode.value,
-                                                            )}
+                                                            {numberFormatter.format(
+                                                                produtosRootNode.value,
+                                                            )}{" "}
+                                                            unidades
                                                         </span>
                                                     </button>
                                                 );

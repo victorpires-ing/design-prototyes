@@ -14,6 +14,7 @@ import { Transacoes } from '../produtos/backstage/relatorios/pages/Transacoes';
 import { Transferencias } from '../produtos/backstage/relatorios/pages/Transferencias';
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { VendasPorGrupoV2 } from '../produtos/backstage/relatorios/pages/VendasPorGrupoV2';
+import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/backstage/relatorios/acesso" element={<Acesso />} />
         <Route path="/backstage/relatorios/bordero" element={<Bordero />} />
         <Route path="/backstage/relatorios/transferencias" element={<Transferencias />} />
+        <Route path="/backstage/marketing/chave-de-acesso" element={<ChaveDeAcesso />} />
       </Routes>
       <Toaster position="bottom-right" />
     </CortesiasProvider>

@@ -40,9 +40,10 @@ export type BackstageItem =
     | "transacoes"
     | "acesso"
     | "bordero"
-    | "transferencias";
+    | "transferencias"
+    | "chave-de-acesso";
 
-const DISABLED_KEYS: Key[] = ["informacoes-evento", "itens", "permissao-envio", "marketing"];
+const DISABLED_KEYS: Key[] = ["informacoes-evento", "itens", "permissao-envio"];
 
 interface BackstageLayoutProps {
     activeSection?: BackstageSection;
@@ -145,6 +146,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     acesso: "Acesso",
     bordero: "Borderô",
     transferencias: "Transferências",
+    "chave-de-acesso": "Chave de acesso",
 };
 
 const MobileSectionSelector = ({
@@ -529,6 +531,9 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
 
             <TreeView.Item id="marketing" textValue="Marketing">
                 <TreeView.ItemContent icon={Announcement01}>Marketing</TreeView.ItemContent>
+                <TreeView.Item id="chave-de-acesso" textValue="Chave de acesso" href="/backstage/marketing/chave-de-acesso">
+                    <TreeView.ItemContent className={itemClass("chave-de-acesso")}>Chave de acesso</TreeView.ItemContent>
+                </TreeView.Item>
             </TreeView.Item>
         </TreeView>
     );

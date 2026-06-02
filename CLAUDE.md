@@ -378,25 +378,33 @@ src/produtos/
 
 ---
 
-#### MANDATORY: creating a new product or project
+#### MANDATORY: starting a development session
 
-When the user asks to **create a new product** (e.g. "novo produto", "create a product") or **create a new project** (e.g. "novo projeto", "adicionar projeto no backstage"), you MUST follow this exact protocol — do not skip steps, do not improvise file structure, do not guess names.
+Whenever the user signals the start of a new piece of work that isn't an obvious continuation (e.g. "vamos começar", "novo trabalho", "preciso desenvolver/mexer em X", or any opening that doesn't reference an already-active file/branch in the conversation), you MUST first identify the intent before touching any file. Ask via `AskUserQuestion`:
 
-##### Step 1 — Ask the user upfront
+1. **What kind of work?** with options:
+   - **Modificar um projeto existente**
+   - **Criar um novo projeto** (dentro de um produto existente)
+   - **Criar um novo produto**
 
-Before touching any file, ask via `AskUserQuestion`:
+Then branch based on the answer:
 
-**For a new product:**
+**Modify an existing project:**
+1. Em qual produto? (mostrar opções existentes em `src/produtos/`, excluindo `_template/` e `playground/`)
+2. Qual o nome do projeto? (listar os projetos do produto escolhido)
+
+**Create a new project inside an existing product:**
+1. Em qual produto? (mostrar opções existentes em `src/produtos/`, excluindo `_template/` e `playground/`)
+2. Qual o nome do projeto? (kebab-case)
+3. Se o produto for `backstage`: qual o caminho de acesso (rota) ou em qual menu/seção do `BackstageLayout` o projeto vai aparecer?
+4. Vai reaproveitar o layout compartilhado do produto? (Sim → importar `../components/<Layout>`; Não → página standalone)
+
+**Create a new product:**
 1. Qual o nome do produto? (kebab-case, ex: `organizador`, `ingresse-app`)
 2. Qual o nome do primeiro projeto dentro dele? (kebab-case)
 3. O produto terá layout/navegação compartilhada entre projetos? (Sim → criar `<produto>/components/` com layout shell; Não → manter `components/` vazia por enquanto)
 
-**For a new project inside an existing product:**
-1. Em qual produto? (mostrar opções existentes em `src/produtos/`, excluindo `_template/` e `playground/`)
-2. Qual o nome do projeto? (kebab-case)
-3. Vai reaproveitar o layout compartilhado do produto? (Sim → importar `../components/<Layout>`; Não → página standalone)
-
-NEVER assume product/project names from context. Always ask.
+NEVER assume product/project names from context. Always ask. Skip the kickoff questions only when the user explicitly continues prior work (e.g. references a specific file already in the session, asks for a quick tweak on something just opened).
 
 ##### Step 2 — Scaffold from `_template/`
 

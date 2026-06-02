@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "publish": "git add . && git commit -m \"improves\" && git push"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

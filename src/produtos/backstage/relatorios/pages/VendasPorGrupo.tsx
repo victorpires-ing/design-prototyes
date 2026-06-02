@@ -372,7 +372,7 @@ const MixReceitaCard = () => {
                     {radialData.map((item) => (
                         <li
                             key={item.id}
-                            className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:gap-4"
+                            className="flex flex-col gap-3 teste py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:gap-4"
                         >
                             <div className="flex min-w-0 items-center gap-3 md:flex-1">
                                 <span

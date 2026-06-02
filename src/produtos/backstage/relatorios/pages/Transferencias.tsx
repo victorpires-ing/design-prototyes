@@ -1,12 +1,20 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { ChevronDown, FilterLines } from "@untitledui/icons";
+import { ArrowRight, ChevronDown, ChevronRight, FilterLines, Rows01, Grid01, XClose } from "@untitledui/icons";
+import {
+    Dialog as AriaDialog,
+    Modal as AriaModal,
+    ModalOverlay as AriaModalOverlay,
+} from "react-aria-components";
 import {
     CountBadge,
     FilterDropdown,
     type FilterRow,
 } from "@/components/application/filter-bar/filter-dropdown-menu";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
+import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
@@ -315,9 +323,12 @@ const createEmptyFilter = (): FilterRow => ({
 /*  Page                                                              */
 /* ------------------------------------------------------------------ */
 
+type ViewMode = "table" | "cards";
+
 export function Transferencias() {
     const [filters, setFilters] = useState<FilterRow[]>([]);
     const [appliedCount, setAppliedCount] = useState(0);
+    const [view, setView] = useState<ViewMode>("table");
 
     const handleAddFilter = useCallback(() => {
         setFilters((prev) => [...prev, createEmptyFilter()]);
@@ -356,7 +367,7 @@ export function Transferencias() {
             <div className="flex min-w-0 flex-1 flex-col">
                 <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
                     <RelatorioPageHeader title="Transferências do Evento" />
-                    <div className="flex justify-start">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                         <FilterDropdown
                             filters={filters}
                             appliedCount={appliedCount}
@@ -435,9 +446,26 @@ export function Transferencias() {
                                 </span>
                             </Button>
                         </FilterDropdown>
+
+                        <ButtonGroup
+                            size="sm"
+                            selectedKeys={[view]}
+                            onSelectionChange={(keys: Set<React.Key> | "all") => {
+                                if (keys === "all") return;
+                                const next = [...keys][0] as ViewMode | undefined;
+                                if (next) setView(next);
+                            }}
+                        >
+                            <ButtonGroupItem id="table" iconLeading={Rows01} aria-label="Visualização em tabela" />
+                            <ButtonGroupItem id="cards" iconLeading={Grid01} aria-label="Visualização em cards" />
+                        </ButtonGroup>
                     </div>
 
-                    <TransferenciasTable rows={filteredTransferencias} />
+                    {view === "table" ? (
+                        <TransferenciasTable rows={filteredTransferencias} />
+                    ) : (
+                        <TransferenciasCards rows={filteredTransferencias} />
+                    )}
                 </main>
             </div>
         </BackstageLayout>
@@ -541,6 +569,275 @@ const TransferenciasTable = ({ rows }: { rows: Transferencia[] }) => {
         </Card>
     );
 };
+
+/* ------------------------------------------------------------------ */
+/*  Transferências cards (portador flow)                              */
+/* ------------------------------------------------------------------ */
+
+const getInitials = (name: string): string => {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 0) return "?";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+const formatCpf = (cpf: string): string => {
+    const digits = cpf.replace(/\D/g, "").padStart(11, "0").slice(0, 11);
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+};
+
+const TransferenciasCards = ({ rows }: { rows: Transferencia[] }) => {
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(12);
+    const [selected, setSelected] = useState<Transferencia | null>(null);
+
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    const safePage = Math.min(page, totalPages);
+    const visibleRows = useMemo(() => {
+        const start = (safePage - 1) * pageSize;
+        return rows.slice(start, start + pageSize);
+    }, [rows, safePage, pageSize]);
+
+    return (
+        <>
+            <Card title="Relatório de transferência AWA">
+                {visibleRows.length === 0 ? (
+                    <div className="px-4 py-12 text-center text-sm text-tertiary">
+                        Nenhuma transferência corresponde aos filtros aplicados.
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+                        {visibleRows.map((row) => (
+                            <TransferenciaCard
+                                key={`${row.id}-${row.code}`}
+                                row={row}
+                                onClick={() => setSelected(row)}
+                            />
+                        ))}
+                    </div>
+                )}
+                <PaginationCardAdvanced
+                    page={safePage}
+                    total={totalPages}
+                    pageSize={pageSize}
+                    onPageChange={(p: number) => setPage(p)}
+                    onPageSizeChange={(size: number) => {
+                        setPageSize(size);
+                        setPage(1);
+                    }}
+                />
+            </Card>
+
+            <TransferenciaDetailsSlideOut
+                isOpen={selected !== null}
+                row={selected}
+                onClose={() => setSelected(null)}
+            />
+        </>
+    );
+};
+
+const TransferenciaCard = ({
+    row,
+    onClick,
+}: {
+    row: Transferencia;
+    onClick: () => void;
+}) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className="group flex w-full items-center gap-3 rounded-xl bg-primary p-4 text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-primary_hover"
+    >
+        <Avatar size="md" initials={getInitials(row.portadorAtualNome)} />
+        <div className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-sm font-semibold text-primary">
+                {row.portadorAtualNome}
+            </span>
+            <span className="truncate font-mono text-xs text-tertiary">{row.code}</span>
+        </div>
+        <ChevronRight
+            aria-hidden="true"
+            className="size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-hover:translate-x-0.5"
+        />
+    </button>
+);
+
+/* ------------------------------------------------------------------ */
+/*  Transferência details slideout                                    */
+/* ------------------------------------------------------------------ */
+
+const TransferenciaDetailsSlideOut = ({
+    isOpen,
+    row,
+    onClose,
+}: {
+    isOpen: boolean;
+    row: Transferencia | null;
+    onClose: () => void;
+}) => (
+    <AriaModalOverlay
+        isOpen={isOpen}
+        onOpenChange={(open) => {
+            if (!open) onClose();
+        }}
+        isDismissable
+        className={({ isEntering, isExiting }) =>
+            cx(
+                "fixed inset-0 z-50 flex justify-end bg-overlay/70 outline-hidden backdrop-blur-[2px]",
+                isEntering && "duration-300 ease-out animate-in fade-in",
+                isExiting && "duration-200 ease-in animate-out fade-out",
+            )
+        }
+    >
+        <AriaModal
+            className={({ isEntering, isExiting }) =>
+                cx(
+                    "h-full w-full max-w-[480px] bg-primary shadow-xl outline-hidden",
+                    isEntering && "duration-300 ease-out animate-in slide-in-from-right",
+                    isExiting && "duration-200 ease-in animate-out slide-out-to-right",
+                )
+            }
+        >
+            <AriaDialog className="flex h-full flex-col outline-hidden">
+                <div className="flex items-center justify-between gap-4 border-b border-secondary px-6 py-5">
+                    <h2 className="text-lg font-semibold text-primary">
+                        Detalhes da transferência
+                    </h2>
+                    <ButtonUtility
+                        size="sm"
+                        color="tertiary"
+                        icon={XClose}
+                        tooltip="Fechar"
+                        onClick={onClose}
+                    />
+                </div>
+
+                <div className="flex flex-1 flex-col overflow-y-auto">
+                    {row && (
+                        <>
+                            <div className="flex flex-col gap-1 px-6 pt-6 pb-5">
+                                <span className="text-xs font-medium text-tertiary uppercase tracking-wide">
+                                    Código do ingresso
+                                </span>
+                                <span className="font-mono text-md font-medium text-primary">
+                                    {row.code}
+                                </span>
+                            </div>
+
+                            <div className="mx-6 border-t border-secondary" />
+
+                            <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
+                                <h3 className="text-md font-semibold text-primary">
+                                    Fluxo de portador
+                                </h3>
+                                <HolderBlock
+                                    label="Portador anterior"
+                                    name={row.portadorAnteriorNome}
+                                    email={row.portadorAnteriorEmail}
+                                    cpf={row.portadorAnteriorCpf}
+                                />
+                                <div className="flex items-center gap-2 pl-1.5 text-tertiary">
+                                    <ArrowRight
+                                        aria-hidden="true"
+                                        className="size-4 rotate-90 text-fg-quaternary"
+                                    />
+                                    <span className="text-xs">transferido para</span>
+                                </div>
+                                <HolderBlock
+                                    label="Portador atual"
+                                    name={row.portadorAtualNome}
+                                    email={row.portadorAtualEmail}
+                                    cpf={row.portadorAtualCpf}
+                                    emphasis
+                                />
+                            </div>
+
+                            <div className="mx-6 border-t border-secondary" />
+
+                            <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
+                                <h3 className="text-md font-semibold text-primary">
+                                    Comprador original
+                                </h3>
+                                <dl className="flex flex-col gap-2.5">
+                                    <DetailRow label="Nome" value={row.nomeComprador} />
+                                    <DetailRow label="E-mail" value={row.emailComprador} isEmail />
+                                    <DetailRow label="CPF" value={formatCpf(row.cpfComprador)} />
+                                </dl>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-secondary px-6 py-4">
+                    <Button size="sm" color="secondary" onClick={onClose}>
+                        Fechar
+                    </Button>
+                </div>
+            </AriaDialog>
+        </AriaModal>
+    </AriaModalOverlay>
+);
+
+const HolderBlock = ({
+    label,
+    name,
+    email,
+    cpf,
+    emphasis = false,
+}: {
+    label: string;
+    name: string;
+    email: string;
+    cpf: string;
+    emphasis?: boolean;
+}) => (
+    <div
+        className={cx(
+            "flex items-start gap-3 rounded-lg bg-secondary p-3 ring-1 ring-border-secondary",
+            emphasis && "ring-2 ring-brand",
+        )}
+    >
+        <Avatar size="md" initials={getInitials(name)} />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="text-xs font-medium text-tertiary uppercase tracking-wide">
+                {label}
+            </span>
+            <span
+                className={cx(
+                    "truncate text-sm text-primary",
+                    emphasis ? "font-semibold" : "font-medium",
+                )}
+            >
+                {name}
+            </span>
+            <span className="truncate text-xs text-brand-secondary">{email}</span>
+            <span className="text-xs text-tertiary tabular-nums">{formatCpf(cpf)}</span>
+        </div>
+    </div>
+);
+
+const DetailRow = ({
+    label,
+    value,
+    isEmail = false,
+}: {
+    label: string;
+    value: string;
+    isEmail?: boolean;
+}) => (
+    <div className="flex flex-col gap-0.5">
+        <dt className="text-xs text-tertiary">{label}</dt>
+        <dd
+            className={cx(
+                "text-sm break-words",
+                isEmail ? "text-brand-secondary" : "text-secondary",
+            )}
+        >
+            {value}
+        </dd>
+    </div>
+);
 
 /* ------------------------------------------------------------------ */
 /*  Shared primitives (consistency with VendasPorGrupo/Transacoes)    */

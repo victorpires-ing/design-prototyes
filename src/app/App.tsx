@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router';
 import { Toaster } from 'sonner';
 import { ScenarioControls } from '../app/components/ui/ScenarioControls';
 import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
+import { ProductSelection } from '../app/components/ProductSelection';
 import { CortesiasProvider } from '../produtos/backstage/cortesias/data/cortesias-store';
 import { EmissaoCortesias } from '../produtos/backstage/cortesias/pages/EmissaoCortesias';
 import { RelatorioPedidos } from '../produtos/backstage/cortesias/pages/RelatorioPedidos';
@@ -14,6 +15,7 @@ import { Transacoes } from '../produtos/backstage/relatorios/pages/Transacoes';
 import { Transferencias } from '../produtos/backstage/relatorios/pages/Transferencias';
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { VendasPorGrupoV2 } from '../produtos/backstage/relatorios/pages/VendasPorGrupoV2';
+import { Home as FutebolHome } from '../produtos/futebol/landing-pages/pages/home';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -39,7 +41,7 @@ export default function App() {
   return (
     <CortesiasProvider>
       <Routes>
-        <Route path="/" element={<RelatorioPedidos />} />
+        <Route path="/" element={<ProductSelection />} />
         <Route path="/backstage" element={<RelatorioPedidos />} />
         <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
         <Route path="/backstage/itens" element={<SelecaoItens />} />
@@ -51,6 +53,7 @@ export default function App() {
         <Route path="/backstage/relatorios/acesso" element={<Acesso />} />
         <Route path="/backstage/relatorios/bordero" element={<Bordero />} />
         <Route path="/backstage/relatorios/transferencias" element={<Transferencias />} />
+        <Route path="/futebol/landing-pages" element={<FutebolHome />} />
       </Routes>
       <Toaster position="bottom-right" />
     </CortesiasProvider>

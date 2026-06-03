@@ -1,5 +1,5 @@
 import Flag from '../../../assets/Brazil flag.svg';
-import Logo from '../../../assets/logo-ingresse.svg';
+import Logo from '../../../assets/Company logo_white.svg';
 import Cover from '../../../assets/event-cover.png';
 import { MapPin, ChevronDown } from 'lucide-react';
 

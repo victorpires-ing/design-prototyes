@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { useTheme } from '../providers/theme-provider';
 import { ScenarioControls } from '../app/components/ui/ScenarioControls';
 import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
+import { ProductSelection } from '../app/components/ProductSelection';
 import { CortesiasProvider } from '../produtos/backstage/cortesias/data/cortesias-store';
 import { EmissaoCortesias } from '../produtos/backstage/cortesias/pages/EmissaoCortesias';
 import { RelatorioPedidos } from '../produtos/backstage/cortesias/pages/RelatorioPedidos';
@@ -18,6 +19,7 @@ import { VendasPorGrupoV2 } from '../produtos/backstage/relatorios/pages/VendasP
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
+import { Home as FutebolHome } from '../produtos/futebol/landing-pages/pages/home';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -44,7 +46,7 @@ export default function App() {
   return (
     <CortesiasProvider>
       <Routes>
-        <Route path="/" element={<RelatorioPedidos />} />
+        <Route path="/" element={<ProductSelection />} />
         <Route path="/backstage" element={<RelatorioPedidos />} />
         <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
         <Route path="/backstage/itens" element={<SelecaoItens />} />
@@ -59,6 +61,7 @@ export default function App() {
         <Route path="/backstage/marketing/chave-de-acesso" element={<ChaveDeAcesso />} />
         <Route path="/backstage/marketing/chave-de-acesso/vincular-itens" element={<VincularItens />} />
         <Route path="/backstage/marketing/chave-de-acesso/lista" element={<ListaChaves />} />
+        <Route path="/futebol/landing-pages" element={<FutebolHome />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
     </CortesiasProvider>

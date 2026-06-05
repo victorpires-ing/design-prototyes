@@ -23,7 +23,15 @@ import { Button } from "@/components/base/buttons/button";
 import { Badge } from "@/components/base/badges/badges";
 import { TreeView } from "@/components/application/tree-view/tree-view";
 import { cx } from "@/utils/cx";
-import Logo from "../../../assets/logo-ingresse.svg";
+import LogoBlack from "../../../assets/Company logo_black.svg";
+import LogoWhite from "../../../assets/Company logo_white.svg";
+
+const BrandLogo = ({ className }: { className?: string }) => (
+    <>
+        <img src={LogoBlack} alt="Ingresse" className={cx("block dark:hidden", className)} />
+        <img src={LogoWhite} alt="Ingresse" className={cx("hidden dark:block", className)} />
+    </>
+);
 import { ThemeToggle } from "./ThemeToggle";
 
 export type BackstageSection =
@@ -97,7 +105,7 @@ export function BackstageLayout({ activeSection, activeItem, children }: Backsta
 
 const MobileTopBar = ({ onOpenMenu }: { onOpenMenu: () => void }) => (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-secondary bg-primary px-4 py-3 md:hidden">
-        <img src={Logo} alt="Ingresse" className="h-5" />
+        <BrandLogo className="h-5" />
         <button
             type="button"
             onClick={onOpenMenu}
@@ -244,7 +252,7 @@ const MobileDrawer = ({ isOpen, onClose }: MobileDrawerProps) => {
         <div className="fixed inset-0 z-50 flex md:hidden">
             <aside className="relative flex h-full w-[85%] max-w-[340px] flex-col gap-1 overflow-y-auto bg-secondary p-3 shadow-xl">
                 <div className="flex items-center justify-between gap-2 pb-2">
-                    <img src={Logo} alt="Ingresse" className="h-5" />
+                    <BrandLogo className="h-5" />
                     <button
                         type="button"
                         onClick={onClose}

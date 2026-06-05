@@ -83,6 +83,11 @@ export function ChaveDeAcesso() {
     }
     const duplicateCount = duplicateIds.size;
 
+    // Exibe as chaves com problema (inválidas ou duplicadas) sempre no início,
+    // para facilitar a identificação e remoção. Mantém a ordem relativa original.
+    const isProblemKey = (key: { id: number; value: string }) => !isValidKey(key.value) || duplicateIds.has(key.id);
+    const orderedImportedKeys = [...importedKeys].sort((a, b) => Number(isProblemKey(b)) - Number(isProblemKey(a)));
+
     const startEditingKey = (id: number, value: string) => {
         setEditingId(id);
         setEditingValue(value);
@@ -312,7 +317,7 @@ export function ChaveDeAcesso() {
                                                                 className="cursor-text rounded-lg bg-primary px-3 py-2 ring-1 ring-primary ring-inset focus-within:ring-2 focus-within:ring-brand"
                                                             >
                                                             <div className="flex max-h-40 min-h-40 flex-wrap content-start items-start gap-2 overflow-y-auto">
-                                                                {importedKeys.map((key) => {
+                                                                {orderedImportedKeys.map((key) => {
                                                                     const invalid = !isValidKey(key.value);
                                                                     const duplicate = !invalid && duplicateIds.has(key.id);
                                                                     const editing = editingId === key.id;

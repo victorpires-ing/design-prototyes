@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Route, Routes } from 'react-router';
 import { Toaster } from 'sonner';
+import { useTheme } from '../providers/theme-provider';
 import { ScenarioControls } from '../app/components/ui/ScenarioControls';
 import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
 import { CortesiasProvider } from '../produtos/backstage/cortesias/data/cortesias-store';
@@ -15,6 +16,8 @@ import { Transferencias } from '../produtos/backstage/relatorios/pages/Transfere
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { VendasPorGrupoV2 } from '../produtos/backstage/relatorios/pages/VendasPorGrupoV2';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
+import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
+import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -37,6 +40,7 @@ function HomeScreen() {
 }
 
 export default function App() {
+  const { theme } = useTheme();
   return (
     <CortesiasProvider>
       <Routes>
@@ -53,8 +57,10 @@ export default function App() {
         <Route path="/backstage/relatorios/bordero" element={<Bordero />} />
         <Route path="/backstage/relatorios/transferencias" element={<Transferencias />} />
         <Route path="/backstage/marketing/chave-de-acesso" element={<ChaveDeAcesso />} />
+        <Route path="/backstage/marketing/chave-de-acesso/vincular-itens" element={<VincularItens />} />
+        <Route path="/backstage/marketing/chave-de-acesso/lista" element={<ListaChaves />} />
       </Routes>
-      <Toaster position="bottom-right" />
+      <Toaster position="bottom-right" theme={theme} />
     </CortesiasProvider>
   );
 }

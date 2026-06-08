@@ -44,6 +44,7 @@ export type BackstageSection =
 export type BackstageItem =
     | "permissao-envio"
     | "catalogo-itens"
+    | "catalogo-ingressos"
     | "catalogo-combos"
     | "catalogo-produtos"
     | "emissao-cortesias"
@@ -143,7 +144,7 @@ const MobileEventCard = () => (
 
 const SECTION_LABELS: Record<BackstageSection, string> = {
     "informacoes-evento": "Informações do evento",
-    itens: "Catálogo",
+    itens: "Itens",
     cortesias: "Cortesias",
     relatorios: "Relatórios",
     marketing: "Marketing",
@@ -152,6 +153,7 @@ const SECTION_LABELS: Record<BackstageSection, string> = {
 const ITEM_LABELS: Record<BackstageItem, string> = {
     "permissao-envio": "Permissão de envio",
     "catalogo-itens": "Itens",
+    "catalogo-ingressos": "Ingressos",
     "catalogo-combos": "Combos",
     "catalogo-produtos": "Produtos",
     "emissao-cortesias": "Emissão de cortesias",
@@ -501,16 +503,25 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 <TreeView.ItemContent icon={InfoCircle}>Informações do evento</TreeView.ItemContent>
             </TreeView.Item>
 
-            <TreeView.Item id="itens" textValue="Catálogo">
-                <TreeView.ItemContent icon={ShoppingCart01}>Catálogo</TreeView.ItemContent>
-                <TreeView.Item id="catalogo-itens" textValue="Itens" href="/backstage/catalogo/itens">
-                    <TreeView.ItemContent className={itemClass("catalogo-itens")}>Itens</TreeView.ItemContent>
+            <TreeView.Item id="itens" textValue="Itens">
+                <TreeView.ItemContent icon={ShoppingCart01}>Itens</TreeView.ItemContent>
+                <TreeView.Item id="catalogo-ingressos" textValue="Ingressos" href="/backstage/catalogo/ingressos">
+                    <TreeView.ItemContent className={itemClass("catalogo-ingressos")}>Ingressos</TreeView.ItemContent>
                 </TreeView.Item>
                 <TreeView.Item id="catalogo-combos" textValue="Combos">
                     <TreeView.ItemContent className={itemClass("catalogo-combos")}>Combos</TreeView.ItemContent>
                 </TreeView.Item>
                 <TreeView.Item id="catalogo-produtos" textValue="Produtos">
-                    <TreeView.ItemContent className={itemClass("catalogo-produtos")}>Produtos</TreeView.ItemContent>
+                    <TreeView.ItemContent
+                        className={itemClass("catalogo-produtos")}
+                        action={
+                            <Badge size="sm" type="pill-color" color="error">
+                                Novo
+                            </Badge>
+                        }
+                    >
+                        Produtos
+                    </TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>
 

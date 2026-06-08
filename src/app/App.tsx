@@ -20,7 +20,11 @@ import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/Chave
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
 import { Home as FutebolHome } from '../produtos/futebol/landing-pages/pages/home';
+import { PasswordGate } from '../produtos/novo-site/components/PasswordGate';
+import { EventDetails } from '../produtos/novo-site/home/pages/event-details';
 import { Itens as CatalogoItens } from '../produtos/backstage/catalogo/pages/Itens';
+import { Ingressos as CatalogoIngressos } from '../produtos/backstage/ingressos/pages/Ingressos';
+import { Formulario as IngressosFormulario } from '../produtos/backstage/ingressos/pages/Formulario';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -63,7 +67,10 @@ export default function App() {
         <Route path="/backstage/marketing/chave-de-acesso/vincular-itens" element={<VincularItens />} />
         <Route path="/backstage/marketing/chave-de-acesso/lista" element={<ListaChaves />} />
         <Route path="/backstage/catalogo/itens" element={<CatalogoItens />} />
+        <Route path="/backstage/catalogo/ingressos" element={<CatalogoIngressos />} />
+        <Route path="/backstage/catalogo/ingressos/formulario" element={<IngressosFormulario />} />
         <Route path="/futebol/landing-pages" element={<FutebolHome />} />
+        <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
     </CortesiasProvider>

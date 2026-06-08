@@ -1,4 +1,5 @@
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { useNavigate } from "react-router";
 import type { Key } from "react-aria-components";
 import {
     Announcement01,
@@ -11,6 +12,7 @@ import {
     InfoCircle,
     LogOut01,
     Menu02,
+    MessageQuestionCircle,
     Package,
     Settings01,
     ShoppingCart01,
@@ -60,10 +62,19 @@ const DISABLED_KEYS: Key[] = ["informacoes-evento", "permissao-envio", "catalogo
 interface BackstageLayoutProps {
     activeSection?: BackstageSection;
     activeItem?: BackstageItem;
+    activeProducer?: string;
+    /** Mostra o contexto do evento (card + funcionalidades). Default: true. */
+    showEventContext?: boolean;
     children: ReactNode;
 }
 
-export function BackstageLayout({ activeSection, activeItem, children }: BackstageLayoutProps) {
+export function BackstageLayout({
+    activeSection,
+    activeItem,
+    activeProducer,
+    showEventContext = true,
+    children,
+}: BackstageLayoutProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
@@ -88,15 +99,17 @@ export function BackstageLayout({ activeSection, activeItem, children }: Backsta
                 onClose={() => setIsMobileMenuOpen(false)}
             />
             <div className="flex min-h-screen flex-col gap-3 px-3 py-3 md:flex-row md:py-6">
-                <div className="flex flex-col gap-3 md:hidden">
-                    <MobileEventCard />
-                    <MobileSectionSelector
-                        activeSection={activeSection}
-                        activeItem={activeItem}
-                    />
-                </div>
-                <ProducerRail />
-                <EventRail activeSection={activeSection} activeItem={activeItem} />
+                {showEventContext && (
+                    <div className="flex flex-col gap-3 md:hidden">
+                        <MobileEventCard />
+                        <MobileSectionSelector
+                            activeSection={activeSection}
+                            activeItem={activeItem}
+                        />
+                    </div>
+                )}
+                <ProducerRail activeProducer={activeProducer} />
+                {showEventContext && <EventRail activeSection={activeSection} activeItem={activeItem} />}
                 {children}
             </div>
         </div>
@@ -223,11 +236,13 @@ const PRODUCER_NAV: Array<{
     id: string;
     icon: ComponentType<{ className?: string }>;
     label: string;
+    href?: string;
     children?: Array<{ id: string; label: string }>;
 }> = [
     { id: "eventos", icon: Calendar, label: "Eventos" },
     { id: "permissao", icon: UsersPlus, label: "Permissão" },
     { id: "produtos", icon: Package, label: "Produtos" },
+    { id: "perguntas", icon: MessageQuestionCircle, label: "Perguntas", href: "/backstage/perguntas" },
     {
         id: "publico",
         icon: Users01,
@@ -246,6 +261,7 @@ const PRODUCER_NAV: Array<{
 ];
 
 const MobileDrawer = ({ isOpen, onClose }: MobileDrawerProps) => {
+    const navigate = useNavigate();
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     if (!isOpen) return null;
     const toggle = (id: string) =>
@@ -283,7 +299,12 @@ const MobileDrawer = ({ isOpen, onClose }: MobileDrawerProps) => {
                                     onClick={
                                         hasChildren
                                             ? () => toggle(entry.id)
-                                            : undefined
+                                            : entry.href
+                                              ? () => {
+                                                    navigate(entry.href!);
+                                                    onClose();
+                                                }
+                                              : undefined
                                     }
                                     className={cx(
                                         "flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition duration-100 ease-linear",
@@ -372,29 +393,34 @@ interface ProducerRailItemProps {
     icon: ComponentType<{ className?: string }>;
     label: string;
     isActive?: boolean;
+    href?: string;
 }
 
-const ProducerRailItem = ({ icon: Icon, label, isActive }: ProducerRailItemProps) => (
-    <button
-        type="button"
-        className={cx(
-            "flex flex-col items-center gap-1 rounded-md px-2 py-2 transition duration-100 ease-linear",
-            isActive ? "text-secondary" : "text-tertiary hover:text-secondary_hover",
-        )}
-    >
-        <span
+const ProducerRailItem = ({ icon: Icon, label, isActive, href }: ProducerRailItemProps) => {
+    const navigate = useNavigate();
+    return (
+        <button
+            type="button"
+            onClick={href ? () => navigate(href) : undefined}
             className={cx(
-                "flex size-10 items-center justify-center rounded-lg transition duration-100 ease-linear",
-                isActive ? "bg-tertiary" : "hover:bg-secondary_hover",
+                "flex flex-col items-center gap-1 rounded-md px-2 py-2 transition duration-100 ease-linear",
+                isActive ? "text-secondary" : "text-tertiary hover:text-secondary_hover",
             )}
         >
-            <Icon className="size-5" />
-        </span>
-        <span className="text-xs font-medium">{label}</span>
-    </button>
-);
+            <span
+                className={cx(
+                    "flex size-10 items-center justify-center rounded-lg transition duration-100 ease-linear",
+                    isActive ? "bg-tertiary" : "hover:bg-secondary_hover",
+                )}
+            >
+                <Icon className="size-5" />
+            </span>
+            <span className="text-xs font-medium">{label}</span>
+        </button>
+    );
+};
 
-const ProducerRail = () => (
+const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
     <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[72px] shrink-0 flex-col items-center justify-between rounded-2xl bg-secondary py-4 lg:flex">
         <div className="flex flex-col items-center gap-4">
             <div className="relative">
@@ -410,9 +436,15 @@ const ProducerRail = () => (
                 </button>
             </div>
             <nav className="flex flex-col items-center gap-1">
-                <ProducerRailItem icon={Calendar} label="Eventos" isActive />
+                <ProducerRailItem icon={Calendar} label="Eventos" isActive={activeProducer === "eventos" || !activeProducer} />
                 <ProducerRailItem icon={UsersPlus} label="Equipe" />
                 <ProducerRailItem icon={Bank} label="Finanças" />
+                <ProducerRailItem
+                    icon={MessageQuestionCircle}
+                    label="Perguntas"
+                    href="/backstage/perguntas"
+                    isActive={activeProducer === "perguntas"}
+                />
                 <ProducerRailItem icon={Users01} label="Público" />
                 <ProducerRailItem icon={Settings01} label="Ajustes" />
             </nav>

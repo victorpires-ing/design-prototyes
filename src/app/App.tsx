@@ -27,6 +27,7 @@ import { Formulario as IngressosFormulario } from '../produtos/backstage/ingress
 import { PerguntasProvider } from '../produtos/backstage/perguntas/data/perguntas-store';
 import { Perguntas } from '../produtos/backstage/perguntas/pages/Perguntas';
 import { PerguntaForm } from '../produtos/backstage/perguntas/pages/PerguntaForm';
+import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -74,6 +75,7 @@ export default function App() {
         <Route path="/backstage/perguntas" element={<Perguntas />} />
         <Route path="/backstage/perguntas/nova" element={<PerguntaForm />} />
         <Route path="/backstage/perguntas/:id/editar" element={<PerguntaForm />} />
+        <Route path="/carteira-app/meus-ingressos" element={<MeusIngressos />} />
         <Route path="/futebol/landing-pages" element={<FutebolHome />} />
         <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />
       </Routes>

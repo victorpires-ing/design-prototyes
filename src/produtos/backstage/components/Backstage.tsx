@@ -25,6 +25,7 @@ import { TreeView } from "@/components/application/tree-view/tree-view";
 import { cx } from "@/utils/cx";
 import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
+import eventCover from "../../../assets/event-cover.png";
 
 const BrandLogo = ({ className }: { className?: string }) => (
     <>
@@ -124,8 +125,8 @@ const MobileTopBar = ({ onOpenMenu }: { onOpenMenu: () => void }) => (
 const MobileEventCard = () => (
     <div className="flex items-start gap-3 rounded-xl bg-secondary p-3">
         <img
-            src="/event-cover.png"
-            alt=""
+            src={eventCover}
+            alt="Bahia x Vitória"
             className="size-16 shrink-0 rounded-lg object-cover"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -136,7 +137,7 @@ const MobileEventCard = () => (
                 </Badge>
             </div>
             <p className="text-sm font-semibold leading-snug text-primary line-clamp-2">
-                Semana Santa dos Milagres 2026
+                Bahia x Vitória
             </p>
         </div>
     </div>
@@ -437,8 +438,8 @@ const EventDetailsCard = () => (
     <div className="flex flex-col gap-4 rounded-2xl bg-tertiary p-3">
         <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-tertiary">
             <img
-                src="https://ticket-backend-prod.imgix.net/media/event/2787127b-533d-4579-b769-5d01f0355e35/c789f9d2-1004-47af-be40-d53028f5834b.jpeg?h=440&w=330&fit=crop"
-                alt="Semana Santa dos Milagres 2026"
+                src={eventCover}
+                alt="Bahia x Vitória"
                 className="size-full object-cover"
             />
             <span className="absolute top-3 left-3 rounded-xl bg-white/50 px-3 py-1 text-[12px] font-medium tracking-wide text-primary uppercase backdrop-blur-md">
@@ -452,8 +453,8 @@ const EventDetailsCard = () => (
         </div>
         <div className="flex flex-col gap-0.5 px-1">
             <span className="text-xs text-tertiary">ID: 1234</span>
-            <h3 className="text-md font-bold text-primary">Réveillon dos Milagres</h3>
-            <p className="text-sm text-tertiary">Casa Marceneiro - Milagres - Passo…</p>
+            <h3 className="text-md font-bold text-primary">Bahia x Vitória</h3>
+            <p className="text-sm text-tertiary">Arena Fonte Nova - Salvador, BA</p>
         </div>
         <div className="flex items-center gap-2 px-1">
             <button

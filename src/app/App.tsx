@@ -15,7 +15,6 @@ import { Bordero } from '../produtos/backstage/relatorios/pages/Bordero';
 import { Transacoes } from '../produtos/backstage/relatorios/pages/Transacoes';
 import { Transferencias } from '../produtos/backstage/relatorios/pages/Transferencias';
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
-import { VendasPorGrupoV2 } from '../produtos/backstage/relatorios/pages/VendasPorGrupoV2';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
@@ -58,7 +57,6 @@ export default function App() {
         <Route path="/backstage/destinatarios" element={<EmissaoCortesias />} />
         <Route path="/backstage/verificacao" element={<VerificacaoFinal />} />
         <Route path="/backstage/relatorios/vendas-por-grupo" element={<VendasPorGrupo />} />
-        <Route path="/backstage/relatorios/vendas-por-grupo-v2" element={<VendasPorGrupoV2 />} />
         <Route path="/backstage/relatorios/transacoes" element={<Transacoes />} />
         <Route path="/backstage/relatorios/acesso" element={<Acesso />} />
         <Route path="/backstage/relatorios/bordero" element={<Bordero />} />

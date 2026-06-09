@@ -1180,14 +1180,14 @@ const TransacionadoChartCard = () => {
                             radius={[3, 3, 0, 0]}
                             maxBarSize={isMobile ? 14 : 26}
                         >
-                            {!isMobile && metric === "total" && (
+                            {metric === "total" && (
                                 <LabelList
                                     dataKey="total"
                                     position="top"
                                     fill="var(--color-text-primary)"
-                                    fontSize={11}
+                                    fontSize={isMobile ? 9 : 11}
                                     fontWeight={600}
-                                    offset={8}
+                                    offset={isMobile ? 6 : 8}
                                     formatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`}
                                 />
                             )}
@@ -1213,14 +1213,14 @@ const TransacionadoChartCard = () => {
                                 strokeWidth: 2,
                             }}
                         >
-                            {!isMobile && metric === "quantidade" && (
+                            {metric === "quantidade" && (
                                 <LabelList
                                     dataKey="quantidade"
                                     position="top"
                                     fill="var(--color-text-primary)"
-                                    fontSize={11}
+                                    fontSize={isMobile ? 9 : 11}
                                     fontWeight={600}
-                                    offset={30}
+                                    offset={isMobile ? 16 : 30}
                                     formatter={(v) => numberFormatter.format(Number(v))}
                                 />
                             )}

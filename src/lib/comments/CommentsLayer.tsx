@@ -187,6 +187,8 @@ interface CommentsLayerProps {
 
 export function CommentsLayer({ children }: CommentsLayerProps) {
     const location = useLocation();
+    // Flag temporária: os comentários só aparecem quando a rota tem "?comments=on".
+    const commentsEnabled = new URLSearchParams(location.search).get("comments") === "on";
     const [comments, setComments] = useState<Comment[]>([]);
     const [isPlacing, setIsPlacing] = useState(false);
     const [draft, setDraft] = useState<DraftComment | null>(null);
@@ -423,6 +425,10 @@ export function CommentsLayer({ children }: CommentsLayerProps) {
 
     const showLowHighlight = highlight !== null && !isPlacing;
     const showHighHighlight = highlight !== null && isPlacing;
+
+    // Sem a flag "?comments=on", renderiza apenas o app — nenhum pin, overlay ou
+    // ação de comentário fica disponível.
+    if (!commentsEnabled) return <>{children}</>;
 
     return (
         <>

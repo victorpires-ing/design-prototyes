@@ -9,14 +9,14 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { VincularChavesSlideOut } from "../components/VincularChavesSlideOut";
 
-/* ---- Mock data (tokens/conteúdo da referência) ---- */
+/* ---- Mock data (exemplo realista de Réveillon) ---- */
 const GROUP = {
-    name: "Nome do grupo",
+    name: "31/12 • Réveillon dos Milagres",
     info: [
         { label: "Lote", value: "via ingresso" },
-        { label: "Emissões", value: "0 de 7.000" },
+        { label: "Emissões", value: "1.240 de 7.000" },
         { label: "Pendentes", value: "20" },
-        { label: "Acesso", value: "Acesso 19" },
+        { label: "Acesso", value: "Qui 31 Dez • 21:00" },
     ],
 };
 
@@ -46,28 +46,28 @@ interface Ticket {
 const tooltipChave = (hasChave?: boolean) => (hasChave ? "Editar vínculos de chave de acesso" : "Vincular chave de acesso");
 
 const TICKETS: Ticket[] = [
-    { id: "inteira", name: "Inteira", sub: "5 lotes à venda", active: true, precoFrom: "R$ 41,80", precoTo: "Até R$ 291,20", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
-    { id: "meia", name: "Meia entrada", sub: "5 lotes à venda", active: true, precoFrom: "R$ 41,80", precoTo: "Até R$ 291,20", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
+    { id: "pista-fem", name: "Pista Feminino", sub: "2 lotes à venda", active: true, precoFrom: "R$ 420,00", precoTo: "Até R$ 980,00", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
+    { id: "pista-masc", name: "Pista Masculino", sub: "2 lotes à venda", active: true, precoFrom: "R$ 450,00", precoTo: "Até R$ 1.020,00", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
     {
         id: "camarote",
-        name: "Camarote",
+        name: "Camarote Open Bar",
         sub: "4 lotes à venda • 2 com chave de acesso",
         active: true,
         hasChave: true,
-        precoFrom: "R$ 41,80",
-        precoTo: "Até R$ 291,20",
+        precoFrom: "R$ 1.200,00",
+        precoTo: "Até R$ 2.400,00",
         emissoes: "1.000 de 1.000",
         pendentes: "0 pendentes",
         lotes: [
-            { id: "cam-l1", name: "Lote 1", active: false, preco: "R$ 41,80", emissoes: "400 de 400" },
-            { id: "cam-l2", name: "Lote 2", active: true, auto: true, oculto: true, preco: "R$ 41,80", emissoes: "400 de 400" },
-            { id: "cam-l3", name: "Lote 3", active: false, oculto: true, preco: "R$ 41,80", emissoes: "400 de 400" },
-            { id: "cam-l4", name: "Lote 4", active: false, preco: "R$ 41,80", emissoes: "400 de 400" },
+            { id: "cam-l1", name: "1º Lote", active: false, preco: "R$ 1.200,00", emissoes: "400 de 400" },
+            { id: "cam-l2", name: "2º Lote", active: true, auto: true, oculto: true, preco: "R$ 1.600,00", emissoes: "400 de 400" },
+            { id: "cam-l3", name: "3º Lote", active: false, oculto: true, preco: "R$ 2.000,00", emissoes: "400 de 400" },
+            { id: "cam-l4", name: "4º Lote", active: false, preco: "R$ 2.400,00", emissoes: "400 de 400" },
         ],
     },
-    { id: "pista", name: "Pista", sub: "5 lotes à venda • Oculto por chave de acesso", active: true, hasChave: true, precoFrom: "R$ 41,80", precoTo: "Até R$ 291,20", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
-    { id: "pista-premium", name: "Pista Premium", sub: "5 lotes à venda", active: false, precoFrom: "R$ 41,80", precoTo: "Até R$ 291,20", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
-    { id: "pista-lateral", name: "Pista Lateral", sub: "5 lotes à venda", active: false, precoFrom: "R$ 41,80", precoTo: "Até R$ 291,20", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
+    { id: "lounge-vip", name: "Lounge VIP", sub: "5 lotes à venda • Oculto por chave de acesso", active: true, hasChave: true, precoFrom: "R$ 980,00", precoTo: "Até R$ 1.800,00", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
+    { id: "passaporte-fem", name: "Passaporte 5 Festas • Feminino", sub: "5 lotes à venda", active: false, precoFrom: "R$ 2.340,00", precoTo: "Até R$ 3.200,00", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
+    { id: "passaporte-masc", name: "Passaporte 5 Festas • Masculino", sub: "5 lotes à venda", active: false, precoFrom: "R$ 2.490,00", precoTo: "Até R$ 3.400,00", emissoes: "1.000 de 1.000", pendentes: "0 pendentes", lotes: [] },
 ];
 
 const COL = {

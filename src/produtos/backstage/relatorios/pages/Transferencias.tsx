@@ -328,7 +328,7 @@ type ViewMode = "table" | "cards";
 export function Transferencias() {
     const [filters, setFilters] = useState<FilterRow[]>([]);
     const [appliedCount, setAppliedCount] = useState(0);
-    const [view, setView] = useState<ViewMode>("table");
+    const [view, setView] = useState<ViewMode>("cards");
 
     const handleAddFilter = useCallback(() => {
         setFilters((prev) => [...prev, createEmptyFilter()]);
@@ -366,12 +366,14 @@ export function Transferencias() {
         <BackstageLayout activeSection="relatorios" activeItem="transferencias">
             <div className="flex min-w-0 flex-1 flex-col">
                 <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
-                    <RelatorioPageHeader title="Transferências do Evento" />
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <FilterDropdown
-                            filters={filters}
-                            appliedCount={appliedCount}
-                            placement="bottom start"
+                    <RelatorioPageHeader
+                        title="Transferências do Evento"
+                        actions={
+                            <>
+                                <FilterDropdown
+                                    filters={filters}
+                                    appliedCount={appliedCount}
+                                    placement="bottom start"
                             onAddFilter={handleAddFilter}
                             onRemoveFilter={handleRemoveFilter}
                             onFilterChange={handleFilterChange}
@@ -447,19 +449,21 @@ export function Transferencias() {
                             </Button>
                         </FilterDropdown>
 
-                        <ButtonGroup
-                            size="sm"
-                            selectedKeys={[view]}
-                            onSelectionChange={(keys: Set<React.Key> | "all") => {
-                                if (keys === "all") return;
-                                const next = [...keys][0] as ViewMode | undefined;
-                                if (next) setView(next);
-                            }}
-                        >
-                            <ButtonGroupItem id="table" iconLeading={Rows01} aria-label="Visualização em tabela" />
-                            <ButtonGroupItem id="cards" iconLeading={Grid01} aria-label="Visualização em cards" />
-                        </ButtonGroup>
-                    </div>
+                                <ButtonGroup
+                                    size="sm"
+                                    selectedKeys={[view]}
+                                    onSelectionChange={(keys: Set<React.Key> | "all") => {
+                                        if (keys === "all") return;
+                                        const next = [...keys][0] as ViewMode | undefined;
+                                        if (next) setView(next);
+                                    }}
+                                >
+                                    <ButtonGroupItem id="cards" iconLeading={Grid01} aria-label="Visualização em cards" />
+                                    <ButtonGroupItem id="table" iconLeading={Rows01} aria-label="Visualização em tabela" />
+                                </ButtonGroup>
+                            </>
+                        }
+                    />
 
                     {view === "table" ? (
                         <TransferenciasTable rows={filteredTransferencias} />
@@ -492,7 +496,7 @@ const COLUMNS: Array<{ key: keyof Transferencia; label: string }> = [
 
 const TransferenciasTable = ({ rows }: { rows: Transferencia[] }) => {
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(50);
+    const [pageSize, setPageSize] = useState(100);
 
     const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
     const safePage = Math.min(page, totalPages);
@@ -588,7 +592,7 @@ const formatCpf = (cpf: string): string => {
 
 const TransferenciasCards = ({ rows }: { rows: Transferencia[] }) => {
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(12);
+    const [pageSize, setPageSize] = useState(100);
     const [selected, setSelected] = useState<Transferencia | null>(null);
 
     const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -600,23 +604,25 @@ const TransferenciasCards = ({ rows }: { rows: Transferencia[] }) => {
 
     return (
         <>
-            <Card title="Relatório de transferência AWA">
-                {visibleRows.length === 0 ? (
-                    <div className="px-4 py-12 text-center text-sm text-tertiary">
-                        Nenhuma transferência corresponde aos filtros aplicados.
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
-                        {visibleRows.map((row) => (
-                            <TransferenciaCard
-                                key={`${row.id}-${row.code}`}
-                                row={row}
-                                onClick={() => setSelected(row)}
-                            />
-                        ))}
-                    </div>
-                )}
+            {visibleRows.length === 0 ? (
+                <div className="rounded-xl bg-primary px-4 py-12 text-center text-sm text-tertiary ring-1 ring-border-secondary">
+                    Nenhuma transferência corresponde aos filtros aplicados.
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {visibleRows.map((row) => (
+                        <TransferenciaCard
+                            key={`${row.id}-${row.code}`}
+                            row={row}
+                            onClick={() => setSelected(row)}
+                        />
+                    ))}
+                </div>
+            )}
+
+            <div className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
                 <PaginationCardAdvanced
+                    className="[&]:border-t-0"
                     page={safePage}
                     total={totalPages}
                     pageSize={pageSize}
@@ -626,7 +632,7 @@ const TransferenciasCards = ({ rows }: { rows: Transferencia[] }) => {
                         setPage(1);
                     }}
                 />
-            </Card>
+            </div>
 
             <TransferenciaDetailsSlideOut
                 isOpen={selected !== null}
@@ -647,19 +653,39 @@ const TransferenciaCard = ({
     <button
         type="button"
         onClick={onClick}
-        className="group flex w-full items-center gap-3 rounded-xl bg-primary p-4 text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-primary_hover"
+        className="group flex w-full flex-col gap-4 rounded-xl bg-primary p-5 text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-primary_hover"
     >
-        <Avatar size="md" initials={getInitials(row.portadorAtualNome)} />
-        <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-sm font-semibold text-primary">
-                {row.portadorAtualNome}
-            </span>
-            <span className="truncate font-mono text-xs text-tertiary">{row.code}</span>
+        <div className="flex items-center justify-between gap-2">
+            <span className="truncate font-mono text-xs font-medium text-tertiary">{row.code}</span>
+            <ChevronRight
+                aria-hidden="true"
+                className="size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-hover:translate-x-0.5"
+            />
         </div>
-        <ChevronRight
-            aria-hidden="true"
-            className="size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-hover:translate-x-0.5"
-        />
+
+        <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2.5">
+                <Avatar size="sm" initials={getInitials(row.portadorAnteriorNome)} />
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-xs text-tertiary">De</span>
+                    <span className="truncate text-sm font-medium text-secondary">
+                        {row.portadorAnteriorNome}
+                    </span>
+                </div>
+            </div>
+
+            <ArrowRight aria-hidden="true" className="ml-2.5 size-4 rotate-90 text-fg-quaternary" />
+
+            <div className="flex items-center gap-2.5">
+                <Avatar size="sm" initials={getInitials(row.portadorAtualNome)} />
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-xs text-tertiary">Para</span>
+                    <span className="truncate text-sm font-semibold text-primary">
+                        {row.portadorAtualNome}
+                    </span>
+                </div>
+            </div>
+        </div>
     </button>
 );
 
@@ -716,13 +742,12 @@ const TransferenciaDetailsSlideOut = ({
                 <div className="flex flex-1 flex-col overflow-y-auto">
                     {row && (
                         <>
-                            <div className="flex flex-col gap-1 px-6 pt-6 pb-5">
-                                <span className="text-xs font-medium text-tertiary uppercase tracking-wide">
-                                    Código do ingresso
-                                </span>
-                                <span className="font-mono text-md font-medium text-primary">
-                                    {row.code}
-                                </span>
+                            <div className="flex flex-col gap-3 px-6 pt-6 pb-5">
+                                <h3 className="text-md font-semibold text-primary">Identificação</h3>
+                                <dl className="flex flex-col gap-2.5">
+                                    <DetailRow label="Código do ingresso" value={row.code} isMono />
+                                    <DetailRow label="ID da transação" value={row.id} isMono />
+                                </dl>
                             </div>
 
                             <div className="mx-6 border-t border-secondary" />
@@ -821,10 +846,12 @@ const DetailRow = ({
     label,
     value,
     isEmail = false,
+    isMono = false,
 }: {
     label: string;
     value: string;
     isEmail?: boolean;
+    isMono?: boolean;
 }) => (
     <div className="flex flex-col gap-0.5">
         <dt className="text-xs text-tertiary">{label}</dt>
@@ -832,6 +859,7 @@ const DetailRow = ({
             className={cx(
                 "text-sm break-words",
                 isEmail ? "text-brand-secondary" : "text-secondary",
+                isMono && "font-mono text-xs text-primary",
             )}
         >
             {value}

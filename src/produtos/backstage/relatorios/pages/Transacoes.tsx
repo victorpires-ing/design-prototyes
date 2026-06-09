@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { Selection } from "react-aria-components";
+import { getLocalTimeZone, today } from "@internationalized/date";
+import type { DateValue, Selection } from "react-aria-components";
 import {
     Bank,
     CheckCircle,
     ChevronDown,
     ClockFastForward,
     CreditCard02,
+    CurrencyDollarCircle,
     FilterLines,
+    RefreshCcw01,
+    SearchLg,
+    ShoppingCart01,
     SlashCircle01,
 } from "@untitledui/icons";
 import {
@@ -29,10 +34,11 @@ import {
     FilterDropdown,
     type FilterRow,
 } from "@/components/application/filter-bar/filter-dropdown-menu";
-import { MetricsSimple } from "@/components/application/metrics/metrics";
+import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
+import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
-import { TabList, Tabs } from "@/components/application/tabs/tabs";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Input } from "@/components/base/input/input";
 import { MultiSelect } from "@/components/base/select/multi-select";
 import { Select } from "@/components/base/select/select";
@@ -83,7 +89,7 @@ const percentFormatter = new Intl.NumberFormat("pt-BR", {
 /*  Mock data                                                         */
 /* ------------------------------------------------------------------ */
 
-type StatusTransacao = "aprovado" | "pendente" | "cancelado" | "estornado";
+type StatusTransacao = "aprovado" | "pendente" | "cancelado" | "estornado" | "reembolso";
 
 const STATUS_META: Record<
     StatusTransacao,
@@ -95,8 +101,9 @@ const STATUS_META: Record<
 > = {
     aprovado: { label: "Aprovado", icon: CheckCircle, color: "success" },
     pendente: { label: "Pendente", icon: ClockFastForward, color: "warning" },
-    cancelado: { label: "Cancelado", icon: SlashCircle01, color: "error" },
-    estornado: { label: "Estornado", icon: SlashCircle01, color: "gray" },
+    cancelado: { label: "Carrinho Abandonado", icon: ShoppingCart01, color: "gray" },
+    estornado: { label: "Cancelado", icon: SlashCircle01, color: "error" },
+    reembolso: { label: "Reembolso", icon: RefreshCcw01, color: "warning" },
 };
 
 interface IngressoStatusRow {
@@ -111,6 +118,8 @@ const ingressosPorStatus: IngressoStatusRow[] = [
     { id: "ap", status: "aprovado", canal: "Online", totalIngressos: 11124, total: 2798311.19 },
     { id: "pe", status: "pendente", canal: "Online", totalIngressos: 384, total: 95616.0 },
     { id: "ca", status: "cancelado", canal: "Online", totalIngressos: 127, total: 31750.0 },
+    { id: "es", status: "estornado", canal: "Online", totalIngressos: 64, total: 16000.0 },
+    { id: "re", status: "reembolso", canal: "Online", totalIngressos: 41, total: 10250.0 },
 ];
 
 interface MeioPagamentoRow {
@@ -701,8 +710,9 @@ export function Transacoes() {
 const STATUS_OPTIONS = [
     { id: "Aprovado", label: "Aprovado" },
     { id: "Pendente", label: "Pendente" },
+    { id: "Carrinho Abandonado", label: "Carrinho Abandonado" },
     { id: "Cancelado", label: "Cancelado" },
-    { id: "Estornado", label: "Estornado" },
+    { id: "Reembolso", label: "Reembolso" },
 ];
 
 const CANAL_OPTIONS = [
@@ -845,13 +855,14 @@ interface TotalTransacionadoCardProps {
 }
 
 const TotalTransacionadoCard = ({ total }: TotalTransacionadoCardProps) => (
-    <MetricsSimple
-        type="modern"
-        trend="positive"
-        subtitle="Total transacionado"
+    <MetricsIcon03
+        icon={CurrencyDollarCircle}
         title={currencyFormatter.format(total)}
-        footer={null}
-        className={cx("h-full", HIDE_TREND_AND_MENU)}
+        subtitle="Total transacionado"
+        change={null}
+        changeTrend="positive"
+        actions={false}
+        className="h-full [&_p+div]:hidden"
     />
 );
 
@@ -866,8 +877,9 @@ interface IngressosValorPorStatusCardProps {
 const STATUS_FILL: Record<StatusTransacao, string> = {
     aprovado: "var(--color-utility-green-500)",
     pendente: "var(--color-utility-yellow-500)",
-    cancelado: "var(--color-utility-red-500)",
-    estornado: "var(--color-utility-neutral-500)",
+    cancelado: "var(--color-utility-neutral-500)",
+    estornado: "var(--color-utility-red-500)",
+    reembolso: "var(--color-utility-orange-500)",
 };
 
 const IngressosValorPorStatusCard = ({ rows }: IngressosValorPorStatusCardProps) => {
@@ -1035,21 +1047,44 @@ const ChartCursor = ({ points, top = 0, height = 0 }: ChartCursorProps) => {
     );
 };
 
-type ChartRange = "7days" | "15days" | "30days" | "all";
+// Cor adaptável para a série de quantidade (visível no claro e no escuro).
+const QTD_COLOR = "var(--color-utility-blue-400)";
+const TOTAL_COLOR = "var(--color-brand-600)";
 
 const TransacionadoChartCard = () => {
     const isMobile = useIsMobile();
     const fontSize = isMobile ? 10 : 11;
-    const [selectedTab, setSelectedTab] = useState<ChartRange>("all");
+    const [metric, setMetric] = useState<"total" | "quantidade">("total");
+
+    // Período de vendas do evento — limita o range e gera os presets do projeto.
+    const { salesStart, salesEnd, salesPresets } = useMemo(() => {
+        const tz = getLocalTimeZone();
+        const end = today(tz);
+        const start = end.subtract({ days: chartData.length - 1 });
+        return {
+            salesStart: start,
+            salesEnd: end,
+            salesPresets: {
+                last7: { label: "Últimos 7 dias de vendas", value: { start: end.subtract({ days: 6 }), end } },
+                last15: { label: "Últimos 15 dias de vendas", value: { start: end.subtract({ days: 14 }), end } },
+                last30: { label: "Últimos 30 dias de vendas", value: { start: end.subtract({ days: 29 }), end } },
+                allSales: { label: "Todo o período de vendas", value: { start, end } },
+            },
+        };
+    }, []);
+
+    const [range, setRange] = useState<{ start: DateValue; end: DateValue } | null>(salesPresets.last7.value);
 
     const visibleChartData = useMemo(() => {
-        if (selectedTab === "all") return chartData;
-        const days = selectedTab === "7days" ? 7 : selectedTab === "15days" ? 15 : 30;
-        return chartData.slice(-days);
-    }, [selectedTab]);
+        if (!range) return chartData;
+        const tz = getLocalTimeZone();
+        const days = Math.round((range.end.toDate(tz).getTime() - range.start.toDate(tz).getTime()) / 86400000) + 1;
+        if (days >= chartData.length) return chartData;
+        return chartData.slice(-Math.max(1, days));
+    }, [range]);
 
     return (
-        <section className="overflow-clip rounded-xl bg-primary_alt ring-1 ring-border-secondary">
+        <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
             <header className="flex flex-col gap-3 border-b border-secondary px-5 pt-4 pb-4 md:flex-row md:items-start md:justify-between">
                 <div className="flex flex-col gap-1">
                     <h3 className="text-md font-semibold text-primary">
@@ -1059,47 +1094,29 @@ const TransacionadoChartCard = () => {
                         Distribuição diária de transações e ingressos vendidos
                     </p>
                 </div>
-                <Tabs
-                    selectedKey={selectedTab}
-                    onSelectionChange={(value: React.Key) =>
-                        setSelectedTab(value as ChartRange)
-                    }
-                    className="w-auto shrink-0"
-                >
-                    <TabList
-                        type="button-minimal"
-                        items={[
-                            {
-                                id: "7days",
-                                label: (
-                                    <>
-                                        <span className="max-md:hidden">7 dias</span>
-                                        <span className="md:hidden">7d</span>
-                                    </>
-                                ),
-                            },
-                            {
-                                id: "15days",
-                                label: (
-                                    <>
-                                        <span className="max-md:hidden">15 dias</span>
-                                        <span className="md:hidden">15d</span>
-                                    </>
-                                ),
-                            },
-                            {
-                                id: "30days",
-                                label: (
-                                    <>
-                                        <span className="max-md:hidden">30 dias</span>
-                                        <span className="md:hidden">30d</span>
-                                    </>
-                                ),
-                            },
-                            { id: "all", label: "Todos" },
-                        ]}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+
+                    <DateRangePicker
+                        value={range}
+                        onChange={setRange}
+                        minValue={salesStart}
+                        maxValue={salesEnd}
+                        presets={salesPresets}
+                        className="shrink-0"
                     />
-                </Tabs>
+                    <ButtonGroup
+                        size="sm"
+                        selectedKeys={[metric]}
+                        onSelectionChange={(keys: Set<React.Key> | "all") => {
+                            if (keys === "all") return;
+                            const next = [...keys][0] as "total" | "quantidade" | undefined;
+                            if (next) setMetric(next);
+                        }}
+                    >
+                        <ButtonGroupItem id="total">Total</ButtonGroupItem>
+                        <ButtonGroupItem id="quantidade">Quantidade</ButtonGroupItem>
+                    </ButtonGroup>
+                </div>
             </header>
 
             <div className="h-[280px] w-full px-2 pt-5 pb-2 md:h-[380px] md:px-4">
@@ -1115,16 +1132,8 @@ const TransacionadoChartCard = () => {
                     >
                         <defs>
                             <linearGradient id="qtdAreaFill" x1="0" y1="0" x2="0" y2="1">
-                                <stop
-                                    offset="0%"
-                                    stopColor="var(--color-fg-white)"
-                                    stopOpacity={0.28}
-                                />
-                                <stop
-                                    offset="80%"
-                                    stopColor="var(--color-fg-white)"
-                                    stopOpacity={0}
-                                />
+                                <stop offset="0%" stopColor={QTD_COLOR} stopOpacity={0.28} />
+                                <stop offset="80%" stopColor={QTD_COLOR} stopOpacity={0} />
                             </linearGradient>
                         </defs>
                         <CartesianGrid
@@ -1167,42 +1176,52 @@ const TransacionadoChartCard = () => {
                             yAxisId="total"
                             dataKey="total"
                             name="Total Transacionado"
-                            fill="var(--color-brand-600)"
+                            fill={TOTAL_COLOR}
                             radius={[3, 3, 0, 0]}
-                            maxBarSize={isMobile ? 10 : 18}
-                        />
+                            maxBarSize={isMobile ? 14 : 26}
+                        >
+                            {!isMobile && metric === "total" && (
+                                <LabelList
+                                    dataKey="total"
+                                    position="top"
+                                    fill="var(--color-text-primary)"
+                                    fontSize={11}
+                                    fontWeight={600}
+                                    offset={8}
+                                    formatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`}
+                                />
+                            )}
+                        </Bar>
                         <Area
                             yAxisId="qtd"
                             type="monotone"
                             dataKey="quantidade"
                             name="Quantidade de Ingressos"
-                            stroke="var(--color-fg-white)"
+                            stroke={QTD_COLOR}
                             strokeWidth={2.5}
                             fill="url(#qtdAreaFill)"
                             dot={{
                                 r: isMobile ? 3 : 4,
                                 fill: "var(--color-bg-primary)",
-                                stroke: "var(--color-fg-white)",
+                                stroke: QTD_COLOR,
                                 strokeWidth: 2,
                             }}
                             activeDot={{
                                 r: 6,
-                                fill: "var(--color-fg-white)",
+                                fill: QTD_COLOR,
                                 stroke: "var(--color-bg-primary)",
                                 strokeWidth: 2,
                             }}
                         >
-                            {!isMobile && (
+                            {!isMobile && metric === "quantidade" && (
                                 <LabelList
                                     dataKey="quantidade"
                                     position="top"
-                                    fill="var(--color-fg-white)"
+                                    fill="var(--color-text-primary)"
                                     fontSize={11}
                                     fontWeight={600}
-                                    offset={10}
-                                    formatter={(v) =>
-                                        numberFormatter.format(Number(v))
-                                    }
+                                    offset={30}
+                                    formatter={(v) => numberFormatter.format(Number(v))}
                                 />
                             )}
                         </Area>
@@ -1211,28 +1230,17 @@ const TransacionadoChartCard = () => {
             </div>
 
             <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary px-5 py-3">
+                {/* Legenda do gráfico (estática) */}
                 <div className="flex flex-wrap items-center gap-4 text-xs text-tertiary">
                     <span className="flex items-center gap-1.5">
-                        <span
-                            aria-hidden="true"
-                            className="size-2.5 rounded-sm"
-                            style={{ background: "var(--color-brand-600)" }}
-                        />
+                        <span aria-hidden="true" className="size-2.5 rounded-sm" style={{ background: TOTAL_COLOR }} />
                         Total Transacionado
                     </span>
                     <span className="flex items-center gap-1.5">
-                        <span
-                            aria-hidden="true"
-                            className="size-2.5 rounded-full"
-                            style={{ background: "var(--color-fg-white)" }}
-                        />
+                        <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: QTD_COLOR }} />
                         Quantidade de Ingressos
                     </span>
                 </div>
-                <span className="text-xs text-tertiary">
-                    {visibleChartData.length} dia
-                    {visibleChartData.length === 1 ? "" : "s"}
-                </span>
             </footer>
         </section>
     );
@@ -1246,88 +1254,81 @@ interface MeioPagamentosCardProps {
     rows: MeioPagamentoRow[];
 }
 
-const MeioPagamentosCard = ({ rows }: MeioPagamentosCardProps) => (
-    <Card title="Meio de Pagamentos">
-        <div className="overflow-x-auto overflow-y-clip">
-            <table className="w-full border-collapse">
-                <thead className="sticky top-0 z-10 bg-secondary">
-                    <tr className="border-b border-secondary bg-secondary text-left">
-                        <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary">
-                            <SortableHeader label="Meio de Pagamento" />
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
-                            <SortableHeader label="Quantidade Transações" align="right" />
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
-                            <SortableHeader label="% Qtd Transações" align="right" />
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
-                            <SortableHeader label="Quantidade Ingressos" align="right" />
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
-                            <SortableHeader label="% Qtd Ingressos" align="right" />
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
-                            <SortableHeader label="Valor" align="right" />
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
-                            <SortableHeader label="% Valor" align="right" />
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.length === 0 && (
-                        <tr>
-                            <td
-                                colSpan={7}
-                                className="px-4 py-12 text-center text-sm text-tertiary"
-                            >
-                                Nenhum meio corresponde aos filtros.
-                            </td>
-                        </tr>
-                    )}
-                    {rows.map((row, i) => (
-                        <tr
-                            key={row.id}
-                            className={cx(
-                                "transition duration-100 ease-linear hover:bg-primary_hover",
-                                i !== rows.length - 1 && "border-b border-secondary",
-                            )}
-                        >
-                            <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-primary">
-                                <span className="inline-flex items-center gap-2">
-                                    <row.icon
-                                        aria-hidden="true"
-                                        className="size-4 text-fg-quaternary"
-                                    />
-                                    {row.nome}
-                                </span>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">
-                                {numberFormatter.format(row.quantidadeTransacoes)}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">
-                                {percentFormatter.format(row.pctQtdTransacoes)}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">
-                                {numberFormatter.format(row.quantidadeIngressos)}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">
-                                {percentFormatter.format(row.pctQtdIngressos)}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">
-                                {currencyFormatter.format(row.valor)}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">
-                                {percentFormatter.format(row.pctValor)}
-                            </td>
-                        </tr>
+const MEIO_FILL: Record<string, string> = {
+    pix: "var(--color-utility-green-500)",
+    cartao: "var(--color-utility-blue-500)",
+};
+
+const MeioPagamentosCard = ({ rows }: MeioPagamentosCardProps) => {
+    if (rows.length === 0) {
+        return (
+            <Card title="Meio de Pagamentos">
+                <div className="px-4 py-12 text-center text-sm text-tertiary">Nenhum meio corresponde aos filtros.</div>
+            </Card>
+        );
+    }
+
+    const fillFor = (id: string) => MEIO_FILL[id] ?? "var(--color-utility-gray-400)";
+
+    return (
+        <Card title="Meio de Pagamentos">
+            <div className="flex flex-col gap-6 px-4 py-5 md:flex-row md:items-center md:gap-8 md:px-5">
+                <div className="flex shrink-0 flex-col items-center gap-2">
+                    <div className="size-44">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={rows}
+                                    dataKey="valor"
+                                    innerRadius="65%"
+                                    outerRadius="100%"
+                                    paddingAngle={2}
+                                    startAngle={90}
+                                    endAngle={-270}
+                                    stroke="none"
+                                    isAnimationActive={false}
+                                >
+                                    {rows.map((r) => (
+                                        <Cell key={r.id} fill={fillFor(r.id)} />
+                                    ))}
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <span className="text-xs font-medium text-tertiary">Distribuição por valor</span>
+                </div>
+
+                <ul className="flex w-full flex-1 flex-col divide-y divide-secondary">
+                    {rows.map((row) => (
+                        <li key={row.id} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:gap-4">
+                            <div className="flex min-w-0 items-center gap-3 md:flex-1">
+                                <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: fillFor(row.id) }} />
+                                <row.icon aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
+                                <div className="flex min-w-0 flex-1 flex-col">
+                                    <span className="text-sm font-semibold text-primary">{row.nome}</span>
+                                    <span className="text-xs text-tertiary">{percentFormatter.format(row.pctValor)} do valor</span>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 md:flex md:gap-8">
+                                <StatBlock
+                                    className="md:w-28"
+                                    label="Transações"
+                                    value={`${numberFormatter.format(row.quantidadeTransacoes)} · ${percentFormatter.format(row.pctQtdTransacoes)}`}
+                                />
+                                <StatBlock
+                                    className="md:w-28"
+                                    label="Ingressos"
+                                    value={`${numberFormatter.format(row.quantidadeIngressos)} · ${percentFormatter.format(row.pctQtdIngressos)}`}
+                                />
+                                <StatBlock className="md:w-36" label="Valor" value={currencyFormatter.format(row.valor)} />
+                            </div>
+                        </li>
                     ))}
-                </tbody>
-            </table>
-        </div>
-    </Card>
-);
+                </ul>
+            </div>
+        </Card>
+    );
+};
 
 /* ------------------------------------------------------------------ */
 /*  Lista de transações                                               */
@@ -1379,16 +1380,59 @@ interface ListaTransacoesCardProps {
     rows: Transacao[];
 }
 
+const parseTxDate = (s: string): Date | null => {
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (!m) return null;
+    return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+};
+
 const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(50);
+    const [search, setSearch] = useState("");
+    const [statusKeys, setStatusKeys] = useState<Selection>(new Set());
+    const [dateRange, setDateRange] = useState<{ start: DateValue; end: DateValue } | null>(null);
 
-    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    // Filtros locais da lista: busca (id, status, setor, dados do comprador), status e data.
+    const filtered = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        const statusSet =
+            statusKeys !== "all" && statusKeys instanceof Set && statusKeys.size > 0
+                ? new Set(Array.from(statusKeys, String))
+                : null;
+        const tz = getLocalTimeZone();
+        const startMs = dateRange ? dateRange.start.toDate(tz).getTime() : null;
+        const endMs = dateRange ? dateRange.end.toDate(tz).getTime() + 86_400_000 - 1 : null;
+
+        return rows.filter((t) => {
+            if (term) {
+                const haystack = [t.id, STATUS_META[t.status].label, t.setor, t.comprador, t.cpf, t.telefone, t.email]
+                    .join(" ")
+                    .toLowerCase();
+                if (!haystack.includes(term)) return false;
+            }
+            if (statusSet && !statusSet.has(STATUS_META[t.status].label)) return false;
+            if (startMs != null && endMs != null) {
+                const d = parseTxDate(t.dataCriacao);
+                if (!d) return false;
+                const ms = d.getTime();
+                if (ms < startMs || ms > endMs) return false;
+            }
+            return true;
+        });
+    }, [rows, search, statusKeys, dateRange]);
+
+    // Volta para a primeira página sempre que os filtros mudam.
+    useEffect(() => {
+        setPage(1);
+    }, [search, statusKeys, dateRange]);
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const safePage = Math.min(page, totalPages);
     const visibleRows = useMemo(() => {
         const start = (safePage - 1) * pageSize;
-        return rows.slice(start, start + pageSize);
-    }, [rows, safePage, pageSize]);
+        return filtered.slice(start, start + pageSize);
+    }, [filtered, safePage, pageSize]);
 
     return (
         <Card
@@ -1396,11 +1440,42 @@ const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
                 <>
                     Lista de transações
                     <Badge size="sm" color="gray" type="pill-color">
-                        {numberFormatter.format(rows.length)}
+                        {numberFormatter.format(filtered.length)}
                     </Badge>
                 </>
             }
         >
+            {/* Toolbar: busca, filtro de status e período */}
+            <div className="flex flex-col gap-3 border-b border-secondary px-4 py-3 lg:flex-row lg:items-center">
+                <Input
+                    size="sm"
+                    icon={SearchLg}
+                    aria-label="Buscar transações"
+                    placeholder="Buscar por ID, setor ou comprador"
+                    value={search}
+                    onChange={setSearch}
+                    className="lg:max-w-xs lg:flex-1"
+                />
+                <div className="flex flex-col gap-3 lg:ml-auto lg:flex-row lg:items-center">
+                    <MultiSelect
+                        size="sm"
+                        aria-label="Filtrar por status"
+                        placeholder="Status"
+                        items={STATUS_OPTIONS}
+                        selectedKeys={statusKeys}
+                        onSelectionChange={setStatusKeys}
+                        className="w-full lg:w-44"
+                    >
+                        {(item: { id: string; label: string }) => (
+                            <MultiSelect.Item id={item.id} selectionIndicator="checkbox" selectionIndicatorAlign="left">
+                                {item.label}
+                            </MultiSelect.Item>
+                        )}
+                    </MultiSelect>
+                    <DateRangePicker value={dateRange} onChange={setDateRange} className="shrink-0" />
+                </div>
+            </div>
+
             <div className="overflow-x-auto overflow-y-clip">
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">

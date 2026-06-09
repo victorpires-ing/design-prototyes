@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, ChevronDown, CurrencyDollarCircle, CursorClick02, Receipt } from "@untitledui/icons";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/base/badges/badges";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -200,10 +200,10 @@ export function VendasPorGrupo() {
                     <MixReceitaCard />
                     <DrillDownGmvCard />
                     <OcupacaoPorSetorCard />
+                    <QuantidadeIngressosPorSetorCard />
                     <ComboCard />
                     <ProdutosCard />
                     <IngressosComCupomCard />
-                    <QuantidadeIngressosPorSetorCard />
                 </main>
             </div>
         </BackstageLayout>
@@ -233,7 +233,7 @@ const MetricsRow = () => (
             change={null}
             changeTrend="positive"
             actions={false}
-            className="flex-1 max-lg:**:data-featured-icon:hidden md:min-w-[320px] [&_p+div]:hidden"
+            className="flex-1 md:min-w-[320px] [&_p+div]:hidden"
         />
         <MetricsIcon03
             icon={Receipt}
@@ -242,7 +242,7 @@ const MetricsRow = () => (
             change={null}
             changeTrend="positive"
             actions={false}
-            className="flex-1 max-lg:**:data-featured-icon:hidden md:min-w-[320px] [&_p+div]:hidden"
+            className="flex-1 md:min-w-[320px] [&_p+div]:hidden"
         />
         <OcupacaoMetric />
     </div>
@@ -632,6 +632,34 @@ const DrillDownGmvCard = () => {
     const [lines, setLines] = useState<string[]>([]);
     const [lockedWidth, setLockedWidth] = useState<number | null>(null);
 
+    // Overlay de dica (mobile): aparece por 4s quando 50% da seção entra na tela.
+    const bodyRef = useRef<HTMLDivElement>(null);
+    const hintFiredRef = useRef(false);
+    const [showHint, setShowHint] = useState(false);
+
+    useEffect(() => {
+        const el = bodyRef.current;
+        if (!el) return;
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (hintFiredRef.current) return;
+                if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+                    hintFiredRef.current = true;
+                    setShowHint(true);
+                    timeout = setTimeout(() => setShowHint(false), 4000);
+                    observer.disconnect();
+                }
+            },
+            { threshold: 0.5 },
+        );
+        observer.observe(el);
+        return () => {
+            observer.disconnect();
+            if (timeout) clearTimeout(timeout);
+        };
+    }, []);
+
     const columns = useMemo(() => {
         const cols: TreeNode[][] = [drillTree];
         for (let i = 0; i < path.length; i++) {
@@ -746,6 +774,7 @@ const DrillDownGmvCard = () => {
                 ) : null
             }
         >
+            <div ref={bodyRef} className="relative">
             <div ref={scrollRef} className="overflow-x-auto">
                 <div
                     ref={innerRef}
@@ -981,7 +1010,7 @@ const DrillDownGmvCard = () => {
                                     ease: "easeOut",
                                     delay: 0.05,
                                 }}
-                                className="flex max-w-[240px] flex-1 flex-col items-center justify-center gap-2 px-6 py-12 text-center"
+                                className="hidden max-w-[240px] flex-1 flex-col items-center justify-center gap-2 px-6 py-12 text-center md:flex"
                             >
                                 <FeaturedIcon
                                     icon={CursorClick02}
@@ -1000,6 +1029,25 @@ const DrillDownGmvCard = () => {
                         )}
                     </div>
                 </div>
+            </div>
+
+                <AnimatePresence>
+                    {showHint && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.25, ease: "easeOut" }}
+                            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-primary/85 px-6 text-center backdrop-blur-[2px] md:hidden"
+                        >
+                            <FeaturedIcon icon={CursorClick02} color="gray" theme="modern" size="md" />
+                            <p className="text-sm font-semibold text-primary">Selecione uma data</p>
+                            <p className="max-w-[260px] text-xs text-tertiary">
+                                Escolha um dia para ver o detalhamento por tipo, setor, ingresso, lote e tipo.
+                            </p>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </Card>
     );
@@ -1248,66 +1296,111 @@ const SegmentedOccupancyBar = ({
 /*  Quantidade de ingressos por setor                                 */
 /* ------------------------------------------------------------------ */
 
-const QuantidadeIngressosPorSetorCard = () => (
-    <Card title="Quantidade de Ingresso por Setor">
-        <div className="overflow-x-auto overflow-y-clip">
-            <table className="w-full border-collapse">
+const QuantidadeIngressosPorSetorCard = () => {
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+    const grupos = useMemo(() => {
+        const map = new Map<string, { setor: string; rows: typeof ingressosPorSetor; vendidos: number; estoque: number }>();
+        ingressosPorSetor.forEach((row) => {
+            const g = map.get(row.setor) ?? { setor: row.setor, rows: [], vendidos: 0, estoque: 0 };
+            g.rows.push(row);
+            g.vendidos += row.vendidos;
+            g.estoque += row.estoque;
+            map.set(row.setor, g);
+        });
+        return Array.from(map.values());
+    }, []);
+
+    const toggle = (setor: string) =>
+        setExpanded((prev) => {
+            const next = new Set(prev);
+            if (next.has(setor)) next.delete(setor);
+            else next.add(setor);
+            return next;
+        });
+
+    return (
+        <Card title="Quantidade de Ingresso por Setor">
+            <table className="w-full table-fixed border-collapse">
+                <colgroup>
+                    <col className="w-10 md:w-12" />
+                    <col className="w-[55%] md:w-auto" />
+                    <col className="hidden md:table-column" />
+                    <col className="hidden md:table-column" />
+                    <col />
+                    <col />
+                </colgroup>
                 <thead className="sticky top-0 z-10 bg-secondary">
                     <tr className="border-b border-secondary bg-secondary text-left">
-                        <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary">
-                            <SortableHeader label="Setor" />
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary">
-                            <SortableHeader label="Tipo Ingresso" />
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary">
-                            <SortableHeader label="Lote" />
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary">
-                            <SortableHeader label="Item Combo" />
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
-                            <SortableHeader label="Ingressos Vendidos" align="right" />
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
-                            <SortableHeader label="Estoque" align="right" />
-                        </th>
+                        <th className="px-2 py-3 md:px-4" aria-hidden="true" />
+                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">Setor</th>
+                        <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell">Lote</th>
+                        <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell">Item Combo</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-tertiary">Ingressos Vendidos</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-tertiary">Estoque</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {ingressosPorSetor.map((row, i) => (
-                        <tr
-                            key={row.id}
-                            className={cx(
-                                "transition duration-100 ease-linear hover:bg-primary_hover",
-                                i !== ingressosPorSetor.length - 1 && "border-b border-secondary",
-                            )}
-                        >
-                            <td className="whitespace-nowrap px-4 py-4 text-sm text-primary">
-                                {row.setor}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-4 text-sm text-tertiary">
-                                {row.tipoIngresso}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-4 text-sm text-tertiary">
-                                {row.lote}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-4 text-sm text-tertiary">
-                                {row.itemCombo}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">
-                                {numberFormatter.format(row.vendidos)}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">
-                                {numberFormatter.format(row.estoque)}
-                            </td>
-                        </tr>
-                    ))}
+                    {grupos.map((grupo, i) => {
+                        const isExpanded = expanded.has(grupo.setor);
+                        const isLast = i === grupos.length - 1;
+                        return (
+                            <Fragment key={grupo.setor}>
+                                <tr
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-expanded={isExpanded}
+                                    onClick={() => toggle(grupo.setor)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            toggle(grupo.setor);
+                                        }
+                                    }}
+                                    className={cx(
+                                        "cursor-pointer transition duration-100 ease-linear hover:bg-primary_hover",
+                                        (!isLast || isExpanded) && "border-b border-secondary",
+                                    )}
+                                >
+                                    <td className="px-2 py-4 md:px-4">
+                                        <ChevronDown
+                                            aria-hidden="true"
+                                            className={cx("size-4 text-fg-quaternary transition-transform duration-150", isExpanded && "rotate-180")}
+                                        />
+                                    </td>
+                                    <td className="px-4 py-4 text-sm font-medium text-primary">
+                                        <span className="line-clamp-2">{grupo.setor}</span>
+                                    </td>
+                                    <td className="hidden px-4 py-4 md:table-cell" />
+                                    <td className="hidden px-4 py-4 md:table-cell" />
+                                    <td className="px-4 py-4 text-right text-sm font-medium text-primary">
+                                        {numberFormatter.format(grupo.vendidos)}
+                                    </td>
+                                    <td className="px-4 py-4 text-right text-sm text-tertiary">
+                                        {numberFormatter.format(grupo.estoque)}
+                                    </td>
+                                </tr>
+                                {isExpanded &&
+                                    grupo.rows.map((row, j) => (
+                                        <tr key={row.id} className={cx("bg-secondary", (!isLast || j !== grupo.rows.length - 1) && "border-b border-secondary")}>
+                                            <td className="px-2 py-3 md:px-4" />
+                                            <td className="px-4 py-3 pl-10 text-sm text-secondary">
+                                                <span className="line-clamp-2">{row.tipoIngresso}</span>
+                                            </td>
+                                            <td className="hidden px-4 py-3 text-sm text-tertiary md:table-cell">{row.lote}</td>
+                                            <td className="hidden px-4 py-3 text-sm text-tertiary md:table-cell">{row.itemCombo}</td>
+                                            <td className="px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(row.vendidos)}</td>
+                                            <td className="px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(row.estoque)}</td>
+                                        </tr>
+                                    ))}
+                            </Fragment>
+                        );
+                    })}
                 </tbody>
             </table>
-        </div>
-    </Card>
-);
+        </Card>
+    );
+};
 
 /* ------------------------------------------------------------------ */
 /*  Sortable header                                                   */

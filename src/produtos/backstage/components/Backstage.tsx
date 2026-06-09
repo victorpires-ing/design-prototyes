@@ -1,4 +1,5 @@
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { useNavigate } from "react-router";
 import type { Key } from "react-aria-components";
 import {
     Announcement01,
@@ -11,6 +12,7 @@ import {
     InfoCircle,
     LogOut01,
     Menu02,
+    MessageQuestionCircle,
     Package,
     Settings01,
     ShoppingCart01,
@@ -25,6 +27,7 @@ import { TreeView } from "@/components/application/tree-view/tree-view";
 import { cx } from "@/utils/cx";
 import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
+import eventCover from "../../../assets/event-cover.png";
 
 const BrandLogo = ({ className }: { className?: string }) => (
     <>
@@ -44,6 +47,7 @@ export type BackstageSection =
 export type BackstageItem =
     | "permissao-envio"
     | "catalogo-itens"
+    | "catalogo-ingressos"
     | "catalogo-combos"
     | "catalogo-produtos"
     | "emissao-cortesias"
@@ -59,10 +63,19 @@ const DISABLED_KEYS: Key[] = ["informacoes-evento", "permissao-envio", "catalogo
 interface BackstageLayoutProps {
     activeSection?: BackstageSection;
     activeItem?: BackstageItem;
+    activeProducer?: string;
+    /** Mostra o contexto do evento (card + funcionalidades). Default: true. */
+    showEventContext?: boolean;
     children: ReactNode;
 }
 
-export function BackstageLayout({ activeSection, activeItem, children }: BackstageLayoutProps) {
+export function BackstageLayout({
+    activeSection,
+    activeItem,
+    activeProducer,
+    showEventContext = true,
+    children,
+}: BackstageLayoutProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
@@ -87,15 +100,17 @@ export function BackstageLayout({ activeSection, activeItem, children }: Backsta
                 onClose={() => setIsMobileMenuOpen(false)}
             />
             <div className="flex min-h-screen flex-col gap-3 px-3 py-3 md:flex-row md:py-6">
-                <div className="flex flex-col gap-3 md:hidden">
-                    <MobileEventCard />
-                    <MobileSectionSelector
-                        activeSection={activeSection}
-                        activeItem={activeItem}
-                    />
-                </div>
-                <ProducerRail />
-                <EventRail activeSection={activeSection} activeItem={activeItem} />
+                {showEventContext && (
+                    <div className="flex flex-col gap-3 md:hidden">
+                        <MobileEventCard />
+                        <MobileSectionSelector
+                            activeSection={activeSection}
+                            activeItem={activeItem}
+                        />
+                    </div>
+                )}
+                <ProducerRail activeProducer={activeProducer} />
+                {showEventContext && <EventRail activeSection={activeSection} activeItem={activeItem} />}
                 {children}
             </div>
         </div>
@@ -123,8 +138,8 @@ const MobileTopBar = ({ onOpenMenu }: { onOpenMenu: () => void }) => (
 const MobileEventCard = () => (
     <div className="flex items-start gap-3 rounded-xl bg-secondary p-3">
         <img
-            src="/event-cover.png"
-            alt=""
+            src={eventCover}
+            alt="Bahia x Vitória"
             className="size-16 shrink-0 rounded-lg object-cover"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -135,7 +150,7 @@ const MobileEventCard = () => (
                 </Badge>
             </div>
             <p className="text-sm font-semibold leading-snug text-primary line-clamp-2">
-                Semana Santa dos Milagres 2026
+                Bahia x Vitória
             </p>
         </div>
     </div>
@@ -143,7 +158,7 @@ const MobileEventCard = () => (
 
 const SECTION_LABELS: Record<BackstageSection, string> = {
     "informacoes-evento": "Informações do evento",
-    itens: "Catálogo",
+    itens: "Itens",
     cortesias: "Cortesias",
     relatorios: "Relatórios",
     marketing: "Marketing",
@@ -152,6 +167,7 @@ const SECTION_LABELS: Record<BackstageSection, string> = {
 const ITEM_LABELS: Record<BackstageItem, string> = {
     "permissao-envio": "Permissão de envio",
     "catalogo-itens": "Itens",
+    "catalogo-ingressos": "Ingressos",
     "catalogo-combos": "Combos",
     "catalogo-produtos": "Produtos",
     "emissao-cortesias": "Emissão de cortesias",
@@ -221,11 +237,13 @@ const PRODUCER_NAV: Array<{
     id: string;
     icon: ComponentType<{ className?: string }>;
     label: string;
+    href?: string;
     children?: Array<{ id: string; label: string }>;
 }> = [
     { id: "eventos", icon: Calendar, label: "Eventos" },
     { id: "permissao", icon: UsersPlus, label: "Permissão" },
     { id: "produtos", icon: Package, label: "Produtos" },
+    { id: "perguntas", icon: MessageQuestionCircle, label: "Perguntas", href: "/backstage/perguntas" },
     {
         id: "publico",
         icon: Users01,
@@ -244,6 +262,7 @@ const PRODUCER_NAV: Array<{
 ];
 
 const MobileDrawer = ({ isOpen, onClose }: MobileDrawerProps) => {
+    const navigate = useNavigate();
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     if (!isOpen) return null;
     const toggle = (id: string) =>
@@ -281,7 +300,12 @@ const MobileDrawer = ({ isOpen, onClose }: MobileDrawerProps) => {
                                     onClick={
                                         hasChildren
                                             ? () => toggle(entry.id)
-                                            : undefined
+                                            : entry.href
+                                              ? () => {
+                                                    navigate(entry.href!);
+                                                    onClose();
+                                                }
+                                              : undefined
                                     }
                                     className={cx(
                                         "flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition duration-100 ease-linear",
@@ -370,29 +394,34 @@ interface ProducerRailItemProps {
     icon: ComponentType<{ className?: string }>;
     label: string;
     isActive?: boolean;
+    href?: string;
 }
 
-const ProducerRailItem = ({ icon: Icon, label, isActive }: ProducerRailItemProps) => (
-    <button
-        type="button"
-        className={cx(
-            "flex flex-col items-center gap-1 rounded-md px-2 py-2 transition duration-100 ease-linear",
-            isActive ? "text-secondary" : "text-tertiary hover:text-secondary_hover",
-        )}
-    >
-        <span
+const ProducerRailItem = ({ icon: Icon, label, isActive, href }: ProducerRailItemProps) => {
+    const navigate = useNavigate();
+    return (
+        <button
+            type="button"
+            onClick={href ? () => navigate(href) : undefined}
             className={cx(
-                "flex size-10 items-center justify-center rounded-lg transition duration-100 ease-linear",
-                isActive ? "bg-tertiary" : "hover:bg-secondary_hover",
+                "flex flex-col items-center gap-1 rounded-md px-2 py-2 transition duration-100 ease-linear",
+                isActive ? "text-secondary" : "text-tertiary hover:text-secondary_hover",
             )}
         >
-            <Icon className="size-5" />
-        </span>
-        <span className="text-xs font-medium">{label}</span>
-    </button>
-);
+            <span
+                className={cx(
+                    "flex size-10 items-center justify-center rounded-lg transition duration-100 ease-linear",
+                    isActive ? "bg-tertiary" : "hover:bg-secondary_hover",
+                )}
+            >
+                <Icon className="size-5" />
+            </span>
+            <span className="text-xs font-medium">{label}</span>
+        </button>
+    );
+};
 
-const ProducerRail = () => (
+const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
     <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[72px] shrink-0 flex-col items-center justify-between rounded-2xl bg-secondary py-4 lg:flex">
         <div className="flex flex-col items-center gap-4">
             <div className="relative">
@@ -408,9 +437,15 @@ const ProducerRail = () => (
                 </button>
             </div>
             <nav className="flex flex-col items-center gap-1">
-                <ProducerRailItem icon={Calendar} label="Eventos" isActive />
+                <ProducerRailItem icon={Calendar} label="Eventos" isActive={activeProducer === "eventos" || !activeProducer} />
                 <ProducerRailItem icon={UsersPlus} label="Equipe" />
                 <ProducerRailItem icon={Bank} label="Finanças" />
+                <ProducerRailItem
+                    icon={MessageQuestionCircle}
+                    label="Perguntas"
+                    href="/backstage/perguntas"
+                    isActive={activeProducer === "perguntas"}
+                />
                 <ProducerRailItem icon={Users01} label="Público" />
                 <ProducerRailItem icon={Settings01} label="Ajustes" />
             </nav>
@@ -435,8 +470,8 @@ const EventDetailsCard = () => (
     <div className="flex flex-col gap-4 rounded-2xl bg-tertiary p-3">
         <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-tertiary">
             <img
-                src="https://ticket-backend-prod.imgix.net/media/event/2787127b-533d-4579-b769-5d01f0355e35/c789f9d2-1004-47af-be40-d53028f5834b.jpeg?h=440&w=330&fit=crop"
-                alt="Semana Santa dos Milagres 2026"
+                src={eventCover}
+                alt="Bahia x Vitória"
                 className="size-full object-cover"
             />
             <span className="absolute top-3 left-3 rounded-xl bg-white/50 px-3 py-1 text-[12px] font-medium tracking-wide text-primary uppercase backdrop-blur-md">
@@ -450,8 +485,8 @@ const EventDetailsCard = () => (
         </div>
         <div className="flex flex-col gap-0.5 px-1">
             <span className="text-xs text-tertiary">ID: 1234</span>
-            <h3 className="text-md font-bold text-primary">Réveillon dos Milagres</h3>
-            <p className="text-sm text-tertiary">Casa Marceneiro - Milagres - Passo…</p>
+            <h3 className="text-md font-bold text-primary">Bahia x Vitória</h3>
+            <p className="text-sm text-tertiary">Arena Fonte Nova - Salvador, BA</p>
         </div>
         <div className="flex items-center gap-2 px-1">
             <button
@@ -501,16 +536,25 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 <TreeView.ItemContent icon={InfoCircle}>Informações do evento</TreeView.ItemContent>
             </TreeView.Item>
 
-            <TreeView.Item id="itens" textValue="Catálogo">
-                <TreeView.ItemContent icon={ShoppingCart01}>Catálogo</TreeView.ItemContent>
-                <TreeView.Item id="catalogo-itens" textValue="Itens" href="/backstage/catalogo/itens">
-                    <TreeView.ItemContent className={itemClass("catalogo-itens")}>Itens</TreeView.ItemContent>
+            <TreeView.Item id="itens" textValue="Itens">
+                <TreeView.ItemContent icon={ShoppingCart01}>Itens</TreeView.ItemContent>
+                <TreeView.Item id="catalogo-ingressos" textValue="Ingressos" href="/backstage/catalogo/ingressos">
+                    <TreeView.ItemContent className={itemClass("catalogo-ingressos")}>Ingressos</TreeView.ItemContent>
                 </TreeView.Item>
                 <TreeView.Item id="catalogo-combos" textValue="Combos">
                     <TreeView.ItemContent className={itemClass("catalogo-combos")}>Combos</TreeView.ItemContent>
                 </TreeView.Item>
                 <TreeView.Item id="catalogo-produtos" textValue="Produtos">
-                    <TreeView.ItemContent className={itemClass("catalogo-produtos")}>Produtos</TreeView.ItemContent>
+                    <TreeView.ItemContent
+                        className={itemClass("catalogo-produtos")}
+                        action={
+                            <Badge size="sm" type="pill-color" color="error">
+                                Novo
+                            </Badge>
+                        }
+                    >
+                        Produtos
+                    </TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>
 

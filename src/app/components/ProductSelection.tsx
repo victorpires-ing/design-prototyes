@@ -7,7 +7,7 @@ import { cx } from "@/utils/cx";
 /*  Products                                                          */
 /* ------------------------------------------------------------------ */
 
-type IllustrationKind = "backstage" | "futebol";
+type IllustrationKind = "backstage" | "futebol" | "novo-site";
 
 interface ProductCardData {
     id: string;
@@ -32,11 +32,19 @@ const PRODUCTS: ProductCardData[] = [
         to: "/futebol/landing-pages",
         illustration: "futebol",
     },
+    {
+        id: "novo-site",
+        name: "Novo Site",
+        description: "Novo site do evento — acesso restrito",
+        to: "/novo-site/home/event-details",
+        illustration: "novo-site",
+    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     backstage: BackstageIllustration,
     futebol: FutebolIllustration,
+    "novo-site": NovoSiteIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -157,6 +165,54 @@ function FutebolIllustration() {
                     <line x1="-8.5" y1="-3" x2="-17" y2="-6" />
                 </g>
             </g>
+        </svg>
+    );
+}
+
+function NovoSiteIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <defs>
+                <linearGradient id="ns-bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="160">
+                    <stop offset="0%" stopColor={N100} />
+                    <stop offset="100%" stopColor={N200} />
+                </linearGradient>
+                <clipPath id="ns-window">
+                    <rect x="70" y="32" width="180" height="104" rx="12" />
+                </clipPath>
+            </defs>
+
+            <rect width="320" height="160" fill="url(#ns-bg)" />
+
+            {/* confetti / accents */}
+            <g>
+                <circle cx="40" cy="34" r="3" fill={N300} />
+                <circle cx="284" cy="120" r="3" fill={BRAND} opacity="0.7" />
+                <circle cx="40" cy="120" r="2.5" fill={N300} />
+                <circle cx="284" cy="40" r="2.5" fill={N300} />
+            </g>
+
+            {/* browser window */}
+            <g clipPath="url(#ns-window)">
+                <rect x="70" y="32" width="180" height="104" fill="#ffffff" />
+                {/* top bar */}
+                <rect x="70" y="32" width="180" height="22" fill={N100} />
+                <circle cx="84" cy="43" r="3" fill={BRAND} opacity="0.75" />
+                <circle cx="94" cy="43" r="3" fill={N300} />
+                <circle cx="104" cy="43" r="3" fill={N300} />
+                <rect x="118" y="39" width="118" height="8" rx="4" fill={N200} />
+
+                {/* content */}
+                <rect x="84" y="66" width="58" height="44" rx="6" fill={BRAND_SOFT} />
+                <rect x="152" y="66" width="84" height="8" rx="4" fill={N300} />
+                <rect x="152" y="80" width="64" height="6" rx="3" fill={N200} />
+                <rect x="152" y="92" width="74" height="6" rx="3" fill={N200} />
+                <rect x="152" y="104" width="42" height="11" rx="5.5" fill={BRAND} />
+                <rect x="84" y="118" width="152" height="6" rx="3" fill={N200} />
+            </g>
+
+            {/* window border */}
+            <rect x="70" y="32" width="180" height="104" rx="12" fill="none" stroke={BORDER} strokeWidth="1" />
         </svg>
     );
 }

@@ -255,7 +255,7 @@ const OcupacaoMetric = () => (
                 <ProgressBarHalfCircle
                     size="xs"
                     min={0}
-                    label="Ocupação"
+                    label="Lotação"
                     max={TOTAL_ESTOQUE}
                     value={TOTAL_VENDIDO}
                     valueFormatter={(_value: number, pct: number) => `${pct}%`}

@@ -71,48 +71,42 @@ const macroData: TreeNode[] = [
         label: "IMPRESSO/BILHETERIA",
         children: [
             {
-                label: "PDV Visitante - Superior Norte",
+                label: "Cadeira Norte",
                 children: [
-                    { label: "Inteira", values: [3, 0, 3, 120, 180] },
-                    { label: "Meia", values: [1, 0, 1, 30, 30] },
+                    { label: "Inteira", values: [768, 0, 768, 85, 65280], changed: true },
+                    { label: "Meia-entrada", values: [434, 0, 434, 42.5, 18445] },
+                    { label: "Sócio 50%", values: [217, 0, 217, 42.5, 9222.5] },
                 ],
             },
             {
-                label: "PDV Inferior Norte",
+                label: "Cadeira Leste",
                 children: [
-                    { label: "Inteira", values: [28, 0, 28, 200, 1120], changed: true },
-                    { label: "Meia", values: [107, 0, 107, 100, 2140] },
+                    { label: "Inteira", values: [664, 0, 664, 90, 59760] },
+                    { label: "Meia-entrada", values: [227, 0, 227, 45, 10215] },
                 ],
             },
             {
-                label: "PDV Inferior Sul",
+                label: "Visitante Superior",
                 children: [
-                    { label: "Inteira", values: [28, 0, 28, 200, 1120] },
-                    { label: "Meia", values: [168, 0, 168, 220, 3360] },
-                ],
-            },
-            {
-                label: "PDV Setor Premium",
-                children: [
-                    { label: "Inteira", values: [4, 0, 4, 400, 800], changed: true },
-                    { label: "Meia", values: [3, 0, 3, 200, 300] },
+                    { label: "Inteira", values: [289, 0, 289, 130, 37570], changed: true },
+                    { label: "Meia-entrada", values: [137, 0, 137, 65, 8905] },
                 ],
             },
         ],
     },
     {
-        label: "online",
+        label: "ONLINE",
         children: [
             {
-                label: "Site - Pista",
-                children: [
-                    { label: "Inteira", values: [120, 0, 120, 50, 6000] },
-                    { label: "Meia", values: [80, 0, 80, 25, 2000] },
-                ],
+                label: "Sócio Esquadrão",
+                children: [{ label: "Sócio Esquadrão", values: [21094, 0, 21094, 19.5, 265897.5], changed: true }],
             },
             {
-                label: "Site - Camarote",
-                children: [{ label: "Inteira", values: [40, 0, 40, 300, 12000], changed: true }],
+                label: "Lounge Premium",
+                children: [
+                    { label: "Inteira", values: [80, 0, 80, 240, 19200], changed: true },
+                    { label: "Lounge Criança", values: [15, 0, 15, 150, 2250] },
+                ],
             },
         ],
     },
@@ -127,54 +121,69 @@ const PDV_COLUMNS: ColDef[] = [
 
 const pdvData: TreeNode[] = [
     {
-        label: "PDV Fortaleza - AMOR ETERNO",
+        label: "Loja Tricolor - Fonte Nova",
         children: [
-            { label: "PDV Superior Sul", children: [{ label: "Meia-Entrada AMOR ETERNO", values: [9, 30, 270] }] },
             {
-                label: "PDV Inferior Sul",
+                label: "Cadeira Norte",
                 children: [
-                    { label: "Inteira AMOR ETERNO", values: [1, 40, 40] },
-                    { label: "Meia-Entrada AMOR ETERNO", values: [6, 20, 120] },
+                    { label: "Inteira", values: [768, 85, 65280] },
+                    { label: "Meia-entrada", values: [434, 42.5, 18445] },
+                ],
+            },
+            { label: "Sócio Esquadrão", children: [{ label: "Sócio Esquadrão", values: [21094, 19.5, 265897.5], changed: true }] },
+        ],
+    },
+    {
+        label: "Loja Tricolor - Shopping da Bahia",
+        children: [
+            {
+                label: "Cadeira Leste",
+                children: [
+                    { label: "Inteira", values: [664, 90, 59760], changed: true },
+                    { label: "Inteira Promocional", values: [300, 50, 15000] },
+                    { label: "Meia-entrada", values: [227, 45, 10215] },
                 ],
             },
         ],
     },
     {
-        label: "PDV Fortaleza - BRAVO",
-        children: [{ label: "PDV Superior Central", children: [{ label: "Meia-Entrada BRAVO", values: [49, 40, 1960], changed: true }] }],
-    },
-    {
-        label: "PDV Fortaleza - PICI",
+        label: "Loja Tricolor - Salvador Norte Shopping",
         children: [
             {
-                label: "PDV Superior Sul",
+                label: "Visitante Superior",
                 children: [
-                    { label: "Inteira PICI", values: [24, 60, 1440] },
-                    { label: "Meia-Entrada PICI", values: [12, 30, 360] },
+                    { label: "Inteira", values: [289, 130, 37570] },
+                    { label: "Meia-entrada", values: [137, 65, 8905] },
                 ],
             },
-            { label: "PDV Setor Premium", children: [{ label: "Inteira PICI", values: [4, 200, 800], changed: true }] },
+            {
+                label: "Lounge Premium",
+                children: [
+                    { label: "Inteira", values: [80, 240, 19200], changed: true },
+                    { label: "Lounge Criança", values: [15, 150, 2250] },
+                ],
+            },
         ],
     },
 ];
 
 const meiosData: TreeNode[] = [
     {
-        label: "PDV Fortaleza - AMOR ETERNO",
+        label: "Loja Tricolor - Fonte Nova",
         children: [
-            { label: "Cartão de Crédito", values: [1, 20, 20] },
-            { label: "Cartão de Débito", values: [1, 40, 40] },
-            { label: "Dinheiro", values: [11, 110, 300], changed: true },
-            { label: "PIX", values: [9, 110, 230] },
+            { label: "Cartão de Crédito", values: [612, 120, 73440] },
+            { label: "Cartão de Débito", values: [438, 95, 41610] },
+            { label: "Dinheiro", values: [205, 60, 12300], changed: true },
+            { label: "PIX", values: [21258, 18, 382644] },
         ],
     },
     {
-        label: "PDV Fortaleza - PICI",
+        label: "Loja Tricolor - Shopping da Bahia",
         children: [
-            { label: "Cartão de Crédito", values: [29, 715, 1845] },
-            { label: "Cartão de Débito", values: [37, 605, 1745] },
-            { label: "Dinheiro", values: [45, 575, 1975], changed: true },
-            { label: "PIX", values: [51, 575, 2315] },
+            { label: "Cartão de Crédito", values: [684, 78, 53352] },
+            { label: "Cartão de Débito", values: [312, 64, 19968] },
+            { label: "Dinheiro", values: [98, 55, 5390], changed: true },
+            { label: "PIX", values: [97, 47, 4559] },
         ],
     },
 ];
@@ -199,10 +208,10 @@ const CHANGE_META: Record<ChangeType, { label: string; color: "success" | "gray"
 };
 
 const changedTransacoes: BorderoChange[] = [
-    { id: "c1", hora: "há 1 min", tipo: "venda", canal: "Online", descricao: "Site - Camarote · Inteira", ingressos: 2, valor: 600 },
-    { id: "c2", hora: "há 2 min", tipo: "venda", canal: "Impresso/Bilheteria", descricao: "PDV Inferior Norte · Inteira", ingressos: 5, valor: 1000 },
-    { id: "c3", hora: "há 3 min", tipo: "cancelamento", canal: "Impresso/Bilheteria", descricao: "PDV Setor Premium · Inteira", ingressos: -1, valor: -400 },
-    { id: "c4", hora: "há 4 min", tipo: "estorno", canal: "Online", descricao: "Site - Pista · Meia", ingressos: -2, valor: -50 },
+    { id: "c1", hora: "há 1 min", tipo: "venda", canal: "Online", descricao: "Sócio Esquadrão · Sócio Esquadrão", ingressos: 12, valor: 234 },
+    { id: "c2", hora: "há 2 min", tipo: "venda", canal: "Impresso/Bilheteria", descricao: "Cadeira Norte · Inteira", ingressos: 5, valor: 425 },
+    { id: "c3", hora: "há 3 min", tipo: "cancelamento", canal: "Impresso/Bilheteria", descricao: "Visitante Superior · Inteira", ingressos: -1, valor: -130 },
+    { id: "c4", hora: "há 4 min", tipo: "estorno", canal: "Online", descricao: "Lounge Premium · Inteira", ingressos: -1, valor: -240 },
 ];
 
 const macroGrand = grandTotalOf(macroData);
@@ -213,7 +222,7 @@ const ticketMedio = totalIngressos === 0 ? 0 : totalFaturado / totalIngressos;
 type BorderoView = "macro" | "pdv" | "meios";
 
 const VIEWS: Record<BorderoView, { nodes: TreeNode[]; columns: ColDef[]; firstCol: string }> = {
-    macro: { nodes: macroData, columns: MACRO_COLUMNS, firstCol: "Canal · Grupo · Tipo" },
+    macro: { nodes: macroData, columns: MACRO_COLUMNS, firstCol: "Canal · Setor · Tipo" },
     pdv: { nodes: pdvData, columns: PDV_COLUMNS, firstCol: "PDV · Setor · Tipo" },
     meios: { nodes: meiosData, columns: PDV_COLUMNS, firstCol: "PDV · Meio de pagamento" },
 };

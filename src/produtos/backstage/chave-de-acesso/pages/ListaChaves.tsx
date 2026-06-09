@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
@@ -28,7 +28,6 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { EditarLimiteModal } from "../components/EditarLimiteModal";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { AdicionarVinculosSlideOut } from "../components/AdicionarVinculosSlideOut";
 
 type Filter = "todas" | "ativas" | "inativas";
 
@@ -78,6 +77,25 @@ export function ListaChaves() {
     const [page, setPage] = useState(1);
     const [rows, setRows] = useState<ChaveRow[]>(ROWS);
     const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+    // Chaves recém-criadas começam "processando"; cada uma fica pronta individualmente em até 6s.
+    const [processing, setProcessing] = useState<Set<number>>(() => new Set(ROWS.map((r) => r.id)));
+
+    useEffect(() => {
+        const timers = ROWS.map((row, i) => {
+            const delay = Math.min(6000, 1800 + i * 450);
+            return setTimeout(() => {
+                // 1) Habilita a linha (sai do processamento).
+                setProcessing((prev) => {
+                    const next = new Set(prev);
+                    next.delete(row.id);
+                    return next;
+                });
+                // 2) Um instante depois, ativa o status — o toggle desliza suavemente.
+                setTimeout(() => setActive((prev) => new Set(prev).add(row.id)), 250);
+            }, delay);
+        });
+        return () => timers.forEach(clearTimeout);
+    }, []);
     // Edição do limite de uso de uma linha por vez.
     const [edit, setEdit] = useState<{ id: number; value: string; status: "editing" | "validating" | "error" } | null>(null);
     const [successId, setSuccessId] = useState<number | null>(null);
@@ -86,7 +104,7 @@ export function ListaChaves() {
     const [isAtivarOpen, setIsAtivarOpen] = useState(false);
     const [isDesativarOpen, setIsDesativarOpen] = useState(false);
     const [isRemoverOpen, setIsRemoverOpen] = useState(false);
-    const [isAdicionarVinculosOpen, setIsAdicionarVinculosOpen] = useState(false);
+    const abrirAdicionarVinculos = () => navigate("/backstage/marketing/chave-de-acesso/vincular-itens", { state: { adicionar: true } });
     // Ações unitárias (por linha).
     const [desvincularRowId, setDesvincularRowId] = useState<number | null>(null);
     const [removerRowId, setRemoverRowId] = useState<number | null>(null);
@@ -161,9 +179,11 @@ export function ListaChaves() {
     const currentPage = Math.min(page, totalPages);
     const pageRows = filtered.slice((currentPage - 1) * ROWS_PER_PAGE, currentPage * ROWS_PER_PAGE);
 
-    const allSelected = filtered.length > 0 && filtered.every((row) => selectedRows.has(row.id));
-    const someSelected = filtered.some((row) => selectedRows.has(row.id));
-    const toggleAll = (checked: boolean) => setSelectedRows(checked ? new Set(filtered.map((row) => row.id)) : new Set());
+    // Chaves em processamento não podem ser selecionadas.
+    const selectable = filtered.filter((row) => !processing.has(row.id));
+    const allSelected = selectable.length > 0 && selectable.every((row) => selectedRows.has(row.id));
+    const someSelected = selectable.some((row) => selectedRows.has(row.id));
+    const toggleAll = (checked: boolean) => setSelectedRows(checked ? new Set(selectable.map((row) => row.id)) : new Set());
     const toggleRow = (id: number, checked: boolean) =>
         setSelectedRows((prev) => {
             const next = new Set(prev);
@@ -173,8 +193,10 @@ export function ListaChaves() {
 
     // Status das chaves selecionadas (define qual ação de status mostrar).
     const selectedArray = [...selectedRows];
-    const allSelectedActive = selectedArray.length > 0 && selectedArray.every((id) => active.has(id));
-    const allSelectedInactive = selectedArray.length > 0 && selectedArray.every((id) => !active.has(id));
+    // Mostra "Ativar" se houver alguma selecionada inativa, e "Desativar" se houver alguma ativa.
+    // Assim: só ativas → só Desativar; só inativas → só Ativar; status mistos → as duas.
+    const hasSelectedInactive = selectedArray.some((id) => !active.has(id));
+    const hasSelectedActive = selectedArray.some((id) => active.has(id));
 
     // Ações em massa mantêm a seleção inicial das chaves.
     const ativarSelecionadas = () => setActive((prev) => new Set([...prev, ...selectedRows]));
@@ -254,20 +276,20 @@ export function ListaChaves() {
                                         {selectedRows.size === 1 ? "chave de acesso selecionada" : "chaves de acesso selecionadas"}
                                     </span>
                                     <div className="flex flex-wrap items-center gap-2">
-                                        {allSelectedActive && (
-                                            <Button size="sm" color="secondary" onClick={() => setIsDesativarOpen(true)}>
-                                                Desativar
-                                            </Button>
-                                        )}
-                                        {allSelectedInactive && (
+                                        {hasSelectedInactive && (
                                             <Button size="sm" color="secondary" onClick={() => setIsAtivarOpen(true)}>
                                                 Ativar
+                                            </Button>
+                                        )}
+                                        {hasSelectedActive && (
+                                            <Button size="sm" color="secondary" onClick={() => setIsDesativarOpen(true)}>
+                                                Desativar
                                             </Button>
                                         )}
                                         <Button size="sm" color="secondary" onClick={() => setIsEditLimitOpen(true)}>
                                             Editar limite
                                         </Button>
-                                        <Button size="sm" color="secondary" onClick={() => setIsAdicionarVinculosOpen(true)}>
+                                        <Button size="sm" color="secondary" onClick={abrirAdicionarVinculos}>
                                             Adicionar vínculos
                                         </Button>
                                         <Button size="sm" color="secondary" onClick={() => setIsDesvincularOpen(true)}>
@@ -298,22 +320,44 @@ export function ListaChaves() {
 
                     {/* Linhas (área de scroll com scrollbar sempre visível) */}
                     <div className="flex-1 overflow-y-scroll md:min-h-0">
-                    {pageRows.map((row) => (
+                    {pageRows.map((row) => {
+                        const isProcessing = processing.has(row.id);
+                        return (
                         <div key={row.id} className="flex items-center gap-4 border-b border-secondary px-4 py-4">
                             <Checkbox
                                 size="sm"
                                 aria-label={`Selecionar ${row.code}`}
+                                isDisabled={isProcessing}
                                 isSelected={selectedRows.has(row.id)}
                                 onChange={(checked) => toggleRow(row.id, checked)}
                             />
                             <div className="flex flex-1 items-center gap-3">
-                                <Toggle size="sm" isSelected={active.has(row.id)} onChange={() => toggleActive(row.id)} />
-                                <div className="flex flex-col">
+                                <Toggle
+                                    size="sm"
+                                    isDisabled={isProcessing}
+                                    isSelected={!isProcessing && active.has(row.id)}
+                                    onChange={() => toggleActive(row.id)}
+                                />
+                                <div className={cx("flex flex-col transition-opacity duration-300 ease-out", isProcessing && "opacity-50")}>
                                     <span className="text-sm font-semibold text-primary">{row.code}</span>
                                     <span className="text-sm text-tertiary">{row.ingressos} ingressos associados</span>
                                 </div>
+                                <AnimatePresence>
+                                    {isProcessing && (
+                                        <motion.div
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.25, ease: "easeOut" }}
+                                            className="flex items-center gap-2 pl-2"
+                                        >
+                                            <div className="size-5 shrink-0 animate-spin rounded-full border-2 border-secondary border-t-brand" />
+                                            <span className="text-sm text-tertiary">Preparando chave de acesso...</span>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
-                            <div className="relative flex w-56 items-center justify-end gap-1.5">
+                            <div className={cx("relative flex w-56 items-center justify-end gap-1.5 transition-opacity duration-300 ease-out", isProcessing && "opacity-50 pointer-events-none")}>
                                 {(() => {
                                     const isEditing = edit?.id === row.id;
                                     const status = isEditing ? edit!.status : null;
@@ -380,14 +424,15 @@ export function ListaChaves() {
                                     );
                                 })()}
                             </div>
-                            <div className="flex w-32 items-center justify-end gap-1">
+                            <div className={cx("flex w-32 items-center justify-end gap-1 transition-opacity duration-300 ease-out", isProcessing && "opacity-50 pointer-events-none")}>
                                 <RowAction icon={Copy01} tooltip="Copiar link" />
-                                <RowAction icon={Key01} tooltip="Editar vínculo de chave de acesso" onClick={() => setIsAdicionarVinculosOpen(true)} />
+                                <RowAction icon={Key01} tooltip="Editar vínculo de chave de acesso" onClick={abrirAdicionarVinculos} />
                                 <RowAction icon={LinkBroken02} tooltip="Desvincular tudo" onClick={() => setDesvincularRowId(row.id)} />
                                 <RowAction icon={Trash01} tooltip="Remover chave de acesso" onClick={() => setRemoverRowId(row.id)} />
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                     </div>
 
                     {/* Paginação (fixa) */}
@@ -525,15 +570,6 @@ export function ListaChaves() {
                 title="Deseja remover esta chave de acesso?"
                 description="Essa ação removerá a chave permanentemente e ela não poderá mais ser usada."
                 confirmLabel="Remover"
-            />
-
-            <AdicionarVinculosSlideOut
-                isOpen={isAdicionarVinculosOpen}
-                onClose={() => setIsAdicionarVinculosOpen(false)}
-                onSave={(count) => {
-                    setIsAdicionarVinculosOpen(false);
-                    showSuccess(count === 1 ? "1 item vinculado com sucesso." : `${count} itens vinculados com sucesso.`);
-                }}
             />
         </BackstageLayout>
     );

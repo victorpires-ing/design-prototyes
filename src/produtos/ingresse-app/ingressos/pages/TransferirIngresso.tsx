@@ -86,7 +86,7 @@ export function TransferirIngresso() {
 
                     {/* Busca por e-mail */}
                     <div className="rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
-                        <p className="text-md font-bold text-primary">Busque por e-mail</p>
+                        <p className="text-md font-bold text-primary">E-mail do destinatário</p>
                         <div className="mt-3">
                             <Input
                                 type="email"
@@ -100,10 +100,7 @@ export function TransferirIngresso() {
                         </div>
                         <p className="mt-2 flex items-start gap-1.5 text-sm text-tertiary">
                             <img src={alertAmareloIcon} alt="" aria-hidden="true" className="mt-0.5 size-9 shrink-0 object-contain" />
-                            <span>
-                                Informe o e-mail de quem vai receber o ingresso. Após a transferência, o ingresso passa a ser do destinatário e{" "}
-                                <span className="font-semibold text-secondary">a ação não pode ser desfeita.</span>
-                            </span>
+                            <span>Depois da transferência, o ingresso passa a ser do destinatário.</span>
                         </p>
 
                         <Button

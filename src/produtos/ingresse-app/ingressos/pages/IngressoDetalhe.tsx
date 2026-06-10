@@ -67,16 +67,16 @@ export function IngressoDetalhe() {
                                     <FeaturedIcon icon={UserRight01} color="gray" theme="modern" size="lg" />
                                     <div className="min-w-0 flex-1">
                                         <p className="text-md font-bold text-primary">Ingresso transferido</p>
-                                        <p className="mt-1 text-sm text-tertiary">Este ingresso foi enviado para outro usuário.</p>
+                                        <p className="mt-1 text-sm text-tertiary">Este ingresso foi enviado para outro usuário e não pode ser resgatado.</p>
                                     </div>
                                 </div>
 
                                 <div className="my-4 border-t border-tertiary" />
 
-                                <p className="text-sm text-tertiary">Em transferência para</p>
+                                <p className="text-sm text-tertiary">Transferido para</p>
                                 <p className="mt-0.5 text-md font-bold text-primary">Duny Alves da Silva</p>
 
-                                <p className="mt-4 text-sm text-tertiary">Transferido em</p>
+                                <p className="mt-4 text-sm text-tertiary">Data da transferência</p>
                                 <p className="mt-0.5 text-md font-bold text-primary">10 de junho • 12:20</p>
                             </div>
                         ) : (

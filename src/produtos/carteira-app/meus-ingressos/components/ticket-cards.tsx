@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MinusCircle, PlusCircle } from "@untitledui/icons";
+import { MinusCircle, PlusCircle, QrCode01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Toggle } from "@/components/base/toggle/toggle";
@@ -26,6 +26,16 @@ const QrBlock = ({ valor, legenda }: { valor: string; legenda?: string }) => (
             alt="QR Code do ingresso"
             className="aspect-square w-full max-w-[260px] rounded-lg"
         />
+    </div>
+);
+
+/** Versão web: não mostra o QR, direciona para o app/mobile. */
+const QrBanner = () => (
+    <div className="flex items-center gap-3 rounded-xl border border-warning bg-warning-primary p-4">
+        <QrCode01 className="size-6 shrink-0 text-warning-primary" />
+        <p className="text-sm font-semibold text-warning-primary">
+            Consulte as versões Mobile ou App para visualizar o QR Code.
+        </p>
     </div>
 );
 
@@ -114,8 +124,8 @@ const AcoesRapidas = () => (
             <h4 className="text-sm font-semibold text-primary">Ações rápidas</h4>
             <p className="text-sm text-tertiary">Baixe o app e vem viver o melhor do ao vivo com a gente:</p>
         </div>
-        <GoogleWalletButton />
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+            <GoogleWalletButton />
             <Button size="sm" color="secondary">Transferir Ingresso</Button>
             <Button size="sm" color="secondary">Associar Face</Button>
             <Button size="sm" color="secondary">Revender Ingresso</Button>
@@ -141,32 +151,52 @@ const ImportanteNote = () => (
 /*  Card de combo                                                     */
 /* ------------------------------------------------------------------ */
 
-export const ComboCard = ({ combo }: { combo: Combo }) => {
+export const ComboCard = ({ combo, web = false }: { combo: Combo; web?: boolean }) => {
     const [aberto, setAberto] = useState(Boolean(combo.defaultAberto));
     const [meuIngresso, setMeuIngresso] = useState(combo.meuIngresso);
 
     return (
         <div className="flex flex-col rounded-2xl bg-secondary ring-1 ring-border-secondary">
-            <div className="flex flex-col gap-3 p-4">
-                <div className="flex items-start justify-between gap-3">
+            {web ? (
+                <div className="flex items-start justify-between gap-3 p-4">
                     <div className="flex flex-col gap-0.5">
                         <h3 className="text-md font-bold text-primary">{combo.nome}</h3>
                         <p className="text-sm text-tertiary">Data do evento: {combo.dataEvento}</p>
                     </div>
-                    <ExpandButton aberto={aberto} onClick={() => setAberto((v) => !v)} />
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2.5">
+                            <Toggle isSelected={meuIngresso} onChange={setMeuIngresso} aria-label="Meu ingresso" />
+                            <span className="text-sm text-secondary">Meu ingresso</span>
+                        </div>
+                        <ExpandButton aberto={aberto} onClick={() => setAberto((v) => !v)} />
+                    </div>
                 </div>
-                <div className="flex items-center gap-2.5">
-                    <Toggle isSelected={meuIngresso} onChange={setMeuIngresso} aria-label="Meu ingresso" />
-                    <span className="text-sm text-secondary">Meu ingresso</span>
+            ) : (
+                <div className="flex flex-col gap-3 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex flex-col gap-0.5">
+                            <h3 className="text-md font-bold text-primary">{combo.nome}</h3>
+                            <p className="text-sm text-tertiary">Data do evento: {combo.dataEvento}</p>
+                        </div>
+                        <ExpandButton aberto={aberto} onClick={() => setAberto((v) => !v)} />
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                        <Toggle isSelected={meuIngresso} onChange={setMeuIngresso} aria-label="Meu ingresso" />
+                        <span className="text-sm text-secondary">Meu ingresso</span>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {aberto && (
                 <div className="flex flex-col gap-5 px-4 pb-4">
-                    <QrBlock
-                        valor={combo.qrCode}
-                        legenda="Todos os ingressos inclusos neste combo utilizam o mesmo QR Code abaixo:"
-                    />
+                    {web ? (
+                        <QrBanner />
+                    ) : (
+                        <QrBlock
+                            valor={combo.qrCode}
+                            legenda="Todos os ingressos inclusos neste combo utilizam o mesmo QR Code abaixo:"
+                        />
+                    )}
                     {combo.transferidoPara && <TransferenciaBox titulo="Informações" dados={combo.transferidoPara} />}
                     {combo.historicoTransferencia && (
                         <TransferenciaBox titulo="Histórico de transferência" dados={combo.historicoTransferencia} />
@@ -203,12 +233,12 @@ export const ComboCard = ({ combo }: { combo: Combo }) => {
 /*  Card de ingresso avulso                                           */
 /* ------------------------------------------------------------------ */
 
-export const IngressoCard = ({ ingresso }: { ingresso: IngressoAvulso }) => {
+export const IngressoCard = ({ ingresso, web = false }: { ingresso: IngressoAvulso; web?: boolean }) => {
     const [aberto, setAberto] = useState(Boolean(ingresso.defaultAberto));
 
     return (
-        <div className="flex flex-col">
-            <div className="flex items-start justify-between gap-3 py-3">
+        <div className="flex flex-col rounded-2xl bg-secondary ring-1 ring-border-secondary">
+            <div className="flex items-start justify-between gap-3 p-4">
                 <div className="flex flex-col gap-0.5">
                     <p className="text-sm text-secondary">
                         {ingresso.grupo} | <span className="font-semibold text-primary">{ingresso.ingresso}</span>
@@ -221,8 +251,8 @@ export const IngressoCard = ({ ingresso }: { ingresso: IngressoAvulso }) => {
             </div>
 
             {aberto && (
-                <div className="flex flex-col gap-5 pb-4">
-                    <QrBlock valor={ingresso.qrCode} />
+                <div className="flex flex-col gap-5 px-4 pb-4">
+                    {web ? <QrBanner /> : <QrBlock valor={ingresso.qrCode} />}
                     {ingresso.transferidoPara && (
                         <TransferenciaBox titulo="Informações" dados={ingresso.transferidoPara} />
                     )}

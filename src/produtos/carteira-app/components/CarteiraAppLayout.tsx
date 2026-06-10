@@ -2,6 +2,7 @@ import type { ComponentType, ReactNode } from "react";
 import { Bell01, Home01, Ticket01, User01, Wallet01 } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { cx } from "@/utils/cx";
+import { useForceLightTheme } from "./use-light-theme";
 
 export type CarteiraAppTab = "inicio" | "meus-ingressos" | "carteira" | "perfil";
 
@@ -29,6 +30,7 @@ interface CarteiraAppLayoutProps {
 
 export function CarteiraAppLayout({ title, activeTab, headerAction, children }: CarteiraAppLayoutProps) {
     const navigate = useNavigate();
+    useForceLightTheme();
 
     return (
         <div className="flex min-h-screen justify-center bg-secondary md:py-6">

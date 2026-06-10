@@ -22,20 +22,15 @@ export function MeusIngressos() {
                 {DIAS_INGRESSOS.map((dia) => {
                     const [titulo, sufixo] = dia.data.split(" - ");
                     return (
-                        <section
-                            key={dia.data}
-                            className="flex flex-col rounded-2xl bg-secondary px-4 ring-1 ring-border-secondary"
-                        >
-                            <h2 className="flex items-center gap-2 border-b border-secondary py-4 text-sm font-bold text-primary">
+                        <section key={dia.data} className="flex flex-col gap-3">
+                            <h2 className="flex items-center gap-2 text-md font-bold text-primary">
                                 <Calendar className="size-5 text-brand-secondary" />
                                 {titulo}
                                 {sufixo && <span className="font-normal text-tertiary">- {sufixo}</span>}
                             </h2>
-                            <div className="flex flex-col divide-y divide-border-secondary">
-                                {dia.ingressos.map((ingresso) => (
-                                    <IngressoCard key={ingresso.id} ingresso={ingresso} />
-                                ))}
-                            </div>
+                            {dia.ingressos.map((ingresso) => (
+                                <IngressoCard key={ingresso.id} ingresso={ingresso} />
+                            ))}
                         </section>
                     );
                 })}

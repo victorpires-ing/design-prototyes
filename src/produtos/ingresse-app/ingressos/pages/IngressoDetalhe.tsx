@@ -1,0 +1,142 @@
+import { useLocation, useNavigate } from "react-router";
+import { ArrowLeft, InfoCircle, UserRight01 } from "@untitledui/icons";
+import { Button } from "@/components/base/buttons/button";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
+import { AppShell } from "../../components/AppShell";
+import { StatusBar } from "../../components/StatusBar";
+import { Zigzag } from "../../components/Zigzag";
+
+export function IngressoDetalhe() {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const transferido = !!(location.state as { transferido?: boolean } | null)?.transferido;
+
+    return (
+        <AppShell showTabBar={false}>
+            <div className="flex min-h-full flex-col bg-secondary">
+                <StatusBar tone="dark" />
+
+                {/* Top bar */}
+                <div className="flex items-center justify-between px-5 pt-2">
+                    <button
+                        type="button"
+                        aria-label="Voltar"
+                        onClick={() => navigate("/ingresse-app/ingressos/evento")}
+                        className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                    >
+                        <ArrowLeft className="size-5" />
+                    </button>
+                    <button
+                        type="button"
+                        aria-label="Informações"
+                        className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                    >
+                        <InfoCircle className="size-5" />
+                    </button>
+                </div>
+                <h1 className="px-5 pt-4 text-xl font-bold text-primary">Ingresso</h1>
+
+                <div className="flex flex-1 flex-col gap-5 px-5 pt-4 pb-8">
+                    {/* Modelo de ingresso */}
+                    <div className="rounded-3xl bg-primary shadow-sm ring-1 ring-border-secondary">
+                        {/* Topo: ingresso + sessão */}
+                        <div className="p-5">
+                            <p className="text-xs font-medium tracking-wide text-tertiary uppercase">ARENA BRASILEIRA 2026</p>
+                            <p className="mt-1 text-2xl leading-tight font-bold text-primary">ARENA | Brasil x Haiti | (19/06)</p>
+                            <p className="mt-1.5 text-sm text-tertiary">Inteira</p>
+
+                            <div className="my-4 border-t border-tertiary" />
+
+                            <p className="text-xs font-semibold text-tertiary">Sessão</p>
+                            <p className="mt-1 text-sm font-bold text-primary">Sex, 19 jun • 15:00</p>
+                        </div>
+
+                        {/* Rasgadinho (zigzag) */}
+                        <div className="relative py-1">
+                            <div className="absolute top-1/2 -left-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
+                            <div className="absolute top-1/2 -right-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
+                            <div className="px-3">
+                                <Zigzag />
+                            </div>
+                        </div>
+
+                        {transferido ? (
+                            /* Estado: em transferência (sem QR) */
+                            <div className="p-5">
+                                <div className="flex items-start gap-3">
+                                    <FeaturedIcon icon={UserRight01} color="gray" theme="modern" size="lg" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-md font-bold text-primary">Ingresso transferido</p>
+                                        <p className="mt-1 text-sm text-tertiary">Este ingresso foi enviado para outro usuário.</p>
+                                    </div>
+                                </div>
+
+                                <div className="my-4 border-t border-tertiary" />
+
+                                <p className="text-sm text-tertiary">Em transferência para</p>
+                                <p className="mt-0.5 text-md font-bold text-primary">Duny Alves da Silva</p>
+
+                                <p className="mt-4 text-sm text-tertiary">Transferido em</p>
+                                <p className="mt-0.5 text-md font-bold text-primary">10 de junho • 12:20</p>
+                            </div>
+                        ) : (
+                            /* QR + portador */
+                            <div className="px-6 pt-6 pb-7">
+                                <div className="flex justify-center">
+                                    <FakeQR px={220} />
+                                </div>
+                                <div className="mt-5 text-left">
+                                    <p className="text-xs text-tertiary">Portador</p>
+                                    <p className="mt-0.5 text-sm font-semibold text-primary">Janaina Nascimento de Souza</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Ações (ocultas quando em transferência) */}
+                    {!transferido && (
+                        <div className="flex flex-col gap-3">
+                            <Button size="lg" color="primary" className="rounded-full">
+                                Vender ingresso
+                            </Button>
+                            <Button size="lg" color="secondary" className="rounded-full" onClick={() => navigate("/ingresse-app/ingressos/transferir")}>
+                                Transferir ingresso
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </AppShell>
+    );
+}
+
+/* QR Code simples (placeholder), sem molduras. */
+const FakeQR = ({ px = 200 }: { px?: number }) => {
+    const N = 25;
+    const isFinder = (r: number, c: number) => (r < 7 && c < 7) || (r < 7 && c >= N - 7) || (r >= N - 7 && c < 7);
+    const cells: { x: number; y: number }[] = [];
+    for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+            if (isFinder(r, c)) continue;
+            if ((r * 3 + c * 7 + ((r * c) % 5)) % 3 === 0) cells.push({ x: c, y: r });
+        }
+    }
+    const Finder = ({ x, y }: { x: number; y: number }) => (
+        <>
+            <rect x={x} y={y} width={7} height={7} fill="currentColor" />
+            <rect x={x + 1} y={y + 1} width={5} height={5} fill="#fff" />
+            <rect x={x + 2} y={y + 2} width={3} height={3} fill="currentColor" />
+        </>
+    );
+    return (
+        <svg width={px} height={px} viewBox={`0 0 ${N} ${N}`} shapeRendering="crispEdges" className="text-black" aria-label="QR Code">
+            <rect width={N} height={N} fill="#fff" />
+            {cells.map((cell, i) => (
+                <rect key={i} x={cell.x} y={cell.y} width={1} height={1} fill="currentColor" />
+            ))}
+            <Finder x={0} y={0} />
+            <Finder x={N - 7} y={0} />
+            <Finder x={0} y={N - 7} />
+        </svg>
+    );
+};

@@ -33,6 +33,8 @@ import { Ingressos as IngresseAppIngressos } from '../produtos/ingresse-app/ingr
 import { IngressoDetalhe as IngresseAppIngressoDetalhe } from '../produtos/ingresse-app/ingressos/pages/IngressoDetalhe';
 import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingresse-app/ingressos/pages/TransferirIngresso';
 import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pages/Perfil';
+import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
+import { MeusIngressosWeb } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressosWeb';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -80,6 +82,8 @@ export default function App() {
         <Route path="/backstage/perguntas" element={<Perguntas />} />
         <Route path="/backstage/perguntas/nova" element={<PerguntaForm />} />
         <Route path="/backstage/perguntas/:id/editar" element={<PerguntaForm />} />
+        <Route path="/carteira-app/meus-ingressos" element={<MeusIngressos />} />
+        <Route path="/carteira-app/meus-ingressos/web" element={<MeusIngressosWeb />} />
         <Route path="/futebol/landing-pages" element={<FutebolHome />} />
         <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />
         <Route path="/ingresse-app" element={<IngresseAppHome />} />

@@ -21,6 +21,7 @@ import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import {
+    CLASSIFICACOES,
     EventConfigSlideout,
     defaultEventConfig,
     enumerateDays,
@@ -399,10 +400,16 @@ function EventInfo({ config, card }: { config: EventConfig; card: boolean }) {
 }
 
 function AgeBadge({ value = "16" }: { value?: string }) {
+    const classif = CLASSIFICACOES.find((c) => c.id === value) ?? CLASSIFICACOES[4];
     return (
         <div className="flex shrink-0 flex-col items-center">
-            <span className="grid size-6 place-items-center rounded-xs bg-brand-solid text-sm font-semibold text-white">{value}</span>
-            <span className="text-xs text-secondary">anos</span>
+            <span
+                className="grid size-6 place-items-center rounded-xs text-sm font-semibold text-white"
+                style={{ backgroundColor: classif.cor }}
+            >
+                {classif.id === "L" ? "L" : classif.id}
+            </span>
+            <span className="text-xs text-secondary">{classif.legenda}</span>
         </div>
     );
 }

@@ -11,6 +11,11 @@ import { cx } from "@/utils/cx";
 export type EventStatus = "venda-ativa" | "soldout-sem-lista" | "soldout-com-lista" | "aguardando-abertura";
 
 export interface EventConfig {
+    nomeEvento: string;
+    classificacao: string;
+    localNome: string;
+    localEndereco: string;
+    preco: string;
     /** Datas no formato ISO (yyyy-mm-dd). */
     dataInicio: string;
     dataFim: string;
@@ -24,6 +29,11 @@ export interface EventConfig {
 }
 
 export const defaultEventConfig: EventConfig = {
+    nomeEvento: "Turnê Dominguinho - Recife",
+    classificacao: "16",
+    localNome: "Classic Hall - Olinda",
+    localEndereco: "Av. Gov. Agamenon Magalhães, S/N - Salgadinho, Olinda - PE, 53110-710, Brasil",
+    preco: "R$ 3.000,00",
     dataInicio: "2025-12-19",
     dataFim: "2025-12-22",
     horarioTipo: "varios",
@@ -145,6 +155,28 @@ export function EventConfigSlideout({ isOpen, onClose, config, onChange }: Event
 
                     {/* Corpo */}
                     <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 py-5">
+                        {/* Evento */}
+                        <Section title="Evento">
+                            <Input label="Nome do evento" value={config.nomeEvento} onChange={(v) => set("nomeEvento", v)} />
+                            <Input label="Classificação indicativa" placeholder="Ex.: 16" value={config.classificacao} onChange={(v) => set("classificacao", v)} />
+                        </Section>
+
+                        {/* Local */}
+                        <Section title="Local">
+                            <Input label="Nome do local" value={config.localNome} onChange={(v) => set("localNome", v)} />
+                            <Input
+                                label="Endereço"
+                                hint="Usado no mapa de “Como chegar”."
+                                value={config.localEndereco}
+                                onChange={(v) => set("localEndereco", v)}
+                            />
+                        </Section>
+
+                        {/* Preço */}
+                        <Section title="Preço">
+                            <Input label="A partir de" placeholder="Ex.: R$ 3.000,00" value={config.preco} onChange={(v) => set("preco", v)} />
+                        </Section>
+
                         {/* Datas */}
                         <Section title="Datas">
                             <Input label="Início" type="date" value={config.dataInicio} onChange={(v) => set("dataInicio", v)} />

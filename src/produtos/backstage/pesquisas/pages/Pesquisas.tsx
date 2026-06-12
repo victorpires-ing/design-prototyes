@@ -9,7 +9,7 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { AssociacaoSlideout } from "../components/AssociacaoSlideout";
 import { FormularioPreviewModal } from "../components/FormularioPreviewModal";
-import { PerguntaEditorSlideout } from "../components/PerguntaEditorSlideout";
+import { PerguntaEditorModal } from "../components/PerguntaEditorModal";
 import { SimuladorEstados } from "../components/SimuladorEstados";
 import { VincularEmLoteSlideout } from "../components/VincularEmLoteSlideout";
 import { TIPO_PERGUNTA, usePesquisas, type TipoIngresso } from "../data/pesquisas-store";
@@ -316,7 +316,7 @@ export function Pesquisas() {
                 onVinculado={limparSelecao}
                 onCriarPergunta={handleCriarDeLote}
             />
-            <PerguntaEditorSlideout
+            <PerguntaEditorModal
                 isOpen={criarOpen}
                 onClose={fecharEditorCriacao}
                 pergunta={null}

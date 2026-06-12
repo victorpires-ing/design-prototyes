@@ -1,11 +1,11 @@
 import { createContext, useCallback, useContext, useMemo, useState, type FC, type ReactNode } from "react";
-import { AlignLeft02, CalendarDate, CheckSquare, Copy01, Hash02, Paperclip, Type01 } from "@untitledui/icons";
+import { AlignLeft02, CheckSquare, Copy01, Paperclip, Type01 } from "@untitledui/icons";
 
 /* ------------------------------------------------------------------ */
 /*  Tipos de pergunta                                                 */
 /* ------------------------------------------------------------------ */
 
-export type TipoPergunta = "texto-curto" | "texto-longo" | "selecao-unica" | "multipla-escolha" | "numero" | "data" | "anexo";
+export type TipoPergunta = "texto-curto" | "texto-longo" | "selecao-unica" | "multipla-escolha" | "anexo";
 
 export const TIPO_PERGUNTA: Record<
     TipoPergunta,
@@ -15,8 +15,6 @@ export const TIPO_PERGUNTA: Record<
     "texto-longo": { label: "Texto longo", descricao: "Resposta em parágrafo", icon: AlignLeft02, temOpcoes: false },
     "selecao-unica": { label: "Seleção única", descricao: "Escolhe uma opção", icon: Copy01, temOpcoes: true },
     "multipla-escolha": { label: "Múltipla escolha", descricao: "Escolhe várias opções", icon: CheckSquare, temOpcoes: true },
-    numero: { label: "Número", descricao: "Apenas valores numéricos", icon: Hash02, temOpcoes: false },
-    data: { label: "Data", descricao: "Seletor de data", icon: CalendarDate, temOpcoes: false },
     anexo: { label: "Anexar arquivo", descricao: "Upload de documento ou imagem", icon: Paperclip, temOpcoes: false },
 };
 
@@ -89,9 +87,8 @@ const PERGUNTAS_MOCK: Pergunta[] = [
         ativa: true,
         respostas: 0,
     },
-    { id: "5", titulo: "Data de nascimento", tipo: "data", opcoes: [], ativa: false, respostas: 0 },
+    { id: "5", titulo: "Telefone de contato", tipo: "texto-curto", opcoes: [], ativa: false, respostas: 0 },
     { id: "6", titulo: "Documento com foto", ajuda: "Frente e verso de um documento oficial.", tipo: "anexo", opcoes: [], ativa: true, respostas: 0 },
-    { id: "7", titulo: "Como você avalia o evento? (0 a 10)", ajuda: "Pergunta feita após o evento.", tipo: "numero", opcoes: [], ativa: true, respostas: 40 },
 ];
 
 const TITULO_FORMULARIO_PADRAO = "Informações do portador";

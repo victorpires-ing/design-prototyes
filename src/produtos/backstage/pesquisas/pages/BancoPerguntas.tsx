@@ -11,7 +11,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { PerguntaEditorSlideout } from "../components/PerguntaEditorSlideout";
+import { PerguntaEditorModal } from "../components/PerguntaEditorModal";
 import { SimuladorEstados } from "../components/SimuladorEstados";
 import { TIPO_PERGUNTA, usePesquisas, type Pergunta } from "../data/pesquisas-store";
 
@@ -34,20 +34,6 @@ const RESPONDENTES = [
     { nome: "Fernanda Costa", email: "fer.costa@gmail.com", data: "08/08 · 22:47", evento: "Festival de Verão", sessao: "15/01 · 18h", grupo: "Entrada Geral", ingresso: "Inteira" },
 ];
 
-/** Distribuição de notas 0–10 (mock proporcional ao total) + média. */
-function distribuirNota(total: number) {
-    const pesos = [1, 1, 2, 3, 4, 6, 9, 13, 16, 20, 9];
-    const soma = pesos.reduce((a, b) => a + b, 0);
-    let acc = 0;
-    const bars = pesos.map((w, v) => {
-        const count = v === 10 ? total - acc : Math.round((w / soma) * total);
-        acc += count;
-        return { label: String(v), count, pct: total ? Math.round((count / total) * 100) : 0 };
-    });
-    const somaNotas = bars.reduce((a, b) => a + Number(b.label) * b.count, 0);
-    return { bars, media: total ? somaNotas / total : 0 };
-}
-
 function cpfMock(i: number) {
     return String(10_000_000_000 + i * 73_939_133)
         .slice(0, 11)
@@ -64,8 +50,6 @@ function respostaDe(p: Pergunta, r: (typeof RESPONDENTES)[number], i: number, j:
         const b = p.opcoes[(i + 2) % p.opcoes.length];
         return i % 2 === 0 && b && b !== a ? `${a}, ${b}` : (a ?? "—");
     }
-    if (p.tipo === "numero") return String((i * 3 + j * 7) % 11);
-    if (p.tipo === "data") return `${String((i % 28) + 1).padStart(2, "0")}/0${(i % 9) + 1}/199${i % 9}`;
     if (p.tipo === "anexo") return "documento.pdf";
     const t = p.titulo.toLowerCase();
     if (t.includes("cpf")) return cpfMock(i);
@@ -170,7 +154,15 @@ export function BancoPerguntas() {
                 ]}
             />
 
-            <PerguntaEditorSlideout isOpen={editorOpen} onClose={() => setEditorOpen(false)} pergunta={editorPergunta} />
+            <PerguntaEditorModal
+                isOpen={editorOpen}
+                onClose={() => setEditorOpen(false)}
+                pergunta={editorPergunta}
+                onExcluir={(p) => {
+                    setEditorOpen(false);
+                    setConfirmExcluir(p);
+                }}
+            />
 
             <ConfirmDialog
                 isOpen={confirmExcluir !== null}
@@ -513,9 +505,7 @@ function AbaResumo({ perguntas }: { perguntas: Pergunta[] }) {
                     {comResposta.map((p) => {
                         const meta = TIPO_PERGUNTA[p.tipo];
                         const respostas = respDe(p);
-                        const isNota = p.tipo === "numero";
                         const isEscolha = TIPO_PERGUNTA[p.tipo].temOpcoes;
-                        const nota = isNota ? distribuirNota(respostas) : null;
                         const escolha = isEscolha ? distribuir(p.opcoes, respostas).map((r) => ({ label: r.opcao, count: r.count, pct: r.pct })) : null;
                         return (
                             <div key={p.id} className="border-t border-secondary px-6 py-8 sm:px-10">
@@ -529,22 +519,13 @@ function AbaResumo({ perguntas }: { perguntas: Pergunta[] }) {
                                     </div>
                                 </div>
 
-                                {isNota && nota && (
-                                    <div className="mt-6 flex flex-col gap-5">
-                                        <p className="text-md font-semibold text-primary tabular-nums">
-                                            {nota.media.toFixed(1).replace(".", ",")} <span className="font-normal text-tertiary">de nota média</span>
-                                        </p>
-                                        <BarChartVert bars={nota.bars} />
-                                    </div>
-                                )}
-
                                 {isEscolha && escolha && (
                                     <div className="mt-6">
                                         <BarChartVert bars={escolha} />
                                     </div>
                                 )}
 
-                                {!isNota && !isEscolha && (
+                                {!isEscolha && (
                                     <div className="mt-5 flex flex-col">
                                         {amostras.map((r, i) => {
                                             const valor = respostaDe(p, r, i, 0);

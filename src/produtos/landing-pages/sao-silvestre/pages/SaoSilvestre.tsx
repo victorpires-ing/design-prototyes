@@ -258,8 +258,8 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                         <div className="mt-7 flex items-center gap-2.5">
                             <Ticket02 className="size-5 shrink-0 text-fg-quaternary" />
                             <p className="text-sm text-tertiary">
-                                Se liga: as inscrições e o resgate da sua inscrição são feitos exclusivamente{" "}
-                                <span className="font-semibold" style={{ color: BLUE }}>via Ingresse</span>.
+                                Se liga: As inscrições e o resgate da sua inscrição são feitos{" "}
+                                <span className="font-semibold" style={{ color: BLUE }}>pela Ingresse</span>.
                             </p>
                         </div>
                     </div>

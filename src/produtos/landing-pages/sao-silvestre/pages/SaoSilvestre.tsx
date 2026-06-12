@@ -423,6 +423,16 @@ export function SaoSilvestre() {
     const navigate = useNavigate();
     const [viewport, setViewport] = useState<Viewport>("desktop");
 
+    // A landing é sempre exibida em light mode, independente do tema do app.
+    useEffect(() => {
+        const root = document.documentElement;
+        const wasDark = root.classList.contains("dark-mode");
+        root.classList.remove("dark-mode");
+        return () => {
+            if (wasDark) root.classList.add("dark-mode");
+        };
+    }, []);
+
     const seg = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear";
 
     return (

@@ -160,7 +160,7 @@ export function Pesquisas() {
                         <div className="flex flex-col gap-6">
                             {/* Controle de seleção em massa: botão para entrar; barra sticky quando ativo */}
                             {modoSelecao ? (
-                                <div className="sticky top-4 z-20 flex flex-col gap-3 rounded-xl bg-secondary px-4 py-3 shadow-sm ring-1 ring-border-secondary sm:flex-row sm:items-center sm:justify-between">
+                                <div className="sticky top-4 z-20 flex flex-col gap-3 rounded-xl bg-primary px-4 py-3 shadow-sm ring-1 ring-border-secondary sm:flex-row sm:items-center sm:justify-between">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <Button size="sm" color="primary" onClick={() => setLoteOpen(true)} isDisabled={selecionados.size === 0}>
                                             Associar selecionados

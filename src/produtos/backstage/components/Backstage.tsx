@@ -40,6 +40,7 @@ import { ThemeToggle } from "./ThemeToggle";
 export type BackstageSection =
     | "informacoes-evento"
     | "itens"
+    | "pesquisas"
     | "cortesias"
     | "relatorios"
     | "marketing";
@@ -159,6 +160,7 @@ const MobileEventCard = () => (
 const SECTION_LABELS: Record<BackstageSection, string> = {
     "informacoes-evento": "Informações do evento",
     itens: "Itens",
+    pesquisas: "Pesquisas",
     cortesias: "Cortesias",
     relatorios: "Relatórios",
     marketing: "Marketing",
@@ -243,7 +245,7 @@ const PRODUCER_NAV: Array<{
     { id: "eventos", icon: Calendar, label: "Eventos" },
     { id: "permissao", icon: UsersPlus, label: "Permissão" },
     { id: "produtos", icon: Package, label: "Produtos" },
-    { id: "perguntas", icon: MessageQuestionCircle, label: "Perguntas", href: "/backstage/perguntas" },
+    { id: "perguntas", icon: MessageQuestionCircle, label: "Perguntas", href: "/backstage/pesquisas/banco" },
     {
         id: "publico",
         icon: Users01,
@@ -443,7 +445,7 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
                 <ProducerRailItem
                     icon={MessageQuestionCircle}
                     label="Perguntas"
-                    href="/backstage/perguntas"
+                    href="/backstage/pesquisas/banco"
                     isActive={activeProducer === "perguntas"}
                 />
                 <ProducerRailItem icon={Users01} label="Público" />
@@ -556,6 +558,20 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                         Produtos
                     </TreeView.ItemContent>
                 </TreeView.Item>
+            </TreeView.Item>
+
+            <TreeView.Item id="pesquisas" textValue="Pesquisas" href="/backstage/pesquisas">
+                <TreeView.ItemContent
+                    icon={MessageQuestionCircle}
+                    className={activeSection === "pesquisas" ? ACTIVE_CLASS : undefined}
+                    action={
+                        <Badge size="sm" type="pill-color" color="error">
+                            Novo
+                        </Badge>
+                    }
+                >
+                    Pesquisas
+                </TreeView.ItemContent>
             </TreeView.Item>
 
             <TreeView.Item id="cortesias" textValue="Cortesias">

@@ -144,8 +144,8 @@ export function Pesquisas() {
                         </div>
                     ) : (
                         <div className="flex flex-col gap-6">
-                            {/* Controle de topo: configurar um a um (padrão) ou em massa (modo seleção) — sticky */}
-                            <div className="sticky top-4 z-20">
+                            {/* Controle de topo: sticky só no modo de seleção */}
+                            <div className={cx("z-20", modoSelecao && "sticky top-4")}>
                                 {modoSelecao ? (
                                     <div className="flex flex-col gap-3 rounded-xl bg-secondary px-4 py-3 shadow-sm ring-1 ring-border-secondary sm:flex-row sm:items-center sm:justify-between">
                                         <span className={cx("text-sm", selecionados.size > 0 ? "font-semibold text-primary" : "text-tertiary")}>

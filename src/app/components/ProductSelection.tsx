@@ -7,7 +7,7 @@ import { cx } from "@/utils/cx";
 /*  Products                                                          */
 /* ------------------------------------------------------------------ */
 
-type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app";
+type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages";
 
 interface ProductCardData {
     id: string;
@@ -46,6 +46,13 @@ const PRODUCTS: ProductCardData[] = [
         to: "/ingresse-app",
         illustration: "ingresse-app",
     },
+    {
+        id: "landing-pages",
+        name: "Landing Pages",
+        description: "Páginas de eventos e campanhas",
+        to: "/landing-pages",
+        illustration: "landing-pages",
+    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
@@ -53,6 +60,7 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     futebol: FutebolIllustration,
     "novo-site": NovoSiteIllustration,
     "ingresse-app": AppIllustration,
+    "landing-pages": LandingPagesIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -156,6 +164,29 @@ function AppIllustration() {
             <circle cx="138" cy="145" r="3" fill={BRAND} />
             <circle cx="160" cy="145" r="3" fill={N400} />
             <circle cx="182" cy="145" r="3" fill={N400} />
+        </svg>
+    );
+}
+
+function LandingPagesIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <rect width="320" height="160" fill={N100} />
+            {/* página */}
+            <rect x="46" y="16" width="228" height="132" rx="10" fill={N50} stroke={BORDER} />
+            {/* hero */}
+            <rect x="58" y="28" width="204" height="42" rx="6" fill={N200} />
+            <rect x="70" y="40" width="70" height="6" rx="3" fill={N400} />
+            <rect x="70" y="52" width="48" height="5" rx="2.5" fill={N300} />
+            {/* coluna texto + CTA */}
+            <rect x="58" y="82" width="110" height="7" rx="3.5" fill={N300} />
+            <rect x="58" y="95" width="84" height="5" rx="2.5" fill={N200} />
+            <rect x="58" y="112" width="66" height="16" rx="8" fill={BRAND} />
+            {/* coluna lateral */}
+            <rect x="186" y="82" width="76" height="5" rx="2.5" fill={N200} />
+            <rect x="186" y="93" width="62" height="5" rx="2.5" fill={N200} />
+            <rect x="186" y="104" width="70" height="5" rx="2.5" fill={N200} />
+            <rect x="186" y="115" width="50" height="5" rx="2.5" fill={N200} />
         </svg>
     );
 }

@@ -35,6 +35,8 @@ import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingress
 import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pages/Perfil';
 import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
 import { MeusIngressosWeb } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressosWeb';
+import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPagesMenu';
+import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -92,6 +94,8 @@ export default function App() {
         <Route path="/ingresse-app/ingressos/detalhe" element={<IngresseAppIngressoDetalhe />} />
         <Route path="/ingresse-app/ingressos/transferir" element={<IngresseAppTransferir />} />
         <Route path="/ingresse-app/perfil" element={<IngresseAppPerfil />} />
+        <Route path="/landing-pages" element={<LandingPagesMenu />} />
+        <Route path="/landing-pages/sao-silvestre" element={<SaoSilvestre />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </PerguntasProvider>

@@ -4,13 +4,29 @@ import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
+import { Select } from "@/components/base/select/select";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
 
 export type EventStatus = "venda-ativa" | "soldout-sem-lista" | "soldout-com-lista" | "aguardando-abertura";
 
+/** Classificação indicativa (ClassInd) — cores e textos oficiais. */
+export const CLASSIFICACOES: { id: string; label: string; cor: string; legenda: string }[] = [
+    { id: "L", label: "Livre", cor: "#1f9d55", legenda: "livre" },
+    { id: "10", label: "10 anos", cor: "#1d70b8", legenda: "anos" },
+    { id: "12", label: "12 anos", cor: "#f2c200", legenda: "anos" },
+    { id: "14", label: "14 anos", cor: "#f08200", legenda: "anos" },
+    { id: "16", label: "16 anos", cor: "#e3000f", legenda: "anos" },
+    { id: "18", label: "18 anos", cor: "#000000", legenda: "anos" },
+];
+
 export interface EventConfig {
+    nomeEvento: string;
+    classificacao: string;
+    localNome: string;
+    localEndereco: string;
+    preco: string;
     /** Datas no formato ISO (yyyy-mm-dd). */
     dataInicio: string;
     dataFim: string;
@@ -24,6 +40,11 @@ export interface EventConfig {
 }
 
 export const defaultEventConfig: EventConfig = {
+    nomeEvento: "Turnê Dominguinho - Recife",
+    classificacao: "16",
+    localNome: "Classic Hall - Olinda",
+    localEndereco: "Av. Gov. Agamenon Magalhães, S/N - Salgadinho, Olinda - PE, 53110-710, Brasil",
+    preco: "R$ 3.000,00",
     dataInicio: "2025-12-19",
     dataFim: "2025-12-22",
     horarioTipo: "varios",
@@ -145,6 +166,47 @@ export function EventConfigSlideout({ isOpen, onClose, config, onChange }: Event
 
                     {/* Corpo */}
                     <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 py-5">
+                        {/* Evento */}
+                        <Section title="Evento">
+                            <Input label="Nome do evento" value={config.nomeEvento} onChange={(v) => set("nomeEvento", v)} />
+                            <Select
+                                label="Classificação indicativa"
+                                selectedKey={config.classificacao}
+                                onSelectionChange={(key) => key && set("classificacao", String(key))}
+                                items={CLASSIFICACOES}
+                            >
+                                {(item) => (
+                                    <Select.Item id={item.id} textValue={item.label}>
+                                        <span className="flex items-center gap-2.5">
+                                            <span
+                                                className="grid size-5 shrink-0 place-items-center rounded-xs text-[10px] font-semibold text-white"
+                                                style={{ backgroundColor: item.cor }}
+                                            >
+                                                {item.id === "L" ? "L" : item.id}
+                                            </span>
+                                            {item.label}
+                                        </span>
+                                    </Select.Item>
+                                )}
+                            </Select>
+                        </Section>
+
+                        {/* Local */}
+                        <Section title="Local">
+                            <Input label="Nome do local" value={config.localNome} onChange={(v) => set("localNome", v)} />
+                            <Input
+                                label="Endereço"
+                                hint="Usado no mapa de “Como chegar”."
+                                value={config.localEndereco}
+                                onChange={(v) => set("localEndereco", v)}
+                            />
+                        </Section>
+
+                        {/* Preço */}
+                        <Section title="Preço">
+                            <Input label="A partir de" placeholder="Ex.: R$ 3.000,00" value={config.preco} onChange={(v) => set("preco", v)} />
+                        </Section>
+
                         {/* Datas */}
                         <Section title="Datas">
                             <Input label="Início" type="date" value={config.dataInicio} onChange={(v) => set("dataInicio", v)} />

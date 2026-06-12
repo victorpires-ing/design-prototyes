@@ -109,7 +109,7 @@ export function Pesquisas() {
                         </div>
                         <div className="flex items-center gap-2">
                             <Button size="md" color="secondary" iconLeading={BarChartSquare02} href="/backstage/pesquisas/banco">
-                                Relatório de respostas
+                                Respostas
                             </Button>
                             <Button size="md" color="secondary" iconLeading={Plus} onClick={criarPerguntaAvulsa}>
                                 Criar pergunta
@@ -179,7 +179,7 @@ export function Pesquisas() {
                                                 : "Nenhum ingresso selecionado"}
                                         </span>
                                         <Button size="sm" color="secondary" iconLeading={XClose} onClick={sairModoSelecao}>
-                                            Sair
+                                            Fechar
                                         </Button>
                                     </div>
                                 </div>

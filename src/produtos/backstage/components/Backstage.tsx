@@ -13,7 +13,6 @@ import {
     InfoCircle,
     LogOut01,
     Menu02,
-    MessageQuestionCircle,
     Package,
     Settings01,
     ShoppingCart01,
@@ -248,7 +247,7 @@ const PRODUCER_NAV: Array<{
     { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
     { id: "permissao", icon: UsersPlus, label: "Permissão" },
     { id: "produtos", icon: Package, label: "Produtos" },
-    { id: "perguntas", icon: BarChartSquare02, label: "Relatório de respostas", href: "/backstage/pesquisas/banco" },
+    { id: "perguntas", icon: BarChartSquare02, label: "Coleta de dados", href: "/backstage/pesquisas/banco" },
     {
         id: "publico",
         icon: Users01,
@@ -447,7 +446,7 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
                 <ProducerRailItem icon={Bank} label="Finanças" />
                 <ProducerRailItem
                     icon={BarChartSquare02}
-                    label={"Relatório de\nrespostas"}
+                    label={"Coleta de\ndados"}
                     href="/backstage/pesquisas/banco"
                     isActive={activeProducer === "perguntas"}
                 />
@@ -565,7 +564,7 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
 
             <TreeView.Item id="pesquisas" textValue="Coleta de dados">
                 <TreeView.ItemContent
-                    icon={MessageQuestionCircle}
+                    icon={BarChartSquare02}
                     action={
                         <Badge size="sm" type="pill-color" color="error">
                             Novo

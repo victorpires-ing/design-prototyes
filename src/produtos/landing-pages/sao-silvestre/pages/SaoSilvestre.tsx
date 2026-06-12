@@ -253,7 +253,7 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                             A São Silvestre não é só uma prova — é um marco na vida de quem corre. Seja você estreante ou veterano, cada passada nas ruas de São
                             Paulo conta uma história.
                         </p>
-                        <BlueButton className="mt-7 w-full px-7 py-4 text-base @3xl:w-auto">Garanta sua vaga via Ingresse</BlueButton>
+                        <BlueButton className="mt-7 w-full px-7 py-4 text-base @3xl:w-auto">Garanta sua vaga pela Ingresse</BlueButton>
 
                         <div className="mt-7 flex items-center gap-2.5">
                             <Ticket02 className="size-5 shrink-0 text-fg-quaternary" />
@@ -356,7 +356,7 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                                 </div>
 
                                 <div ref={inscreveRef} className="mt-6">
-                                    <BlueButton className="w-full rounded-xl px-7 py-4 text-base @3xl:w-auto">Inscreva-se via Ingresse</BlueButton>
+                                    <BlueButton className="w-full rounded-xl px-7 py-4 text-base @3xl:w-auto">Inscreva-se pela Ingresse</BlueButton>
                                 </div>
                             </div>
 
@@ -412,7 +412,7 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                         )}
                     >
                         <div className="w-[390px] max-w-full border-t border-secondary bg-primary px-6 py-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
-                            <BlueButton className="w-full rounded-xl py-4 text-base">Inscreva-se via Ingresse</BlueButton>
+                            <BlueButton className="w-full rounded-xl py-4 text-base">Inscreva-se pela Ingresse</BlueButton>
                         </div>
                     </div>,
                     document.body,
@@ -441,7 +441,7 @@ export function SaoSilvestre() {
     const seg = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear";
 
     return (
-        <div className="min-h-screen bg-secondary">
+        <div className={cx("min-h-screen", viewport === "mobile" ? "bg-secondary" : "bg-primary")}>
             {/* Barra de controle do protótipo */}
             <div className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 border-b border-secondary bg-primary/90 px-4 py-2.5 backdrop-blur">
                 <button
@@ -466,13 +466,13 @@ export function SaoSilvestre() {
             </div>
 
             {/* Área de preview */}
-            <div className="px-4 pt-16 pb-10">
+            <div className={cx(viewport === "mobile" ? "px-4 pt-16 pb-10" : "pt-14")}>
                 <div
                     className={cx(
                         "mx-auto bg-primary",
                         viewport === "mobile"
                             ? "w-[390px] max-w-full overflow-hidden rounded-3xl shadow-xl ring-1 ring-border-secondary"
-                            : "w-full max-w-[1280px] rounded-xl shadow-sm ring-1 ring-border-secondary",
+                            : "w-full",
                     )}
                 >
                     <SaoSilvestreLanding viewport={viewport} />

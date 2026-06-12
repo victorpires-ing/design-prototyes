@@ -1,11 +1,22 @@
 import { createContext, useCallback, useContext, useMemo, useState, type FC, type ReactNode } from "react";
-import { AlignLeft02, CheckSquare, Copy01, Paperclip, Type01 } from "@untitledui/icons";
+import { AlignLeft02, Calendar, CalendarCheck01, CheckCircle, CheckSquare, ChevronSelectorVertical, Clock, Hash02, Phone01, Type01, UploadCloud02 } from "@untitledui/icons";
 
 /* ------------------------------------------------------------------ */
 /*  Tipos de pergunta                                                 */
 /* ------------------------------------------------------------------ */
 
-export type TipoPergunta = "texto-curto" | "texto-longo" | "selecao-unica" | "multipla-escolha" | "anexo";
+export type TipoPergunta =
+    | "texto-curto"
+    | "texto-longo"
+    | "numero"
+    | "data"
+    | "hora"
+    | "data-hora"
+    | "telefone"
+    | "selecao-unica"
+    | "multipla-escolha"
+    | "dropdown"
+    | "anexo";
 
 export const TIPO_PERGUNTA: Record<
     TipoPergunta,
@@ -13,9 +24,15 @@ export const TIPO_PERGUNTA: Record<
 > = {
     "texto-curto": { label: "Texto curto", descricao: "Resposta em uma linha", icon: Type01, temOpcoes: false },
     "texto-longo": { label: "Texto longo", descricao: "Resposta em parágrafo", icon: AlignLeft02, temOpcoes: false },
-    "selecao-unica": { label: "Seleção única", descricao: "Escolhe uma opção", icon: Copy01, temOpcoes: true },
-    "multipla-escolha": { label: "Múltipla escolha", descricao: "Escolhe várias opções", icon: CheckSquare, temOpcoes: true },
-    anexo: { label: "Anexar arquivo", descricao: "Upload de documento ou imagem", icon: Paperclip, temOpcoes: false },
+    numero: { label: "Número", descricao: "Apenas valores numéricos", icon: Hash02, temOpcoes: false },
+    data: { label: "Data", descricao: "Seletor de data", icon: Calendar, temOpcoes: false },
+    hora: { label: "Hora", descricao: "Seletor de horário", icon: Clock, temOpcoes: false },
+    "data-hora": { label: "Data e hora", descricao: "Data e horário juntos", icon: CalendarCheck01, temOpcoes: false },
+    telefone: { label: "Telefone", descricao: "Número de telefone", icon: Phone01, temOpcoes: false },
+    "selecao-unica": { label: "Seleção única", descricao: "Escolhe uma opção", icon: CheckCircle, temOpcoes: true },
+    "multipla-escolha": { label: "Seleção múltipla", descricao: "Escolhe várias opções", icon: CheckSquare, temOpcoes: true },
+    dropdown: { label: "Dropdown", descricao: "Lista suspensa (uma opção)", icon: ChevronSelectorVertical, temOpcoes: true },
+    anexo: { label: "Upload de arquivo", descricao: "Envio de documento ou imagem", icon: UploadCloud02, temOpcoes: false },
 };
 
 export const TIPOS_ORDENADOS = Object.keys(TIPO_PERGUNTA) as TipoPergunta[];

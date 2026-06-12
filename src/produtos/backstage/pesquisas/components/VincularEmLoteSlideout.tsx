@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Plus, XClose } from "@untitledui/icons";
+import { Plus, XClose } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { Input } from "@/components/base/input/input";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
-import { TIPO_PERGUNTA, usePesquisas, type AssocItem, type Insercao, type Pergunta, type TipoIngresso } from "../data/pesquisas-store";
+import { TIPO_PERGUNTA, usePesquisas, type AssocItem, type Pergunta, type TipoIngresso } from "../data/pesquisas-store";
 
 interface VincularEmLoteSlideoutProps {
     isOpen: boolean;
@@ -22,21 +21,13 @@ interface VincularEmLoteSlideoutProps {
     onCriarPergunta: () => void;
 }
 
-type Modo = Insercao["modo"];
-
 export function VincularEmLoteSlideout({ isOpen, onClose, ingressos, onVinculado, onCriarPergunta }: VincularEmLoteSlideoutProps) {
     const { perguntas, vincularPerguntasEmIngressos } = usePesquisas();
 
     const [itens, setItens] = useState<AssocItem[]>([]);
-    const [modo, setModo] = useState<Modo>("fim");
-    const [posicao, setPosicao] = useState(1);
 
     useEffect(() => {
-        if (isOpen) {
-            setItens([]);
-            setModo("fim");
-            setPosicao(1);
-        }
+        if (isOpen) setItens([]);
     }, [isOpen]);
 
     const selecionadas = useMemo(() => new Set(itens.map((it) => it.perguntaId)), [itens]);
@@ -46,22 +37,13 @@ export function VincularEmLoteSlideout({ isOpen, onClose, ingressos, onVinculado
     const remover = (perguntaId: string) => setItens((prev) => prev.filter((it) => it.perguntaId !== perguntaId));
     const setObrigatoria = (perguntaId: string, value: boolean) =>
         setItens((prev) => prev.map((it) => (it.perguntaId === perguntaId ? { ...it, obrigatoria: value } : it)));
-    const mover = (index: number, dir: -1 | 1) =>
-        setItens((prev) => {
-            const alvo = index + dir;
-            if (alvo < 0 || alvo >= prev.length) return prev;
-            const next = [...prev];
-            [next[index], next[alvo]] = [next[alvo], next[index]];
-            return next;
-        });
 
     const vincular = () => {
         if (itens.length === 0 || ingressos.length === 0) return;
-        const insercao: Insercao = modo === "apos" ? { modo, posicao: Math.max(1, posicao) } : { modo };
         vincularPerguntasEmIngressos(
             ingressos.map((i) => i.id),
             itens,
-            insercao,
+            { modo: "fim" },
         );
         const nP = itens.length;
         const nI = ingressos.length;
@@ -114,7 +96,7 @@ export function VincularEmLoteSlideout({ isOpen, onClose, ingressos, onVinculado
                             ) : (
                                 <div className="flex flex-col">
                                     <AnimatePresence initial={false} mode="popLayout">
-                                        {itens.map((it, index) => {
+                                        {itens.map((it) => {
                                             const pergunta = perguntas.find((p) => p.id === it.perguntaId);
                                             if (!pergunta) return null;
                                             return (
@@ -128,15 +110,10 @@ export function VincularEmLoteSlideout({ isOpen, onClose, ingressos, onVinculado
                                                 >
                                                     <LinhaSelecionada
                                                         item={it}
-                                                        posicao={index + 1}
-                                                        total={itens.length}
                                                         pergunta={pergunta}
                                                         onRemover={() => remover(it.perguntaId)}
                                                         onObrigatoria={(v) => setObrigatoria(it.perguntaId, v)}
-                                                        onSubir={() => mover(index, -1)}
-                                                        onDescer={() => mover(index, 1)}
                                                     />
-                                                    {index < itens.length - 1 && <hr className="mx-auto w-4/5 border-t border-secondary" />}
                                                 </motion.div>
                                             );
                                         })}
@@ -172,44 +149,21 @@ export function VincularEmLoteSlideout({ isOpen, onClose, ingressos, onVinculado
                         </div>
                     </div>
 
-                    {/* Posição de inserção */}
-                    <div className="flex shrink-0 flex-col gap-2.5 border-t border-secondary px-6 py-4">
-                        <span className="text-sm font-medium text-secondary">Onde inserir no formulário de cada ingresso</span>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <SegBtn active={modo === "topo"} onClick={() => setModo("topo")}>
-                                No início
-                            </SegBtn>
-                            <SegBtn active={modo === "fim"} onClick={() => setModo("fim")}>
-                                No fim
-                            </SegBtn>
-                            <SegBtn active={modo === "apos"} onClick={() => setModo("apos")}>
-                                Após a posição
-                            </SegBtn>
-                            {modo === "apos" && (
-                                <Input
-                                    aria-label="Posição"
-                                    value={String(posicao)}
-                                    onChange={(v) => setPosicao(Math.max(1, parseInt(v.replace(/\D/g, ""), 10) || 1))}
-                                    inputMode="numeric"
-                                    className="w-16"
-                                />
-                            )}
-                        </div>
-                        <span className="text-xs text-tertiary">As perguntas que cada ingresso já tem são mantidas; as novas entram na posição escolhida.</span>
-                    </div>
-
                     {/* Footer */}
-                    <div className="flex shrink-0 items-center justify-between gap-2 border-t border-secondary px-6 py-4">
-                        <Button size="md" color="link-color" iconLeading={Plus} onClick={onCriarPergunta}>
-                            Criar pergunta
-                        </Button>
-                        <div className="flex gap-2">
-                            <Button size="md" color="secondary" onClick={onClose}>
-                                Cancelar
+                    <div className="flex shrink-0 flex-col gap-3 border-t border-secondary px-6 py-4">
+                        <span className="text-xs text-tertiary">As perguntas entram no fim do formulário de cada ingresso.</span>
+                        <div className="flex items-center justify-between gap-2">
+                            <Button size="md" color="link-color" iconLeading={Plus} onClick={onCriarPergunta}>
+                                Criar pergunta
                             </Button>
-                            <Button size="md" color="primary" onClick={vincular} isDisabled={itens.length === 0}>
-                                Vincular
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button size="md" color="secondary" onClick={onClose}>
+                                    Cancelar
+                                </Button>
+                                <Button size="md" color="primary" onClick={vincular} isDisabled={itens.length === 0}>
+                                    Vincular
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </AriaDialog>
@@ -218,40 +172,16 @@ export function VincularEmLoteSlideout({ isOpen, onClose, ingressos, onVinculado
     );
 }
 
-function SegBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            aria-pressed={active}
-            className={cx(
-                "rounded-lg px-3 py-1.5 text-sm ring-1 transition duration-100 ease-linear",
-                active ? "bg-tertiary font-semibold text-primary ring-transparent" : "font-medium text-secondary ring-border-secondary hover:bg-primary_hover",
-            )}
-        >
-            {children}
-        </button>
-    );
-}
-
 function LinhaSelecionada({
     item,
-    posicao,
-    total,
     pergunta,
     onRemover,
     onObrigatoria,
-    onSubir,
-    onDescer,
 }: {
     item: AssocItem;
-    posicao: number;
-    total: number;
     pergunta: Pergunta;
     onRemover: () => void;
     onObrigatoria: (value: boolean) => void;
-    onSubir: () => void;
-    onDescer: () => void;
 }) {
     const meta = TIPO_PERGUNTA[pergunta.tipo];
     const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
@@ -270,15 +200,10 @@ function LinhaSelecionada({
             className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2.5 transition-colors duration-100 ease-linear hover:bg-primary_hover"
         >
             <Checkbox size="md" isSelected isReadOnly aria-hidden="true" />
-            <span className="w-4 shrink-0 text-center text-xs font-semibold text-tertiary tabular-nums">{posicao}</span>
             <meta.icon className="size-4 shrink-0 text-fg-quaternary" />
             <span className="line-clamp-2 min-w-0 flex-1 text-sm text-primary">{pergunta.titulo}</span>
-            <div onClick={stop} onKeyDown={stop} className="flex shrink-0 items-center gap-3">
+            <div onClick={stop} onKeyDown={stop}>
                 <Toggle size="sm" label={item.obrigatoria ? "Obrigatória" : "Opcional"} isSelected={item.obrigatoria} onChange={onObrigatoria} />
-                <div className="flex flex-col">
-                    <ButtonUtility size="xs" color="tertiary" icon={ChevronUp} tooltip="Subir" isDisabled={posicao === 1} onClick={onSubir} />
-                    <ButtonUtility size="xs" color="tertiary" icon={ChevronDown} tooltip="Descer" isDisabled={posicao === total} onClick={onDescer} />
-                </div>
             </div>
         </div>
     );

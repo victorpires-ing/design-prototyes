@@ -166,6 +166,9 @@ interface PesquisasStoreValue {
     updatePergunta: (id: string, input: PerguntaInput) => void;
     togglePergunta: (id: string) => void;
     removePergunta: (id: string) => void;
+    /** Simulação (protótipo): esvazia o banco de perguntas / restaura o mock. */
+    esvaziarBanco: () => void;
+    restaurarBanco: () => void;
     /** Quantos tipos de ingresso usam a pergunta. */
     countIngressosDaPergunta: (perguntaId: string) => number;
     /** Tipos de ingresso que usam a pergunta. */
@@ -220,6 +223,9 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
             return next;
         });
     }, []);
+
+    const esvaziarBanco = useCallback(() => setPerguntas([]), []);
+    const restaurarBanco = useCallback(() => setPerguntas(PERGUNTAS_MOCK), []);
 
     const countIngressosDaPergunta = useCallback(
         (perguntaId: string) => Object.values(associacoes).filter((itens) => itens.some((it) => it.perguntaId === perguntaId)).length,
@@ -297,6 +303,8 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
             updatePergunta,
             togglePergunta,
             removePergunta,
+            esvaziarBanco,
+            restaurarBanco,
             countIngressosDaPergunta,
             ingressosDaPergunta,
             togglePerguntaNoIngresso,
@@ -307,7 +315,7 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
             tituloDoIngresso,
             setTituloFormulario,
         }),
-        [perguntas, ingressos, associacoes, getPergunta, addPergunta, updatePergunta, togglePergunta, removePergunta, countIngressosDaPergunta, ingressosDaPergunta, togglePerguntaNoIngresso, vincularPerguntasEmIngressos, perguntasDoIngresso, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario],
+        [perguntas, ingressos, associacoes, getPergunta, addPergunta, updatePergunta, togglePergunta, removePergunta, esvaziarBanco, restaurarBanco, countIngressosDaPergunta, ingressosDaPergunta, togglePerguntaNoIngresso, vincularPerguntasEmIngressos, perguntasDoIngresso, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario],
     );
 
     return <PesquisasContext.Provider value={value}>{children}</PesquisasContext.Provider>;

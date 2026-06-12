@@ -15,12 +15,19 @@ import { VincularEmLoteSlideout } from "../components/VincularEmLoteSlideout";
 import { usePesquisas, type TipoIngresso } from "../data/pesquisas-store";
 
 export function Pesquisas() {
-    const { ingressos, perguntas, perguntasDoIngresso, togglePerguntaNoIngresso } = usePesquisas();
+    const { ingressos, perguntas, perguntasDoIngresso, togglePerguntaNoIngresso, esvaziarBanco, restaurarBanco } = usePesquisas();
 
-    // Simulação de empty state (só protótipo).
+    // Simulação de empty state (só protótipo). "sem-perguntas" esvazia o banco de verdade,
+    // pra o fluxo de criar a primeira pergunta acontecer normalmente (teste de usabilidade).
     const [sim, setSim] = useState<"normal" | "sem-ingressos" | "sem-perguntas">("normal");
     const ingressosSim = sim === "sem-ingressos" ? [] : ingressos;
-    const bancoVazio = sim === "sem-perguntas" || perguntas.length === 0;
+    const bancoVazio = perguntas.length === 0;
+
+    const aoMudarSim = (v: "normal" | "sem-ingressos" | "sem-perguntas") => {
+        setSim(v);
+        if (v === "sem-perguntas") esvaziarBanco();
+        else restaurarBanco();
+    };
 
     const [assocIngresso, setAssocIngresso] = useState<TipoIngresso | null>(null);
     const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
@@ -284,7 +291,7 @@ export function Pesquisas() {
 
             <SimuladorEstados
                 value={sim}
-                onChange={setSim}
+                onChange={aoMudarSim}
                 options={[
                     { id: "normal", label: "Normal (com ingressos)" },
                     { id: "sem-ingressos", label: "Sem ingressos" },

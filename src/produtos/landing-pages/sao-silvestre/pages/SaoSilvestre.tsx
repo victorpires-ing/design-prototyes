@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
+import { useTheme } from "@/providers/theme-provider";
 import { ArrowLeft, MarkerPin06, Monitor01, Phone01, MinusCircle, PlusCircle, Ticket02 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import logoTicketSports from "../assets/LOGO TICKET INGRESSE.svg";
@@ -422,15 +423,16 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
 export function SaoSilvestre() {
     const navigate = useNavigate();
     const [viewport, setViewport] = useState<Viewport>("desktop");
+    const { theme, setTheme } = useTheme();
+    const prevTheme = useRef(theme);
 
     // A landing é sempre exibida em light mode, independente do tema do app.
+    // Forçamos via ThemeProvider (fonte autoritativa) para evitar que ele
+    // reaplique o dark-mode logo após uma mudança manual na classe do root.
     useEffect(() => {
-        const root = document.documentElement;
-        const wasDark = root.classList.contains("dark-mode");
-        root.classList.remove("dark-mode");
-        return () => {
-            if (wasDark) root.classList.add("dark-mode");
-        };
+        setTheme("light");
+        return () => setTheme(prevTheme.current);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const seg = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear";

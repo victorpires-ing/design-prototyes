@@ -95,7 +95,7 @@ export function BackstageLayout({
     }, [isMobileMenuOpen]);
 
     return (
-        <div className="min-h-screen bg-primary">
+        <div className="min-h-screen bg-quaternary">
             <MobileTopBar onOpenMenu={() => setIsMobileMenuOpen(true)} />
             <MobileDrawer
                 isOpen={isMobileMenuOpen}
@@ -247,7 +247,7 @@ const PRODUCER_NAV: Array<{
     { id: "eventos", icon: Calendar, label: "Eventos" },
     { id: "permissao", icon: UsersPlus, label: "Permissão" },
     { id: "produtos", icon: Package, label: "Produtos" },
-    { id: "perguntas", icon: MessageQuestionCircle, label: "Questionários", href: "/backstage/pesquisas/banco" },
+    { id: "perguntas", icon: MessageQuestionCircle, label: "Coleta de dados", href: "/backstage/pesquisas/banco" },
     {
         id: "publico",
         icon: Users01,
@@ -420,13 +420,13 @@ const ProducerRailItem = ({ icon: Icon, label, isActive, href }: ProducerRailIte
             >
                 <Icon className="size-5" />
             </span>
-            <span className="text-xs font-medium">{label}</span>
+            <span className="text-center text-xs font-medium leading-tight whitespace-pre-line">{label}</span>
         </button>
     );
 };
 
 const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
-    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[72px] shrink-0 flex-col items-center justify-between rounded-2xl bg-secondary py-4 lg:flex">
+    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[72px] shrink-0 flex-col items-center justify-between rounded-2xl bg-primary py-4 lg:flex">
         <div className="flex flex-col items-center gap-4">
             <div className="relative">
                 <span className="flex size-10 items-center justify-center overflow-hidden rounded-lg bg-secondary-solid text-xs font-bold text-white">
@@ -446,7 +446,7 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
                 <ProducerRailItem icon={Bank} label="Finanças" />
                 <ProducerRailItem
                     icon={MessageQuestionCircle}
-                    label="Questionários"
+                    label={"Coleta de\ndados"}
                     href="/backstage/pesquisas/banco"
                     isActive={activeProducer === "perguntas"}
                 />
@@ -464,15 +464,15 @@ interface EventRailProps {
 }
 
 const EventRail = ({ activeSection, activeItem }: EventRailProps) => (
-    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-secondary p-3 md:flex">
+    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex">
         <EventDetailsCard />
         <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
     </aside>
 );
 
 const EventDetailsCard = () => (
-    <div className="flex flex-col gap-4 rounded-2xl bg-tertiary p-3">
-        <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-tertiary">
+    <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-3">
+        <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-secondary">
             <img
                 src={eventCover}
                 alt="Bahia x Vitória"

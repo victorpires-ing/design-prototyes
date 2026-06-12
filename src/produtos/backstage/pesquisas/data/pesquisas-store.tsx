@@ -91,6 +91,7 @@ const PERGUNTAS_MOCK: Pergunta[] = [
     },
     { id: "5", titulo: "Data de nascimento", tipo: "data", opcoes: [], ativa: false, respostas: 0 },
     { id: "6", titulo: "Documento com foto", ajuda: "Frente e verso de um documento oficial.", tipo: "anexo", opcoes: [], ativa: true, respostas: 0 },
+    { id: "7", titulo: "Como você avalia o evento? (0 a 10)", ajuda: "Pergunta feita após o evento.", tipo: "numero", opcoes: [], ativa: true, respostas: 40 },
 ];
 
 const TITULO_FORMULARIO_PADRAO = "Informações do portador";

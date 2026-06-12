@@ -131,7 +131,7 @@ export function VincularEmLoteSlideout({ isOpen, onClose, ingressos, onVinculado
                             label="Marcar todas como obrigatórias"
                             hint="O comprador só finaliza a compra depois de responder."
                             isSelected={obrigatorias}
-                            onChange={setObrigatorias}
+                            onChange={(v: boolean) => setObrigatorias(v)}
                         />
                     </div>
 

@@ -113,7 +113,7 @@ export function Pesquisas() {
                             <p className="text-sm text-tertiary">Escolha o que perguntar ao comprador em cada ingresso.</p>
                         </div>
                         <Button size="md" color="secondary" iconLeading={MessageQuestionCircle} href="/backstage/pesquisas/banco">
-                            Questionários
+                            Coleta de dados
                         </Button>
                     </div>
 
@@ -196,12 +196,17 @@ export function Pesquisas() {
                                                     const associadas = perguntasDoIngresso(ingresso.id);
                                                     const aberta = expandidos.has(ingresso.id);
                                                     const marcado = selecionados.has(ingresso.id);
+                                                    const editando = assocIngresso?.id === ingresso.id;
                                                     return (
                                                         <Fragment key={ingresso.id}>
                                                             <tr
                                                                 className={cx(
                                                                     "group border-b border-secondary transition duration-100 ease-linear",
-                                                                    marcado ? "bg-brand-primary" : "hover:bg-primary_hover",
+                                                                    editando
+                                                                        ? "bg-brand-primary shadow-[inset_2px_0_0_0_var(--color-bg-brand-solid)]"
+                                                                        : marcado
+                                                                          ? "bg-brand-primary"
+                                                                          : "hover:bg-primary_hover",
                                                                 )}
                                                             >
                                                                 <td className="px-4 py-3.5">

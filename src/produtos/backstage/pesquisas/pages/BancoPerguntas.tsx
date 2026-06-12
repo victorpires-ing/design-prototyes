@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Download01, Edit01, MessageQuestionCircle, Plus, Trash01 } from "@untitledui/icons";
 import { toast } from "sonner";
+import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { TabList, Tabs } from "@/components/application/tabs/tabs";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -11,6 +12,7 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PerguntaEditorSlideout } from "../components/PerguntaEditorSlideout";
+import { SimuladorEstados } from "../components/SimuladorEstados";
 import { TIPO_PERGUNTA, usePesquisas, type Pergunta } from "../data/pesquisas-store";
 
 type Aba = "perguntas" | "respostas" | "resumo";
@@ -94,6 +96,10 @@ export function BancoPerguntas() {
     const [editorPergunta, setEditorPergunta] = useState<Pergunta | null>(null);
     const [confirmExcluir, setConfirmExcluir] = useState<Pergunta | null>(null);
 
+    // Simulação de empty states (só protótipo).
+    const [sim, setSim] = useState<"normal" | "sem-perguntas" | "sem-respostas">("normal");
+    const perguntasSim = sim === "sem-perguntas" ? [] : sim === "sem-respostas" ? perguntas.map((p) => ({ ...p, respostas: 0 })) : perguntas;
+
     const novaPergunta = () => {
         setEditorPergunta(null);
         setEditorOpen(true);
@@ -128,7 +134,7 @@ export function BancoPerguntas() {
                             <h1 className="text-xl font-semibold text-primary">Coleta de dados</h1>
                             <p className="text-sm text-tertiary">Crie perguntas uma vez, reutilize em qualquer evento e acompanhe as respostas.</p>
                         </div>
-                        {aba === "perguntas" && perguntas.length > 0 && (
+                        {aba === "perguntas" && perguntasSim.length > 0 && (
                             <Button size="md" color="primary" iconLeading={Plus} onClick={novaPergunta}>
                                 Nova pergunta
                             </Button>
@@ -146,11 +152,23 @@ export function BancoPerguntas() {
                         />
                     </Tabs>
 
-                    {aba === "perguntas" && <AbaPerguntas onNova={novaPergunta} onEditar={editarPergunta} onExcluir={setConfirmExcluir} onToggle={handleToggle} />}
-                    {aba === "respostas" && <AbaRespostas />}
-                    {aba === "resumo" && <AbaResumo />}
+                    {aba === "perguntas" && (
+                        <AbaPerguntas perguntas={perguntasSim} onNova={novaPergunta} onEditar={editarPergunta} onExcluir={setConfirmExcluir} onToggle={handleToggle} />
+                    )}
+                    {aba === "respostas" && <AbaRespostas perguntas={perguntasSim} />}
+                    {aba === "resumo" && <AbaResumo perguntas={perguntasSim} />}
                 </main>
             </div>
+
+            <SimuladorEstados
+                value={sim}
+                onChange={setSim}
+                options={[
+                    { id: "normal", label: "Normal (com dados)" },
+                    { id: "sem-perguntas", label: "Sem perguntas" },
+                    { id: "sem-respostas", label: "Sem respostas" },
+                ]}
+            />
 
             <PerguntaEditorSlideout isOpen={editorOpen} onClose={() => setEditorOpen(false)} pergunta={editorPergunta} />
 
@@ -171,17 +189,19 @@ export function BancoPerguntas() {
 /* ------------------------------------------------------------------ */
 
 function AbaPerguntas({
+    perguntas,
     onNova,
     onEditar,
     onExcluir,
     onToggle,
 }: {
+    perguntas: Pergunta[];
     onNova: () => void;
     onEditar: (p: Pergunta) => void;
     onExcluir: (p: Pergunta) => void;
     onToggle: (p: Pergunta) => void;
 }) {
-    const { perguntas, countIngressosDaPergunta } = usePesquisas();
+    const { countIngressosDaPergunta } = usePesquisas();
 
     if (perguntas.length === 0) {
         return (
@@ -263,8 +283,7 @@ function FiltroSelect({ label, value, onChange, options }: { label: string; valu
     );
 }
 
-function AbaRespostas() {
-    const { perguntas } = usePesquisas();
+function AbaRespostas({ perguntas }: { perguntas: Pergunta[] }) {
     const comResposta = perguntas.filter((p) => p.respostas > 0);
 
     const [fEvento, setFEvento] = useState<string | null>(null);
@@ -280,8 +299,16 @@ function AbaRespostas() {
 
     if (comResposta.length === 0) {
         return (
-            <div className="rounded-xl bg-primary px-6 py-16 text-center text-sm text-tertiary ring-1 ring-border-secondary">
-                As respostas aparecem aqui assim que os compradores preencherem os formulários.
+            <div className="py-12">
+                <EmptyState size="sm">
+                    <EmptyState.Header>
+                        <EmptyState.FeaturedIcon icon={MessageQuestionCircle} color="gray" theme="modern" />
+                    </EmptyState.Header>
+                    <EmptyState.Content>
+                        <EmptyState.Title>Ainda sem respostas</EmptyState.Title>
+                        <EmptyState.Description>As respostas aparecem aqui assim que os compradores preencherem os formulários.</EmptyState.Description>
+                    </EmptyState.Content>
+                </EmptyState>
             </div>
         );
     }
@@ -435,8 +462,7 @@ function BarChartVert({ bars }: { bars: { label: string; count: number; pct: num
     );
 }
 
-function AbaResumo() {
-    const { perguntas } = usePesquisas();
+function AbaResumo({ perguntas }: { perguntas: Pergunta[] }) {
     const comResposta = perguntas.filter((p) => p.respostas > 0);
 
     const [fEvento, setFEvento] = useState<string | null>(null);
@@ -446,7 +472,19 @@ function AbaResumo() {
     const amostras = (fEvento ? RESPONDENTES.filter((r) => r.evento === fEvento) : RESPONDENTES).slice(0, 3);
 
     if (comResposta.length === 0) {
-        return <div className="rounded-xl bg-secondary px-6 py-16 text-center text-sm text-tertiary">O resumo aparece quando as primeiras respostas chegarem.</div>;
+        return (
+            <div className="rounded-xl bg-secondary px-6 py-16">
+                <EmptyState size="sm">
+                    <EmptyState.Header>
+                        <EmptyState.FeaturedIcon icon={MessageQuestionCircle} color="gray" theme="modern" />
+                    </EmptyState.Header>
+                    <EmptyState.Content>
+                        <EmptyState.Title>Sem dados para resumir</EmptyState.Title>
+                        <EmptyState.Description>O resumo aparece quando as primeiras respostas chegarem.</EmptyState.Description>
+                    </EmptyState.Content>
+                </EmptyState>
+            </div>
+        );
     }
 
     const totalRespostas = Math.max(0, ...comResposta.map((p) => respDe(p)));

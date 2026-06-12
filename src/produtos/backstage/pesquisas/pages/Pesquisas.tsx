@@ -1,19 +1,25 @@
 import { Fragment, useMemo, useState } from "react";
-import { ChevronDown, Edit01, Eye, Link01, MessageQuestionCircle } from "@untitledui/icons";
+import { ChevronDown, Edit01, Eye, Link01, MessageQuestionCircle, Ticket01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { AssociacaoSlideout } from "../components/AssociacaoSlideout";
 import { FormularioPreviewModal } from "../components/FormularioPreviewModal";
 import { PerguntaEditorSlideout } from "../components/PerguntaEditorSlideout";
+import { SimuladorEstados } from "../components/SimuladorEstados";
 import { VincularEmLoteSlideout } from "../components/VincularEmLoteSlideout";
 import { TIPO_PERGUNTA, usePesquisas, type TipoIngresso } from "../data/pesquisas-store";
 
 export function Pesquisas() {
     const { ingressos, perguntasDoIngresso, itensDoIngresso, togglePerguntaNoIngresso } = usePesquisas();
+
+    // Simulação de empty state (só protótipo).
+    const [sim, setSim] = useState<"normal" | "sem-ingressos">("normal");
+    const ingressosSim = sim === "sem-ingressos" ? [] : ingressos;
 
     const [assocIngresso, setAssocIngresso] = useState<TipoIngresso | null>(null);
     const [previewOpen, setPreviewOpen] = useState(false);
@@ -55,13 +61,13 @@ export function Pesquisas() {
     // Agrupa ingressos por grupo/sessão (nomes de ingresso podem repetir entre grupos).
     const grupos = useMemo(() => {
         const map = new Map<string, TipoIngresso[]>();
-        for (const ing of ingressos) {
+        for (const ing of ingressosSim) {
             const arr = map.get(ing.grupo) ?? [];
             arr.push(ing);
             map.set(ing.grupo, arr);
         }
         return Array.from(map, ([nome, items]) => ({ nome, ingressos: items }));
-    }, [ingressos]);
+    }, [ingressosSim]);
 
     const toggleGrupo = (nome: string) =>
         setColapsados((prev) => {
@@ -96,11 +102,11 @@ export function Pesquisas() {
 
     const limparSelecao = () => setSelecionados(new Set());
 
-    const todosIds = ingressos.map((i) => i.id);
+    const todosIds = ingressosSim.map((i) => i.id);
     const todosSel = todosIds.length > 0 && todosIds.every((id) => selecionados.has(id));
     const algunsSel = selecionados.size > 0 && !todosSel;
 
-    const ingressosSelecionados = useMemo(() => ingressos.filter((i) => selecionados.has(i.id)), [ingressos, selecionados]);
+    const ingressosSelecionados = useMemo(() => ingressosSim.filter((i) => selecionados.has(i.id)), [ingressosSim, selecionados]);
 
     return (
         <BackstageLayout activeSection="pesquisas" activeItem="formularios-compra">
@@ -117,8 +123,21 @@ export function Pesquisas() {
                         </Button>
                     </div>
 
-                    <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-                        {/* Barra de ação em massa — sempre visível, habilita ao selecionar */}
+                    {ingressosSim.length === 0 ? (
+                        <div className="py-12">
+                            <EmptyState size="sm">
+                                <EmptyState.Header>
+                                    <EmptyState.FeaturedIcon icon={Ticket01} color="gray" theme="modern" />
+                                </EmptyState.Header>
+                                <EmptyState.Content>
+                                    <EmptyState.Title>Nenhum ingresso no evento</EmptyState.Title>
+                                    <EmptyState.Description>Cadastre os ingressos para escolher o que perguntar em cada um.</EmptyState.Description>
+                                </EmptyState.Content>
+                            </EmptyState>
+                        </div>
+                    ) : (
+                        <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
+                            {/* Barra de ação em massa — sempre visível, habilita ao selecionar */}
                         <header className="flex flex-col gap-3 border-b border-secondary bg-secondary/40 px-4 py-3 sm:h-14 sm:flex-row sm:items-center sm:justify-between">
                             <span className={cx("text-sm", selecionados.size > 0 ? "font-semibold text-primary" : "text-tertiary")}>
                                 {selecionados.size > 0
@@ -279,7 +298,8 @@ export function Pesquisas() {
                                 })}
                             </tbody>
                         </table>
-                    </section>
+                        </section>
+                    )}
                 </main>
             </div>
 
@@ -305,6 +325,15 @@ export function Pesquisas() {
                 }}
             />
             <FormularioPreviewModal isOpen={previewOpen} onClose={() => setPreviewOpen(false)} ingressoId={previewIngressoId} />
+
+            <SimuladorEstados
+                value={sim}
+                onChange={setSim}
+                options={[
+                    { id: "normal", label: "Normal (com ingressos)" },
+                    { id: "sem-ingressos", label: "Sem ingressos" },
+                ]}
+            />
         </BackstageLayout>
     );
 }

@@ -356,7 +356,7 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                                 </div>
 
                                 <div ref={inscreveRef} className="mt-6">
-                                    <BlueButton className="w-full rounded-xl px-7 py-4 text-base @3xl:w-auto">Inscreva-se pela Ingresse</BlueButton>
+                                    <BlueButton className="w-full rounded-xl py-4 text-base">Inscreva-se pela Ingresse</BlueButton>
                                 </div>
                             </div>
 

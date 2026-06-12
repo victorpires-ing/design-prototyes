@@ -222,9 +222,9 @@ export function Pesquisas() {
                                                                 className={cx(
                                                                     "group border-b border-secondary transition duration-100 ease-linear",
                                                                     editando
-                                                                        ? "bg-brand-primary shadow-[inset_2px_0_0_0_var(--color-bg-brand-solid)]"
+                                                                        ? "bg-brand-primary shadow-[inset_2px_0_0_0_var(--color-bg-brand-solid)] dark:bg-white/10"
                                                                         : marcado
-                                                                          ? "bg-brand-primary"
+                                                                          ? "bg-brand-primary dark:bg-white/10"
                                                                           : "hover:bg-primary_hover",
                                                                 )}
                                                             >

@@ -244,7 +244,7 @@ const PRODUCER_NAV: Array<{
     href?: string;
     children?: Array<{ id: string; label: string }>;
 }> = [
-    { id: "eventos", icon: Calendar, label: "Eventos" },
+    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
     { id: "permissao", icon: UsersPlus, label: "Permissão" },
     { id: "produtos", icon: Package, label: "Produtos" },
     { id: "perguntas", icon: MessageQuestionCircle, label: "Coleta de dados", href: "/backstage/pesquisas/banco" },
@@ -441,7 +441,7 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
                 </button>
             </div>
             <nav className="flex flex-col items-center gap-1">
-                <ProducerRailItem icon={Calendar} label="Eventos" isActive={activeProducer === "eventos" || !activeProducer} />
+                <ProducerRailItem icon={Calendar} label="Eventos" href="/backstage/" isActive={activeProducer === "eventos" || !activeProducer} />
                 <ProducerRailItem icon={UsersPlus} label="Equipe" />
                 <ProducerRailItem icon={Bank} label="Finanças" />
                 <ProducerRailItem

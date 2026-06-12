@@ -57,7 +57,8 @@ export type BackstageItem =
     | "acesso"
     | "bordero"
     | "transferencias"
-    | "chave-de-acesso";
+    | "chave-de-acesso"
+    | "formularios-compra";
 
 const DISABLED_KEYS: Key[] = ["informacoes-evento", "permissao-envio", "catalogo-combos", "catalogo-produtos"];
 
@@ -160,7 +161,7 @@ const MobileEventCard = () => (
 const SECTION_LABELS: Record<BackstageSection, string> = {
     "informacoes-evento": "Informações do evento",
     itens: "Itens",
-    pesquisas: "Pesquisas",
+    pesquisas: "Coleta de dados",
     cortesias: "Cortesias",
     relatorios: "Relatórios",
     marketing: "Marketing",
@@ -179,6 +180,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     bordero: "Borderô",
     transferencias: "Transferências",
     "chave-de-acesso": "Chave de acesso",
+    "formularios-compra": "Vincular perguntas",
 };
 
 const MobileSectionSelector = ({
@@ -245,7 +247,7 @@ const PRODUCER_NAV: Array<{
     { id: "eventos", icon: Calendar, label: "Eventos" },
     { id: "permissao", icon: UsersPlus, label: "Permissão" },
     { id: "produtos", icon: Package, label: "Produtos" },
-    { id: "perguntas", icon: MessageQuestionCircle, label: "Perguntas", href: "/backstage/pesquisas/banco" },
+    { id: "perguntas", icon: MessageQuestionCircle, label: "Questionários", href: "/backstage/pesquisas/banco" },
     {
         id: "publico",
         icon: Users01,
@@ -444,7 +446,7 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
                 <ProducerRailItem icon={Bank} label="Finanças" />
                 <ProducerRailItem
                     icon={MessageQuestionCircle}
-                    label="Perguntas"
+                    label="Questionários"
                     href="/backstage/pesquisas/banco"
                     isActive={activeProducer === "perguntas"}
                 />
@@ -560,18 +562,20 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 </TreeView.Item>
             </TreeView.Item>
 
-            <TreeView.Item id="pesquisas" textValue="Pesquisas" href="/backstage/pesquisas">
+            <TreeView.Item id="pesquisas" textValue="Coleta de dados">
                 <TreeView.ItemContent
                     icon={MessageQuestionCircle}
-                    className={activeSection === "pesquisas" ? ACTIVE_CLASS : undefined}
                     action={
                         <Badge size="sm" type="pill-color" color="error">
                             Novo
                         </Badge>
                     }
                 >
-                    Pesquisas
+                    Coleta de dados
                 </TreeView.ItemContent>
+                <TreeView.Item id="formularios-compra" textValue="Vincular perguntas" href="/backstage/pesquisas">
+                    <TreeView.ItemContent className={itemClass("formularios-compra")}>Vincular perguntas</TreeView.ItemContent>
+                </TreeView.Item>
             </TreeView.Item>
 
             <TreeView.Item id="cortesias" textValue="Cortesias">

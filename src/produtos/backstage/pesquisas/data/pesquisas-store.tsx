@@ -162,6 +162,8 @@ interface PesquisasStoreValue {
     ingressosDaPergunta: (perguntaId: string) => TipoIngresso[];
     /** Adiciona/remove a pergunta de um ingresso (mantém ordem ao adicionar no fim). */
     togglePerguntaNoIngresso: (ingressoId: string, perguntaId: string) => void;
+    /** Vincula (adiciona, se ausente) várias perguntas a vários ingressos de uma vez. */
+    vincularPerguntasEmIngressos: (ingressoIds: string[], perguntaIds: string[], obrigatoria?: boolean) => void;
     /** Perguntas associadas a um ingresso, na ordem definida. */
     perguntasDoIngresso: (ingressoId: string) => Pergunta[];
     /** Itens (pergunta + obrigatoriedade) de um ingresso, na ordem definida. */
@@ -229,6 +231,19 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
+    const vincularPerguntasEmIngressos = useCallback((ingressoIds: string[], perguntaIds: string[], obrigatoria: boolean = true) => {
+        setAssociacoes((prev) => {
+            const next = { ...prev };
+            for (const ingressoId of ingressoIds) {
+                const atuais = next[ingressoId] ?? [];
+                const existentes = new Set(atuais.map((it) => it.perguntaId));
+                const novos = perguntaIds.filter((pid) => !existentes.has(pid)).map((perguntaId) => ({ perguntaId, obrigatoria }));
+                if (novos.length > 0) next[ingressoId] = [...atuais, ...novos];
+            }
+            return next;
+        });
+    }, []);
+
     const itensDoIngresso = useCallback(
         (ingressoId: string): ItemIngresso[] => {
             const itens = associacoes[ingressoId] ?? [];
@@ -267,13 +282,14 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
             countIngressosDaPergunta,
             ingressosDaPergunta,
             togglePerguntaNoIngresso,
+            vincularPerguntasEmIngressos,
             perguntasDoIngresso,
             itensDoIngresso,
             setAssociacao,
             tituloDoIngresso,
             setTituloFormulario,
         }),
-        [perguntas, ingressos, associacoes, getPergunta, addPergunta, updatePergunta, togglePergunta, removePergunta, countIngressosDaPergunta, ingressosDaPergunta, togglePerguntaNoIngresso, perguntasDoIngresso, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario],
+        [perguntas, ingressos, associacoes, getPergunta, addPergunta, updatePergunta, togglePergunta, removePergunta, countIngressosDaPergunta, ingressosDaPergunta, togglePerguntaNoIngresso, vincularPerguntasEmIngressos, perguntasDoIngresso, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario],
     );
 
     return <PesquisasContext.Provider value={value}>{children}</PesquisasContext.Provider>;

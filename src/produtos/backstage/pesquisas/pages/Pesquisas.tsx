@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { BarChartSquare02, Calendar, ChevronRight, MessageQuestionCircle, Plus, Ticket01 } from "@untitledui/icons";
+import { BarChartSquare02, Calendar, CheckSquare, ChevronRight, MessageQuestionCircle, Plus, Ticket01, XClose } from "@untitledui/icons";
+import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Badge } from "@/components/base/badges/badges";
@@ -31,6 +32,7 @@ export function Pesquisas() {
     const [assocIngresso, setAssocIngresso] = useState<TipoIngresso | null>(null);
     const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
     const [loteOpen, setLoteOpen] = useState(false);
+    const [modoSelecao, setModoSelecao] = useState(false);
 
     // Criar pergunta a partir de um slideout: fecha, abre o editor e reabre depois.
     const [criarOpen, setCriarOpen] = useState(false);
@@ -90,6 +92,10 @@ export function Pesquisas() {
     const ingressosSelecionados = useMemo(() => ingressosSim.filter((i) => selecionados.has(i.id)), [ingressosSim, selecionados]);
     const selecionarTodos = () => setSelecionados(new Set(ingressosSim.map((i) => i.id)));
     const limparSelecao = () => setSelecionados(new Set());
+    const sairModoSelecao = () => {
+        setModoSelecao(false);
+        setSelecionados(new Set());
+    };
 
     return (
         <BackstageLayout activeSection="pesquisas" activeItem="formularios-compra">
@@ -99,11 +105,16 @@ export function Pesquisas() {
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="flex flex-col gap-1">
                             <h1 className="text-xl font-semibold text-primary">Perguntas por ingresso</h1>
-                            <p className="text-sm text-tertiary">Escolha o que perguntar ao comprador em cada ingresso.</p>
+                            <p className="text-sm text-tertiary">Selecione um ou mais ingressos para associar perguntas.</p>
                         </div>
-                        <Button size="md" color="secondary" iconLeading={BarChartSquare02} href="/backstage/pesquisas/banco">
-                            Relatório de respostas
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button size="md" color="secondary" iconLeading={BarChartSquare02} href="/backstage/pesquisas/banco">
+                                Relatório de respostas
+                            </Button>
+                            <Button size="md" color="secondary" iconLeading={Plus} onClick={criarPerguntaAvulsa}>
+                                Criar pergunta
+                            </Button>
+                        </div>
                     </div>
 
                     {ingressosSim.length === 0 ? (
@@ -147,25 +158,38 @@ export function Pesquisas() {
                         </div>
                     ) : (
                         <div className="flex flex-col gap-6">
-                            {/* Barra de seleção em massa — sempre aberta, sticky */}
-                            <div className="sticky top-4 z-20 flex flex-col gap-3 rounded-xl bg-secondary px-4 py-3 shadow-sm ring-1 ring-border-secondary sm:flex-row sm:items-center sm:justify-between">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Button size="sm" color="primary" onClick={() => setLoteOpen(true)} isDisabled={selecionados.size === 0}>
-                                        Configurar selecionados
-                                    </Button>
-                                    <Button size="sm" color="secondary" onClick={selecionarTodos}>
-                                        Selecionar todos
-                                    </Button>
-                                    <Button size="sm" color="link-gray" onClick={limparSelecao} isDisabled={selecionados.size === 0}>
-                                        Limpar
+                            {/* Controle de seleção em massa: botão para entrar; barra sticky quando ativo */}
+                            {modoSelecao ? (
+                                <div className="sticky top-4 z-20 flex flex-col gap-3 rounded-xl bg-secondary px-4 py-3 shadow-sm ring-1 ring-border-secondary sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Button size="sm" color="primary" onClick={() => setLoteOpen(true)} isDisabled={selecionados.size === 0}>
+                                            Associar selecionados
+                                        </Button>
+                                        <Button size="sm" color="secondary" onClick={selecionarTodos}>
+                                            Selecionar todos
+                                        </Button>
+                                        <Button size="sm" color="link-gray" onClick={limparSelecao} isDisabled={selecionados.size === 0}>
+                                            Limpar
+                                        </Button>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className={cx("text-sm", selecionados.size > 0 ? "font-semibold text-primary" : "text-tertiary")}>
+                                            {selecionados.size > 0
+                                                ? `${selecionados.size} ${selecionados.size === 1 ? "ingresso selecionado" : "ingressos selecionados"}`
+                                                : "Nenhum ingresso selecionado"}
+                                        </span>
+                                        <Button size="sm" color="secondary" iconLeading={XClose} onClick={sairModoSelecao}>
+                                            Sair
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex justify-start">
+                                    <Button size="sm" color="secondary" iconLeading={CheckSquare} onClick={() => setModoSelecao(true)}>
+                                        Associar em massa
                                     </Button>
                                 </div>
-                                <span className={cx("text-sm", selecionados.size > 0 ? "font-semibold text-primary" : "text-tertiary")}>
-                                    {selecionados.size > 0
-                                        ? `${selecionados.size} ${selecionados.size === 1 ? "ingresso selecionado" : "ingressos selecionados"}`
-                                        : "Nenhum ingresso selecionado"}
-                                </span>
-                            </div>
+                            )}
 
                             {/* Blocos por dia */}
                             {datas.map((d) => {
@@ -188,13 +212,15 @@ export function Pesquisas() {
                                                 <div key={`${d.data}/${g.nome}`} className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
                                                     {/* Cabeçalho do setor */}
                                                     <div className="flex items-center gap-3 border-b border-secondary bg-secondary/40 px-4 py-3">
-                                                        <Checkbox
-                                                            size="sm"
-                                                            aria-label={`Selecionar todos de ${g.nome}`}
-                                                            isSelected={grupoTodos}
-                                                            isIndeterminate={grupoAlguns}
-                                                            onChange={(on: boolean) => setVarios(grupoIds, on)}
-                                                        />
+                                                        <CheckSlot show={modoSelecao}>
+                                                            <Checkbox
+                                                                size="sm"
+                                                                aria-label={`Selecionar todos de ${g.nome}`}
+                                                                isSelected={grupoTodos}
+                                                                isIndeterminate={grupoAlguns}
+                                                                onChange={(on: boolean) => setVarios(grupoIds, on)}
+                                                            />
+                                                        </CheckSlot>
                                                         <div className="flex min-w-0 flex-1 flex-col">
                                                             <span className="text-[11px] font-semibold tracking-wide text-tertiary uppercase">Setor</span>
                                                             <span className="text-sm font-semibold text-primary">{g.nome}</span>
@@ -222,15 +248,12 @@ export function Pesquisas() {
                                                                               : "hover:bg-primary_hover",
                                                                     )}
                                                                 >
-                                                                    <Checkbox
-                                                                        size="sm"
-                                                                        aria-label={`Selecionar ${ingresso.nome}`}
-                                                                        isSelected={marcado}
-                                                                        onChange={() => toggleSelecionado(ingresso.id)}
-                                                                    />
+                                                                    <CheckSlot show={modoSelecao}>
+                                                                        <Checkbox size="sm" isSelected={marcado} isReadOnly aria-hidden="true" />
+                                                                    </CheckSlot>
                                                                     <button
                                                                         type="button"
-                                                                        onClick={() => setAssocIngresso(ingresso)}
+                                                                        onClick={modoSelecao ? () => toggleSelecionado(ingresso.id) : () => setAssocIngresso(ingresso)}
                                                                         className="flex min-w-0 flex-1 items-center gap-3 py-3.5 pr-2 text-left"
                                                                     >
                                                                         <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary">{ingresso.nome}</span>
@@ -239,9 +262,11 @@ export function Pesquisas() {
                                                                                 {associadas.length} {associadas.length === 1 ? "pergunta" : "perguntas"}
                                                                             </Badge>
                                                                         ) : (
-                                                                            <span className="text-sm text-tertiary">Sem perguntas adicionais</span>
+                                                                            <span className="text-sm text-tertiary">Sem perguntas vinculadas</span>
                                                                         )}
-                                                                        <ChevronRight className="size-4 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-hover:translate-x-0.5" />
+                                                                        {!modoSelecao && (
+                                                                            <ChevronRight className="size-4 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-hover:translate-x-0.5" />
+                                                                        )}
                                                                     </button>
                                                                 </div>
                                                             );
@@ -268,7 +293,7 @@ export function Pesquisas() {
                 isOpen={loteOpen}
                 onClose={() => setLoteOpen(false)}
                 ingressos={ingressosSelecionados}
-                onVinculado={limparSelecao}
+                onVinculado={sairModoSelecao}
                 onCriarPergunta={handleCriarDeLote}
             />
             <PerguntaEditorModal
@@ -290,5 +315,24 @@ export function Pesquisas() {
                 ]}
             />
         </BackstageLayout>
+    );
+}
+
+/** Slot animado para o checkbox que surge/some ao entrar/sair do modo de seleção. */
+function CheckSlot({ show, children }: { show: boolean; children: React.ReactNode }) {
+    return (
+        <AnimatePresence initial={false}>
+            {show && (
+                <motion.div
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: "auto", opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 40, mass: 0.6 }}
+                    className="flex shrink-0 items-center overflow-hidden"
+                >
+                    {children}
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 }

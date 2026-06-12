@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, XClose } from "@untitledui/icons";
+import { ChevronDown, ChevronUp, Plus, XClose } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
@@ -37,6 +37,14 @@ export function VincularEmLoteSlideout({ isOpen, onClose, ingressos, onVinculado
     const remover = (perguntaId: string) => setItens((prev) => prev.filter((it) => it.perguntaId !== perguntaId));
     const setObrigatoria = (perguntaId: string, value: boolean) =>
         setItens((prev) => prev.map((it) => (it.perguntaId === perguntaId ? { ...it, obrigatoria: value } : it)));
+    const mover = (index: number, dir: -1 | 1) =>
+        setItens((prev) => {
+            const alvo = index + dir;
+            if (alvo < 0 || alvo >= prev.length) return prev;
+            const next = [...prev];
+            [next[index], next[alvo]] = [next[alvo], next[index]];
+            return next;
+        });
 
     const vincular = () => {
         if (itens.length === 0 || ingressos.length === 0) return;
@@ -96,7 +104,7 @@ export function VincularEmLoteSlideout({ isOpen, onClose, ingressos, onVinculado
                             ) : (
                                 <div className="flex flex-col">
                                     <AnimatePresence initial={false} mode="popLayout">
-                                        {itens.map((it) => {
+                                        {itens.map((it, index) => {
                                             const pergunta = perguntas.find((p) => p.id === it.perguntaId);
                                             if (!pergunta) return null;
                                             return (
@@ -110,10 +118,15 @@ export function VincularEmLoteSlideout({ isOpen, onClose, ingressos, onVinculado
                                                 >
                                                     <LinhaSelecionada
                                                         item={it}
+                                                        posicao={index + 1}
+                                                        total={itens.length}
                                                         pergunta={pergunta}
                                                         onRemover={() => remover(it.perguntaId)}
                                                         onObrigatoria={(v) => setObrigatoria(it.perguntaId, v)}
+                                                        onSubir={() => mover(index, -1)}
+                                                        onDescer={() => mover(index, 1)}
                                                     />
+                                                    {index < itens.length - 1 && <hr className="mx-auto w-4/5 border-t border-secondary" />}
                                                 </motion.div>
                                             );
                                         })}
@@ -174,14 +187,22 @@ export function VincularEmLoteSlideout({ isOpen, onClose, ingressos, onVinculado
 
 function LinhaSelecionada({
     item,
+    posicao,
+    total,
     pergunta,
     onRemover,
     onObrigatoria,
+    onSubir,
+    onDescer,
 }: {
     item: AssocItem;
+    posicao: number;
+    total: number;
     pergunta: Pergunta;
     onRemover: () => void;
     onObrigatoria: (value: boolean) => void;
+    onSubir: () => void;
+    onDescer: () => void;
 }) {
     const meta = TIPO_PERGUNTA[pergunta.tipo];
     const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
@@ -200,10 +221,15 @@ function LinhaSelecionada({
             className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2.5 transition-colors duration-100 ease-linear hover:bg-primary_hover"
         >
             <Checkbox size="md" isSelected isReadOnly aria-hidden="true" />
+            <span className="w-4 shrink-0 text-center text-xs font-semibold text-tertiary tabular-nums">{posicao}</span>
             <meta.icon className="size-4 shrink-0 text-fg-quaternary" />
             <span className="line-clamp-2 min-w-0 flex-1 text-sm text-primary">{pergunta.titulo}</span>
-            <div onClick={stop} onKeyDown={stop}>
+            <div onClick={stop} onKeyDown={stop} className="flex shrink-0 items-center gap-3">
                 <Toggle size="sm" label={item.obrigatoria ? "Obrigatória" : "Opcional"} isSelected={item.obrigatoria} onChange={onObrigatoria} />
+                <div className="flex flex-col">
+                    <ButtonUtility size="xs" color="tertiary" icon={ChevronUp} tooltip="Subir" isDisabled={posicao === 1} onClick={onSubir} />
+                    <ButtonUtility size="xs" color="tertiary" icon={ChevronDown} tooltip="Descer" isDisabled={posicao === total} onClick={onDescer} />
+                </div>
             </div>
         </div>
     );

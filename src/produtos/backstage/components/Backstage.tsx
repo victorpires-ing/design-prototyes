@@ -4,6 +4,7 @@ import type { Key } from "react-aria-components";
 import {
     Announcement01,
     Bank,
+    BarChartSquare02,
     Calendar,
     ChevronDown,
     Eye,
@@ -180,7 +181,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     bordero: "Borderô",
     transferencias: "Transferências",
     "chave-de-acesso": "Chave de acesso",
-    "formularios-compra": "Vincular perguntas",
+    "formularios-compra": "Perguntas por ingresso",
 };
 
 const MobileSectionSelector = ({
@@ -247,7 +248,7 @@ const PRODUCER_NAV: Array<{
     { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
     { id: "permissao", icon: UsersPlus, label: "Permissão" },
     { id: "produtos", icon: Package, label: "Produtos" },
-    { id: "perguntas", icon: MessageQuestionCircle, label: "Coleta de dados", href: "/backstage/pesquisas/banco" },
+    { id: "perguntas", icon: BarChartSquare02, label: "Relatório de respostas", href: "/backstage/pesquisas/banco" },
     {
         id: "publico",
         icon: Users01,
@@ -445,8 +446,8 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
                 <ProducerRailItem icon={UsersPlus} label="Equipe" />
                 <ProducerRailItem icon={Bank} label="Finanças" />
                 <ProducerRailItem
-                    icon={MessageQuestionCircle}
-                    label={"Coleta de\ndados"}
+                    icon={BarChartSquare02}
+                    label={"Relatório de\nrespostas"}
                     href="/backstage/pesquisas/banco"
                     isActive={activeProducer === "perguntas"}
                 />
@@ -573,8 +574,8 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 >
                     Coleta de dados
                 </TreeView.ItemContent>
-                <TreeView.Item id="formularios-compra" textValue="Vincular perguntas" href="/backstage/pesquisas">
-                    <TreeView.ItemContent className={itemClass("formularios-compra")}>Vincular perguntas</TreeView.ItemContent>
+                <TreeView.Item id="formularios-compra" textValue="Perguntas por ingresso" href="/backstage/pesquisas">
+                    <TreeView.ItemContent className={itemClass("formularios-compra")}>Perguntas por ingresso</TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>
 

@@ -9,6 +9,7 @@ import { Select } from "@/components/base/select/select";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { TIPO_PERGUNTA, TIPOS_ORDENADOS, usePesquisas, type Pergunta, type PerguntaInput, type TipoPergunta } from "../data/pesquisas-store";
+import { perguntaSemelhante } from "../utils/similaridade";
 
 interface PerguntaEditorModalProps {
     isOpen: boolean;
@@ -24,17 +25,49 @@ interface PerguntaEditorModalProps {
 const emptyDraft: PerguntaInput = { titulo: "", ajuda: "", tipo: "texto-curto", opcoes: [], ativa: true };
 
 export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcluir }: PerguntaEditorModalProps) {
-    const { addPergunta, updatePergunta } = usePesquisas();
+    const { addPergunta, updatePergunta, perguntas } = usePesquisas();
     const [draft, setDraft] = useState<PerguntaInput>(emptyDraft);
+    const [semelhante, setSemelhante] = useState<{ titulo: string } | null>(null);
+    const [verificando, setVerificando] = useState(false);
 
     useEffect(() => {
         if (!isOpen) return;
+        setSemelhante(null);
+        setVerificando(false);
         setDraft(
             pergunta
                 ? { titulo: pergunta.titulo, ajuda: pergunta.ajuda ?? "", tipo: pergunta.tipo, opcoes: [...pergunta.opcoes], ativa: pergunta.ativa }
                 : emptyDraft,
         );
     }, [isOpen, pergunta]);
+
+    // Verifica perguntas parecidas (semântico) enquanto o usuário digita o título.
+    useEffect(() => {
+        if (!isOpen) return;
+        let cancel = false;
+        const texto = draft.titulo;
+        if (texto.trim().length < 4) {
+            setSemelhante(null);
+            setVerificando(false);
+            return;
+        }
+        const id = setTimeout(async () => {
+            setVerificando(true);
+            const candidatos = perguntas.filter((p) => p.id !== pergunta?.id).map((p) => ({ id: p.id, titulo: p.titulo }));
+            try {
+                const r = await perguntaSemelhante(texto, candidatos);
+                if (!cancel) setSemelhante(r ? { titulo: r.titulo } : null);
+            } catch {
+                if (!cancel) setSemelhante(null);
+            } finally {
+                if (!cancel) setVerificando(false);
+            }
+        }, 450);
+        return () => {
+            cancel = true;
+            clearTimeout(id);
+        };
+    }, [draft.titulo, isOpen, perguntas, pergunta]);
 
     const temOpcoes = TIPO_PERGUNTA[draft.tipo].temOpcoes;
     const opcoesValidas = draft.opcoes.filter((o) => o.trim() !== "");
@@ -106,14 +139,32 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
                             </div>
                         )}
 
-                        <Input
-                            label="Título da pergunta"
-                            isRequired
-                            autoFocus
-                            placeholder="Ex.: Qual o tamanho da sua camiseta?"
-                            value={draft.titulo}
-                            onChange={(v) => setDraft((d) => ({ ...d, titulo: v }))}
-                        />
+                        <div className="flex flex-col gap-2">
+                            <Input
+                                label="Título da pergunta"
+                                isRequired
+                                autoFocus
+                                placeholder="Ex.: Qual o tamanho da sua camiseta?"
+                                value={draft.titulo}
+                                onChange={(v) => setDraft((d) => ({ ...d, titulo: v }))}
+                            />
+                            {verificando ? (
+                                <div className="flex items-center gap-2 text-xs text-tertiary">
+                                    <span
+                                        className="size-4 shrink-0 animate-spin rounded-full border-2 border-[var(--color-fg-quaternary)] border-t-[var(--color-fg-brand-primary)]"
+                                        style={{ borderTopColor: "var(--color-fg-brand-primary)" }}
+                                    />
+                                    Procurando perguntas parecidas…
+                                </div>
+                            ) : semelhante ? (
+                                <div className="flex items-start gap-2.5 rounded-lg bg-warning-primary p-3">
+                                    <InfoCircle className="mt-0.5 size-4 shrink-0 text-fg-warning-primary" />
+                                    <span className="text-sm text-secondary">
+                                        Você já tem a pergunta “<span className="font-semibold text-primary">{semelhante.titulo}</span>” cadastrada, que é muito parecida.
+                                    </span>
+                                </div>
+                            ) : null}
+                        </div>
 
                         <Select
                             label="Tipo da resposta"

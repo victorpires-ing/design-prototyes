@@ -39,14 +39,23 @@ export interface Pergunta {
 export interface TipoIngresso {
     id: string;
     nome: string;
-    /** Grupo/sessão a que o ingresso pertence (nomes de ingresso podem repetir entre grupos). */
+    /** Grupo a que o ingresso pertence (nomes de ingresso podem repetir entre grupos). */
     grupo: string;
+    /** Data/sessão do evento — nível acima do grupo (data › grupo › ingresso). */
+    data: string;
 }
 
 /** Pergunta associada a um ingresso — ordem (posição no array) + obrigatoriedade própria. */
 export interface AssocItem {
     perguntaId: string;
     obrigatoria: boolean;
+}
+
+/** Onde inserir as perguntas no formulário de cada ingresso, no vínculo em massa. */
+export interface Insercao {
+    modo: "topo" | "fim" | "apos";
+    /** Quando modo = "apos": insere após esta posição (1-based) do formulário atual. */
+    posicao?: number;
 }
 
 /** Pergunta resolvida + obrigatoriedade no contexto do ingresso. */
@@ -97,21 +106,24 @@ const TITULOS_FORMULARIO_MOCK: Record<string, string> = {
     "camarote-inteira": "Dados para o seu camarote",
 };
 
+const DATA_1 = "Sexta, 08/08";
+const DATA_2 = "Sábado, 09/08";
+
 const INGRESSOS_MOCK: TipoIngresso[] = [
-    // Entrada Geral
-    { id: "geral-inteira", nome: "Inteira", grupo: "Entrada Geral" },
-    { id: "geral-meia", nome: "Meia", grupo: "Entrada Geral" },
-    { id: "geral-solidaria", nome: "Solidária", grupo: "Entrada Geral" },
-    // Pista Premium
-    { id: "premium-inteira", nome: "Inteira", grupo: "Pista Premium" },
-    { id: "premium-meia", nome: "Meia", grupo: "Pista Premium" },
-    // Camarote
-    { id: "camarote-inteira", nome: "Inteira", grupo: "Camarote" },
-    { id: "camarote-meia", nome: "Meia", grupo: "Camarote" },
-    { id: "camarote-solidaria", nome: "Solidária", grupo: "Camarote" },
-    // Área VIP
-    { id: "vip-inteira", nome: "Inteira", grupo: "Área VIP" },
-    { id: "vip-meia", nome: "Meia", grupo: "Área VIP" },
+    // 08/08 — Entrada Geral
+    { id: "geral-inteira", nome: "Inteira", grupo: "Entrada Geral", data: DATA_1 },
+    { id: "geral-meia", nome: "Meia", grupo: "Entrada Geral", data: DATA_1 },
+    { id: "geral-solidaria", nome: "Solidária", grupo: "Entrada Geral", data: DATA_1 },
+    // 08/08 — Pista Premium
+    { id: "premium-inteira", nome: "Inteira", grupo: "Pista Premium", data: DATA_1 },
+    { id: "premium-meia", nome: "Meia", grupo: "Pista Premium", data: DATA_1 },
+    // 09/08 — Camarote
+    { id: "camarote-inteira", nome: "Inteira", grupo: "Camarote", data: DATA_2 },
+    { id: "camarote-meia", nome: "Meia", grupo: "Camarote", data: DATA_2 },
+    { id: "camarote-solidaria", nome: "Solidária", grupo: "Camarote", data: DATA_2 },
+    // 09/08 — Área VIP
+    { id: "vip-inteira", nome: "Inteira", grupo: "Área VIP", data: DATA_2 },
+    { id: "vip-meia", nome: "Meia", grupo: "Área VIP", data: DATA_2 },
 ];
 
 const ASSOCIACOES_MOCK: Record<string, AssocItem[]> = {
@@ -160,8 +172,8 @@ interface PesquisasStoreValue {
     ingressosDaPergunta: (perguntaId: string) => TipoIngresso[];
     /** Adiciona/remove a pergunta de um ingresso (mantém ordem ao adicionar no fim). */
     togglePerguntaNoIngresso: (ingressoId: string, perguntaId: string) => void;
-    /** Vincula (adiciona, se ausente) várias perguntas a vários ingressos de uma vez. */
-    vincularPerguntasEmIngressos: (ingressoIds: string[], perguntaIds: string[], obrigatoria?: boolean) => void;
+    /** Vincula um conjunto ordenado de perguntas (com obrigatoriedade) a vários ingressos, na posição indicada. */
+    vincularPerguntasEmIngressos: (ingressoIds: string[], itens: AssocItem[], insercao: Insercao) => void;
     /** Perguntas associadas a um ingresso, na ordem definida. */
     perguntasDoIngresso: (ingressoId: string) => Pergunta[];
     /** Itens (pergunta + obrigatoriedade) de um ingresso, na ordem definida. */
@@ -229,14 +241,22 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
-    const vincularPerguntasEmIngressos = useCallback((ingressoIds: string[], perguntaIds: string[], obrigatoria: boolean = true) => {
+    const vincularPerguntasEmIngressos = useCallback((ingressoIds: string[], itens: AssocItem[], insercao: Insercao) => {
         setAssociacoes((prev) => {
             const next = { ...prev };
             for (const ingressoId of ingressoIds) {
                 const atuais = next[ingressoId] ?? [];
                 const existentes = new Set(atuais.map((it) => it.perguntaId));
-                const novos = perguntaIds.filter((pid) => !existentes.has(pid)).map((perguntaId) => ({ perguntaId, obrigatoria }));
-                if (novos.length > 0) next[ingressoId] = [...atuais, ...novos];
+                const novos = itens.filter((it) => !existentes.has(it.perguntaId)).map((it) => ({ ...it }));
+                if (novos.length === 0) continue;
+                if (insercao.modo === "topo") {
+                    next[ingressoId] = [...novos, ...atuais];
+                } else if (insercao.modo === "apos") {
+                    const k = Math.min(Math.max(insercao.posicao ?? atuais.length, 0), atuais.length);
+                    next[ingressoId] = [...atuais.slice(0, k), ...novos, ...atuais.slice(k)];
+                } else {
+                    next[ingressoId] = [...atuais, ...novos];
+                }
             }
             return next;
         });

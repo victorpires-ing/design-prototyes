@@ -98,11 +98,11 @@ export function AssociacaoSlideout({ isOpen, onClose, ingresso, onCriarPergunta 
 
                     <div className="flex min-h-0 flex-1 flex-col gap-7 overflow-y-auto px-6 pb-6">
                         <Input
-                            label="Título do formulário"
-                            hint="O comprador vê este título."
+                            label="Nome do grupo de perguntas"
+                            hint="Aparece como título da seção no checkout. Serve só para organizar."
                             value={titulo}
                             onChange={setTitulo}
-                            placeholder="Ex.: Informações do portador"
+                            placeholder="Ex.: Dados do Participante"
                         />
 
                         {/* Selecionadas */}

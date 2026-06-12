@@ -115,7 +115,7 @@ export function BancoPerguntas() {
                     {/* Header */}
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="flex flex-col gap-1">
-                            <h1 className="text-xl font-semibold text-primary">Coleta de dados</h1>
+                            <h1 className="text-xl font-semibold text-primary">Relatório de respostas</h1>
                             <p className="text-sm text-tertiary">Crie perguntas uma vez, reutilize em qualquer evento e acompanhe as respostas.</p>
                         </div>
                         {aba === "perguntas" && perguntasSim.length > 0 && (
@@ -197,15 +197,21 @@ function AbaPerguntas({
 
     if (perguntas.length === 0) {
         return (
-            <div className="flex flex-col items-center gap-4 rounded-xl bg-primary px-6 py-16 text-center ring-1 ring-border-secondary">
-                <FeaturedIcon icon={MessageQuestionCircle} color="brand" theme="light" size="lg" />
-                <div className="flex flex-col gap-1">
-                    <h3 className="text-md font-semibold text-primary">Comece criando uma pergunta</h3>
-                    <p className="max-w-xs text-sm text-tertiary">Ela fica salva aqui e você reutiliza em qualquer evento.</p>
-                </div>
-                <Button size="md" color="primary" iconLeading={Plus} onClick={onNova}>
-                    Criar pergunta
-                </Button>
+            <div className="flex flex-1 items-center justify-center py-12">
+                <EmptyState size="sm">
+                    <EmptyState.Header>
+                        <EmptyState.FeaturedIcon icon={MessageQuestionCircle} color="gray" theme="modern" />
+                    </EmptyState.Header>
+                    <EmptyState.Content>
+                        <EmptyState.Title>Comece criando uma pergunta</EmptyState.Title>
+                        <EmptyState.Description>Ela fica salva aqui e você reutiliza em qualquer evento.</EmptyState.Description>
+                    </EmptyState.Content>
+                    <EmptyState.Footer>
+                        <Button size="md" color="primary" iconLeading={Plus} onClick={onNova}>
+                            Criar pergunta
+                        </Button>
+                    </EmptyState.Footer>
+                </EmptyState>
             </div>
         );
     }
@@ -291,7 +297,7 @@ function AbaRespostas({ perguntas }: { perguntas: Pergunta[] }) {
 
     if (comResposta.length === 0) {
         return (
-            <div className="py-12">
+            <div className="flex flex-1 items-center justify-center py-12">
                 <EmptyState size="sm">
                     <EmptyState.Header>
                         <EmptyState.FeaturedIcon icon={MessageQuestionCircle} color="gray" theme="modern" />
@@ -465,7 +471,7 @@ function AbaResumo({ perguntas }: { perguntas: Pergunta[] }) {
 
     if (comResposta.length === 0) {
         return (
-            <div className="rounded-xl bg-secondary px-6 py-16">
+            <div className="flex flex-1 items-center justify-center py-12">
                 <EmptyState size="sm">
                     <EmptyState.Header>
                         <EmptyState.FeaturedIcon icon={MessageQuestionCircle} color="gray" theme="modern" />

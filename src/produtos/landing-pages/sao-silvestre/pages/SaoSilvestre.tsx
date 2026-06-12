@@ -269,8 +269,11 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                 </div>
             </section>
 
+            {/* Divider entre o hero e as informações do evento (100% da largura) */}
+            <div className="border-t border-secondary" />
+
             {/* ===== SOBRE + INSCRIÇÃO ===== */}
-            <section className="px-6 pb-16 @3xl:px-12">
+            <section className="px-6 pt-16 pb-16 @3xl:px-12">
                 <div className="mx-auto flex max-w-6xl flex-col gap-10 @3xl:flex-row @3xl:gap-12">
                     {/* Conteúdo */}
                     <div className="min-w-0 flex-1">

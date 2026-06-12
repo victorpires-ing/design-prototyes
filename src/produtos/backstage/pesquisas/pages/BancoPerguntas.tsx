@@ -490,7 +490,7 @@ function AbaResumo({ perguntas }: { perguntas: Pergunta[] }) {
     const totalRespostas = Math.max(0, ...comResposta.map((p) => respDe(p)));
 
     return (
-        <div className="rounded-xl bg-secondary px-0 py-0 sm:px-0 sm:py-0">
+        <div className="rounded-xl px-0 py-0 sm:px-0 sm:py-0">
             <div className="mx-auto flex max-w-3xl flex-col gap-4">
                 <div className="flex items-center justify-between gap-3">
                     <FiltroSelect label="Evento" value={fEvento} onChange={setFEvento} options={eventos} />

@@ -1,78 +1,102 @@
 /**
  * Camada global do runner de testes. Montada na raiz (como o CommentsLayer),
- * fica presente em TODAS as rotas — assim o participante navega pelas telas
- * reais dos protótipos enquanto medimos a jornada.
+ * percorre os BLOCOS do teste:
+ *  - atividade: briefing de tela cheia à esquerda (fundo desfocado) → ao clicar
+ *    "Começar", o briefing fecha e o participante usa as telas reais; um bloco
+ *    de declaração (Desisti/Concluí) aparece à direita (imediato ou após N s),
+ *    minimizável, com justificativa opcional ao desistir.
+ *  - pergunta: tela cheia estilo Typeform (sem caixa, direto no fundo).
+ *  - sus: as 10 afirmações da Escala de Usabilidade do Sistema.
+ *  - obrigado: tela final (só mensagem, sem botão).
  *
- * Quando há um run ativo (sessionStorage), renderiza uma barra flutuante com a
- * tarefa atual e detecta a conclusão por: rota atingida, clique em elemento, ou
- * declaração do participante ("Concluí"). Também carrega o Microsoft Clarity e
- * injeta as tags da sessão.
+ * Carrega o Microsoft Clarity (exceto em preview) e injeta as tags da sessão; ao
+ * encerrar, para a gravação. O bloco `welcome` é tratado pela entrada (/t/:id).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { CheckCircle, Flag05 } from "@untitledui/icons";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion, useMotionValue, type MotionValue } from "motion/react";
+import { CheckCircle, ChevronLeft, ChevronRight, Flag05 } from "@untitledui/icons";
 import { useLocation, useNavigate } from "react-router";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import { carregarClarity, clarityIdentify, clarityTag } from "./clarity";
+import { cx } from "@/utils/cx";
+import { carregarClarity, clarityIdentify, clarityTag, pararClarity } from "./clarity";
 import { gravarRun, gravarSessao, lerRun, lerSessao, ouvirRun } from "./run";
 import { marcarFeito, usabilityStore } from "./store";
-import type { Atividade, CriterioTipo, EventoTarefa, ResultadoTarefa, RunAtivo, SessaoTeste } from "./types";
+import { ESCALA_SUS, PERGUNTAS_SUS } from "./sus";
+import type { Bloco, BlocoAtividade, BlocoPergunta, BlocoSus, CriterioTipo, EventoBloco, ResultadoTarefa, RunAtivo, SessaoTeste } from "./types";
 
 export function TestRunnerLayer() {
     const [run, setRun] = useState<RunAtivo | null>(() => lerRun());
-    const [fase, setFase] = useState<"tarefa" | "sucesso" | "fim">("tarefa");
+    const [mostrandoSucesso, setMostrandoSucesso] = useState(false);
+    const [resposta, setResposta] = useState<string[]>([]);
+    const [susRespostas, setSusRespostas] = useState<number[]>([]);
+    const [briefingAberto, setBriefingAberto] = useState(true);
+    const [declaracaoVisivel, setDeclaracaoVisivel] = useState(false);
+    const [minimizada, setMinimizada] = useState(false);
+    const [justificando, setJustificando] = useState(false);
+    const [justificativa, setJustificativa] = useState("");
     const location = useLocation();
     const navigate = useNavigate();
+    const finalizadaRef = useRef(false);
+    // Posição vertical compartilhada do bloco de declaração (sobrevive à troca aberto/minimizado).
+    const declY = useMotionValue(typeof window !== "undefined" ? Math.round(window.innerHeight * 0.2) : 140);
 
-    // Sincroniza com mudanças no sessionStorage (entry page inicia o run).
     useEffect(() => ouvirRun(() => setRun(lerRun())), []);
 
-    // Carrega o Clarity e injeta as tags quando o run começa / troca de tarefa.
+    const bloco: Bloco | undefined = run?.teste.blocos[run.blocoIndex];
+
+    // Reset ao trocar de bloco.
     useEffect(() => {
-        if (!run) return;
+        setMostrandoSucesso(false);
+        setResposta([]);
+        setSusRespostas([]);
+        setBriefingAberto(true);
+        setDeclaracaoVisivel(false);
+        setMinimizada(false);
+        setJustificando(false);
+        setJustificativa("");
+    }, [run?.blocoIndex]);
+
+    // Clarity (não em preview).
+    useEffect(() => {
+        if (!run || run.preview) return;
         carregarClarity();
         clarityIdentify(run.sessaoId);
         clarityTag("teste_id", run.teste.id);
         clarityTag("teste_nome", run.teste.nome);
         clarityTag("sessao_id", run.sessaoId);
-        const atividade = run.teste.atividades[run.atividadeIndex];
-        if (atividade) clarityTag("tarefa", `${run.atividadeIndex + 1}. ${atividade.enunciado.slice(0, 60)}`);
-    }, [run]);
+        if (bloco) clarityTag("bloco", `${run.blocoIndex}. ${bloco.tipo}`);
+    }, [run, bloco]);
 
-    const atividade: Atividade | undefined = run?.teste.atividades[run.atividadeIndex];
+    // Exibe a declaração após o briefing fechar (imediato ou após N segundos).
+    useEffect(() => {
+        if (bloco?.tipo !== "atividade" || briefingAberto) return;
+        if (bloco.declaracaoApos > 0) {
+            const t = setTimeout(() => setDeclaracaoVisivel(true), bloco.declaracaoApos * 1000);
+            return () => clearTimeout(t);
+        }
+        setDeclaracaoVisivel(true);
+    }, [bloco, briefingAberto]);
 
-    /* ----------------------- conclusão da tarefa ----------------------- */
+    /* --------------------------- registro -------------------------- */
 
-    const concluirTarefa = useCallback(
-        (resultado: ResultadoTarefa, comoConcluiu?: CriterioTipo) => {
-            if (!run || !atividade) return;
-            const agora = new Date().toISOString();
-            const evento: EventoTarefa = {
-                atividadeId: atividade.id,
-                iniciadaEm: run.iniciadaEmTarefa,
-                concluidaEm: agora,
-                resultado,
-                comoConcluiu,
-                duracaoMs: new Date(agora).getTime() - new Date(run.iniciadaEmTarefa).getTime(),
-            };
-
-            const sessao = lerSessao();
-            if (sessao) {
-                sessao.eventos = [...sessao.eventos.filter((e) => e.atividadeId !== atividade.id), evento];
-                gravarSessao(sessao);
-                void usabilityStore.atualizarSessao(sessao);
-            }
-
-            setFase(resultado === "sucesso" ? "sucesso" : "tarefa");
-            if (resultado !== "sucesso") avancar();
-        },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [run, atividade],
-    );
+    const registrarEvento = useCallback((evento: EventoBloco) => {
+        const atual = lerRun();
+        if (atual?.preview) return;
+        const sessao = lerSessao();
+        if (!sessao) return;
+        sessao.eventos = [...sessao.eventos.filter((e) => e.blocoId !== evento.blocoId), evento];
+        gravarSessao(sessao);
+        void usabilityStore.atualizarSessao(sessao);
+    }, []);
 
     const finalizar = useCallback(() => {
+        if (finalizadaRef.current) return;
+        finalizadaRef.current = true;
+        const atual = lerRun();
+        if (atual?.preview) return;
         const sessao = lerSessao();
         if (sessao) {
             const finalizada: SessaoTeste = { ...sessao, concluida: true, finalizadaEm: new Date().toISOString() };
@@ -80,144 +104,558 @@ export function TestRunnerLayer() {
             void usabilityStore.atualizarSessao(finalizada);
             marcarFeito(sessao.testeId);
         }
-        setFase("fim");
+        pararClarity();
     }, []);
 
-    const avancar = useCallback(() => {
+    const avancarBloco = useCallback(() => {
         const atual = lerRun();
         if (!atual) return;
-        const proximo = atual.atividadeIndex + 1;
-        if (proximo >= atual.teste.atividades.length) {
-            finalizar();
-            return;
-        }
-        const atualizado: RunAtivo = { ...atual, atividadeIndex: proximo, iniciadaEmTarefa: new Date().toISOString() };
+        const proximo = atual.blocoIndex + 1;
+        if (proximo >= atual.teste.blocos.length) return;
+        const atualizado: RunAtivo = { ...atual, blocoIndex: proximo, iniciadaEmBloco: new Date().toISOString() };
+        const blocoProx = atual.teste.blocos[proximo];
         gravarRun(atualizado);
-        setFase("tarefa");
-        navigate(atual.teste.atividades[proximo].rotaInicial);
-    }, [finalizar, navigate]);
-
-    const fecharFim = useCallback(() => {
-        gravarRun(null);
-        gravarSessao(null);
-        setRun(null);
-    }, []);
-
-    /* ------------------- detecção: rota atingida ----------------------- */
+        if (blocoProx.tipo === "atividade") navigate(blocoProx.rotaInicial);
+    }, [navigate]);
 
     useEffect(() => {
-        if (!run || !atividade || fase !== "tarefa") return;
-        const criterioRota = atividade.criterios.find((c) => c.tipo === "rota" && c.valor);
-        if (!criterioRota?.valor) return;
-        // Ignora a própria rota inicial; só conta ao atingir a rota-alvo depois.
-        if (location.pathname === atividade.rotaInicial && atividade.rotaInicial === criterioRota.valor) return;
-        if (location.pathname.startsWith(criterioRota.valor)) {
-            concluirTarefa("sucesso", "rota");
-        }
-    }, [location.pathname, run, atividade, fase, concluirTarefa]);
+        if (bloco?.tipo === "obrigado") finalizar();
+    }, [bloco, finalizar]);
 
-    /* ------------------- detecção: clique em elemento ------------------ */
+    /* ------------------------ atividade: sucesso ------------------------ */
+
+    const concluirAtividade = useCallback(
+        (resultado: ResultadoTarefa, comoConcluiu?: CriterioTipo, justif?: string) => {
+            const atual = lerRun();
+            const blocoAtual = atual?.teste.blocos[atual.blocoIndex];
+            if (!atual || blocoAtual?.tipo !== "atividade") return;
+            const agora = new Date().toISOString();
+            registrarEvento({
+                blocoId: blocoAtual.id,
+                tipo: "atividade",
+                iniciadaEm: atual.iniciadaEmBloco,
+                concluidaEm: agora,
+                resultado,
+                comoConcluiu,
+                justificativa: justif,
+                duracaoMs: new Date(agora).getTime() - new Date(atual.iniciadaEmBloco).getTime(),
+            });
+            if (resultado === "sucesso") setMostrandoSucesso(true);
+            else avancarBloco();
+        },
+        [registrarEvento, avancarBloco],
+    );
+
+    const ativaDeteccao = bloco?.tipo === "atividade" && !mostrandoSucesso && !briefingAberto;
 
     useEffect(() => {
-        if (!run || !atividade || fase !== "tarefa") return;
-        const criterioClique = atividade.criterios.find((c) => c.tipo === "clique" && c.valor);
-        if (!criterioClique?.valor) return;
-        const seletor = criterioClique.valor;
+        if (!ativaDeteccao || bloco?.tipo !== "atividade") return;
+        const crit = bloco.criterios.find((c) => c.tipo === "rota" && c.valor);
+        if (!crit?.valor) return;
+        if (location.pathname === bloco.rotaInicial && bloco.rotaInicial === crit.valor) return;
+        if (location.pathname.startsWith(crit.valor)) concluirAtividade("sucesso", "rota");
+    }, [location.pathname, ativaDeteccao, bloco, concluirAtividade]);
+
+    useEffect(() => {
+        if (!ativaDeteccao || bloco?.tipo !== "atividade") return;
+        const crit = bloco.criterios.find((c) => c.tipo === "clique" && c.valor);
+        if (!crit?.valor) return;
+        const seletor = crit.valor;
         const onClick = (e: MouseEvent) => {
-            const alvo = e.target as Element | null;
-            if (alvo?.closest?.(seletor)) concluirTarefa("sucesso", "clique");
+            if ((e.target as Element | null)?.closest?.(seletor)) concluirAtividade("sucesso", "clique");
         };
         document.addEventListener("click", onClick, true);
         return () => document.removeEventListener("click", onClick, true);
-    }, [run, atividade, fase, concluirTarefa]);
+    }, [ativaDeteccao, bloco, concluirAtividade]);
 
-    const temAuto = useMemo(() => atividade?.criterios.some((c) => c.tipo === "auto"), [atividade]);
-    const total = run?.teste.atividades.length ?? 0;
+    /* --------------------------- pergunta / sus --------------------------- */
 
-    if (!run) return null;
+    const responder = useCallback(() => {
+        const atual = lerRun();
+        const blocoAtual = atual?.teste.blocos[atual.blocoIndex];
+        if (!atual || blocoAtual?.tipo !== "pergunta") return;
+        registrarEvento({ blocoId: blocoAtual.id, tipo: "pergunta", iniciadaEm: atual.iniciadaEmBloco, concluidaEm: new Date().toISOString(), resposta });
+        avancarBloco();
+    }, [registrarEvento, resposta, avancarBloco]);
 
+    const responderSus = useCallback(() => {
+        const atual = lerRun();
+        const blocoAtual = atual?.teste.blocos[atual.blocoIndex];
+        if (!atual || blocoAtual?.tipo !== "sus") return;
+        registrarEvento({ blocoId: blocoAtual.id, tipo: "sus", iniciadaEm: atual.iniciadaEmBloco, concluidaEm: new Date().toISOString(), resposta: susRespostas.map(String) });
+        avancarBloco();
+    }, [registrarEvento, susRespostas, avancarBloco]);
+
+    /* --------------------------- progresso -------------------------- */
+
+    const progresso = useMemo(() => {
+        if (!run || bloco?.tipo !== "atividade") return null;
+        const atividades = run.teste.blocos.filter((b) => b.tipo === "atividade");
+        const indice = atividades.findIndex((b) => b.id === bloco.id);
+        return { atual: indice + 1, total: atividades.length };
+    }, [run, bloco]);
+
+    if (!run || !bloco || bloco.tipo === "welcome") return null;
+
+    const ehMobile = typeof window !== "undefined" && window.innerWidth < 640;
+    const ultimaAntesDoFim = run.blocoIndex + 1 >= run.teste.blocos.length - 1;
+
+    /* ----------------------------- render --------------------------- */
+
+    if (bloco.tipo === "obrigado") {
+        return (
+            <TopLayer>
+                <Fundo>
+                    <div className="flex flex-col items-center gap-4 text-center">
+                        <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
+                        <h2 className="text-2xl font-semibold text-primary">{bloco.titulo || "Teste concluído"}</h2>
+                        <p className="max-w-md text-base whitespace-pre-line text-tertiary">{bloco.texto}</p>
+                    </div>
+                </Fundo>
+            </TopLayer>
+        );
+    }
+
+    if (bloco.tipo === "pergunta") {
+        return (
+            <TopLayer>
+                <TelaPergunta key={bloco.id} bloco={bloco} resposta={resposta} setResposta={setResposta} onProximo={responder} />
+            </TopLayer>
+        );
+    }
+
+    if (bloco.tipo === "sus") {
+        return (
+            <TopLayer>
+                <TelaSus key={bloco.id} bloco={bloco} respostas={susRespostas} setRespostas={setSusRespostas} ultima={ultimaAntesDoFim} onProximo={responderSus} />
+            </TopLayer>
+        );
+    }
+
+    // bloco.tipo === "atividade"
     return (
-        <AnimatePresence>
-            {fase === "fim" ? (
-                <OverlayCentral key="fim">
-                    <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
-                    <h2 className="text-xl font-semibold text-primary">Teste concluído</h2>
-                    <p className="max-w-sm text-center text-sm text-tertiary">
-                        Obrigado por participar! Suas interações foram registradas e ajudam a melhorar o produto.
-                    </p>
-                    <Button size="lg" color="primary" onClick={fecharFim}>
-                        Fechar
-                    </Button>
-                </OverlayCentral>
-            ) : fase === "sucesso" ? (
-                <OverlayCentral key="sucesso">
-                    <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
-                    <h2 className="text-lg font-semibold text-primary">Tarefa concluída</h2>
-                    {atividade?.mensagemSucesso && (
-                        <p className="max-w-sm text-center text-sm text-tertiary">{atividade.mensagemSucesso}</p>
-                    )}
-                    <Button size="lg" color="primary" onClick={avancar}>
-                        {run.atividadeIndex + 1 >= total ? "Finalizar teste" : "Próxima tarefa"}
-                    </Button>
-                </OverlayCentral>
-            ) : (
-                atividade && (
-                    <motion.div
-                        key="tarefa"
-                        initial={{ y: 80, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: 80, opacity: 0 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                        className="fixed inset-x-0 bottom-0 z-[9998] flex justify-center px-3 pb-3 sm:px-4 sm:pb-4"
-                    >
-                        <div className="flex w-full max-w-2xl flex-col gap-3 rounded-2xl bg-primary-solid p-4 text-primary_on-brand shadow-2xl sm:flex-row sm:items-center sm:gap-4">
-                            <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                <span className="text-xs font-semibold tracking-wide text-tertiary_on-brand uppercase">
-                                    Tarefa {run.atividadeIndex + 1} de {total}
-                                </span>
-                                <p className="text-sm font-medium text-primary_on-brand">{atividade.enunciado}</p>
-                                {atividade.mensagemInicio && (
-                                    <p className="text-xs text-tertiary_on-brand">{atividade.mensagemInicio}</p>
-                                )}
-                            </div>
-                            <div className="flex shrink-0 items-center gap-2">
-                                <Button
-                                    size="sm"
-                                    color="link-gray"
-                                    iconLeading={Flag05}
-                                    onClick={() => concluirTarefa("desistencia")}
-                                    className="!text-tertiary_on-brand hover:!text-primary_on-brand"
-                                >
-                                    Desisti
-                                </Button>
-                                {temAuto && (
-                                    <Button size="sm" color="secondary" iconLeading={CheckCircle} onClick={() => concluirTarefa("sucesso", "auto")}>
-                                        Concluí
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                    </motion.div>
-                )
+        <TopLayer>
+            <AnimatePresence>
+                {mostrandoSucesso && (
+                    <OverlayCard key="sucesso" fullscreen={ehMobile}>
+                        <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
+                        <h2 className="text-lg font-semibold text-primary">Tarefa concluída</h2>
+                        {bloco.mensagemSucesso && <p className="max-w-sm text-center text-sm text-tertiary">{bloco.mensagemSucesso}</p>}
+                        <Button size="lg" color="primary" onClick={avancarBloco} className="w-full sm:w-auto">
+                            {ultimaAntesDoFim ? "Finalizar" : "Continuar"}
+                        </Button>
+                    </OverlayCard>
+                )}
+            </AnimatePresence>
+
+            {/* Briefing de tela cheia à esquerda, fundo desfocado, fecha no "Começar" */}
+            <AnimatePresence>
+                {briefingAberto && !mostrandoSucesso && (
+                    <Briefing key="briefing" bloco={bloco} progresso={progresso} ehMobile={ehMobile} onComecar={() => setBriefingAberto(false)} />
+                )}
+            </AnimatePresence>
+
+            {/* Declaração à direita */}
+            {!briefingAberto && declaracaoVisivel && !mostrandoSucesso && (
+                <Declaracao
+                    bloco={bloco}
+                    progresso={progresso}
+                    ehMobile={ehMobile}
+                    declY={declY}
+                    minimizada={minimizada}
+                    justificando={justificando}
+                    justificativa={justificativa}
+                    onMinimizar={() => setMinimizada(true)}
+                    onExpandir={() => setMinimizada(false)}
+                    onPedirJustificativa={() => setJustificando(true)}
+                    onMudarJustificativa={setJustificativa}
+                    onCancelarJustificativa={() => {
+                        setJustificando(false);
+                        setJustificativa("");
+                    }}
+                    onDesistir={() => {
+                        if (bloco.pedirJustificativaDesistencia && !justificando) setJustificando(true);
+                        else concluirAtividade("desistencia", undefined, justificativa.trim() || undefined);
+                    }}
+                    onConcluir={() => concluirAtividade("sucesso", "auto")}
+                />
             )}
-        </AnimatePresence>
+        </TopLayer>
     );
 }
 
-function OverlayCentral({ children }: { children: React.ReactNode }) {
+/* ------------------------------------------------------------------ */
+/*  Top layer — portal em document.body marcado para o React Aria não  */
+/*  inertizar nem fechar slideouts ao interagir com o runner.          */
+/* ------------------------------------------------------------------ */
+
+function TopLayer({ children }: { children: React.ReactNode }) {
+    const [el] = useState<HTMLDivElement | null>(() => {
+        if (typeof document === "undefined") return null;
+        const d = document.createElement("div");
+        d.setAttribute("data-react-aria-top-layer", "true");
+        return d;
+    });
+    useEffect(() => {
+        if (!el) return;
+        document.body.appendChild(el);
+        return () => {
+            el.remove();
+        };
+    }, [el]);
+    if (!el) return null;
+    return createPortal(children, el);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Briefing da tarefa (tela cheia à esquerda)                         */
+/* ------------------------------------------------------------------ */
+
+function Briefing({
+    bloco,
+    progresso,
+    ehMobile,
+    onComecar,
+}: {
+    bloco: BlocoAtividade;
+    progresso: { atual: number; total: number } | null;
+    ehMobile: boolean;
+    onComecar: () => void;
+}) {
+    return (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9999] bg-overlay/40 backdrop-blur-md">
+            <motion.div
+                initial={{ x: ehMobile ? 0 : -32, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: ehMobile ? 0 : -32, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 460, damping: 38 }}
+                className={cx("fixed flex flex-col gap-6 rounded-2xl bg-primary p-6 text-primary shadow-2xl ring-1 ring-border-secondary", ehMobile ? "inset-4" : "inset-y-4 left-4 w-[380px]")}
+            >
+                {progresso && <span className="text-xs font-semibold tracking-wide text-tertiary uppercase">Tarefa {progresso.atual} de {progresso.total}</span>}
+                <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+                    <span className="text-xs font-semibold tracking-wide text-brand-secondary uppercase">Sua tarefa</span>
+                    <h2 className="text-xl font-semibold text-primary">{bloco.enunciado}</h2>
+                    {bloco.descricao && <p className="text-sm leading-relaxed text-tertiary">{bloco.descricao}</p>}
+                </div>
+                <Button size="lg" color="primary" onClick={onComecar} className="w-full">
+                    Começar
+                </Button>
+            </motion.div>
+        </motion.div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Declaração (à direita)                                             */
+/* ------------------------------------------------------------------ */
+
+function Declaracao({
+    bloco,
+    progresso,
+    ehMobile,
+    declY,
+    minimizada,
+    justificando,
+    justificativa,
+    onMinimizar,
+    onExpandir,
+    onPedirJustificativa,
+    onMudarJustificativa,
+    onCancelarJustificativa,
+    onDesistir,
+    onConcluir,
+}: {
+    bloco: BlocoAtividade;
+    progresso: { atual: number; total: number } | null;
+    ehMobile: boolean;
+    declY: MotionValue<number>;
+    minimizada: boolean;
+    justificando: boolean;
+    justificativa: string;
+    onMinimizar: () => void;
+    onExpandir: () => void;
+    onPedirJustificativa: () => void;
+    onMudarJustificativa: (v: string) => void;
+    onCancelarJustificativa: () => void;
+    onDesistir: () => void;
+    onConcluir: () => void;
+}) {
+    const temAuto = bloco.criterios.some((c) => c.tipo === "auto");
+    const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+    const arrastou = useRef(false);
+
+    const aba = (
+        <div className="flex flex-col items-center gap-2 rounded-l-xl bg-blue-800 py-4 pr-1.5 pl-2 text-white shadow-2xl">
+            <ChevronLeft className="size-4 text-white/80" aria-hidden="true" />
+            <span className="rotate-180 text-xs font-semibold tracking-wide whitespace-nowrap text-white [writing-mode:vertical-rl]">
+                Sua tarefa{progresso ? ` · ${progresso.atual}/${progresso.total}` : ""}
+            </span>
+        </div>
+    );
+
+    const corpo = (
+        <div className="flex w-full flex-col gap-4 rounded-2xl bg-blue-800 p-5 text-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3">
+                {progresso && <span className="text-xs font-semibold tracking-wide text-white/80 uppercase">Tarefa {progresso.atual} de {progresso.total}</span>}
+                <button type="button" onClick={onMinimizar} className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-white/80 hover:text-white">
+                    Recolher
+                    <ChevronRight className="size-4" aria-hidden="true" />
+                </button>
+            </div>
+
+            <p className="text-base font-semibold text-white">
+                Conseguiu concluir a tarefa “{bloco.enunciado}”?
+            </p>
+
+            {justificando ? (
+                <div className="flex flex-col gap-3 border-t border-white/20 pt-4">
+                    <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-white">O que te impediu de concluir?</span>
+                        <button type="button" onClick={onCancelarJustificativa} className="rounded-md px-1.5 py-1 text-xs font-medium text-white/80 hover:text-white">
+                            Voltar
+                        </button>
+                    </div>
+                    <textarea
+                        value={justificativa}
+                        onChange={(e) => onMudarJustificativa(e.target.value)}
+                        rows={3}
+                        autoFocus
+                        placeholder="Conte rapidamente o que aconteceu…"
+                        className="w-full resize-none rounded-lg bg-white/15 p-3 text-sm text-white ring-1 ring-white/25 outline-none placeholder:text-white/60 focus:ring-2 focus:ring-white"
+                    />
+                    <button
+                        type="button"
+                        onClick={onDesistir}
+                        disabled={!justificativa.trim()}
+                        className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-blue-800 transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        Enviar e pular tarefa
+                    </button>
+                </div>
+            ) : (
+                <div className="flex items-center justify-between gap-2 border-t border-white/20 pt-4">
+                    <button
+                        type="button"
+                        onClick={bloco.pedirJustificativaDesistencia ? onPedirJustificativa : onDesistir}
+                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white"
+                    >
+                        <Flag05 className="size-4" aria-hidden="true" />
+                        Não consegui
+                    </button>
+                    {temAuto && (
+                        <button
+                            type="button"
+                            onClick={onConcluir}
+                            className="flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-2 text-sm font-semibold text-blue-800 transition hover:bg-white/90"
+                        >
+                            <CheckCircle className="size-4" aria-hidden="true" />
+                            Concluí a tarefa
+                        </button>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+
+    // Mobile aberto: bottom sheet (sem arraste). Demais casos: aba/card arrastável na vertical,
+    // num único elemento (sem key) para o transform de Y persistir entre aberto e fechado.
+    if (ehMobile && !minimizada) {
+        return (
+            <motion.div key="decl-mob" initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="fixed inset-x-0 bottom-0 z-[9998] flex justify-center p-3">
+                {corpo}
+            </motion.div>
+        );
+    }
+
+    return (
+        <motion.div
+            drag="y"
+            dragMomentum={false}
+            dragConstraints={{ top: 0, bottom: vh - 120 }}
+            style={{ y: declY }}
+            onPointerDown={() => (arrastou.current = false)}
+            onDragStart={() => (arrastou.current = true)}
+            className={cx("fixed top-0 z-[9998] cursor-grab active:cursor-grabbing", minimizada ? "right-0" : "right-3 w-[340px]")}
+        >
+            {minimizada ? (
+                <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                        if (!arrastou.current) onExpandir();
+                    }}
+                >
+                    {aba}
+                </div>
+            ) : (
+                corpo
+            )}
+        </motion.div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tela de pergunta (estilo Typeform — sem caixa)                     */
+/* ------------------------------------------------------------------ */
+
+function TelaPergunta({
+    bloco,
+    resposta,
+    setResposta,
+    onProximo,
+}: {
+    bloco: BlocoPergunta;
+    resposta: string[];
+    setResposta: (r: string[]) => void;
+    onProximo: () => void;
+}) {
+    const respondido = bloco.obrigatoria ? resposta.some((r) => r.trim()) : true;
+    const toggle = (op: string) => setResposta(bloco.formato === "multipla" ? (resposta.includes(op) ? resposta.filter((x) => x !== op) : [...resposta, op]) : [op]);
+
+    return (
+        <Fundo alinhar="start">
+            <div className="flex w-full max-w-2xl flex-col gap-6">
+                <h2 className="text-2xl font-semibold text-primary sm:text-3xl">
+                    {bloco.enunciado || "Pergunta"}
+                    {bloco.obrigatoria && <span className="text-error-primary"> *</span>}
+                </h2>
+                {bloco.formato === "aberta" ? (
+                    <textarea
+                        value={resposta[0] ?? ""}
+                        onChange={(e) => setResposta([e.target.value])}
+                        rows={3}
+                        autoFocus
+                        placeholder="Digite sua resposta…"
+                        className="w-full resize-none border-0 border-b border-secondary bg-transparent pb-2 text-lg text-primary outline-none placeholder:text-placeholder focus:border-brand"
+                    />
+                ) : (
+                    <div className="flex flex-col gap-2.5">
+                        {bloco.opcoes.map((op, i) => {
+                            const sel = resposta.includes(op);
+                            return (
+                                <button
+                                    key={op}
+                                    type="button"
+                                    onClick={() => toggle(op)}
+                                    className={cx(
+                                        "flex items-center gap-3 rounded-xl px-4 py-3.5 text-left text-base ring-1 transition-colors duration-100 ease-linear",
+                                        sel ? "bg-brand-primary text-primary ring-brand" : "text-secondary ring-border-secondary hover:bg-primary_hover",
+                                    )}
+                                >
+                                    <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-primary text-xs font-semibold text-tertiary">
+                                        {String.fromCharCode(65 + i)}
+                                    </span>
+                                    {op}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+                <Button size="xl" color="primary" onClick={onProximo} isDisabled={!respondido} className="self-start">
+                    Próximo
+                </Button>
+            </div>
+        </Fundo>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tela SUS                                                           */
+/* ------------------------------------------------------------------ */
+
+function TelaSus({
+    bloco,
+    respostas,
+    setRespostas,
+    ultima,
+    onProximo,
+}: {
+    bloco: BlocoSus;
+    respostas: number[];
+    setRespostas: (r: number[]) => void;
+    ultima: boolean;
+    onProximo: () => void;
+}) {
+    const set = (i: number, v: number) => {
+        const next = [...respostas];
+        next[i] = v;
+        setRespostas(next);
+    };
+    const completo = PERGUNTAS_SUS.every((_, i) => respostas[i]);
+
+    return (
+        <Fundo alinhar="start" scroll>
+            <div className="flex w-full max-w-2xl flex-col gap-6 py-8">
+                <div className="flex flex-col gap-2">
+                    <h2 className="text-2xl font-semibold text-primary">{bloco.titulo}</h2>
+                    {bloco.enunciado && <p className="text-sm text-tertiary">{bloco.enunciado}</p>}
+                </div>
+                <div className="flex flex-col gap-6">
+                    {PERGUNTAS_SUS.map((pergunta, i) => (
+                        <div key={i} className="flex flex-col gap-2.5">
+                            <span className="text-base font-medium text-primary">
+                                {i + 1}. {pergunta}
+                            </span>
+                            <div className="flex gap-1.5">
+                                {[1, 2, 3, 4, 5].map((v) => {
+                                    const sel = respostas[i] === v;
+                                    return (
+                                        <button
+                                            key={v}
+                                            type="button"
+                                            onClick={() => set(i, v)}
+                                            title={ESCALA_SUS[v - 1]}
+                                            className={cx(
+                                                "flex h-10 flex-1 items-center justify-center rounded-lg text-sm font-semibold ring-1 transition-colors duration-100 ease-linear",
+                                                sel ? "bg-brand-solid text-white ring-brand" : "text-secondary ring-border-secondary hover:bg-primary_hover",
+                                            )}
+                                        >
+                                            {v}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <div className="flex justify-between text-[11px] text-quaternary">
+                                <span>{ESCALA_SUS[0]}</span>
+                                <span>{ESCALA_SUS[4]}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <Button size="xl" color="primary" onClick={onProximo} isDisabled={!completo} className="self-start">
+                    {ultima ? "Finalizar" : "Próximo"}
+                </Button>
+            </div>
+        </Fundo>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helpers de layout                                                  */
+/* ------------------------------------------------------------------ */
+
+/** Fundo de tela cheia (bg primary), centralizado ou alinhado ao topo. */
+function Fundo({ children, alinhar = "center", scroll }: { children: React.ReactNode; alinhar?: "center" | "start"; scroll?: boolean }) {
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-overlay px-4"
+            className={cx("fixed inset-0 z-[9999] flex justify-center bg-primary px-5 sm:px-8", scroll ? "items-start overflow-y-auto" : alinhar === "start" ? "items-center" : "items-center")}
         >
+            {children}
+        </motion.div>
+    );
+}
+
+function OverlayCard({ children, fullscreen }: { children: React.ReactNode; fullscreen?: boolean }) {
+    return (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9999] flex items-center justify-center bg-overlay p-4">
             <motion.div
-                initial={{ scale: 0.95, y: 12 }}
+                initial={{ scale: 0.96, y: 12 }}
                 animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.95, opacity: 0 }}
+                exit={{ scale: 0.96, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                className="flex w-full max-w-md flex-col items-center gap-4 rounded-2xl bg-primary p-8 shadow-2xl"
+                className={cx("flex flex-col items-center gap-4 bg-primary p-8 shadow-2xl", fullscreen ? "h-full w-full justify-center rounded-2xl" : "w-full max-w-md rounded-2xl")}
             >
                 {children}
             </motion.div>

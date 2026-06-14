@@ -1,10 +1,13 @@
 /**
  * Tipos do sistema de teste de usabilidade.
  *
- * O teste roda POR CIMA dos protótipos reais deste repo: o participante navega
- * nas telas de verdade e uma camada global (TestRunnerLayer) mede a jornada.
- * A gravação de tela/heatmap fica a cargo do Microsoft Clarity — aqui guardamos
- * só a configuração do teste e as métricas de tarefa.
+ * Modelo de BLOCOS (inspirado no Maze): um teste é uma sequência de blocos
+ * — sempre começa com `welcome` e termina com `obrigado`; no meio entram
+ * blocos de `atividade` (website test) e `pergunta`.
+ *
+ * O teste roda POR CIMA dos protótipos reais deste repo: blocos de atividade
+ * levam o participante às telas reais e uma camada global (TestRunnerLayer) mede
+ * a jornada. A gravação de tela/heatmap fica a cargo do Microsoft Clarity.
  */
 
 export type CriterioTipo = "rota" | "clique" | "auto";
@@ -13,26 +16,77 @@ export interface Criterio {
     id: string;
     tipo: CriterioTipo;
     /**
-     * - `rota`: pathname alvo; a tarefa é concluída ao atingir essa rota (match por prefixo).
-     * - `clique`: seletor CSS; concluída ao clicar num elemento que casa com o seletor.
-     * - `auto`: sem detecção automática — o participante declara "Concluí".
+     * - `rota`: pathname alvo; concluída ao atingir essa rota (match por prefixo).
+     * - `clique`: seletor CSS; concluída ao clicar num elemento que casa com ele.
+     * - `auto`: sem detecção — o participante declara "Concluí".
      */
     valor?: string;
+    /** Rótulo amigável do alvo (ex.: texto do botão capturado), só para exibição. */
+    rotulo?: string;
 }
 
-export interface Atividade {
+export type BlocoTipo = "welcome" | "atividade" | "pergunta" | "sus" | "obrigado";
+
+interface BlocoBase {
     id: string;
-    /** O que pedimos ao participante fazer. */
-    enunciado: string;
-    /** Mensagem de contexto antes de iniciar a tarefa (opcional). */
-    mensagemInicio?: string;
-    /** Mensagem exibida ao concluir a tarefa com sucesso (opcional). */
-    mensagemSucesso?: string;
-    /** Rota para onde o participante é levado ao iniciar a tarefa. */
-    rotaInicial: string;
-    /** A tarefa é concluída quando QUALQUER critério é satisfeito. */
-    criterios: Criterio[];
+    tipo: BlocoTipo;
 }
+
+export interface BlocoWelcome extends BlocoBase {
+    tipo: "welcome";
+    titulo: string;
+    texto: string;
+}
+
+export interface BlocoObrigado extends BlocoBase {
+    tipo: "obrigado";
+    titulo: string;
+    texto: string;
+}
+
+export interface BlocoAtividade extends BlocoBase {
+    tipo: "atividade";
+    /** Título curto do bloco (lista lateral). */
+    titulo: string;
+    /** Frase da tarefa exibida ao participante. */
+    enunciado: string;
+    /** Detalhes adicionais (opcional). */
+    descricao?: string;
+    /** Rota onde a tarefa começa. */
+    rotaInicial: string;
+    /** Concluída quando QUALQUER critério é satisfeito (critérios são combináveis). */
+    criterios: Criterio[];
+    /** Mensagem exibida ao concluir com sucesso (opcional). */
+    mensagemSucesso?: string;
+    /** Quando exibir o bloco de declaração (Desisti/Concluí): 0 = sempre em tela; >0 = após N segundos. */
+    declaracaoApos: number;
+    /** Pede justificativa ao participante ao clicar em "Desisti". */
+    pedirJustificativaDesistencia: boolean;
+}
+
+export type PerguntaFormato = "aberta" | "unica" | "multipla";
+
+export interface BlocoPergunta extends BlocoBase {
+    tipo: "pergunta";
+    /** Título curto do bloco (lista lateral). */
+    titulo: string;
+    /** Enunciado da pergunta exibido ao participante. */
+    enunciado: string;
+    formato: PerguntaFormato;
+    /** Opções para `unica`/`multipla`. */
+    opcoes: string[];
+    obrigatoria: boolean;
+}
+
+export interface BlocoSus extends BlocoBase {
+    tipo: "sus";
+    /** Título curto do bloco (lista lateral). */
+    titulo: string;
+    /** Enunciado/contexto exibido acima das 10 afirmações (opcional). */
+    enunciado: string;
+}
+
+export type Bloco = BlocoWelcome | BlocoObrigado | BlocoAtividade | BlocoPergunta | BlocoSus;
 
 export type TesteStatus = "rascunho" | "ativo" | "encerrado";
 
@@ -40,9 +94,7 @@ export interface Teste {
     id: string;
     nome: string;
     status: TesteStatus;
-    introTitulo: string;
-    introTexto: string;
-    atividades: Atividade[];
+    blocos: Bloco[];
     /** Se true, o teste só pode ser executado uma vez por dispositivo. */
     umaVezPorDispositivo: boolean;
     criadoEm: string;
@@ -50,14 +102,19 @@ export interface Teste {
 
 export type ResultadoTarefa = "sucesso" | "desistencia" | "abandono";
 
-export interface EventoTarefa {
-    atividadeId: string;
+export interface EventoBloco {
+    blocoId: string;
+    tipo: BlocoTipo;
     iniciadaEm: string;
     concluidaEm?: string;
+    /** Para atividades. */
     resultado?: ResultadoTarefa;
     duracaoMs?: number;
-    /** Como a tarefa foi concluída (qual tipo de critério bateu). */
     comoConcluiu?: CriterioTipo;
+    /** Para desistências: justificativa do participante (opcional). */
+    justificativa?: string;
+    /** Para perguntas e SUS: resposta(s) do participante (no SUS, 10 valores "1".."5"). */
+    resposta?: string[];
 }
 
 export interface SessaoTeste {
@@ -69,7 +126,7 @@ export interface SessaoTeste {
     userAgent: string;
     /** Viewport no início da sessão, ex.: "1280x800". */
     viewport: string;
-    eventos: EventoTarefa[];
+    eventos: EventoBloco[];
     concluida: boolean;
 }
 
@@ -77,8 +134,14 @@ export interface SessaoTeste {
 export interface RunAtivo {
     teste: Teste;
     sessaoId: string;
-    atividadeIndex: number;
-    iniciadaEmTarefa: string;
+    /** Índice do bloco atual em `teste.blocos`. */
+    blocoIndex: number;
+    iniciadaEmBloco: string;
+    /**
+     * Execução de pré-visualização: não grava sessão/eventos, não dispara o
+     * Clarity e não conta para a trava de "uma vez por dispositivo".
+     */
+    preview?: boolean;
 }
 
 export interface UsabilityStore {

@@ -16,6 +16,15 @@ import type { Comment } from "./types";
 
 const STORE = remoteCommentsStore;
 const AUTHOR_KEY = "design-prototyes:comments:author";
+const ENABLED_KEY = "design-prototyes:comments:enabled";
+
+/** Lê o estado dos comentários a partir do `?comments=on/off` ou do estado persistido. */
+function lerCommentsEnabled(search: string): boolean {
+    const param = new URLSearchParams(search).get("comments");
+    if (param === "on") return true;
+    if (param === "off") return false;
+    return sessionStorage.getItem(ENABLED_KEY) === "on";
+}
 
 const PIN_SIZE = 32;
 const BUBBLE_WIDTH = 280;
@@ -187,8 +196,19 @@ interface CommentsLayerProps {
 
 export function CommentsLayer({ children }: CommentsLayerProps) {
     const location = useLocation();
-    // Flag temporária: os comentários só aparecem quando a rota tem "?comments=on".
-    const commentsEnabled = new URLSearchParams(location.search).get("comments") === "on";
+    // Os comentários ligam com "?comments=on" e PERMANECEM ao navegar (persistido),
+    // até serem desligados com "?comments=off".
+    const [commentsEnabled, setCommentsEnabled] = useState(() => lerCommentsEnabled(location.search));
+    useEffect(() => {
+        const param = new URLSearchParams(location.search).get("comments");
+        if (param === "on") {
+            sessionStorage.setItem(ENABLED_KEY, "on");
+            setCommentsEnabled(true);
+        } else if (param === "off") {
+            sessionStorage.removeItem(ENABLED_KEY);
+            setCommentsEnabled(false);
+        }
+    }, [location.search]);
     const [comments, setComments] = useState<Comment[]>([]);
     const [isPlacing, setIsPlacing] = useState(false);
     const [draft, setDraft] = useState<DraftComment | null>(null);

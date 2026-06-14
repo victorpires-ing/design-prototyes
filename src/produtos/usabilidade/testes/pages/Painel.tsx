@@ -85,7 +85,10 @@ export function Painel() {
                                         </Badge>
                                     </div>
                                     <span className="text-xs text-tertiary">
-                                        {teste.atividades.length} {teste.atividades.length === 1 ? "atividade" : "atividades"}
+                                        {(() => {
+                                            const n = teste.blocos.filter((b) => b.tipo === "atividade" || b.tipo === "pergunta").length;
+                                            return `${n} ${n === 1 ? "etapa" : "etapas"}`;
+                                        })()}
                                         {teste.umaVezPorDispositivo ? " · 1× por dispositivo" : " · repetível"}
                                     </span>
                                 </button>

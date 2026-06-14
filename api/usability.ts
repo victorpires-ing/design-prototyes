@@ -19,7 +19,12 @@ const redis = new Redis({
 });
 
 const TESTES_KEY = "design-prototyes:usability:testes:v1";
-const sessoesKey = (testeId: string) => `design-prototyes:usability:sessoes:v1:${testeId}`;
+// Legado: array com todas as sessões de um teste (mantido só para leitura de dados antigos).
+const sessoesKeyLegado = (testeId: string) => `design-prototyes:usability:sessoes:v1:${testeId}`;
+// Novo modelo: uma chave por sessão + um índice (set) com os ids. Escrita isolada por
+// participante — sem read-modify-write, então nenhuma resposta sobrescreve a outra.
+const sessaoKey = (testeId: string, sessaoId: string) => `design-prototyes:usability:sessao:v1:${testeId}:${sessaoId}`;
+const sessaoIdsKey = (testeId: string) => `design-prototyes:usability:sessao-ids:v1:${testeId}`;
 
 function json(data: unknown, status = 200): Response {
     return new Response(JSON.stringify(data), {
@@ -34,8 +39,28 @@ async function listTestes(): Promise<unknown[]> {
 }
 
 async function listSessoes(testeId: string): Promise<unknown[]> {
-    const data = await redis.get<unknown[]>(sessoesKey(testeId));
-    return Array.isArray(data) ? data : [];
+    // Sessões novas (uma chave por sessão, via índice).
+    const ids = (await redis.smembers(sessaoIdsKey(testeId))) as string[];
+    let novas: unknown[] = [];
+    if (ids.length > 0) {
+        const vals = (await redis.mget<unknown[]>(...ids.map((id) => sessaoKey(testeId, id)))) ?? [];
+        novas = (vals as unknown[]).filter(Boolean);
+    }
+    // Sessões legadas (array único antigo), se houver.
+    const legado = await redis.get<unknown[]>(sessoesKeyLegado(testeId));
+    const antigas = Array.isArray(legado) ? legado : [];
+
+    // Mescla, dando preferência às novas em caso de id repetido.
+    const porId = new Map<string, unknown>();
+    for (const s of antigas) {
+        const id = (s as { id?: string })?.id;
+        if (id) porId.set(id, s);
+    }
+    for (const s of novas) {
+        const id = (s as { id?: string })?.id;
+        if (id) porId.set(id, s);
+    }
+    return [...porId.values()];
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -75,17 +100,19 @@ export default async function handler(req: Request): Promise<Response> {
             const id = String(body.id ?? "");
             const all = (await listTestes()) as Array<{ id: string }>;
             await redis.set(TESTES_KEY, all.filter((t) => t.id !== id));
-            await redis.del(sessoesKey(id));
+            // Apaga sessões (novas + índice + array legado).
+            const ids = (await redis.smembers(sessaoIdsKey(id))) as string[];
+            if (ids.length > 0) await redis.del(...ids.map((sid) => sessaoKey(id, sid)));
+            await redis.del(sessaoIdsKey(id));
+            await redis.del(sessoesKeyLegado(id));
             return json({ ok: true });
         }
 
         if (action === "saveSessao") {
             const sessao = body.sessao as { id: string; testeId: string };
-            const all = (await listSessoes(sessao.testeId)) as Array<{ id: string }>;
-            const idx = all.findIndex((s) => s.id === sessao.id);
-            if (idx >= 0) all[idx] = sessao;
-            else all.push(sessao);
-            await redis.set(sessoesKey(sessao.testeId), all);
+            // Escrita isolada: cada sessão na própria chave + id no índice (SADD é atômico).
+            await redis.set(sessaoKey(sessao.testeId, sessao.id), sessao);
+            await redis.sadd(sessaoIdsKey(sessao.testeId), sessao.id);
             return json(sessao, 201);
         }
 

@@ -299,6 +299,16 @@ export function CommentsLayer({ children }: CommentsLayerProps) {
                 setOpenId(null);
                 setDraft(null);
                 setHighlight(null);
+                // Se os comentários estão ocultos, liga pra sessão (com ?comments=on na URL) e já comenta.
+                if (!commentsEnabled) {
+                    sessionStorage.setItem(ENABLED_KEY, "on");
+                    const params = new URLSearchParams(window.location.search);
+                    params.set("comments", "on");
+                    window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}${window.location.hash}`);
+                    setCommentsEnabled(true);
+                    setIsPlacing(true);
+                    return;
+                }
                 setIsPlacing((prev) => !prev);
                 return;
             }
@@ -319,7 +329,7 @@ export function CommentsLayer({ children }: CommentsLayerProps) {
         };
         window.addEventListener("keydown", handler);
         return () => window.removeEventListener("keydown", handler);
-    }, [draft, isPlacing, openId, exitPlacing]);
+    }, [draft, isPlacing, openId, exitPlacing, commentsEnabled]);
 
     const handlePlacementMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!isPlacing || draft) return;

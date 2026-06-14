@@ -38,6 +38,24 @@ export function FigmaExportLayer() {
         }
     }, [location.search]);
 
+    // Atalho Shift+F: mostra/esconde o botão de exportação na sessão.
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (!(e.shiftKey && e.code === "KeyF" && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey)) return;
+            const el = document.activeElement as HTMLElement | null;
+            if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+            e.preventDefault();
+            setEnabled((prev) => {
+                const next = !prev;
+                if (next) sessionStorage.setItem(ENABLED_KEY, "true");
+                else sessionStorage.removeItem(ENABLED_KEY);
+                return next;
+            });
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, []);
+
     const exportar = async () => {
         setOcupado(true);
         try {

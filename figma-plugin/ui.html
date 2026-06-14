@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; font: 12px/1.4 Inter, -apple-system, sans-serif; color: #1a1a1a; }
+      .wrap { display: flex; flex-direction: column; gap: 10px; padding: 12px; height: 100vh; }
+      h1 { font-size: 13px; margin: 0; }
+      p { margin: 0; color: #666; }
+      textarea {
+        flex: 1; resize: none; width: 100%; min-height: 160px;
+        border: 1px solid #d9d9d9; border-radius: 8px; padding: 10px;
+        font: 11px/1.4 ui-monospace, monospace; outline: none;
+      }
+      textarea:focus { border-color: #ff271a; }
+      .row { display: flex; gap: 8px; align-items: center; }
+      button {
+        border: 0; border-radius: 8px; padding: 9px 14px; font-weight: 600; font-size: 12px;
+        cursor: pointer; color: #fff; background: #ff271a;
+      }
+      button.secondary { background: #fff; color: #1a1a1a; border: 1px solid #d9d9d9; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .status { color: #666; flex: 1; }
+      .status.err { color: #d92d20; }
+      .status.ok { color: #079455; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Importar tela do site</h1>
+      <p>Cole o JSON gerado pelo botão “Exportar p/ Figma” do protótipo.</p>
+      <textarea id="json" placeholder="{ &quot;pathname&quot;: &quot;/...&quot;, &quot;root&quot;: { ... } }"></textarea>
+      <div class="row">
+        <span id="status" class="status"></span>
+        <button class="secondary" id="clear">Limpar</button>
+        <button id="import">Importar</button>
+      </div>
+    </div>
+    <script>
+      const ta = document.getElementById("json");
+      const status = document.getElementById("status");
+      const btn = document.getElementById("import");
+
+      document.getElementById("clear").onclick = () => { ta.value = ""; ta.focus(); };
+
+      btn.onclick = () => {
+        const raw = ta.value.trim();
+        if (!raw) { setStatus("Cole o JSON primeiro.", "err"); return; }
+        let data;
+        try { data = JSON.parse(raw); } catch (e) { setStatus("JSON inválido.", "err"); return; }
+        setStatus("Importando…");
+        btn.disabled = true;
+        parent.postMessage({ pluginMessage: { type: "import", screen: data } }, "*");
+      };
+
+      function setStatus(msg, kind) {
+        status.textContent = msg;
+        status.className = "status" + (kind ? " " + kind : "");
+      }
+
+      onmessage = (e) => {
+        const m = e.data.pluginMessage;
+        if (!m) return;
+        btn.disabled = false;
+        if (m.type === "done") setStatus(m.message, "ok");
+        if (m.type === "error") setStatus("Erro: " + m.message, "err");
+      };
+    </script>
+  </body>
+</html>

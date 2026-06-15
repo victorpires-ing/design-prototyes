@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Columns03, Download01, Edit01, MessageQuestionCircle, Plus, Trash01 } from "@untitledui/icons";
+import { ChevronLeft, ChevronRight, Download01, Edit01, MessageQuestionCircle, Plus, Trash01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { TabList, Tabs } from "@/components/application/tabs/tabs";
@@ -33,8 +33,6 @@ const RESPONDENTES = [
     { nome: "Lucas Andrade", email: "lucas.andrade@gmail.com", data: "08/08 · 23:10", evento: "Bahia x Vitória", sessao: "08/08 · 16h", grupo: "Pista Premium", ingresso: "Meia" },
     { nome: "Fernanda Costa", email: "fer.costa@gmail.com", data: "08/08 · 22:47", evento: "Festival de Verão", sessao: "15/01 · 18h", grupo: "Entrada Geral", ingresso: "Inteira" },
 ];
-
-type Respondente = (typeof RESPONDENTES)[number];
 
 function cpfMock(i: number) {
     return String(10_000_000_000 + i * 73_939_133)
@@ -289,8 +287,6 @@ function AbaRespostas({ perguntas }: { perguntas: Pergunta[] }) {
     const [fEvento, setFEvento] = useState<string | null>(null);
     const [perPage, setPerPage] = useState(100);
     const [page, setPage] = useState(1);
-    const [ocultas, setOcultas] = useState<Set<string>>(new Set());
-    const [colMenu, setColMenu] = useState(false);
 
     const eventos = useMemo(() => Array.from(new Set(RESPONDENTES.map((r) => r.evento))), []);
 
@@ -320,32 +316,9 @@ function AbaRespostas({ perguntas }: { perguntas: Pergunta[] }) {
             description: `${filtrados.length} ${filtrados.length === 1 ? "resposta" : "respostas"} no arquivo.`,
         });
 
-    // Colunas com visibilidade controlável (Respondente é fixa).
-    const colunasCtx = [
-        { id: "evento", label: "Evento", get: (r: Respondente) => r.evento },
-        { id: "sessao", label: "Sessão", get: (r: Respondente) => r.sessao, num: true },
-        { id: "grupo", label: "Grupo", get: (r: Respondente) => r.grupo },
-        { id: "ingresso", label: "Ingresso", get: (r: Respondente) => r.ingresso },
-        { id: "data", label: "Data", get: (r: Respondente) => r.data, num: true },
-    ];
-    const colunasPerg = comResposta.map((p, j) => ({ id: `q-${p.id}`, label: p.titulo, icon: TIPO_PERGUNTA[p.tipo].icon, resp: (r: Respondente, i: number) => respostaDe(p, r, i, j) }));
-    const toggleaveis = [...colunasCtx.map((c) => ({ id: c.id, label: c.label })), ...colunasPerg.map((c) => ({ id: c.id, label: c.label }))];
-    const visivel = (id: string) => !ocultas.has(id);
-    const toggleCol = (id: string) =>
-        setOcultas((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-    const ctxVis = colunasCtx.filter((c) => visivel(c.id));
-    const pergVis = colunasPerg.filter((c) => visivel(c.id));
-    const totalCols = 1 + ctxVis.length + pergVis.length;
-    const nVis = toggleaveis.length - ocultas.size;
-
     return (
         <div className="flex flex-col gap-4">
-            {/* Filtros + colunas + exportar */}
+            {/* Filtros + exportar */}
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap gap-2">
                     <FiltroSelect
@@ -358,40 +331,9 @@ function AbaRespostas({ perguntas }: { perguntas: Pergunta[] }) {
                         options={eventos}
                     />
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <Button size="md" color="secondary" iconLeading={Columns03} onClick={() => setColMenu((v) => !v)}>
-                            Colunas {ocultas.size > 0 ? `(${nVis}/${toggleaveis.length})` : ""}
-                        </Button>
-                        {colMenu && (
-                            <>
-                                <div className="fixed inset-0 z-20" onClick={() => setColMenu(false)} aria-hidden="true" />
-                                <div className="absolute right-0 z-30 mt-2 flex w-72 flex-col rounded-xl bg-primary p-2 shadow-lg ring-1 ring-border-secondary">
-                                    <span className="px-2 pt-1 pb-2 text-xs font-semibold tracking-wide text-tertiary uppercase">Exibir colunas</span>
-                                    <div className="flex max-h-72 flex-col overflow-y-auto">
-                                        {toggleaveis.map((c) => (
-                                            <div key={c.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 transition duration-100 ease-linear hover:bg-primary_hover">
-                                                <span className="min-w-0 flex-1 truncate text-sm text-secondary">{c.label}</span>
-                                                <Toggle size="sm" isSelected={visivel(c.id)} onChange={() => toggleCol(c.id)} aria-label={c.label} />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="mt-1 flex items-center gap-1 border-t border-secondary px-1 pt-2">
-                                        <Button size="sm" color="link-gray" onClick={() => setOcultas(new Set(toggleaveis.map((c) => c.id)))}>
-                                            Ocultar todas
-                                        </Button>
-                                        <Button size="sm" color="link-color" onClick={() => setOcultas(new Set())}>
-                                            Mostrar todas
-                                        </Button>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                    <Button size="md" color="secondary" iconLeading={Download01} onClick={exportar}>
-                        Exportar .xlsx
-                    </Button>
-                </div>
+                <Button size="md" color="secondary" iconLeading={Download01} onClick={exportar}>
+                    Exportar .xlsx
+                </Button>
             </div>
 
             <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
@@ -400,25 +342,28 @@ function AbaRespostas({ perguntas }: { perguntas: Pergunta[] }) {
                         <thead className="bg-secondary">
                             <tr className="border-b border-secondary text-left">
                                 <th className="sticky left-0 z-10 bg-secondary px-4 py-3 text-xs font-semibold text-tertiary">Respondente</th>
-                                {ctxVis.map((c) => (
-                                    <th key={c.id} className="px-4 py-3 text-xs font-semibold whitespace-nowrap text-tertiary">
-                                        {c.label}
-                                    </th>
-                                ))}
-                                {pergVis.map((c) => (
-                                    <th key={c.id} className="px-4 py-3 text-xs font-semibold text-tertiary">
-                                        <span className="flex items-center gap-1.5">
-                                            <c.icon className="size-3.5 shrink-0 text-fg-quaternary" />
-                                            <span className="line-clamp-1 max-w-[160px]">{c.label}</span>
-                                        </span>
-                                    </th>
-                                ))}
+                                <th className="px-4 py-3 text-xs font-semibold whitespace-nowrap text-tertiary">Evento</th>
+                                <th className="px-4 py-3 text-xs font-semibold whitespace-nowrap text-tertiary">Sessão</th>
+                                <th className="px-4 py-3 text-xs font-semibold whitespace-nowrap text-tertiary">Grupo</th>
+                                <th className="px-4 py-3 text-xs font-semibold whitespace-nowrap text-tertiary">Ingresso</th>
+                                <th className="px-4 py-3 text-xs font-semibold whitespace-nowrap text-tertiary">Data</th>
+                                {comResposta.map((p) => {
+                                    const meta = TIPO_PERGUNTA[p.tipo];
+                                    return (
+                                        <th key={p.id} className="px-4 py-3 text-xs font-semibold text-tertiary">
+                                            <span className="flex items-center gap-1.5">
+                                                <meta.icon className="size-3.5 shrink-0 text-fg-quaternary" />
+                                                <span className="line-clamp-1 max-w-[160px]">{p.titulo}</span>
+                                            </span>
+                                        </th>
+                                    );
+                                })}
                             </tr>
                         </thead>
                         <tbody>
                             {pageRows.length === 0 ? (
                                 <tr>
-                                    <td colSpan={totalCols} className="px-4 py-12 text-center text-sm text-tertiary">
+                                    <td colSpan={6 + comResposta.length} className="px-4 py-12 text-center text-sm text-tertiary">
                                         Nenhuma resposta para este evento.
                                     </td>
                                 </tr>
@@ -434,15 +379,15 @@ function AbaRespostas({ perguntas }: { perguntas: Pergunta[] }) {
                                                 <span className="truncate text-xs text-tertiary">{r.email}</span>
                                             </div>
                                         </td>
-                                        {ctxVis.map((c) => (
-                                            <td key={c.id} className={cx("px-4 py-3.5 text-sm whitespace-nowrap", c.num ? "text-tertiary tabular-nums" : "text-secondary")}>
-                                                {c.get(r)}
-                                            </td>
-                                        ))}
-                                        {pergVis.map((c) => {
-                                            const valor = c.resp(r, i);
+                                        <td className="px-4 py-3.5 text-sm whitespace-nowrap text-secondary">{r.evento}</td>
+                                        <td className="px-4 py-3.5 text-sm whitespace-nowrap text-tertiary tabular-nums">{r.sessao}</td>
+                                        <td className="px-4 py-3.5 text-sm whitespace-nowrap text-secondary">{r.grupo}</td>
+                                        <td className="px-4 py-3.5 text-sm whitespace-nowrap text-secondary">{r.ingresso}</td>
+                                        <td className="px-4 py-3.5 text-sm whitespace-nowrap text-tertiary tabular-nums">{r.data}</td>
+                                        {comResposta.map((p, j) => {
+                                            const valor = respostaDe(p, r, i, j);
                                             return (
-                                                <td key={c.id} className="px-4 py-3.5 text-sm whitespace-nowrap">
+                                                <td key={p.id} className="px-4 py-3.5 text-sm whitespace-nowrap">
                                                     {valor === null ? <span className="text-quaternary">—</span> : <span className="text-secondary">{valor}</span>}
                                                 </td>
                                             );

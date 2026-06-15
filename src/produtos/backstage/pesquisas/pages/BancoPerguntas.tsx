@@ -117,7 +117,7 @@ export function BancoPerguntas() {
                     {/* Header */}
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="flex flex-col gap-1">
-                            <h1 className="text-xl font-semibold text-primary">Coleta de dados</h1>
+                            <h1 className="text-xl font-semibold text-primary">Relatório de respostas</h1>
                             <p className="text-sm text-tertiary">Crie perguntas uma vez, reutilize em qualquer evento e acompanhe as respostas.</p>
                         </div>
                         {aba === "perguntas" && perguntasSim.length > 0 && (

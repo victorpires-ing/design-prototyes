@@ -16,9 +16,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useMotionValue, type MotionValue } from "motion/react";
-import { CheckCircle, ChevronLeft, ChevronRight, Flag05 } from "@untitledui/icons";
+import { CheckCircle, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Flag05 } from "@untitledui/icons";
 import { useLocation, useNavigate } from "react-router";
 import { Button } from "@/components/base/buttons/button";
+import { ProgressBarBase } from "@/components/base/progress-indicators/progress-indicators";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { carregarClarity, clarityIdentify, clarityTag, pararClarity } from "./clarity";
@@ -30,8 +31,11 @@ import type { Bloco, BlocoAtividade, BlocoPergunta, BlocoSus, CriterioTipo, Even
 export function TestRunnerLayer() {
     const [run, setRun] = useState<RunAtivo | null>(() => lerRun());
     const [mostrandoSucesso, setMostrandoSucesso] = useState(false);
-    const [resposta, setResposta] = useState<string[]>([]);
-    const [susRespostas, setSusRespostas] = useState<number[]>([]);
+    // Respostas guardadas POR BLOCO (sobrevivem ao voltar/avançar entre perguntas).
+    const [respostasPorBloco, setRespostasPorBloco] = useState<Record<string, string[]>>({});
+    const [susPorBloco, setSusPorBloco] = useState<Record<string, number[]>>({});
+    const [aviso, setAviso] = useState(false);
+    const [direcao, setDirecao] = useState(1); // 1 = avançar (sobe), -1 = voltar (desce)
     const [briefingAberto, setBriefingAberto] = useState(true);
     const [declaracaoVisivel, setDeclaracaoVisivel] = useState(false);
     const [minimizada, setMinimizada] = useState(false);
@@ -47,16 +51,21 @@ export function TestRunnerLayer() {
 
     const bloco: Bloco | undefined = run?.teste.blocos[run.blocoIndex];
 
-    // Reset ao trocar de bloco.
+    // Resposta/SUS do bloco atual (lidas do mapa por bloco).
+    const resposta = bloco ? respostasPorBloco[bloco.id] ?? [] : [];
+    const susRespostas = bloco ? susPorBloco[bloco.id] ?? [] : [];
+    const setResposta = useCallback((r: string[]) => { if (bloco) { setRespostasPorBloco((p) => ({ ...p, [bloco.id]: r })); setAviso(false); } }, [bloco]);
+    const setSusRespostas = useCallback((r: number[]) => { if (bloco) { setSusPorBloco((p) => ({ ...p, [bloco.id]: r })); setAviso(false); } }, [bloco]);
+
+    // Reset (estados de UI) ao trocar de bloco — respostas NÃO resetam (ficam no mapa).
     useEffect(() => {
         setMostrandoSucesso(false);
-        setResposta([]);
-        setSusRespostas([]);
         setBriefingAberto(true);
         setDeclaracaoVisivel(false);
         setMinimizada(false);
         setJustificando(false);
         setJustificativa("");
+        setAviso(false);
     }, [run?.blocoIndex]);
 
     // Clarity (não em preview).
@@ -108,6 +117,7 @@ export function TestRunnerLayer() {
     }, []);
 
     const avancarBloco = useCallback(() => {
+        setDirecao(1);
         const atual = lerRun();
         if (!atual) return;
         const proximo = atual.blocoIndex + 1;
@@ -174,17 +184,33 @@ export function TestRunnerLayer() {
         const atual = lerRun();
         const blocoAtual = atual?.teste.blocos[atual.blocoIndex];
         if (!atual || blocoAtual?.tipo !== "pergunta") return;
-        registrarEvento({ blocoId: blocoAtual.id, tipo: "pergunta", iniciadaEm: atual.iniciadaEmBloco, concluidaEm: new Date().toISOString(), resposta });
+        const r = respostasPorBloco[blocoAtual.id] ?? [];
+        if (blocoAtual.obrigatoria && !r.some((x) => x.trim())) { setAviso(true); return; } // não avança obrigatória vazia
+        registrarEvento({ blocoId: blocoAtual.id, tipo: "pergunta", iniciadaEm: atual.iniciadaEmBloco, concluidaEm: new Date().toISOString(), resposta: r });
         avancarBloco();
-    }, [registrarEvento, resposta, avancarBloco]);
+    }, [registrarEvento, respostasPorBloco, avancarBloco]);
 
     const responderSus = useCallback(() => {
         const atual = lerRun();
         const blocoAtual = atual?.teste.blocos[atual.blocoIndex];
         if (!atual || blocoAtual?.tipo !== "sus") return;
-        registrarEvento({ blocoId: blocoAtual.id, tipo: "sus", iniciadaEm: atual.iniciadaEmBloco, concluidaEm: new Date().toISOString(), resposta: susRespostas.map(String) });
+        const r = susPorBloco[blocoAtual.id] ?? [];
+        if (!PERGUNTAS_SUS.every((_, i) => r[i])) { setAviso(true); return; }
+        registrarEvento({ blocoId: blocoAtual.id, tipo: "sus", iniciadaEm: atual.iniciadaEmBloco, concluidaEm: new Date().toISOString(), resposta: r.map(String) });
         avancarBloco();
-    }, [registrarEvento, susRespostas, avancarBloco]);
+    }, [registrarEvento, susPorBloco, avancarBloco]);
+
+    // Voltar — só entre perguntas/SUS; nunca para uma missão (atividade) ou welcome.
+    const voltarBloco = useCallback(() => {
+        setDirecao(-1);
+        const atual = lerRun();
+        if (!atual) return;
+        const prev = atual.blocoIndex - 1;
+        if (prev < 0) return;
+        const bprev = atual.teste.blocos[prev];
+        if (bprev.tipo !== "pergunta" && bprev.tipo !== "sus") return;
+        gravarRun({ ...atual, blocoIndex: prev, iniciadaEmBloco: new Date().toISOString() });
+    }, []);
 
     /* --------------------------- progresso -------------------------- */
 
@@ -195,6 +221,21 @@ export function TestRunnerLayer() {
         return { atual: indice + 1, total: atividades.length };
     }, [run, bloco]);
 
+    // Progresso (0–100) pela posição entre os blocos de conteúdo (missões + perguntas + SUS).
+    const progressoPct = useMemo(() => {
+        if (!run || !bloco) return 0;
+        const passos = run.teste.blocos.filter((b) => b.tipo === "atividade" || b.tipo === "pergunta" || b.tipo === "sus");
+        const idx = passos.findIndex((b) => b.id === bloco.id);
+        return passos.length ? Math.round(((idx + 1) / passos.length) * 100) : 0;
+    }, [run, bloco]);
+
+    const podeVoltar = !!run && (() => {
+        const p = run.blocoIndex - 1;
+        if (p < 0) return false;
+        const b = run.teste.blocos[p];
+        return b.tipo === "pergunta" || b.tipo === "sus";
+    })();
+
     if (!run || !bloco || bloco.tipo === "welcome") return null;
 
     const ehMobile = typeof window !== "undefined" && window.innerWidth < 640;
@@ -202,32 +243,24 @@ export function TestRunnerLayer() {
 
     /* ----------------------------- render --------------------------- */
 
-    if (bloco.tipo === "obrigado") {
+    if (bloco.tipo === "obrigado" || bloco.tipo === "pergunta" || bloco.tipo === "sus") {
         return (
             <TopLayer>
-                <Fundo>
-                    <div className="flex flex-col items-center gap-4 text-center">
-                        <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
-                        <h2 className="text-2xl font-semibold text-primary">{bloco.titulo || "Teste concluído"}</h2>
-                        <p className="max-w-md text-base whitespace-pre-line text-tertiary">{bloco.texto}</p>
-                    </div>
-                </Fundo>
-            </TopLayer>
-        );
-    }
-
-    if (bloco.tipo === "pergunta") {
-        return (
-            <TopLayer>
-                <TelaPergunta key={bloco.id} bloco={bloco} resposta={resposta} setResposta={setResposta} onProximo={responder} />
-            </TopLayer>
-        );
-    }
-
-    if (bloco.tipo === "sus") {
-        return (
-            <TopLayer>
-                <TelaSus key={bloco.id} bloco={bloco} respostas={susRespostas} setRespostas={setSusRespostas} ultima={ultimaAntesDoFim} onProximo={responderSus} />
+                {/* Fundo opaco fixo: o protótipo nunca aparece durante a transição/volta. */}
+                <div className="fixed inset-0 z-[9997] bg-primary" />
+                {bloco.tipo !== "obrigado" && <BarraProgresso valor={progressoPct} />}
+                <AnimatePresence custom={direcao} initial={false}>
+                    {bloco.tipo === "pergunta" ? (
+                        <TelaPergunta key={bloco.id} direcao={direcao} bloco={bloco} resposta={resposta} setResposta={setResposta} onProximo={responder} aviso={aviso} />
+                    ) : bloco.tipo === "sus" ? (
+                        <TelaSus key={bloco.id} direcao={direcao} bloco={bloco} respostas={susRespostas} setRespostas={setSusRespostas} ultima={ultimaAntesDoFim} onProximo={responderSus} aviso={aviso} />
+                    ) : (
+                        <TelaObrigado key={bloco.id} direcao={direcao} bloco={bloco} />
+                    )}
+                </AnimatePresence>
+                {(bloco.tipo === "pergunta" || bloco.tipo === "sus") && (
+                    <NavSetas onVoltar={voltarBloco} podeVoltar={podeVoltar} onAvancar={bloco.tipo === "pergunta" ? responder : responderSus} />
+                )}
             </TopLayer>
         );
     }
@@ -503,30 +536,39 @@ function TelaPergunta({
     resposta,
     setResposta,
     onProximo,
+    aviso,
+    direcao,
 }: {
     bloco: BlocoPergunta;
     resposta: string[];
     setResposta: (r: string[]) => void;
     onProximo: () => void;
+    aviso: boolean;
+    direcao: number;
 }) {
-    const respondido = bloco.obrigatoria ? resposta.some((r) => r.trim()) : true;
     const toggle = (op: string) => setResposta(bloco.formato === "multipla" ? (resposta.includes(op) ? resposta.filter((x) => x !== op) : [...resposta, op]) : [op]);
 
     return (
-        <Fundo alinhar="start">
+        <Fundo alinhar="start" direcao={direcao}>
             <div className="flex w-full max-w-2xl flex-col gap-6">
                 <h2 className="text-2xl font-semibold text-primary sm:text-3xl">
                     {bloco.enunciado || "Pergunta"}
                     {bloco.obrigatoria && <span className="text-error-primary"> *</span>}
                 </h2>
                 {bloco.formato === "aberta" ? (
-                    <textarea
+                    <input
+                        type="text"
                         value={resposta[0] ?? ""}
                         onChange={(e) => setResposta([e.target.value])}
-                        rows={3}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                onProximo();
+                            }
+                        }}
                         autoFocus
-                        placeholder="Digite sua resposta…"
-                        className="w-full resize-none border-0 border-b border-secondary bg-transparent pb-2 text-lg text-primary outline-none placeholder:text-placeholder focus:border-brand"
+                        placeholder="Digite sua resposta aqui…"
+                        className="w-full border-0 border-b-2 border-secondary bg-transparent pb-1.5 text-2xl text-primary caret-brand outline-none placeholder:text-placeholder/60 focus:border-brand"
                     />
                 ) : (
                     <div className="flex flex-col gap-2.5">
@@ -551,9 +593,12 @@ function TelaPergunta({
                         })}
                     </div>
                 )}
-                <Button size="xl" color="primary" onClick={onProximo} isDisabled={!respondido} className="self-start">
-                    Próximo
-                </Button>
+                <div className="flex flex-col gap-2">
+                    <Button size="xl" color="primary" onClick={onProximo} className="self-start">
+                        Próximo
+                    </Button>
+                    {aviso && <span className="text-sm font-medium text-error-primary">Responda esta pergunta antes de continuar.</span>}
+                </div>
             </div>
         </Fundo>
     );
@@ -569,22 +614,25 @@ function TelaSus({
     setRespostas,
     ultima,
     onProximo,
+    aviso,
+    direcao,
 }: {
     bloco: BlocoSus;
     respostas: number[];
     setRespostas: (r: number[]) => void;
     ultima: boolean;
     onProximo: () => void;
+    aviso: boolean;
+    direcao: number;
 }) {
     const set = (i: number, v: number) => {
         const next = [...respostas];
         next[i] = v;
         setRespostas(next);
     };
-    const completo = PERGUNTAS_SUS.every((_, i) => respostas[i]);
 
     return (
-        <Fundo alinhar="start" scroll>
+        <Fundo alinhar="start" scroll direcao={direcao}>
             <div className="flex w-full max-w-2xl flex-col gap-6 py-8">
                 <div className="flex flex-col gap-2">
                     <h2 className="text-2xl font-semibold text-primary">{bloco.titulo}</h2>
@@ -622,11 +670,61 @@ function TelaSus({
                         </div>
                     ))}
                 </div>
-                <Button size="xl" color="primary" onClick={onProximo} isDisabled={!completo} className="self-start">
-                    {ultima ? "Finalizar" : "Próximo"}
-                </Button>
+                <div className="flex flex-col gap-2">
+                    <Button size="xl" color="primary" onClick={onProximo} className="self-start">
+                        {ultima ? "Finalizar" : "Próximo"}
+                    </Button>
+                    {aviso && <span className="text-sm font-medium text-error-primary">Responda todas as afirmações antes de continuar.</span>}
+                </div>
             </div>
         </Fundo>
+    );
+}
+
+/** Tela final (obrigado) — animada como as demais. */
+function TelaObrigado({ bloco, direcao }: { bloco: { titulo?: string; texto?: string }; direcao: number }) {
+    return (
+        <Fundo direcao={direcao}>
+            <div className="flex flex-col items-center gap-4 text-center">
+                <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
+                <h2 className="text-2xl font-semibold text-primary">{bloco.titulo || "Teste concluído"}</h2>
+                <p className="max-w-md text-base whitespace-pre-line text-tertiary">{bloco.texto}</p>
+            </div>
+        </Fundo>
+    );
+}
+
+/** Indicador de progresso do DS (ProgressBarBase), colado no topo sem margem, em brand-color. */
+function BarraProgresso({ valor }: { valor: number }) {
+    return (
+        <div className="fixed inset-x-0 top-0 z-[10000]">
+            <ProgressBarBase value={valor} className="h-1 rounded-none bg-brand-solid/15" progressClassName="rounded-none" />
+        </div>
+    );
+}
+
+/** Setas de navegação (estilo Typeform) no canto inferior direito: voltar (↑) / avançar (↓). */
+function NavSetas({ onVoltar, podeVoltar, onAvancar }: { onVoltar: () => void; podeVoltar: boolean; onAvancar: () => void }) {
+    return (
+        <div className="fixed right-5 bottom-5 z-[10000] flex overflow-hidden rounded-lg shadow-lg ring-1 ring-border-secondary">
+            <button
+                type="button"
+                onClick={onVoltar}
+                disabled={!podeVoltar}
+                aria-label="Voltar"
+                className="flex size-9 items-center justify-center bg-brand-solid text-white transition hover:bg-brand-solid_hover disabled:cursor-not-allowed disabled:opacity-40"
+            >
+                <ChevronUp className="size-4" aria-hidden="true" />
+            </button>
+            <button
+                type="button"
+                onClick={onAvancar}
+                aria-label="Avançar"
+                className="flex size-9 items-center justify-center border-l border-white/20 bg-brand-solid text-white transition hover:bg-brand-solid_hover"
+            >
+                <ChevronDown className="size-4" aria-hidden="true" />
+            </button>
+        </div>
     );
 }
 

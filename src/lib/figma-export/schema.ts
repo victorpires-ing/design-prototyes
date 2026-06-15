@@ -86,6 +86,8 @@ export interface DsMark {
         required?: boolean;
         destructive?: boolean;
         help?: boolean;
+        /** Ícone leading real do campo (svg antes do input/valor). */
+        icon?: string;
         /** Select/MultiSelect aberto: estado + opções do listbox para popular o slot. */
         open?: boolean;
         options?: { label?: string; supportingText?: string; icon?: string; avatar?: boolean; selected?: boolean }[];
@@ -94,6 +96,8 @@ export interface DsMark {
     slotContent?: CapturedNode[];
     /** Tabela: cabeçalhos + linhas (nós de célula) + larguras, para montar por coluna no slot Content. */
     table?: { headers: CapturedNode[]; rows: CapturedNode[][]; colWidths: number[] };
+    /** Backstage Template: liga "Show Event Detail" (card + funcionalidades) conforme showEventContext. */
+    showEventDetail?: boolean;
     /** Dropdown: rótulo do trigger (quando Type="Button simple"). */
     triggerLabel?: string;
     /** Dropdown: largura real do menu aberto (para redimensionar a frame "Menu"). */

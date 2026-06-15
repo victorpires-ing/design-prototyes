@@ -229,6 +229,7 @@ function conteudoInput(el: Element, raw: Record<string, string | number | boolea
     required: boolean;
     destructive: boolean;
     help: boolean;
+    icon?: string;
     open: boolean;
     options?: { label?: string; supportingText?: string; icon?: string; avatar?: boolean; selected?: boolean }[];
 } {
@@ -244,6 +245,18 @@ function conteudoInput(el: Element, raw: Record<string, string | number | boolea
         const trigger = el.querySelector("button,[role='button']");
         valor = (trigger?.textContent ?? "").trim().replace(/\s+/g, " ");
         filled = !!valor && !(typeof raw.placeholder === "string" && valor === raw.placeholder);
+    }
+    // Ícone leading REAL: só svg[data-icon] que vem ANTES do input/valor no DOM (descarta
+    // help/validação/chevron à direita, que eram detectados como leading indevidamente).
+    let icon: string | undefined;
+    const ref = campo || el.querySelector("[class*='truncate']") || el.querySelector("button,[role='button']");
+    if (ref) {
+        for (const svg of Array.from(el.querySelectorAll("svg[data-icon]"))) {
+            if (svg.compareDocumentPosition(ref) & Node.DOCUMENT_POSITION_FOLLOWING) {
+                const nome = iconeDoNode(svg);
+                if (nome && !/chevron|check/i.test(nome)) { icon = nome; break; }
+            }
+        }
     }
     // Aberto? (Select/MultiSelect) — captura as opções do listbox portado.
     const gatilho = el.querySelector('[aria-expanded]');
@@ -263,6 +276,7 @@ function conteudoInput(el: Element, raw: Record<string, string | number | boolea
         required: !!raw.isRequired,
         destructive: !!raw.isInvalid,
         help: !!raw.tooltip,
+        icon,
         open,
         options,
     };
@@ -368,6 +382,24 @@ function walk(el: Element): CapturedNode | null {
     const style = styleSubset(cs, rect);
     const id = `n${contador++}`;
     const tag = el.tagName.toLowerCase();
+
+    // Backstage: o elemento renderizado diretamente pelo BackstageLayout → componente Backstage
+    // Template (rail/card/menu vêm do template; só o conteúdo da página entra no slot `content`).
+    const pai = getFiber(el)?.return;
+    if (pai && componentName(pai.type) === "BackstageLayout") {
+        const props = primProps((pai.memoizedProps ?? {}) as Record<string, unknown>);
+        const content = conteudoBackstage(el);
+        const filhos = content ? [walk(content)].filter((n): n is CapturedNode => !!n).map(aplainar) : [];
+        return {
+            id,
+            role: "ds",
+            tag,
+            rect,
+            style,
+            ds: { component: "BackstageTemplate", figmaKey: BACKSTAGE_TEMPLATE_KEY, slotContent: filhos, showEventDetail: props.showEventContext !== false },
+            children: [],
+        };
+    }
 
     // Componente do DS?
     const ds = dsForNode(el);
@@ -492,6 +524,14 @@ function colapsavel(node: CapturedNode): boolean {
 const SLIDEOUT_KEY = "79f134bd264b89ac988dc52d04b63fd1107f8743"; // Slide out menu (slot "Panel")
 const MODAL_KEY = "a78265d3ef38f1a52452e06a9a43b161b474f455"; // Modal (slot "Modal")
 const TABLE_KEY = "df97aa4c20a4686e188a80288b0e376f0dd72b99"; // Table (slot "Content" = colunas)
+const BACKSTAGE_TEMPLATE_KEY = "16a29e24192fc7a4af6a847e5c08db12bb1fa5da"; // Backstage Template (slots content/Modal/Panel)
+
+/** Conteúdo da página dentro do BackstageLayout (o `children`): o filho visível que não é rail/menu. */
+function conteudoBackstage(el: Element): Element | null {
+    const inner = Array.from(el.children).find((c) => c.tagName === "DIV" && getComputedStyle(c).display !== "none");
+    if (!inner) return null;
+    return Array.from(inner.children).find((c) => c.tagName !== "ASIDE" && c.tagName !== "HEADER" && getComputedStyle(c).display !== "none") || null;
+}
 
 /** Extrai a tabela transposta: cabeçalhos (th) + linhas (td) como nós de célula + larguras. */
 function extrairTabela(el: Element): { headers: CapturedNode[]; rows: CapturedNode[][]; colWidths: number[] } {

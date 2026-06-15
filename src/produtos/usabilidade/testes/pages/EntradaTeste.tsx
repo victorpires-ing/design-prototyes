@@ -29,6 +29,12 @@ export function EntradaTeste() {
         });
     }, [id, preview]);
 
+    // Estar na intro = teste não está rodando. Limpa qualquer run ativo (ex.: ao usar o
+    // "voltar" do navegador), senão o briefing/overlay do runner fica sobrepondo a entrada.
+    useEffect(() => {
+        if (estado.tela === "intro") gravarRun(null);
+    }, [estado.tela]);
+
     const comecar = async (teste: Teste) => {
         let sessaoId = gerarId();
         // No preview não cria sessão (não grava no relatório).

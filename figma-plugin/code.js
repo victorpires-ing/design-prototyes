@@ -239,6 +239,16 @@ async function importarSet(key) {
   return node;
 }
 
+async function setChars(t, txt) {
+  if (!t || !txt) return;
+  try { if (t.fontName !== figma.mixed) await figma.loadFontAsync(t.fontName); t.characters = txt; } catch (e) { /* ignora */ }
+}
+function dentroDeBotao(node) {
+  let p = node.parent;
+  while (p) { if (p.type === "INSTANCE" && /button/i.test(p.name)) return true; p = p.parent; }
+  return false;
+}
+
 // Faz o swap de ícone numa instância (ex.: o ícone leading de um Button).
 async function setIconSwap(inst, matchStr, iconName) {
   if (!iconName || typeof ICONS === "undefined") return;
@@ -294,6 +304,150 @@ async function criarInstanciaDs(ds) {
         if (t.fontName !== figma.mixed) await figma.loadFontAsync(t.fontName);
         t.characters = ds.text;
       } catch (e) { /* ignora */ }
+    }
+  }
+
+  // Tabs: as abas ficam ANINHADAS (findAll). Texto via .characters (override), Current na
+  // ativa, Badge off, e esconde as extras.
+  if (ds.tabs && ds.tabs.length) {
+    const botoes = inst.findAll((n) => n.type === "INSTANCE" && n.name === "_Tab button base");
+    const ativo = typeof ds.tabActive === "number" ? ds.tabActive : 0;
+    for (let i = 0; i < botoes.length; i++) {
+      const b = botoes[i];
+      if (i < ds.tabs.length) {
+        try { b.visible = true; } catch (e) {}
+        const props = {};
+        for (const k of Object.keys(b.componentProperties || {})) {
+          if (k === "Current") props.Current = i === ativo ? "True" : "False";
+          else if (k.indexOf("Badge") >= 0 && b.componentProperties[k].type === "BOOLEAN") props[k] = false;
+        }
+        try { b.setProperties(props); } catch (e) {}
+        const t = b.findOne((n) => n.type === "TEXT");
+        if (t) { try { if (t.fontName !== figma.mixed) await figma.loadFontAsync(t.fontName); t.characters = ds.tabs[i]; } catch (e) {} }
+      } else {
+        try { b.visible = false; } catch (e) {}
+      }
+    }
+  }
+
+  // Toggle/Checkbox/Radio: o label só aparece com a variante Text=True; nós "Text" (label)
+  // e "Supporting text" (hint), este controlado pelo boolean "Supporting text#…".
+  if (ds.text && (ds.component === "Toggle" || ds.component === "Checkbox" || ds.component === "RadioButton")) {
+    const props = {};
+    if (groups.Text && groups.Text.values.indexOf("True") >= 0) props.Text = "True";
+    for (const k of Object.keys(inst.componentProperties || {})) {
+      if (inst.componentProperties[k].type === "BOOLEAN" && k.indexOf("Supporting text") >= 0) props[k] = !!ds.supportingText;
+    }
+    try { inst.setProperties(props); } catch (e) { /* mantém default */ }
+    await setChars(inst.findOne((n) => n.type === "TEXT" && n.name === "Text"), ds.text);
+    await setChars(inst.findOne((n) => n.type === "TEXT" && n.name === "Supporting text"), ds.supportingText);
+  }
+
+  // Input field / Select: variante State/Destructive/Type, booleans (#) de Label/Hint/Required/Icon,
+  // swap do ícone e nós de texto Label/Text(valor)/Hint text.
+  if (ds.input) {
+    const ip = ds.input;
+    const props = {};
+    // State tolerante: Disabled / (Filled|Default) / Placeholder, conforme o que o set oferece.
+    if (groups.State) {
+      const vals = groups.State.values;
+      let st = ip.disabled ? "Disabled" : ip.filled ? (vals.indexOf("Filled") >= 0 ? "Filled" : "Default") : "Placeholder";
+      // Aberto: usa a variante Open (Select) / Open default (MultiSelect) — aí o slot aparece.
+      if (ip.open) st = vals.indexOf("Open") >= 0 ? "Open" : vals.indexOf("Open default") >= 0 ? "Open default" : st;
+      if (vals.indexOf(st) >= 0) props.State = st;
+    }
+    if (groups.Destructive) props.Destructive = ip.destructive ? "True" : "False";
+    // Select com ícone leading precisa do Type "Icon leading" (não vale p/ ComboBox=Search).
+    if (groups.Type && ds.component === "Select" && ds.iconLeading && groups.Type.values.indexOf("Icon leading") >= 0) props.Type = "Icon leading";
+    for (const k of Object.keys(inst.componentProperties || {})) {
+      if (inst.componentProperties[k].type !== "BOOLEAN") continue;
+      if (k.indexOf("Label") >= 0) props[k] = !!ip.label;
+      else if (k.indexOf("Hint text") >= 0) props[k] = !!ip.hint;
+      else if (k.indexOf("Required") >= 0) props[k] = !!ip.required;
+      else if (k.indexOf("Help icon") >= 0) props[k] = !!ip.help;
+      else if (k.indexOf("Icon leading") >= 0) props[k] = !!ds.iconLeading;
+    }
+    try { inst.setProperties(props); } catch (e) { /* mantém default */ }
+    await setIconSwap(inst, "Icon swap", ds.iconLeading);
+    // Select/MultiSelect aberto: popula as opções no slot da variante Open.
+    if (ip.open && ip.options) await popularOpcoes(inst, ip.options);
+    // Recolore o ícone leading swapado para fg-quaternary (o swap traz a cor do master).
+    if (ds.iconLeading) {
+      const v = await importarVar("fg-quaternary");
+      const alvo = inst.findOne((n) => n.type === "INSTANCE" && n.name === pascalParaKebab(ds.iconLeading));
+      if (v && alvo) {
+        for (const n of alvo.findAll((x) => "strokes" in x || "fills" in x)) {
+          try { if (Array.isArray(n.strokes) && n.strokes.length) n.strokes = [figma.variables.setBoundVariableForPaint(n.strokes[0], "color", v)]; } catch (e) {}
+          try { if (Array.isArray(n.fills) && n.fills.length) n.fills = [figma.variables.setBoundVariableForPaint(n.fills[0], "color", v)]; } catch (e) {}
+        }
+      }
+    }
+    await setChars(inst.findOne((n) => n.type === "TEXT" && n.name === "Label"), ip.label);
+    await setChars(inst.findOne((n) => n.type === "TEXT" && n.name === "Text"), ip.value);
+    await setChars(inst.findOne((n) => n.type === "TEXT" && n.name === "Hint text"), ip.hint);
+  }
+
+  // Breadcrumbs: slot "content" com itens (_Breadcrumb button base) intercalados com dividers.
+  // Clona item-template (com nó de texto) + divider por crumb; Current na última.
+  if (ds.crumbs && ds.crumbs.length) {
+    const slot = inst.findOne((n) => n.type === "SLOT");
+    if (slot && "children" in slot) {
+      const itemTpl = slot.children.find((c) => c.type === "INSTANCE" && /button base/i.test(c.name) && c.findOne((n) => n.type === "TEXT"));
+      const divTpl = slot.children.find((c) => c.type === "INSTANCE" && /chevron|slash|divider/i.test(c.name));
+      if (itemTpl) {
+        const originais = [...slot.children];
+        for (let i = 0; i < ds.crumbs.length; i++) {
+          if (i > 0 && divTpl) { try { slot.appendChild(divTpl.clone()); } catch (e) {} }
+          let it; try { it = itemTpl.clone(); slot.appendChild(it); } catch (e) { continue; }
+          const ck = Object.keys(it.componentProperties || {}).find((k) => k === "Current" || k.indexOf("Current") >= 0);
+          if (ck) { try { it.setProperties({ [ck]: i === ds.crumbs.length - 1 ? "True" : "False" }); } catch (e) {} }
+          await setChars(it.findOne((n) => n.type === "TEXT"), ds.crumbs[i]);
+        }
+        for (const o of originais) { try { o.remove(); } catch (e) {} }
+      }
+    }
+  }
+
+  // Empty state: título, descrição, featured icon (Type/Color + swap) e botões.
+  if (ds.emptyState) {
+    const es = ds.emptyState;
+    const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+    await setChars(inst.findOne((n) => n.type === "TEXT" && n.name === "Supporting text"), es.desc);
+    const titulo = inst.findAll((n) => n.type === "TEXT" && n.name === "Text").find((t) => !dentroDeBotao(t));
+    await setChars(titulo, es.title);
+    // featured icon interno
+    const fi = inst.findOne((n) => n.type === "INSTANCE" && /^featured icon/i.test(n.name));
+    if (fi) {
+      if (es.icon) await setIconSwap(fi, "Icon swap", es.icon);
+      const typeMap = { light: "Light", gradient: "Gradient", dark: "Dark", modern: "Modern", "modern-neue": "Modern neue" };
+      const fp = {};
+      if (es.iconTheme && typeMap[es.iconTheme]) fp.Type = typeMap[es.iconTheme];
+      if (es.iconColor) fp.Color = cap(es.iconColor);
+      try { fi.setProperties(fp); } catch (e) { /* ignora variante inválida */ }
+    }
+    // botões do footer: hierarquia (Primary/Secondary…), ícone e texto.
+    const btns = inst.findAll((n) => n.type === "INSTANCE" && /button$/i.test(n.name));
+    for (let i = 0; i < btns.length; i++) {
+      const b = btns[i];
+      const cfg = es.buttons[i];
+      if (cfg) {
+        try { b.visible = true; } catch (e) {}
+        const props = {};
+        // Hierarquia: valida contra o grupo de variante "Hierarchy".
+        if (cfg.hierarchy) {
+          const k = Object.keys(b.componentProperties || {}).find((x) => x === "Hierarchy" || x.indexOf("Hierarchy") === 0);
+          if (k) props[k] = cfg.hierarchy;
+        }
+        // Liga/desliga o ícone leading conforme capturado.
+        for (const x of Object.keys(b.componentProperties || {})) {
+          if (b.componentProperties[x].type === "BOOLEAN" && x.indexOf("Icon leading") >= 0) props[x] = !!cfg.icon;
+        }
+        try { b.setProperties(props); } catch (e) { /* variante inválida — mantém default */ }
+        if (cfg.icon) await setIconSwap(b, "Icon leading", cfg.icon);
+        await setChars(b.findOne((n) => n.type === "TEXT"), cfg.text);
+      } else {
+        try { b.visible = false; } catch (e) {}
+      }
     }
   }
   return inst;
@@ -505,11 +659,209 @@ async function bindSpacing(frame, style, cls) {
 
 /* ----------------------------- build recursivo ----------------------------- */
 
+// "Background pattern decorative" (set) — padrão atrás do empty state.
+const BG_PATTERN_DECOR_KEY = "17d55c1f95732009cad409fcad153fb7e14c1247";
+
+// Envolve a instância do empty state com o padrão de fundo decorativo (atrás).
+async function comFundoEmptyState(inst, node, pat) {
+  const comp = await importarSet(BG_PATTERN_DECOR_KEY);
+  if (!comp) return inst;
+  const base = comp.type === "COMPONENT_SET" ? (comp.defaultVariant || comp.children[0]) : comp;
+  const bg = base.createInstance();
+  try {
+    const g = comp.type === "COMPONENT_SET" ? (comp.variantGroupProperties || {}) : {};
+    const props = {};
+    if (g.Type && g.Type.values.indexOf(pat.type) >= 0) props.Type = pat.type;
+    if (Object.keys(props).length) bg.setProperties(props);
+  } catch (e) { /* variante inválida */ }
+  try { bg.resize(Math.max(1, pat.rect.width), Math.max(1, pat.rect.height)); } catch (e) {}
+
+  const wrap = figma.createFrame();
+  wrap.name = "Empty state";
+  wrap.clipsContent = false;
+  wrap.fills = [];
+  wrap.layoutMode = "NONE";
+  wrap.resize(Math.max(1, node.rect.width), Math.max(1, node.rect.height));
+  wrap.appendChild(bg); // atrás (z-index menor)
+  bg.x = Math.round(pat.rect.x);
+  bg.y = Math.round(pat.rect.y);
+  wrap.appendChild(inst); // na frente
+  inst.x = 0;
+  inst.y = 0;
+  return wrap;
+}
+
+const TABLE_KEY = "df97aa4c20a4686e188a80288b0e376f0dd72b99"; // Table (slot "Content")
+
+// Monta o Table do DS por COLUNA: mantém o chrome (Card header/Filters/Pagination) e preenche
+// o slot "Content" (HORIZONTAL) com frames Column = header cell + body cells (via criarCelula).
+async function construirTabela(node) {
+  const t = node.ds.table;
+  const set = await importarSet(TABLE_KEY);
+  if (!set) return null;
+  const base = set.type === "COMPONENT_SET" ? (set.defaultVariant || set.children[0]) : set;
+  const inst = base.createInstance();
+  const slot = inst.findOne((n) => n.type === "SLOT" && /content/i.test(n.name)) || inst.findOne((n) => n.type === "SLOT");
+  if (slot && "children" in slot) {
+    try { for (const c of [...slot.children]) c.remove(); } catch (e) {}
+    const ncols = Math.max(t.headers.length, ...t.rows.map((r) => r.length), 0);
+    for (let i = 0; i < ncols; i++) {
+      const col = figma.createFrame();
+      col.name = "Column";
+      col.layoutMode = "VERTICAL";
+      col.itemSpacing = 0;
+      col.fills = [];
+      col.clipsContent = false;
+      col.primaryAxisSizingMode = "AUTO";
+      col.counterAxisSizingMode = "FIXED";
+      if (t.headers[i]) { const h = await criarCelula(t.headers[i]); if (h) col.appendChild(h); }
+      for (const row of t.rows) { if (row[i]) { const c = await criarCelula(row[i]); if (c) col.appendChild(c); } }
+      try { slot.appendChild(col); } catch (e) { continue; }
+      const w = (t.colWidths && t.colWidths[i]) || 160;
+      try { col.resize(Math.max(1, w), col.height); } catch (e) {}
+      for (const ch of col.children) { try { ch.layoutSizingHorizontal = "FILL"; } catch (e) {} }
+    }
+  }
+  try { inst.resize(node.rect.width, inst.height); } catch (e) {}
+  return inst;
+}
+
+// Popula o SLOT de uma instância (slideout/modal): limpa o placeholder e injeta o conteúdo.
+// setProperties NÃO edita slot ("Slot component property values cannot be edited"); o nó SLOT
+// aceita appendChild direto.
+async function preencherSlot(inst, conteudo) {
+  const slot = inst.findOne((n) => n.type === "SLOT");
+  if (!slot) return false;
+  try { for (const c of [...slot.children]) c.remove(); } catch (e) {}
+  for (const node of conteudo || []) {
+    const built = await buildNode(node);
+    if (built) { try { slot.appendChild(built); } catch (e) {} }
+  }
+  // A largura do box é controlada pelo maxWidth do componente no DS (configurável lá).
+  return true;
+}
+
+const LIST_ITEM_KEY = "3a1b9ee2e2b2d75557ea0b937d19ec91b0d5bcbc"; // _Dropdown menu list item
+
+// Popula o slot do Dropdown menu com itens "_Dropdown menu list item". Importa por key
+// (componentes publicados); se falhar, clona o item-template que já está no slot.
+async function popularItensDropdown(inst, items) {
+  if (!items || !items.length) return;
+  const slot = inst.findOne((n) => n.type === "SLOT");
+  if (!slot || !("children" in slot)) return;
+  const originais = [...slot.children];
+  const set = await importarSet(LIST_ITEM_KEY);
+  const base = set ? (set.type === "COMPONENT_SET" ? set.defaultVariant || set.children[0] : set) : null;
+  const template = originais.find((c) => c.type === "INSTANCE" && /list item/i.test(c.name) && c.findOne((n) => n.type === "TEXT" && n.name === "Text"));
+  if (!base && !template) return;
+
+  const configurar = async (item, it) => {
+    await setChars(item.findOne((n) => n.type === "TEXT" && n.name === "Text"), it.label);
+    const lk = Object.keys(item.componentProperties || {}).find((k) => k.indexOf("Leading icon") >= 0);
+    if (lk) { try { item.setProperties({ [lk]: !!it.icon }); } catch (e) {} }
+    if (it.icon) {
+      const inset = item.findOne((n) => n.type === "INSTANCE" && /inset icon/i.test(n.name));
+      if (inset) await setIconSwap(inset, "Icon swap", it.icon);
+    }
+  };
+
+  for (const it of items) {
+    let item;
+    try { item = base ? base.createInstance() : template.clone(); slot.appendChild(item); } catch (e) { continue; }
+    await configurar(item, it);
+  }
+  for (const o of originais) { try { o.remove(); } catch (e) {} }
+}
+
+// Popula as opções de um Select/MultiSelect aberto, clonando o item do slot ("_Select menu
+// item" / "_Multi-select menu item", internos → não importáveis por key).
+async function popularOpcoes(inst, options) {
+  if (!options || !options.length) return;
+  const slot = inst.findOne((n) => n.type === "SLOT");
+  if (!slot || !("findAll" in slot)) return;
+  const itens = slot.findAll((n) => n.type === "INSTANCE" && /menu item/i.test(n.name));
+  const template = itens[0];
+  if (!template || !template.parent) return;
+  const container = template.parent;
+  const originais = itens.filter((i) => i.parent === container);
+  for (const op of options) {
+    let clone;
+    try { clone = template.clone(); container.appendChild(clone); } catch (e) { continue; }
+    const cp = clone.componentProperties || {};
+    // Type (Select item): Avatar leading / Icon leading / Default — só se a variante existir.
+    if (cp.Type) { try { clone.setProperties({ Type: op.avatar ? "Avatar leading" : op.icon ? "Icon leading" : "Default" }); } catch (e) {} }
+    // Selected (Select item) via variante; MultiSelect usa checkbox (abaixo).
+    if (cp.Selected) { try { clone.setProperties({ Selected: op.selected ? "True" : "False" }); } catch (e) {} }
+    // Supporting text: liga só quando a opção realmente tem.
+    const sk = Object.keys(cp).find((k) => k.indexOf("Supporting text") >= 0);
+    if (sk) { try { clone.setProperties({ [sk]: !!op.supportingText }); } catch (e) {} }
+    await setChars(clone.findOne((n) => n.type === "TEXT" && n.name === "Text"), op.label);
+    if (op.supportingText) await setChars(clone.findOne((n) => n.type === "TEXT" && n.name === "Supporting text"), op.supportingText);
+    if (op.icon) await setIconSwap(clone, "Icon swap", op.icon);
+    if (op.selected) {
+      const cb = clone.findOne((n) => n.type === "INSTANCE" && /checkbox/i.test(n.name));
+      if (cb) { const ck = Object.keys(cb.componentProperties || {}).find((k) => k.indexOf("Checked") >= 0); if (ck) { try { cb.setProperties({ [ck]: "True" }); } catch (e) {} } }
+    }
+  }
+  for (const o of originais) { try { o.remove(); } catch (e) {} }
+}
+
+// Rede de segurança: remove frames vazios sem fill/stroke (camadas-lixo que sobraram).
+function limparVazios(node) {
+  if (!("children" in node)) return;
+  for (const c of [...node.children]) {
+    limparVazios(c);
+    if (c.type === "FRAME" && c.children.length === 0) {
+      const semFill = !Array.isArray(c.fills) || c.fills.length === 0;
+      const semStroke = !Array.isArray(c.strokes) || c.strokes.length === 0;
+      if (semFill && semStroke) { try { c.remove(); } catch (e) {} }
+    }
+  }
+}
+
 async function buildNode(node) {
   // DS → instância
   if (node.role === "ds" && node.ds) {
+    // Tabela: montada por coluna no slot Content (não passa pelo criarInstanciaDs genérico).
+    if (node.ds.component === "Table" && node.ds.table) {
+      const tbl = await construirTabela(node);
+      if (tbl) return tbl;
+    }
     const inst = await criarInstanciaDs(node.ds);
-    if (inst) { try { inst.resize(node.rect.width, node.rect.height); } catch (e) {} return inst; }
+    if (inst) {
+      try {
+        // Altura natural (hug) p/ Tabs e campos de seleção (o menu aberto flutua, não fixa altura).
+        if (node.ds.component === "Tabs" || node.ds.component === "Select" || node.ds.component === "MultiSelect" || node.ds.component === "ComboBox") {
+          inst.resize(node.rect.width, inst.height);
+        } else if (node.ds.component === "SlideoutMenu") {
+          // O slideout tem uma margem/peek à esquerda (40px desktop, 24px mobile) e o slot é
+          // FILL — compensa somando à largura p/ o painel ficar com a largura real do rect.
+          const peek = node.ds.properties && node.ds.properties.Breakpoint === "Mobile" ? 24 : 40;
+          inst.resize(node.rect.width + peek, node.rect.height);
+        } else if (node.ds.component === "DropdownMenu") {
+          // Não redimensiona a instância (é só o trigger 20px); a "Menu" é tratada abaixo.
+        } else {
+          inst.resize(node.rect.width, node.rect.height);
+        }
+      } catch (e) {}
+      // Slideout/Modal/Dropdown: injeta o conteúdo capturado no SLOT do componente.
+      if (node.ds.slotContent && node.ds.slotContent.length) await preencherSlot(inst, node.ds.slotContent);
+      // Dropdown: trigger visível (Type Button/Icon). Label do botão, itens do menu (clonando
+      // o item do DS) e largura da frame "Menu".
+      if (node.ds.component === "DropdownMenu") {
+        if (node.ds.triggerLabel) {
+          const trig = ("children" in inst) ? inst.children.find((c) => c.name !== "Menu") : null;
+          if (trig) await setChars(trig.findOne((n) => n.type === "TEXT"), node.ds.triggerLabel);
+        }
+        if (node.ds.dropdownItems) await popularItensDropdown(inst, node.ds.dropdownItems);
+        const menu = inst.findOne((n) => n.name === "Menu");
+        if (menu && node.ds.menuWidth) { try { menu.resize(node.ds.menuWidth, menu.height); } catch (e) {} }
+      }
+      // EmptyState com padrão de fundo decorativo (círculos/grid): instância + pattern atrás, num frame.
+      const pat = node.ds.emptyState && node.ds.emptyState.pattern;
+      if (pat) return await comFundoEmptyState(inst, node, pat);
+      return inst;
+    }
     // fallback: vira frame se a key falhar
   }
 
@@ -582,15 +934,47 @@ async function buildNode(node) {
 
 /* ----------------------------- entrada ----------------------------- */
 
+// Aplica o modo de cor (Light/Dark) no frame, ligando a coleção "1. Color modes".
+async function aplicarTema(root, tema) {
+  if (!tema) return;
+  try {
+    const v = await figma.variables.importVariableByKeyAsync("d7cda17fdbe9607ec4c074e5facb29631b13c6a4"); // bg-primary
+    const col = await figma.variables.getVariableCollectionByIdAsync(v.variableCollectionId);
+    const alvo = tema === "dark" ? "dark" : "light";
+    const mode = col.modes.find((m) => m.name.toLowerCase().indexOf(alvo) >= 0) || col.modes[0];
+    if (mode) {
+      try { root.setExplicitVariableModeForCollection(col, mode.modeId); }
+      catch (e) { try { root.setExplicitVariableMode(col, mode.modeId); } catch (e2) {} }
+    }
+  } catch (e) { /* sem tema explícito */ }
+}
+
 figma.ui.onmessage = async (msg) => {
   if (msg.type !== "import") return;
   try {
     const screen = msg.screen;
     await prepararTokens(screen);
     const root = await buildNode(screen.root);
+    try { limparVazios(root); } catch (e) {}
 
     // Importa o frame direto na página (sem Section), ao lado do que está no viewport.
     root.name = "Import: " + (screen.pathname || "site");
+
+    // Modais/slideouts abertos: reconstrói por cima, em posição absoluta.
+    for (const ov of screen.overlays || []) {
+      const node = await buildNode(ov);
+      if (!node) continue;
+      root.appendChild(node);
+      if (root.layoutMode && root.layoutMode !== "NONE") { try { node.layoutPositioning = "ABSOLUTE"; } catch (e) {} }
+      // Slideout: compensa o peek somado à largura, deslocando a instância p/ a esquerda.
+      // Dropdown: posiciona pelo trigger (ov.rect já é o rect do trigger); a Menu flutua sozinha.
+      const peek = ov.ds && ov.ds.component === "SlideoutMenu" ? (ov.ds.properties && ov.ds.properties.Breakpoint === "Mobile" ? 24 : 40) : 0;
+      node.x = Math.round(ov.rect.x - screen.root.rect.x - peek);
+      node.y = Math.round(ov.rect.y - screen.root.rect.y);
+    }
+
+    await aplicarTema(root, msg.tema);
+
     figma.currentPage.appendChild(root);
     const vb = figma.viewport.bounds;
     root.x = Math.round(vb.x + 40);

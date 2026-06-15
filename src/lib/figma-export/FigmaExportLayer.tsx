@@ -5,7 +5,8 @@
  * reconhecidos). Marcado com `data-fig-skip` para não se auto-capturar.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Figma, Copy01 } from "@untitledui/icons";
 import { useLocation } from "react-router";
 import { toast } from "sonner";
@@ -26,6 +27,26 @@ export function FigmaExportLayer() {
     const location = useLocation();
     const [enabled, setEnabled] = useState(() => lerEnabled(location.search));
     const [ocupado, setOcupado] = useState(false);
+    const btnRef = useRef<HTMLButtonElement>(null);
+
+    // Mantém overlays abertos ao clicar no FAB: (1) stopImmediatePropagation impede o
+    // dismiss por interação-externa do React Aria (que ouve pointerdown→click em capture);
+    // (2) preventDefault impede o FAB de roubar o foco — senão menus/dropdowns (que fecham
+    // ao perder foco, diferente de modais) sumiriam antes do export. O `click` não é tocado,
+    // então o export continua disparando.
+    useEffect(() => {
+        const bloquear = (e: Event) => {
+            const alvo = e.target as Node | null;
+            if (alvo && btnRef.current && btnRef.current.contains(alvo)) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+            }
+        };
+        for (const tipo of ["pointerdown", "pointerup", "mousedown"]) window.addEventListener(tipo, bloquear, true);
+        return () => {
+            for (const tipo of ["pointerdown", "pointerup", "mousedown"]) window.removeEventListener(tipo, bloquear, true);
+        };
+    }, []);
 
     useEffect(() => {
         const param = new URLSearchParams(location.search).get("figma");
@@ -81,20 +102,28 @@ export function FigmaExportLayer() {
 
     if (!enabled) return null;
 
-    return (
+    // Portal direto no body: fica no mesmo contexto de empilhamento dos overlays do React
+    // Aria (também portados no body). Dentro do #root, um stacking context o prenderia abaixo
+    // do overlay, ignorando o z-index.
+    return createPortal(
         <button
+            ref={btnRef}
             type="button"
             data-fig-skip
+            // React Aria torna `inert` tudo fora do modal (ariaHideOutside) — o que mata o
+            // pointer. Esse atributo está na allow-list dele e mantém o FAB interativo.
+            data-react-aria-top-layer
             onClick={exportar}
             disabled={ocupado}
             title="Exportar tela para Figma (copia JSON)"
             className={cx(
-                "fixed bottom-4 left-4 z-[9997] flex items-center gap-2 rounded-full bg-primary-solid px-4 py-2.5 text-sm font-semibold text-primary_on-brand shadow-2xl ring-1 ring-border-secondary transition hover:opacity-90",
+                "fixed bottom-4 left-4 z-[2147483646] flex items-center gap-2 rounded-full bg-primary-solid px-4 py-2.5 text-sm font-semibold text-primary_on-brand shadow-2xl ring-1 ring-border-secondary transition hover:opacity-90",
                 ocupado && "opacity-60",
             )}
         >
             {ocupado ? <Copy01 className="size-4 animate-pulse" aria-hidden="true" /> : <Figma className="size-4" aria-hidden="true" />}
             Exportar p/ Figma
-        </button>
+        </button>,
+        document.body,
     );
 }

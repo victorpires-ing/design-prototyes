@@ -24,6 +24,11 @@
       .status { color: #666; flex: 1; }
       .status.err { color: #d92d20; }
       .status.ok { color: #079455; }
+      .seg { display: inline-flex; border: 1px solid #d9d9d9; border-radius: 8px; overflow: hidden; }
+      .seg button { background: #fff; color: #1a1a1a; border: 0; border-radius: 0; padding: 7px 12px; font-weight: 600; }
+      .seg button[aria-pressed="true"] { background: #1a1a1a; color: #fff; }
+      .seg button + button { border-left: 1px solid #d9d9d9; }
+      .label { color: #666; }
     </style>
   </head>
   <body>
@@ -31,6 +36,13 @@
       <h1>Importar tela do site</h1>
       <p>Cole o JSON gerado pelo botão “Exportar p/ Figma” do protótipo.</p>
       <textarea id="json" placeholder="{ &quot;pathname&quot;: &quot;/...&quot;, &quot;root&quot;: { ... } }"></textarea>
+      <div class="row">
+        <span class="label">Tema:</span>
+        <span class="seg" id="tema">
+          <button data-tema="light" aria-pressed="true">Light</button>
+          <button data-tema="dark" aria-pressed="false">Dark</button>
+        </span>
+      </div>
       <div class="row">
         <span id="status" class="status"></span>
         <button class="secondary" id="clear">Limpar</button>
@@ -42,6 +54,14 @@
       const status = document.getElementById("status");
       const btn = document.getElementById("import");
 
+      let tema = "light";
+      document.getElementById("tema").addEventListener("click", (e) => {
+        const b = e.target.closest("button[data-tema]");
+        if (!b) return;
+        tema = b.dataset.tema;
+        for (const x of document.querySelectorAll("#tema button")) x.setAttribute("aria-pressed", String(x === b));
+      });
+
       document.getElementById("clear").onclick = () => { ta.value = ""; ta.focus(); };
 
       btn.onclick = () => {
@@ -51,7 +71,7 @@
         try { data = JSON.parse(raw); } catch (e) { setStatus("JSON inválido.", "err"); return; }
         setStatus("Importando…");
         btn.disabled = true;
-        parent.postMessage({ pluginMessage: { type: "import", screen: data } }, "*");
+        parent.postMessage({ pluginMessage: { type: "import", screen: data, tema } }, "*");
       };
 
       function setStatus(msg, kind) {

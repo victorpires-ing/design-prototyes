@@ -54,9 +54,52 @@ export interface DsMark {
     properties: Record<string, string | boolean>;
     /** Texto principal do componente (para preencher slots de label). */
     text?: string;
+    /** Texto de apoio/hint (ex.: supporting text do Toggle/Checkbox). */
+    supportingText?: string;
     /** Ícones dentro do componente (nome PascalCase) para setar os swaps no Figma. */
     iconLeading?: string;
     iconTrailing?: string;
+    /** Labels das abas (para Tabs) — define quantas mostrar e o texto de cada. */
+    tabs?: string[];
+    /** Índice da aba ativa (aria-selected). */
+    tabActive?: number;
+    /** Rótulos dos itens de breadcrumb (Breadcrumbs) — define quantos mostrar e o texto. */
+    crumbs?: string[];
+    /** Conteúdo do Empty state (título, descrição, ícone + cor/tema, botões com texto/hierarquia/ícone). */
+    emptyState?: {
+        title?: string;
+        desc?: string;
+        icon?: string;
+        iconColor?: string;
+        iconTheme?: string;
+        buttons: { text: string; hierarchy?: string; icon?: string }[];
+        /** Padrão de fundo decorativo (Background pattern decorative): tipo + rect relativo ao empty state. */
+        pattern?: { type: string; rect: Rect };
+    };
+    /** Conteúdo de Input/Select: label, hint, valor/placeholder, flags (o State é resolvido no plugin). */
+    input?: {
+        label?: string;
+        hint?: string;
+        value?: string;
+        filled?: boolean;
+        disabled?: boolean;
+        required?: boolean;
+        destructive?: boolean;
+        help?: boolean;
+        /** Select/MultiSelect aberto: estado + opções do listbox para popular o slot. */
+        open?: boolean;
+        options?: { label?: string; supportingText?: string; icon?: string; avatar?: boolean; selected?: boolean }[];
+    };
+    /** Conteúdo a injetar no SLOT do componente (ex.: painel do slideout/modal). */
+    slotContent?: CapturedNode[];
+    /** Tabela: cabeçalhos + linhas (nós de célula) + larguras, para montar por coluna no slot Content. */
+    table?: { headers: CapturedNode[]; rows: CapturedNode[][]; colWidths: number[] };
+    /** Dropdown: rótulo do trigger (quando Type="Button simple"). */
+    triggerLabel?: string;
+    /** Dropdown: largura real do menu aberto (para redimensionar a frame "Menu"). */
+    menuWidth?: number;
+    /** Dropdown aberto: itens (label + ícone) para popular o slot clonando o item do DS. */
+    dropdownItems?: { label?: string; icon?: string }[];
     /** Props primitivas originais do React (debug / refino do mapeamento). */
     rawProps?: Record<string, string | number | boolean>;
 }
@@ -91,4 +134,6 @@ export interface CapturedScreen {
     /** Tabela de tokens de cor do :root (nome → valor resolvido), para bind exato no Figma. */
     tokens: Record<string, string>;
     root: CapturedNode;
+    /** Modais/slideouts abertos (portal fora do #root) — reconstruídos por cima da tela. */
+    overlays?: CapturedNode[];
 }

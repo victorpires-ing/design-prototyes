@@ -13,7 +13,7 @@ export function SimuladorEstados<T extends string>({ options, value, onChange }:
     const [open, setOpen] = useState(false);
 
     return (
-        <div className="fixed right-5 bottom-5 z-50 flex flex-col items-end gap-2">
+        <div data-fig-skip className="fixed right-5 bottom-5 z-50 flex flex-col items-end gap-2">
             {open && (
                 <div className="flex w-60 flex-col gap-1 rounded-xl bg-primary p-2 shadow-lg ring-1 ring-border-secondary">
                     <span className="px-2 py-1 text-xs font-semibold tracking-wide text-tertiary uppercase">Simular estado</span>

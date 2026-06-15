@@ -11,7 +11,7 @@ const ICONS = {"align-bottom-01":"5624cd5f646cc272d9e64db88852b2ed39ec264a","ali
  * auto-layout e cores literais. 100% determinístico, sem rede e sem IA.
  */
 
-figma.showUI(__html__, { width: 380, height: 420 });
+figma.showUI(__html__, { width: 300, height: 232, themeColors: false });
 
 /* ----------------------------- cor ----------------------------- */
 
@@ -187,8 +187,14 @@ const TEXT_STYLE_KEYS = {
 /* ----------------------------- ícones ----------------------------- */
 
 // PascalCase (BarChartSquare02) → kebab (bar-chart-square-02), como na lib de ícones.
+// Trata maiúsculas consecutivas (XClose → x-close) e números (Mail01 → mail-01).
 function pascalParaKebab(s) {
-  return s.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/([A-Za-z])(\d)/g, "$1-$2").replace(/-+/g, "-").toLowerCase();
+  return s
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2") // XClose → X-Close
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2") // searchLg → search-Lg
+    .replace(/([A-Za-z])(\d)/g, "$1-$2") // mail01 → mail-01
+    .replace(/-+/g, "-")
+    .toLowerCase();
 }
 const iconCache = new Map();
 async function instanciaIcone(nome, rect, colorStr, leafHint) {
@@ -357,24 +363,25 @@ async function criarInstanciaDs(ds) {
       if (vals.indexOf(st) >= 0) props.State = st;
     }
     if (groups.Destructive) props.Destructive = ip.destructive ? "True" : "False";
-    // Select com ícone leading precisa do Type "Icon leading" (não vale p/ ComboBox=Search).
-    if (groups.Type && ds.component === "Select" && ds.iconLeading && groups.Type.values.indexOf("Icon leading") >= 0) props.Type = "Icon leading";
+    // Select com ícone leading real precisa do Type "Icon leading" (não vale p/ ComboBox=Search).
+    if (groups.Type && ds.component === "Select" && ip.icon && groups.Type.values.indexOf("Icon leading") >= 0) props.Type = "Icon leading";
     for (const k of Object.keys(inst.componentProperties || {})) {
       if (inst.componentProperties[k].type !== "BOOLEAN") continue;
       if (k.indexOf("Label") >= 0) props[k] = !!ip.label;
       else if (k.indexOf("Hint text") >= 0) props[k] = !!ip.hint;
+      else if (k.indexOf("Supporting text") >= 0) props[k] = false; // o hint vai no "Hint text"; evita supporting indevido
       else if (k.indexOf("Required") >= 0) props[k] = !!ip.required;
       else if (k.indexOf("Help icon") >= 0) props[k] = !!ip.help;
-      else if (k.indexOf("Icon leading") >= 0) props[k] = !!ds.iconLeading;
+      else if (k.indexOf("Icon leading") >= 0) props[k] = !!ip.icon; // só liga se há ícone leading REAL
     }
     try { inst.setProperties(props); } catch (e) { /* mantém default */ }
-    await setIconSwap(inst, "Icon swap", ds.iconLeading);
+    if (ip.icon) await setIconSwap(inst, "Icon swap", ip.icon);
     // Select/MultiSelect aberto: popula as opções no slot da variante Open.
     if (ip.open && ip.options) await popularOpcoes(inst, ip.options);
     // Recolore o ícone leading swapado para fg-quaternary (o swap traz a cor do master).
-    if (ds.iconLeading) {
+    if (ip.icon) {
       const v = await importarVar("fg-quaternary");
-      const alvo = inst.findOne((n) => n.type === "INSTANCE" && n.name === pascalParaKebab(ds.iconLeading));
+      const alvo = inst.findOne((n) => n.type === "INSTANCE" && n.name === pascalParaKebab(ip.icon));
       if (v && alvo) {
         for (const n of alvo.findAll((x) => "strokes" in x || "fills" in x)) {
           try { if (Array.isArray(n.strokes) && n.strokes.length) n.strokes = [figma.variables.setBoundVariableForPaint(n.strokes[0], "color", v)]; } catch (e) {}
@@ -726,6 +733,49 @@ async function construirTabela(node) {
   return inst;
 }
 
+const BACKSTAGE_TEMPLATE_KEY = "16a29e24192fc7a4af6a847e5c08db12bb1fa5da"; // Backstage Template
+
+// Shell do backstage: instancia o template (rail/card/menu vêm prontos), liga "Show Event
+// Detail" e injeta o conteúdo da página no slot "content" (limpando o placeholder antes).
+async function construirBackstage(node) {
+  const comp = await importarSet(BACKSTAGE_TEMPLATE_KEY);
+  if (!comp) return null;
+  const base = comp.type === "COMPONENT_SET" ? (comp.defaultVariant || comp.children[0]) : comp;
+  const inst = base.createInstance();
+  const sd = Object.keys(inst.componentProperties || {}).find((k) => k.indexOf("Show Event") >= 0);
+  if (sd) { try { inst.setProperties({ [sd]: node.ds.showEventDetail !== false }); } catch (e) {} }
+  const slot = inst.findOne((n) => n.type === "SLOT" && n.name === "content");
+  if (slot && "children" in slot) {
+    try { for (const c of [...slot.children]) c.remove(); } catch (e) {}
+    for (const child of node.ds.slotContent || []) { const built = await buildNode(child); if (built) { try { slot.appendChild(built); } catch (e) {} } }
+  }
+  try { inst.resize(node.rect.width, node.rect.height); } catch (e) {}
+  return inst;
+}
+
+// Roteia um modal/slideout capturado para DENTRO do Backstage Template (toggle + slot interno),
+// em vez de sobrepor como overlay separado.
+// Backstage: o modal usa o slot interno do template (Show modal). O slideout é instanciado
+// standalone (largura configurável) e injetado no slot "content" como filho ABSOLUTE no
+// topo-direito — instâncias não aceitam appendChild, mas o SLOT aceita.
+async function rotearOverlayBackstage(root, ov) {
+  if (ov.ds.component === "Modal") {
+    const showKey = Object.keys(root.componentProperties || {}).find((k) => k.indexOf("Show modal") >= 0);
+    if (showKey) { try { root.setProperties({ [showKey]: true }); } catch (e) {} }
+    const child = root.findOne((n) => n.type === "INSTANCE" && n.name === "Modal");
+    if (child && ov.ds.slotContent && ov.ds.slotContent.length) await preencherSlot(child, ov.ds.slotContent);
+    return;
+  }
+  // Slideout
+  const node = await buildNode(ov);
+  if (!node) return;
+  const slot = root.findOne((n) => n.type === "SLOT" && n.name === "content") || root.findOne((n) => n.type === "SLOT");
+  if (!slot) return;
+  try { slot.appendChild(node); } catch (e) { return; }
+  try { node.layoutPositioning = "ABSOLUTE"; } catch (e) {}
+  try { node.x = Math.max(0, Math.round(slot.width - node.width)); node.y = 0; } catch (e) {}
+}
+
 // Popula o SLOT de uma instância (slideout/modal): limpa o placeholder e injeta o conteúdo.
 // setProperties NÃO edita slot ("Slot component property values cannot be edited"); o nó SLOT
 // aceita appendChild direto.
@@ -827,6 +877,11 @@ async function buildNode(node) {
       const tbl = await construirTabela(node);
       if (tbl) return tbl;
     }
+    // Shell do backstage: instancia o Backstage Template e injeta a página no slot "content".
+    if (node.ds.component === "BackstageTemplate") {
+      const bs = await construirBackstage(node);
+      if (bs) return bs;
+    }
     const inst = await criarInstanciaDs(node.ds);
     if (inst) {
       try {
@@ -834,9 +889,10 @@ async function buildNode(node) {
         if (node.ds.component === "Tabs" || node.ds.component === "Select" || node.ds.component === "MultiSelect" || node.ds.component === "ComboBox") {
           inst.resize(node.rect.width, inst.height);
         } else if (node.ds.component === "SlideoutMenu") {
-          // O slideout tem uma margem/peek à esquerda (40px desktop, 24px mobile) e o slot é
-          // FILL — compensa somando à largura p/ o painel ficar com a largura real do rect.
-          const peek = node.ds.properties && node.ds.properties.Breakpoint === "Mobile" ? 24 : 40;
+          // O slideout tem um peek (sliver do backdrop) à esquerda e o slot é FILL — mede o peek
+          // real do componente (inst − slot) e soma à largura p/ o painel ficar com a largura do rect.
+          const s = inst.findOne((n) => n.type === "SLOT");
+          const peek = s ? Math.max(0, Math.round(inst.width - s.width)) : 40;
           inst.resize(node.rect.width + peek, node.rect.height);
         } else if (node.ds.component === "DropdownMenu") {
           // Não redimensiona a instância (é só o trigger 20px); a "Menu" é tratada abaixo.
@@ -960,17 +1016,18 @@ figma.ui.onmessage = async (msg) => {
     // Importa o frame direto na página (sem Section), ao lado do que está no viewport.
     root.name = "Import: " + (screen.pathname || "site");
 
-    // Modais/slideouts abertos: reconstrói por cima, em posição absoluta.
+    // Modais/slideouts abertos.
+    const rootBackstage = screen.root.ds && screen.root.ds.component === "BackstageTemplate";
+    const standalone = [];
     for (const ov of screen.overlays || []) {
+      // Backstage: modal e slideout vão pros slots internos do template (instâncias absolutas
+      // já posicionadas). Fora do backstage, ficam como overlay sobreposto na root (frame).
+      if (rootBackstage && ov.ds && (ov.ds.component === "Modal" || ov.ds.component === "SlideoutMenu")) {
+        await rotearOverlayBackstage(root, ov);
+        continue;
+      }
       const node = await buildNode(ov);
-      if (!node) continue;
-      root.appendChild(node);
-      if (root.layoutMode && root.layoutMode !== "NONE") { try { node.layoutPositioning = "ABSOLUTE"; } catch (e) {} }
-      // Slideout: compensa o peek somado à largura, deslocando a instância p/ a esquerda.
-      // Dropdown: posiciona pelo trigger (ov.rect já é o rect do trigger); a Menu flutua sozinha.
-      const peek = ov.ds && ov.ds.component === "SlideoutMenu" ? (ov.ds.properties && ov.ds.properties.Breakpoint === "Mobile" ? 24 : 40) : 0;
-      node.x = Math.round(ov.rect.x - screen.root.rect.x - peek);
-      node.y = Math.round(ov.rect.y - screen.root.rect.y);
+      if (node) standalone.push({ node, ov });
     }
 
     await aplicarTema(root, msg.tema);
@@ -979,6 +1036,19 @@ figma.ui.onmessage = async (msg) => {
     const vb = figma.viewport.bounds;
     root.x = Math.round(vb.x + 40);
     root.y = Math.round(vb.y + 40);
+
+    // Overlays standalone (não-backstage) — a root é frame, então entram nela, posicionados.
+    for (const { node, ov } of standalone) {
+      root.appendChild(node);
+      if (root.layoutMode && root.layoutMode !== "NONE") { try { node.layoutPositioning = "ABSOLUTE"; } catch (e) {} }
+      let peek = 0;
+      if (ov.ds && ov.ds.component === "SlideoutMenu" && "findOne" in node) {
+        const s = node.findOne((n) => n.type === "SLOT");
+        if (s) peek = Math.max(0, Math.round(node.width - s.width));
+      }
+      node.x = Math.round(ov.rect.x - screen.root.rect.x - peek);
+      node.y = Math.round(ov.rect.y - screen.root.rect.y);
+    }
 
     figma.currentPage.selection = [root];
     figma.viewport.scrollAndZoomIntoView([root]);

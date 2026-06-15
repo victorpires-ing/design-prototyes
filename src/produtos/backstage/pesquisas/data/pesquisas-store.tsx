@@ -210,13 +210,32 @@ const PesquisasContext = createContext<PesquisasStoreValue | null>(null);
 let idCounter = 1000;
 const nextId = () => String(++idCounter);
 
+// Nº de respostas (mock estável por pergunta) — usado só quando a pergunta está associada.
+function hashId(s: string): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+}
+const mockRespostas = (id: string) => 23 + (hashId(id) % 137);
+
 export function PesquisasProvider({ children }: { children: ReactNode }) {
-    const [perguntas, setPerguntas] = useState<Pergunta[]>(PERGUNTAS_MOCK);
+    // Banco começa VAZIO — o fluxo realista cria as perguntas e as associa a ingressos durante o teste.
+    const [perguntas, setPerguntas] = useState<Pergunta[]>([]);
     const [ingressos] = useState<TipoIngresso[]>(INGRESSOS_MOCK);
-    const [associacoes, setAssociacoes] = useState<Record<string, AssocItem[]>>(ASSOCIACOES_MOCK);
+    const [associacoes, setAssociacoes] = useState<Record<string, AssocItem[]>>({});
     const [titulosFormulario, setTitulosFormulario] = useState<Record<string, string>>(TITULOS_FORMULARIO_MOCK);
 
-    const getPergunta = useCallback((id: string) => perguntas.find((p) => p.id === id), [perguntas]);
+    // Respostas só aparecem DEPOIS que a pergunta é associada a algum ingresso.
+    const temAssociacao = useCallback(
+        (id: string) => Object.values(associacoes).some((itens) => itens.some((it) => it.perguntaId === id)),
+        [associacoes],
+    );
+    const perguntasView = useMemo<Pergunta[]>(
+        () => perguntas.map((p) => ({ ...p, respostas: temAssociacao(p.id) ? mockRespostas(p.id) : 0 })),
+        [perguntas, temAssociacao],
+    );
+
+    const getPergunta = useCallback((id: string) => perguntasView.find((p) => p.id === id), [perguntasView]);
 
     const addPergunta = useCallback((input: PerguntaInput) => {
         const pergunta: Pergunta = { id: nextId(), respostas: 0, ...input };
@@ -241,8 +260,14 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
-    const esvaziarBanco = useCallback(() => setPerguntas([]), []);
-    const restaurarBanco = useCallback(() => setPerguntas(PERGUNTAS_MOCK), []);
+    const esvaziarBanco = useCallback(() => {
+        setPerguntas([]);
+        setAssociacoes({});
+    }, []);
+    const restaurarBanco = useCallback(() => {
+        setPerguntas(PERGUNTAS_MOCK);
+        setAssociacoes(ASSOCIACOES_MOCK);
+    }, []);
 
     const countIngressosDaPergunta = useCallback(
         (perguntaId: string) => Object.values(associacoes).filter((itens) => itens.some((it) => it.perguntaId === perguntaId)).length,
@@ -290,12 +315,12 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
             const itens = associacoes[ingressoId] ?? [];
             return itens
                 .map((it) => {
-                    const pergunta = perguntas.find((p) => p.id === it.perguntaId);
+                    const pergunta = perguntasView.find((p) => p.id === it.perguntaId);
                     return pergunta ? { pergunta, obrigatoria: it.obrigatoria } : null;
                 })
                 .filter((x): x is ItemIngresso => Boolean(x));
         },
-        [associacoes, perguntas],
+        [associacoes, perguntasView],
     );
 
     const perguntasDoIngresso = useCallback((ingressoId: string) => itensDoIngresso(ingressoId).map((it) => it.pergunta), [itensDoIngresso]);
@@ -312,7 +337,7 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
 
     const value = useMemo<PesquisasStoreValue>(
         () => ({
-            perguntas,
+            perguntas: perguntasView,
             ingressos,
             associacoes,
             getPergunta,
@@ -332,7 +357,7 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
             tituloDoIngresso,
             setTituloFormulario,
         }),
-        [perguntas, ingressos, associacoes, getPergunta, addPergunta, updatePergunta, togglePergunta, removePergunta, esvaziarBanco, restaurarBanco, countIngressosDaPergunta, ingressosDaPergunta, togglePerguntaNoIngresso, vincularPerguntasEmIngressos, perguntasDoIngresso, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario],
+        [perguntasView, ingressos, associacoes, getPergunta, addPergunta, updatePergunta, togglePergunta, removePergunta, esvaziarBanco, restaurarBanco, countIngressosDaPergunta, ingressosDaPergunta, togglePerguntaNoIngresso, vincularPerguntasEmIngressos, perguntasDoIngresso, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario],
     );
 
     return <PesquisasContext.Provider value={value}>{children}</PesquisasContext.Provider>;

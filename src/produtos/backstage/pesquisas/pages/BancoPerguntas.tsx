@@ -12,7 +12,6 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PerguntaEditorModal } from "../components/PerguntaEditorModal";
-import { SimuladorEstados } from "../components/SimuladorEstados";
 import { TIPO_PERGUNTA, usePesquisas, type Pergunta } from "../data/pesquisas-store";
 
 type Aba = "perguntas" | "respostas" | "resumo";
@@ -82,10 +81,6 @@ export function BancoPerguntas() {
     const [editorPergunta, setEditorPergunta] = useState<Pergunta | null>(null);
     const [confirmExcluir, setConfirmExcluir] = useState<Pergunta | null>(null);
 
-    // Simulação de empty states (só protótipo).
-    const [sim, setSim] = useState<"normal" | "sem-perguntas" | "sem-respostas">("normal");
-    const perguntasSim = sim === "sem-perguntas" ? [] : sim === "sem-respostas" ? perguntas.map((p) => ({ ...p, respostas: 0 })) : perguntas;
-
     const novaPergunta = () => {
         setEditorPergunta(null);
         setEditorOpen(true);
@@ -120,7 +115,7 @@ export function BancoPerguntas() {
                             <h1 className="text-xl font-semibold text-primary">Coleta de dados</h1>
                             <p className="text-sm text-tertiary">Crie perguntas uma vez, reutilize em qualquer evento e acompanhe as respostas.</p>
                         </div>
-                        {aba === "perguntas" && perguntasSim.length > 0 && (
+                        {aba === "perguntas" && perguntas.length > 0 && (
                             <Button size="md" color="primary" iconLeading={Plus} onClick={novaPergunta}>
                                 Nova pergunta
                             </Button>
@@ -139,22 +134,12 @@ export function BancoPerguntas() {
                     </Tabs>
 
                     {aba === "perguntas" && (
-                        <AbaPerguntas perguntas={perguntasSim} onNova={novaPergunta} onEditar={editarPergunta} onExcluir={setConfirmExcluir} onToggle={handleToggle} />
+                        <AbaPerguntas perguntas={perguntas} onNova={novaPergunta} onEditar={editarPergunta} onExcluir={setConfirmExcluir} onToggle={handleToggle} />
                     )}
-                    {aba === "respostas" && <AbaRespostas perguntas={perguntasSim} />}
-                    {aba === "resumo" && <AbaResumo perguntas={perguntasSim} />}
+                    {aba === "respostas" && <AbaRespostas perguntas={perguntas} />}
+                    {aba === "resumo" && <AbaResumo perguntas={perguntas} />}
                 </main>
             </div>
-
-            <SimuladorEstados
-                value={sim}
-                onChange={setSim}
-                options={[
-                    { id: "normal", label: "Normal (com dados)" },
-                    { id: "sem-perguntas", label: "Sem perguntas" },
-                    { id: "sem-respostas", label: "Sem respostas" },
-                ]}
-            />
 
             <PerguntaEditorModal
                 isOpen={editorOpen}

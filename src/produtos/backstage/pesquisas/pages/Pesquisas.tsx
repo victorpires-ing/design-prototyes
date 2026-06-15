@@ -10,24 +10,14 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { AssociacaoSlideout } from "../components/AssociacaoSlideout";
 import { PerguntaEditorModal } from "../components/PerguntaEditorModal";
-import { SimuladorEstados } from "../components/SimuladorEstados";
 import { VincularEmLoteSlideout } from "../components/VincularEmLoteSlideout";
 import { usePesquisas, type TipoIngresso } from "../data/pesquisas-store";
 
 export function Pesquisas() {
-    const { ingressos, perguntas, perguntasDoIngresso, togglePerguntaNoIngresso, esvaziarBanco, restaurarBanco } = usePesquisas();
+    const { ingressos, perguntas, perguntasDoIngresso, togglePerguntaNoIngresso } = usePesquisas();
 
-    // Simulação de empty state (só protótipo). "sem-perguntas" esvazia o banco de verdade,
-    // pra o fluxo de criar a primeira pergunta acontecer normalmente (teste de usabilidade).
-    const [sim, setSim] = useState<"normal" | "sem-ingressos" | "sem-perguntas">("normal");
-    const ingressosSim = sim === "sem-ingressos" ? [] : ingressos;
+    // Fluxo realista: o banco começa vazio → cai no empty state "Crie sua primeira pergunta".
     const bancoVazio = perguntas.length === 0;
-
-    const aoMudarSim = (v: "normal" | "sem-ingressos" | "sem-perguntas") => {
-        setSim(v);
-        if (v === "sem-perguntas") esvaziarBanco();
-        else restaurarBanco();
-    };
 
     const [assocIngresso, setAssocIngresso] = useState<TipoIngresso | null>(null);
     const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
@@ -65,14 +55,14 @@ export function Pesquisas() {
     // Estrutura em 2 níveis visuais: data (seção) › grupo (card) › ingressos (linhas).
     const datas = useMemo(() => {
         const mapData = new Map<string, Map<string, TipoIngresso[]>>();
-        for (const ing of ingressosSim) {
+        for (const ing of ingressos) {
             if (!mapData.has(ing.data)) mapData.set(ing.data, new Map());
             const grupos = mapData.get(ing.data)!;
             if (!grupos.has(ing.grupo)) grupos.set(ing.grupo, []);
             grupos.get(ing.grupo)!.push(ing);
         }
         return Array.from(mapData, ([data, grupos]) => ({ data, grupos: Array.from(grupos, ([nome, ingressos]) => ({ nome, ingressos })) }));
-    }, [ingressosSim]);
+    }, [ingressos]);
 
     const toggleSelecionado = (id: string) =>
         setSelecionados((prev) => {
@@ -89,8 +79,8 @@ export function Pesquisas() {
             return next;
         });
 
-    const ingressosSelecionados = useMemo(() => ingressosSim.filter((i) => selecionados.has(i.id)), [ingressosSim, selecionados]);
-    const selecionarTodos = () => setSelecionados(new Set(ingressosSim.map((i) => i.id)));
+    const ingressosSelecionados = useMemo(() => ingressos.filter((i) => selecionados.has(i.id)), [ingressos, selecionados]);
+    const selecionarTodos = () => setSelecionados(new Set(ingressos.map((i) => i.id)));
     const limparSelecao = () => setSelecionados(new Set());
     const sairModoSelecao = () => {
         setModoSelecao(false);
@@ -117,7 +107,7 @@ export function Pesquisas() {
                         </div>
                     </div>
 
-                    {ingressosSim.length === 0 ? (
+                    {ingressos.length === 0 ? (
                         <div className="flex flex-1 items-center justify-center py-12">
                             <EmptyState size="sm">
                                 <EmptyState.Header>
@@ -303,16 +293,6 @@ export function Pesquisas() {
                 onSaved={(nova) => {
                     if (reabrir?.tipo === "individual") togglePerguntaNoIngresso(reabrir.ingresso.id, nova.id);
                 }}
-            />
-
-            <SimuladorEstados
-                value={sim}
-                onChange={aoMudarSim}
-                options={[
-                    { id: "normal", label: "Normal (com ingressos)" },
-                    { id: "sem-ingressos", label: "Sem ingressos" },
-                    { id: "sem-perguntas", label: "Sem perguntas no banco" },
-                ]}
             />
         </BackstageLayout>
     );

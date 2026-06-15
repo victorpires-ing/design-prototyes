@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { ArrowRight, ChevronDown, ChevronRight, FilterLines, Rows01, Grid01, XClose } from "@untitledui/icons";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ArrowRight, ChevronDown, ChevronRight, FilterLines, Rows01, Grid01, SwitchHorizontal01, Ticket01, Users01, XClose } from "@untitledui/icons";
 import {
     Dialog as AriaDialog,
     Modal as AriaModal,
@@ -10,8 +10,10 @@ import {
     FilterDropdown,
     type FilterRow,
 } from "@/components/application/filter-bar/filter-dropdown-menu";
+import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { Avatar } from "@/components/base/avatar/avatar";
+import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -38,6 +40,22 @@ interface Transferencia {
     portadorAtualEmail: string;
     portadorAtualCpf: string;
 }
+
+// Quantas vezes cada ingresso (code) já trocou de mão (mock) — default 1.
+const VEZES_TRANSFERIDO: Record<string, number> = {
+    "26BK5XGKXN6JHL": 5,
+    "26BP6X3IUH6QF1": 3,
+    "26DCDHZ1QQACP4": 2,
+    "2693K0XNE0QNR0": 4,
+    "2680YQA69RR2VK": 2,
+    "266U4R6ZTPQCFT": 3,
+    "26HRPK4LXNVCQE": 5,
+    "26JZKL9MN4PXVT": 2,
+    "26LPN8R4MA0YQW": 2,
+    "26MRO9S5NB1ZRX": 3,
+    "26OTQ1U7PD3BTZ": 4,
+};
+const vezesDe = (code: string): number => VEZES_TRANSFERIDO[code] ?? 1;
 
 const transferencias: Transferencia[] = [
     {
@@ -235,7 +253,120 @@ const transferencias: Transferencia[] = [
         portadorAtualEmail: "rafa.mendes@gmail.com",
         portadorAtualCpf: "66778899001",
     },
+    {
+        id: "d4e6f8a0-b2c4-4d6e-8f0a-1b2c3d4e5f60",
+        code: "26KQW7M3LZ9XPV",
+        nomeComprador: "Bruno Azevedo Lima",
+        emailComprador: "bruno.azevedo@gmail.com",
+        cpfComprador: "11122233344",
+        portadorAnteriorNome: "Bruno Azevedo Lima",
+        portadorAnteriorEmail: "bruno.azevedo@gmail.com",
+        portadorAnteriorCpf: "11122233344",
+        portadorAtualNome: "Sofia Cardoso",
+        portadorAtualEmail: "sofia.cardoso@outlook.com",
+        portadorAtualCpf: "55566677788",
+    },
+    {
+        id: "e5f7a9b1-c3d5-4e7f-9a0b-2c3d4e5f6071",
+        code: "26LPN8R4MA0YQW",
+        nomeComprador: "Carolina Freitas",
+        emailComprador: "carol.freitas@gmail.com",
+        cpfComprador: "22233344455",
+        portadorAnteriorNome: "Carolina Freitas",
+        portadorAnteriorEmail: "carol.freitas@gmail.com",
+        portadorAnteriorCpf: "22233344455",
+        portadorAtualNome: "Eduardo Ramos",
+        portadorAtualEmail: "edu.ramos@hotmail.com",
+        portadorAtualCpf: "66677788899",
+    },
+    {
+        id: "f6a8b0c2-d4e6-4f8a-0b1c-3d4e5f607182",
+        code: "26MRO9S5NB1ZRX",
+        nomeComprador: "Marcelo Tavares",
+        emailComprador: "marcelo.tavares@live.com",
+        cpfComprador: "33344455566",
+        portadorAnteriorNome: "Marcelo Tavares",
+        portadorAnteriorEmail: "marcelo.tavares@live.com",
+        portadorAnteriorCpf: "33344455566",
+        portadorAtualNome: "Bianca Teixeira",
+        portadorAtualEmail: "bianca.teixeira@gmail.com",
+        portadorAtualCpf: "77788899900",
+    },
+    {
+        id: "a7b9c1d3-e5f7-4a9b-1c2d-4e5f60718293",
+        code: "26NSP0T6OC2ASY",
+        nomeComprador: "Patrícia Gomes",
+        emailComprador: "patricia.gomes@gmail.com",
+        cpfComprador: "44455566677",
+        portadorAnteriorNome: "Patrícia Gomes",
+        portadorAnteriorEmail: "patricia.gomes@gmail.com",
+        portadorAnteriorCpf: "44455566677",
+        portadorAtualNome: "Rodrigo Nunes",
+        portadorAtualEmail: "rodrigo.nunes@outlook.com",
+        portadorAtualCpf: "88899900011",
+    },
+    {
+        id: "b8c0d2e4-f6a8-4b0c-2d3e-5f6071829304",
+        code: "26OTQ1U7PD3BTZ",
+        nomeComprador: "Gustavo Pinto",
+        emailComprador: "gustavo.pinto@gmail.com",
+        cpfComprador: "55566677788",
+        portadorAnteriorNome: "Gustavo Pinto",
+        portadorAnteriorEmail: "gustavo.pinto@gmail.com",
+        portadorAnteriorCpf: "55566677788",
+        portadorAtualNome: "Vivian Castro",
+        portadorAtualEmail: "vivian.castro@hotmail.com",
+        portadorAtualCpf: "99900011122",
+    },
 ];
+
+/* ------------------------------------------------------------------ */
+/*  Big numbers                                                       */
+/* ------------------------------------------------------------------ */
+
+const numberFormatter = new Intl.NumberFormat("pt-BR");
+const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
+
+// Total de ingressos vendidos no evento (mock) — base para o % de transferidos.
+const TOTAL_INGRESSOS_EVENTO = 412;
+
+const TOTAL_TRANSFERENCIAS = transferencias.length;
+const PCT_TRANSFERIDOS = (TOTAL_TRANSFERENCIAS / TOTAL_INGRESSOS_EVENTO) * 100;
+const COMPRADORES_QUE_TRANSFERIRAM = new Set(transferencias.map((t) => t.cpfComprador)).size;
+
+const pctFormatter = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+const TransferenciasMetricsRow = () => (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <MetricsIcon03
+            icon={SwitchHorizontal01}
+            subtitle="Total de transferências"
+            title={numberFormatter.format(TOTAL_TRANSFERENCIAS)}
+            change={null}
+            changeTrend="positive"
+            actions={false}
+            className={HIDE_TREND_AND_MENU}
+        />
+        <MetricsIcon03
+            icon={Ticket01}
+            subtitle="Ingressos transferidos"
+            title={`${pctFormatter.format(PCT_TRANSFERIDOS)}%`}
+            change={null}
+            changeTrend="positive"
+            actions={false}
+            className={HIDE_TREND_AND_MENU}
+        />
+        <MetricsIcon03
+            icon={Users01}
+            subtitle="Compradores que transferiram"
+            title={numberFormatter.format(COMPRADORES_QUE_TRANSFERIRAM)}
+            change={null}
+            changeTrend="positive"
+            actions={false}
+            className={HIDE_TREND_AND_MENU}
+        />
+    </div>
+);
 
 /* ------------------------------------------------------------------ */
 /*  Filter config                                                     */
@@ -373,7 +504,7 @@ export function Transferencias() {
                                 <FilterDropdown
                                     filters={filters}
                                     appliedCount={appliedCount}
-                                    placement="bottom start"
+                                    placement="bottom end"
                             onAddFilter={handleAddFilter}
                             onRemoveFilter={handleRemoveFilter}
                             onFilterChange={handleFilterChange}
@@ -465,6 +596,8 @@ export function Transferencias() {
                         }
                     />
 
+                    <TransferenciasMetricsRow />
+
                     {view === "table" ? (
                         <TransferenciasTable rows={filteredTransferencias} />
                     ) : (
@@ -475,6 +608,32 @@ export function Transferencias() {
         </BackstageLayout>
     );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Paginação: anima a troca e rola suave até o topo da lista          */
+/* ------------------------------------------------------------------ */
+
+const PAGE_SIZE_INICIAL = 10;
+
+/**
+ * Devolve um ref para ancorar o topo da lista. Sempre que `page` muda (exceto na
+ * 1ª montagem), rola suavemente até esse topo — assim o usuário nunca cai no meio
+ * da lista nova. Combine com `key={page}` no container para reanimar a entrada.
+ */
+function useScrollToTopOnPageChange<T extends HTMLElement = HTMLElement>(page: number) {
+    const topRef = useRef<T>(null);
+    const primeiraRenderizacao = useRef(true);
+    useEffect(() => {
+        if (primeiraRenderizacao.current) {
+            primeiraRenderizacao.current = false;
+            return;
+        }
+        topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, [page]);
+    return topRef;
+}
+
+const PAGE_TRANSITION = "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-200 motion-safe:ease-out";
 
 /* ------------------------------------------------------------------ */
 /*  Transferências table                                              */
@@ -496,7 +655,7 @@ const COLUMNS: Array<{ key: keyof Transferencia; label: string }> = [
 
 const TransferenciasTable = ({ rows }: { rows: Transferencia[] }) => {
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(100);
+    const [pageSize, setPageSize] = useState(PAGE_SIZE_INICIAL);
 
     const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
     const safePage = Math.min(page, totalPages);
@@ -505,9 +664,14 @@ const TransferenciasTable = ({ rows }: { rows: Transferencia[] }) => {
         return rows.slice(start, start + pageSize);
     }, [rows, safePage, pageSize]);
 
+    const topRef = useScrollToTopOnPageChange<HTMLDivElement>(safePage);
+    // Filtro mudou (nova referência de `rows`) → volta para a 1ª página.
+    useEffect(() => setPage(1), [rows]);
+
     return (
         <Card title="Relatório de transferência AWA">
-            <div className="overflow-x-auto overflow-y-clip">
+            <div ref={topRef} className="scroll-mt-6" />
+            <div key={safePage} className={cx("overflow-x-auto overflow-y-clip", PAGE_TRANSITION)}>
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
@@ -592,7 +756,7 @@ const formatCpf = (cpf: string): string => {
 
 const TransferenciasCards = ({ rows }: { rows: Transferencia[] }) => {
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(100);
+    const [pageSize, setPageSize] = useState(PAGE_SIZE_INICIAL);
     const [selected, setSelected] = useState<Transferencia | null>(null);
 
     const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -602,18 +766,26 @@ const TransferenciasCards = ({ rows }: { rows: Transferencia[] }) => {
         return rows.slice(start, start + pageSize);
     }, [rows, safePage, pageSize]);
 
+    const topRef = useScrollToTopOnPageChange<HTMLHeadingElement>(safePage);
+    // Filtro mudou (nova referência de `rows`) → volta para a 1ª página.
+    useEffect(() => setPage(1), [rows]);
+
     return (
         <>
+            <h3 ref={topRef} className="scroll-mt-6 text-md font-semibold text-primary">
+                Transferências realizadas
+            </h3>
             {visibleRows.length === 0 ? (
                 <div className="rounded-xl bg-primary px-4 py-12 text-center text-sm text-tertiary ring-1 ring-border-secondary">
                     Nenhuma transferência corresponde aos filtros aplicados.
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div key={safePage} className={cx("flex flex-col gap-3", PAGE_TRANSITION)}>
                     {visibleRows.map((row) => (
                         <TransferenciaCard
                             key={`${row.id}-${row.code}`}
                             row={row}
+                            isSelected={selected?.id === row.id && selected?.code === row.code}
                             onClick={() => setSelected(row)}
                         />
                     ))}
@@ -643,50 +815,129 @@ const TransferenciasCards = ({ rows }: { rows: Transferencia[] }) => {
     );
 };
 
+const TransferCountBadge = ({ count }: { count: number }) => (
+    <BadgeWithDot size="sm" color="gray" type="pill-color" className="w-fit">
+        {count}× {count === 1 ? "transferência" : "transferências"}
+    </BadgeWithDot>
+);
+
+/** Bloco "De"/"Para" em linha (avatar + label + nome). */
+const HolderInline = ({ label, name, emphasis = false }: { label: string; name: string; emphasis?: boolean }) => (
+    <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <Avatar size="sm" initials={getInitials(name)} />
+        <div className="flex min-w-0 flex-col">
+            <span className="text-xs text-tertiary">{label}</span>
+            <span className={cx("truncate text-sm", emphasis ? "font-semibold text-primary" : "font-medium text-secondary")}>{name}</span>
+        </div>
+    </div>
+);
+
 const TransferenciaCard = ({
     row,
+    isSelected = false,
     onClick,
 }: {
     row: Transferencia;
+    isSelected?: boolean;
     onClick: () => void;
-}) => (
-    <button
-        type="button"
-        onClick={onClick}
-        className="group flex w-full flex-col gap-4 rounded-xl bg-primary p-5 text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-primary_hover"
-    >
-        <div className="flex items-center justify-between gap-2">
-            <span className="truncate font-mono text-xs font-medium text-tertiary">{row.code}</span>
+}) => {
+    const count = vezesDe(row.code);
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-current={isSelected || undefined}
+            className={cx(
+                "group flex w-full items-center gap-4 rounded-xl px-4 py-4 text-left transition duration-100 ease-linear hover:bg-primary_hover sm:gap-6 sm:px-5",
+                // Item aberto: fundo de hover + anel da marca (sem escurecer o resto).
+                isSelected ? "bg-primary_hover ring-2 ring-brand" : "bg-primary ring-1 ring-border-secondary",
+            )}
+        >
+            {/* Código + selo de quantas vezes foi transferido */}
+            <div className="flex w-32 shrink-0 flex-col gap-1.5 sm:w-44">
+                <span className="truncate font-mono text-xs font-medium text-tertiary">{row.code}</span>
+                <TransferCountBadge count={count} />
+            </div>
+
+            {/* Fluxo De → Para, na horizontal */}
+            <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+                <HolderInline label="De" name={row.portadorAnteriorNome} />
+                <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
+                <HolderInline label="Para" name={row.portadorAtualNome} emphasis />
+            </div>
+
             <ChevronRight
                 aria-hidden="true"
                 className="size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-hover:translate-x-0.5"
             />
+        </button>
+    );
+};
+
+/* ------------------------------------------------------------------ */
+/*  Histórico de transferência (cadeia completa de portadores)         */
+/* ------------------------------------------------------------------ */
+
+interface HolderHistorico {
+    nome: string;
+    email: string;
+    cpf: string;
+    data: string;
+}
+
+const POOL_HISTORICO = [
+    "Lucas Pereira", "Juliana Martins", "Bruno Azevedo", "Patrícia Gomes", "Marcelo Tavares",
+    "Carolina Freitas", "Eduardo Ramos", "Sofia Cardoso", "Henrique Moraes", "Larissa Almeida",
+    "Diego Fernandes", "Bianca Teixeira", "Rodrigo Nunes", "Vivian Castro",
+];
+const PROVS = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com"];
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const pad11 = (n: number) => String(n).padStart(11, "0");
+const pick = <T,>(arr: T[], i: number): T => arr[((i % arr.length) + arr.length) % arr.length];
+const codeHash = (code: string): number => Array.from(code).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+
+/**
+ * Reconstrói a cadeia completa de portadores (mock). O nº de transferências =
+ * vezesDe(code) → cadeia com (n+1) portadores: comprador original → intermediários
+ * → portador atual, em ordem cronológica.
+ */
+function buildHistorico(row: Transferencia): HolderHistorico[] {
+    const n = vezesDe(row.code);
+    const h = codeHash(row.code);
+    const holders: HolderHistorico[] = [];
+
+    holders.push({ nome: row.nomeComprador, email: row.emailComprador, cpf: row.cpfComprador, data: "" });
+    for (let i = 1; i < n; i++) {
+        const nome = pick(POOL_HISTORICO, h + i * 7);
+        const primeiro = nome.split(" ")[0].toLowerCase();
+        const ultimo = nome.split(" ").slice(-1)[0].toLowerCase();
+        holders.push({
+            nome,
+            email: `${primeiro}.${ultimo}@${pick(PROVS, h + i)}`,
+            cpf: pad11((h * 7919 + i * 31408) % 100000000000),
+            data: "",
+        });
+    }
+    holders.push({ nome: row.portadorAtualNome, email: row.portadorAtualEmail, cpf: row.portadorAtualCpf, data: "" });
+
+    // Datas crescentes (mock) ao longo de dezembro.
+    const base = (h % 8) + 1;
+    holders.forEach((holder, i) => {
+        holder.data = `${pad2(base + i * 3)}/12/2025`;
+    });
+    return holders;
+}
+
+const HistoricoHolder = ({ holder, emphasis = false }: { holder: HolderHistorico; emphasis?: boolean }) => (
+    <div className={cx("flex items-start gap-3 rounded-lg bg-secondary p-3 ring-1 ring-border-secondary", emphasis && "ring-2 ring-brand")}>
+        <Avatar size="md" initials={getInitials(holder.nome)} />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="text-xs text-tertiary tabular-nums">{holder.data}</span>
+            <span className={cx("truncate text-sm text-primary", emphasis ? "font-semibold" : "font-medium")}>{holder.nome}</span>
+            <span className="truncate text-xs text-brand-secondary">{holder.email}</span>
+            <span className="text-xs text-tertiary tabular-nums">{formatCpf(holder.cpf)}</span>
         </div>
-
-        <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2.5">
-                <Avatar size="sm" initials={getInitials(row.portadorAnteriorNome)} />
-                <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-xs text-tertiary">De</span>
-                    <span className="truncate text-sm font-medium text-secondary">
-                        {row.portadorAnteriorNome}
-                    </span>
-                </div>
-            </div>
-
-            <ArrowRight aria-hidden="true" className="ml-2.5 size-4 rotate-90 text-fg-quaternary" />
-
-            <div className="flex items-center gap-2.5">
-                <Avatar size="sm" initials={getInitials(row.portadorAtualNome)} />
-                <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-xs text-tertiary">Para</span>
-                    <span className="truncate text-sm font-semibold text-primary">
-                        {row.portadorAtualNome}
-                    </span>
-                </div>
-            </div>
-        </div>
-    </button>
+    </div>
 );
 
 /* ------------------------------------------------------------------ */
@@ -708,13 +959,7 @@ const TransferenciaDetailsSlideOut = ({
             if (!open) onClose();
         }}
         isDismissable
-        className={({ isEntering, isExiting }) =>
-            cx(
-                "fixed inset-0 z-50 flex justify-end bg-overlay/70 outline-hidden backdrop-blur-[2px]",
-                isEntering && "duration-300 ease-out animate-in fade-in",
-                isExiting && "duration-200 ease-in animate-out fade-out",
-            )
-        }
+        className="fixed inset-0 z-50 flex justify-end outline-hidden"
     >
         <AriaModal
             className={({ isEntering, isExiting }) =>
@@ -743,7 +988,10 @@ const TransferenciaDetailsSlideOut = ({
                     {row && (
                         <>
                             <div className="flex flex-col gap-3 px-6 pt-6 pb-5">
-                                <h3 className="text-md font-semibold text-primary">Identificação</h3>
+                                <div className="flex items-start justify-between gap-3">
+                                    <h3 className="text-md font-semibold text-primary">Identificação</h3>
+                                    <TransferCountBadge count={vezesDe(row.code)} />
+                                </div>
                                 <dl className="flex flex-col gap-2.5">
                                     <DetailRow label="Código do ingresso" value={row.code} isMono />
                                     <DetailRow label="ID da transação" value={row.id} isMono />
@@ -752,35 +1000,8 @@ const TransferenciaDetailsSlideOut = ({
 
                             <div className="mx-6 border-t border-secondary" />
 
+                            {/* Comprador original vem antes do histórico */}
                             <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
-                                <h3 className="text-md font-semibold text-primary">
-                                    Fluxo de portador
-                                </h3>
-                                <HolderBlock
-                                    label="Portador anterior"
-                                    name={row.portadorAnteriorNome}
-                                    email={row.portadorAnteriorEmail}
-                                    cpf={row.portadorAnteriorCpf}
-                                />
-                                <div className="flex items-center gap-2 pl-1.5 text-tertiary">
-                                    <ArrowRight
-                                        aria-hidden="true"
-                                        className="size-4 rotate-90 text-fg-quaternary"
-                                    />
-                                    <span className="text-xs">transferido para</span>
-                                </div>
-                                <HolderBlock
-                                    label="Portador atual"
-                                    name={row.portadorAtualNome}
-                                    email={row.portadorAtualEmail}
-                                    cpf={row.portadorAtualCpf}
-                                    emphasis
-                                />
-                            </div>
-
-                            <div className="mx-6 border-t border-secondary" />
-
-                            <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
                                 <h3 className="text-md font-semibold text-primary">
                                     Comprador original
                                 </h3>
@@ -789,6 +1010,26 @@ const TransferenciaDetailsSlideOut = ({
                                     <DetailRow label="E-mail" value={row.emailComprador} isEmail />
                                     <DetailRow label="CPF" value={formatCpf(row.cpfComprador)} />
                                 </dl>
+                            </div>
+
+                            <div className="mx-6 border-t border-secondary" />
+
+                            {/* Histórico completo: todas as transferências, em ordem */}
+                            <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
+                                <h3 className="text-md font-semibold text-primary">
+                                    Histórico de transferência
+                                </h3>
+                                {buildHistorico(row).map((holder, i, arr) => (
+                                    <Fragment key={i}>
+                                        <HistoricoHolder holder={holder} emphasis={i === arr.length - 1} />
+                                        {i < arr.length - 1 && (
+                                            <div className="flex items-center gap-2 pl-1.5 text-tertiary">
+                                                <ArrowRight aria-hidden="true" className="size-4 rotate-90 text-fg-quaternary" />
+                                                <span className="text-xs">transferido para</span>
+                                            </div>
+                                        )}
+                                    </Fragment>
+                                ))}
                             </div>
                         </>
                     )}
@@ -802,44 +1043,6 @@ const TransferenciaDetailsSlideOut = ({
             </AriaDialog>
         </AriaModal>
     </AriaModalOverlay>
-);
-
-const HolderBlock = ({
-    label,
-    name,
-    email,
-    cpf,
-    emphasis = false,
-}: {
-    label: string;
-    name: string;
-    email: string;
-    cpf: string;
-    emphasis?: boolean;
-}) => (
-    <div
-        className={cx(
-            "flex items-start gap-3 rounded-lg bg-secondary p-3 ring-1 ring-border-secondary",
-            emphasis && "ring-2 ring-brand",
-        )}
-    >
-        <Avatar size="md" initials={getInitials(name)} />
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="text-xs font-medium text-tertiary uppercase tracking-wide">
-                {label}
-            </span>
-            <span
-                className={cx(
-                    "truncate text-sm text-primary",
-                    emphasis ? "font-semibold" : "font-medium",
-                )}
-            >
-                {name}
-            </span>
-            <span className="truncate text-xs text-brand-secondary">{email}</span>
-            <span className="text-xs text-tertiary tabular-nums">{formatCpf(cpf)}</span>
-        </div>
-    </div>
 );
 
 const DetailRow = ({

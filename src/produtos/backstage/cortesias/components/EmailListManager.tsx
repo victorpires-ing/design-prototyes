@@ -158,7 +158,7 @@ export function EmailListManager({ onValidityChange }: EmailListManagerProps) {
             if (!parseResult.ok) {
                 const message =
                     parseResult.reason === "no-email-column"
-                        ? 'Para importar contatos, a planilha precisa ter uma coluna chamada "email". Revise o arquivo e envie novamente.'
+                        ? 'Para importar contatos, a planilha precisa ter alguma coluna chamada "email". Revise o arquivo e envie novamente.'
                         : "A planilha não tem contatos preenchidos na coluna email. Adicione pelo menos um e-mail e envie o arquivo novamente.";
                 if (!inline) {
                     showErrorToast(

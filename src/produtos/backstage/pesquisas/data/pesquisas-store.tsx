@@ -49,6 +49,8 @@ export interface Pergunta {
     tipo: TipoPergunta;
     opcoes: string[];
     ativa: boolean;
+    /** Se a resposta é obrigatória no formulário (vale onde a pergunta aparecer). */
+    obrigatoria: boolean;
     /** Nº de respostas já coletadas — trava a exclusão. */
     respostas: number;
 }
@@ -87,6 +89,7 @@ export interface PerguntaInput {
     tipo: TipoPergunta;
     opcoes: string[];
     ativa: boolean;
+    obrigatoria: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -94,8 +97,8 @@ export interface PerguntaInput {
 /* ------------------------------------------------------------------ */
 
 const PERGUNTAS_MOCK: Pergunta[] = [
-    { id: "1", titulo: "Nome completo do portador", tipo: "texto-curto", opcoes: [], ativa: true, respostas: 0 },
-    { id: "2", titulo: "CPF do portador", ajuda: "Usado para validação na entrada.", tipo: "texto-curto", opcoes: [], ativa: true, respostas: 128 },
+    { id: "1", titulo: "Nome completo do portador", tipo: "texto-curto", opcoes: [], ativa: true, obrigatoria: true, respostas: 0 },
+    { id: "2", titulo: "CPF do portador", ajuda: "Usado para validação na entrada.", tipo: "texto-curto", opcoes: [], ativa: true, obrigatoria: true, respostas: 128 },
     {
         id: "3",
         titulo: "Tamanho da camiseta",
@@ -103,6 +106,7 @@ const PERGUNTAS_MOCK: Pergunta[] = [
         tipo: "selecao-unica",
         opcoes: ["P", "M", "G", "GG"],
         ativa: true,
+        obrigatoria: true,
         respostas: 42,
     },
     {
@@ -111,10 +115,11 @@ const PERGUNTAS_MOCK: Pergunta[] = [
         tipo: "multipla-escolha",
         opcoes: ["Vegetariano", "Vegano", "Sem glúten", "Sem lactose"],
         ativa: true,
+        obrigatoria: false,
         respostas: 0,
     },
-    { id: "5", titulo: "Telefone de contato", tipo: "texto-curto", opcoes: [], ativa: false, respostas: 0 },
-    { id: "6", titulo: "Documento com foto", ajuda: "Frente e verso de um documento oficial.", tipo: "anexo", opcoes: [], ativa: true, respostas: 0 },
+    { id: "5", titulo: "Telefone de contato", tipo: "texto-curto", opcoes: [], ativa: false, obrigatoria: false, respostas: 0 },
+    { id: "6", titulo: "Documento com foto", ajuda: "Frente e verso de um documento oficial.", tipo: "anexo", opcoes: [], ativa: true, obrigatoria: true, respostas: 0 },
 ];
 
 const TITULO_FORMULARIO_PADRAO = "Informações do portador";
@@ -141,6 +146,25 @@ const INGRESSOS_MOCK: TipoIngresso[] = [
     // 09/08 — Área VIP
     { id: "vip-inteira", nome: "Inteira", grupo: "Área VIP", data: DATA_2 },
     { id: "vip-meia", nome: "Meia", grupo: "Área VIP", data: DATA_2 },
+];
+
+/** Item vinculável a uma pergunta — ingresso ou produto. */
+export interface ItemVinculavel {
+    id: string;
+    nome: string;
+    grupo: string;
+    /** Data/sessão (só ingressos). Produtos não têm. */
+    data?: string;
+    categoria: "ingresso" | "produto";
+    /** Miniatura (só produtos). */
+    imagem?: string;
+}
+
+const PRODUTOS_MOCK: ItemVinculavel[] = [
+    { id: "prod-camiseta", nome: "Camiseta oficial", grupo: "Produtos", categoria: "produto", imagem: "https://picsum.photos/seed/camiseta/96/96" },
+    { id: "prod-copo", nome: "Copo colecionável", grupo: "Produtos", categoria: "produto", imagem: "https://picsum.photos/seed/copo/96/96" },
+    { id: "prod-estacionamento", nome: "Estacionamento", grupo: "Produtos", categoria: "produto", imagem: "https://picsum.photos/seed/estacionamento/96/96" },
+    { id: "prod-kit", nome: "Kit do evento", grupo: "Produtos", categoria: "produto", imagem: "https://picsum.photos/seed/kit/96/96" },
 ];
 
 const ASSOCIACOES_MOCK: Record<string, AssocItem[]> = {
@@ -182,6 +206,8 @@ interface PesquisasStoreValue {
     addPergunta: (input: PerguntaInput) => Pergunta;
     updatePergunta: (id: string, input: PerguntaInput) => void;
     togglePergunta: (id: string) => void;
+    /** Define se a pergunta é obrigatória no formulário (propaga às associações). */
+    setObrigatoriaPergunta: (id: string, value: boolean) => void;
     removePergunta: (id: string) => void;
     /** Simulação (protótipo): esvazia o banco de perguntas / restaura o mock. */
     esvaziarBanco: () => void;
@@ -190,6 +216,18 @@ interface PesquisasStoreValue {
     countIngressosDaPergunta: (perguntaId: string) => number;
     /** Tipos de ingresso que usam a pergunta. */
     ingressosDaPergunta: (perguntaId: string) => TipoIngresso[];
+    /** Reordena o banco de perguntas pela lista de ids (define a ordem do formulário). */
+    reorderPerguntas: (ids: string[]) => void;
+    /** Define em quais ingressos a pergunta está presente (adiciona no fim / remove). */
+    setIngressosDaPergunta: (perguntaId: string, ingressoIds: string[]) => void;
+    /** Todos os itens vinculáveis (ingressos + produtos). */
+    itensVinculaveis: ItemVinculavel[];
+    /** Itens (ingressos + produtos) que usam a pergunta. */
+    itensDaPergunta: (perguntaId: string) => ItemVinculavel[];
+    /** Quantos itens (ingressos + produtos) usam a pergunta. */
+    countItensDaPergunta: (perguntaId: string) => number;
+    /** Define em quais itens (ingressos + produtos) a pergunta está presente. */
+    setItensDaPergunta: (perguntaId: string, itemIds: string[]) => void;
     /** Adiciona/remove a pergunta de um ingresso (mantém ordem ao adicionar no fim). */
     togglePerguntaNoIngresso: (ingressoId: string, perguntaId: string) => void;
     /** Vincula um conjunto ordenado de perguntas (com obrigatoriedade) a vários ingressos, na posição indicada. */
@@ -219,10 +257,10 @@ function hashId(s: string): number {
 const mockRespostas = (id: string) => 23 + (hashId(id) % 137);
 
 export function PesquisasProvider({ children }: { children: ReactNode }) {
-    // Banco começa VAZIO — o fluxo realista cria as perguntas e as associa a ingressos durante o teste.
-    const [perguntas, setPerguntas] = useState<Pergunta[]>([]);
+    // Banco pré-populado — base para desenvolver a interface de associação pergunta → ingresso.
+    const [perguntas, setPerguntas] = useState<Pergunta[]>(PERGUNTAS_MOCK);
     const [ingressos] = useState<TipoIngresso[]>(INGRESSOS_MOCK);
-    const [associacoes, setAssociacoes] = useState<Record<string, AssocItem[]>>({});
+    const [associacoes, setAssociacoes] = useState<Record<string, AssocItem[]>>(ASSOCIACOES_MOCK);
     const [titulosFormulario, setTitulosFormulario] = useState<Record<string, string>>(TITULOS_FORMULARIO_MOCK);
 
     // Respostas só aparecem DEPOIS que a pergunta é associada a algum ingresso.
@@ -238,13 +276,21 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
     const getPergunta = useCallback((id: string) => perguntasView.find((p) => p.id === id), [perguntasView]);
 
     const addPergunta = useCallback((input: PerguntaInput) => {
-        const pergunta: Pergunta = { id: nextId(), respostas: 0, ...input };
+        const pergunta: Pergunta = { id: nextId(), respostas: 0, obrigatoria: true, ...input };
         setPerguntas((prev) => [pergunta, ...prev]);
         return pergunta;
     }, []);
 
     const updatePergunta = useCallback((id: string, input: PerguntaInput) => {
         setPerguntas((prev) => prev.map((p) => (p.id === id ? { ...p, ...input } : p)));
+        // Mantém a obrigatoriedade das associações em sincronia com a pergunta.
+        setAssociacoes((prev) => {
+            const next: Record<string, AssocItem[]> = {};
+            for (const [ingressoId, itens] of Object.entries(prev)) {
+                next[ingressoId] = itens.map((it) => (it.perguntaId === id ? { ...it, obrigatoria: input.obrigatoria } : it));
+            }
+            return next;
+        });
     }, []);
 
     const togglePergunta = useCallback((id: string) => {
@@ -278,6 +324,75 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
         (perguntaId: string) => ingressos.filter((i) => (associacoes[i.id] ?? []).some((it) => it.perguntaId === perguntaId)),
         [ingressos, associacoes],
     );
+
+    const reorderPerguntas = useCallback((ids: string[]) => {
+        setPerguntas((prev) => {
+            const byId = new Map(prev.map((p) => [p.id, p]));
+            const ordered = ids.map((id) => byId.get(id)).filter((p): p is Pergunta => Boolean(p));
+            const missing = prev.filter((p) => !ids.includes(p.id));
+            return [...ordered, ...missing];
+        });
+    }, []);
+
+    const setIngressosDaPergunta = useCallback(
+        (perguntaId: string, ingressoIds: string[]) => {
+            const alvo = new Set(ingressoIds);
+            const obrigatoria = perguntas.find((p) => p.id === perguntaId)?.obrigatoria ?? true;
+            setAssociacoes((prev) => {
+                const next = { ...prev };
+                for (const ing of INGRESSOS_MOCK) {
+                    const atuais = next[ing.id] ?? [];
+                    const tem = atuais.some((it) => it.perguntaId === perguntaId);
+                    if (alvo.has(ing.id) && !tem) next[ing.id] = [...atuais, { perguntaId, obrigatoria }];
+                    else if (!alvo.has(ing.id) && tem) next[ing.id] = atuais.filter((it) => it.perguntaId !== perguntaId);
+                }
+                return next;
+            });
+        },
+        [perguntas],
+    );
+
+    const itensVinculaveis = useMemo<ItemVinculavel[]>(
+        () => [...ingressos.map((i) => ({ ...i, categoria: "ingresso" as const })), ...PRODUTOS_MOCK],
+        [ingressos],
+    );
+
+    const itensDaPergunta = useCallback(
+        (perguntaId: string) => itensVinculaveis.filter((it) => (associacoes[it.id] ?? []).some((a) => a.perguntaId === perguntaId)),
+        [itensVinculaveis, associacoes],
+    );
+
+    const countItensDaPergunta = useCallback((perguntaId: string) => itensDaPergunta(perguntaId).length, [itensDaPergunta]);
+
+    const setItensDaPergunta = useCallback(
+        (perguntaId: string, itemIds: string[]) => {
+            const alvo = new Set(itemIds);
+            const obrigatoria = perguntas.find((p) => p.id === perguntaId)?.obrigatoria ?? true;
+            setAssociacoes((prev) => {
+                const next = { ...prev };
+                for (const it of itensVinculaveis) {
+                    const atuais = next[it.id] ?? [];
+                    const tem = atuais.some((a) => a.perguntaId === perguntaId);
+                    if (alvo.has(it.id) && !tem) next[it.id] = [...atuais, { perguntaId, obrigatoria }];
+                    else if (!alvo.has(it.id) && tem) next[it.id] = atuais.filter((a) => a.perguntaId !== perguntaId);
+                }
+                return next;
+            });
+        },
+        [itensVinculaveis, perguntas],
+    );
+
+    // Define obrigatoriedade no nível da pergunta e propaga para todas as associações.
+    const setObrigatoriaPergunta = useCallback((id: string, value: boolean) => {
+        setPerguntas((prev) => prev.map((p) => (p.id === id ? { ...p, obrigatoria: value } : p)));
+        setAssociacoes((prev) => {
+            const next: Record<string, AssocItem[]> = {};
+            for (const [ingressoId, itens] of Object.entries(prev)) {
+                next[ingressoId] = itens.map((it) => (it.perguntaId === id ? { ...it, obrigatoria: value } : it));
+            }
+            return next;
+        });
+    }, []);
 
     const togglePerguntaNoIngresso = useCallback((ingressoId: string, perguntaId: string) => {
         setAssociacoes((prev) => {
@@ -344,11 +459,18 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
             addPergunta,
             updatePergunta,
             togglePergunta,
+            setObrigatoriaPergunta,
             removePergunta,
             esvaziarBanco,
             restaurarBanco,
             countIngressosDaPergunta,
             ingressosDaPergunta,
+            reorderPerguntas,
+            setIngressosDaPergunta,
+            itensVinculaveis,
+            itensDaPergunta,
+            countItensDaPergunta,
+            setItensDaPergunta,
             togglePerguntaNoIngresso,
             vincularPerguntasEmIngressos,
             perguntasDoIngresso,
@@ -357,7 +479,7 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
             tituloDoIngresso,
             setTituloFormulario,
         }),
-        [perguntasView, ingressos, associacoes, getPergunta, addPergunta, updatePergunta, togglePergunta, removePergunta, esvaziarBanco, restaurarBanco, countIngressosDaPergunta, ingressosDaPergunta, togglePerguntaNoIngresso, vincularPerguntasEmIngressos, perguntasDoIngresso, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario],
+        [perguntasView, ingressos, associacoes, getPergunta, addPergunta, updatePergunta, togglePergunta, setObrigatoriaPergunta, removePergunta, esvaziarBanco, restaurarBanco, countIngressosDaPergunta, ingressosDaPergunta, reorderPerguntas, setIngressosDaPergunta, itensVinculaveis, itensDaPergunta, countItensDaPergunta, setItensDaPergunta, togglePerguntaNoIngresso, vincularPerguntasEmIngressos, perguntasDoIngresso, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario],
     );
 
     return <PesquisasContext.Provider value={value}>{children}</PesquisasContext.Provider>;

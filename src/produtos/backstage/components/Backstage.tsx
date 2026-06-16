@@ -247,7 +247,6 @@ const PRODUCER_NAV: Array<{
     { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
     { id: "permissao", icon: UsersPlus, label: "Permissão" },
     { id: "produtos", icon: Package, label: "Produtos" },
-    { id: "perguntas", icon: BarChartSquare02, label: "Coleta de dados", href: "/backstage/pesquisas/banco" },
     {
         id: "publico",
         icon: Users01,
@@ -444,12 +443,6 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
                 <ProducerRailItem icon={Calendar} label="Eventos" href="/backstage/" isActive={activeProducer === "eventos" || !activeProducer} />
                 <ProducerRailItem icon={UsersPlus} label="Equipe" />
                 <ProducerRailItem icon={Bank} label="Finanças" />
-                <ProducerRailItem
-                    icon={BarChartSquare02}
-                    label={"Coleta de\ndados"}
-                    href="/backstage/pesquisas/banco"
-                    isActive={activeProducer === "perguntas"}
-                />
                 <ProducerRailItem icon={Users01} label="Público" />
                 <ProducerRailItem icon={Settings01} label="Ajustes" />
             </nav>

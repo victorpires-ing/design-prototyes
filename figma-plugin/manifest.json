@@ -1,0 +1,13 @@
+{
+  "name": "AFTER DS — Importar do site",
+  "id": "1648160532885132907",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["none"],
+    "reasoning": "O plugin reconstrói a partir de um JSON colado; não faz requisições de rede no v1."
+  }
+}

@@ -16,6 +16,15 @@ import type { Comment } from "./types";
 
 const STORE = remoteCommentsStore;
 const AUTHOR_KEY = "design-prototyes:comments:author";
+const ENABLED_KEY = "design-prototyes:comments:enabled";
+
+/** Lê o estado dos comentários a partir do `?comments=on/off` ou do estado persistido. */
+function lerCommentsEnabled(search: string): boolean {
+    const param = new URLSearchParams(search).get("comments");
+    if (param === "on") return true;
+    if (param === "off") return false;
+    return sessionStorage.getItem(ENABLED_KEY) === "on";
+}
 
 const PIN_SIZE = 32;
 const BUBBLE_WIDTH = 280;
@@ -187,8 +196,19 @@ interface CommentsLayerProps {
 
 export function CommentsLayer({ children }: CommentsLayerProps) {
     const location = useLocation();
-    // Flag temporária: os comentários só aparecem quando a rota tem "?comments=on".
-    const commentsEnabled = new URLSearchParams(location.search).get("comments") === "on";
+    // Os comentários ligam com "?comments=on" e PERMANECEM ao navegar (persistido),
+    // até serem desligados com "?comments=off".
+    const [commentsEnabled, setCommentsEnabled] = useState(() => lerCommentsEnabled(location.search));
+    useEffect(() => {
+        const param = new URLSearchParams(location.search).get("comments");
+        if (param === "on") {
+            sessionStorage.setItem(ENABLED_KEY, "on");
+            setCommentsEnabled(true);
+        } else if (param === "off") {
+            sessionStorage.removeItem(ENABLED_KEY);
+            setCommentsEnabled(false);
+        }
+    }, [location.search]);
     const [comments, setComments] = useState<Comment[]>([]);
     const [isPlacing, setIsPlacing] = useState(false);
     const [draft, setDraft] = useState<DraftComment | null>(null);
@@ -279,6 +299,16 @@ export function CommentsLayer({ children }: CommentsLayerProps) {
                 setOpenId(null);
                 setDraft(null);
                 setHighlight(null);
+                // Se os comentários estão ocultos, liga pra sessão (com ?comments=on na URL) e já comenta.
+                if (!commentsEnabled) {
+                    sessionStorage.setItem(ENABLED_KEY, "on");
+                    const params = new URLSearchParams(window.location.search);
+                    params.set("comments", "on");
+                    window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}${window.location.hash}`);
+                    setCommentsEnabled(true);
+                    setIsPlacing(true);
+                    return;
+                }
                 setIsPlacing((prev) => !prev);
                 return;
             }
@@ -299,7 +329,7 @@ export function CommentsLayer({ children }: CommentsLayerProps) {
         };
         window.addEventListener("keydown", handler);
         return () => window.removeEventListener("keydown", handler);
-    }, [draft, isPlacing, openId, exitPlacing]);
+    }, [draft, isPlacing, openId, exitPlacing, commentsEnabled]);
 
     const handlePlacementMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!isPlacing || draft) return;

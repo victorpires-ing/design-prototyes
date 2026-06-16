@@ -157,7 +157,7 @@ export function ImportEmailsModal({
                                     </span>
                                 </p>
                                 <p className="mt-1 text-xs text-tertiary">
-                                    .CSV ou .XLSX com até 100 contatos na coluna "email"
+                                    Use um arquivo .CSV ou .XLSX com até 100 contatos. O arquivo deve incluir uma coluna chamada email.
                                 </p>
                             </div>
                         </div>

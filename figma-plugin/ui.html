@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        --bg: #2c2c2c; --fg: #ffffff; --muted: #a1a1aa; --line: rgba(255,255,255,.14);
+        --field: rgba(255,255,255,.06); --brand: #ff271a; --brand-hover: #ff4a40; --ok: #4ade80; --err: #f87171;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; font: 12px/1.45 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--fg); background: var(--bg); -webkit-font-smoothing: antialiased; }
+      .wrap { display: flex; flex-direction: column; gap: 11px; padding: 13px; }
+
+      .title { display: flex; align-items: center; gap: 7px; }
+      .logo { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; border-radius: 5px; background: var(--brand); color: #fff; font-weight: 700; font-size: 11px; flex: none; }
+      h1 { font-size: 12px; font-weight: 600; margin: 0; }
+
+      /* Campo de colar: bem pequeno (o usuário só cola, não lê o JSON). */
+      .paste { position: relative; }
+      textarea {
+        width: 100%; height: 38px; resize: none; border: 1px dashed var(--line); border-radius: 8px;
+        padding: 8px 10px; font: 11px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted);
+        background: var(--field); outline: none; transition: border-color .12s, box-shadow .12s;
+      }
+      textarea::placeholder { color: #71717a; }
+      textarea:focus { border-color: var(--brand); border-style: solid; box-shadow: 0 0 0 3px rgba(255,39,26,.18); }
+      textarea.has { color: transparent; }
+      .detected {
+        position: absolute; inset: 0; display: none; align-items: center; gap: 7px; padding: 0 10px; border-radius: 8px;
+        background: rgba(74,222,128,.12); border: 1px solid rgba(74,222,128,.4); color: var(--ok);
+        font-size: 11px; font-weight: 600; pointer-events: none;
+      }
+      .detected.show { display: flex; }
+
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .lbl { font-size: 11px; font-weight: 600; color: var(--muted); }
+      .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+      .seg button { background: transparent; color: var(--muted); border: 0; padding: 5px 12px; font: inherit; font-weight: 600; cursor: pointer; transition: background .12s, color .12s; }
+      .seg button + button { border-left: 1px solid var(--line); }
+      .seg button[aria-pressed="true"] { background: #fff; color: #1a1a1a; }
+
+      .actions { display: flex; gap: 8px; }
+      button.btn { border: 0; border-radius: 8px; padding: 8px 12px; font: inherit; font-weight: 600; cursor: pointer; transition: background .12s, opacity .12s; }
+      .btn.primary { background: var(--brand); color: #fff; flex: 1; }
+      .btn.primary:hover:not(:disabled) { background: var(--brand-hover); }
+      .btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+      .btn.ghost:hover { color: var(--fg); }
+      .btn:disabled { opacity: .5; cursor: default; }
+
+      .status { display: flex; align-items: center; font-size: 11px; color: var(--muted); min-height: 14px; }
+      .status.ok { color: var(--ok); } .status.err { color: var(--err); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="title"><span class="logo" aria-hidden="true">A</span><h1>Importar tela</h1></div>
+
+      <div class="paste">
+        <textarea id="json" spellcheck="false" placeholder="Cole o JSON exportado (Ctrl/Cmd+V)"></textarea>
+        <div class="detected" id="detected"><span>✓</span><span id="detectedText"></span></div>
+      </div>
+
+      <div class="row">
+        <span class="lbl">Tema</span>
+        <span class="seg" id="tema" role="group" aria-label="Tema da importação">
+          <button type="button" data-tema="light" aria-pressed="true">Light</button>
+          <button type="button" data-tema="dark" aria-pressed="false">Dark</button>
+        </span>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn ghost" id="clear" title="Limpar">Limpar</button>
+        <button type="button" class="btn primary" id="import" disabled>Importar</button>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <script>
+      const ta = document.getElementById("json");
+      const detected = document.getElementById("detected");
+      const detectedText = document.getElementById("detectedText");
+      const statusEl = document.getElementById("status");
+      const btn = document.getElementById("import");
+      let tema = "light";
+      let dados = null;
+
+      document.getElementById("tema").addEventListener("click", (e) => {
+        const b = e.target.closest("button[data-tema]");
+        if (!b) return;
+        tema = b.dataset.tema;
+        for (const x of document.querySelectorAll("#tema button")) x.setAttribute("aria-pressed", String(x === b));
+      });
+
+      function avaliar() {
+        const raw = ta.value.trim();
+        dados = null;
+        if (!raw) { detected.classList.remove("show"); ta.classList.remove("has"); btn.disabled = true; setStatus("", ""); return; }
+        try {
+          dados = JSON.parse(raw);
+        } catch (e) {
+          detected.classList.remove("show"); ta.classList.remove("has"); btn.disabled = true;
+          return setStatus("JSON inválido — copie a tela de novo.", "err");
+        }
+        detectedText.textContent = "Tela detectada · " + ((dados && dados.pathname) || "tela");
+        detected.classList.add("show");
+        ta.classList.add("has");
+        btn.disabled = false;
+        setStatus("", "");
+      }
+
+      ta.addEventListener("input", avaliar);
+      document.getElementById("clear").onclick = () => { ta.value = ""; avaliar(); ta.focus(); };
+
+      btn.onclick = () => {
+        if (!dados) return;
+        setStatus("Importando…", "");
+        btn.disabled = true;
+        btn.textContent = "Importando…";
+        parent.postMessage({ pluginMessage: { type: "import", screen: dados, tema } }, "*");
+      };
+
+      function setStatus(msg, kind) { statusEl.textContent = msg; statusEl.className = "status " + (kind || ""); }
+
+      onmessage = (e) => {
+        const m = e.data.pluginMessage;
+        if (!m) return;
+        btn.textContent = "Importar";
+        btn.disabled = !dados;
+        if (m.type === "done") setStatus(m.message || "Tela importada ✓", "ok");
+        if (m.type === "error") setStatus("Erro: " + m.message, "err");
+      };
+    </script>
+  </body>
+</html>

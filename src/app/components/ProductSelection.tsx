@@ -7,7 +7,7 @@ import { cx } from "@/utils/cx";
 /*  Products                                                          */
 /* ------------------------------------------------------------------ */
 
-type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages";
+type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes";
 
 interface ProductCardData {
     id: string;
@@ -53,6 +53,13 @@ const PRODUCTS: ProductCardData[] = [
         to: "/landing-pages",
         illustration: "landing-pages",
     },
+    {
+        id: "testes",
+        name: "Painel de Testes",
+        description: "Testes de usabilidade dos protótipos",
+        to: "/testes",
+        illustration: "testes",
+    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
@@ -61,6 +68,7 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     "novo-site": NovoSiteIllustration,
     "ingresse-app": AppIllustration,
     "landing-pages": LandingPagesIllustration,
+    testes: TestesIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -187,6 +195,44 @@ function LandingPagesIllustration() {
             <rect x="186" y="93" width="62" height="5" rx="2.5" fill={N200} />
             <rect x="186" y="104" width="70" height="5" rx="2.5" fill={N200} />
             <rect x="186" y="115" width="50" height="5" rx="2.5" fill={N200} />
+        </svg>
+    );
+}
+
+function TestesIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <defs>
+                <radialGradient id="t-heat" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor={BRAND} stopOpacity="0.55" />
+                    <stop offset="100%" stopColor={BRAND} stopOpacity="0" />
+                </radialGradient>
+            </defs>
+            <rect width="320" height="160" fill={N100} />
+            {/* janela do protótipo sob teste */}
+            <rect x="58" y="22" width="204" height="116" rx="10" fill={N50} stroke={BORDER} />
+            <rect x="58" y="22" width="204" height="20" rx="10" fill={N100} />
+            <circle cx="72" cy="32" r="3" fill={N300} />
+            <circle cx="82" cy="32" r="3" fill={N300} />
+            <circle cx="92" cy="32" r="3" fill={N300} />
+            {/* conteúdo */}
+            <rect x="72" y="54" width="80" height="8" rx="4" fill={N300} />
+            <rect x="72" y="68" width="120" height="5" rx="2.5" fill={N200} />
+            <rect x="72" y="78" width="100" height="5" rx="2.5" fill={N200} />
+            {/* botão alvo */}
+            <rect x="72" y="98" width="64" height="20" rx="6" fill={BRAND} />
+            {/* mapa de calor sobre o botão */}
+            <circle cx="104" cy="108" r="34" fill="url(#t-heat)" />
+            {/* cursor */}
+            <g transform="translate(116 110)">
+                <path d="M0 0 L0 18 L5 13 L9 21 L12 19 L8 12 L15 12 Z" fill="#ffffff" stroke={N400} strokeWidth="1" />
+            </g>
+            {/* mini-gráfico de resultados */}
+            <g>
+                <rect x="206" y="96" width="6" height="22" rx="2" fill={N300} />
+                <rect x="218" y="86" width="6" height="32" rx="2" fill={N400} />
+                <rect x="230" y="76" width="6" height="42" rx="2" fill={BRAND} />
+            </g>
         </svg>
     );
 }

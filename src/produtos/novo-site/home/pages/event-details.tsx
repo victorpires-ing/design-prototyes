@@ -841,11 +841,19 @@ function ProduzidoPor() {
                     </div>
                     <p className="min-w-0 flex-1 text-sm text-secondary">
                         {preview.map((p) => p.name).join(", ")}
-                        {hidden > 0 && ` e ${hidden} mais`}
+                        {hidden > 0 && (
+                            <>
+                                {" e "}
+                                <button
+                                    type="button"
+                                    onClick={() => setExpanded(true)}
+                                    className="font-semibold text-brand-secondary transition hover:text-brand-secondary_hover hover:underline"
+                                >
+                                    {hidden} mais
+                                </button>
+                            </>
+                        )}
                     </p>
-                    <Button size="sm" color="link-color" iconTrailing={ChevronDown} onClick={() => setExpanded(true)} className="shrink-0">
-                        Mostrar mais
-                    </Button>
                 </div>
             )}
         </section>

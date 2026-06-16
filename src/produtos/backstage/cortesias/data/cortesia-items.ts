@@ -39,68 +39,93 @@ export const MAX_SELECTIONS = 10;
 export const SESSIONS: SessionSection[] = [
     {
         id: "session-1",
-        datetime: "08 de agosto às 14:00",
+        datetime: "16 de agosto às 16:00",
         groups: [
             {
-                name: "Pista",
+                name: "Cadeira Superior Norte",
                 tickets: [
-                    { id: "tk-1-1", name: "Inteira", type: "Lote 1" },
-                    { id: "tk-1-2", name: "Meia-entrada", type: "Lote 1" },
-                    { id: "tk-1-3", name: "Solidária", type: "Lote único" },
+                    { id: "tk-1", name: "Esquadrão de Aço", type: "Lote único" },
+                    { id: "tk-2", name: "Inteira", type: "Lote único" },
+                    { id: "tk-3", name: "Meia-entrada", type: "Lote único" },
+                    { id: "tk-4", name: "Idoso 60+", type: "Lote único" },
                 ],
             },
             {
-                name: "VIP",
+                name: "Cadeira Superior Leste",
                 tickets: [
-                    { id: "tk-1-4", name: "Inteira", type: "Lote 1" },
-                    { id: "tk-1-5", name: "Meia-entrada", type: "Lote 1" },
-                    { id: "tk-1-6", name: "Camarote duplo", type: "Lote único" },
+                    { id: "tk-5", name: "Sócio Associação", type: "Lote único" },
+                    { id: "tk-6", name: "Inteira", type: "Lote único" },
+                    { id: "tk-7", name: "Meia-entrada", type: "Lote único" },
+                    { id: "tk-8", name: "Meia-entrada idoso", type: "Lote único" },
                 ],
             },
-        ],
-    },
-    {
-        id: "session-2",
-        datetime: "09 de agosto às 12:00",
-        groups: [
             {
-                name: "Pista",
+                name: "Cadeira Norte",
                 tickets: [
-                    { id: "tk-2-1", name: "Inteira", type: "Lote 2" },
-                    { id: "tk-2-2", name: "Meia-entrada", type: "Lote 2" },
+                    { id: "tk-9", name: "Esquadrão de Aço", type: "Lote único" },
+                    { id: "tk-10", name: "Esquadrão na Fonte", type: "Lote único" },
+                    { id: "tk-11", name: "Inteira", type: "Lote único" },
+                    { id: "tk-12", name: "Meia-entrada", type: "Lote único" },
+                    { id: "tk-13", name: "Dependente criança menor que 12 anos", type: "Lote único" },
+                ],
+            },
+            {
+                name: "Cadeira Leste",
+                tickets: [
+                    { id: "tk-14", name: "Sócio Associação", type: "Lote único" },
+                    { id: "tk-15", name: "Inteira", type: "Lote único" },
+                    { id: "tk-16", name: "Meia-entrada", type: "Lote único" },
+                    { id: "tk-17", name: "Idoso 60+", type: "Lote único" },
+                ],
+            },
+            {
+                name: "Cadeira Especial Superior",
+                tickets: [
+                    { id: "tk-18", name: "Inteira", type: "Lote único" },
+                    { id: "tk-19", name: "Meia-entrada", type: "Lote único" },
+                    { id: "tk-20", name: "Meia-entrada idoso", type: "Lote único" },
+                ],
+            },
+            {
+                name: "Visitante Superior",
+                tickets: [
+                    { id: "tk-21", name: "Inteira", type: "Lote único" },
+                    { id: "tk-22", name: "Meia-entrada", type: "Lote único" },
+                ],
+            },
+            {
+                name: "Cadeira Sudeste Inferior",
+                tickets: [
+                    { id: "tk-23", name: "Esquadrão na Fonte", type: "Lote único" },
+                    { id: "tk-24", name: "Inteira", type: "Lote único" },
+                    { id: "tk-25", name: "Meia-entrada", type: "Lote único" },
+                    { id: "tk-26", name: "Dependente criança menor que 12 anos", type: "Lote único" },
+                ],
+            },
+            {
+                name: "Cadeira Sudeste Intermediário",
+                tickets: [
+                    { id: "tk-27", name: "Inteira", type: "Lote único" },
+                    { id: "tk-28", name: "Meia-entrada", type: "Lote único" },
+                    { id: "tk-29", name: "Idoso 60+", type: "Lote único" },
+                ],
+            },
+            {
+                name: "Cadeira Especial Inferior",
+                tickets: [
+                    { id: "tk-30", name: "Sócio Associação", type: "Lote único" },
+                    { id: "tk-31", name: "Inteira", type: "Lote único" },
+                    { id: "tk-32", name: "Meia-entrada", type: "Lote único" },
+                    { id: "tk-33", name: "Meia-entrada idoso", type: "Lote único" },
                 ],
             },
         ],
     },
 ];
 
-export const PRODUCTS: ProductEntry[] = [
-    { id: "prod-1", name: "Camiseta oficial Semana Santa", imageUrl: "/event-cover.png" },
-    { id: "prod-2", name: "Caneca comemorativa 2026", imageUrl: "/event-cover.png" },
-];
+export const PRODUCTS: ProductEntry[] = [];
 
-export const COMBOS: ComboEntry[] = [
-    {
-        id: "combo-1",
-        name: "Combo Família",
-        subtitle: "Sessão 1 + 1 produto",
-        subItems: [
-            { name: "Inteira", type: "Pista", date: "08 de ago · 14:00" },
-            { name: "Meia-entrada", type: "Pista", date: "08 de ago · 14:00" },
-            { name: "Camiseta oficial", type: "Produto", date: "—" },
-        ],
-    },
-    {
-        id: "combo-2",
-        name: "Combo VIP Casal",
-        subtitle: "Sessão 1 + brinde",
-        subItems: [
-            { name: "Inteira", type: "VIP", date: "08 de ago · 14:00" },
-            { name: "Inteira", type: "VIP", date: "08 de ago · 14:00" },
-            { name: "Caneca 2026", type: "Brinde", date: "—" },
-        ],
-    },
-];
+export const COMBOS: ComboEntry[] = [];
 
 /* ------------------------------------------------------------------ */
 /*  Resolver: id → typed details                                      */

@@ -59,7 +59,8 @@ export function SelecaoItens() {
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(initialSelection));
     const [searchQuery, setSearchQuery] = useState("");
-    const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set());
+    // Por padrão já abre as sessões (lista aberta).
+    const [openAccordions, setOpenAccordions] = useState<Set<string>>(() => new Set(SESSIONS.map((s) => `session-${s.id}`)));
 
     const toggleAccordion = useCallback((id: string) => {
         setOpenAccordions((prev) => {

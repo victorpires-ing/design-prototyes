@@ -513,21 +513,29 @@ function EventInfo({ config, card }: { config: EventConfig; card: boolean }) {
 
             {/* Título + classificação */}
             <div className="flex items-start gap-4">
-                <h1 className="flex-1 text-display-xs font-semibold text-primary lg:text-display-sm">{config.nomeEvento}</h1>
+                <h1 className="flex-1 text-display-xs font-bold text-primary lg:text-display-sm">{config.nomeEvento}</h1>
                 <AgeBadge value={config.classificacao} />
             </div>
 
             {/* Datas e horários */}
-            <div className="flex items-start gap-3">
-                <Calendar className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
-                <EventDateText config={config} />
+            <div className="flex flex-col gap-3">
+                <div className="flex items-start gap-3">
+                    <Calendar className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
+                    <EventDateText config={config} />
+                </div>
+                <div className="flex items-center gap-3">
+                    <Clock className="size-5 shrink-0 text-fg-quaternary" />
+                    <span className="text-sm text-secondary">
+                        A partir das {config.horarioTipo === "fixo" ? config.horarioFixo : HORARIOS_VARIADOS[0]}00
+                    </span>
+                </div>
             </div>
 
             {/* Local */}
             <div className="flex flex-col gap-3 border-t border-secondary pt-4">
                 <div className="flex items-center gap-3">
                     <HomeLine className="size-5 shrink-0 text-fg-quaternary" />
-                    <span className="text-sm text-secondary">{config.localNome}</span>
+                    <span className="text-sm font-semibold text-secondary">{config.localNome}</span>
                 </div>
                 <div className="flex items-center gap-3">
                     <MarkerPin01 className="size-5 shrink-0 text-fg-quaternary" />
@@ -614,7 +622,7 @@ function SaleStatus({ status, preco }: { status: EventStatus; preco: string }) {
             <div className="flex flex-col">
                 <span className="text-sm text-tertiary">A partir de</span>
                 <span className="text-md font-bold text-primary">
-                    {preco} <span className="font-normal text-sm text-tertiary">• Mais taxa</span>
+                    {preco} <span className="font-normal text-sm text-tertiary">+ taxa</span>
                 </span>
             </div>
             <Button size="lg" color="primary">

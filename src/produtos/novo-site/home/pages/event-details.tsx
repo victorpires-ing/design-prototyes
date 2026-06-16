@@ -117,6 +117,14 @@ export function EventDetails() {
     const [showMiniBar, setShowMiniBar] = useState(false);
     const bannerRef = useRef<HTMLImageElement>(null);
 
+    const sectionTabs: SectionTab[] = [
+        ...(config.temLineup ? [{ id: "lineup", label: "Lineup" }] : []),
+        { id: "experiencia", label: "Experiência" },
+        { id: "descricao", label: "Descrição" },
+        { id: "endereco", label: "Endereço" },
+        { id: "faq", label: "FAQ" },
+    ];
+
     useEffect(() => {
         const el = bannerRef.current;
         if (!el) return;
@@ -148,6 +156,10 @@ export function EventDetails() {
                             <p className="line-clamp-2 flex-1 text-sm font-bold leading-snug text-primary">{config.nomeEvento}</p>
                             <AgeBadge value={config.classificacao} />
                         </div>
+                        {/* Tab de seções — entra junto com a mini-barra */}
+                        <div className="border-t border-secondary">
+                            <SectionTabsBar tabs={sectionTabs} />
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -168,20 +180,38 @@ export function EventDetails() {
                             className="mx-auto w-[240px] max-w-full rounded-2xl shadow-lg lg:w-[354px]"
                         />
 
+                        {/* Tab de seções (desktop) — sticky em fluxo; no mobile vai na mini-barra */}
+                        <div className="sticky top-16 z-30 hidden max-w-[540px] border-b border-secondary bg-primary/90 backdrop-blur-md lg:block">
+                            <SectionTabsBar tabs={sectionTabs} />
+                        </div>
+
                         {/* Seções de conteúdo — largura máxima de 540px */}
-                        <div className="flex flex-col gap-10 lg:max-w-[540px]">
+                        <div className="flex flex-col gap-12 lg:max-w-[540px]">
                             {/* Info do evento — inline no mobile (sem o CTA, que é fixo) */}
                             <div className="lg:hidden">
                                 <EventInfo config={config} card={false} />
                             </div>
 
-                            {config.temLineup && <Lineup config={config} />}
-                            <Complementos />
-                            <Descricao />
-                            <ComoChegar config={config} />
+                            {config.temLineup && (
+                                <div id="lineup" className="scroll-mt-32">
+                                    <Lineup config={config} />
+                                </div>
+                            )}
+                            <div id="experiencia" className="scroll-mt-32">
+                                <Complementos />
+                            </div>
+                            <div id="descricao" className="scroll-mt-32">
+                                <Descricao />
+                            </div>
+                            <div id="endereco" className="scroll-mt-32">
+                                <ComoChegar config={config} />
+                            </div>
                             <ProduzidoPor />
-                            <Faq />
+                            <div id="faq" className="scroll-mt-32">
+                                <Faq />
+                            </div>
                             <HelpCta />
+                            <RegrasVenda />
                         </div>
                     </main>
 
@@ -206,12 +236,128 @@ export function EventDetails() {
                         maskImage: "linear-gradient(to bottom, transparent, black)",
                     }}
                 />
-                <div className="border-t border-secondary bg-primary/85 px-4 pt-3 pb-5 backdrop-blur-lg">
+                <div className="border-t border-secondary bg-primary/85 px-4 pt-3 pb-8 backdrop-blur-lg">
                     <SaleStatus status={config.status} preco={config.preco} />
                 </div>
             </div>
 
             <EventConfigSlideout isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} config={config} onChange={setConfig} />
+        </div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tab fixa de seções — scroll-spy + barra de progresso              */
+/* ------------------------------------------------------------------ */
+
+interface SectionTab {
+    id: string;
+    label: string;
+}
+
+/** Progresso de rolagem APENAS pelas seções navegáveis (1ª → última tab),
+ *  ignorando o que vem depois (ex.: regras de venda). 0 → 1. */
+function useSectionsProgress(firstId: string | undefined, lastId: string | undefined): number {
+    const [progress, setProgress] = useState(0);
+    useEffect(() => {
+        if (!firstId || !lastId) return;
+        const onScroll = () => {
+            const first = document.getElementById(firstId);
+            const last = document.getElementById(lastId);
+            if (!first || !last) return;
+            const start = first.getBoundingClientRect().top + window.scrollY;
+            const end = last.getBoundingClientRect().bottom + window.scrollY;
+            const span = end - start;
+            const seen = window.scrollY + window.innerHeight - start;
+            setProgress(span > 0 ? Math.min(1, Math.max(0, seen / span)) : 0);
+        };
+        onScroll();
+        window.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("resize", onScroll);
+        return () => {
+            window.removeEventListener("scroll", onScroll);
+            window.removeEventListener("resize", onScroll);
+        };
+    }, [firstId, lastId]);
+    return progress;
+}
+
+/** Seção atualmente no topo da viewport (descontando o offset da tab fixa). */
+function useScrollSpy(ids: string[], offset: number): string | null {
+    const key = ids.join(",");
+    const [active, setActive] = useState<string | null>(ids[0] ?? null);
+    useEffect(() => {
+        const list = key ? key.split(",") : [];
+        const onScroll = () => {
+            let current = list[0] ?? null;
+            for (const id of list) {
+                const el = document.getElementById(id);
+                if (el && el.getBoundingClientRect().top - offset <= 0) current = id;
+            }
+            setActive(current);
+        };
+        onScroll();
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+    }, [key, offset]);
+    return active;
+}
+
+function SectionTabsBar({ tabs }: { tabs: SectionTab[] }) {
+    const active = useScrollSpy(
+        tabs.map((t) => t.id),
+        130,
+    );
+    const progress = useSectionsProgress(tabs[0]?.id, tabs[tabs.length - 1]?.id);
+    const navRef = useRef<HTMLElement>(null);
+    const activeRef = useRef<HTMLButtonElement>(null);
+
+    // Mantém a tab ativa visível: centraliza-a no scroll horizontal da própria tab (mobile).
+    useEffect(() => {
+        const nav = navRef.current;
+        const btn = activeRef.current;
+        if (!nav || !btn) return;
+        const target = btn.offsetLeft - (nav.clientWidth - btn.clientWidth) / 2;
+        nav.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+    }, [active]);
+
+    const scrollTo = (id: string) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const y = el.getBoundingClientRect().top + window.scrollY - 116;
+        window.scrollTo({ top: y, behavior: "smooth" });
+    };
+
+    return (
+        <div className="relative">
+            <nav
+                ref={navRef}
+                aria-label="Seções do evento"
+                className="relative flex w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+                {tabs.map((tab) => {
+                    const isActive = active === tab.id;
+                    return (
+                        <button
+                            key={tab.id}
+                            ref={isActive ? activeRef : undefined}
+                            type="button"
+                            onClick={() => scrollTo(tab.id)}
+                            aria-current={isActive || undefined}
+                            className={cx(
+                                "flex-1 px-3 py-3.5 text-center text-sm font-semibold whitespace-nowrap transition-colors duration-100",
+                                isActive ? "text-brand-secondary" : "text-tertiary hover:text-secondary",
+                            )}
+                        >
+                            {tab.label}
+                        </button>
+                    );
+                })}
+            </nav>
+            {/* Barra de progresso de navegação (vermelha) na base da tab */}
+            <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[3px]">
+                <div className="h-full bg-brand-solid transition-[width] duration-150 ease-out" style={{ width: `${progress * 100}%` }} />
+            </div>
         </div>
     );
 }
@@ -741,6 +887,98 @@ function HelpCta() {
             </p>
             <Button size="lg" color="primary">
                 Fale com a gente
+            </Button>
+        </section>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Regras de venda online (exigência legal — fora da navegação)      */
+/* ------------------------------------------------------------------ */
+
+const REGRAS_PT: string[] = [
+    `1) A Ingresse é uma plataforma intermediária especializada na venda de ingressos online para eventos. Os organizadores dos eventos utilizam a nossa plataforma para ofertar seus eventos ao público. Dessa forma, o organizador é o único responsável pela produção, organização, política de vendas, precificação, meia-entrada, atrações, alterações de datas e local de realização do evento e demais questões definidas, única e exclusivamente, pelo organizador do evento.`,
+    `2) A obrigação da Ingresse limita-se estritamente ao uso e manutenção da tecnologia em si, ou seja, dos seus serviços de licenciamento do uso da plataforma da Ingresse.`,
+    `3) O organizador do evento é exclusivamente responsável por suas atividades estarem em conformidade com todo o arcabouço legislativo aplicável a seu evento, incluindo, mas não se limitando a, obtenção de (i) alvará de autorização para realização do evento, (ii) licença de funcionamento, (iii) divulgação e cumprimento de protocolos locais e nacionais relacionados a políticas sanitárias.`,
+    `4) O site (www.ingresse.com) e o App (Ingresse - Ingressos e Eventos) são os únicos canais oficiais de vendas da Ingresse. A Ingresse não se responsabiliza, em qualquer hipótese e aspecto, por ingressos adquiridos com terceiros.`,
+    `5) Compras suspeitas ou com evidências de fraude de qualquer natureza no processo de compra serão canceladas e reembolsadas;`,
+    `6) Para acessar o evento é obrigatória a apresentação do ingresso em formato digital, através do App (Ingresse - Ingressos e Eventos), juntamente com o respectivo documento de identificação oficial com foto;`,
+    `7) O não comparecimento ao evento invalidará o ingresso e não permitirá reembolso;`,
+    `8) Em casos de arrependimento, o Código de Defesa do Consumidor (Artigo 49) prevê que em até 7 (sete) dias o consumidor pode desistir da compra, desde que esse prazo não ultrapasse 48 (quarenta e oito) horas antes do evento ou 24 (vinte e quatro) horas antes da realização de partidas de futebol. O reembolso é realizado via um processador de pagamentos online pela mesma forma de pagamento utilizada na compra, descontada a taxa de conveniência (se houver), no prazo de até 45 (quarenta e cinco) dias após o cancelamento. No caso de compras com cartões de crédito, o valor será devolvido como crédito nas faturas seguintes.`,
+    `9) Em caso de solicitação de estorno da compra em razão do exercício do direito de arrependimento, a taxa de serviço da Ingresse e a taxa de processamento serão descontados do valor total do reembolso;`,
+    `10) O organizador do evento é o único e exclusivo responsável por determinar a habilitação da possibilidade de transferência de ingressos em determinado evento. A Ingresse não determina a habilitação ou não e as regras relacionadas a transferência de ingressos, as quais serão estabelecidas unicamente pelo organizador.`,
+    `11) Caso não conste da descrição do evento acima quaisquer informações adicionais sobre o evento, como estacionamento, cardápio, line-up, ordem de entrada de artistas e demais, relacionadas exclusivamente à organização do evento, deverão ser solicitadas diretamente para o organizador do evento, através do e-mail de contato do mesmo;`,
+    `12) A Ingresse não permite e repudia a venda de ingressos para eventos irregulares, que não estejam seguindo todas as orientações e protocolos de segurança determinados pelas autoridades governamentais competentes. Consideramos, antes de tudo, a saúde e segurança de todos.`,
+    `13) Horário de atendimento do SAC da Ingresse é: Das 11h às 19h, todos os dias, pelos canais: e-mail, FAQ e telefone; e das 10h às 23h, todos os dias, pelo canal WhatsApp.`,
+    `14) Precisa de ajuda? Acesse nosso site e clique em "Fale com a Ingresse", localizada na parte inferior de nosso site. Ao acessar este item, você terá acesso a conteúdos sobre compras, cadastro, entre outros temas.`,
+];
+
+const REGRAS_ES: string[] = [
+    `1) Ingresse es una plataforma intermediaria especializada en la venta de entradas online para eventos. Los organizadores de eventos utilizan nuestra plataforma para ofrecer sus eventos al público. Por esta razón, el organizador es el único responsable de cada detalle del evento, incluyendo su producción, organización, localización, precio de entradas, descuentos, política de ventas, cartel de artistas y/o cambios de fechas.`,
+    `2) La obligación de Ingresse se limita estrictamente al uso y mantenimiento de la tecnología en sí, es decir, a sus servicios de licencia para el uso de la plataforma Ingresse.`,
+    `3) El organizador del evento es el único responsable de asegurar que sus actividades cumplan con todos los marcos legislativos aplicables a su evento, incluyendo, pero no limitado a, la obtención de (i) un permiso de autorización para realizar el evento, (ii) una licencia de funcionamiento, (iii) divulgación y cumplimiento de las políticas locales y nacionales sanitarias.`,
+    `4) El sitio web (www.ingresse.com) y la App (Ingresse – Eventos y Entradas) son los únicos canales de venta oficiales de Ingresse. Ingresse no es responsable, bajo ninguna circunstancia, de las entradas adquiridas mediante otras vías o terceros.`,
+    `5) Las compras sospechosas que evidencien fraude de cualquier tipo en el proceso de compra serán canceladas y reembolsadas.`,
+    `6) Para acceder al evento, es obligatorio presentar la entrada en formato digital, a través de la App (Ingresse – Eventos y Entradas), junto con el respectivo documento de identificación oficial con fotografía.`,
+    `7) La no asistencia al evento invalidará la entrada y no permitirá reembolso.`,
+    `8) El organizador del evento es el único y exclusivo responsable de determinar si existe o no la posibilidad de transferir entradas para un evento determinado. Ingresse no determina la elegibilidad o no de las entradas ni las reglas relacionadas con la transferencia de entradas, que serán establecidas únicamente por el organizador.`,
+    `9) Si la descripción del evento no incluye ninguna información adicional sobre el mismo, como parking, menú, cartel, orden de entrada de los artistas y cualquier otro asunto relacionado exclusivamente con la organización del evento, deberán solicitarse estos datos directamente al organizador del evento a través de su teléfono o correo electrónico.`,
+    `10) Ingresse no permite y rechaza rotundamente la venta de entradas para eventos irregulares que no sigan todos los protocolos de seguridad determinados por las autoridades gubernamentales competentes. Ante todo, priorizamos la salud y la seguridad de todos.`,
+    `11) El horario de atención de Atención al Cliente de Ingresse es todos los días a través de los siguientes canales: correo electrónico, preguntas frecuentes y vía WhatsApp.`,
+    `12) ¿Necesitas ayuda? Visita nuestra página web y haz clic en “Contactar Ingresse”, ubicado en la parte inferior de nuestro sitio web. Al acceder a este ítem, tendrás acceso a contenido sobre tus compras, registros, entre otros asuntos.`,
+];
+
+const REGRAS_EN: string[] = [
+    `1) Ingresse is an intermediary platform specialized in selling tickets online for events. Event organizers use our platform to offer their events to the public. Therefore, the organizer is solely responsible for the production, organization, sales policy, pricing, half-priced tickets, attractions, changes to dates and location of the event and other issues defined solely and exclusively by the event organizer.`,
+    `2) Ingresse's obligation is strictly limited to the use and maintenance of the technology itself, that is, its licensing services for the use of the Ingresse platform.`,
+    `3) The event organizer is exclusively responsible for its activities being in compliance with the entire legislative framework applicable to its event and in its region, including, without limitation, obtaining (i) the necessary authorizations to hold the event, (ii) operating licenses, (iii) disclosure and compliance with local protocols.`,
+    `4) The website (www.ingresse.com) and the App (Ingresse - Tickets and Events) are Ingresse’s only official sales channels. Ingresse is not liable, under any circumstances or aspect, for tickets purchased from third parties.`,
+    `5) Suspicious purchases or those with evidence of fraud of any nature in the purchase process will be canceled and refunded in full;`,
+    `6) To access the event, presentation of the ticket in digital format through the App (Ingresse - Ingressos e Eventos) is mandatory, together with the respective official identification document with photo;`,
+    `7) Failure to attend the event will invalidate the ticket and will not allow a refund;`,
+    `8) You may be eligible for a full refund of your ticket price only if: (i) the event is cancelled; (ii) the event is rescheduled; or (iii) the event organizer expressly orders Ingresse to make the refund.`,
+    `9) The event organizer is solely and exclusively responsible for authorizing the possibility of transferring tickets for a given event. Ingresse does not determine the authorization or not and the rules related to ticket transfer, which will be set solely by the organizer.`,
+    `10) If the description of the event does not include any additional information about the event, such as parking, menu, line-up, order of appearance of artists and others, related exclusively to the organization of the event, it must be requested directly from the event organizer, through its contact email;`,
+    `11) Ingresse does not allow and repudiates the sale of tickets for irregular events which are not following all the guidelines and safety protocols determined by the competent government authorities. First and foremost, we take everyone's health and safety into consideration.`,
+    `12) Ingresse's SAC service hours are: Every day from 11 a.m. to 7 p.m., through the channels below: email, FAQ and telephone; and every day from 10 a.m. to 11 p.m., through the WhatsApp channel.`,
+    `13) Need help? Access our website and click on "Contact Ingresse", located at the bottom of our website. By accessing this item, you will have access to content about purchases, registration, among other topics.`,
+];
+
+function RegrasVenda() {
+    const [expanded, setExpanded] = useState(true);
+    const blocos: { titulo: string; itens: string[] }[] = [
+        { titulo: "Regras de Venda Online", itens: REGRAS_PT },
+        { titulo: "Normas de Venta en Línea", itens: REGRAS_ES },
+        { titulo: "Online Selling Rules", itens: REGRAS_EN },
+    ];
+
+    return (
+        <section className="flex flex-col gap-4">
+            <hr className="border-secondary" />
+            <SectionHeading title="Regras de venda online" sub="Saiba mais sobre políticas de Ingresse" />
+
+            {expanded && (
+                <div className="flex flex-col gap-6 text-sm leading-5 text-secondary">
+                    {blocos.map((bloco, i) => (
+                        <div key={bloco.titulo} className="flex flex-col gap-3">
+                            {i > 0 && <hr className="border-secondary" />}
+                            <h3 className="text-sm font-semibold text-primary">{bloco.titulo}</h3>
+                            {bloco.itens.map((p, j) => (
+                                <p key={j}>{p}</p>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <Button
+                size="sm"
+                color="link-color"
+                iconTrailing={<ChevronDown data-icon className={cx("size-5 transition-transform duration-200", expanded && "rotate-180")} />}
+                onClick={() => setExpanded((v) => !v)}
+                className="self-start"
+            >
+                {expanded ? "Ver menos" : "Ver mais"}
             </Button>
         </section>
     );

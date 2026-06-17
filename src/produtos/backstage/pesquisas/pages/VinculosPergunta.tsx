@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
+import { Toggle } from "@/components/base/toggle/toggle";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
@@ -20,21 +21,46 @@ export function VinculosPergunta() {
 
     const [busca, setBusca] = useState("");
     const [sel, setSel] = useState<Set<string>>(() => new Set(perguntaId ? itensDaPergunta(perguntaId).map((i) => i.id) : []));
+    // Itens marcados como "Resposta obrigatória". Por padrão, ao vincular um item, a resposta é obrigatória.
+    const [obrig, setObrig] = useState<Set<string>>(() => new Set(perguntaId ? itensDaPergunta(perguntaId).map((i) => i.id) : []));
 
     const voltar = () => navigate("/backstage/pesquisas");
 
     const toggle = (id: string) =>
         setSel((prev) => {
             const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
+            if (next.has(id)) {
+                next.delete(id);
+                setObrig((o) => {
+                    const n = new Set(o);
+                    n.delete(id);
+                    return n;
+                });
+            } else {
+                next.add(id);
+                setObrig((o) => new Set(o).add(id));
+            }
             return next;
         });
 
-    const setVarios = (ids: string[], on: boolean) =>
+    const setVarios = (ids: string[], on: boolean) => {
         setSel((prev) => {
             const next = new Set(prev);
             for (const id of ids) (on ? next.add(id) : next.delete(id));
+            return next;
+        });
+        setObrig((prev) => {
+            const next = new Set(prev);
+            for (const id of ids) (on ? next.add(id) : next.delete(id));
+            return next;
+        });
+    };
+
+    const toggleObrig = (id: string) =>
+        setObrig((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
             return next;
         });
 
@@ -167,21 +193,40 @@ export function VinculosPergunta() {
                                                     {g.itens.map((it) => {
                                                         const marcado = sel.has(it.id);
                                                         return (
-                                                            <button
+                                                            <div
                                                                 key={it.id}
-                                                                type="button"
-                                                                onClick={() => toggle(it.id)}
                                                                 className={cx(
-                                                                    "flex items-center gap-3 border-b border-secondary px-4 py-3 text-left transition-colors duration-100 ease-linear last:border-b-0",
+                                                                    "flex items-center gap-3 border-b border-secondary px-4 py-3 transition-colors duration-100 ease-linear last:border-b-0",
                                                                     marcado ? "bg-brand-primary dark:bg-white/10" : "hover:bg-primary_hover",
                                                                 )}
                                                             >
-                                                                <Checkbox size="sm" isSelected={marcado} isReadOnly aria-hidden="true" />
-                                                                {it.imagem && (
-                                                                    <img src={it.imagem} alt="" aria-hidden="true" className="size-9 shrink-0 rounded-md object-cover ring-1 ring-border-secondary" />
-                                                                )}
-                                                                <span className="min-w-0 flex-1 truncate text-sm text-primary">{it.nome}</span>
-                                                            </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => toggle(it.id)}
+                                                                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                                                                >
+                                                                    <Checkbox size="sm" isSelected={marcado} isReadOnly aria-hidden="true" />
+                                                                    {it.imagem && (
+                                                                        <img src={it.imagem} alt="" aria-hidden="true" className="size-9 shrink-0 rounded-md object-cover ring-1 ring-border-secondary" />
+                                                                    )}
+                                                                    <span className="min-w-0 flex-1 truncate text-sm text-primary">{it.nome}</span>
+                                                                </button>
+                                                                <label
+                                                                    className={cx(
+                                                                        "flex shrink-0 items-center gap-2 transition-opacity duration-100 ease-linear",
+                                                                        marcado ? "opacity-100" : "pointer-events-none opacity-40",
+                                                                    )}
+                                                                >
+                                                                    <span className="text-xs text-tertiary">Resposta obrigatória</span>
+                                                                    <Toggle
+                                                                        size="sm"
+                                                                        isSelected={obrig.has(it.id)}
+                                                                        isDisabled={!marcado}
+                                                                        onChange={() => toggleObrig(it.id)}
+                                                                        aria-label={`Resposta obrigatória para ${it.nome}`}
+                                                                    />
+                                                                </label>
+                                                            </div>
                                                         );
                                                     })}
                                                 </div>
@@ -236,18 +281,13 @@ export function VinculosPergunta() {
 
                 {/* Barra de ações flutuante — largura total */}
                 <div className="sticky bottom-4 z-20 mb-4 w-full px-4 md:px-6">
-                    <div className="flex items-center justify-between gap-3 rounded-xl bg-primary px-4 py-3 shadow-lg ring-1 ring-border-secondary">
-                        <span className="text-sm text-tertiary">
-                            <span className="font-semibold text-primary tabular-nums">{sel.size}</span> {sel.size === 1 ? "item selecionado" : "itens selecionados"}
-                        </span>
-                        <div className="flex gap-2">
-                            <Button size="md" color="secondary" onClick={voltar}>
-                                Cancelar
-                            </Button>
-                            <Button size="md" color="primary" onClick={salvar}>
-                                Salvar vínculos
-                            </Button>
-                        </div>
+                    <div className="flex items-center justify-end gap-2 rounded-xl bg-primary px-4 py-3 shadow-lg ring-1 ring-border-secondary">
+                        <Button size="md" color="secondary" onClick={voltar}>
+                            Cancelar
+                        </Button>
+                        <Button size="md" color="primary" onClick={salvar}>
+                            Salvar vínculos
+                        </Button>
                     </div>
                 </div>
             </div>

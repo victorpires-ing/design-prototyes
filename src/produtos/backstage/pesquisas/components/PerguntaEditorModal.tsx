@@ -6,7 +6,6 @@ import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
-import { Toggle } from "@/components/base/toggle/toggle";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BANCO_PERGUNTAS, TIPO_PERGUNTA, TIPOS_ORDENADOS, usePesquisas, type Pergunta, type PerguntaInput, type TipoPergunta } from "../data/pesquisas-store";
@@ -194,7 +193,6 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
                                     verificando={verificando}
                                     tipoItems={tipoItems}
                                     onTitulo={(v) => setBloco(b.key, { titulo: v })}
-                                    onObrigatoria={(v) => setBloco(b.key, { obrigatoria: v })}
                                     onTipo={(t) => escolherTipo(b.key, t)}
                                     onSetOpcao={(i, v) => setOpcao(b.key, i, v)}
                                     onAddOpcao={() => addOpcao(b.key)}
@@ -245,7 +243,6 @@ function BlocoEditor({
     verificando,
     tipoItems,
     onTitulo,
-    onObrigatoria,
     onTipo,
     onSetOpcao,
     onAddOpcao,
@@ -261,7 +258,6 @@ function BlocoEditor({
     verificando: boolean;
     tipoItems: { id: TipoPergunta; label: string; descricao: string; icon: React.FC<{ className?: string }> }[];
     onTitulo: (v: string) => void;
-    onObrigatoria: (v: boolean) => void;
     onTipo: (t: TipoPergunta) => void;
     onSetOpcao: (i: number, v: string) => void;
     onAddOpcao: () => void;
@@ -327,15 +323,6 @@ function BlocoEditor({
                     </Button>
                 </div>
             )}
-
-            {/* Obrigatoriedade — por último, abaixo até das opções */}
-            <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 px-4 py-3 ring-1 ring-border-secondary">
-                <div className="flex flex-col">
-                    <span className="text-sm font-medium text-primary">Resposta obrigatória</span>
-                    <span className="text-xs text-tertiary">O comprador precisa responder para concluir a compra.</span>
-                </div>
-                <Toggle size="sm" isSelected={bloco.obrigatoria} onChange={onObrigatoria} aria-label="Resposta obrigatória" />
-            </div>
         </div>
     );
 }

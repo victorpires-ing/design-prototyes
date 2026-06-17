@@ -36,12 +36,20 @@ const VEM_AI: GrupoMes[] = [
         mes: "Dezembro 2026",
         eventos: [
             {
-                id: "reveillon",
-                title: "Réveillon dos Milagres 2026",
-                date: "Qui, 31 dez • 21:00",
-                local: "Casa Marceneiro • Milagres/AL",
-                qtd: 3,
-                gradient: "linear-gradient(135deg,#FF4D00 0%,#B91C1C 100%)",
+                id: "reveillon-copacabana",
+                title: "Réveillon Copacabana 2027",
+                date: "Qui, 31 dez • 22:00",
+                local: "Praia de Copacabana • Rio de Janeiro/RJ",
+                qtd: 2,
+                gradient: "linear-gradient(135deg,#1d4ed8 0%,#9333ea 55%,#f59e0b 100%)",
+            },
+            {
+                id: "sao-silvestre",
+                title: "São Silvestre 2026",
+                date: "Qui, 31 dez • 08:00",
+                local: "Av. Paulista • São Paulo/SP",
+                qtd: 2,
+                gradient: "linear-gradient(135deg,#FF4D00 0%,#1d4ed8 100%)",
             },
         ],
     },
@@ -110,7 +118,7 @@ export function Carteira() {
                                     <button
                                         key={evento.id}
                                         type="button"
-                                        onClick={() => navigate("/ingresse-app/ingressos/evento")}
+                                        onClick={() => navigate("/ingresse-app/ingressos/evento", { state: { eventId: evento.id } })}
                                         className="flex items-center gap-4 rounded-2xl bg-primary p-3 text-left ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                                     >
                                         {evento.gradient ? (

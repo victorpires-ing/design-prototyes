@@ -27,6 +27,15 @@ import { Formulario as IngressosFormulario } from '../produtos/backstage/ingress
 import { PerguntasProvider } from '../produtos/backstage/perguntas/data/perguntas-store';
 import { Perguntas } from '../produtos/backstage/perguntas/pages/Perguntas';
 import { PerguntaForm } from '../produtos/backstage/perguntas/pages/PerguntaForm';
+import { PesquisasProvider } from '../produtos/backstage/pesquisas/data/pesquisas-store';
+import { Pesquisas } from '../produtos/backstage/pesquisas/pages/Pesquisas';
+import { BancoPerguntas } from '../produtos/backstage/pesquisas/pages/BancoPerguntas';
+import { Home as IngresseAppHome } from '../produtos/ingresse-app/home/pages/Home';
+import { Carteira as IngresseAppCarteira } from '../produtos/ingresse-app/carteira/pages/Carteira';
+import { Ingressos as IngresseAppIngressos } from '../produtos/ingresse-app/ingressos/pages/Ingressos';
+import { IngressoDetalhe as IngresseAppIngressoDetalhe } from '../produtos/ingresse-app/ingressos/pages/IngressoDetalhe';
+import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingresse-app/ingressos/pages/TransferirIngresso';
+import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pages/Perfil';
 import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
 import { MeusIngressosWeb } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressosWeb';
 import { Hub } from '../produtos/ticket-sports/hub/pages/Hub';
@@ -64,6 +73,13 @@ import { DetalhesGrupo } from '../produtos/ticket-sports/hub/pages/DetalhesGrupo
 import { ComunidadeFeed } from '../produtos/ticket-sports/hub/pages/ComunidadeFeed';
 import { Comunidades } from '../produtos/ticket-sports/hub/pages/Comunidades';
 import { ComunidadeDetalhe } from '../produtos/ticket-sports/hub/pages/ComunidadeDetalhe';
+import { PasswordGate as UsabilidadeGate } from '../produtos/usabilidade/components/PasswordGate';
+import { Painel as TestesPainel } from '../produtos/usabilidade/testes/pages/Painel';
+import { EditorTeste } from '../produtos/usabilidade/testes/pages/EditorTeste';
+import { Resultados as TesteResultados } from '../produtos/usabilidade/testes/pages/Resultados';
+import { EntradaTeste } from '../produtos/usabilidade/testes/pages/EntradaTeste';
+import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPagesMenu';
+import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -90,6 +106,7 @@ export default function App() {
   return (
     <CortesiasProvider>
       <PerguntasProvider>
+      <PesquisasProvider>
       <Routes>
         <Route path="/" element={<ProductSelection />} />
         <Route path="/backstage" element={<RelatorioPedidos />} />
@@ -111,6 +128,8 @@ export default function App() {
         <Route path="/backstage/perguntas" element={<Perguntas />} />
         <Route path="/backstage/perguntas/nova" element={<PerguntaForm />} />
         <Route path="/backstage/perguntas/:id/editar" element={<PerguntaForm />} />
+        <Route path="/backstage/pesquisas" element={<Pesquisas />} />
+        <Route path="/backstage/pesquisas/banco" element={<BancoPerguntas />} />
         <Route path="/carteira-app/meus-ingressos" element={<MeusIngressos />} />
         <Route path="/carteira-app/meus-ingressos/web" element={<MeusIngressosWeb />} />
         <Route path="/ticket-sports/hub" element={<Hub />} />
@@ -150,8 +169,22 @@ export default function App() {
         <Route path="/ticket-sports/hub/comunidades/:id" element={<ComunidadeDetalhe />} />
         <Route path="/futebol/landing-pages" element={<FutebolHome />} />
         <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />
+        <Route path="/ingresse-app" element={<IngresseAppHome />} />
+        <Route path="/ingresse-app/ingressos" element={<IngresseAppCarteira />} />
+        <Route path="/ingresse-app/ingressos/evento" element={<IngresseAppIngressos />} />
+        <Route path="/ingresse-app/ingressos/detalhe" element={<IngresseAppIngressoDetalhe />} />
+        <Route path="/ingresse-app/ingressos/transferir" element={<IngresseAppTransferir />} />
+        <Route path="/ingresse-app/perfil" element={<IngresseAppPerfil />} />
+        <Route path="/testes" element={<UsabilidadeGate><TestesPainel /></UsabilidadeGate>} />
+        <Route path="/testes/novo" element={<UsabilidadeGate><EditorTeste /></UsabilidadeGate>} />
+        <Route path="/testes/:id/editar" element={<UsabilidadeGate><EditorTeste /></UsabilidadeGate>} />
+        <Route path="/testes/:id/resultados" element={<UsabilidadeGate><TesteResultados /></UsabilidadeGate>} />
+        <Route path="/t/:id" element={<EntradaTeste />} />
+        <Route path="/landing-pages" element={<LandingPagesMenu />} />
+        <Route path="/landing-pages/sao-silvestre" element={<SaoSilvestre />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
+      </PesquisasProvider>
       </PerguntasProvider>
     </CortesiasProvider>
   );

@@ -7,7 +7,7 @@ import { cx } from "@/utils/cx";
 /*  Products                                                          */
 /* ------------------------------------------------------------------ */
 
-type IllustrationKind = "backstage" | "futebol" | "novo-site";
+type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes";
 
 interface ProductCardData {
     id: string;
@@ -39,12 +39,36 @@ const PRODUCTS: ProductCardData[] = [
         to: "/novo-site/home/event-details",
         illustration: "novo-site",
     },
+    {
+        id: "ingresse-app",
+        name: "Ingresse App",
+        description: "App de compra e gestão de ingressos",
+        to: "/ingresse-app",
+        illustration: "ingresse-app",
+    },
+    {
+        id: "landing-pages",
+        name: "Landing Pages",
+        description: "Páginas de eventos e campanhas",
+        to: "/landing-pages",
+        illustration: "landing-pages",
+    },
+    {
+        id: "testes",
+        name: "Painel de Testes",
+        description: "Testes de usabilidade dos protótipos",
+        to: "/testes",
+        illustration: "testes",
+    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     backstage: BackstageIllustration,
     futebol: FutebolIllustration,
     "novo-site": NovoSiteIllustration,
+    "ingresse-app": AppIllustration,
+    "landing-pages": LandingPagesIllustration,
+    testes: TestesIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -120,6 +144,98 @@ const ProductCard = ({ product }: { product: ProductCardData }) => {
 /* ------------------------------------------------------------------ */
 /*  Illustrations — neutral tones with brand-colored highlights       */
 /* ------------------------------------------------------------------ */
+
+function AppIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <rect width="320" height="160" fill={N100} />
+            {/* corpo do celular */}
+            <rect x="116" y="8" width="88" height="150" rx="16" fill={N50} stroke={BORDER} />
+            <rect x="150" y="15" width="20" height="4" rx="2" fill={N300} />
+            {/* header brand */}
+            <rect x="126" y="26" width="68" height="14" rx="4" fill={BRAND} />
+            {/* busca */}
+            <rect x="126" y="46" width="68" height="9" rx="4.5" fill={N200} />
+            {/* card 1 */}
+            <rect x="126" y="60" width="68" height="26" rx="6" fill={N200} />
+            <rect x="131" y="65" width="18" height="16" rx="3" fill={BRAND_SOFT} />
+            <rect x="153" y="67" width="36" height="4" rx="2" fill={N400} />
+            <rect x="153" y="75" width="24" height="3" rx="1.5" fill={N300} />
+            {/* card 2 */}
+            <rect x="126" y="90" width="68" height="26" rx="6" fill={N200} />
+            <rect x="131" y="95" width="18" height="16" rx="3" fill={N300} />
+            <rect x="153" y="97" width="36" height="4" rx="2" fill={N400} />
+            <rect x="153" y="105" width="24" height="3" rx="1.5" fill={N300} />
+            {/* tab bar */}
+            <rect x="117" y="134" width="86" height="23" fill={N50} />
+            <line x1="117" y1="134" x2="203" y2="134" stroke={BORDER} />
+            <circle cx="138" cy="145" r="3" fill={BRAND} />
+            <circle cx="160" cy="145" r="3" fill={N400} />
+            <circle cx="182" cy="145" r="3" fill={N400} />
+        </svg>
+    );
+}
+
+function LandingPagesIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <rect width="320" height="160" fill={N100} />
+            {/* página */}
+            <rect x="46" y="16" width="228" height="132" rx="10" fill={N50} stroke={BORDER} />
+            {/* hero */}
+            <rect x="58" y="28" width="204" height="42" rx="6" fill={N200} />
+            <rect x="70" y="40" width="70" height="6" rx="3" fill={N400} />
+            <rect x="70" y="52" width="48" height="5" rx="2.5" fill={N300} />
+            {/* coluna texto + CTA */}
+            <rect x="58" y="82" width="110" height="7" rx="3.5" fill={N300} />
+            <rect x="58" y="95" width="84" height="5" rx="2.5" fill={N200} />
+            <rect x="58" y="112" width="66" height="16" rx="8" fill={BRAND} />
+            {/* coluna lateral */}
+            <rect x="186" y="82" width="76" height="5" rx="2.5" fill={N200} />
+            <rect x="186" y="93" width="62" height="5" rx="2.5" fill={N200} />
+            <rect x="186" y="104" width="70" height="5" rx="2.5" fill={N200} />
+            <rect x="186" y="115" width="50" height="5" rx="2.5" fill={N200} />
+        </svg>
+    );
+}
+
+function TestesIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <defs>
+                <radialGradient id="t-heat" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor={BRAND} stopOpacity="0.55" />
+                    <stop offset="100%" stopColor={BRAND} stopOpacity="0" />
+                </radialGradient>
+            </defs>
+            <rect width="320" height="160" fill={N100} />
+            {/* janela do protótipo sob teste */}
+            <rect x="58" y="22" width="204" height="116" rx="10" fill={N50} stroke={BORDER} />
+            <rect x="58" y="22" width="204" height="20" rx="10" fill={N100} />
+            <circle cx="72" cy="32" r="3" fill={N300} />
+            <circle cx="82" cy="32" r="3" fill={N300} />
+            <circle cx="92" cy="32" r="3" fill={N300} />
+            {/* conteúdo */}
+            <rect x="72" y="54" width="80" height="8" rx="4" fill={N300} />
+            <rect x="72" y="68" width="120" height="5" rx="2.5" fill={N200} />
+            <rect x="72" y="78" width="100" height="5" rx="2.5" fill={N200} />
+            {/* botão alvo */}
+            <rect x="72" y="98" width="64" height="20" rx="6" fill={BRAND} />
+            {/* mapa de calor sobre o botão */}
+            <circle cx="104" cy="108" r="34" fill="url(#t-heat)" />
+            {/* cursor */}
+            <g transform="translate(116 110)">
+                <path d="M0 0 L0 18 L5 13 L9 21 L12 19 L8 12 L15 12 Z" fill="#ffffff" stroke={N400} strokeWidth="1" />
+            </g>
+            {/* mini-gráfico de resultados */}
+            <g>
+                <rect x="206" y="96" width="6" height="22" rx="2" fill={N300} />
+                <rect x="218" y="86" width="6" height="32" rx="2" fill={N400} />
+                <rect x="230" y="76" width="6" height="42" rx="2" fill={BRAND} />
+            </g>
+        </svg>
+    );
+}
 
 function FutebolIllustration() {
     return (

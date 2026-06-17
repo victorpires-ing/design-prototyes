@@ -323,8 +323,8 @@
     --color-border-tertiary: var(--color-neutral-100);
     --color-border-error: var(--color-red-500);
     --color-border-error_subtle: var(--color-red-300);
-    --color-border-brand: var(--color-brand-500);
-    --color-border-brand_alt: var(--color-brand-600);
+    --color-border-brand: var(--color-neutral-700);
+    --color-border-brand_alt: var(--color-neutral-900);
 
     /* FOREGROUND COLORS */
     --color-fg-secondary: var(--color-neutral-700);
@@ -349,7 +349,7 @@
 
     /* BACKGROUND COLORS */
     --color-bg-primary: var(--color-white);
-    --color-bg-tertiary: var(--color-neutral-100);
+    --color-bg-tertiary: var(--color-neutral-200);
     --color-bg-brand-primary: var(--color-brand-50);
     --color-bg-error-secondary: var(--color-red-100);
     --color-bg-warning-primary: var(--color-yellow-50);
@@ -361,17 +361,17 @@
     --color-bg-error-solid: var(--color-red-600);
     --color-bg-warning-solid: var(--color-yellow-600);
     --color-bg-success-solid: var(--color-green-600);
-    --color-bg-secondary_hover: var(--color-neutral-100);
-    --color-bg-primary_hover: var(--color-neutral-50);
+    --color-bg-secondary_hover: var(--color-neutral-300);
+    --color-bg-primary_hover: var(--color-neutral-100);
     --color-bg-active: var(--color-neutral-50);
     --color-bg-brand-solid_hover: var(--color-brand-700);
     --color-bg-error-primary: var(--color-red-50);
     --color-bg-brand-secondary: var(--color-brand-100);
-    --color-bg-secondary: var(--color-neutral-50);
-    --color-bg-quaternary: var(--color-neutral-200);
-    --color-bg-primary_alt: var(--color-white);
+    --color-bg-secondary: var(--color-neutral-100);
+    --color-bg-quaternary: var(--color-neutral-100);
+    --color-bg-primary_alt: var(--color-neutral-50);
     --color-bg-brand-primary_alt: var(--color-brand-50);
-    --color-bg-secondary_alt: var(--color-neutral-50);
+    --color-bg-secondary_alt: var(--color-neutral-200);
     --color-bg-overlay: var(--color-neutral-950);
     --color-bg-brand-section: var(--color-brand-800);
     --color-bg-brand-section_subtle: var(--color-brand-700);
@@ -682,7 +682,7 @@
         --color-border-secondary: var(--color-neutral-800);
         --color-border-error_subtle: var(--color-red-500);
         --color-border-primary: var(--color-neutral-700);
-        --color-border-brand: var(--color-brand-400);
+        --color-border-brand: var(--color-neutral-500);
         --color-border-error: var(--color-red-400);
         --color-border-tertiary: var(--color-neutral-800);
         --color-border-brand_alt: var(--color-neutral-700);
@@ -708,8 +708,8 @@
         --color-fg-brand-secondary_alt: var(--color-neutral-600);
         --color-fg-brand-secondary_hover: var(--color-neutral-500);
 
-        --color-bg-primary: var(--color-neutral-950);
-        --color-bg-tertiary: var(--color-neutral-800);
+        --color-bg-primary: var(--color-neutral-900);
+        --color-bg-tertiary: var(--color-neutral-600);
         --color-bg-brand-primary: var(--color-brand-500);
         --color-bg-error-secondary: var(--color-red-600);
         --color-bg-warning-primary: var(--color-yellow-950);
@@ -717,25 +717,25 @@
         --color-bg-success-primary: var(--color-green-950);
         --color-bg-success-secondary: var(--color-green-600);
         --color-bg-brand-solid: var(--color-brand-600);
-        --color-bg-secondary-solid: var(--color-neutral-600);
+        --color-bg-secondary-solid: var(--color-neutral-500);
         --color-bg-error-solid: var(--color-red-600);
         --color-bg-warning-solid: var(--color-yellow-600);
         --color-bg-success-solid: var(--color-green-600);
-        --color-bg-secondary_hover: var(--color-neutral-800);
-        --color-bg-primary_hover: var(--color-neutral-900);
+        --color-bg-secondary_hover: var(--color-neutral-600);
+        --color-bg-primary_hover: var(--color-neutral-700);
         --color-bg-active: var(--color-neutral-800);
         --color-bg-brand-solid_hover: var(--color-brand-500);
         --color-bg-error-primary: var(--color-red-950);
         --color-bg-brand-secondary: var(--color-brand-600);
-        --color-bg-secondary: var(--color-neutral-900);
-        --color-bg-quaternary: var(--color-neutral-700);
+        --color-bg-secondary: var(--color-neutral-800);
+        --color-bg-quaternary: var(--color-neutral-950);
         --color-bg-primary_alt: var(--color-bg-secondary);
         --color-bg-brand-primary_alt: var(--color-bg-secondary);
-        --color-bg-secondary_alt: var(--color-bg-primary);
+        --color-bg-secondary_alt: var(--color-neutral-700);
         --color-bg-overlay: var(--color-neutral-800);
         --color-bg-brand-section: var(--color-bg-secondary);
         --color-bg-brand-section_subtle: var(--color-bg-primary);
-        --color-bg-primary-solid: var(--color-bg-secondary);
+        --color-bg-primary-solid: var(--color-bg-tertiary);
         --color-bg-error-solid_hover: var(--color-red-500);
 
         --color-app-store-badg-border: var(--color-white);

@@ -4,6 +4,7 @@ import type { Key } from "react-aria-components";
 import {
     Announcement01,
     Bank,
+    BarChartSquare02,
     Calendar,
     ChevronDown,
     Eye,
@@ -12,7 +13,6 @@ import {
     InfoCircle,
     LogOut01,
     Menu02,
-    MessageQuestionCircle,
     Package,
     Settings01,
     ShoppingCart01,
@@ -40,6 +40,7 @@ import { ThemeToggle } from "./ThemeToggle";
 export type BackstageSection =
     | "informacoes-evento"
     | "itens"
+    | "pesquisas"
     | "cortesias"
     | "relatorios"
     | "marketing";
@@ -56,7 +57,8 @@ export type BackstageItem =
     | "acesso"
     | "bordero"
     | "transferencias"
-    | "chave-de-acesso";
+    | "chave-de-acesso"
+    | "formularios-compra";
 
 const DISABLED_KEYS: Key[] = ["informacoes-evento", "permissao-envio", "catalogo-combos", "catalogo-produtos"];
 
@@ -93,7 +95,7 @@ export function BackstageLayout({
     }, [isMobileMenuOpen]);
 
     return (
-        <div className="min-h-screen bg-primary">
+        <div className="min-h-screen bg-quaternary">
             <MobileTopBar onOpenMenu={() => setIsMobileMenuOpen(true)} />
             <MobileDrawer
                 isOpen={isMobileMenuOpen}
@@ -159,6 +161,7 @@ const MobileEventCard = () => (
 const SECTION_LABELS: Record<BackstageSection, string> = {
     "informacoes-evento": "Informações do evento",
     itens: "Itens",
+    pesquisas: "Coleta de dados",
     cortesias: "Cortesias",
     relatorios: "Relatórios",
     marketing: "Marketing",
@@ -177,6 +180,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     bordero: "Borderô",
     transferencias: "Transferências",
     "chave-de-acesso": "Chave de acesso",
+    "formularios-compra": "Perguntas por ingresso",
 };
 
 const MobileSectionSelector = ({
@@ -240,10 +244,10 @@ const PRODUCER_NAV: Array<{
     href?: string;
     children?: Array<{ id: string; label: string }>;
 }> = [
-    { id: "eventos", icon: Calendar, label: "Eventos" },
+    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
     { id: "permissao", icon: UsersPlus, label: "Permissão" },
     { id: "produtos", icon: Package, label: "Produtos" },
-    { id: "perguntas", icon: MessageQuestionCircle, label: "Perguntas", href: "/backstage/perguntas" },
+    { id: "perguntas", icon: BarChartSquare02, label: "Coleta de dados", href: "/backstage/pesquisas/banco" },
     {
         id: "publico",
         icon: Users01,
@@ -416,13 +420,13 @@ const ProducerRailItem = ({ icon: Icon, label, isActive, href }: ProducerRailIte
             >
                 <Icon className="size-5" />
             </span>
-            <span className="text-xs font-medium">{label}</span>
+            <span className="text-center text-xs font-medium leading-tight whitespace-pre-line">{label}</span>
         </button>
     );
 };
 
 const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
-    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[72px] shrink-0 flex-col items-center justify-between rounded-2xl bg-secondary py-4 lg:flex">
+    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[72px] shrink-0 flex-col items-center justify-between rounded-2xl bg-primary py-4 lg:flex">
         <div className="flex flex-col items-center gap-4">
             <div className="relative">
                 <span className="flex size-10 items-center justify-center overflow-hidden rounded-lg bg-secondary-solid text-xs font-bold text-white">
@@ -437,13 +441,13 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
                 </button>
             </div>
             <nav className="flex flex-col items-center gap-1">
-                <ProducerRailItem icon={Calendar} label="Eventos" isActive={activeProducer === "eventos" || !activeProducer} />
+                <ProducerRailItem icon={Calendar} label="Eventos" href="/backstage/" isActive={activeProducer === "eventos" || !activeProducer} />
                 <ProducerRailItem icon={UsersPlus} label="Equipe" />
                 <ProducerRailItem icon={Bank} label="Finanças" />
                 <ProducerRailItem
-                    icon={MessageQuestionCircle}
-                    label="Perguntas"
-                    href="/backstage/perguntas"
+                    icon={BarChartSquare02}
+                    label={"Coleta de\ndados"}
+                    href="/backstage/pesquisas/banco"
                     isActive={activeProducer === "perguntas"}
                 />
                 <ProducerRailItem icon={Users01} label="Público" />
@@ -460,15 +464,15 @@ interface EventRailProps {
 }
 
 const EventRail = ({ activeSection, activeItem }: EventRailProps) => (
-    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-secondary p-3 md:flex">
+    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex">
         <EventDetailsCard />
         <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
     </aside>
 );
 
 const EventDetailsCard = () => (
-    <div className="flex flex-col gap-4 rounded-2xl bg-tertiary p-3">
-        <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-tertiary">
+    <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-3">
+        <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-secondary">
             <img
                 src={eventCover}
                 alt="Bahia x Vitória"
@@ -555,6 +559,22 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                     >
                         Produtos
                     </TreeView.ItemContent>
+                </TreeView.Item>
+            </TreeView.Item>
+
+            <TreeView.Item id="pesquisas" textValue="Coleta de dados">
+                <TreeView.ItemContent
+                    icon={BarChartSquare02}
+                    action={
+                        <Badge size="sm" type="pill-color" color="error">
+                            Novo
+                        </Badge>
+                    }
+                >
+                    Coleta de dados
+                </TreeView.ItemContent>
+                <TreeView.Item id="formularios-compra" textValue="Perguntas por ingresso" href="/backstage/pesquisas">
+                    <TreeView.ItemContent className={itemClass("formularios-compra")}>Perguntas por ingresso</TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>
 

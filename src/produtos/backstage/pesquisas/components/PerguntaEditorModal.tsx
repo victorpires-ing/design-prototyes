@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { InfoCircle, Plus, Trash01, XClose } from "@untitledui/icons";
+import { InfoCircle, Plus, Rows01, Trash01, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
 import { Button } from "@/components/base/buttons/button";
@@ -20,6 +20,8 @@ interface PerguntaEditorModalProps {
     onSaved?: (pergunta: Pergunta) => void;
     /** Pede a exclusão da pergunta (o pai confirma). Só aparece ao editar. */
     onExcluir?: (pergunta: Pergunta) => void;
+    /** Atalho para escolher uma pergunta do banco em vez de criar. Só aparece na criação. */
+    onUsarExistente?: () => void;
 }
 
 /** Bloco de pergunta no construtor (PerguntaInput + chave local). */
@@ -31,7 +33,7 @@ const opcoesValidas = (b: Bloco) => b.opcoes.filter((o) => o.trim() !== "");
 const blocoValido = (b: Bloco) => b.titulo.trim() !== "" && (!temOpcoes(b.tipo) || opcoesValidas(b).length >= 2);
 const toInput = (b: Bloco): PerguntaInput => ({ titulo: b.titulo.trim(), ajuda: b.ajuda?.trim() || undefined, tipo: b.tipo, opcoes: temOpcoes(b.tipo) ? opcoesValidas(b) : [], ativa: b.ativa, obrigatoria: b.obrigatoria });
 
-export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcluir }: PerguntaEditorModalProps) {
+export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcluir, onUsarExistente }: PerguntaEditorModalProps) {
     const { addPergunta, updatePergunta, perguntas } = usePesquisas();
     const seq = useRef(0);
     const [blocos, setBlocos] = useState<Bloco[]>([]);
@@ -210,6 +212,10 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
                         {editando && pergunta ? (
                             <Button size="md" color="tertiary-destructive" iconLeading={Trash01} isDisabled={emUso} onClick={() => onExcluir?.(pergunta)}>
                                 Excluir pergunta
+                            </Button>
+                        ) : onUsarExistente ? (
+                            <Button size="md" color="link-color" iconLeading={Rows01} onClick={onUsarExistente}>
+                                Usar pergunta existente
                             </Button>
                         ) : (
                             <span />

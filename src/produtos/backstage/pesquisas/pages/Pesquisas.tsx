@@ -108,6 +108,10 @@ export function Pesquisas() {
                     setEditorOpen(false);
                     setExcluir(p);
                 }}
+                onUsarExistente={() => {
+                    setEditorOpen(false);
+                    setBancoOpen(true);
+                }}
             />
 
             <ConfirmDialog

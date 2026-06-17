@@ -19,7 +19,7 @@ interface TicketSportsLayoutProps {
 export function TicketSportsLayout({ children, fullHeight = false }: TicketSportsLayoutProps) {
     useForceLightTheme();
     return (
-        <div className="flex min-h-screen justify-center bg-secondary md:py-6">
+        <div className="flex min-h-dvh justify-center bg-secondary md:py-6">
             <style>{`
 @keyframes hubRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .hub-rise>*{animation:hubRise .45s cubic-bezier(.22,1,.36,1) both}
@@ -38,8 +38,8 @@ export function TicketSportsLayout({ children, fullHeight = false }: TicketSport
                 className={cx(
                     "relative flex w-full max-w-md flex-col bg-primary md:rounded-3xl md:shadow-xl md:ring-1 md:ring-border-secondary",
                     fullHeight
-                        ? "h-screen overflow-hidden md:h-[calc(100vh-3rem)]"
-                        : "min-h-screen md:min-h-[calc(100vh-3rem)]",
+                        ? "h-dvh overflow-hidden md:h-[calc(100vh-3rem)]"
+                        : "min-h-dvh md:min-h-[calc(100vh-3rem)]",
                 )}
             >
                 {children}

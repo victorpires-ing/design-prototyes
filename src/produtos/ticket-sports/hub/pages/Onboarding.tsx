@@ -35,7 +35,7 @@ export function Onboarding() {
     const [searchParams] = useSearchParams();
     const isEmpresa = searchParams.get("tipo") === "juridica";
     const [step, setStep] = useState(Math.min(3, Math.max(1, Number(searchParams.get("step")) || 1)));
-    const [atividades, setAtividades] = useState<Set<string>>(new Set(["corrida"]));
+    const [atividades, setAtividades] = useState<Set<string>>(new Set());
     const [objetivos, setObjetivos] = useState<Set<string>>(new Set());
     const [cidade, setCidade] = useState("");
 
@@ -62,7 +62,7 @@ export function Onboarding() {
                         <>
                             <StepHeader
                                 onVoltar={voltar}
-                                title={isEmpresa ? "Quais atividades sua empresa atua?" : "Quais suas atividades favoritas?"}
+                                title={isEmpresa ? "Em quais atividades sua empresa atua?" : "Quais suas atividades favoritas?"}
                                 subtitle="Escolha até 3 opções."
                                 counter={`${atividades.size}/${ATIVIDADES_MAX}`}
                             />

@@ -161,12 +161,16 @@ export function Carteira() {
                 <span className="hidden w-[120px] text-right text-xs text-tertiary @3xl:inline">{viewport === "mobile" ? "390px" : "Full width"}</span>
             </div>
 
-            {/* Área de preview */}
-            <div className={cx(viewport === "mobile" ? "px-4 pt-16 pb-10" : "pt-14")}>
+            {/* Área de preview. No mobile real (telas pequenas) o frame de 390px é
+               dispensado e fica full-bleed; o frame só aparece em telas grandes
+               (sm+) para simular o celular durante o preview no desktop. */}
+            <div className={cx(viewport === "mobile" ? "pt-16 pb-10 sm:px-4" : "pt-14")}>
                 <div
                     className={cx(
                         "mx-auto bg-primary",
-                        viewport === "mobile" ? "w-[390px] max-w-full overflow-hidden rounded-3xl shadow-xl ring-1 ring-border-secondary" : "w-full",
+                        viewport === "mobile"
+                            ? "w-full sm:w-[390px] sm:max-w-full sm:overflow-hidden sm:rounded-3xl sm:shadow-xl sm:ring-1 sm:ring-border-secondary"
+                            : "w-full",
                     )}
                 >
                     <CarteiraContent onCardClick={() => setModalOpen(true)} />

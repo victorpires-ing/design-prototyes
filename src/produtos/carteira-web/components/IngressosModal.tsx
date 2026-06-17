@@ -18,9 +18,9 @@ export function IngressosModal({ onClose, compact = false }: { onClose: () => vo
     // ----- Mobile: folha full-screen com imagem do evento no topo -----
     if (compact) {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4" role="dialog" aria-modal="true" onClick={onClose}>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay sm:p-4" role="dialog" aria-modal="true" onClick={onClose}>
                 <div
-                    className="relative flex h-[92vh] max-h-[820px] w-[390px] max-w-full flex-col overflow-hidden rounded-3xl bg-primary shadow-xl ring-1 ring-border-secondary"
+                    className="relative flex h-full w-full flex-col overflow-hidden bg-primary sm:h-[92vh] sm:max-h-[820px] sm:w-[390px] sm:max-w-full sm:rounded-3xl sm:shadow-xl sm:ring-1 sm:ring-border-secondary"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Imagem do evento */}

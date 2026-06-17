@@ -81,6 +81,7 @@ import { Resultados as TesteResultados } from '../produtos/usabilidade/testes/pa
 import { EntradaTeste } from '../produtos/usabilidade/testes/pages/EntradaTeste';
 import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPagesMenu';
 import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
+import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -184,6 +185,7 @@ export default function App() {
         <Route path="/t/:id" element={<EntradaTeste />} />
         <Route path="/landing-pages" element={<LandingPagesMenu />} />
         <Route path="/landing-pages/sao-silvestre" element={<SaoSilvestre />} />
+        <Route path="/carteira-web" element={<CarteiraWeb />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </PesquisasProvider>

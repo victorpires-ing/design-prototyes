@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { InfoCircle, Plus, Trash01, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ import { Select } from "@/components/base/select/select";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
-import { TIPO_PERGUNTA, TIPOS_ORDENADOS, usePesquisas, type Pergunta, type PerguntaInput, type TipoPergunta } from "../data/pesquisas-store";
+import { BANCO_PERGUNTAS, TIPO_PERGUNTA, TIPOS_ORDENADOS, usePesquisas, type Pergunta, type PerguntaInput, type TipoPergunta } from "../data/pesquisas-store";
 import { perguntaSemelhante } from "../utils/similaridade";
 
 interface PerguntaEditorModalProps {
@@ -61,6 +61,21 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
 
     const blocoExp = blocos.find((b) => b.key === expandido) ?? null;
 
+    // Títulos já cadastrados (banco da organização + perguntas do evento), exceto a que está em edição.
+    const titulosExistentes = useMemo(() => {
+        const set = new Set<string>();
+        for (const p of [...BANCO_PERGUNTAS, ...perguntas]) {
+            if (p.id === pergunta?.id) continue;
+            set.add(p.titulo.trim().toLowerCase());
+        }
+        return set;
+    }, [perguntas, pergunta]);
+
+    const tituloDuplicado = (titulo: string) => {
+        const t = titulo.trim().toLowerCase();
+        return t !== "" && titulosExistentes.has(t);
+    };
+
     // Verifica perguntas parecidas para o bloco em edição.
     useEffect(() => {
         if (!isOpen) return;
@@ -96,11 +111,6 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
     const addOpcao = (key: string) => setBlocos((prev) => prev.map((b) => (b.key === key ? { ...b, opcoes: [...b.opcoes, ""] } : b)));
     const removeOpcao = (key: string, i: number) => setBlocos((prev) => prev.map((b) => (b.key === key ? { ...b, opcoes: b.opcoes.filter((_, idx) => idx !== i) } : b)));
 
-    const adicionarBloco = () => {
-        const b = blocoVazio(`b${seq.current++}`);
-        setBlocos((prev) => [...prev, b]);
-        setExpandido(b.key);
-    };
     const removerBloco = (key: string) =>
         setBlocos((prev) => {
             const next = prev.filter((b) => b.key !== key);
@@ -108,7 +118,7 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
             return next;
         });
 
-    const podeSalvar = blocos.length > 0 && blocos.every(blocoValido);
+    const podeSalvar = blocos.length > 0 && blocos.every(blocoValido) && !blocos.some((b) => tituloDuplicado(b.titulo));
 
     const salvar = () => {
         if (!podeSalvar) return;
@@ -179,6 +189,7 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
                                     indice={idx + 1}
                                     multi={!editando && blocos.length > 1}
                                     podeRemover={!editando && blocos.length > 1}
+                                    duplicado={tituloDuplicado(b.titulo)}
                                     semelhante={semelhante}
                                     verificando={verificando}
                                     tipoItems={tipoItems}
@@ -193,19 +204,6 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
                             ) : (
                                 <BlocoResumo key={b.key} bloco={b} indice={idx + 1} onAbrir={() => setExpandido(b.key)} onRemover={() => removerBloco(b.key)} />
                             ),
-                        )}
-
-                        {!editando && (
-                            <Button
-                                size="md"
-                                color="secondary"
-                                iconLeading={Plus}
-                                onClick={adicionarBloco}
-                                isDisabled={!blocos.every(blocoValido)}
-                                className="self-start"
-                            >
-                                Adicionar outra pergunta
-                            </Button>
                         )}
                     </div>
 
@@ -242,6 +240,7 @@ function BlocoEditor({
     indice,
     multi,
     podeRemover,
+    duplicado,
     semelhante,
     verificando,
     tipoItems,
@@ -257,6 +256,7 @@ function BlocoEditor({
     indice: number;
     multi: boolean;
     podeRemover: boolean;
+    duplicado: boolean;
     semelhante: { titulo: string } | null;
     verificando: boolean;
     tipoItems: { id: TipoPergunta; label: string; descricao: string; icon: React.FC<{ className?: string }> }[];
@@ -279,8 +279,13 @@ function BlocoEditor({
             )}
 
             <div className="flex flex-col gap-2">
-                <Input label="Título da pergunta" isRequired autoFocus placeholder="Ex.: Qual o tamanho da sua camiseta?" value={bloco.titulo} onChange={onTitulo} />
-                {verificando ? (
+                <Input label="Título da pergunta" isRequired isInvalid={duplicado} autoFocus placeholder="Ex.: Qual o tamanho da sua camiseta?" value={bloco.titulo} onChange={onTitulo} />
+                {duplicado ? (
+                    <div className="flex items-start gap-2.5 rounded-lg bg-error-primary p-3">
+                        <InfoCircle className="mt-0.5 size-4 shrink-0 text-fg-error-primary" />
+                        <span className="text-sm text-secondary">Você já tem uma pergunta com este título cadastrada. Escolha outro título.</span>
+                    </div>
+                ) : verificando ? (
                     <div className="flex items-center gap-2 text-xs text-tertiary">
                         <span
                             className="size-4 shrink-0 animate-spin rounded-full border-2 border-[var(--color-fg-quaternary)] border-t-[var(--color-fg-brand-primary)]"

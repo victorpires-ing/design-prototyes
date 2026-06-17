@@ -1,31 +1,35 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { CheckCircle, DotsGrid, Edit01, MessageQuestionCircle, Plus, Ticket01, Trash01 } from "@untitledui/icons";
+import { CheckCircle, ChevronDown, DotsGrid, Edit01, Plus, Rows01, Ticket01, Trash01 } from "@untitledui/icons";
 import { Reorder, useDragControls } from "motion/react";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PerguntaEditorModal } from "../components/PerguntaEditorModal";
+import { UsarPerguntasModal } from "../components/UsarPerguntasModal";
 import { TIPO_PERGUNTA, usePesquisas, type Pergunta } from "../data/pesquisas-store";
 
 export function Pesquisas() {
     const navigate = useNavigate();
-    const { perguntas, ingressos, itensVinculaveis, countItensDaPergunta, reorderPerguntas, togglePergunta, removePergunta } = usePesquisas();
+    const { perguntas, ingressos, itensVinculaveis, countItensDaPergunta, reorderPerguntas, togglePergunta, removePergunta, adicionarDoBanco } = usePesquisas();
 
     const [editorOpen, setEditorOpen] = useState(false);
     const [editorPergunta, setEditorPergunta] = useState<Pergunta | null>(null);
     const [excluir, setExcluir] = useState<Pergunta | null>(null);
     const [vincularCTA, setVincularCTA] = useState<Pergunta | null>(null);
+    const [bancoOpen, setBancoOpen] = useState(false);
 
     const ordemIds = useMemo(() => perguntas.map((p) => p.id), [perguntas]);
     const totalItens = itensVinculaveis.length;
+    const jaAdicionadas = useMemo(() => new Set(perguntas.map((p) => p.id)), [perguntas]);
 
     const abrirCriar = () => {
         setEditorPergunta(null);
@@ -49,9 +53,7 @@ export function Pesquisas() {
                                 Escolha quais perguntas estarão na compra de cada item. O formulário do comprador seguirá exatamente a mesma ordem abaixo.
                             </p>
                         </div>
-                        <Button size="md" color="primary" iconLeading={Plus} onClick={abrirCriar}>
-                            Criar pergunta
-                        </Button>
+                        <AdicionarPerguntaDropdown onCriarNova={abrirCriar} onUsarExistentes={() => setBancoOpen(true)} />
                     </div>
 
                     {ingressos.length === 0 ? (
@@ -63,13 +65,18 @@ export function Pesquisas() {
                             onAction={() => toast.success("Abrindo cadastro de ingressos…")}
                         />
                     ) : perguntas.length === 0 ? (
-                        <EmptyStateWrap
-                            icon={MessageQuestionCircle}
-                            title="Crie sua primeira pergunta"
-                            description="Você ainda não tem perguntas. Crie uma para escolher o que perguntar nos itens."
-                            actionLabel="Criar pergunta"
-                            onAction={abrirCriar}
-                        />
+                        <div className="flex flex-1 flex-col items-center justify-center gap-6 py-16 text-center">
+                            <div className="flex flex-col gap-2">
+                                <h2 className="text-2xl leading-tight font-bold text-primary sm:text-3xl">
+                                    <span className="block font-normal text-tertiary italic">Conheça melhor</span>
+                                    quem está comprando
+                                </h2>
+                                <p className="mx-auto max-w-md text-sm text-tertiary">
+                                    Crie um formulário com perguntas personalizadas para entender necessidades, preferências e dados importantes de cada participante.
+                                </p>
+                            </div>
+                            <AdicionarPerguntaDropdown onCriarNova={abrirCriar} onUsarExistentes={() => setBancoOpen(true)} />
+                        </div>
                     ) : (
                         <Reorder.Group axis="y" values={ordemIds} onReorder={reorderPerguntas} className="flex flex-col gap-2">
                             {perguntas.map((pergunta) => (
@@ -112,7 +119,7 @@ export function Pesquisas() {
                     toast.success("Pergunta excluída", { description: `"${excluir.titulo}" foi removida.` });
                 }}
                 title="Excluir pergunta?"
-                description={excluir ? `"${excluir.titulo}" será removida do banco e desvinculada de todos os itens.` : ""}
+                description={excluir ? `"${excluir.titulo}" será removida deste evento e desvinculada de todos os itens.` : ""}
             />
 
             <VincularCTAModal
@@ -122,6 +129,22 @@ export function Pesquisas() {
                     const p = vincularCTA;
                     setVincularCTA(null);
                     if (p) abrirVinculos(p);
+                }}
+            />
+
+            <UsarPerguntasModal
+                isOpen={bancoOpen}
+                onClose={() => setBancoOpen(false)}
+                jaAdicionadas={jaAdicionadas}
+                onAdicionar={(ids) => {
+                    adicionarDoBanco(ids);
+                    toast.success(ids.length === 1 ? "Pergunta adicionada" : `${ids.length} perguntas adicionadas`, {
+                        description: "Já estão na lista deste evento.",
+                    });
+                }}
+                onCriarNova={() => {
+                    setBancoOpen(false);
+                    abrirCriar();
                 }}
             />
         </BackstageLayout>
@@ -208,6 +231,26 @@ function PerguntaRow({
                 </div>
             </div>
         </Reorder.Item>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Botão "Adicionar uma pergunta" — criar nova OU usar do banco       */
+/* ------------------------------------------------------------------ */
+
+function AdicionarPerguntaDropdown({ onCriarNova, onUsarExistentes }: { onCriarNova: () => void; onUsarExistentes: () => void }) {
+    return (
+        <Dropdown.Root>
+            <Button size="md" color="primary" iconTrailing={ChevronDown}>
+                Adicionar uma pergunta
+            </Button>
+            <Dropdown.Popover className="w-64">
+                <Dropdown.Menu>
+                    <Dropdown.Item label="Usar perguntas existentes" icon={Rows01} onAction={onUsarExistentes} />
+                    <Dropdown.Item label="Criar nova pergunta" icon={Plus} onAction={onCriarNova} />
+                </Dropdown.Menu>
+            </Dropdown.Popover>
+        </Dropdown.Root>
     );
 }
 

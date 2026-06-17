@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Calendar, Package, SearchLg } from "@untitledui/icons";
+import { ArrowLeft, Calendar, Package, SearchLg, Ticket01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { TIPO_PERGUNTA, usePesquisas, type ItemVinculavel } from "../data/pesquisas-store";
@@ -66,6 +67,15 @@ export function VinculosPergunta() {
     const totalItens = itensVinculaveis.length;
     const vazio = secoes.length === 0;
 
+    // Resumo da seleção: ingressos e produtos selecionados.
+    const resumo = useMemo(() => {
+        const selecionados = itensVinculaveis.filter((i) => sel.has(i.id));
+        return {
+            ingressos: selecionados.filter((i) => i.categoria === "ingresso"),
+            produtos: selecionados.filter((i) => i.categoria === "produto"),
+        };
+    }, [itensVinculaveis, sel]);
+
     const salvar = () => {
         if (!perguntaId) return;
         setItensDaPergunta(perguntaId, Array.from(sel));
@@ -96,27 +106,24 @@ export function VinculosPergunta() {
                         </div>
                     </div>
 
-                    {/* Busca + selecionar tudo — largura total */}
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <Input
-                            size="sm"
-                            icon={SearchLg}
-                            aria-label="Buscar itens"
-                            placeholder="Buscar ingresso, setor ou produto"
-                            value={busca}
-                            onChange={setBusca}
-                            className="w-full sm:max-w-sm"
-                        />
-                        <div className="flex items-center gap-3 text-sm text-tertiary">
-                            <span className="tabular-nums">{sel.size} de {totalItens} selecionados</span>
-                            <Button size="sm" color="link-color" onClick={() => setVarios(itensVinculaveis.map((i) => i.id), true)}>
-                                Selecionar todos
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Lista de seções — centralizada e estreita */}
-                    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+                    {/* Lista (esquerda, com busca) + resumo (direita) */}
+                    <div className="flex w-full gap-6">
+                        <div className="flex min-w-0 flex-1 flex-col gap-4">
+                            {/* Busca + Selecionar todos (topo da lista) */}
+                            <div className="flex items-center justify-between gap-3">
+                                <Input
+                                    size="sm"
+                                    icon={SearchLg}
+                                    aria-label="Buscar itens"
+                                    placeholder="Buscar ingresso, setor ou produto"
+                                    value={busca}
+                                    onChange={setBusca}
+                                    className="min-w-0 max-w-[540px] flex-1"
+                                />
+                                <Button size="sm" color="link-color" className="shrink-0" onClick={() => setVarios(itensVinculaveis.map((i) => i.id), true)}>
+                                    Selecionar todos
+                                </Button>
+                            </div>
                     {vazio ? (
                         <div className="flex flex-1 items-center justify-center py-12">
                             <EmptyState size="sm">
@@ -185,6 +192,45 @@ export function VinculosPergunta() {
                             ))}
                         </div>
                     )}
+                        </div>
+
+                        {/* Resumo da seleção — modelo da 1ª etapa de cortesias (desktop) */}
+                        <aside className="sticky top-6 hidden h-[calc(100vh-7rem)] max-h-[560px] w-[330px] shrink-0 flex-col overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary lg:flex">
+                            <header className="flex shrink-0 items-baseline justify-between gap-2 border-b border-secondary bg-secondary px-4 py-3.5">
+                                <h3 className="text-sm font-semibold text-primary">Itens vinculados</h3>
+                                <span className="text-xs text-tertiary tabular-nums">
+                                    {sel.size} de {totalItens} selecionados
+                                </span>
+                            </header>
+
+                            {sel.size === 0 ? (
+                                <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+                                    <FeaturedIcon icon={Ticket01} color="brand" theme="gradient" size="xl" />
+                                    <p className="text-md text-primary">
+                                        Você ainda não
+                                        <br />
+                                        vinculou itens
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 py-4">
+                                    {resumo.ingressos.length > 0 && (
+                                        <ResumoSection title="Ingressos" onClear={() => setVarios(resumo.ingressos.map((i) => i.id), false)}>
+                                            {resumo.ingressos.map((it) => (
+                                                <ResumoIngressoRow key={it.id} item={it} onRemover={() => toggle(it.id)} />
+                                            ))}
+                                        </ResumoSection>
+                                    )}
+                                    {resumo.produtos.length > 0 && (
+                                        <ResumoSection title="Produtos" onClear={() => setVarios(resumo.produtos.map((i) => i.id), false)}>
+                                            {resumo.produtos.map((it) => (
+                                                <ResumoProdutoRow key={it.id} item={it} onRemover={() => toggle(it.id)} />
+                                            ))}
+                                        </ResumoSection>
+                                    )}
+                                </div>
+                            )}
+                        </aside>
                     </div>
                 </main>
 
@@ -206,5 +252,51 @@ export function VinculosPergunta() {
                 </div>
             </div>
         </BackstageLayout>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Resumo da seleção — modelo da 1ª etapa de cortesias               */
+/* ------------------------------------------------------------------ */
+
+function ResumoSection({ title, onClear, children }: { title: string; onClear: () => void; children: React.ReactNode }) {
+    return (
+        <section className="flex flex-col gap-3">
+            <header className="flex items-center gap-3">
+                <h4 className="shrink-0 text-sm font-semibold text-primary">{title}</h4>
+                <span className="flex-1 border-t border-dashed border-secondary" aria-hidden="true" />
+                <Button size="xs" color="link-gray" className="font-medium underline" onClick={onClear}>
+                    Remover todos
+                </Button>
+            </header>
+            <div className="flex flex-col gap-4">{children}</div>
+        </section>
+    );
+}
+
+function ResumoIngressoRow({ item, onRemover }: { item: ItemVinculavel; onRemover: () => void }) {
+    return (
+        <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-sm font-medium text-primary">{item.nome}</span>
+                <span className="truncate text-sm text-tertiary">{item.grupo}</span>
+                {item.data && <span className="truncate text-xs text-tertiary">{item.data}</span>}
+            </div>
+            <Button size="xs" color="link-gray" className="font-medium underline" onClick={onRemover}>
+                Remover
+            </Button>
+        </div>
+    );
+}
+
+function ResumoProdutoRow({ item, onRemover }: { item: ItemVinculavel; onRemover: () => void }) {
+    return (
+        <div className="flex items-center gap-3">
+            {item.imagem && <img src={item.imagem} alt="" aria-hidden="true" className="size-10 shrink-0 rounded-md object-cover ring-1 ring-secondary" />}
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary">{item.nome}</span>
+            <Button size="xs" color="link-gray" className="font-medium underline" onClick={onRemover}>
+                Remover
+            </Button>
+        </div>
     );
 }

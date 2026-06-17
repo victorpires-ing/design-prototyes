@@ -122,6 +122,9 @@ const PERGUNTAS_MOCK: Pergunta[] = [
     { id: "6", titulo: "Documento com foto", ajuda: "Frente e verso de um documento oficial.", tipo: "anexo", opcoes: [], ativa: true, obrigatoria: true, respostas: 0 },
 ];
 
+// Banco de perguntas a nível de organização — fonte reutilizável entre eventos.
+export const BANCO_PERGUNTAS: Pergunta[] = PERGUNTAS_MOCK;
+
 const TITULO_FORMULARIO_PADRAO = "Informações do portador";
 
 const TITULOS_FORMULARIO_MOCK: Record<string, string> = {
@@ -204,6 +207,8 @@ interface PesquisasStoreValue {
     associacoes: Record<string, AssocItem[]>;
     getPergunta: (id: string) => Pergunta | undefined;
     addPergunta: (input: PerguntaInput) => Pergunta;
+    /** Adiciona perguntas existentes do banco da organização ao evento (por id, sem duplicar). */
+    adicionarDoBanco: (ids: string[]) => void;
     updatePergunta: (id: string, input: PerguntaInput) => void;
     togglePergunta: (id: string) => void;
     /** Define se a pergunta é obrigatória no formulário (propaga às associações). */
@@ -257,10 +262,10 @@ function hashId(s: string): number {
 const mockRespostas = (id: string) => 23 + (hashId(id) % 137);
 
 export function PesquisasProvider({ children }: { children: ReactNode }) {
-    // Banco pré-populado — base para desenvolver a interface de associação pergunta → ingresso.
-    const [perguntas, setPerguntas] = useState<Pergunta[]>(PERGUNTAS_MOCK);
+    // Começa VAZIO — o teste de usabilidade inicia no empty state ("Crie sua primeira pergunta").
+    const [perguntas, setPerguntas] = useState<Pergunta[]>([]);
     const [ingressos] = useState<TipoIngresso[]>(INGRESSOS_MOCK);
-    const [associacoes, setAssociacoes] = useState<Record<string, AssocItem[]>>(ASSOCIACOES_MOCK);
+    const [associacoes, setAssociacoes] = useState<Record<string, AssocItem[]>>({});
     const [titulosFormulario, setTitulosFormulario] = useState<Record<string, string>>(TITULOS_FORMULARIO_MOCK);
 
     // Respostas só aparecem DEPOIS que a pergunta é associada a algum ingresso.
@@ -279,6 +284,14 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
         const pergunta: Pergunta = { id: nextId(), respostas: 0, obrigatoria: true, ...input };
         setPerguntas((prev) => [pergunta, ...prev]);
         return pergunta;
+    }, []);
+
+    const adicionarDoBanco = useCallback((ids: string[]) => {
+        setPerguntas((prev) => {
+            const existentes = new Set(prev.map((p) => p.id));
+            const novas = BANCO_PERGUNTAS.filter((p) => ids.includes(p.id) && !existentes.has(p.id));
+            return [...prev, ...novas];
+        });
     }, []);
 
     const updatePergunta = useCallback((id: string, input: PerguntaInput) => {
@@ -457,6 +470,7 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
             associacoes,
             getPergunta,
             addPergunta,
+            adicionarDoBanco,
             updatePergunta,
             togglePergunta,
             setObrigatoriaPergunta,
@@ -479,7 +493,7 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
             tituloDoIngresso,
             setTituloFormulario,
         }),
-        [perguntasView, ingressos, associacoes, getPergunta, addPergunta, updatePergunta, togglePergunta, setObrigatoriaPergunta, removePergunta, esvaziarBanco, restaurarBanco, countIngressosDaPergunta, ingressosDaPergunta, reorderPerguntas, setIngressosDaPergunta, itensVinculaveis, itensDaPergunta, countItensDaPergunta, setItensDaPergunta, togglePerguntaNoIngresso, vincularPerguntasEmIngressos, perguntasDoIngresso, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario],
+        [perguntasView, ingressos, associacoes, getPergunta, addPergunta, adicionarDoBanco, updatePergunta, togglePergunta, setObrigatoriaPergunta, removePergunta, esvaziarBanco, restaurarBanco, countIngressosDaPergunta, ingressosDaPergunta, reorderPerguntas, setIngressosDaPergunta, itensVinculaveis, itensDaPergunta, countItensDaPergunta, setItensDaPergunta, togglePerguntaNoIngresso, vincularPerguntasEmIngressos, perguntasDoIngresso, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario],
     );
 
     return <PesquisasContext.Provider value={value}>{children}</PesquisasContext.Provider>;

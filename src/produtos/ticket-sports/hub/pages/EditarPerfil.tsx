@@ -1,8 +1,10 @@
 import { useRef, useState } from "react";
-import { ArrowLeft, Camera01, LogOut01 } from "@untitledui/icons";
+import { ArrowLeft, Camera01, LogOut01, Moon01 } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { cx } from "@/utils/cx";
+import { useTheme } from "@/providers/theme-provider";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { getHubTheme, setHubTheme } from "../../components/use-light-theme";
 import { HubButton, HubInput, HubTextarea, HubToggle } from "../components/hub-ui";
 import { ATIVIDADES } from "../data/onboarding";
 
@@ -15,6 +17,15 @@ export function EditarPerfil() {
     const [cidade, setCidade] = useState("São Paulo, SP");
     const [atividades, setAtividades] = useState<Set<string>>(new Set(["corrida", "academia"]));
     const [visivel, setVisivel] = useState(true);
+    const { setTheme } = useTheme();
+    const [noturno, setNoturno] = useState(getHubTheme() === "dark");
+
+    const alternarNoturno = (on: boolean) => {
+        setNoturno(on);
+        const tema = on ? "dark" : "light";
+        setHubTheme(tema);
+        setTheme(tema); // aplica imediatamente em todo o app
+    };
 
     const onArquivo = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -91,6 +102,18 @@ export function EditarPerfil() {
 
                     <div className="rounded-xl border border-secondary p-4">
                         <HubToggle checked={visivel} onChange={setVisivel} label="Deixar perfil visível para todos" />
+                    </div>
+
+                    {/* Aparência — versão noturna (vale para todo o app) */}
+                    <div className="flex flex-col gap-3 rounded-xl border border-secondary p-4">
+                        <div className="flex items-center gap-2">
+                            <span className="flex size-8 items-center justify-center rounded-lg bg-[#7C3AED]/10 text-[#7C3AED]">
+                                <Moon01 className="size-4" />
+                            </span>
+                            <span className="text-sm font-semibold text-primary">Aparência</span>
+                        </div>
+                        <HubToggle checked={noturno} onChange={alternarNoturno} label="Versão noturna" />
+                        <p className="text-xs text-tertiary">Ativa o tema escuro em todo o app.</p>
                     </div>
 
                     <button

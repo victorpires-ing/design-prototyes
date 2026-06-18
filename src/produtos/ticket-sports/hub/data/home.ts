@@ -3,6 +3,67 @@ import { TrendUp02, Users01, UsersPlus } from "@untitledui/icons";
 
 export const USUARIO = { nome: "William", inicial: "W", foto: "https://i.pravatar.cc/100?img=68" };
 
+// Pessoas que concluíram 100% dos treinos da rotina neste mês
+export const CONCLUIRAM_MES = [
+    { id: "marina", nome: "Marina Souza", foto: "https://i.pravatar.cc/100?img=5", atividade: "Corrida" },
+    { id: "carlos", nome: "Carlos Lima", foto: "https://i.pravatar.cc/100?img=12", atividade: "Musculação" },
+    { id: "ana", nome: "Ana Beatriz", foto: "https://i.pravatar.cc/100?img=9", atividade: "Ciclismo" },
+    { id: "juliana", nome: "Juliana Castro", foto: "https://i.pravatar.cc/100?img=16", atividade: "Yoga" },
+    { id: "rafael", nome: "Rafael Mendes", foto: "https://i.pravatar.cc/100?img=13", atividade: "Natação" },
+    { id: "bruno", nome: "Bruno Alves", foto: "https://i.pravatar.cc/100?img=7", atividade: "CrossFit" },
+];
+
+// Conquista do próprio usuário (rotina 100% no mês) e quem celebrou
+export const MINHA_CONQUISTA = {
+    mes: "Junho",
+    concluida: true,
+    celebradoPor: [
+        { nome: "Marina Souza", foto: "https://i.pravatar.cc/100?img=5" },
+        { nome: "Carlos Lima", foto: "https://i.pravatar.cc/100?img=12" },
+        { nome: "Rafael Mendes", foto: "https://i.pravatar.cc/100?img=13" },
+    ],
+};
+
+// Presentes cadastrados para o usuário (aparecem na caixinha do header)
+export interface Presente {
+    id: string;
+    remetente: string;
+    emoji: string;
+    titulo: string;
+    descricao: string;
+    cta: string;
+    codigo?: string;
+}
+
+export const PRESENTES: Presente[] = [
+    {
+        id: "g1",
+        remetente: "Ticket Sports",
+        emoji: "🎟️",
+        titulo: "15% de desconto",
+        descricao: "Vale 15% em qualquer inscrição de evento. Aproveite no seu próximo desafio!",
+        cta: "Usar desconto",
+        codigo: "BORA15",
+    },
+    {
+        id: "g2",
+        remetente: "Hub",
+        emoji: "👕",
+        titulo: "Camiseta exclusiva",
+        descricao: "Resgate a camiseta oficial do Hub. Escolha o tamanho na retirada.",
+        cta: "Resgatar agora",
+    },
+    {
+        id: "g3",
+        remetente: "Corrida da Primavera",
+        emoji: "🏅",
+        titulo: "Inscrição gratuita",
+        descricao: "Uma inscrição grátis na Corrida da Primavera 5k/10k. Sua vaga te espera!",
+        cta: "Garantir vaga",
+    },
+];
+
+
 export interface Compromisso {
     id: string;
     quando: string;

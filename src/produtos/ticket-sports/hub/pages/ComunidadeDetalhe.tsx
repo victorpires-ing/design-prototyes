@@ -3,15 +3,18 @@ import { Announcement01, ArrowLeft, CheckVerified01, Heart, MessageCircle01 } fr
 import { useNavigate, useParams } from "react-router";
 import { cx } from "@/utils/cx";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { EventoCard } from "../components/EventoCard";
 import { HubButton } from "../components/hub-ui";
 import { getComunidade } from "../data/comunidade";
+import { EVENTOS } from "../data/eventos";
 
 export function ComunidadeDetalhe() {
     const navigate = useNavigate();
     const { id } = useParams();
     const c = getComunidade(id);
-    const [aba, setAba] = useState<"publicacoes" | "informativos">("publicacoes");
+    const [aba, setAba] = useState<"publicacoes" | "informativos" | "eventos">("publicacoes");
     const [inscrito, setInscrito] = useState(false);
+    const eventosRelacionados = EVENTOS.filter((e) => e.atividade === c?.atividade);
 
     if (!c) {
         return (
@@ -36,7 +39,7 @@ export function ComunidadeDetalhe() {
                         type="button"
                         onClick={() => navigate(-1)}
                         aria-label="Voltar"
-                        className="absolute left-4 top-4 flex size-9 items-center justify-center rounded-full bg-white/90 text-primary backdrop-blur-md"
+                        className="absolute left-4 top-4 flex size-9 items-center justify-center rounded-full bg-white/90 text-[#1f1f1f] backdrop-blur-md"
                     >
                         <ArrowLeft className="size-5" />
                     </button>
@@ -73,7 +76,7 @@ export function ComunidadeDetalhe() {
                             onClick={() => setInscrito((v) => !v)}
                             className={cx(
                                 "shrink-0 rounded-lg px-5 py-2.5 text-sm font-semibold transition duration-100",
-                                inscrito ? "bg-white text-primary ring-1 ring-border-secondary" : "bg-[#7C3AED] text-white hover:bg-[#6D28D9]",
+                                inscrito ? "bg-primary text-primary ring-1 ring-border-secondary" : "bg-[#7C3AED] text-white hover:bg-[#6D28D9]",
                             )}
                         >
                             {inscrito ? "Inscrito" : "Inscrever-se"}
@@ -83,7 +86,7 @@ export function ComunidadeDetalhe() {
 
                 {/* Abas */}
                 <div className="mt-5 flex border-b border-secondary px-5">
-                    {(["publicacoes", "informativos"] as const).map((tabId) => (
+                    {(["publicacoes", "informativos", "eventos"] as const).map((tabId) => (
                         <button
                             key={tabId}
                             type="button"
@@ -93,7 +96,7 @@ export function ComunidadeDetalhe() {
                                 aba === tabId ? "border-[#7C3AED] text-[#7C3AED]" : "border-transparent text-tertiary",
                             )}
                         >
-                            {tabId === "publicacoes" ? "Publicações" : "Informativos"}
+                            {tabId === "publicacoes" ? "Publicações" : tabId === "informativos" ? "Informativos" : "Eventos"}
                         </button>
                     ))}
                 </div>
@@ -135,6 +138,17 @@ export function ComunidadeDetalhe() {
                                     <span className="mt-1 text-xs text-tertiary">{info.data}</span>
                                 </div>
                             </article>
+                        ))}
+
+                    {aba === "eventos" &&
+                        (eventosRelacionados.length > 0 ? (
+                            eventosRelacionados.map((e) => (
+                                <EventoCard key={e.id} e={e} onClick={() => navigate(`/ticket-sports/hub/eventos/${e.id}`)} />
+                            ))
+                        ) : (
+                            <p className="py-10 text-center text-sm text-tertiary">
+                                Nenhum evento desta comunidade por aqui ainda.
+                            </p>
                         ))}
                 </div>
             </main>

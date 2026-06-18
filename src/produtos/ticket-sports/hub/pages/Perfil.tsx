@@ -82,7 +82,7 @@ export function Perfil() {
                     <button
                         type="button"
                         onClick={() => navigate("/ticket-sports/hub/perfil/editar")}
-                        className="mt-1 rounded-lg bg-white px-5 py-2 text-sm font-semibold text-primary ring-1 ring-border-secondary transition hover:bg-secondary"
+                        className="mt-1 rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary ring-1 ring-border-secondary transition hover:bg-secondary"
                     >
                         Editar perfil
                     </button>

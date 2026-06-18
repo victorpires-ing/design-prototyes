@@ -63,7 +63,7 @@ export function PerfilUsuario() {
                         onClick={() => setSeguindo((v) => !v)}
                         className={cx(
                             "flex items-center gap-1.5 rounded-lg px-6 py-2.5 text-sm font-semibold transition duration-100",
-                            seguindo ? "bg-white text-primary ring-1 ring-border-secondary" : "bg-[#7C3AED] text-white hover:bg-[#6D28D9]",
+                            seguindo ? "bg-primary text-primary ring-1 ring-border-secondary" : "bg-[#7C3AED] text-white hover:bg-[#6D28D9]",
                         )}
                     >
                         {seguindo && <Check className="size-4" />}

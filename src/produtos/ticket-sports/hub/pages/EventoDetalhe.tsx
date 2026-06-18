@@ -38,11 +38,11 @@ export function EventoDetalhe() {
                         type="button"
                         onClick={() => navigate(-1)}
                         aria-label="Voltar"
-                        className="absolute left-4 top-4 flex size-9 items-center justify-center rounded-full bg-white/90 text-primary backdrop-blur-md"
+                        className="absolute left-4 top-4 flex size-9 items-center justify-center rounded-full bg-white/90 text-[#1f1f1f] backdrop-blur-md"
                     >
                         <ArrowLeft className="size-5" />
                     </button>
-                    <span className="absolute bottom-3 left-4 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-primary backdrop-blur-md">
+                    <span className="absolute bottom-3 left-4 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-[#1f1f1f] backdrop-blur-md">
                         {e.emoji} {e.atividade} · {e.nivel}
                     </span>
                 </div>

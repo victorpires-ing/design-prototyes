@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Calendar, Package, SearchLg, Ticket01 } from "@untitledui/icons";
+import { ArrowLeft, Calendar, ChevronDown, Package, SearchLg, Ticket01 } from "@untitledui/icons";
 import { toast } from "sonner";
-import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
@@ -63,6 +62,18 @@ export function VinculosPergunta() {
             else next.add(id);
             return next;
         });
+
+    // Accordions abertos por padrão (lista aberta), como na 1ª etapa de cortesias.
+    const [fechados, setFechados] = useState<Set<string>>(new Set());
+    const toggleAccordion = useCallback((titulo: string) => {
+        setFechados((prev) => {
+            const next = new Set(prev);
+            if (next.has(titulo)) next.delete(titulo);
+            else next.add(titulo);
+            return next;
+        });
+    }, []);
+    const estaAberto = (titulo: string) => busca.trim() !== "" || !fechados.has(titulo);
 
     // Seções: ingressos agrupados por data › setor; produtos numa seção própria.
     const secoes = useMemo(() => {
@@ -132,130 +143,68 @@ export function VinculosPergunta() {
                         </div>
                     </div>
 
+                    {/* Divider entre o header e a busca */}
+                    <hr className="border-t border-secondary" />
+
                     {/* Lista (esquerda, com busca) + resumo (direita) */}
                     <div className="flex w-full gap-6">
-                        <div className="flex min-w-0 flex-1 flex-col gap-4">
-                            {/* Busca + Selecionar todos (topo da lista) */}
-                            <div className="flex items-center justify-between gap-3">
-                                <Input
-                                    size="sm"
-                                    icon={SearchLg}
-                                    aria-label="Buscar itens"
-                                    placeholder="Buscar ingresso, setor ou produto"
-                                    value={busca}
-                                    onChange={setBusca}
-                                    className="min-w-0 max-w-[540px] flex-1"
-                                />
-                                <Button size="sm" color="link-color" className="shrink-0" onClick={() => setVarios(itensVinculaveis.map((i) => i.id), true)}>
-                                    Selecionar todos
-                                </Button>
-                            </div>
-                    {vazio ? (
-                        <div className="flex flex-1 items-center justify-center py-12">
-                            <EmptyState size="sm">
-                                <EmptyState.Header>
-                                    <EmptyState.FeaturedIcon icon={SearchLg} color="gray" theme="modern" />
-                                </EmptyState.Header>
-                                <EmptyState.Content>
-                                    <EmptyState.Title>Nada encontrado</EmptyState.Title>
-                                    <EmptyState.Description>Tente outro termo de busca.</EmptyState.Description>
-                                </EmptyState.Content>
-                            </EmptyState>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-6">
-                            {secoes.map((secao) => (
-                                <section key={secao.titulo} className="flex flex-col gap-3">
-                                    <div className="flex items-center gap-2 px-1">
-                                        <secao.icon className="size-4 shrink-0 text-fg-quaternary" />
-                                        <h2 className="text-md font-semibold text-primary">{secao.titulo}</h2>
-                                    </div>
-                                    {secao.grupos.map((g) => {
-                                        const ids = g.itens.map((i) => i.id);
-                                        const todos = ids.every((id) => sel.has(id));
-                                        const alguns = ids.some((id) => sel.has(id)) && !todos;
-                                        return (
-                                            <div key={`${secao.titulo}/${g.nome}`} className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-                                                <div className="flex items-center gap-3 border-b border-secondary bg-secondary/40 px-4 py-3">
-                                                    <Checkbox
-                                                        size="sm"
-                                                        aria-label={`Selecionar todos de ${g.nome}`}
-                                                        isSelected={todos}
-                                                        isIndeterminate={alguns}
-                                                        onChange={(on: boolean) => setVarios(ids, on)}
-                                                    />
-                                                    <span className="flex-1 text-sm font-semibold text-primary">{g.nome}</span>
-                                                    <span className="text-sm text-tertiary">
-                                                        {g.itens.length} {g.itens.length === 1 ? "item" : "itens"}
-                                                    </span>
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    {g.itens.map((it) => {
-                                                        const marcado = sel.has(it.id);
-                                                        return (
-                                                            <div
+                        <section className="flex min-w-0 flex-1 flex-col gap-4">
+                            <Input
+                                icon={SearchLg}
+                                label="Buscar itens"
+                                placeholder="Busque por nome de grupo, item ou lote"
+                                value={busca}
+                                onChange={setBusca}
+                            />
+
+                            {vazio ? (
+                                <p className="rounded-lg bg-secondary px-4 py-8 text-center text-sm text-tertiary">Nenhum item corresponde à busca.</p>
+                            ) : (
+                                secoes.map((secao) => (
+                                    <AccordionShell key={secao.titulo} icon={secao.icon} title={secao.titulo} isOpen={estaAberto(secao.titulo)} onToggle={() => toggleAccordion(secao.titulo)}>
+                                        {secao.grupos.map((g) => {
+                                            const ids = g.itens.map((i) => i.id);
+                                            const todos = ids.length > 0 && ids.every((id) => sel.has(id));
+                                            const alguns = ids.some((id) => sel.has(id)) && !todos;
+                                            return (
+                                                <div key={g.nome} className="flex flex-col gap-2">
+                                                    <label className="flex w-fit cursor-pointer items-center gap-2.5">
+                                                        <Checkbox size="sm" isSelected={todos} isIndeterminate={alguns} onChange={(on: boolean) => setVarios(ids, on)} aria-label={`Selecionar todos de ${g.nome}`} />
+                                                        <span className="text-sm font-semibold text-primary">{g.nome}</span>
+                                                    </label>
+                                                    <div className="flex flex-col gap-1">
+                                                        {g.itens.map((it) => (
+                                                            <ItemRow
                                                                 key={it.id}
-                                                                className={cx(
-                                                                    "flex items-center gap-3 border-b border-secondary px-4 py-3 transition-colors duration-100 ease-linear last:border-b-0",
-                                                                    marcado ? "bg-brand-primary dark:bg-white/10" : "hover:bg-primary_hover",
-                                                                )}
-                                                            >
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => toggle(it.id)}
-                                                                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                                                                >
-                                                                    <Checkbox size="sm" isSelected={marcado} isReadOnly aria-hidden="true" />
-                                                                    {it.imagem && (
-                                                                        <img src={it.imagem} alt="" aria-hidden="true" className="size-9 shrink-0 rounded-md object-cover ring-1 ring-border-secondary" />
-                                                                    )}
-                                                                    <span className="min-w-0 flex-1 truncate text-sm text-primary">{it.nome}</span>
-                                                                </button>
-                                                                <label
-                                                                    className={cx(
-                                                                        "flex shrink-0 items-center gap-2 transition-opacity duration-100 ease-linear",
-                                                                        marcado ? "opacity-100" : "pointer-events-none opacity-40",
-                                                                    )}
-                                                                >
-                                                                    <span className="text-xs text-tertiary">Resposta obrigatória</span>
-                                                                    <Toggle
-                                                                        size="sm"
-                                                                        isSelected={obrig.has(it.id)}
-                                                                        isDisabled={!marcado}
-                                                                        onChange={() => toggleObrig(it.id)}
-                                                                        aria-label={`Resposta obrigatória para ${it.nome}`}
-                                                                    />
-                                                                </label>
-                                                            </div>
-                                                        );
-                                                    })}
+                                                                item={it}
+                                                                marcado={sel.has(it.id)}
+                                                                obrigatorio={obrig.has(it.id)}
+                                                                onToggle={() => toggle(it.id)}
+                                                                onToggleObrig={() => toggleObrig(it.id)}
+                                                            />
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
-                                </section>
-                            ))}
-                        </div>
-                    )}
-                        </div>
+                                            );
+                                        })}
+                                    </AccordionShell>
+                                ))
+                            )}
+                        </section>
 
                         {/* Resumo da seleção — modelo da 1ª etapa de cortesias (desktop) */}
-                        <aside className="sticky top-6 hidden h-[calc(100vh-7rem)] max-h-[560px] w-[330px] shrink-0 flex-col overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary lg:flex">
+                        <aside className="sticky top-6 hidden h-[calc(100vh-7rem)] max-h-[560px] w-[330px] shrink-0 flex-col overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary lg:mt-[26px] lg:flex">
                             <header className="flex shrink-0 items-baseline justify-between gap-2 border-b border-secondary bg-secondary px-4 py-3.5">
                                 <h3 className="text-sm font-semibold text-primary">Itens vinculados</h3>
                                 <span className="text-xs text-tertiary tabular-nums">
-                                    {sel.size} de {totalItens} selecionados
+                                    {sel.size} {sel.size === 1 ? "selecionado" : "selecionados"}
                                 </span>
                             </header>
 
                             {sel.size === 0 ? (
                                 <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
                                     <FeaturedIcon icon={Ticket01} color="brand" theme="gradient" size="xl" />
-                                    <p className="text-md text-primary">
-                                        Você ainda não
-                                        <br />
-                                        vinculou itens
-                                    </p>
+                                    <p className="text-md text-primary">Sem itens vinculados a essa pergunta</p>
                                 </div>
                             ) : (
                                 <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 py-4">
@@ -275,12 +224,22 @@ export function VinculosPergunta() {
                                     )}
                                 </div>
                             )}
+
+                            {/* Rodapé do resumo — cancelar + salvar */}
+                            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-secondary px-4 py-3.5">
+                                <Button size="md" color="secondary" onClick={voltar}>
+                                    Cancelar
+                                </Button>
+                                <Button size="md" color="primary" onClick={salvar}>
+                                    Salvar vínculos
+                                </Button>
+                            </div>
                         </aside>
                     </div>
                 </main>
 
-                {/* Barra de ações flutuante — largura total */}
-                <div className="sticky bottom-4 z-20 mb-4 w-full px-4 md:px-6">
+                {/* Barra de ações flutuante — apenas mobile (no desktop a ação fica no resumo) */}
+                <div className="sticky bottom-4 z-20 mb-4 w-full px-4 md:px-6 lg:hidden">
                     <div className="flex items-center justify-end gap-2 rounded-xl bg-primary px-4 py-3 shadow-lg ring-1 ring-border-secondary">
                         <Button size="md" color="secondary" onClick={voltar}>
                             Cancelar
@@ -292,6 +251,44 @@ export function VinculosPergunta() {
                 </div>
             </div>
         </BackstageLayout>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Accordion + linha de item — layout da 1ª etapa de cortesias       */
+/* ------------------------------------------------------------------ */
+
+function AccordionShell({ icon: Icon, title, isOpen, onToggle, children }: { icon: React.FC<{ className?: string }>; title: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode }) {
+    return (
+        <div className="flex flex-col overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+            <button
+                type="button"
+                onClick={onToggle}
+                aria-expanded={isOpen}
+                className={cx("flex items-center gap-3 px-4 py-3 text-left hover:bg-primary_hover", isOpen && "border-b border-secondary")}
+            >
+                <FeaturedIcon icon={Icon} color="gray" size="sm" theme="modern" />
+                <h3 className="flex-1 text-sm font-semibold text-primary">{title}</h3>
+                <ChevronDown aria-hidden="true" className={cx("size-4 shrink-0 text-fg-quaternary transition-transform", isOpen && "rotate-180")} />
+            </button>
+            {isOpen && <div className="flex flex-col gap-4 p-4">{children}</div>}
+        </div>
+    );
+}
+
+function ItemRow({ item, marcado, obrigatorio, onToggle, onToggleObrig }: { item: ItemVinculavel; marcado: boolean; obrigatorio: boolean; onToggle: () => void; onToggleObrig: () => void }) {
+    return (
+        <div className={cx("flex items-center gap-2 rounded-md px-2 py-1.5 transition duration-100 ease-linear hover:bg-primary_hover")}>
+            <button type="button" onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <Checkbox size="sm" isSelected={marcado} isReadOnly aria-hidden="true" />
+                {item.imagem && <img src={item.imagem} alt="" aria-hidden="true" className="size-9 shrink-0 rounded-md object-cover ring-1 ring-secondary" />}
+                <span className="min-w-0 truncate text-sm font-medium text-primary">{item.nome}</span>
+            </button>
+            <label className={cx("flex shrink-0 items-center gap-2 transition-opacity duration-100 ease-linear", marcado ? "opacity-100" : "pointer-events-none opacity-40")}>
+                <span className="text-xs text-tertiary">Resposta obrigatória</span>
+                <Toggle size="sm" isSelected={obrigatorio} isDisabled={!marcado} onChange={onToggleObrig} aria-label={`Resposta obrigatória para ${item.nome}`} />
+            </label>
+        </div>
     );
 }
 

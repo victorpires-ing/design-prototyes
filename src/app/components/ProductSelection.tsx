@@ -7,7 +7,7 @@ import { cx } from "@/utils/cx";
 /*  Products                                                          */
 /* ------------------------------------------------------------------ */
 
-type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes";
+type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes" | "marketplace";
 
 interface ProductCardData {
     id: string;
@@ -60,6 +60,13 @@ const PRODUCTS: ProductCardData[] = [
         to: "/testes",
         illustration: "testes",
     },
+    {
+        id: "marketplace",
+        name: "Marketplace",
+        description: "Configure o evento e gere o link de seleção",
+        to: "/marketplace",
+        illustration: "marketplace",
+    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
@@ -69,6 +76,7 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     "ingresse-app": AppIllustration,
     "landing-pages": LandingPagesIllustration,
     testes: TestesIllustration,
+    marketplace: MarketplaceIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -329,6 +337,70 @@ function NovoSiteIllustration() {
 
             {/* window border */}
             <rect x="70" y="32" width="180" height="104" rx="12" fill="none" stroke={BORDER} strokeWidth="1" />
+        </svg>
+    );
+}
+
+function MarketplaceIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <defs>
+                <linearGradient id="mk-bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="160">
+                    <stop offset="0%" stopColor={N100} />
+                    <stop offset="100%" stopColor={N200} />
+                </linearGradient>
+            </defs>
+
+            <rect width="320" height="160" fill="url(#mk-bg)" />
+
+            {/* toldo da vitrine */}
+            <rect x="46" y="20" width="228" height="16" rx="4" fill={N300} />
+            <g fill={BRAND} opacity="0.85">
+                <rect x="46" y="20" width="38" height="16" />
+                <rect x="122" y="20" width="38" height="16" />
+                <rect x="198" y="20" width="38" height="16" />
+            </g>
+
+            {/* grade de cards (itens à venda) */}
+            {/* card 1 — destaque de marca (selecionado) */}
+            <g>
+                <rect x="58" y="48" width="58" height="44" rx="6" fill={N50} stroke={BRAND} strokeWidth="2" />
+                <rect x="64" y="54" width="46" height="20" rx="3" fill={BRAND_SOFT} />
+                <rect x="64" y="78" width="30" height="4" rx="2" fill={N400} />
+                <rect x="64" y="85" width="20" height="3" rx="1.5" fill={N300} />
+                {/* check de selecionado */}
+                <circle cx="108" cy="54" r="7" fill={BRAND} />
+            </g>
+            {/* card 2 */}
+            <g>
+                <rect x="131" y="48" width="58" height="44" rx="6" fill={N50} stroke={BORDER} />
+                <rect x="137" y="54" width="46" height="20" rx="3" fill={N200} />
+                <rect x="137" y="78" width="30" height="4" rx="2" fill={N400} />
+                <rect x="137" y="85" width="20" height="3" rx="1.5" fill={N300} />
+            </g>
+            {/* card 3 */}
+            <g>
+                <rect x="204" y="48" width="58" height="44" rx="6" fill={N50} stroke={BORDER} />
+                <rect x="210" y="54" width="46" height="20" rx="3" fill={N200} />
+                <rect x="210" y="78" width="30" height="4" rx="2" fill={N400} />
+                <rect x="210" y="85" width="20" height="3" rx="1.5" fill={N300} />
+            </g>
+
+            {/* barra inferior — atribuição (seta para destino) */}
+            <rect x="58" y="104" width="120" height="34" rx="8" fill={N50} stroke={BORDER} />
+            <circle cx="76" cy="121" r="9" fill={BRAND_SOFT} />
+            <rect x="92" y="115" width="60" height="5" rx="2.5" fill={N300} />
+            <rect x="92" y="124" width="40" height="4" rx="2" fill={N200} />
+
+            {/* seta de atribuição */}
+            <g stroke={BRAND} strokeWidth="3" fill="none">
+                <line x1="188" y1="121" x2="214" y2="121" />
+                <polyline points="206,114 214,121 206,128" />
+            </g>
+
+            {/* destino */}
+            <rect x="222" y="104" width="40" height="34" rx="8" fill={BRAND} opacity="0.9" />
+            <circle cx="242" cy="121" r="8" fill="#ffffff" opacity="0.85" />
         </svg>
     );
 }

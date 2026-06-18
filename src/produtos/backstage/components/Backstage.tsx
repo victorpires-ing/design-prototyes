@@ -555,22 +555,6 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 </TreeView.Item>
             </TreeView.Item>
 
-            <TreeView.Item id="pesquisas" textValue="Coleta de dados">
-                <TreeView.ItemContent
-                    icon={BarChartSquare02}
-                    action={
-                        <Badge size="sm" type="pill-color" color="error">
-                            Novo
-                        </Badge>
-                    }
-                >
-                    Coleta de dados
-                </TreeView.ItemContent>
-                <TreeView.Item id="formularios-compra" textValue="Perguntas por ingresso" href="/backstage/pesquisas">
-                    <TreeView.ItemContent className={itemClass("formularios-compra")}>Perguntas por ingresso</TreeView.ItemContent>
-                </TreeView.Item>
-            </TreeView.Item>
-
             <TreeView.Item id="cortesias" textValue="Cortesias">
                 <TreeView.ItemContent
                     icon={Ticket01}
@@ -613,6 +597,26 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 <TreeView.ItemContent icon={Announcement01}>Marketing</TreeView.ItemContent>
                 <TreeView.Item id="chave-de-acesso" textValue="Chave de acesso" href="/backstage/marketing/chave-de-acesso">
                     <TreeView.ItemContent className={itemClass("chave-de-acesso")}>Chave de acesso</TreeView.ItemContent>
+                </TreeView.Item>
+            </TreeView.Item>
+
+            <TreeView.Item id="pesquisas" textValue="Coleta de dados">
+                <TreeView.ItemContent
+                    icon={BarChartSquare02}
+                    action={
+                        <Badge size="sm" type="pill-color" color="error">
+                            Novo
+                        </Badge>
+                    }
+                >
+                    Coleta de dados
+                </TreeView.ItemContent>
+                <TreeView.Item id="formularios-compra" textValue="Perguntas por ingresso" href="/backstage/pesquisas">
+                    <TreeView.ItemContent className={itemClass("formularios-compra")}>
+                        <span className="flex items-center gap-2 ml-2">
+                            • Perguntas por ingresso
+                        </span>
+                    </TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>
         </TreeView>

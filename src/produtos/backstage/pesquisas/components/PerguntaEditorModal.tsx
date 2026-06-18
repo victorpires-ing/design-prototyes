@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { InfoCircle, Plus, Rows01, Trash01, XClose } from "@untitledui/icons";
+import { InfoCircle, Plus, Trash01, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
 import { Button } from "@/components/base/buttons/button";
@@ -8,7 +8,7 @@ import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
-import { BANCO_PERGUNTAS, TIPO_PERGUNTA, TIPOS_ORDENADOS, usePesquisas, type Pergunta, type PerguntaInput, type TipoPergunta } from "../data/pesquisas-store";
+import { TIPO_PERGUNTA, TIPOS_ORDENADOS, usePesquisas, type Pergunta, type PerguntaInput, type TipoPergunta } from "../data/pesquisas-store";
 import { perguntaSemelhante } from "../utils/similaridade";
 
 interface PerguntaEditorModalProps {
@@ -20,8 +20,6 @@ interface PerguntaEditorModalProps {
     onSaved?: (pergunta: Pergunta) => void;
     /** Pede a exclusão da pergunta (o pai confirma). Só aparece ao editar. */
     onExcluir?: (pergunta: Pergunta) => void;
-    /** Atalho para escolher uma pergunta do banco em vez de criar. Só aparece na criação. */
-    onUsarExistente?: () => void;
 }
 
 /** Bloco de pergunta no construtor (PerguntaInput + chave local). */
@@ -33,7 +31,7 @@ const opcoesValidas = (b: Bloco) => b.opcoes.filter((o) => o.trim() !== "");
 const blocoValido = (b: Bloco) => b.titulo.trim() !== "" && (!temOpcoes(b.tipo) || opcoesValidas(b).length >= 2);
 const toInput = (b: Bloco): PerguntaInput => ({ titulo: b.titulo.trim(), ajuda: b.ajuda?.trim() || undefined, tipo: b.tipo, opcoes: temOpcoes(b.tipo) ? opcoesValidas(b) : [], ativa: b.ativa, obrigatoria: b.obrigatoria });
 
-export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcluir, onUsarExistente }: PerguntaEditorModalProps) {
+export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcluir }: PerguntaEditorModalProps) {
     const { addPergunta, updatePergunta, perguntas } = usePesquisas();
     const seq = useRef(0);
     const [blocos, setBlocos] = useState<Bloco[]>([]);
@@ -65,7 +63,7 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
     // Títulos já cadastrados (banco da organização + perguntas do evento), exceto a que está em edição.
     const titulosExistentes = useMemo(() => {
         const set = new Set<string>();
-        for (const p of [...BANCO_PERGUNTAS, ...perguntas]) {
+        for (const p of perguntas) {
             if (p.id === pergunta?.id) continue;
             set.add(p.titulo.trim().toLowerCase());
         }
@@ -175,10 +173,10 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
                         {emUso && (
                             <div className="flex items-start gap-3 rounded-xl bg-secondary p-4">
                                 <FeaturedIcon icon={InfoCircle} color="warning" theme="light" size="sm" className="shrink-0" />
-                                <div className="flex flex-col gap-0.5">
-                                    <span className="text-sm font-semibold text-primary">Esta pergunta está em uso</span>
-                                    <span className="text-sm text-tertiary">Já tem respostas, então não dá para excluir — só editar.</span>
-                                </div>
+                                <span className="text-sm text-tertiary">
+                                    Esta pergunta não pode ser excluída ou ter seu tipo alterado por já possuir respostas.{" "}
+                                    {pergunta && temOpcoes(pergunta.tipo) ? "Você ainda pode editar o título e as opções." : "Apenas o título pode ser editado."}
+                                </span>
                             </div>
                         )}
 
@@ -194,6 +192,7 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
                                     semelhante={semelhante}
                                     verificando={verificando}
                                     tipoItems={tipoItems}
+                                    tipoBloqueado={emUso}
                                     onTitulo={(v) => setBloco(b.key, { titulo: v })}
                                     onTipo={(t) => escolherTipo(b.key, t)}
                                     onSetOpcao={(i, v) => setOpcao(b.key, i, v)}
@@ -212,10 +211,6 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
                         {editando && pergunta ? (
                             <Button size="md" color="tertiary-destructive" iconLeading={Trash01} isDisabled={emUso} onClick={() => onExcluir?.(pergunta)}>
                                 Excluir pergunta
-                            </Button>
-                        ) : onUsarExistente ? (
-                            <Button size="md" color="link-color" iconLeading={Rows01} onClick={onUsarExistente}>
-                                Usar pergunta existente
                             </Button>
                         ) : (
                             <span />
@@ -248,6 +243,7 @@ function BlocoEditor({
     semelhante,
     verificando,
     tipoItems,
+    tipoBloqueado,
     onTitulo,
     onTipo,
     onSetOpcao,
@@ -263,6 +259,7 @@ function BlocoEditor({
     semelhante: { titulo: string } | null;
     verificando: boolean;
     tipoItems: { id: TipoPergunta; label: string; descricao: string; icon: React.FC<{ className?: string }> }[];
+    tipoBloqueado?: boolean;
     onTitulo: (v: string) => void;
     onTipo: (t: TipoPergunta) => void;
     onSetOpcao: (i: number, v: string) => void;
@@ -305,7 +302,7 @@ function BlocoEditor({
                 ) : null}
             </div>
 
-            <Select label="Tipo da resposta" isRequired selectedKey={bloco.tipo} onSelectionChange={(k: React.Key) => onTipo(k as TipoPergunta)} items={tipoItems}>
+            <Select label="Tipo da resposta" isRequired isDisabled={tipoBloqueado} selectedKey={bloco.tipo} onSelectionChange={(k: React.Key) => onTipo(k as TipoPergunta)} items={tipoItems}>
                 {(item: (typeof tipoItems)[number]) => (
                     <Select.Item id={item.id} icon={item.icon} supportingText={item.descricao}>
                         {item.label}

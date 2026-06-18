@@ -12,7 +12,8 @@
       .wrap { display: flex; flex-direction: column; gap: 11px; padding: 13px; }
 
       .title { display: flex; align-items: center; gap: 7px; }
-      .logo { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; border-radius: 5px; background: var(--brand); color: #fff; font-weight: 700; font-size: 11px; flex: none; }
+      .logo { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; border-radius: 5px; background: var(--brand); color: #fff; flex: none; }
+      .logo svg { width: 13px; height: 13px; display: block; }
       h1 { font-size: 12px; font-weight: 600; margin: 0; }
 
       /* Campo de colar: bem pequeno (o usuário só cola, não lê o JSON). */
@@ -53,7 +54,16 @@
   </head>
   <body>
     <div class="wrap">
-      <div class="title"><span class="logo" aria-hidden="true">A</span><h1>Importar tela</h1></div>
+      <div class="title">
+        <span class="logo" aria-hidden="true">
+          <!-- Marca Ingresse (símbolo do logo AFTER DS), inline para funcionar offline -->
+          <svg viewBox="0 5 27 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M24.608 6.00078C23.597 5.98134 22.5334 6.47926 21.7489 7.24694C21.2475 7.73747 20.5836 8.02044 19.9821 8.02044C19.3802 8.02044 18.9157 7.72581 18.7312 7.23644C18.4493 6.48937 17.7347 6 16.7456 6C15.7566 6 14.7232 6.48898 13.9544 7.23644C13.4515 7.72542 12.7946 8.02044 12.1927 8.02044C11.5912 8.02044 11.1114 7.73747 10.9296 7.24694C10.645 6.47926 9.90603 5.98134 8.88245 6.00078C7.29308 6.0311 5.59339 7.3274 5.09082 8.89151C4.58158 10.4758 5.46343 11.7578 7.06497 11.7578C7.99196 11.7578 8.95705 11.3282 9.70697 10.6597C10.2563 10.1699 10.9465 9.88929 11.5759 9.88929C12.2057 9.88929 12.7125 10.1703 12.943 10.6597C13.2575 11.3282 13.9431 11.7578 14.8697 11.7578C15.7963 11.7578 16.7617 11.3282 17.5117 10.6597C18.061 10.1699 18.7512 9.88929 19.3806 9.88929C20.0104 9.88929 20.5172 10.1703 20.7477 10.6597C21.0622 11.3282 21.7477 11.7578 22.6743 11.7578C24.2763 11.7578 25.9929 10.4754 26.5158 8.89151C27.0329 7.32779 26.1774 6.0311 24.608 6.00078Z" fill="currentColor"/>
+            <path d="M19.8608 19.4345C20.3222 18.0185 21.7356 16.8408 23.1742 16.5951C23.4986 16.5395 23.8064 16.2733 23.9069 15.965L24.7063 13.5108C24.8217 13.1563 24.625 12.8691 24.2673 12.8691H4.74931C4.39123 12.8691 4.00763 13.1563 3.8922 13.5108L3.09281 15.965C2.99229 16.2733 3.12657 16.5399 3.41476 16.5951C4.69316 16.8408 5.33943 18.0185 4.87809 19.4345C4.41675 20.8506 3.00329 22.0283 1.56469 22.274C1.24038 22.3295 0.932557 22.5958 0.832044 22.904L0.0330426 25.3583C-0.0823905 25.7128 0.114317 26 0.472003 26H19.9896C20.3477 26 20.7313 25.7128 20.8467 25.3583L21.6461 22.904C21.7466 22.5958 21.6124 22.3292 21.3242 22.274C20.0458 22.0283 19.3995 20.8506 19.8608 19.4345Z" fill="currentColor"/>
+          </svg>
+        </span>
+        <h1>Importar tela</h1>
+      </div>
 
       <div class="paste">
         <textarea id="json" spellcheck="false" placeholder="Cole o JSON exportado (Ctrl/Cmd+V)"></textarea>

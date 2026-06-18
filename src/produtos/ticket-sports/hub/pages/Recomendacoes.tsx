@@ -1,12 +1,13 @@
-import { ArrowLeft, ChevronRight } from "@untitledui/icons";
+import { Activity, ArrowLeft, ChevronRight, Heart, LayoutAlt01, UsersPlus, Users03 } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { CONTEUDOS, SAUDE, TREINO, type Dica } from "../data/recomendacoes";
 import { GRUPOS } from "../data/home";
 import { USUARIOS } from "../data/usuarios";
 
 const DicaCard = ({ d }: { d: Dica }) => (
-    <div className="flex gap-3 rounded-2xl border border-secondary p-4">
+    <div className="flex gap-3 rounded-2xl border border-secondary bg-primary p-4">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#7C3AED]/10 text-xl">{d.emoji}</span>
         <div className="flex flex-col gap-0.5">
             <span className="text-sm font-semibold text-primary">{d.titulo}</span>
@@ -14,13 +15,6 @@ const DicaCard = ({ d }: { d: Dica }) => (
             {d.acao && <span className="mt-1 text-sm font-semibold text-[#7C3AED]">{d.acao}</span>}
         </div>
     </div>
-);
-
-const Secao = ({ titulo, children }: { titulo: string; children: React.ReactNode }) => (
-    <section className="flex flex-col gap-3">
-        <h2 className="text-md font-semibold text-primary">{titulo}</h2>
-        {children}
-    </section>
 );
 
 export function Recomendacoes() {
@@ -42,37 +36,37 @@ export function Recomendacoes() {
                 <h1 className="text-xl font-bold text-primary">Recomendações</h1>
             </header>
 
-            <div className="hub-rise flex flex-1 flex-col gap-6 px-5 py-5 pb-10">
+            <div className="hub-rise flex flex-1 flex-col gap-5 px-5 py-5 pb-10">
                 <p className="text-md text-tertiary">
                     Com base na sua rotina, nas suas atividades e no que você acompanha. ✨
                 </p>
 
-                <Secao titulo="Para o seu treino">
+                <Bloco icon={Activity} titulo="Para o seu treino">
                     <div className="flex flex-col gap-3">
                         {TREINO.map((d, i) => (
                             <DicaCard key={i} d={d} />
                         ))}
                     </div>
-                </Secao>
+                </Bloco>
 
-                <Secao titulo="Saúde & bem-estar">
+                <Bloco icon={Heart} titulo="Saúde & bem-estar">
                     <div className="flex flex-col gap-3">
                         {SAUDE.map((d, i) => (
                             <DicaCard key={i} d={d} />
                         ))}
                     </div>
-                </Secao>
+                </Bloco>
 
-                <Secao titulo="Conteúdos pra você">
+                <Bloco icon={LayoutAlt01} titulo="Conteúdos pra você">
                     <div className="flex flex-col gap-3">
                         {CONTEUDOS.map((d, i) => (
                             <DicaCard key={i} d={d} />
                         ))}
                     </div>
-                </Secao>
+                </Bloco>
 
-                <Secao titulo="Grupos pra você">
-                    <div className="flex flex-col">
+                <Bloco icon={Users03} titulo="Grupos pra você">
+                    <div className="flex flex-col rounded-2xl border border-secondary bg-primary px-4">
                         {gruposSugeridos.map((g, i) => (
                             <button
                                 key={g.id}
@@ -89,10 +83,10 @@ export function Recomendacoes() {
                             </button>
                         ))}
                     </div>
-                </Secao>
+                </Bloco>
 
-                <Secao titulo="Pessoas pra seguir">
-                    <div className="flex flex-col">
+                <Bloco icon={UsersPlus} titulo="Pessoas pra seguir">
+                    <div className="flex flex-col rounded-2xl border border-secondary bg-primary px-4">
                         {pessoasSugeridas.map((u, i) => (
                             <button
                                 key={u.id}
@@ -109,7 +103,7 @@ export function Recomendacoes() {
                             </button>
                         ))}
                     </div>
-                </Secao>
+                </Bloco>
             </div>
         </TicketSportsLayout>
     );

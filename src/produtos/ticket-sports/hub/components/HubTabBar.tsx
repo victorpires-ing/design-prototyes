@@ -1,13 +1,13 @@
 import type { ComponentType } from "react";
-import { Calendar, Globe01, Home02, Rss01, Users01 } from "@untitledui/icons";
+import { Calendar, Globe01, Home02, LayoutAlt01, Users01 } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { cx } from "@/utils/cx";
 
 const TABS: { id: string; label: string; icon: ComponentType<{ className?: string }>; href: string }[] = [
     { id: "inicio", label: "Início", icon: Home02, href: "/ticket-sports/hub/home" },
-    { id: "feed", label: "Feed", icon: Rss01, href: "/ticket-sports/hub/feed" },
+    { id: "feed", label: "Mural", icon: LayoutAlt01, href: "/ticket-sports/hub/feed" },
     { id: "grupos", label: "Grupos", icon: Users01, href: "/ticket-sports/hub/grupos" },
-    { id: "comunidade", label: "Comunidade", icon: Globe01, href: "/ticket-sports/hub/comunidade" },
+    { id: "comunidade", label: "Comunidade", icon: Globe01, href: "/ticket-sports/hub/comunidades" },
     { id: "eventos", label: "Eventos", icon: Calendar, href: "/ticket-sports/hub/eventos" },
 ];
 

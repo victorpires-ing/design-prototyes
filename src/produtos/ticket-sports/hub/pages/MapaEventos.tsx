@@ -106,7 +106,7 @@ export function MapaEventos() {
                                 <span className="absolute inline-flex size-9 animate-ping rounded-full bg-[#3B82F6] opacity-40" />
                                 <span className="relative size-5 rounded-full bg-[#3B82F6] ring-2 ring-white" />
                             </span>
-                            <span className="mt-1 rounded-full bg-white/90 px-2 text-[11px] font-semibold text-primary">Você</span>
+                            <span className="mt-1 rounded-full bg-white/90 px-2 text-[11px] font-semibold text-[#1f1f1f]">Você</span>
                         </span>
 
                         {/* pins */}

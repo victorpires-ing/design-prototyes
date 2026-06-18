@@ -1,6 +1,7 @@
-import { Bell01, ChevronRight, Heart, MessageCircle01, Plus } from "@untitledui/icons";
+import { Bell01, ChevronRight, Heart, LayoutAlt01, MessageCircle01, Users01, Users03 } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { HubTabBarEmpresa } from "../components/HubTabBarEmpresa";
 import { HubIconButton } from "../components/hub-ui";
 import { COMUNIDADES } from "../data/comunidade";
@@ -24,16 +25,10 @@ export function EmpresaHome() {
                 <HubIconButton icon={Bell01} label="Notificações" dot onClick={() => navigate("/ticket-sports/hub/notificacoes")} />
             </header>
 
-            <main className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto py-5 pb-28">
-                {/* Sua comunidade */}
-                <section className="flex flex-col gap-3 px-5">
-                    <div className="flex items-center justify-between gap-3">
-                        <h2 className="text-md font-bold text-primary">Sua comunidade</h2>
-                        <button type="button" onClick={verComunidade} className="text-sm font-semibold text-[#7C3AED]">
-                            Ver comunidade
-                        </button>
-                    </div>
-                    <div className="overflow-hidden rounded-2xl border border-secondary">
+            <main className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 pb-28">
+                {/* BLOCO: Sua comunidade */}
+                <Bloco icon={Users03} titulo="Sua comunidade" onVer={verComunidade} verLabel="Ver comunidade">
+                    <div className="overflow-hidden rounded-2xl border border-secondary bg-primary">
                         <div className="relative">
                             <img src={c.banner} alt="" className="h-28 w-full object-cover" />
                             <span className="absolute -bottom-6 left-4 size-16 overflow-hidden rounded-2xl ring-4 ring-primary">
@@ -56,12 +51,11 @@ export function EmpresaHome() {
                             </button>
                         </div>
                     </div>
-                </section>
+                </Bloco>
 
-                {/* Inscritos */}
-                <section className="flex flex-col gap-3 px-5">
-                    <h2 className="text-md font-bold text-primary">Inscritos</h2>
-                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-secondary p-4">
+                {/* BLOCO: Inscritos */}
+                <Bloco icon={Users01} titulo="Inscritos">
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-secondary bg-primary p-4">
                         <div className="flex items-center gap-3">
                             <div className="flex -space-x-2">
                                 {c.participantes.slice(0, 5).map((p, i) => (
@@ -78,22 +72,17 @@ export function EmpresaHome() {
                             <ChevronRight className="size-5" />
                         </button>
                     </div>
-                </section>
+                </Bloco>
 
-                {/* Suas postagens */}
-                <section className="flex flex-col gap-3 px-5">
-                    <div className="flex items-center justify-between gap-3">
-                        <h2 className="text-md font-bold text-primary">Suas postagens</h2>
-                        <button
-                            type="button"
-                            onClick={() => navigate("/ticket-sports/hub/empresa/publicar")}
-                            className="flex items-center gap-1 text-sm font-semibold text-[#7C3AED]"
-                        >
-                            <Plus className="size-4" /> Nova
-                        </button>
-                    </div>
+                {/* BLOCO: Suas postagens */}
+                <Bloco
+                    icon={LayoutAlt01}
+                    titulo="Suas postagens"
+                    onVer={() => navigate("/ticket-sports/hub/empresa/publicar")}
+                    verLabel="Nova"
+                >
                     {c.publicacoes.map((p) => (
-                        <article key={p.id} className="flex flex-col gap-3 rounded-2xl border border-secondary p-4">
+                        <article key={p.id} className="flex flex-col gap-3 rounded-2xl border border-secondary bg-primary p-4">
                             <div className="flex items-center gap-3">
                                 <span className="flex size-10 items-center justify-center rounded-full bg-[#7C3AED] font-bold text-white">{p.inicial}</span>
                                 <div className="flex flex-col">
@@ -113,7 +102,7 @@ export function EmpresaHome() {
                             </div>
                         </article>
                     ))}
-                </section>
+                </Bloco>
             </main>
 
             <HubTabBarEmpresa active="inicio" />

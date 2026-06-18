@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
-import { ArrowLeft, Building07, Image01 } from "@untitledui/icons";
+import { ArrowLeft, Building07, Camera01, Image01, Settings01 } from "@untitledui/icons";
 import { useNavigate, useSearchParams } from "react-router";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { HubButton, HubInput, HubSelect, HubTextarea } from "../components/hub-ui";
 import { COMUNIDADES } from "../data/comunidade";
 import { ATIVIDADES } from "../data/onboarding";
@@ -51,45 +52,48 @@ export function ConfigurarComunidade() {
                     {editando ? "Atualize as informações da sua comunidade." : "Crie a comunidade oficial da sua empresa."}
                 </p>
 
-                {/* Banner + logo */}
-                <div className="relative mt-6 mb-8">
-                    <button
-                        type="button"
-                        onClick={() => bannerRef.current?.click()}
-                        className="flex h-32 w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-[#7C3AED]/40 bg-[#7C3AED]/5"
-                    >
-                        {banner ? (
-                            <img src={banner} alt="Banner da comunidade" className="size-full object-cover" />
-                        ) : (
-                            <span className="flex items-center gap-2 text-sm font-semibold text-[#7C3AED]">
-                                <Image01 className="size-5" /> Inserir banner
-                            </span>
-                        )}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => logoRef.current?.click()}
-                        className="absolute -bottom-6 left-4 flex size-20 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-[#7C3AED]/40 bg-primary ring-4 ring-primary"
-                    >
-                        {logo ? (
-                            <img src={logo} alt="Logo da comunidade" className="size-full object-cover" />
-                        ) : (
-                            <Building07 className="size-7 text-[#7C3AED]/60" />
-                        )}
-                    </button>
-                </div>
+                {/* Blocos */}
+                <div className="mt-6 flex flex-1 flex-col gap-5">
+                    <Bloco icon={Camera01} titulo="Identidade visual">
+                        <div className="relative mb-8">
+                            <button
+                                type="button"
+                                onClick={() => bannerRef.current?.click()}
+                                className="flex h-32 w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-[#7C3AED]/40 bg-[#7C3AED]/5"
+                            >
+                                {banner ? (
+                                    <img src={banner} alt="Banner da comunidade" className="size-full object-cover" />
+                                ) : (
+                                    <span className="flex items-center gap-2 text-sm font-semibold text-[#7C3AED]">
+                                        <Image01 className="size-5" /> Inserir banner
+                                    </span>
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => logoRef.current?.click()}
+                                className="absolute -bottom-6 left-4 flex size-20 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-[#7C3AED]/40 bg-primary ring-4 ring-[var(--color-bg-secondary)]"
+                            >
+                                {logo ? (
+                                    <img src={logo} alt="Logo da comunidade" className="size-full object-cover" />
+                                ) : (
+                                    <Building07 className="size-7 text-[#7C3AED]/60" />
+                                )}
+                            </button>
+                        </div>
+                    </Bloco>
 
-                {/* Campos */}
-                <div className="flex flex-1 flex-col gap-5">
-                    <HubInput label="Nome da comunidade" placeholder="Ex: Ticket Sports Run Club" value={nome} onChange={setNome} />
-                    <HubSelect label="Atividade principal" placeholder="Selecione a atividade" value={atividade} onChange={setAtividade} options={ATIVIDADES} />
-                    <HubTextarea
-                        label="Descrição"
-                        placeholder="Conte o propósito da comunidade, treinos, eventos…"
-                        value={descricao}
-                        onChange={setDescricao}
-                        rows={4}
-                    />
+                    <Bloco icon={Settings01} titulo="Sobre a comunidade">
+                        <HubInput label="Nome da comunidade" placeholder="Ex: Ticket Sports Run Club" value={nome} onChange={setNome} />
+                        <HubSelect label="Atividade principal" placeholder="Selecione a atividade" value={atividade} onChange={setAtividade} options={ATIVIDADES} />
+                        <HubTextarea
+                            label="Descrição"
+                            placeholder="Conte o propósito da comunidade, treinos, eventos…"
+                            value={descricao}
+                            onChange={setDescricao}
+                            rows={4}
+                        />
+                    </Bloco>
                 </div>
             </div>
 

@@ -30,7 +30,7 @@ export const HubButton = ({ children, onClick, variant = "primary", isDisabled, 
             "flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3.5 text-sm font-semibold transition duration-100 ease-linear",
             variant === "primary"
                 ? "bg-[#7C3AED] text-white hover:bg-[#6D28D9] disabled:bg-[#C4B5FD]"
-                : "bg-white text-primary ring-1 ring-border-secondary hover:bg-secondary",
+                : "bg-primary text-primary ring-1 ring-border-secondary hover:bg-secondary",
             isDisabled && "cursor-not-allowed",
         )}
     >
@@ -132,7 +132,7 @@ export const HubGoogleButton = ({ children, onClick }: { children: ReactNode; on
     <button
         type="button"
         onClick={onClick}
-        className="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-primary ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
+        className="flex w-full items-center justify-center gap-3 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
     >
         <GoogleG className="size-5" />
         {children}

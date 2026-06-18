@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { Bell01, Calendar, Check, ChevronRight, Heart, MarkerPin01, TrendUp02 } from "@untitledui/icons";
+import type { ComponentType, ReactNode } from "react";
+import { Activity, Bell01, Calendar, Check, ChevronRight, Compass03, Heart, MarkerPin01, TrendUp02, Trophy01, Users01 } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { cx } from "@/utils/cx";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Confetti } from "../components/Confetti";
+import { GiftBox } from "../components/GiftBox";
 import { HubTabBar } from "../components/HubTabBar";
 import { HubIconButton } from "../components/hub-ui";
 import { FEED } from "../data/comunidade";
 import { EVENTOS } from "../data/eventos";
 import { RESUMO } from "../data/desempenho";
-import { CHECKINS_AOVIVO, CHECKINS_TOTAL, COMPROMISSOS, GRUPOS, HISTORIAS, STATS, USUARIO } from "../data/home";
+import { CHECKINS_AOVIVO, CHECKINS_TOTAL, COMPROMISSOS, CONCLUIRAM_MES, GRUPOS, HISTORIAS, PRESENTES, STATS, USUARIO } from "../data/home";
 import { USUARIOS } from "../data/usuarios";
 
 const fotoDe = (nome: string) => USUARIOS.find((u) => u.nome === nome)?.foto;
@@ -23,23 +26,62 @@ const SEMANA: { d: string; s: "done" | "planned" | "none" }[] = [
     { d: "S", s: "none" },
 ];
 
-const SectionHeader = ({ titulo, onVer }: { titulo: string; onVer?: () => void }) => (
-    <div className="flex items-center justify-between gap-3">
-        <h2 className="text-md font-semibold text-primary">{titulo}</h2>
+/** Bloco temático: painel com cabeçalho (ícone + título) agrupando itens relacionados. */
+const Bloco = ({
+    icon: Icon,
+    titulo,
+    onVer,
+    verLabel = "Ver tudo",
+    children,
+}: {
+    icon: ComponentType<{ className?: string }>;
+    titulo: string;
+    onVer?: () => void;
+    verLabel?: string;
+    children: ReactNode;
+}) => (
+    <section className="flex flex-col gap-4 rounded-3xl bg-secondary p-4">
+        <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+                <span className="flex size-8 items-center justify-center rounded-xl bg-[#7C3AED] text-white">
+                    <Icon className="size-4" />
+                </span>
+                <h2 className="text-base font-bold text-primary">{titulo}</h2>
+            </div>
+            {onVer && (
+                <button type="button" onClick={onVer} className="text-sm font-medium text-[#7C3AED]">
+                    {verLabel}
+                </button>
+            )}
+        </div>
+        {children}
+    </section>
+);
+
+const SubHeader = ({ titulo, onVer }: { titulo: string; onVer?: () => void }) => (
+    <div className="flex items-center justify-between">
+        <span className="text-xs font-bold uppercase tracking-wide text-tertiary">{titulo}</span>
         {onVer && (
-            <button type="button" onClick={onVer} className="text-sm font-medium text-[#7C3AED]">
-                Ver tudo
+            <button type="button" onClick={onVer} className="text-xs font-semibold text-[#7C3AED]">
+                Ver
             </button>
         )}
     </div>
 );
 
-const Divisor = () => <div className="-mx-5 border-t border-secondary" />;
-
 export function Home() {
     const navigate = useNavigate();
     const [i, setI] = useState(0);
     const [checkin, setCheckin] = useState(false);
+    const [festa, setFesta] = useState(false);
+    const [celebrados, setCelebrados] = useState<Set<string>>(new Set());
+    const celebrar = (id: string) => {
+        setCelebrados((s) => new Set(s).add(id));
+        setFesta(false);
+        // reinicia a animação caso já esteja ativa
+        requestAnimationFrame(() => setFesta(true));
+        window.setTimeout(() => setFesta(false), 2400);
+    };
     useEffect(() => {
         const id = setInterval(() => setI((v) => (v + 1) % CHECKINS_AOVIVO.length), 2600);
         return () => clearInterval(id);
@@ -51,15 +93,27 @@ export function Home() {
     const prontoParaEvento = RESUMO.taxaConclusao >= 70;
     const r = 34;
     const circ = 2 * Math.PI * r;
+    const hora = new Date().getHours();
+    const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
 
     return (
         <TicketSportsLayout fullHeight>
             <header className="flex items-center justify-between gap-3 border-b border-secondary bg-primary px-5 py-3.5 md:rounded-t-3xl">
                 <div className="flex flex-col">
-                    <span className="text-xs text-tertiary">Bom treino,</span>
-                    <span className="text-lg font-bold leading-tight text-primary">{USUARIO.nome}</span>
+                    <span className="text-lg font-bold leading-tight text-primary">
+                        <span className="font-normal text-tertiary">{saudacao}, </span>
+                        {USUARIO.nome}
+                    </span>
                 </div>
                 <div className="flex items-center gap-2">
+                    {PRESENTES.length > 0 && (
+                        <button type="button" onClick={() => navigate("/ticket-sports/hub/presentes")} aria-label="Seus presentes" className="relative">
+                            <GiftBox className="size-10" />
+                            <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-[#F59E0B] text-[11px] font-bold text-white ring-2 ring-primary">
+                                {PRESENTES.length}
+                            </span>
+                        </button>
+                    )}
                     <HubIconButton icon={Bell01} label="Notificações" dot onClick={() => navigate("/ticket-sports/hub/notificacoes")} />
                     <button type="button" onClick={() => navigate("/ticket-sports/hub/perfil")} aria-label="Perfil">
                         <img src={USUARIO.foto} alt="" className="size-10 rounded-full object-cover" />
@@ -67,7 +121,7 @@ export function Home() {
                 </div>
             </header>
 
-            <main className="hub-rise flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 py-5 pb-28 [&>*]:shrink-0">
+            <main className="hub-rise flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 pb-28 [&>*]:shrink-0">
                 {/* Stories / feed */}
                 <div className="-mx-5 flex gap-4 overflow-x-auto px-5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <button type="button" onClick={() => navigate("/ticket-sports/hub/feed/novo")} className="flex w-14 shrink-0 flex-col items-center gap-1.5">
@@ -89,40 +143,57 @@ export function Home() {
                     ))}
                 </div>
 
-                <Divisor />
-
-                {/* GRUPO: Seu treino */}
-                <div className="flex flex-col gap-4">
-                    {/* Meta da semana */}
-                    <button
-                        type="button"
-                        onClick={() => navigate("/ticket-sports/hub/rotina/desempenho")}
-                        className="flex items-center gap-4 rounded-2xl border border-secondary p-4 text-left"
-                    >
-                        <div className="relative shrink-0">
-                            <svg viewBox="0 0 80 80" className="size-20 -rotate-90">
-                                <circle cx="40" cy="40" r={r} fill="none" stroke="currentColor" className="text-secondary" strokeWidth="8" />
-                                <circle cx="40" cy="40" r={r} fill="none" stroke="#7C3AED" strokeWidth="8" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)} />
-                            </svg>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-sm font-bold text-primary">{RESUMO.semanaFeitos}/{RESUMO.semanaMeta}</span>
+                {/* BLOCO: Sua rotina (meta + esta semana + próximo treino) */}
+                <style>{`@keyframes checkinBreath{0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,0);border-color:rgba(124,58,237,0.25)}50%{box-shadow:0 0 16px 1px rgba(124,58,237,0.22);border-color:rgba(124,58,237,0.6)}}`}</style>
+                <Bloco icon={Activity} titulo="Sua rotina" onVer={() => navigate("/ticket-sports/hub/rotina/desempenho")}>
+                    {/* Meta + Esta semana — conectados num card */}
+                    <div className="flex flex-col gap-4 rounded-2xl border border-secondary bg-primary p-4">
+                        <button type="button" onClick={() => navigate("/ticket-sports/hub/rotina/desempenho")} className="flex items-center gap-4 text-left">
+                            <div className="relative shrink-0">
+                                <svg viewBox="0 0 80 80" className="size-[68px] -rotate-90">
+                                    <circle cx="40" cy="40" r={r} fill="none" stroke="currentColor" className="text-secondary" strokeWidth="8" />
+                                    <circle cx="40" cy="40" r={r} fill="none" stroke="#7C3AED" strokeWidth="8" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)} />
+                                </svg>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-sm font-bold text-primary">{RESUMO.semanaFeitos}/{RESUMO.semanaMeta}</span>
+                                </div>
+                            </div>
+                            <div className="flex flex-1 flex-col">
+                                <span className="text-xs text-tertiary">Meta da semana</span>
+                                <span className="text-md font-semibold text-primary">Faltam {RESUMO.semanaMeta - RESUMO.semanaFeitos} treinos</span>
+                                <span className="text-sm text-[#7C3AED]">Ver desempenho</span>
+                            </div>
+                            <ChevronRight className="size-5 shrink-0 text-fg-quaternary" />
+                        </button>
+                        <div className="-mx-4 border-t border-secondary" />
+                        <div className="flex flex-col gap-2.5">
+                            <span className="text-xs font-bold uppercase tracking-wide text-tertiary">Esta semana</span>
+                            <div className="flex justify-between">
+                                {SEMANA.map((d, idx) => (
+                                    <div key={idx} className="flex flex-col items-center gap-1.5">
+                                        <span className="text-[11px] text-tertiary">{d.d}</span>
+                                        <span
+                                            className={cx(
+                                                "flex size-9 items-center justify-center rounded-full border text-xs font-semibold",
+                                                d.s === "done" && "border-[#7C3AED] bg-[#7C3AED] text-white",
+                                                d.s === "planned" && "border-[#7C3AED] text-[#7C3AED]",
+                                                d.s === "none" && "border-secondary text-tertiary",
+                                            )}
+                                        >
+                                            {d.s === "done" ? <Check className="size-4" /> : "•"}
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                        <div className="flex flex-1 flex-col">
-                            <span className="text-xs text-tertiary">Meta da semana</span>
-                            <span className="text-md font-semibold text-primary">Faltam {RESUMO.semanaMeta - RESUMO.semanaFeitos} treinos</span>
-                            <span className="text-sm text-[#7C3AED]">Ver desempenho</span>
-                        </div>
-                        <ChevronRight className="size-5 shrink-0 text-fg-quaternary" />
-                    </button>
+                    </div>
 
                     {/* Próximo treino + check-in */}
-                    <style>{`@keyframes checkinBreath{0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,0);border-color:rgba(124,58,237,0.25)}50%{box-shadow:0 0 16px 1px rgba(124,58,237,0.22);border-color:rgba(124,58,237,0.6)}}`}</style>
                     <div
-                        className="relative flex flex-col gap-3 rounded-2xl border p-4"
+                        className="relative flex flex-col gap-3 rounded-2xl border bg-primary p-4"
                         style={checkin ? { borderColor: "rgba(124,58,237,0.25)" } : { animation: "checkinBreath 3.2s ease-in-out infinite" }}
                     >
-                        <div className="relative flex items-center gap-3">
+                        <div className="flex items-center gap-3">
                             <span className="flex size-12 items-center justify-center rounded-xl bg-[#7C3AED]/10 text-2xl">{hoje.emoji}</span>
                             <div className="flex flex-1 flex-col">
                                 <span className="text-xs text-tertiary">Próximo treino</span>
@@ -135,39 +206,57 @@ export function Home() {
                                 <Check className="size-5" /> Check-in feito! Mandou bem 🎉
                             </div>
                         ) : (
-                            <button type="button" onClick={() => setCheckin(true)} className="relative rounded-lg bg-[#7C3AED] py-2.5 text-sm font-semibold text-white transition hover:bg-[#6D28D9]">
+                            <button type="button" onClick={() => setCheckin(true)} className="rounded-lg bg-[#7C3AED] py-2.5 text-sm font-semibold text-white transition hover:bg-[#6D28D9]">
                                 Fazer check-in
                             </button>
                         )}
                     </div>
+                </Bloco>
 
-                    {/* Esta semana */}
-                    <div className="flex flex-col gap-3">
-                        <SectionHeader titulo="Esta semana" onVer={() => navigate("/ticket-sports/hub/rotina/desempenho")} />
-                        <div className="flex justify-between">
-                            {SEMANA.map((d, idx) => (
-                                <div key={idx} className="flex flex-col items-center gap-1.5">
-                                    <span className="text-[11px] text-tertiary">{d.d}</span>
-                                    <span
+                {/* BLOCO: Conquistas do mês — quem fechou 100% da rotina */}
+                <Bloco
+                    icon={Trophy01}
+                    titulo="Conquistas do mês"
+                    onVer={() => navigate("/ticket-sports/hub/conquistas")}
+                    verLabel="Ver todos"
+                >
+                    <p className="-mt-1 text-sm text-tertiary">Concluíram todos os treinos da rotina em junho 🏆</p>
+                    <div className="flex flex-col divide-y divide-secondary rounded-2xl border border-secondary bg-primary px-4">
+                        {CONCLUIRAM_MES.slice(0, 3).map((p) => {
+                            const jaCelebrou = celebrados.has(p.id);
+                            return (
+                                <div key={p.id} className="flex items-center gap-3 py-3">
+                                    <span className="relative shrink-0">
+                                        <img src={p.foto} alt="" className="size-10 rounded-full object-cover ring-2 ring-[#F59E0B]" />
+                                        <span className="absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full bg-[#F59E0B] text-[9px] ring-2 ring-primary">
+                                            🏆
+                                        </span>
+                                    </span>
+                                    <div className="flex min-w-0 flex-1 flex-col">
+                                        <span className="truncate text-sm font-bold text-primary">{p.nome}</span>
+                                        <span className="truncate text-xs text-tertiary">100% da rotina · {p.atividade}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => !jaCelebrou && celebrar(p.id)}
+                                        disabled={jaCelebrou}
                                         className={cx(
-                                            "flex size-9 items-center justify-center rounded-full border text-xs font-semibold",
-                                            d.s === "done" && "border-[#7C3AED] bg-[#7C3AED] text-white",
-                                            d.s === "planned" && "border-[#7C3AED] text-[#7C3AED]",
-                                            d.s === "none" && "border-secondary text-tertiary",
+                                            "flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition",
+                                            jaCelebrou
+                                                ? "bg-[#7C3AED]/5 text-[#7C3AED]"
+                                                : "bg-gradient-to-r from-[#7C3AED] to-[#D946EF] text-white hover:opacity-90",
                                         )}
                                     >
-                                        {d.s === "done" ? <Check className="size-4" /> : "•"}
-                                    </span>
+                                        {jaCelebrou ? "Celebrado 🎉" : "Celebrar 🎉"}
+                                    </button>
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })}
                     </div>
-                </div>
+                </Bloco>
 
-                <Divisor />
-
-                {/* GRUPO: Eventos */}
-                <div className="flex flex-col gap-4">
+                {/* BLOCO: Eventos pra você (desafio + mapa) */}
+                <Bloco icon={Calendar} titulo="Eventos pra você" onVer={() => navigate("/ticket-sports/hub/eventos")}>
                     {/* Seu próximo desafio */}
                     <button
                         type="button"
@@ -198,9 +287,9 @@ export function Home() {
                         </div>
                     </button>
 
-                    {/* Eventos perto de você — mapa */}
-                    <div className="flex flex-col gap-3">
-                        <SectionHeader titulo="Eventos perto de você" onVer={() => navigate("/ticket-sports/hub/eventos")} />
+                    {/* Mapa — eventos perto */}
+                    <div className="flex flex-col gap-2.5">
+                        <SubHeader titulo="Perto de você" onVer={() => navigate("/ticket-sports/hub/eventos/mapa")} />
                         <button
                             type="button"
                             onClick={() => navigate("/ticket-sports/hub/eventos")}
@@ -226,7 +315,7 @@ export function Home() {
                                     <span className="absolute inline-flex size-7 animate-ping rounded-full bg-[#3B82F6] opacity-40" />
                                     <span className="relative size-4 rounded-full bg-[#3B82F6] ring-2 ring-white" />
                                 </span>
-                                <span className="mt-1 rounded-full bg-white/90 px-1.5 text-[10px] font-semibold text-primary">Você</span>
+                                <span className="mt-1 rounded-full bg-white/90 px-1.5 text-[10px] font-semibold text-[#1f1f1f]">Você</span>
                             </span>
 
                             {EVENTOS.slice(0, 4).map((e, idx) => {
@@ -246,19 +335,17 @@ export function Home() {
                                 );
                             })}
 
-                            <span className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-primary shadow-sm">
+                            <span className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#1f1f1f] shadow-sm">
                                 <MarkerPin01 className="size-3.5 text-[#7C3AED]" /> {EVENTOS.length} eventos perto
                             </span>
                         </button>
                     </div>
-                </div>
+                </Bloco>
 
-                <Divisor />
-
-                {/* GRUPO: Comunidade */}
-                <div className="flex flex-col gap-5">
+                {/* BLOCO: Comunidade (ao vivo + posts + histórias + grupos) */}
+                <Bloco icon={Users01} titulo="Comunidade" onVer={() => navigate("/ticket-sports/hub/comunidades")}>
                     {/* Treinando agora */}
-                    <div className="flex flex-col gap-3 rounded-2xl bg-[#7C3AED]/5 p-4 ring-1 ring-[#7C3AED]/15">
+                    <div className="flex flex-col gap-3 rounded-2xl bg-primary p-4 ring-1 ring-[#7C3AED]/20">
                         <div className="flex items-center justify-between">
                             <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#7C3AED]">
                                 <span className="relative flex size-2.5">
@@ -283,13 +370,13 @@ export function Home() {
 
                     {/* Da comunidade */}
                     <div className="flex flex-col gap-3">
-                        <SectionHeader titulo="Da comunidade" onVer={() => navigate("/ticket-sports/hub/comunidade")} />
+                        <SubHeader titulo="Da comunidade" onVer={() => navigate("/ticket-sports/hub/feed")} />
                         {FEED.slice(0, 2).map((p) => (
                             <button
                                 key={`${p.comunidadeId}-${p.id}`}
                                 type="button"
                                 onClick={() => navigate(`/ticket-sports/hub/comunidades/${p.comunidadeId}`)}
-                                className="flex flex-col gap-2 rounded-2xl border border-secondary p-4 text-left"
+                                className="flex flex-col gap-2 rounded-2xl border border-secondary bg-primary p-4 text-left"
                             >
                                 <div className="flex items-center gap-2.5">
                                     <img src={p.comunidadeLogo} alt="" className="size-8 rounded-lg object-cover" />
@@ -305,14 +392,14 @@ export function Home() {
 
                     {/* Histórias que inspiram */}
                     <div className="flex flex-col gap-3">
-                        <SectionHeader titulo="Histórias que inspiram" onVer={() => navigate("/ticket-sports/hub/historias")} />
-                        <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <SubHeader titulo="Histórias que inspiram" onVer={() => navigate("/ticket-sports/hub/historias")} />
+                        <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             {HISTORIAS.map((h) => (
                                 <button
                                     key={h.id}
                                     type="button"
                                     onClick={() => navigate(`/ticket-sports/hub/feed/story/${h.id}`)}
-                                    className="flex w-60 shrink-0 flex-col gap-3 rounded-2xl border border-secondary p-4 text-left"
+                                    className="flex w-60 shrink-0 flex-col gap-3 rounded-2xl border border-secondary bg-primary p-4 text-left"
                                 >
                                     <div className="flex items-center gap-2">
                                         {fotoDe(h.nome) ? (
@@ -333,8 +420,8 @@ export function Home() {
 
                     {/* Grupos */}
                     <div className="flex flex-col gap-3">
-                        <SectionHeader titulo="Grupos pra você" onVer={() => navigate("/ticket-sports/hub/grupos")} />
-                        <div className="flex flex-col">
+                        <SubHeader titulo="Grupos pra você" onVer={() => navigate("/ticket-sports/hub/grupos")} />
+                        <div className="flex flex-col rounded-2xl border border-secondary bg-primary px-4">
                             {GRUPOS.map((g, idx) => (
                                 <button
                                     key={g.id}
@@ -352,14 +439,12 @@ export function Home() {
                             ))}
                         </div>
                     </div>
-                </div>
+                </Bloco>
 
-                <Divisor />
-
-                {/* GRUPO: Descobrir */}
-                <div className="flex flex-col gap-4">
+                {/* BLOCO: Descobrir (números + tendências) */}
+                <Bloco icon={Compass03} titulo="Descobrir">
                     {/* Em alta — números */}
-                    <div className="flex items-center justify-between rounded-2xl border border-secondary px-2 py-4">
+                    <div className="flex items-center justify-between rounded-2xl border border-secondary bg-primary px-2 py-4">
                         {STATS.map((s, idx) => (
                             <div key={s.id} className={cx("flex flex-1 flex-col items-center text-center", idx > 0 && "border-l border-secondary")}>
                                 <span className="text-xl font-bold text-primary">{s.valor}</span>
@@ -372,7 +457,7 @@ export function Home() {
                     <button
                         type="button"
                         onClick={() => navigate("/ticket-sports/hub/tendencias")}
-                        className="flex items-center gap-3 rounded-2xl bg-[#7C3AED]/5 p-4 text-left ring-1 ring-[#7C3AED]/15"
+                        className="flex items-center gap-3 rounded-2xl bg-primary p-4 text-left ring-1 ring-[#7C3AED]/20"
                     >
                         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#7C3AED] text-white">
                             <TrendUp02 className="size-5" />
@@ -383,10 +468,11 @@ export function Home() {
                         </div>
                         <ChevronRight className="size-5 shrink-0 text-fg-quaternary" />
                     </button>
-                </div>
+                </Bloco>
             </main>
 
             <HubTabBar active="inicio" />
+            {festa && <Confetti />}
         </TicketSportsLayout>
     );
 }

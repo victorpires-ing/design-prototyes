@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cx } from "@/utils/cx";
-import { useForceLightTheme } from "./use-light-theme";
+import { useHubTheme } from "./use-light-theme";
 
 interface TicketSportsLayoutProps {
     children: ReactNode;
@@ -17,7 +17,7 @@ interface TicketSportsLayoutProps {
  * (cabeçalho, stepper, botão fixo no rodapé).
  */
 export function TicketSportsLayout({ children, fullHeight = false }: TicketSportsLayoutProps) {
-    useForceLightTheme();
+    useHubTheme();
     return (
         <div className="flex min-h-dvh justify-center bg-secondary md:py-6">
             <style>{`

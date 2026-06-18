@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle } from "@untitledui/icons";
+import { Activity, ArrowLeft, ArrowRight, CheckCircle, MarkerPin01, Target04 } from "@untitledui/icons";
 import { useNavigate, useSearchParams } from "react-router";
 import { cx } from "@/utils/cx";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { HubButton, HubInput, Stepper } from "../components/hub-ui";
 import { ATIVIDADES, ATIVIDADES_MAX, OBJETIVOS, OBJETIVOS_EMPRESA, OBJETIVOS_MAX } from "../data/onboarding";
 
@@ -66,7 +67,8 @@ export function Onboarding() {
                                 subtitle="Escolha até 3 opções."
                                 counter={`${atividades.size}/${ATIVIDADES_MAX}`}
                             />
-                            <div className="grid grid-cols-3 gap-3">
+                            <Bloco icon={Activity} titulo={isEmpresa ? "Atividades de atuação" : "Atividades favoritas"}>
+                                <div className="grid grid-cols-3 gap-3">
                                 {ATIVIDADES.map((a) => {
                                     const sel = atividades.has(a.id);
                                     const atMax = atividades.size >= ATIVIDADES_MAX;
@@ -87,7 +89,8 @@ export function Onboarding() {
                                         </button>
                                     );
                                 })}
-                            </div>
+                                </div>
+                            </Bloco>
                         </>
                     )}
 
@@ -99,7 +102,8 @@ export function Onboarding() {
                                 subtitle="Escolha até 2 opções."
                                 counter={`${objetivos.size}/${OBJETIVOS_MAX}`}
                             />
-                            <div className="flex flex-col gap-3">
+                            <Bloco icon={Target04} titulo="Objetivos">
+                                <div className="flex flex-col gap-3">
                                 {(isEmpresa ? OBJETIVOS_EMPRESA : OBJETIVOS).map((o) => {
                                     const sel = objetivos.has(o.id);
                                     const atMax = objetivos.size >= OBJETIVOS_MAX;
@@ -122,7 +126,8 @@ export function Onboarding() {
                                         </button>
                                     );
                                 })}
-                            </div>
+                                </div>
+                            </Bloco>
                         </>
                     )}
 
@@ -133,8 +138,10 @@ export function Onboarding() {
                                 title="Em qual cidade você está?"
                                 subtitle={isEmpresa ? "Para pessoas encontrarem o seu negócio." : "Para conectar com pessoas e eventos próximos."}
                             />
-                            <HubInput label="" placeholder="Ex: São Paulo, Campo Grande …" value={cidade} onChange={setCidade} />
-                            <p className="text-center text-sm text-tertiary">Pode preencher depois</p>
+                            <Bloco icon={MarkerPin01} titulo="Localização">
+                                <HubInput label="" placeholder="Ex: São Paulo, Campo Grande …" value={cidade} onChange={setCidade} />
+                                <p className="text-center text-sm text-tertiary">Pode preencher depois</p>
+                            </Bloco>
                         </>
                     )}
                 </div>

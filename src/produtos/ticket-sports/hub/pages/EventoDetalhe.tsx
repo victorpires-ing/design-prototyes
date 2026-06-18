@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { ArrowLeft, Calendar, Check, MarkerPin01 } from "@untitledui/icons";
+import { ArrowLeft, Calendar, Check, LayoutAlt01, MarkerPin01, Stars01, Users01 } from "@untitledui/icons";
 import { useNavigate, useParams } from "react-router";
-import { cx } from "@/utils/cx";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { HubButton } from "../components/hub-ui";
 import { RESUMO } from "../data/desempenho";
 import { getEvento } from "../data/eventos";
@@ -38,11 +38,11 @@ export function EventoDetalhe() {
                         type="button"
                         onClick={() => navigate(-1)}
                         aria-label="Voltar"
-                        className="absolute left-4 top-4 flex size-9 items-center justify-center rounded-full bg-white/90 text-primary backdrop-blur-md"
+                        className="absolute left-4 top-4 flex size-9 items-center justify-center rounded-full bg-white/90 text-[#1f1f1f] backdrop-blur-md"
                     >
                         <ArrowLeft className="size-5" />
                     </button>
-                    <span className="absolute bottom-3 left-4 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-primary backdrop-blur-md">
+                    <span className="absolute bottom-3 left-4 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-[#1f1f1f] backdrop-blur-md">
                         {e.emoji} {e.atividade} · {e.nivel}
                     </span>
                 </div>
@@ -61,28 +61,28 @@ export function EventoDetalhe() {
 
                     {/* recomendado pra você */}
                     {e.recomendado && (
-                        <div className="flex flex-col gap-3 rounded-2xl bg-[#7C3AED]/5 p-4 ring-1 ring-[#7C3AED]/15">
-                            <span className="text-sm font-bold text-[#7C3AED]">✨ Recomendado pra você</span>
-                            <div className="flex flex-col gap-2">
-                                {e.motivos.map((m, idx) => (
-                                    <span key={idx} className="flex items-start gap-2 text-sm text-secondary">
-                                        <Check className="mt-0.5 size-4 shrink-0 text-[#7C3AED]" /> {m}
+                        <Bloco icon={Stars01} titulo="Recomendado pra você">
+                            <div className="flex flex-col gap-3 rounded-2xl border border-secondary bg-primary p-4">
+                                <div className="flex flex-col gap-2">
+                                    {e.motivos.map((m, idx) => (
+                                        <span key={idx} className="flex items-start gap-2 text-sm text-secondary">
+                                            <Check className="mt-0.5 size-4 shrink-0 text-[#7C3AED]" /> {m}
+                                        </span>
+                                    ))}
+                                </div>
+                                {pronto && (
+                                    <span className="rounded-lg bg-[#7C3AED]/10 px-3 py-2 text-sm font-semibold text-[#7C3AED]">
+                                        💪 Pelo seu desempenho ({RESUMO.taxaConclusao}% de conclusão), você está pronto pra esse desafio!
                                     </span>
-                                ))}
+                                )}
                             </div>
-                            {pronto && (
-                                <span className="rounded-lg bg-[#7C3AED]/10 px-3 py-2 text-sm font-semibold text-[#7C3AED]">
-                                    💪 Pelo seu desempenho ({RESUMO.taxaConclusao}% de conclusão), você está pronto pra esse desafio!
-                                </span>
-                            )}
-                        </div>
+                        </Bloco>
                     )}
 
                     {/* quem vai */}
                     {e.amigos.length > 0 && (
-                        <div className="flex flex-col gap-2">
-                            <span className="text-sm font-semibold text-primary">Quem vai</span>
-                            <div className="flex items-center gap-3">
+                        <Bloco icon={Users01} titulo="Quem vai">
+                            <div className="flex items-center gap-3 rounded-2xl border border-secondary bg-primary p-4">
                                 <div className="flex -space-x-2.5">
                                     {e.amigos.map((a, idx) => (
                                         <img key={idx} src={a.foto} alt="" className="size-9 rounded-full object-cover ring-2 ring-primary" />
@@ -92,14 +92,13 @@ export function EventoDetalhe() {
                                     {e.inscritos} · <span className="font-semibold text-primary">{e.amigos.length} do seu grupo</span> vão
                                 </span>
                             </div>
-                        </div>
+                        </Bloco>
                     )}
 
                     {/* sobre */}
-                    <div className="flex flex-col gap-2">
-                        <span className="text-sm font-semibold text-primary">Sobre o evento</span>
-                        <p className="text-sm leading-snug text-secondary">{e.descricao}</p>
-                    </div>
+                    <Bloco icon={LayoutAlt01} titulo="Sobre o evento">
+                        <p className="rounded-2xl border border-secondary bg-primary p-4 text-sm leading-snug text-secondary">{e.descricao}</p>
+                    </Bloco>
                 </div>
             </main>
 

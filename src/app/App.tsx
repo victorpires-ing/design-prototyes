@@ -21,6 +21,7 @@ import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaCh
 import { Home as FutebolHome } from '../produtos/futebol/landing-pages/pages/home';
 import { PasswordGate } from '../produtos/novo-site/components/PasswordGate';
 import { EventDetails } from '../produtos/novo-site/home/pages/event-details';
+import { Categorias } from '../produtos/novo-site/home/pages/categorias';
 import { Itens as CatalogoItens } from '../produtos/backstage/catalogo/pages/Itens';
 import { Ingressos as CatalogoIngressos } from '../produtos/backstage/ingressos/pages/Ingressos';
 import { Formulario as IngressosFormulario } from '../produtos/backstage/ingressos/pages/Formulario';
@@ -29,7 +30,9 @@ import { Perguntas } from '../produtos/backstage/perguntas/pages/Perguntas';
 import { PerguntaForm } from '../produtos/backstage/perguntas/pages/PerguntaForm';
 import { PesquisasProvider } from '../produtos/backstage/pesquisas/data/pesquisas-store';
 import { Pesquisas } from '../produtos/backstage/pesquisas/pages/Pesquisas';
-import { BancoPerguntas } from '../produtos/backstage/pesquisas/pages/BancoPerguntas';
+import { VinculosPergunta } from '../produtos/backstage/pesquisas/pages/VinculosPergunta';
+import { SelecaoEAtribuicao } from '../produtos/marketplace/selecao-e-atribuicao/pages/SelecaoEAtribuicao';
+import { Config as MarketplaceConfig } from '../produtos/marketplace/selecao-e-atribuicao/pages/Config';
 import { Home as IngresseAppHome } from '../produtos/ingresse-app/home/pages/Home';
 import { Carteira as IngresseAppCarteira } from '../produtos/ingresse-app/carteira/pages/Carteira';
 import { Ingressos as IngresseAppIngressos } from '../produtos/ingresse-app/ingressos/pages/Ingressos';
@@ -49,6 +52,8 @@ import { CriarRotina } from '../produtos/ticket-sports/hub/pages/CriarRotina';
 import { ConfigurarComunidade } from '../produtos/ticket-sports/hub/pages/ConfigurarComunidade';
 import { FotoRosto } from '../produtos/ticket-sports/hub/pages/FotoRosto';
 import { Home as TicketSportsHome } from '../produtos/ticket-sports/hub/pages/Home';
+import { ConquistasMes } from '../produtos/ticket-sports/hub/pages/ConquistasMes';
+import { Presentes } from '../produtos/ticket-sports/hub/pages/Presentes';
 import { EmpresaHome } from '../produtos/ticket-sports/hub/pages/EmpresaHome';
 import { NovaPublicacao } from '../produtos/ticket-sports/hub/pages/NovaPublicacao';
 import { Notificacoes } from '../produtos/ticket-sports/hub/pages/Notificacoes';
@@ -71,7 +76,6 @@ import { EnviarHistoria } from '../produtos/ticket-sports/hub/pages/EnviarHistor
 import { Grupos } from '../produtos/ticket-sports/hub/pages/Grupos';
 import { DivulgarGrupo } from '../produtos/ticket-sports/hub/pages/DivulgarGrupo';
 import { DetalhesGrupo } from '../produtos/ticket-sports/hub/pages/DetalhesGrupo';
-import { ComunidadeFeed } from '../produtos/ticket-sports/hub/pages/ComunidadeFeed';
 import { Comunidades } from '../produtos/ticket-sports/hub/pages/Comunidades';
 import { ComunidadeDetalhe } from '../produtos/ticket-sports/hub/pages/ComunidadeDetalhe';
 import { PasswordGate as UsabilidadeGate } from '../produtos/usabilidade/components/PasswordGate';
@@ -131,7 +135,7 @@ export default function App() {
         <Route path="/backstage/perguntas/nova" element={<PerguntaForm />} />
         <Route path="/backstage/perguntas/:id/editar" element={<PerguntaForm />} />
         <Route path="/backstage/pesquisas" element={<Pesquisas />} />
-        <Route path="/backstage/pesquisas/banco" element={<BancoPerguntas />} />
+        <Route path="/backstage/pesquisas/:perguntaId/vinculos" element={<VinculosPergunta />} />
         <Route path="/carteira-app/meus-ingressos" element={<MeusIngressos />} />
         <Route path="/carteira-app/meus-ingressos/web" element={<MeusIngressosWeb />} />
         <Route path="/ticket-sports/hub" element={<Hub />} />
@@ -150,6 +154,8 @@ export default function App() {
         <Route path="/ticket-sports/hub/eventos/:id" element={<EventoDetalhe />} />
         <Route path="/ticket-sports/hub/configurar-comunidade" element={<ConfigurarComunidade />} />
         <Route path="/ticket-sports/hub/home" element={<TicketSportsHome />} />
+        <Route path="/ticket-sports/hub/conquistas" element={<ConquistasMes />} />
+        <Route path="/ticket-sports/hub/presentes" element={<Presentes />} />
         <Route path="/ticket-sports/hub/empresa" element={<EmpresaHome />} />
         <Route path="/ticket-sports/hub/empresa/publicar" element={<NovaPublicacao />} />
         <Route path="/ticket-sports/hub/notificacoes" element={<Notificacoes />} />
@@ -166,11 +172,13 @@ export default function App() {
         <Route path="/ticket-sports/hub/grupos" element={<Grupos />} />
         <Route path="/ticket-sports/hub/grupos/divulgar" element={<DivulgarGrupo />} />
         <Route path="/ticket-sports/hub/grupos/:id" element={<DetalhesGrupo />} />
-        <Route path="/ticket-sports/hub/comunidade" element={<ComunidadeFeed />} />
         <Route path="/ticket-sports/hub/comunidades" element={<Comunidades />} />
         <Route path="/ticket-sports/hub/comunidades/:id" element={<ComunidadeDetalhe />} />
         <Route path="/futebol/landing-pages" element={<FutebolHome />} />
+        <Route path="/marketplace" element={<MarketplaceConfig />} />
+        <Route path="/marketplace/event" element={<SelecaoEAtribuicao />} />
         <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />
+        <Route path="/novo-site/home/categorias" element={<Categorias />} />
         <Route path="/ingresse-app" element={<IngresseAppHome />} />
         <Route path="/ingresse-app/ingressos" element={<IngresseAppCarteira />} />
         <Route path="/ingresse-app/ingressos/evento" element={<IngresseAppIngressos />} />

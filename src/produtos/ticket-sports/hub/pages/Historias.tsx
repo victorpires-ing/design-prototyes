@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Plus } from "@untitledui/icons";
+import { ArrowLeft, Heart, Plus } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { cx } from "@/utils/cx";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { HistoriaCard } from "../components/HistoriaCard";
 import { HubButton } from "../components/hub-ui";
 import { HISTORIAS } from "../data/home";
@@ -34,33 +35,37 @@ export function Historias() {
                     </HubButton>
                 </div>
 
-                {/* Filtro por tipo de atividade */}
-                <div className="-mx-6 mt-5 flex gap-2 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {filtros.map((f) => {
-                        const sel = filtro === f;
-                        return (
-                            <button
-                                key={f}
-                                type="button"
-                                onClick={() => setFiltro(f)}
-                                className={cx(
-                                    "shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition duration-100",
-                                    sel ? "border-[#7C3AED] bg-[#7C3AED] text-white" : "border-secondary text-secondary",
-                                )}
-                            >
-                                {f}
-                            </button>
-                        );
-                    })}
-                </div>
+                <div className="mt-5">
+                    <Bloco icon={Heart} titulo="Histórias que inspiram">
+                        {/* Filtro por tipo de atividade */}
+                        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            {filtros.map((f) => {
+                                const sel = filtro === f;
+                                return (
+                                    <button
+                                        key={f}
+                                        type="button"
+                                        onClick={() => setFiltro(f)}
+                                        className={cx(
+                                            "shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition duration-100",
+                                            sel ? "border-[#7C3AED] bg-[#7C3AED] text-white" : "border-secondary bg-primary text-secondary",
+                                        )}
+                                    >
+                                        {f}
+                                    </button>
+                                );
+                            })}
+                        </div>
 
-                <div className="mt-5 flex flex-col gap-3">
-                    {historias.map((h) => (
-                        <HistoriaCard key={h.id} historia={h} />
-                    ))}
-                    {historias.length === 0 && (
-                        <p className="py-8 text-center text-sm text-tertiary">Nenhuma história para essa atividade ainda.</p>
-                    )}
+                        <div className="flex flex-col gap-3">
+                            {historias.map((h) => (
+                                <HistoriaCard key={h.id} historia={h} />
+                            ))}
+                            {historias.length === 0 && (
+                                <p className="py-8 text-center text-sm text-tertiary">Nenhuma história para essa atividade ainda.</p>
+                            )}
+                        </div>
+                    </Bloco>
                 </div>
             </div>
         </TicketSportsLayout>

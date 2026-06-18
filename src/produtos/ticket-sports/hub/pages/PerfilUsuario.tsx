@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ArrowLeft, Check, Heart } from "@untitledui/icons";
+import { ArrowLeft, Check, Heart, LayoutAlt01 } from "@untitledui/icons";
 import { useNavigate, useParams } from "react-router";
 import { cx } from "@/utils/cx";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { HubButton } from "../components/hub-ui";
 import { getUsuario } from "../data/usuarios";
 
@@ -39,9 +40,9 @@ export function PerfilUsuario() {
                 <h1 className="text-xl font-bold text-primary">{u.nome}</h1>
             </header>
 
-            <div className="flex flex-1 flex-col px-5 py-5 pb-10">
-                {/* Cabeçalho do perfil */}
-                <div className="flex flex-col items-center gap-2 text-center">
+            <div className="flex flex-1 flex-col gap-5 px-5 py-5 pb-10">
+                {/* Identidade (fora de bloco) */}
+                <div className="flex flex-col items-center gap-2 pt-1 text-center">
                     <img src={u.foto} alt={u.nome} className="size-20 rounded-full object-cover" />
                     <div className="flex flex-col">
                         <span className="text-display-xs font-bold text-primary">{u.nome}</span>
@@ -63,7 +64,7 @@ export function PerfilUsuario() {
                         onClick={() => setSeguindo((v) => !v)}
                         className={cx(
                             "flex items-center gap-1.5 rounded-lg px-6 py-2.5 text-sm font-semibold transition duration-100",
-                            seguindo ? "bg-white text-primary ring-1 ring-border-secondary" : "bg-[#7C3AED] text-white hover:bg-[#6D28D9]",
+                            seguindo ? "bg-primary text-primary ring-1 ring-border-secondary" : "bg-[#7C3AED] text-white hover:bg-[#6D28D9]",
                         )}
                     >
                         {seguindo && <Check className="size-4" />}
@@ -71,10 +72,10 @@ export function PerfilUsuario() {
                     </button>
                 </div>
 
-                {/* Posts */}
-                <div className="mt-6 flex flex-col gap-3">
+                {/* BLOCO: Publicações */}
+                <Bloco icon={LayoutAlt01} titulo="Publicações">
                     {u.posts.map((p) => (
-                        <article key={p.id} className="flex flex-col gap-3 rounded-2xl border border-secondary p-4">
+                        <article key={p.id} className="flex flex-col gap-3 rounded-2xl border border-secondary bg-primary p-4">
                             <div className="flex items-center gap-3">
                                 <img src={u.foto} alt="" className="size-10 rounded-full object-cover" />
                                 <div className="flex flex-col">
@@ -89,7 +90,7 @@ export function PerfilUsuario() {
                             </div>
                         </article>
                     ))}
-                </div>
+                </Bloco>
             </div>
         </TicketSportsLayout>
     );

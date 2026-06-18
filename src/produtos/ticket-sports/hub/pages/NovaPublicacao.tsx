@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
-import { ArrowLeft, Image01, XClose } from "@untitledui/icons";
+import { ArrowLeft, Edit05, Image01, MessageChatSquare, XClose } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { cx } from "@/utils/cx";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { HubButton, HubInput, HubSelect, HubTextarea } from "../components/hub-ui";
 import { ATIVIDADES } from "../data/onboarding";
 
@@ -66,9 +67,9 @@ export function NovaPublicacao() {
                 </div>
 
                 {/* Campos */}
-                <div className="mt-6 flex flex-1 flex-col gap-5">
+                <div className="mt-6 flex flex-1 flex-col">
                     {tipo === "publicacao" ? (
-                        <>
+                        <Bloco icon={Edit05} titulo="Publicação">
                             <HubSelect
                                 label="Atividade"
                                 placeholder="Selecione a atividade"
@@ -107,9 +108,9 @@ export function NovaPublicacao() {
                             >
                                 <Image01 className="size-5" /> Adicionar imagem
                             </button>
-                        </>
+                        </Bloco>
                     ) : (
-                        <>
+                        <Bloco icon={MessageChatSquare} titulo="Informativo">
                             <HubInput label="Título" placeholder="Ex: Inscrições abertas para a corrida" value={titulo} onChange={setTitulo} />
                             <HubTextarea
                                 label="Mensagem"
@@ -118,7 +119,7 @@ export function NovaPublicacao() {
                                 onChange={setTextoInfo}
                                 rows={5}
                             />
-                        </>
+                        </Bloco>
                     )}
                 </div>
             </div>

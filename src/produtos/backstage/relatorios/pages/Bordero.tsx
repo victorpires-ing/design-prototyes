@@ -1,10 +1,12 @@
 import { Fragment, useState, type ReactNode } from "react";
-import { ChevronDown, CurrencyDollarCircle, Receipt, Ticket01, XClose } from "@untitledui/icons";
+import { ChevronDown, CurrencyDollarCircle, Receipt, Ticket01, UploadCloud02, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
+import { toast } from "sonner";
 import { AlertFloating } from "@/components/application/alerts/alerts";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { TabList, Tabs } from "@/components/application/tabs/tabs";
 import { Badge } from "@/components/base/badges/badges";
+import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
@@ -240,11 +242,34 @@ export function Bordero() {
     const changedCount = changedTransacoes.length;
     const showBanner = changedCount > 0 && !acknowledged;
 
+    const exportarExcel = () =>
+        toast.success("Exportando Excel", { description: "O borderô será salvo como planilha." });
+
     return (
         <BackstageLayout activeSection="relatorios" activeItem="bordero">
             <div className="flex min-w-0 flex-1 flex-col">
                 <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
-                    <RelatorioPageHeader title="Borderô" />
+                    <RelatorioPageHeader
+                        title="Borderô"
+                        actions={
+                            <Button size="md" color="secondary" iconLeading={UploadCloud02} onClick={exportarExcel}>
+                                Exportar em Excel
+                            </Button>
+                        }
+                    />
+
+                    {/* Aviso de variação t → t+5min */}
+                    {showBanner && (
+                        <AlertFloating
+                            color="warning"
+                            title="Borderô atualizado"
+                            description={`${changedCount} ${changedCount === 1 ? "transação alterou" : "transações alteraram"} o borderô nos últimos 5 minutos.`}
+                            confirmLabel="Detalhes"
+                            onConfirm={() => setDetailsOpen(true)}
+                            dismissLabel="Marcar como visto"
+                            onClose={() => setAcknowledged(true)}
+                        />
+                    )}
 
                     {/* Métricas */}
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -276,19 +301,6 @@ export function Bordero() {
                             className={HIDE_TREND_AND_MENU}
                         />
                     </div>
-
-                    {/* Aviso de variação t → t+5min */}
-                    {showBanner && (
-                        <AlertFloating
-                            color="warning"
-                            title="Borderô atualizado"
-                            description={`${changedCount} ${changedCount === 1 ? "transação alterou" : "transações alteraram"} o borderô nos últimos 5 minutos.`}
-                            confirmLabel="Detalhes"
-                            onConfirm={() => setDetailsOpen(true)}
-                            dismissLabel="Marcar como visto"
-                            onClose={() => setAcknowledged(true)}
-                        />
-                    )}
 
                     {/* Tabs + tabela */}
                     <section className="flex flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">

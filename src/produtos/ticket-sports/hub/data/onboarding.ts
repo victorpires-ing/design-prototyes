@@ -9,13 +9,13 @@ export const TIPOS_PERFIL = [
         id: "fisica",
         emoji: "🧑",
         label: "Pessoa Física",
-        descricao: "Includes up to 10 users, 20 GB individual data and access to all features.",
+        descricao: "Pra você acompanhar treinos, participar de grupos e eventos.",
     },
     {
         id: "juridica",
         emoji: "🏢",
         label: "Pessoa Jurídica",
-        descricao: "Includes up to 20 users, 40 GB individual data and access to all features.",
+        descricao: "Pra empresas e organizadores criarem comunidades e divulgarem eventos.",
     },
 ];
 

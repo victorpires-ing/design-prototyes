@@ -34,6 +34,7 @@ import { Home as IngresseAppHome } from '../produtos/ingresse-app/home/pages/Hom
 import { Carteira as IngresseAppCarteira } from '../produtos/ingresse-app/carteira/pages/Carteira';
 import { Ingressos as IngresseAppIngressos } from '../produtos/ingresse-app/ingressos/pages/Ingressos';
 import { IngressoDetalhe as IngresseAppIngressoDetalhe } from '../produtos/ingresse-app/ingressos/pages/IngressoDetalhe';
+import { ComboDetalhe as IngresseAppComboDetalhe } from '../produtos/ingresse-app/ingressos/pages/ComboDetalhe';
 import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingresse-app/ingressos/pages/TransferirIngresso';
 import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pages/Perfil';
 import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
@@ -81,6 +82,7 @@ import { Resultados as TesteResultados } from '../produtos/usabilidade/testes/pa
 import { EntradaTeste } from '../produtos/usabilidade/testes/pages/EntradaTeste';
 import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPagesMenu';
 import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
+import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -175,6 +177,7 @@ export default function App() {
         <Route path="/ingresse-app/ingressos" element={<IngresseAppCarteira />} />
         <Route path="/ingresse-app/ingressos/evento" element={<IngresseAppIngressos />} />
         <Route path="/ingresse-app/ingressos/detalhe" element={<IngresseAppIngressoDetalhe />} />
+        <Route path="/ingresse-app/ingressos/combo" element={<IngresseAppComboDetalhe />} />
         <Route path="/ingresse-app/ingressos/transferir" element={<IngresseAppTransferir />} />
         <Route path="/ingresse-app/perfil" element={<IngresseAppPerfil />} />
         <Route path="/testes" element={<UsabilidadeGate><TestesPainel /></UsabilidadeGate>} />
@@ -184,6 +187,7 @@ export default function App() {
         <Route path="/t/:id" element={<EntradaTeste />} />
         <Route path="/landing-pages" element={<LandingPagesMenu />} />
         <Route path="/landing-pages/sao-silvestre" element={<SaoSilvestre />} />
+        <Route path="/carteira-web" element={<CarteiraWeb />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </PesquisasProvider>

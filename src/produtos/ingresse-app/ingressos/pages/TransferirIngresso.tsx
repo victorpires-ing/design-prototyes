@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { ArrowDown, ArrowLeft, CheckCircle, ChevronRight, Send01, XClose } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
@@ -9,6 +9,8 @@ import { AppShell } from "../../components/AppShell";
 import { BottomSheet } from "../../components/BottomSheet";
 import { StatusBar } from "../../components/StatusBar";
 import { Zigzag } from "../../components/Zigzag";
+import { getEvento } from "../data/eventos";
+import { marcarTransferido } from "../data/transfer-store";
 import alertAmareloIcon from "../../assets/alert-amarelo.png";
 
 const DESTINATARIO = "Duny Alves da Silva";
@@ -21,10 +23,34 @@ const maskEmail = (e: string) => {
 
 export function TransferirIngresso() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const st =
+        (location.state as { eventId?: string; comboId?: string; itemId?: string; acesso?: "qr" | "facial"; evento?: string; title?: string; tipo?: string; sessao?: string } | null) ?? {};
+    const isCombo = !!st.comboId;
+    const evento = getEvento(st.eventId);
+    const combo = isCombo ? evento.combos?.find((c) => c.id === st.comboId) : undefined;
+
+    // Ingresso individual (fallback ARENA, ou o que vier no state)
+    const evNome = st.evento ?? "ARENA BRASILEIRA 2026";
+    const title = st.title ?? "ARENA | Brasil x Haiti | (19/06)";
+    const tipo = st.tipo ?? "Inteira";
+    const sessao = st.sessao ?? "Sex, 19 jun • 15:00";
+
     const [email, setEmail] = useState("");
     const [searched, setSearched] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [done, setDone] = useState(false);
+
+    // Ao buscar, rola suavemente até o resultado (feedback de que algo aconteceu).
+    const resultRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (searched) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, [searched]);
+
+    const voltar = () =>
+        isCombo
+            ? navigate("/ingresse-app/ingressos/combo", { state: { eventId: st.eventId, comboId: st.comboId } })
+            : navigate("/ingresse-app/ingressos/detalhe");
 
     const confirmarTransferencia = () => {
         setConfirming(false);
@@ -32,7 +58,15 @@ export function TransferirIngresso() {
     };
     const concluir = () => {
         setDone(false);
-        navigate("/ingresse-app/ingressos/detalhe", { state: { transferido: true } });
+        if (isCombo) {
+            marcarTransferido(st.comboId);
+            navigate("/ingresse-app/ingressos/combo", { state: { eventId: st.eventId, comboId: st.comboId, transferido: true } });
+        } else {
+            marcarTransferido(st.itemId);
+            navigate("/ingresse-app/ingressos/detalhe", {
+                state: { transferido: true, evento: evNome, title, tipo, sessao, eventId: st.eventId, itemId: st.itemId, acesso: st.acesso },
+            });
+        }
     };
 
     return (
@@ -45,7 +79,7 @@ export function TransferirIngresso() {
                     <button
                         type="button"
                         aria-label="Voltar"
-                        onClick={() => navigate("/ingresse-app/ingressos/detalhe")}
+                        onClick={voltar}
                         className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                     >
                         <ArrowLeft className="size-5" />
@@ -56,25 +90,58 @@ export function TransferirIngresso() {
                 <div className="px-5 pt-5 pb-8">
                     {/* Card do ingresso (compacto) */}
                     <div className="rounded-3xl bg-primary shadow-sm ring-1 ring-border-secondary">
-                        <div className="p-5">
-                            <p className="text-xs font-medium tracking-wide text-tertiary uppercase">ARENA BRASILEIRA 2026</p>
-                            <div className="my-3 border-t border-tertiary" />
-                            <p className="text-2xl leading-tight font-bold text-primary">ARENA | Brasil x Haiti | (19/06)</p>
-                            <p className="mt-1.5 text-sm text-tertiary">Inteira</p>
-                        </div>
+                        {isCombo && combo ? (
+                            <>
+                                <div className="p-5">
+                                    <p className="text-xs font-medium tracking-wide text-tertiary uppercase">{evento.title}</p>
+                                    <div className="my-3 border-t border-tertiary" />
+                                    <p className="text-2xl leading-tight font-bold text-primary">{combo.nome}</p>
+                                    <p className="mt-1.5 text-sm text-tertiary">{combo.dataEvento}</p>
+                                </div>
 
-                        <div className="relative py-1">
-                            <div className="absolute top-1/2 -left-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
-                            <div className="absolute top-1/2 -right-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
-                            <div className="px-3">
-                                <Zigzag />
-                            </div>
-                        </div>
+                                <div className="relative py-1">
+                                    <div className="absolute top-1/2 -left-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
+                                    <div className="absolute top-1/2 -right-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
+                                    <div className="px-3">
+                                        <Zigzag />
+                                    </div>
+                                </div>
 
-                        <div className="p-5">
-                            <p className="text-xs font-semibold text-tertiary">Sessão</p>
-                            <p className="mt-1 text-sm font-bold text-primary">Sex, 19 jun • 15:00</p>
-                        </div>
+                                <div className="p-5">
+                                    <p className="text-xs font-semibold text-tertiary">{combo.inclusosTitulo ?? "Itens do combo"}</p>
+                                    <div className="mt-3 flex flex-col gap-3">
+                                        {combo.inclusos?.map((inc, i) => (
+                                            <div key={i} className={i > 0 ? "border-t border-tertiary pt-3" : ""}>
+                                                <p className="text-sm font-bold text-primary">{inc.grupo ? `${inc.grupo} | ${inc.nome}` : inc.nome}</p>
+                                                {inc.data && <p className="mt-0.5 text-sm text-tertiary">{inc.data}</p>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="p-5">
+                                    <p className="text-xs font-medium tracking-wide text-tertiary uppercase">{evNome}</p>
+                                    <div className="my-3 border-t border-tertiary" />
+                                    <p className="text-2xl leading-tight font-bold text-primary">{title}</p>
+                                    {tipo && <p className="mt-1.5 text-sm text-tertiary">{tipo}</p>}
+                                </div>
+
+                                <div className="relative py-1">
+                                    <div className="absolute top-1/2 -left-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
+                                    <div className="absolute top-1/2 -right-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
+                                    <div className="px-3">
+                                        <Zigzag />
+                                    </div>
+                                </div>
+
+                                <div className="p-5">
+                                    <p className="text-xs font-semibold text-tertiary">Sessão</p>
+                                    <p className="mt-1 text-sm font-bold text-primary">{sessao}</p>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* Conector */}
@@ -116,7 +183,10 @@ export function TransferirIngresso() {
 
                     {/* Resultados da busca */}
                     {searched && (
-                        <div className="mt-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
+                        <div
+                            ref={resultRef}
+                            className="mt-4 scroll-mt-6 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary duration-300 animate-in fade-in slide-in-from-bottom-3"
+                        >
                             <p className="text-md font-bold text-primary">Resultados da busca</p>
                             <p className="mt-1 text-sm text-tertiary">Escolha o destinatário correto antes de confirmar a transferência.</p>
 

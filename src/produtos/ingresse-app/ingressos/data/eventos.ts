@@ -9,6 +9,7 @@ export interface ItemIngresso {
     tipo?: string;
     data: string;
     portador: string;
+    cpf?: string;
     /** Forma de acesso do ingresso. Default: "qr". */
     acesso?: "qr" | "facial";
 }
@@ -44,6 +45,8 @@ export interface Combo {
     // qr "unico"
     inclusosTitulo?: string; // ex.: "Eventos inclusos"
     inclusos?: ComboIncluso[];
+    titular?: string;
+    cpf?: string;
 }
 
 export interface EventoDetalhe {
@@ -57,7 +60,8 @@ export interface EventoDetalhe {
     combos?: Combo[];
 }
 
-const PORTADOR = "Janaina Nascimento de Souza";
+const PORTADOR = "Priscilão Alcantara Raro";
+const CPF = "948.943.130-44";
 
 export const EVENTOS: Record<string, EventoDetalhe> = {
     arena: {
@@ -68,8 +72,8 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
         gradient: "linear-gradient(150deg, #22C55E 0%, #0EA5E9 55%, #F59E0B 100%)",
         sessao: "Sex, 19 jun • 15:00",
         ingressos: [
-            { id: "1", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR },
-            { id: "2", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR },
+            { id: "1", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR, cpf: CPF },
+            { id: "2", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR, cpf: CPF },
         ],
     },
     "reveillon-copacabana": {
@@ -86,8 +90,8 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
                 dataEvento: "Qui, 31 dez • 22:00",
                 qr: "individual",
                 itens: [
-                    { id: "kit-reveillon", title: "Arena", data: "Qui, 31 dez • 22:00", portador: "Priscilão Alcantara", acesso: "qr" },
-                    { id: "credencial-camarote", title: "Área VIP Open Bar", data: "Qui, 31 dez • 22:00", portador: "Priscilão Alcantara", acesso: "facial" },
+                    { id: "kit-reveillon", title: "Arena", data: "Qui, 31 dez • 22:00", portador: PORTADOR, cpf: CPF, acesso: "qr" },
+                    { id: "credencial-camarote", title: "Área VIP Open Bar", data: "Qui, 31 dez • 22:00", portador: PORTADOR, cpf: CPF, acesso: "facial" },
                 ],
             },
             {
@@ -130,6 +134,8 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
                         acesso: "Setor Praia • Posto 4",
                     },
                 ],
+                titular: PORTADOR,
+                cpf: CPF,
             },
         ],
     },
@@ -160,6 +166,8 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
                         conteudo: ["Camisa verde G", "Número", "Cronômetro", "Sacola"],
                     },
                 ],
+                titular: PORTADOR,
+                cpf: CPF,
             },
         ],
     },

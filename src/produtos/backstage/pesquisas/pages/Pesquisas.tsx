@@ -82,8 +82,8 @@ export function Pesquisas() {
                                     onAbrir={() => abrirVinculos(pergunta)}
                                     onToggle={() => {
                                         togglePergunta(pergunta.id);
-                                        if (pergunta.ativa) toast("Pergunta desativada. Ela não aparece mais na compra dos itens.");
-                                        else toast.success("Pergunta ativada. Ela aparece na compra dos itens.");
+                                        if (pergunta.ativa) toast("Pergunta desativada. Ela não aparece mais na compra dos itens vinculados.");
+                                        else toast.success("Pergunta ativada. Ela aparece na compra dos itens vinculados.");
                                     }}
                                     onEditar={() => abrirEditar(pergunta)}
                                     onExcluir={() => setExcluir(pergunta)}
@@ -245,7 +245,7 @@ function VincularCTAModal({ pergunta, onClose, onVincular }: { pergunta: Pergunt
                     <div className="flex flex-col gap-1">
                         <h2 className="text-lg font-semibold text-primary">Pergunta criada!</h2>
                         <p className="text-sm text-tertiary">
-                            Quer escolher agora em quais ingressos e produtos {pergunta ? `“${pergunta.titulo}”` : "ela"} será feita?
+                            Quer escolher em quais ingressos a {pergunta ? `“${pergunta.titulo}”` : "pergunta"} será feita durante a compra?
                         </p>
                     </div>
                     <div className="flex justify-end gap-2">

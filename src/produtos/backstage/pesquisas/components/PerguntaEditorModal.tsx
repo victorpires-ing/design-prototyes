@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { InfoCircle, Plus, Trash01, XClose } from "@untitledui/icons";
+import { AlertOctagon, AlertTriangle, InfoCircle, Plus, Trash01, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
 import { Button } from "@/components/base/buttons/button";
@@ -81,6 +81,11 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
         setSemelhante(null);
         const texto = blocoExp?.titulo ?? "";
         if (texto.trim().length < 4) {
+            setVerificando(false);
+            return;
+        }
+        // Ao editar uma pergunta já criada, só avisa se o título for de fato alterado.
+        if (pergunta && texto.trim() === pergunta.titulo.trim()) {
             setVerificando(false);
             return;
         }
@@ -280,9 +285,9 @@ function BlocoEditor({
             <div className="flex flex-col gap-2">
                 <Input label="Título da pergunta" isRequired isInvalid={duplicado} autoFocus placeholder="Ex.: Qual o tamanho da sua camiseta?" value={bloco.titulo} onChange={onTitulo} />
                 {duplicado ? (
-                    <div className="flex items-start gap-2.5 rounded-lg bg-error-primary p-3">
-                        <InfoCircle className="mt-0.5 size-4 shrink-0 text-fg-error-primary" />
-                        <span className="text-sm text-secondary">Você já tem uma pergunta com este título cadastrada. Escolha outro título.</span>
+                    <div className="flex items-start gap-3 rounded-xl bg-secondary p-4">
+                        <FeaturedIcon icon={AlertOctagon} color="error" theme="light" size="sm" className="shrink-0" />
+                        <span className="self-center text-sm text-tertiary">Já existe uma pergunta com este título. Por favor, escolha um título diferente.</span>
                     </div>
                 ) : verificando ? (
                     <div className="flex items-center gap-2 text-xs text-tertiary">
@@ -293,10 +298,10 @@ function BlocoEditor({
                         Procurando perguntas parecidas…
                     </div>
                 ) : semelhante ? (
-                    <div className="flex items-start gap-2.5 rounded-lg bg-warning-primary p-3">
-                        <InfoCircle className="mt-0.5 size-4 shrink-0 text-fg-warning-primary" />
-                        <span className="text-sm text-secondary">
-                            Você já tem a pergunta “<span className="font-semibold text-primary">{semelhante.titulo}</span>” cadastrada, que é muito parecida.
+                    <div className="flex items-start gap-3 rounded-xl bg-secondary p-4">
+                        <FeaturedIcon icon={AlertTriangle} color="warning" theme="light" size="sm" className="shrink-0" />
+                        <span className="self-center text-sm text-tertiary">
+                            Você já tem uma pergunta chamada “<span className="font-semibold text-primary">{semelhante.titulo}</span>” cadastrada. Deseja criar outra muito parecida?
                         </span>
                     </div>
                 ) : null}

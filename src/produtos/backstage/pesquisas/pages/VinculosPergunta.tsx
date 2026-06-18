@@ -117,7 +117,10 @@ export function VinculosPergunta() {
         if (!perguntaId) return;
         setItensDaPergunta(perguntaId, Array.from(sel));
         toast.success("Vínculos atualizados", {
-            description: sel.size === 0 ? "A pergunta não será exibida em nenhum item." : `Exibida em ${sel.size} ${sel.size === 1 ? "item" : "itens"}.`,
+            description:
+                sel.size === 0
+                    ? `${pergunta?.titulo ?? "A pergunta"} não será exibida em nenhum item.`
+                    : `${pergunta?.titulo ?? "Pergunta"} vinculada a ${sel.size} ${sel.size === 1 ? "item" : "itens"}.`,
         });
         voltar();
     };
@@ -152,7 +155,7 @@ export function VinculosPergunta() {
                             <Input
                                 icon={SearchLg}
                                 label="Buscar itens"
-                                placeholder="Busque por nome de grupo, item ou lote"
+                                placeholder="Busque por nome do grupo ou item"
                                 value={busca}
                                 onChange={setBusca}
                             />

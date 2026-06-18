@@ -13,6 +13,7 @@ import {
     SearchLg,
     ShoppingCart01,
     SlashCircle01,
+    UploadCloud02,
 } from "@untitledui/icons";
 import {
     Area,
@@ -28,6 +29,7 @@ import {
     XAxis,
     YAxis,
 } from "recharts";
+import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import {
     CountBadge,
@@ -521,77 +523,10 @@ function matchTransacao(t: Transacao, rows: FilterRow[]): boolean {
 /* ------------------------------------------------------------------ */
 
 export function Transacoes() {
-    const [filters, setFilters] = useState<FilterRow[]>([]);
-    const [appliedCount, setAppliedCount] = useState(0);
+    const totalFinal = useMemo(() => transacoes.reduce((s, t) => s + t.valorFinal, 0), []);
 
-    const handleAddFilter = useCallback(() => {
-        setFilters((prev) => [...prev, createEmptyFilter()]);
-    }, []);
-
-    const handleRemoveFilter = useCallback((id: string) => {
-        setFilters((prev) => prev.filter((f) => f.id !== id));
-    }, []);
-
-    const handleFilterChange = useCallback(
-        (id: string, patch: Partial<Omit<FilterRow, "id">>) => {
-            setFilters((prev) =>
-                prev.map((f) => (f.id === id ? { ...f, ...patch } : f)),
-            );
-        },
-        [],
-    );
-
-    const handleApply = useCallback((applied: FilterRow[]) => {
-        const valid = applied.filter((f) => f.field && f.value);
-        setAppliedCount(valid.length);
-    }, []);
-
-    const handleClearAll = useCallback(() => {
-        setFilters([]);
-        setAppliedCount(0);
-    }, []);
-
-    const filteredTransacoes = useMemo(() => {
-        const valid = filters.filter((f) => f.field && f.value);
-        return transacoes.filter((t) => matchTransacao(t, valid));
-    }, [filters]);
-
-    const totalFinal = useMemo(
-        () => filteredTransacoes.reduce((s, t) => s + t.valorFinal, 0),
-        [filteredTransacoes],
-    );
-
-    const filteredStatus = useMemo(() => {
-        const statusFilter = filters.find((f) => f.field === "status" && f.value);
-        if (!statusFilter) return ingressosPorStatus;
-        const labels = statusFilter.value
-            .split(",")
-            .map((v: string) => v.trim())
-            .filter(Boolean);
-        if (!labels.length) return ingressosPorStatus;
-        const isNot = statusFilter.operator === "is-not";
-        return ingressosPorStatus.filter((r) => {
-            const inSet = labels.includes(STATUS_META[r.status].label);
-            return isNot ? !inSet : inSet;
-        });
-    }, [filters]);
-
-    const filteredMeios = useMemo(() => {
-        const meioFilter = filters.find(
-            (f) => f.field === "meioPagamento" && f.value,
-        );
-        if (!meioFilter) return meiosPagamento;
-        const names = meioFilter.value
-            .split(",")
-            .map((v: string) => v.trim())
-            .filter(Boolean);
-        if (!names.length) return meiosPagamento;
-        const isNot = meioFilter.operator === "is-not";
-        return meiosPagamento.filter((m) => {
-            const inSet = names.includes(m.nome);
-            return isNot ? !inSet : inSet;
-        });
-    }, [filters]);
+    const exportarExcel = () =>
+        toast.success("Exportando Excel", { description: "As transações serão salvas como planilha." });
 
     return (
         <BackstageLayout activeSection="relatorios" activeItem="transacoes">
@@ -600,103 +535,20 @@ export function Transacoes() {
                     <RelatorioPageHeader
                         title="Transações"
                         actions={
-                            <FilterDropdown
-                                filters={filters}
-                                appliedCount={appliedCount}
-                                placement="bottom end"
-                                onAddFilter={handleAddFilter}
-                                onRemoveFilter={handleRemoveFilter}
-                                onFilterChange={handleFilterChange}
-                                onApply={handleApply}
-                                onClearAll={handleClearAll}
-                                renderFilterRow={(
-                                    filter: FilterRow,
-                                    onChange: (
-                                        patch: Partial<Omit<FilterRow, "id">>,
-                                    ) => void,
-                                ) => (
-                                    <>
-                                        <Select
-                                            className="max-w-40 flex-1"
-                                            size="sm"
-                                            aria-label="Campo"
-                                            placeholder="Selecione"
-                                            items={FILTER_FIELDS}
-                                            selectedKey={filter.field || null}
-                                            onSelectionChange={(key: React.Key | null) =>
-                                                onChange({
-                                                    field: key ? String(key) : "",
-                                                    value: "",
-                                                })
-                                            }
-                                        >
-                                            {(item: FilterFieldDef) => (
-                                                <Select.Item id={item.id}>
-                                                    {item.label}
-                                                </Select.Item>
-                                            )}
-                                        </Select>
-                                        <Select
-                                            className="max-w-40 flex-1"
-                                            size="sm"
-                                            aria-label="Operador"
-                                            placeholder="Operador"
-                                            items={
-                                                FILTER_FIELDS.find(
-                                                    (f) => f.id === filter.field,
-                                                )?.multi
-                                                    ? OPERATOR_OPTIONS_MULTI
-                                                    : OPERATOR_OPTIONS_TEXT
-                                            }
-                                            selectedKey={filter.operator || null}
-                                            onSelectionChange={(key: React.Key | null) =>
-                                                onChange({
-                                                    operator: key ? String(key) : "",
-                                                })
-                                            }
-                                        >
-                                            {(item: { id: string; label: string }) => (
-                                                <Select.Item id={item.id}>
-                                                    {item.label}
-                                                </Select.Item>
-                                            )}
-                                        </Select>
-                                        <FilterValueInput
-                                            filter={filter}
-                                            onChange={onChange}
-                                        />
-                                    </>
-                                )}
-                            >
-                                <Button
-                                    color="secondary"
-                                    size="sm"
-                                    iconLeading={FilterLines}
-                                    iconTrailing={ChevronDown}
-                                    className={cx(
-                                        "max-h-9",
-                                        appliedCount > 0 && "bg-primary_hover",
-                                    )}
-                                >
-                                    <span className="flex items-center gap-1.5">
-                                        Filtros
-                                        {appliedCount > 0 && (
-                                            <CountBadge count={appliedCount} />
-                                        )}
-                                    </span>
-                                </Button>
-                            </FilterDropdown>
+                            <Button size="md" color="secondary" iconLeading={UploadCloud02} onClick={exportarExcel}>
+                                Exportar em Excel
+                            </Button>
                         }
                     />
 
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                         <TotalTransacionadoCard total={totalFinal} />
                     </div>
-                        <IngressosValorPorStatusCard rows={filteredStatus} />
+                    <IngressosValorPorStatusCard rows={ingressosPorStatus} />
 
                     <TransacionadoChartCard />
-                    <MeioPagamentosCard rows={filteredMeios} />
-                    <ListaTransacoesCard rows={filteredTransacoes} />
+                    <MeioPagamentosCard rows={meiosPagamento} />
+                    <ListaTransacoesCard rows={transacoes} />
                 </main>
             </div>
         </BackstageLayout>
@@ -1390,16 +1242,32 @@ const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(50);
     const [search, setSearch] = useState("");
-    const [statusKeys, setStatusKeys] = useState<Selection>(new Set());
     const [dateRange, setDateRange] = useState<{ start: DateValue; end: DateValue } | null>(null);
 
-    // Filtros locais da lista: busca (id, status, setor, dados do comprador), status e data.
+    // Filtro avançado multi-campo — escopo apenas da tabela (não da página inteira).
+    const [filters, setFilters] = useState<FilterRow[]>([]);
+    const [appliedCount, setAppliedCount] = useState(0);
+
+    const handleAddFilter = useCallback(() => setFilters((prev) => [...prev, createEmptyFilter()]), []);
+    const handleRemoveFilter = useCallback((id: string) => setFilters((prev) => prev.filter((f) => f.id !== id)), []);
+    const handleFilterChange = useCallback(
+        (id: string, patch: Partial<Omit<FilterRow, "id">>) =>
+            setFilters((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f))),
+        [],
+    );
+    const handleApply = useCallback(
+        (applied: FilterRow[]) => setAppliedCount(applied.filter((f) => f.field && f.value).length),
+        [],
+    );
+    const handleClearAll = useCallback(() => {
+        setFilters([]);
+        setAppliedCount(0);
+    }, []);
+
+    // Filtros locais da lista: busca (id, status, setor, dados do comprador), filtro avançado e data.
     const filtered = useMemo(() => {
         const term = search.trim().toLowerCase();
-        const statusSet =
-            statusKeys !== "all" && statusKeys instanceof Set && statusKeys.size > 0
-                ? new Set(Array.from(statusKeys, String))
-                : null;
+        const validFilters = filters.filter((f) => f.field && f.value);
         const tz = getLocalTimeZone();
         const startMs = dateRange ? dateRange.start.toDate(tz).getTime() : null;
         const endMs = dateRange ? dateRange.end.toDate(tz).getTime() + 86_400_000 - 1 : null;
@@ -1411,7 +1279,7 @@ const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
                     .toLowerCase();
                 if (!haystack.includes(term)) return false;
             }
-            if (statusSet && !statusSet.has(STATUS_META[t.status].label)) return false;
+            if (!matchTransacao(t, validFilters)) return false;
             if (startMs != null && endMs != null) {
                 const d = parseTxDate(t.dataCriacao);
                 if (!d) return false;
@@ -1420,12 +1288,12 @@ const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
             }
             return true;
         });
-    }, [rows, search, statusKeys, dateRange]);
+    }, [rows, search, filters, dateRange]);
 
     // Volta para a primeira página sempre que os filtros mudam.
     useEffect(() => {
         setPage(1);
-    }, [search, statusKeys, dateRange]);
+    }, [search, filters, dateRange]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const safePage = Math.min(page, totalPages);
@@ -1457,21 +1325,56 @@ const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
                     className="lg:max-w-xs lg:flex-1"
                 />
                 <div className="flex flex-col gap-3 lg:ml-auto lg:flex-row lg:items-center">
-                    <MultiSelect
-                        size="sm"
-                        aria-label="Filtrar por status"
-                        placeholder="Status"
-                        items={STATUS_OPTIONS}
-                        selectedKeys={statusKeys}
-                        onSelectionChange={setStatusKeys}
-                        className="w-full lg:w-44"
-                    >
-                        {(item: { id: string; label: string }) => (
-                            <MultiSelect.Item id={item.id} selectionIndicator="checkbox" selectionIndicatorAlign="left">
-                                {item.label}
-                            </MultiSelect.Item>
+                    <FilterDropdown
+                        filters={filters}
+                        appliedCount={appliedCount}
+                        placement="bottom end"
+                        onAddFilter={handleAddFilter}
+                        onRemoveFilter={handleRemoveFilter}
+                        onFilterChange={handleFilterChange}
+                        onApply={handleApply}
+                        onClearAll={handleClearAll}
+                        renderFilterRow={(filter: FilterRow, onChange: (patch: Partial<Omit<FilterRow, "id">>) => void) => (
+                            <>
+                                <Select
+                                    className="max-w-40 flex-1"
+                                    size="sm"
+                                    aria-label="Campo"
+                                    placeholder="Selecione"
+                                    items={FILTER_FIELDS}
+                                    selectedKey={filter.field || null}
+                                    onSelectionChange={(key: React.Key | null) => onChange({ field: key ? String(key) : "", value: "" })}
+                                >
+                                    {(item: FilterFieldDef) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                                </Select>
+                                <Select
+                                    className="max-w-40 flex-1"
+                                    size="sm"
+                                    aria-label="Operador"
+                                    placeholder="Operador"
+                                    items={FILTER_FIELDS.find((f) => f.id === filter.field)?.multi ? OPERATOR_OPTIONS_MULTI : OPERATOR_OPTIONS_TEXT}
+                                    selectedKey={filter.operator || null}
+                                    onSelectionChange={(key: React.Key | null) => onChange({ operator: key ? String(key) : "" })}
+                                >
+                                    {(item: { id: string; label: string }) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                                </Select>
+                                <FilterValueInput filter={filter} onChange={onChange} />
+                            </>
                         )}
-                    </MultiSelect>
+                    >
+                        <Button
+                            color="secondary"
+                            size="sm"
+                            iconLeading={FilterLines}
+                            iconTrailing={ChevronDown}
+                            className={cx("max-h-9 w-full lg:w-auto", appliedCount > 0 && "bg-primary_hover")}
+                        >
+                            <span className="flex items-center gap-1.5">
+                                Filtros
+                                {appliedCount > 0 && <CountBadge count={appliedCount} />}
+                            </span>
+                        </Button>
+                    </FilterDropdown>
                     <DateRangePicker value={dateRange} onChange={setDateRange} className="shrink-0" />
                 </div>
             </div>

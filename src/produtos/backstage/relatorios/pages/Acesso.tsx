@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { CheckCircle, ChevronRight, ClockFastForward, SearchLg, XClose } from "@untitledui/icons";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { CheckCircle, ChevronDown, ChevronLeft, ChevronRight, ClockFastForward, QrCode01, SearchLg, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { Bar, CartesianGrid, Cell, ComposedChart, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
@@ -8,6 +8,7 @@ import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
+import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
@@ -24,21 +25,108 @@ const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&
 /*  Mock data                                                         */
 /* ------------------------------------------------------------------ */
 
-interface SetorAcesso {
+// Árvore de 3 níveis: Setor → Ingresso → Tipo. As folhas carregam vendidos/validados;
+// os pais são somatórios calculados.
+interface AcessoNode {
     id: string;
     nome: string;
-    vendidos: number;
-    validados: number;
+    vendidos?: number;
+    validados?: number;
+    children?: AcessoNode[];
 }
 
-const setores: SetorAcesso[] = [
-    { id: "pista", nome: "Pista", vendidos: 1240, validados: 951 },
-    { id: "pista-premium", nome: "Pista Premium", vendidos: 612, validados: 495 },
-    { id: "camarote-a", nome: "Camarote A", vendidos: 148, validados: 124 },
-    { id: "camarote-b", nome: "Camarote B", vendidos: 86, validados: 73 },
-    { id: "camarote-central", nome: "Camarote Central", vendidos: 54, validados: 52 },
-    { id: "mesa-vip", nome: "Mesa VIP", vendidos: 32, validados: 31 },
+const setores: AcessoNode[] = [
+    {
+        id: "pista",
+        nome: "Pista",
+        children: [
+            {
+                id: "pista-inteira",
+                nome: "Inteira",
+                children: [
+                    { id: "pista-inteira-l1", nome: "1º Lote", vendidos: 450, validados: 370 },
+                    { id: "pista-inteira-l2", nome: "2º Lote", vendidos: 250, validados: 190 },
+                ],
+            },
+            {
+                id: "pista-meia",
+                nome: "Meia-entrada",
+                children: [
+                    { id: "pista-meia-l1", nome: "1º Lote", vendidos: 250, validados: 200 },
+                    { id: "pista-meia-l2", nome: "2º Lote", vendidos: 150, validados: 100 },
+                ],
+            },
+            { id: "pista-cortesia", nome: "Cortesia", vendidos: 140, validados: 91 },
+        ],
+    },
+    {
+        id: "pista-premium",
+        nome: "Pista Premium",
+        children: [
+            {
+                id: "pp-inteira",
+                nome: "Inteira",
+                children: [
+                    { id: "pp-inteira-l1", nome: "1º Lote", vendidos: 220, validados: 190 },
+                    { id: "pp-inteira-l2", nome: "2º Lote", vendidos: 140, validados: 110 },
+                ],
+            },
+            {
+                id: "pp-meia",
+                nome: "Meia-entrada",
+                children: [
+                    { id: "pp-meia-l1", nome: "1º Lote", vendidos: 120, validados: 100 },
+                    { id: "pp-meia-l2", nome: "2º Lote", vendidos: 80, validados: 60 },
+                ],
+            },
+            { id: "pp-cortesia", nome: "Cortesia", vendidos: 52, validados: 35 },
+        ],
+    },
+    {
+        id: "camarote-a",
+        nome: "Camarote A",
+        children: [
+            {
+                id: "ca-inteira",
+                nome: "Inteira",
+                children: [
+                    { id: "ca-inteira-l1", nome: "1º Lote", vendidos: 60, validados: 54 },
+                    { id: "ca-inteira-l2", nome: "2º Lote", vendidos: 40, validados: 32 },
+                ],
+            },
+            { id: "ca-meia", nome: "Meia-entrada", vendidos: 48, validados: 38 },
+        ],
+    },
+    {
+        id: "camarote-b",
+        nome: "Camarote B",
+        children: [
+            { id: "cb-inteira", nome: "Inteira", vendidos: 60, validados: 52 },
+            { id: "cb-meia", nome: "Meia-entrada", vendidos: 26, validados: 21 },
+        ],
+    },
+    {
+        id: "camarote-central",
+        nome: "Camarote Central",
+        children: [
+            { id: "cc-inteira", nome: "Inteira", vendidos: 40, validados: 39 },
+            { id: "cc-meia", nome: "Meia-entrada", vendidos: 14, validados: 13 },
+        ],
+    },
+    {
+        id: "mesa-vip",
+        nome: "Mesa VIP",
+        children: [
+            { id: "mv-inteira", nome: "Inteira", vendidos: 20, validados: 20 },
+            { id: "mv-cortesia", nome: "Cortesia", vendidos: 12, validados: 11 },
+        ],
+    },
 ];
+
+const sumVendidos = (node: AcessoNode): number =>
+    node.children?.length ? node.children.reduce((s, c) => s + sumVendidos(c), 0) : (node.vendidos ?? 0);
+const sumValidados = (node: AcessoNode): number =>
+    node.children?.length ? node.children.reduce((s, c) => s + sumValidados(c), 0) : (node.validados ?? 0);
 
 // Check-ins por faixa de 15 min — abertura 19:00, pico às 22:00.
 interface Faixa {
@@ -66,8 +154,8 @@ const faixas: Faixa[] = [
 /*  Derived totals                                                    */
 /* ------------------------------------------------------------------ */
 
-const TOTAL_VENDIDOS = setores.reduce((s, x) => s + x.vendidos, 0);
-const TOTAL_VALIDADOS = setores.reduce((s, x) => s + x.validados, 0);
+const TOTAL_VENDIDOS = setores.reduce((s, x) => s + sumVendidos(x), 0);
+const TOTAL_VALIDADOS = setores.reduce((s, x) => s + sumValidados(x), 0);
 const TOTAL_PENDENTES = TOTAL_VENDIDOS - TOTAL_VALIDADOS;
 
 const picoFaixa = faixas.reduce((a, b) => (b.checkins > a.checkins ? b : a), faixas[0]);
@@ -258,50 +346,134 @@ const EntradasPorFaixaCard = () => (
 /*  Validação por setor                                               */
 /* ------------------------------------------------------------------ */
 
-const ValidacaoPorSetorCard = () => (
-    <Card title="Validação por setor">
-        <table className="w-full table-fixed border-collapse">
-            <colgroup>
-                <col className="w-[42%] md:w-auto" />
-                <col className="hidden md:table-column" />
-                <col className="hidden md:table-column" />
-                <col />
-            </colgroup>
-            <thead className="bg-secondary">
-                <tr className="border-b border-secondary text-left">
-                    <th className="px-4 py-3 text-xs font-semibold text-tertiary">Setor</th>
-                    <th className="hidden px-4 py-3 text-right text-xs font-semibold text-tertiary md:table-cell">Vendidos</th>
-                    <th className="hidden px-4 py-3 text-right text-xs font-semibold text-tertiary md:table-cell">Validados</th>
-                    <th className="px-4 py-3 text-xs font-semibold text-tertiary">Taxa de validação</th>
-                </tr>
-            </thead>
-            <tbody>
-                {setores.map((setor, i) => {
-                    const isLast = i === setores.length - 1;
-                    return (
-                        <tr
-                            key={setor.id}
-                            className={cx("transition duration-100 ease-linear hover:bg-primary_hover", !isLast && "border-b border-secondary")}
-                        >
-                            <td className="px-4 py-4 text-sm text-primary">
-                                <span className="line-clamp-2">{setor.nome}</span>
-                            </td>
-                            <td className="hidden px-4 py-4 text-right text-sm text-tertiary md:table-cell">
-                                {numberFormatter.format(setor.vendidos)}
-                            </td>
-                            <td className="hidden px-4 py-4 text-right text-sm text-tertiary md:table-cell">
-                                {numberFormatter.format(setor.validados)}
-                            </td>
-                            <td className="px-4 py-4">
-                                <OccupancyBar value={setor.validados} total={setor.vendidos} />
-                            </td>
+const ValidacaoPorSetorCard = () => {
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    const indent = (depth: number) => 16 + depth * 24;
+
+    const toggleExpanded = (id: string) =>
+        setExpanded((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+
+    const renderNodes = (list: AcessoNode[], depth: number, parent: AcessoNode | null): ReactNode[] => {
+        const out: ReactNode[] = [];
+
+        list.forEach((node) => {
+            const hasChildren = !!node.children?.length;
+            const isExpanded = expanded.has(node.id);
+            const vendidos = sumVendidos(node);
+            const validados = sumValidados(node);
+
+            // Coluna de %: nível 0 mostra a taxa de validação do setor; níveis filhos
+            // mostram QUANTO o item representa dentro do pai (fatia destacada + label),
+            // como em "Ocupação por setor".
+            let bar: ReactNode;
+            if (depth === 0 || !parent) {
+                bar = <OccupancyBar value={validados} total={vendidos} />;
+            } else {
+                const parentVendidos = sumVendidos(parent);
+                const parentValidados = sumValidados(parent);
+                const prevValidados = list.slice(0, list.indexOf(node)).reduce((s, c) => s + sumValidados(c), 0);
+                const offsetPct = parentVendidos === 0 ? 0 : (prevValidados / parentVendidos) * 100;
+                const widthPct = parentVendidos === 0 ? 0 : (validados / parentVendidos) * 100;
+                const filledPct = parentVendidos === 0 ? 0 : (parentValidados / parentVendidos) * 100;
+                const labelPct = parentValidados === 0 ? 0 : (validados / parentValidados) * 100;
+                const boundaries = list.slice(0, -1).map((_, k) => {
+                    const sum = list.slice(0, k + 1).reduce((s, c) => s + sumValidados(c), 0);
+                    return parentVendidos === 0 ? 0 : (sum / parentVendidos) * 100;
+                });
+                bar = (
+                    <SegmentedOccupancyBar
+                        offsetPct={offsetPct}
+                        widthPct={widthPct}
+                        filledPct={filledPct}
+                        labelPct={labelPct}
+                        boundaries={boundaries}
+                    />
+                );
+            }
+
+            const labelClass = depth === 0 ? "font-medium text-primary" : "text-secondary";
+
+            out.push(
+                <Fragment key={node.id}>
+                    <tr
+                        role={hasChildren ? "button" : undefined}
+                        tabIndex={hasChildren ? 0 : undefined}
+                        aria-expanded={hasChildren ? isExpanded : undefined}
+                        onClick={hasChildren ? () => toggleExpanded(node.id) : undefined}
+                        onKeyDown={
+                            hasChildren
+                                ? (e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          toggleExpanded(node.id);
+                                      }
+                                  }
+                                : undefined
+                        }
+                        className={cx(
+                            "border-b border-secondary transition duration-100 ease-linear",
+                            depth === 0 ? "bg-primary" : "bg-secondary/60",
+                            hasChildren && "cursor-pointer hover:bg-primary_hover",
+                        )}
+                    >
+                        <td className="py-3.5 pr-4 text-sm" style={{ paddingLeft: indent(depth) }}>
+                            <span className="flex items-center gap-2">
+                                <ChevronDown
+                                    aria-hidden="true"
+                                    className={cx(
+                                        "size-4 shrink-0 text-fg-quaternary transition-transform duration-150",
+                                        !hasChildren && "invisible",
+                                        isExpanded && "rotate-180",
+                                    )}
+                                />
+                                <span className={cx("line-clamp-2", labelClass)}>{node.nome}</span>
+                            </span>
+                        </td>
+                        <td className="hidden px-4 py-3.5 text-right text-sm text-tertiary md:table-cell">
+                            {numberFormatter.format(vendidos)}
+                        </td>
+                        <td className="hidden px-4 py-3.5 text-right text-sm text-tertiary md:table-cell">
+                            {numberFormatter.format(validados)}
+                        </td>
+                        <td className="px-4 py-3.5">{bar}</td>
+                    </tr>
+                    {hasChildren && isExpanded && renderNodes(node.children!, depth + 1, node)}
+                </Fragment>,
+            );
+        });
+
+        return out;
+    };
+
+    return (
+        <Card title="Validação por setor">
+            <div className="overflow-x-auto overflow-y-clip">
+                <table className="w-full table-fixed border-collapse">
+                    <colgroup>
+                        <col className="w-[50%] md:w-auto" />
+                        <col className="hidden md:table-column" />
+                        <col className="hidden md:table-column" />
+                        <col />
+                    </colgroup>
+                    <thead className="bg-secondary">
+                        <tr className="border-b border-secondary text-left">
+                            <th className="px-4 py-3 text-xs font-semibold text-tertiary">Setor · Ingresso · Tipo</th>
+                            <th className="hidden px-4 py-3 text-right text-xs font-semibold text-tertiary md:table-cell">Vendidos</th>
+                            <th className="hidden px-4 py-3 text-right text-xs font-semibold text-tertiary md:table-cell">Validados</th>
+                            <th className="px-4 py-3 text-xs font-semibold text-tertiary">Taxa de validação</th>
                         </tr>
-                    );
-                })}
-            </tbody>
-        </table>
-    </Card>
-);
+                    </thead>
+                    <tbody>{renderNodes(setores, 0, null)}</tbody>
+                </table>
+            </div>
+        </Card>
+    );
+};
 
 interface OccupancyBarProps {
     value: number;
@@ -317,6 +489,44 @@ const OccupancyBar = ({ value, total }: OccupancyBarProps) => {
                 <div className="h-full rounded-full bg-brand-solid transition-all" style={{ width: `${clamped}%` }} />
             </div>
             <span className="w-10 shrink-0 text-right text-sm text-tertiary">{clamped}%</span>
+        </div>
+    );
+};
+
+interface SegmentedOccupancyBarProps {
+    offsetPct: number;
+    widthPct: number;
+    /** Porção total validada do pai (validados / vendidos %), como contexto. */
+    filledPct: number;
+    /** % exibido como label — quanto este item representa do pai. */
+    labelPct?: number;
+    /** Guias tracejadas nas fronteiras entre os itens irmãos (% ao longo da barra). */
+    boundaries?: number[];
+}
+
+const SegmentedOccupancyBar = ({ offsetPct, widthPct, filledPct, labelPct, boundaries = [] }: SegmentedOccupancyBarProps) => {
+    const clampedOffset = Math.min(100, Math.max(0, offsetPct));
+    const clampedWidth = Math.min(100 - clampedOffset, Math.max(0, widthPct));
+    const clampedFilled = Math.min(100, Math.max(0, filledPct));
+    const display = Math.round(labelPct ?? widthPct);
+    return (
+        <div className="flex min-w-0 items-center gap-2 md:gap-3">
+            <div className="relative h-2 min-w-0 flex-1 overflow-visible rounded-full bg-tertiary/90">
+                {/* Validado total do pai — coral esmaecido, como contexto. */}
+                <div className="absolute h-full rounded-full bg-brand-solid/30 transition-all" style={{ left: 0, width: `${clampedFilled}%` }} />
+                {/* Fatia deste item — coral sólido, em destaque. */}
+                <div className="absolute h-full rounded-full bg-brand-solid transition-all" style={{ left: `${clampedOffset}%`, width: `${clampedWidth}%` }} />
+                {/* Guias entre os itens irmãos. */}
+                {boundaries.map((b, i) => (
+                    <span
+                        key={i}
+                        aria-hidden="true"
+                        className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-primary/70"
+                        style={{ left: `${Math.min(100, Math.max(0, b))}%` }}
+                    />
+                ))}
+            </div>
+            <span className="w-10 shrink-0 text-right text-sm text-tertiary">{display}%</span>
         </div>
     );
 };
@@ -341,26 +551,61 @@ interface PortadorAcesso {
     emailComprador: string;
     idTransacao: string;
     idIngresso: string;
+    qrCode: string;
+    sessao: string;
+    canal: string;
     grupo: string;
+    tipoIngresso: string;
     portao?: string;
     status: StatusAcesso;
     horario?: string;
 }
 
-const portadores: PortadorAcesso[] = [
-    { id: "1", portador: "João Barbosa", emailPortador: "joao.barbosa@gmail.com", cpf: "31280455012", comprador: "João Barbosa", emailComprador: "joao.barbosa@gmail.com", idTransacao: "TRX-840192", idIngresso: "ING-0451", grupo: "Pista", portao: "Portão A", status: "validado", horario: "21:58" },
-    { id: "2", portador: "Mariana Lopes Ferreira", emailPortador: "mariana.lopes@gmail.com", cpf: "32145678912", comprador: "Roberto Santos Júnior", emailComprador: "roberto.sj@yahoo.com", idTransacao: "TRX-840175", idIngresso: "ING-0448", grupo: "Camarote A", portao: "Portão VIP", status: "validado", horario: "21:54" },
-    { id: "3", portador: "Gabriel Souza", emailPortador: "gabriel.souza@hotmail.com", cpf: "50332360830", comprador: "Gabriel Souza", emailComprador: "gabriel.souza@hotmail.com", idTransacao: "TRX-839902", idIngresso: "ING-0442", grupo: "Pista", portao: "Portão A", status: "validado", horario: "21:47" },
-    { id: "4", portador: "Rafael Silva", emailPortador: "rafael.silva@gmail.com", cpf: "45659058841", comprador: "Larissa Almeida", emailComprador: "lari.almeida@hotmail.com", idTransacao: "TRX-839870", idIngresso: "ING-0439", grupo: "Pista Premium", portao: "Portão B", status: "validado", horario: "21:45" },
-    { id: "5", portador: "Camila Rodrigues", emailPortador: "camila.rodrigues@gmail.com", cpf: "98765432100", comprador: "Camila Rodrigues", emailComprador: "camila.rodrigues@gmail.com", idTransacao: "TRX-839844", idIngresso: "ING-0431", grupo: "Mesa VIP", portao: "Portão VIP", status: "validado", horario: "21:38" },
-    { id: "6", portador: "Pedro Henrique Costa", emailPortador: "pedrohcosta@outlook.com", cpf: "78912345607", comprador: "Pedro Henrique Costa", emailComprador: "pedrohcosta@outlook.com", idTransacao: "TRX-839810", idIngresso: "ING-0427", grupo: "Pista", status: "pendente" },
-    { id: "7", portador: "Beatriz Carvalho", emailPortador: "bia.carvalho@gmail.com", cpf: "11180301412", comprador: "Adriano Albuquerque", emailComprador: "adrianofilho2009@gmail.com", idTransacao: "TRX-839788", idIngresso: "ING-0420", grupo: "Camarote B", portao: "Portão B", status: "validado", horario: "21:30" },
-    { id: "8", portador: "Davi Marinho da Silva", emailPortador: "davim222@hotmail.com", cpf: "65498712345", comprador: "Davi Marinho da Silva", emailComprador: "davim222@hotmail.com", idTransacao: "TRX-839755", idIngresso: "ING-0415", grupo: "Pista Premium", status: "pendente" },
-    { id: "9", portador: "Vinicius Cayres", emailPortador: "cayres2000@gmail.com", cpf: "12378945612", comprador: "Vinicius Cayres", emailComprador: "cayres2000@gmail.com", idTransacao: "TRX-839700", idIngresso: "ING-0409", grupo: "Camarote Central", portao: "Portão B", status: "validado", horario: "21:18" },
-    { id: "10", portador: "Letícia Andrade", emailPortador: "leticia.andrade@gmail.com", cpf: "23456789011", comprador: "Marcos Andrade", emailComprador: "marcos.andrade@gmail.com", idTransacao: "TRX-839682", idIngresso: "ING-0402", grupo: "Pista", portao: "Portão A", status: "validado", horario: "21:05" },
-    { id: "11", portador: "Thiago Nogueira", emailPortador: "thiago.nogueira@gmail.com", cpf: "34567890122", comprador: "Thiago Nogueira", emailComprador: "thiago.nogueira@gmail.com", idTransacao: "TRX-839640", idIngresso: "ING-0398", grupo: "Pista", status: "pendente" },
-    { id: "12", portador: "Aline Ribeiro", emailPortador: "aline.ribeiro@gmail.com", cpf: "45678901233", comprador: "Aline Ribeiro", emailComprador: "aline.ribeiro@gmail.com", idTransacao: "TRX-839611", idIngresso: "ING-0391", grupo: "Camarote A", portao: "Portão VIP", status: "validado", horario: "20:52" },
+/* Opções de filtro (também usadas para gerar os dados mock). */
+const SESSOES = ["15/06 · 16h00 — Abertura dos portões", "15/06 · 21h00 — Show principal"];
+const CANAIS = ["Online", "Bilheteria", "PDV Loja"];
+const GRUPOS = ["Pista", "Pista Premium", "Camarote A", "Camarote B", "Camarote Central", "Mesa VIP"];
+const TIPOS = ["Inteira", "Meia-entrada", "Cortesia"];
+const PORTOES = ["Portão A", "Portão B", "Portão VIP"];
+
+const NOMES = [
+    "João Barbosa", "Mariana Lopes", "Gabriel Souza", "Rafael Silva", "Camila Rodrigues",
+    "Pedro Henrique Costa", "Beatriz Carvalho", "Davi Marinho", "Vinicius Cayres", "Letícia Andrade",
+    "Thiago Nogueira", "Aline Ribeiro", "Larissa Almeida", "Roberto Santos", "Fernanda Dias",
+    "Lucas Pereira", "Juliana Martins", "Bruno Azevedo", "Patrícia Gomes", "Marcelo Tavares",
+    "Carolina Freitas", "Eduardo Ramos", "Sofia Cardoso", "Henrique Moraes",
 ];
+const PROVEDORES = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com"];
+
+const pad = (n: number, len: number) => String(n).padStart(len, "0");
+const pick = <T,>(arr: T[], i: number): T => arr[((i % arr.length) + arr.length) % arr.length];
+
+// Dataset determinístico (estável entre recargas) — 247 portadores para a paginação fazer sentido.
+const portadores: PortadorAcesso[] = Array.from({ length: 247 }, (_, idx) => {
+    const nome = pick(NOMES, idx * 7 + (idx % 5));
+    const primeiro = nome.split(" ")[0].toLowerCase();
+    const ultimo = nome.split(" ").slice(-1)[0].toLowerCase();
+    const email = `${primeiro}.${ultimo}${(idx % 9) + 1}@${pick(PROVEDORES, idx)}`;
+    const validado = (idx * 13 + 7) % 100 < 78; // ~78% validados
+    return {
+        id: String(idx + 1),
+        portador: nome,
+        emailPortador: email,
+        cpf: pad((12000000000 + idx * 83729123) % 100000000000, 11),
+        comprador: nome,
+        emailComprador: email,
+        idTransacao: `TRX-${840192 - idx}`,
+        idIngresso: `ING-${pad(451 + idx, 4)}`,
+        qrCode: `QR-${pad((idx * 48271) % 100000000, 8)}`,
+        sessao: pick(SESSOES, Math.floor(idx / 7) + (idx % 2)),
+        canal: pick(CANAIS, idx + (idx % 3)),
+        grupo: pick(GRUPOS, idx * 3 + (idx % 6)),
+        tipoIngresso: pick(TIPOS, idx * 2 + (idx % 3)),
+        portao: validado ? pick(PORTOES, idx) : undefined,
+        status: validado ? "validado" : "pendente",
+        horario: validado ? `${19 + ((idx * 3) % 4)}:${pad((idx * 7) % 60, 2)}` : undefined,
+    };
+});
 
 /** Aplica a máscara 000.000.000-00 a uma string de dígitos. */
 const formatCPF = (raw: string) => {
@@ -379,48 +624,111 @@ const getInitials = (name: string) => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
+/** Select de filtro com opção "todos" no topo. */
+const FilterSelect = ({
+    label,
+    allLabel,
+    value,
+    onChange,
+    options,
+}: {
+    label: string;
+    allLabel: string;
+    value: string;
+    onChange: (value: string) => void;
+    options: { id: string; label: string }[];
+}) => (
+    <Select
+        aria-label={label}
+        size="sm"
+        selectedKey={value}
+        onSelectionChange={(k: React.Key) => onChange(String(k))}
+        items={[{ id: "all", label: allLabel }, ...options]}
+        className="w-full sm:w-auto sm:min-w-[150px]"
+    >
+        {(item: { id: string; label: string }) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+    </Select>
+);
+
+const PER_PAGE = 100;
+
 const ControleDeAcessoCard = () => {
     const [search, setSearch] = useState("");
+    const [fSessao, setFSessao] = useState("all");
+    const [fCanal, setFCanal] = useState("all");
+    const [fGrupo, setFGrupo] = useState("all");
+    const [fTipo, setFTipo] = useState("all");
+    const [fStatus, setFStatus] = useState("all");
+    const [page, setPage] = useState(1);
     const [selected, setSelected] = useState<PortadorAcesso | null>(null);
 
-    // Só faz sentido listar quem efetivamente entrou (validados).
     const filtered = useMemo(() => {
         const term = search.trim().toLowerCase();
         const digits = search.replace(/\D/g, "");
 
         return portadores.filter((p) => {
-            if (p.status !== "validado") return false;
+            if (fSessao !== "all" && p.sessao !== fSessao) return false;
+            if (fCanal !== "all" && p.canal !== fCanal) return false;
+            if (fGrupo !== "all" && p.grupo !== fGrupo) return false;
+            if (fTipo !== "all" && p.tipoIngresso !== fTipo) return false;
+            if (fStatus !== "all" && p.status !== fStatus) return false;
             if (term) {
-                const haystack = [p.portador, p.comprador, p.idTransacao, p.idIngresso, p.grupo].join(" ").toLowerCase();
+                const haystack = [p.portador, p.comprador, p.idTransacao, p.idIngresso, p.qrCode, p.grupo, p.canal, p.tipoIngresso].join(" ").toLowerCase();
                 const cpfMatch = digits.length > 0 && p.cpf.includes(digits);
                 if (!haystack.includes(term) && !cpfMatch) return false;
             }
             return true;
         });
-    }, [search]);
+    }, [search, fSessao, fCanal, fGrupo, fTipo, fStatus]);
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+    const pagina = Math.min(page, totalPages);
+    const pageRows = filtered.slice((pagina - 1) * PER_PAGE, pagina * PER_PAGE);
+
+    // Reseta para a 1ª página sempre que um filtro/busca muda.
+    const resetTo1 = <T,>(setter: (v: T) => void) => (v: T) => {
+        setter(v);
+        setPage(1);
+    };
 
     return (
         <Card
             title={
                 <>
-                    Entradas
+                    Detalhes da lista de entrada
                     <Badge size="sm" color="gray" type="pill-color">
                         {numberFormatter.format(filtered.length)}
                     </Badge>
                 </>
             }
         >
-            {/* Toolbar: busca por nome, CPF ou IDs */}
-            <div className="border-b border-secondary px-4 py-3">
+            {/* Toolbar: busca + filtros */}
+            <div className="flex flex-col gap-3 border-b border-secondary px-4 py-3">
                 <Input
                     size="sm"
                     icon={SearchLg}
                     aria-label="Buscar entradas"
-                    placeholder="Buscar por nome, CPF, ID da transação ou ingresso"
+                    placeholder="Buscar por nome, CPF, QR Code, ID da transação ou ingresso"
                     value={search}
-                    onChange={setSearch}
-                    className="w-full max-w-[400px]"
+                    onChange={resetTo1(setSearch)}
+                    className="w-full max-w-[420px]"
                 />
+                <div className="flex flex-wrap gap-2">
+                    <FilterSelect label="Sessão" allLabel="Todas as sessões" value={fSessao} onChange={resetTo1(setFSessao)} options={SESSOES.map((s) => ({ id: s, label: s }))} />
+                    <FilterSelect label="Canal" allLabel="Todos os canais" value={fCanal} onChange={resetTo1(setFCanal)} options={CANAIS.map((s) => ({ id: s, label: s }))} />
+                    <FilterSelect label="Grupo" allLabel="Todos os grupos" value={fGrupo} onChange={resetTo1(setFGrupo)} options={GRUPOS.map((s) => ({ id: s, label: s }))} />
+                    <FilterSelect label="Tipo de ingresso" allLabel="Todos os tipos" value={fTipo} onChange={resetTo1(setFTipo)} options={TIPOS.map((s) => ({ id: s, label: s }))} />
+                    <FilterSelect
+                        label="Status"
+                        allLabel="Todos os status"
+                        value={fStatus}
+                        onChange={resetTo1(setFStatus)}
+                        options={[
+                            { id: "validado", label: "Validado" },
+                            { id: "pendente", label: "Não validado" },
+                        ]}
+                    />
+                </div>
             </div>
 
             <div className="overflow-x-auto overflow-y-clip">
@@ -428,22 +736,26 @@ const ControleDeAcessoCard = () => {
                     <thead className="bg-secondary">
                         <tr className="border-b border-secondary text-left">
                             <th className="px-4 py-3 text-xs font-semibold text-tertiary">Portador</th>
-                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell">Grupo de Ingressos</th>
-                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary lg:table-cell">Portão</th>
-                            <th className="px-4 py-3 text-xs font-semibold text-tertiary">Horário de entrada</th>
+                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell">QR Code</th>
+                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary lg:table-cell">Grupo</th>
+                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary xl:table-cell">Tipo</th>
+                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary xl:table-cell">Canal</th>
+                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary sm:table-cell">Horário de entrada</th>
+                            <th className="px-4 py-3 text-xs font-semibold text-tertiary">Status</th>
                             <th className="px-4 py-3" aria-hidden="true" />
                         </tr>
                     </thead>
                     <tbody>
-                        {filtered.length === 0 && (
+                        {pageRows.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="px-4 py-12 text-center text-sm text-tertiary">
-                                    Nenhuma entrada corresponde à busca.
+                                <td colSpan={8} className="px-4 py-12 text-center text-sm text-tertiary">
+                                    Nenhuma entrada corresponde aos filtros.
                                 </td>
                             </tr>
                         )}
-                        {filtered.map((p, i) => {
-                            const isLast = i === filtered.length - 1;
+                        {pageRows.map((p, i) => {
+                            const isLast = i === pageRows.length - 1;
+                            const statusMeta = ACESSO_STATUS[p.status];
                             return (
                                 <tr
                                     key={p.id}
@@ -470,9 +782,21 @@ const ControleDeAcessoCard = () => {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="hidden px-4 py-3 text-sm text-tertiary md:table-cell">{p.grupo}</td>
-                                    <td className="hidden px-4 py-3 text-sm text-tertiary lg:table-cell">{p.portao ?? "—"}</td>
-                                    <td className="px-4 py-3 text-sm text-secondary tabular-nums">{p.horario ?? "—"}</td>
+                                    <td className="hidden px-4 py-3 md:table-cell">
+                                        <span className="inline-flex items-center gap-1.5 text-sm text-tertiary tabular-nums">
+                                            <QrCode01 aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
+                                            {p.qrCode}
+                                        </span>
+                                    </td>
+                                    <td className="hidden px-4 py-3 text-sm text-tertiary lg:table-cell">{p.grupo}</td>
+                                    <td className="hidden px-4 py-3 text-sm text-tertiary xl:table-cell">{p.tipoIngresso}</td>
+                                    <td className="hidden px-4 py-3 text-sm text-tertiary xl:table-cell">{p.canal}</td>
+                                    <td className="hidden px-4 py-3 text-sm text-secondary tabular-nums sm:table-cell">{p.horario ?? "—"}</td>
+                                    <td className="px-4 py-3">
+                                        <BadgeWithDot size="sm" color={statusMeta.color} type="pill-color">
+                                            {statusMeta.label}
+                                        </BadgeWithDot>
+                                    </td>
                                     <td className="px-4 py-3 text-right">
                                         <ChevronRight
                                             aria-hidden="true"
@@ -484,6 +808,24 @@ const ControleDeAcessoCard = () => {
                         })}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Paginação — 100 registros por página */}
+            <div className="flex flex-col gap-3 border-t border-secondary px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-sm text-tertiary tabular-nums">
+                    {filtered.length === 0
+                        ? "0 registros"
+                        : `${(pagina - 1) * PER_PAGE + 1}–${Math.min(pagina * PER_PAGE, filtered.length)} de ${numberFormatter.format(filtered.length)}`}
+                </span>
+                <div className="flex items-center gap-3 text-sm text-tertiary">
+                    <span className="tabular-nums">
+                        Página {pagina} de {totalPages}
+                    </span>
+                    <div className="flex gap-1">
+                        <ButtonUtility size="sm" color="secondary" icon={ChevronLeft} tooltip="Anterior" isDisabled={pagina <= 1} onClick={() => setPage(pagina - 1)} />
+                        <ButtonUtility size="sm" color="secondary" icon={ChevronRight} tooltip="Próxima" isDisabled={pagina >= totalPages} onClick={() => setPage(pagina + 1)} />
+                    </div>
+                </div>
             </div>
 
             <AcessoDetailsSlideOut isOpen={selected !== null} row={selected} onClose={() => setSelected(null)} />
@@ -555,9 +897,13 @@ const AcessoDetailsSlideOut = ({ isOpen, row, onClose }: { isOpen: boolean; row:
                             <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
                                 <h3 className="text-md font-semibold text-primary">Ingresso</h3>
                                 <dl className="flex flex-col gap-2.5">
+                                    <DetailRow label="QR Code" value={row.qrCode} isMono />
                                     <DetailRow label="ID do ingresso" value={row.idIngresso} isMono />
                                     <DetailRow label="ID da transação" value={row.idTransacao} isMono />
+                                    <DetailRow label="Sessão" value={row.sessao} />
+                                    <DetailRow label="Canal" value={row.canal} />
                                     <DetailRow label="Grupo de ingressos" value={row.grupo} />
+                                    <DetailRow label="Tipo de ingresso" value={row.tipoIngresso} />
                                     <DetailRow label="Portão de entrada" value={row.portao ?? "—"} />
                                 </dl>
                             </div>

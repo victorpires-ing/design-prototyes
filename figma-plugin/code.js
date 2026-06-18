@@ -245,6 +245,20 @@ async function importarSet(key) {
   return node;
 }
 
+// Variante base de um nó importado. ATENÇÃO: ler `set.defaultVariant` é um getter
+// que LANÇA ("get_defaultVariant: The node with id ... does not exist") quando o
+// id da variante default não existe no arquivo atual — então `defaultVariant ||
+// children[0]` nunca chega ao fallback. Acesso protegido por try/catch.
+function variantBase(node) {
+  if (!node) return null;
+  if (node.type !== "COMPONENT_SET") return node;
+  try {
+    const dv = node.defaultVariant;
+    if (dv) return dv;
+  } catch (e) { /* defaultVariant inválido → cai no fallback */ }
+  return node.children && node.children.length ? node.children[0] : null;
+}
+
 async function setChars(t, txt) {
   if (!t || !txt) return;
   try { if (t.fontName !== figma.mixed) await figma.loadFontAsync(t.fontName); t.characters = txt; } catch (e) { /* ignora */ }
@@ -270,7 +284,8 @@ async function setIconSwap(inst, matchStr, iconName) {
 async function criarInstanciaDs(ds) {
   const set = await importarSet(ds.figmaKey);
   if (!set) return null;
-  const base = set.type === "COMPONENT_SET" ? set.defaultVariant || set.children[0] : set;
+  const base = variantBase(set);
+  if (!base) return null;
   const inst = base.createInstance();
 
   // Monta props seguras: variantes válidas + desliga ícones (texto-only no v1).
@@ -541,7 +556,7 @@ async function criarCelula(node) {
   const set = await importarSet(header ? TABLE_HEADER_CELL_KEY : TABLE_CELL_KEY);
   if (!set) return null;
   let inst;
-  try { inst = (set.defaultVariant || set.children[0]).createInstance(); } catch (e) { return null; }
+  try { const base = variantBase(set); if (!base) return null; inst = base.createInstance(); } catch (e) { return null; }
   const size = node.rect.height && node.rect.height < 56 ? "sm" : "md";
   const groups = set.type === "COMPONENT_SET" ? (() => { try { return set.variantGroupProperties || {}; } catch (e) { return {}; } })() : {};
   const { leading, supporting } = textosCelula(node);
@@ -673,7 +688,8 @@ const BG_PATTERN_DECOR_KEY = "17d55c1f95732009cad409fcad153fb7e14c1247";
 async function comFundoEmptyState(inst, node, pat) {
   const comp = await importarSet(BG_PATTERN_DECOR_KEY);
   if (!comp) return inst;
-  const base = comp.type === "COMPONENT_SET" ? (comp.defaultVariant || comp.children[0]) : comp;
+  const base = variantBase(comp);
+  if (!base) return inst;
   const bg = base.createInstance();
   try {
     const g = comp.type === "COMPONENT_SET" ? (comp.variantGroupProperties || {}) : {};
@@ -706,7 +722,8 @@ async function construirTabela(node) {
   const t = node.ds.table;
   const set = await importarSet(TABLE_KEY);
   if (!set) return null;
-  const base = set.type === "COMPONENT_SET" ? (set.defaultVariant || set.children[0]) : set;
+  const base = variantBase(set);
+  if (!base) return null;
   const inst = base.createInstance();
   const slot = inst.findOne((n) => n.type === "SLOT" && /content/i.test(n.name)) || inst.findOne((n) => n.type === "SLOT");
   if (slot && "children" in slot) {
@@ -740,7 +757,8 @@ const BACKSTAGE_TEMPLATE_KEY = "16a29e24192fc7a4af6a847e5c08db12bb1fa5da"; // Ba
 async function construirBackstage(node) {
   const comp = await importarSet(BACKSTAGE_TEMPLATE_KEY);
   if (!comp) return null;
-  const base = comp.type === "COMPONENT_SET" ? (comp.defaultVariant || comp.children[0]) : comp;
+  const base = variantBase(comp);
+  if (!base) return null;
   const inst = base.createInstance();
   const sd = Object.keys(inst.componentProperties || {}).find((k) => k.indexOf("Show Event") >= 0);
   if (sd) { try { inst.setProperties({ [sd]: node.ds.showEventDetail !== false }); } catch (e) {} }
@@ -801,7 +819,7 @@ async function popularItensDropdown(inst, items) {
   if (!slot || !("children" in slot)) return;
   const originais = [...slot.children];
   const set = await importarSet(LIST_ITEM_KEY);
-  const base = set ? (set.type === "COMPONENT_SET" ? set.defaultVariant || set.children[0] : set) : null;
+  const base = variantBase(set);
   const template = originais.find((c) => c.type === "INSTANCE" && /list item/i.test(c.name) && c.findOne((n) => n.type === "TEXT" && n.name === "Text"));
   if (!base && !template) return;
 

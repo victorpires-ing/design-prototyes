@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronLeft, ClipboardCheck, DotsVertical, Package, QrCode02, Send01, Tag01, Wallet02, XClose } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
-import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import { FakeQR } from "./FakeQR";
 import { SAO_SILVESTRE, type Combo, type ComboItem, type Resposta } from "../data/sao-silvestre";
@@ -36,7 +35,7 @@ export function IngressosModal({ onClose, compact = false }: { onClose: () => vo
                         <button
                             type="button"
                             aria-label="Mais opções"
-                            className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-primary text-brand-secondary shadow-md transition duration-100 ease-linear active:bg-secondary"
+                            className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-primary text-[#0099FF] shadow-md transition duration-100 ease-linear active:bg-secondary"
                         >
                             <DotsVertical className="size-5" />
                         </button>
@@ -50,7 +49,7 @@ export function IngressosModal({ onClose, compact = false }: { onClose: () => vo
                         <div className="mt-5 flex justify-center">
                             <div className="flex flex-col items-center rounded-2xl bg-primary px-5 py-2 shadow-md ring-1 ring-border-secondary">
                                 <span className="text-xs text-tertiary">{ev.diaSemana}</span>
-                                <span className="text-2xl font-bold text-brand-secondary">{ev.dia}</span>
+                                <span className="text-2xl font-bold text-[#0099FF]">{ev.dia}</span>
                                 <span className="text-xs text-tertiary">{ev.mes}</span>
                             </div>
                         </div>
@@ -93,7 +92,7 @@ export function IngressosModal({ onClose, compact = false }: { onClose: () => vo
                             <p className="mt-1 text-sm text-tertiary">{ev.local}</p>
                             <div className="mt-3 inline-flex flex-col items-center rounded-xl px-4 py-1.5 shadow-sm ring-1 ring-border-secondary">
                                 <span className="text-xs text-tertiary">{ev.diaSemana}</span>
-                                <span className="text-xl font-bold text-brand-secondary">{ev.dia}</span>
+                                <span className="text-xl font-bold text-[#0099FF]">{ev.dia}</span>
                                 <span className="text-xs text-tertiary">{ev.mes}</span>
                             </div>
                         </div>
@@ -118,15 +117,13 @@ function ComboCard({ combo, titular, cpf, questionario, compact = false }: { com
         <div className="overflow-hidden rounded-xl ring-1 ring-border-secondary">
             {/* Cabeçalho do combo (agrupador) */}
             <div className="flex items-center gap-3 bg-secondary/50 p-4">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-secondary text-fg-brand-primary">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#F0F9FF] text-[#0099FF]">
                     <Package className="size-5" />
                 </span>
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                         <p className="truncate font-bold text-primary">{combo.nome}</p>
-                        <Badge size="sm" color="brand" type="pill-color">
-                            Combo
-                        </Badge>
+                        <span className="shrink-0 rounded-full bg-[#F0F9FF] px-2 py-0.5 text-xs font-medium text-[#0099FF]">Combo</span>
                     </div>
                     <p className="mt-0.5 text-sm text-tertiary">Data do evento: {combo.dataEvento}</p>
                 </div>
@@ -146,7 +143,7 @@ function ComboCard({ combo, titular, cpf, questionario, compact = false }: { com
                         /* Mobile: QR Code único (mesma estrutura do app) */
                         <div className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
                             <p className="px-5 pt-5 pb-4 text-center text-sm">
-                                <span className="font-semibold text-brand-secondary">Este combo tem um QR Code único.</span>{" "}
+                                <span className="font-semibold text-[#0099FF]">Este combo tem um QR Code único.</span>{" "}
                                 <span className="font-normal text-tertiary">Apresente este código para acessar todos os itens da sua inscrição.</span>
                             </p>
                             <div className="border-t border-secondary" />
@@ -200,7 +197,7 @@ function ComboCard({ combo, titular, cpf, questionario, compact = false }: { com
                     {/* Respostas do formulário (preenchido na compra) */}
                     <div>
                         <div className="flex items-center gap-2">
-                            <ClipboardCheck className="size-5 text-fg-brand-primary" />
+                            <ClipboardCheck className="size-5 text-[#0099FF]" />
                             <h4 className="text-sm font-bold text-primary">Respostas do formulário</h4>
                         </div>
                         <div className="mt-2 divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
@@ -215,12 +212,20 @@ function ComboCard({ combo, titular, cpf, questionario, compact = false }: { com
 
                     {/* Ações (mesma linha, largura e altura iguais) */}
                     <div className="flex flex-wrap items-stretch gap-3">
-                        <Button size="md" color="primary" iconLeading={Send01} className="flex-1 whitespace-nowrap">
+                        <button
+                            type="button"
+                            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#0099FF] px-4 py-2.5 text-sm font-semibold whitespace-nowrap text-white transition duration-100 ease-linear hover:brightness-95"
+                        >
+                            <Send01 className="size-5 shrink-0" />
                             Transferir inscrição
-                        </Button>
-                        <Button size="md" color="primary" iconLeading={Tag01} className="flex-1 whitespace-nowrap">
+                        </button>
+                        <button
+                            type="button"
+                            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#0099FF] px-4 py-2.5 text-sm font-semibold whitespace-nowrap text-white transition duration-100 ease-linear hover:brightness-95"
+                        >
+                            <Tag01 className="size-5 shrink-0" />
                             Revender inscrição
-                        </Button>
+                        </button>
                         {/* Adicionar à carteira (aproximação — não é o selo oficial) */}
                         <button
                             type="button"

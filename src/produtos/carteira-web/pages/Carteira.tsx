@@ -78,7 +78,7 @@ const TabButton = ({ label, active, onClick }: { label: string; active: boolean;
         onClick={onClick}
         className={cx(
             "-mb-px border-b-2 px-1 pb-3 text-sm font-semibold transition duration-100 ease-linear",
-            active ? "border-brand text-brand-secondary" : "border-transparent text-tertiary hover:text-secondary",
+            active ? "border-[#0099FF] text-[#0099FF]" : "border-transparent text-tertiary hover:text-secondary",
             label === "Anteriores" && "ml-8",
         )}
     >

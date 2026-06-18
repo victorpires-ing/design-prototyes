@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
-import { ArrowLeft, Image01 } from "@untitledui/icons";
+import { ArrowLeft, Activity, Image01, MarkerPin01 } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { HubButton, HubInput, HubSelect, HubTextarea } from "../components/hub-ui";
 import { ATIVIDADES } from "../data/onboarding";
 
@@ -40,42 +41,48 @@ export function DivulgarGrupo() {
                 <h1 className="mt-2 text-display-xs font-bold text-primary">Divulgar grupo</h1>
                 <p className="mt-1 text-md text-tertiary">Crie a página do seu grupo e atraia novos integrantes.</p>
 
-                {/* Logo */}
-                <div className="mt-6 flex flex-col items-center">
-                    <button
-                        type="button"
-                        onClick={() => logoRef.current?.click()}
-                        className="flex size-24 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-[#7C3AED]/40 bg-[#7C3AED]/5"
-                    >
-                        {logo ? (
-                            <img src={logo} alt="Logo do grupo" className="size-full object-cover" />
-                        ) : (
-                            <Image01 className="size-9 text-[#7C3AED]/60" />
-                        )}
-                    </button>
-                    <button type="button" onClick={() => logoRef.current?.click()} className="mt-3 text-sm font-semibold text-[#7C3AED]">
-                        Inserir logo do grupo
-                    </button>
-                </div>
-
-                {/* Campos */}
+                {/* Blocos */}
                 <div className="mt-6 flex flex-1 flex-col gap-5">
-                    <HubInput label="Nome do grupo" placeholder="Ex: Corredores da Lagoa" value={nome} onChange={setNome} />
-                    <HubSelect
-                        label="Tipo de atividade"
-                        placeholder="Selecione a atividade"
-                        value={atividade}
-                        onChange={setAtividade}
-                        options={ATIVIDADES}
-                    />
-                    <HubTextarea
-                        label="Descrição do grupo"
-                        placeholder="Conte como são os treinos, o nível, os horários…"
-                        value={descricao}
-                        onChange={setDescricao}
-                        rows={4}
-                    />
-                    <HubInput label="Localização" placeholder="Ex: Parque da Cidade, São Paulo" value={local} onChange={setLocal} />
+                    <Bloco icon={Image01} titulo="Identidade do grupo">
+                        <div className="flex flex-col items-center gap-3 rounded-2xl border border-secondary bg-primary p-4">
+                            <button
+                                type="button"
+                                onClick={() => logoRef.current?.click()}
+                                className="flex size-24 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-[#7C3AED]/40 bg-[#7C3AED]/5"
+                            >
+                                {logo ? (
+                                    <img src={logo} alt="Logo do grupo" className="size-full object-cover" />
+                                ) : (
+                                    <Image01 className="size-9 text-[#7C3AED]/60" />
+                                )}
+                            </button>
+                            <button type="button" onClick={() => logoRef.current?.click()} className="text-sm font-semibold text-[#7C3AED]">
+                                Inserir logo do grupo
+                            </button>
+                        </div>
+                        <HubInput label="Nome do grupo" placeholder="Ex: Corredores da Lagoa" value={nome} onChange={setNome} />
+                    </Bloco>
+
+                    <Bloco icon={Activity} titulo="Sobre o grupo">
+                        <HubSelect
+                            label="Tipo de atividade"
+                            placeholder="Selecione a atividade"
+                            value={atividade}
+                            onChange={setAtividade}
+                            options={ATIVIDADES}
+                        />
+                        <HubTextarea
+                            label="Descrição do grupo"
+                            placeholder="Conte como são os treinos, o nível, os horários…"
+                            value={descricao}
+                            onChange={setDescricao}
+                            rows={4}
+                        />
+                    </Bloco>
+
+                    <Bloco icon={MarkerPin01} titulo="Localização">
+                        <HubInput label="Localização" placeholder="Ex: Parque da Cidade, São Paulo" value={local} onChange={setLocal} />
+                    </Bloco>
                 </div>
             </div>
 

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ArrowLeft, ChevronRight } from "@untitledui/icons";
+import { ArrowLeft, ChevronRight, Gift01 } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { Confetti } from "../components/Confetti";
 import { GiftBox } from "../components/GiftBox";
 import { PRESENTES, type Presente } from "../data/home";
@@ -51,29 +52,31 @@ export function Presentes() {
                     {aFazer > 0 ? `Você tem ${aFazer} presente${aFazer > 1 ? "s" : ""} para abrir 🎁` : "Você abriu todos os seus presentes 🎉"}
                 </p>
 
-                <div className="mt-6 flex flex-col gap-3">
-                    {PRESENTES.map((p) => {
-                        const aberto = abertos.has(p.id);
-                        return (
-                            <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => abrir(p)}
-                                className="flex items-center gap-4 rounded-2xl border border-secondary p-4 text-left transition duration-100 hover:bg-secondary"
-                            >
-                                {aberto ? (
-                                    <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#7C3AED]/10 text-3xl">{p.emoji}</span>
-                                ) : (
-                                    <GiftBox className="size-14 shrink-0" />
-                                )}
-                                <div className="flex min-w-0 flex-1 flex-col">
-                                    <span className="truncate text-sm font-bold text-primary">{aberto ? p.titulo : "Presente surpresa"}</span>
-                                    <span className="truncate text-xs text-tertiary">{aberto ? "Aberto" : "Toque para abrir"} · de {p.remetente}</span>
-                                </div>
-                                <ChevronRight className="size-5 shrink-0 text-fg-quaternary" />
-                            </button>
-                        );
-                    })}
+                <div className="mt-6">
+                    <Bloco icon={Gift01} titulo="Seus presentes">
+                        {PRESENTES.map((p) => {
+                            const aberto = abertos.has(p.id);
+                            return (
+                                <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => abrir(p)}
+                                    className="flex items-center gap-4 rounded-2xl border border-secondary bg-primary p-4 text-left transition duration-100 hover:bg-secondary"
+                                >
+                                    {aberto ? (
+                                        <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#7C3AED]/10 text-3xl">{p.emoji}</span>
+                                    ) : (
+                                        <GiftBox className="size-14 shrink-0" />
+                                    )}
+                                    <div className="flex min-w-0 flex-1 flex-col">
+                                        <span className="truncate text-sm font-bold text-primary">{aberto ? p.titulo : "Presente surpresa"}</span>
+                                        <span className="truncate text-xs text-tertiary">{aberto ? "Aberto" : "Toque para abrir"} · de {p.remetente}</span>
+                                    </div>
+                                    <ChevronRight className="size-5 shrink-0 text-fg-quaternary" />
+                                </button>
+                            );
+                        })}
+                    </Bloco>
                 </div>
             </div>
 

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ArrowLeft } from "@untitledui/icons";
+import { Activity, ArrowLeft, Calendar, Globe01 } from "@untitledui/icons";
 import { useNavigate, useSearchParams } from "react-router";
 import { cx } from "@/utils/cx";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { HubButton, HubInput, HubSelect, HubToggle } from "../components/hub-ui";
 import { ATIVIDADES } from "../data/onboarding";
 import { DIAS, MINHA_ROTINA } from "../data/rotina";
@@ -47,79 +48,85 @@ export function CriarRotina() {
                 <h1 className="mt-2 text-display-xs font-bold text-primary">{editando ? "Editar rotina" : "Criar rotina"}</h1>
                 <p className="mt-1 text-md text-tertiary">Monte seu treino do jeitinho que você gosta.</p>
 
-                <div className="mt-6 flex flex-1 flex-col gap-6">
-                    {/* Nome */}
-                    <HubInput label="Nome da rotina" placeholder="Ex: Treino de força" value={nome} onChange={setNome} />
+                <div className="mt-6 flex flex-1 flex-col gap-5">
+                    <Bloco icon={Activity} titulo="Atividade">
+                        {/* Nome */}
+                        <HubInput label="Nome da rotina" placeholder="Ex: Treino de força" value={nome} onChange={setNome} />
 
-                    {/* Atividade — seleção única (dropdown) */}
-                    <HubSelect
-                        label="Atividade"
-                        placeholder="Selecione a atividade"
-                        value={atividade}
-                        onChange={setAtividade}
-                        options={ATIVIDADES}
-                    />
+                        {/* Atividade — seleção única (dropdown) */}
+                        <HubSelect
+                            label="Atividade"
+                            placeholder="Selecione a atividade"
+                            value={atividade}
+                            onChange={setAtividade}
+                            options={ATIVIDADES}
+                        />
+                    </Bloco>
 
-                    {/* Dias de treino */}
-                    <div className="flex flex-col gap-2">
-                        <span className="text-sm font-semibold text-primary">Dias de treino</span>
-                        <div className="flex justify-between gap-2">
-                            {DIAS.map((dia, i) => {
-                                const sel = dias.has(dia.id);
-                                return (
-                                    <button
-                                        key={i}
-                                        type="button"
-                                        onClick={() => toggleDia(dia.id)}
-                                        aria-label={dia.nome}
-                                        className={cx(
-                                            "flex size-10 items-center justify-center rounded-full border text-sm font-semibold transition duration-100",
-                                            sel ? "border-[#7C3AED] bg-[#7C3AED] text-white" : "border-secondary text-secondary",
-                                        )}
-                                    >
-                                        {dia.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Hora do treino */}
-                    <div className="flex flex-col gap-3">
-                        <span className="text-sm font-semibold text-primary">Hora do treino</span>
-
-                        {mesmoHorario ? (
-                            <input
-                                type="time"
-                                value={horaGeral}
-                                onChange={(e) => setHoraGeral(e.target.value)}
-                                className={cx(timeInputClass, "w-full")}
-                            />
-                        ) : diasSelecionados.length === 0 ? (
-                            <p className="text-sm text-tertiary">Selecione os dias de treino acima para definir os horários.</p>
-                        ) : (
-                            <div className="flex flex-col gap-2">
-                                {diasSelecionados.map((d) => (
-                                    <div key={d.id} className="flex items-center justify-between gap-3">
-                                        <span className="text-sm font-medium text-secondary">{d.nome}</span>
-                                        <input
-                                            type="time"
-                                            value={horaPorDia[d.id] ?? ""}
-                                            onChange={(e) => setHoraPorDia((prev) => ({ ...prev, [d.id]: e.target.value }))}
-                                            className={cx(timeInputClass, "w-36")}
-                                        />
-                                    </div>
-                                ))}
+                    <Bloco icon={Calendar} titulo="Dias e horários">
+                        {/* Dias de treino */}
+                        <div className="flex flex-col gap-2">
+                            <span className="text-sm font-semibold text-primary">Dias de treino</span>
+                            <div className="flex justify-between gap-2">
+                                {DIAS.map((dia, i) => {
+                                    const sel = dias.has(dia.id);
+                                    return (
+                                        <button
+                                            key={i}
+                                            type="button"
+                                            onClick={() => toggleDia(dia.id)}
+                                            aria-label={dia.nome}
+                                            className={cx(
+                                                "flex size-10 items-center justify-center rounded-full border text-sm font-semibold transition duration-100",
+                                                sel ? "border-[#7C3AED] bg-[#7C3AED] text-white" : "border-secondary text-secondary",
+                                            )}
+                                        >
+                                            {dia.label}
+                                        </button>
+                                    );
+                                })}
                             </div>
-                        )}
+                        </div>
 
-                        <HubToggle checked={mesmoHorario} onChange={setMesmoHorario} label="Mesmo horário para todos os dias" />
-                    </div>
+                        {/* Hora do treino */}
+                        <div className="flex flex-col gap-3">
+                            <span className="text-sm font-semibold text-primary">Hora do treino</span>
 
-                    {/* Visibilidade */}
-                    <div className="rounded-xl border border-secondary p-4">
-                        <HubToggle checked={divulgar} onChange={setDivulgar} label="Deixar rotina visível para todos" />
-                    </div>
+                            {mesmoHorario ? (
+                                <input
+                                    type="time"
+                                    value={horaGeral}
+                                    onChange={(e) => setHoraGeral(e.target.value)}
+                                    className={cx(timeInputClass, "w-full")}
+                                />
+                            ) : diasSelecionados.length === 0 ? (
+                                <p className="text-sm text-tertiary">Selecione os dias de treino acima para definir os horários.</p>
+                            ) : (
+                                <div className="flex flex-col gap-2">
+                                    {diasSelecionados.map((d) => (
+                                        <div key={d.id} className="flex items-center justify-between gap-3">
+                                            <span className="text-sm font-medium text-secondary">{d.nome}</span>
+                                            <input
+                                                type="time"
+                                                value={horaPorDia[d.id] ?? ""}
+                                                onChange={(e) => setHoraPorDia((prev) => ({ ...prev, [d.id]: e.target.value }))}
+                                                className={cx(timeInputClass, "w-36")}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <HubToggle checked={mesmoHorario} onChange={setMesmoHorario} label="Mesmo horário para todos os dias" />
+                        </div>
+                    </Bloco>
+
+                    <Bloco icon={Globe01} titulo="Visibilidade">
+                        {/* Visibilidade */}
+                        <div className="rounded-xl border border-secondary bg-primary p-4">
+                            <HubToggle checked={divulgar} onChange={setDivulgar} label="Deixar rotina visível para todos" />
+                        </div>
+                    </Bloco>
                 </div>
             </div>
 

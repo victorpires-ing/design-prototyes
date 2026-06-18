@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { Edit05, SearchLg } from "@untitledui/icons";
+import { Edit05, Rss01, SearchLg } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { cx } from "@/utils/cx";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { HubTabBar } from "../components/HubTabBar";
 import { PostCard, type MuralItem } from "../components/PostCard";
 import { FEED } from "../data/comunidade";
@@ -195,14 +196,16 @@ export function FeedGeral() {
                 )}
 
                 {/* Lista filtrada */}
-                {lista.map((item) => (
-                    <PostCard key={item.key} item={item} />
-                ))}
-                {lista.length === 0 && (
-                    <p className="py-10 text-center text-sm text-tertiary">
-                        {filtro === "grupos" ? "Nenhum recado dos seus grupos por aqui." : "Nada por aqui ainda."}
-                    </p>
-                )}
+                <Bloco icon={Rss01} titulo="Publicações">
+                    {lista.map((item) => (
+                        <PostCard key={item.key} item={item} />
+                    ))}
+                    {lista.length === 0 && (
+                        <p className="py-10 text-center text-sm text-tertiary">
+                            {filtro === "grupos" ? "Nenhum recado dos seus grupos por aqui." : "Nada por aqui ainda."}
+                        </p>
+                    )}
+                </Bloco>
             </main>
 
             <HubTabBar active="feed" />

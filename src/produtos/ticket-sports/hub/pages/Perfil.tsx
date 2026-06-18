@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { Calendar, ChevronRight, Clock, Edit01, Heart, Image01, LogOut01, Settings01, XClose } from "@untitledui/icons";
+import type { ComponentType, ReactNode } from "react";
+import { Activity, Calendar, ChevronRight, Clock, Edit01, Heart, Image01, LayoutAlt01, LogOut01, Settings01, XClose } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { cx } from "@/utils/cx";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
@@ -37,6 +38,19 @@ const Avatar = ({ className }: { className?: string }) => (
     <span className={cx("flex items-center justify-center rounded-full bg-[#7C3AED] font-bold text-white", className)}>W</span>
 );
 
+/** Bloco temático: painel com cabeçalho (ícone + título) agrupando itens relacionados. */
+const Bloco = ({ icon: Icon, titulo, children }: { icon: ComponentType<{ className?: string }>; titulo: string; children: ReactNode }) => (
+    <section className="flex flex-col gap-4 rounded-3xl bg-secondary p-4">
+        <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-xl bg-[#7C3AED] text-white">
+                <Icon className="size-4" />
+            </span>
+            <h2 className="text-base font-bold text-primary">{titulo}</h2>
+        </div>
+        {children}
+    </section>
+);
+
 export function Perfil() {
     const navigate = useNavigate();
     const [posts, setPosts] = useState<Post[]>(POSTS_INICIAIS);
@@ -63,6 +77,10 @@ export function Perfil() {
 
     const podePublicar = texto.trim().length > 0 || imagens.length > 0;
 
+    const ativ = ATIVIDADES.find((a) => a.id === MINHA_ROTINA.atividade);
+    const diasTxt = MINHA_ROTINA.dias.map((id) => DIAS.find((d) => d.id === id)?.curto).join(", ");
+    const horaTxt = MINHA_ROTINA.mesmoHorario ? MINHA_ROTINA.horaGeral : "Horários por dia";
+
     return (
         <TicketSportsLayout fullHeight>
             <header className="flex items-center justify-between gap-3 border-b border-secondary bg-primary px-5 py-3.5 md:rounded-t-3xl">
@@ -70,9 +88,11 @@ export function Perfil() {
                 <HubIconButton icon={Settings01} label="Editar perfil" onClick={() => navigate("/ticket-sports/hub/perfil/editar")} />
             </header>
 
-            <main className="hub-rise flex min-h-0 flex-1 flex-col overflow-y-auto pb-28">
-                {/* Cabeçalho do perfil */}
-                <div className="flex flex-col items-center gap-2 px-5 pt-6 text-center">
+            <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onArquivos} />
+
+            <main className="hub-rise flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 pb-28 [&>*]:shrink-0">
+                {/* Identidade */}
+                <div className="flex flex-col items-center gap-2 pt-1 text-center">
                     <Avatar className="size-20 text-2xl" />
                     <div className="flex flex-col">
                         <span className="text-display-xs font-bold text-primary">William Campos</span>
@@ -88,57 +108,49 @@ export function Perfil() {
                     </button>
                 </div>
 
-                {/* Minha rotina */}
-                <div className="mt-6 px-5">
-                    {(() => {
-                        const ativ = ATIVIDADES.find((a) => a.id === MINHA_ROTINA.atividade);
-                        const diasTxt = MINHA_ROTINA.dias.map((id) => DIAS.find((d) => d.id === id)?.curto).join(", ");
-                        const horaTxt = MINHA_ROTINA.mesmoHorario ? MINHA_ROTINA.horaGeral : "Horários por dia";
-                        return (
-                            <div className="flex flex-col gap-3 rounded-2xl border border-secondary bg-primary p-4">
-                                <div className="flex items-center justify-between gap-3">
-                                    <span className="text-sm font-bold text-primary">Minha rotina</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => navigate("/ticket-sports/hub/criar-rotina?editar=1")}
-                                        className="flex items-center gap-1.5 text-sm font-semibold text-[#7C3AED]"
-                                    >
-                                        <Edit01 className="size-4" /> Editar
-                                    </button>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="flex size-11 items-center justify-center rounded-xl bg-[#7C3AED]/10 text-2xl">{ativ?.emoji}</span>
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-primary">{MINHA_ROTINA.nome}</span>
-                                        <span className="text-xs text-tertiary">{ativ?.label}</span>
-                                    </div>
-                                </div>
-                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-tertiary">
-                                    <span className="flex items-center gap-1.5">
-                                        <Calendar className="size-4 text-fg-quaternary" /> {diasTxt}
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                        <Clock className="size-4 text-fg-quaternary" /> {horaTxt}
-                                    </span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => navigate("/ticket-sports/hub/rotina/desempenho")}
-                                    className="mt-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#7C3AED]/10 py-2.5 text-sm font-semibold text-[#7C3AED] transition hover:bg-[#7C3AED]/15"
-                                >
-                                    📈 Ver desempenho
-                                </button>
+                {/* BLOCO: Seu treino (rotina + recomendações) */}
+                <Bloco icon={Activity} titulo="Seu treino">
+                    {/* Minha rotina */}
+                    <div className="flex flex-col gap-3 rounded-2xl border border-secondary bg-primary p-4">
+                        <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm font-bold text-primary">Minha rotina</span>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/ticket-sports/hub/criar-rotina?editar=1")}
+                                className="flex items-center gap-1.5 text-sm font-semibold text-[#7C3AED]"
+                            >
+                                <Edit01 className="size-4" /> Editar
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="flex size-11 items-center justify-center rounded-xl bg-[#7C3AED]/10 text-2xl">{ativ?.emoji}</span>
+                            <div className="flex flex-col">
+                                <span className="text-sm font-bold text-primary">{MINHA_ROTINA.nome}</span>
+                                <span className="text-xs text-tertiary">{ativ?.label}</span>
                             </div>
-                        );
-                    })()}
-                </div>
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-tertiary">
+                            <span className="flex items-center gap-1.5">
+                                <Calendar className="size-4 text-fg-quaternary" /> {diasTxt}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <Clock className="size-4 text-fg-quaternary" /> {horaTxt}
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => navigate("/ticket-sports/hub/rotina/desempenho")}
+                            className="mt-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#7C3AED]/10 py-2.5 text-sm font-semibold text-[#7C3AED] transition hover:bg-[#7C3AED]/15"
+                        >
+                            📈 Ver desempenho
+                        </button>
+                    </div>
 
-                {/* Recomendações */}
-                <div className="mt-3 px-5">
+                    {/* Recomendações */}
                     <button
                         type="button"
                         onClick={() => navigate("/ticket-sports/hub/perfil/recomendacoes")}
-                        className="flex w-full items-center gap-3 rounded-2xl bg-[#7C3AED]/5 p-4 text-left ring-1 ring-[#7C3AED]/15"
+                        className="flex w-full items-center gap-3 rounded-2xl bg-primary p-4 text-left ring-1 ring-[#7C3AED]/20"
                     >
                         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#7C3AED] text-lg text-white">✨</span>
                         <div className="flex flex-1 flex-col">
@@ -147,12 +159,12 @@ export function Perfil() {
                         </div>
                         <ChevronRight className="size-5 shrink-0 text-fg-quaternary" />
                     </button>
-                </div>
+                </Bloco>
 
-                {/* Composer */}
-                <div className="mt-6 px-5">
-                    <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onArquivos} />
-                    <div className="flex flex-col gap-3 rounded-2xl border border-secondary p-4">
+                {/* BLOCO: Suas publicações (compositor + posts) */}
+                <Bloco icon={LayoutAlt01} titulo="Suas publicações">
+                    {/* Compositor */}
+                    <div className="flex flex-col gap-3 rounded-2xl border border-secondary bg-primary p-4">
                         <div className="flex gap-3">
                             <Avatar className="size-10 shrink-0 text-sm" />
                             <textarea
@@ -200,12 +212,10 @@ export function Perfil() {
                             </button>
                         </div>
                     </div>
-                </div>
 
-                {/* Feed */}
-                <div className="mt-6 flex flex-col gap-3 px-5">
+                    {/* Posts */}
                     {posts.map((p) => (
-                        <article key={p.id} className="flex flex-col gap-3 rounded-2xl border border-secondary p-4">
+                        <article key={p.id} className="flex flex-col gap-3 rounded-2xl border border-secondary bg-primary p-4">
                             <div className="flex items-center gap-3">
                                 <Avatar className="size-10 text-sm" />
                                 <div className="flex flex-col">
@@ -226,18 +236,16 @@ export function Perfil() {
                             </div>
                         </article>
                     ))}
-                </div>
+                </Bloco>
 
                 {/* Sair */}
-                <div className="mt-6 px-5">
-                    <button
-                        type="button"
-                        onClick={() => navigate("/ticket-sports/hub")}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-error-primary ring-1 ring-border-secondary transition duration-100 hover:bg-secondary"
-                    >
-                        <LogOut01 className="size-5" /> Sair da conta
-                    </button>
-                </div>
+                <button
+                    type="button"
+                    onClick={() => navigate("/ticket-sports/hub")}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-error-primary ring-1 ring-border-secondary transition duration-100 hover:bg-secondary"
+                >
+                    <LogOut01 className="size-5" /> Sair da conta
+                </button>
             </main>
 
             <HubTabBar active="perfil" />

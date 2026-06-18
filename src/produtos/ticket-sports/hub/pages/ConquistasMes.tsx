@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ArrowLeft } from "@untitledui/icons";
+import { ArrowLeft, Trophy01 } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { cx } from "@/utils/cx";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { Confetti } from "../components/Confetti";
 import { CONCLUIRAM_MES } from "../data/home";
 
@@ -34,11 +35,12 @@ export function ConquistasMes() {
                     {CONCLUIRAM_MES.length} pessoas concluíram 100% da rotina em junho 🏆
                 </p>
 
-                <div className="mt-6 flex flex-col gap-3">
+                <div className="mt-6">
+                    <Bloco icon={Trophy01} titulo="Conquistas do mês">
                     {CONCLUIRAM_MES.map((p) => {
                         const jaCelebrou = celebrados.has(p.id);
                         return (
-                            <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-secondary p-3">
+                            <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-secondary bg-primary p-3">
                                 <span className="relative shrink-0">
                                     <img src={p.foto} alt="" className="size-12 rounded-full object-cover ring-2 ring-[#F59E0B]" />
                                     <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-[#F59E0B] text-[10px] ring-2 ring-primary">
@@ -65,6 +67,7 @@ export function ConquistasMes() {
                             </div>
                         );
                     })}
+                    </Bloco>
                 </div>
             </div>
             {festa && <Confetti />}

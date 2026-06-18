@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ArrowLeft } from "@untitledui/icons";
+import { ArrowLeft, Calendar, Globe01, MarkerPin01, TrendUp02, Users03 } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { cx } from "@/utils/cx";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { HubSelect } from "../components/hub-ui";
 
 const CATEGORIAS = ["Corrida", "Musculação", "Ciclismo", "Natação", "Yoga", "CrossFit", "Caminhada", "Tênis"];
@@ -96,84 +97,94 @@ export function Filtros() {
                 </button>
             </header>
 
-            <main className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 py-5 pb-28">
-                <Secao titulo="Categoria">
-                    <div className="flex flex-wrap gap-2">
-                        {CATEGORIAS.map((c) => (
-                            <Chip key={c} ativo={categorias.has(c)} onClick={() => toggleCat(c)}>
-                                {c}
-                            </Chip>
-                        ))}
-                    </div>
-                </Secao>
+            <main className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 pb-28">
+                <Bloco icon={TrendUp02} titulo="Categoria">
+                    <Secao titulo="Categoria">
+                        <div className="flex flex-wrap gap-2">
+                            {CATEGORIAS.map((c) => (
+                                <Chip key={c} ativo={categorias.has(c)} onClick={() => toggleCat(c)}>
+                                    {c}
+                                </Chip>
+                            ))}
+                        </div>
+                    </Secao>
+                </Bloco>
 
-                <Secao titulo="Preço">
-                    <div className="flex flex-wrap gap-2">
-                        {PRECO.map((p) => (
-                            <Chip key={p} ativo={preco === p} onClick={() => setPreco(p)}>
-                                {p}
-                            </Chip>
-                        ))}
-                    </div>
-                </Secao>
+                <Bloco icon={MarkerPin01} titulo="Preço e distância">
+                    <Secao titulo="Preço">
+                        <div className="flex flex-wrap gap-2">
+                            {PRECO.map((p) => (
+                                <Chip key={p} ativo={preco === p} onClick={() => setPreco(p)}>
+                                    {p}
+                                </Chip>
+                            ))}
+                        </div>
+                    </Secao>
 
-                <Secao titulo="Distância">
-                    <div className="flex flex-wrap gap-2">
-                        {DISTANCIA.map((d) => (
-                            <Chip key={d} ativo={distancia === d} onClick={() => setDistancia(d)}>
-                                {d}
-                            </Chip>
-                        ))}
-                    </div>
-                </Secao>
+                    <Secao titulo="Distância">
+                        <div className="flex flex-wrap gap-2">
+                            {DISTANCIA.map((d) => (
+                                <Chip key={d} ativo={distancia === d} onClick={() => setDistancia(d)}>
+                                    {d}
+                                </Chip>
+                            ))}
+                        </div>
+                    </Secao>
+                </Bloco>
 
-                <Secao titulo="Localização">
-                    <div className="flex flex-col gap-3">
-                        <HubSelect label="País" placeholder="Selecione o país" value={pais} onChange={setPais} options={PAISES} />
-                        <HubSelect label="Estado" placeholder="Selecione o estado" value={estado} onChange={setEstado} options={ESTADOS} />
-                        <HubSelect label="Cidade" placeholder="Selecione a cidade" value={cidade} onChange={setCidade} options={CIDADES} />
-                    </div>
-                </Secao>
+                <Bloco icon={Globe01} titulo="Localização">
+                    <Secao titulo="Localização">
+                        <div className="flex flex-col gap-3">
+                            <HubSelect label="País" placeholder="Selecione o país" value={pais} onChange={setPais} options={PAISES} />
+                            <HubSelect label="Estado" placeholder="Selecione o estado" value={estado} onChange={setEstado} options={ESTADOS} />
+                            <HubSelect label="Cidade" placeholder="Selecione a cidade" value={cidade} onChange={setCidade} options={CIDADES} />
+                        </div>
+                    </Secao>
+                </Bloco>
 
-                <Secao titulo="Data">
-                    <div className="flex flex-wrap gap-2">
-                        {DATA.map((d) => (
-                            <Chip key={d} ativo={data === d} onClick={() => setData(d)}>
-                                {d}
-                            </Chip>
-                        ))}
-                    </div>
-                </Secao>
+                <Bloco icon={Calendar} titulo="Data e nível">
+                    <Secao titulo="Data">
+                        <div className="flex flex-wrap gap-2">
+                            {DATA.map((d) => (
+                                <Chip key={d} ativo={data === d} onClick={() => setData(d)}>
+                                    {d}
+                                </Chip>
+                            ))}
+                        </div>
+                    </Secao>
 
-                <Secao titulo="Nível">
-                    <div className="flex flex-wrap gap-2">
-                        {NIVEL.map((n) => (
-                            <Chip key={n} ativo={nivel === n} onClick={() => setNivel(n)}>
-                                {n}
-                            </Chip>
-                        ))}
-                    </div>
-                </Secao>
+                    <Secao titulo="Nível">
+                        <div className="flex flex-wrap gap-2">
+                            {NIVEL.map((n) => (
+                                <Chip key={n} ativo={nivel === n} onClick={() => setNivel(n)}>
+                                    {n}
+                                </Chip>
+                            ))}
+                        </div>
+                    </Secao>
+                </Bloco>
 
-                <Secao titulo="Faixa etária">
-                    <div className="flex flex-wrap gap-2">
-                        {IDADE.map((f) => (
-                            <Chip key={f} ativo={idade === f} onClick={() => setIdade(f)}>
-                                {f}
-                            </Chip>
-                        ))}
-                    </div>
-                </Secao>
+                <Bloco icon={Users03} titulo="Público">
+                    <Secao titulo="Faixa etária">
+                        <div className="flex flex-wrap gap-2">
+                            {IDADE.map((f) => (
+                                <Chip key={f} ativo={idade === f} onClick={() => setIdade(f)}>
+                                    {f}
+                                </Chip>
+                            ))}
+                        </div>
+                    </Secao>
 
-                <Secao titulo="Sexo">
-                    <div className="flex flex-wrap gap-2">
-                        {SEXO.map((s) => (
-                            <Chip key={s} ativo={sexo === s} onClick={() => setSexo(s)}>
-                                {s}
-                            </Chip>
-                        ))}
-                    </div>
-                </Secao>
+                    <Secao titulo="Sexo">
+                        <div className="flex flex-wrap gap-2">
+                            {SEXO.map((s) => (
+                                <Chip key={s} ativo={sexo === s} onClick={() => setSexo(s)}>
+                                    {s}
+                                </Chip>
+                            ))}
+                        </div>
+                    </Secao>
+                </Bloco>
             </main>
 
             <div className="border-t border-secondary bg-primary px-4 py-4 md:rounded-b-3xl">

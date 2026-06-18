@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { CheckCircle } from "@untitledui/icons";
+import { CheckCircle, User01 } from "@untitledui/icons";
 import { useNavigate, useSearchParams } from "react-router";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
+import { Bloco } from "../components/Bloco";
 import { HubButton, HubGoogleButton, HubInput, HubPasswordField, HubWordmark } from "../components/hub-ui";
 
 export function Cadastro() {
@@ -28,35 +29,37 @@ export function Cadastro() {
                     </h1>
                 </div>
 
-                <div className="flex flex-col gap-5">
-                    <HubInput
-                        label={isEmpresa ? "Nome da empresa" : "Nome"}
-                        placeholder={isEmpresa ? "Razão social ou nome fantasia" : "Nome completo"}
-                        value={nome}
-                        onChange={setNome}
-                    />
-                    {isEmpresa && <HubInput label="CNPJ" placeholder="00.000.000/0000-00" value={cnpj} onChange={setCnpj} />}
-                    <HubInput
-                        label={isEmpresa ? "Email corporativo" : "Email"}
-                        type="email"
-                        placeholder={isEmpresa ? "contato@empresa.com" : "Digite"}
-                        value={email}
-                        onChange={setEmail}
-                    />
-                    <HubPasswordField
-                        label="Senha"
-                        placeholder="Capricha na senha"
-                        value={senha}
-                        onChange={setSenha}
-                        hint={
-                            <span className="flex items-center gap-1.5 text-sm text-tertiary">
-                                <CheckCircle className="size-4 text-fg-quaternary" />
-                                Deve ter no mínimo 8 caracteres.
-                            </span>
-                        }
-                    />
-                    <HubPasswordField label="Confirmar senha" placeholder="Digite novamente" value={confirmar} onChange={setConfirmar} />
-                </div>
+                <Bloco icon={User01} titulo={isEmpresa ? "Dados da empresa" : "Seus dados"}>
+                    <div className="flex flex-col gap-5">
+                        <HubInput
+                            label={isEmpresa ? "Nome da empresa" : "Nome"}
+                            placeholder={isEmpresa ? "Razão social ou nome fantasia" : "Nome completo"}
+                            value={nome}
+                            onChange={setNome}
+                        />
+                        {isEmpresa && <HubInput label="CNPJ" placeholder="00.000.000/0000-00" value={cnpj} onChange={setCnpj} />}
+                        <HubInput
+                            label={isEmpresa ? "Email corporativo" : "Email"}
+                            type="email"
+                            placeholder={isEmpresa ? "contato@empresa.com" : "Digite"}
+                            value={email}
+                            onChange={setEmail}
+                        />
+                        <HubPasswordField
+                            label="Senha"
+                            placeholder="Capricha na senha"
+                            value={senha}
+                            onChange={setSenha}
+                            hint={
+                                <span className="flex items-center gap-1.5 text-sm text-tertiary">
+                                    <CheckCircle className="size-4 text-fg-quaternary" />
+                                    Deve ter no mínimo 8 caracteres.
+                                </span>
+                            }
+                        />
+                        <HubPasswordField label="Confirmar senha" placeholder="Digite novamente" value={confirmar} onChange={setConfirmar} />
+                    </div>
+                </Bloco>
 
                 <div className="flex flex-col gap-4">
                     <HubButton onClick={proximo}>Começar</HubButton>

@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
-import { ArrowLeft, Camera01, LogOut01, Moon01 } from "@untitledui/icons";
+import { ArrowLeft, Camera01, Heart, LogOut01, Moon01, User01 } from "@untitledui/icons";
 import { useNavigate } from "react-router";
 import { cx } from "@/utils/cx";
 import { useTheme } from "@/providers/theme-provider";
 import { TicketSportsLayout } from "../../components/TicketSportsLayout";
 import { getHubTheme, setHubTheme } from "../../components/use-light-theme";
+import { Bloco } from "../components/Bloco";
 import { HubButton, HubInput, HubTextarea, HubToggle } from "../components/hub-ui";
 import { ATIVIDADES } from "../data/onboarding";
 
@@ -45,85 +46,86 @@ export function EditarPerfil() {
         <TicketSportsLayout>
             <input ref={fotoRef} type="file" accept="image/*" hidden onChange={onArquivo} />
 
-            <div className="flex flex-1 flex-col px-6 pt-8">
-                <button
-                    type="button"
-                    onClick={() => navigate(-1)}
-                    className="flex w-max items-center gap-1.5 text-sm font-semibold text-[#7C3AED]"
-                >
-                    <ArrowLeft className="size-4" />
-                    Voltar
-                </button>
-                <h1 className="mt-2 text-display-xs font-bold text-primary">Editar perfil</h1>
-
-                {/* Foto */}
-                <div className="mt-6 flex flex-col items-center">
-                    <button type="button" onClick={() => fotoRef.current?.click()} className="relative">
-                        <span className="flex size-24 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] text-2xl font-bold text-white">
-                            {foto ? <img src={foto} alt="Foto de perfil" className="size-full object-cover" /> : "W"}
-                        </span>
-                        <span className="absolute -bottom-0.5 -right-0.5 flex size-8 items-center justify-center rounded-full bg-white text-[#7C3AED] ring-1 ring-border-secondary">
-                            <Camera01 className="size-4" />
-                        </span>
+            <div className="flex flex-1 flex-col gap-5 px-6 pt-8">
+                {/* Cabeçalho da página (fora de bloco) */}
+                <div className="flex flex-col">
+                    <button
+                        type="button"
+                        onClick={() => navigate(-1)}
+                        className="flex w-max items-center gap-1.5 text-sm font-semibold text-[#7C3AED]"
+                    >
+                        <ArrowLeft className="size-4" />
+                        Voltar
                     </button>
-                    <button type="button" onClick={() => fotoRef.current?.click()} className="mt-3 text-sm font-semibold text-[#7C3AED]">
-                        Alterar foto
-                    </button>
+                    <h1 className="mt-2 text-display-xs font-bold text-primary">Editar perfil</h1>
                 </div>
 
-                {/* Campos */}
-                <div className="mt-6 flex flex-1 flex-col gap-5">
+                {/* BLOCO: Foto e dados */}
+                <Bloco icon={User01} titulo="Foto e dados">
+                    <div className="flex flex-col items-center">
+                        <button type="button" onClick={() => fotoRef.current?.click()} className="relative">
+                            <span className="flex size-24 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] text-2xl font-bold text-white">
+                                {foto ? <img src={foto} alt="Foto de perfil" className="size-full object-cover" /> : "W"}
+                            </span>
+                            <span className="absolute -bottom-0.5 -right-0.5 flex size-8 items-center justify-center rounded-full bg-primary text-[#7C3AED] ring-1 ring-border-secondary">
+                                <Camera01 className="size-4" />
+                            </span>
+                        </button>
+                        <button type="button" onClick={() => fotoRef.current?.click()} className="mt-3 text-sm font-semibold text-[#7C3AED]">
+                            Alterar foto
+                        </button>
+                    </div>
+
                     <HubInput label="Nome" placeholder="Seu nome" value={nome} onChange={setNome} />
                     <HubTextarea label="Sobre mim" placeholder="Conte um pouco sobre você" value={bio} onChange={setBio} />
                     <HubInput label="Cidade" placeholder="Ex: São Paulo, SP" value={cidade} onChange={setCidade} />
 
-                    <div className="flex flex-col gap-2">
-                        <span className="text-sm font-semibold text-primary">Atividades favoritas</span>
-                        <div className="flex flex-wrap gap-2">
-                            {ATIVIDADES.map((a) => {
-                                const sel = atividades.has(a.id);
-                                return (
-                                    <button
-                                        key={a.id}
-                                        type="button"
-                                        onClick={() => toggleAtividade(a.id)}
-                                        className={cx(
-                                            "flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition duration-100",
-                                            sel ? "border-[#7C3AED] bg-[#7C3AED]/5 text-[#7C3AED]" : "border-secondary text-secondary",
-                                        )}
-                                    >
-                                        <span className="text-base leading-none">{a.emoji}</span>
-                                        {a.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-secondary p-4">
+                    <div className="rounded-xl border border-secondary bg-primary p-4">
                         <HubToggle checked={visivel} onChange={setVisivel} label="Deixar perfil visível para todos" />
                     </div>
+                </Bloco>
 
-                    {/* Aparência — versão noturna (vale para todo o app) */}
-                    <div className="flex flex-col gap-3 rounded-xl border border-secondary p-4">
-                        <div className="flex items-center gap-2">
-                            <span className="flex size-8 items-center justify-center rounded-lg bg-[#7C3AED]/10 text-[#7C3AED]">
-                                <Moon01 className="size-4" />
-                            </span>
-                            <span className="text-sm font-semibold text-primary">Aparência</span>
-                        </div>
+                {/* BLOCO: Atividades favoritas */}
+                <Bloco icon={Heart} titulo="Atividades favoritas">
+                    <div className="flex flex-wrap gap-2">
+                        {ATIVIDADES.map((a) => {
+                            const sel = atividades.has(a.id);
+                            return (
+                                <button
+                                    key={a.id}
+                                    type="button"
+                                    onClick={() => toggleAtividade(a.id)}
+                                    className={cx(
+                                        "flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition duration-100",
+                                        sel ? "border-[#7C3AED] bg-[#7C3AED]/5 text-[#7C3AED]" : "border-secondary bg-primary text-secondary",
+                                    )}
+                                >
+                                    <span className="text-base leading-none">{a.emoji}</span>
+                                    {a.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </Bloco>
+
+                {/* BLOCO: Aparência — versão noturna (vale para todo o app) */}
+                <Bloco icon={Moon01} titulo="Aparência">
+                    <div className="flex flex-col gap-2 rounded-xl border border-secondary bg-primary p-4">
                         <HubToggle checked={noturno} onChange={alternarNoturno} label="Versão noturna" />
                         <p className="text-xs text-tertiary">Ativa o tema escuro em todo o app.</p>
                     </div>
+                </Bloco>
 
+                {/* BLOCO: Conta */}
+                <Bloco icon={LogOut01} titulo="Conta">
                     <button
                         type="button"
                         onClick={() => navigate("/ticket-sports/hub")}
-                        className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-error-primary ring-1 ring-border-secondary transition duration-100 hover:bg-secondary"
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-semibold text-error-primary ring-1 ring-border-secondary transition duration-100 hover:bg-secondary"
                     >
                         <LogOut01 className="size-5" /> Sair da conta
                     </button>
-                </div>
+                </Bloco>
             </div>
 
             <div className="px-4 pb-8 pt-4">

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { useTheme } from "@/providers/theme-provider";
-import { ArrowLeft, MarkerPin06, Monitor01, Phone01, MinusCircle, PlusCircle, Ticket02 } from "@untitledui/icons";
+import { ArrowLeft, MarkerPin06, Monitor01, Phone01, MinusCircle, PlusCircle } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import logoTicketSports from "../assets/LOGO TICKET INGRESSE.svg";
 import heroCorredores from "../assets/imagem-corredores.png";
@@ -103,17 +103,17 @@ function HeroCarousel({ variant }: { variant: "desktop" | "mobile" }) {
 /* ------------------------------- Data --------------------------------- */
 
 const SOBRE_PARAGRAPHS = [
-    "🏃✨ A São Silvestre está chegando para mais uma edição histórica!",
-    "Um dos eventos de corrida mais tradicionais e emocionantes do Brasil volta a reunir atletas profissionais, corredores amadores, famílias e apaixonados por esporte em uma grande celebração pelas ruas de São Paulo. Mais do que uma prova, a São Silvestre é um símbolo de superação, energia e fim de ano com propósito. 👏💪",
-    "👉 Você escolhe como quer viver essa experiência: correndo, torcendo, acompanhando ou simplesmente celebrando cada quilômetro desse percurso tão especial. Aqui, cada passo representa determinação, movimento e vontade de cruzar novos limites.",
-    "🏅 Grandes atletas dividem o mesmo cenário com milhares de pessoas que correm por desafio, diversão, saúde ou simplesmente pela emoção de participar.",
+    "🏃‍♀️✨ A São Silvestre está chegando para mais uma edição histórica!",
+    "Um dos eventos de corrida mais tradicionais e emocionantes do Brasil volta a reunir atletas profissionais, corredores amadores, famílias e apaixonados por esporte em uma grande celebração pelas ruas de São Paulo. Mais do que uma prova, a São Silvestre é um símbolo de superação, energia e fim de ano com propósito. 🌟💪",
+    "👉 Você escolhe como quer viver essa experiência: correndo, torcendo, acompanhando ou celebrando cada quilômetro desse percurso tão especial. Aqui, cada passo representa determinação, movimento e vontade de cruzar novos limites.",
+    "🏅 Grandes atletas dividem o mesmo cenário com milhares de pessoas que correm por desafio, diversão, saúde, tradição ou simplesmente pela emoção de participar.",
     "🎉 A cidade ganha vida, a torcida toma as ruas e o clima de conquista transforma a corrida em um momento inesquecível.",
     "🔥 Prepare-se para viver uma das provas mais icônicas, vibrantes e especiais do Brasil. A São Silvestre te espera na largada!",
 ];
 
 const FAQ = [
     {
-        q: "Por que a São Silvestre mudou de plataforma este ano?",
+        q: "Já me inscrevi. Onde vejo minha inscrição?",
         a: "Lorem ipsum dolor sit amet consectetur. Non dui libero aliquet vestibulum cursus volutpat arcu. Eget dictum nibh et lacus. Adipiscing tincidunt id cras at ipsum vel risus. Tempor faucibus varius in.",
     },
     { q: "A Ingresse é uma plataforma confiável para comprar minha inscrição?", a: "Sim. A Ingresse é a plataforma oficial de inscrições da São Silvestre nesta edição." },
@@ -128,12 +128,16 @@ const FAQ = [
 
 function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
     return (
-        <div className={cx("rounded-xl border border-secondary transition", open ? "bg-secondary/60" : "bg-primary")}>
+        <div className={cx("rounded-xl border border-secondary transition", open ? "bg-primary" : "bg-secondary/60")}>
             <button type="button" onClick={onToggle} className="flex w-full items-center gap-3 px-5 py-4 text-left">
                 {open ? <MinusCircle className="size-5 shrink-0 text-fg-quaternary" /> : <PlusCircle className="size-5 shrink-0 text-fg-quaternary" />}
                 <span className="text-sm font-semibold text-primary">{q}</span>
             </button>
-            {open && <p className="px-5 pb-4 pl-13 text-sm text-tertiary">{a}</p>}
+            <div className={cx("grid transition-[grid-template-rows] duration-300 ease-out", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+                <div className="overflow-hidden">
+                    <p className={cx("px-5 pb-4 pl-13 text-sm text-tertiary transition-opacity duration-300", open ? "opacity-100" : "opacity-0")}>{a}</p>
+                </div>
+            </div>
         </div>
     );
 }
@@ -253,15 +257,7 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                             A São Silvestre não é só uma prova — é um marco na vida de quem corre. Seja você estreante ou veterano, cada passada nas ruas de São
                             Paulo conta uma história.
                         </p>
-                        <BlueButton className="mt-7 w-full px-7 py-4 text-base @3xl:w-auto">Garanta sua vaga pela Ingresse</BlueButton>
-
-                        <div className="mt-7 flex items-center gap-2.5">
-                            <Ticket02 className="size-5 shrink-0 text-fg-quaternary" />
-                            <p className="text-sm text-tertiary">
-                                Se liga: As inscrições e o resgate da sua inscrição são feitos{" "}
-                                <span className="font-semibold" style={{ color: BLUE }}>pela Ingresse</span>.
-                            </p>
-                        </div>
+                        <BlueButton className="mt-7 w-full px-7 py-4 text-base @3xl:w-auto">Inscreva-se agora</BlueButton>
                     </div>
 
                     {/* Banner rotativo */}
@@ -356,21 +352,20 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                                 </div>
 
                                 <div ref={inscreveRef} className="mt-6">
-                                    <BlueButton className="w-full rounded-xl py-4 text-base">Inscreva-se pela Ingresse</BlueButton>
+                                    <BlueButton className="w-full rounded-xl py-4 text-base">Inscreva-se agora</BlueButton>
                                 </div>
                             </div>
 
                             {/* Base cinza */}
                             <div className="bg-secondary p-8">
-                                <p className="text-xs font-bold tracking-wide uppercase" style={{ color: BLUE }}>Novidade nesta edição</p>
-                                <p className="mt-2 text-xl font-bold text-primary">Sua inscrição agora é pela Ingresse</p>
-                                <p className="mt-2 text-sm text-tertiary">Reunimos as principais dúvidas sobre a mudança para você. Role até o final da página ou clique no botão abaixo.</p>
+                                <p className="text-xl font-bold text-primary">Já se inscreveu?</p>
+                                <p className="mt-2 text-sm text-tertiary">Acompanhe sua inscrição, credencial e detalhes da compra pela sua conta TicketSports by Ingresse.</p>
 
                                 <button
                                     type="button"
                                     className="mt-5 w-full rounded-xl border border-secondary bg-primary px-5 py-3.5 text-base font-semibold text-primary transition duration-100 ease-linear hover:bg-secondary"
                                 >
-                                    Tire suas dúvidas
+                                    Acessar minha inscrição
                                 </button>
                             </div>
                         </div>
@@ -379,7 +374,7 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
             </section>
 
             {/* ===== FAQ ===== */}
-            <section ref={faqRef} className="bg-secondary px-6 py-16 @3xl:px-12">
+            <section ref={faqRef} className="scroll-mt-20 bg-secondary px-6 py-16 @3xl:px-12">
                 <div className="mx-auto max-w-3xl">
                     <h2 className="text-center text-2xl font-bold text-primary @3xl:text-3xl">Ainda com dúvidas?</h2>
                     <p className="mt-2 text-center text-md text-tertiary">A gente te explica!</p>
@@ -412,7 +407,7 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                         )}
                     >
                         <div className="w-[390px] max-w-full border-t border-secondary bg-primary px-6 py-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
-                            <BlueButton className="w-full rounded-xl py-4 text-base">Inscreva-se pela Ingresse</BlueButton>
+                            <BlueButton className="w-full rounded-xl py-4 text-base">Inscreva-se agora</BlueButton>
                         </div>
                     </div>,
                     document.body,

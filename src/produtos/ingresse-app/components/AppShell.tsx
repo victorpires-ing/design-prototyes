@@ -15,17 +15,21 @@ const TABS: { id: AppTab; label: string; icon: typeof Home02; to?: string }[] = 
 interface AppShellProps {
     activeTab?: AppTab;
     showTabBar?: boolean;
+    /** Barra de ações fixa no rodapé do frame (acompanha o scroll). */
+    bottomBar?: ReactNode;
     children: ReactNode;
 }
 
 /** Shell mobile (frame de celular + tab bar inferior) reaproveitável entre as telas do app. */
-export function AppShell({ activeTab, showTabBar = true, children }: AppShellProps) {
+export function AppShell({ activeTab, showTabBar = true, bottomBar, children }: AppShellProps) {
     const navigate = useNavigate();
 
     return (
         <div className="flex min-h-screen justify-center bg-secondary md:py-8">
-            <div className="relative flex min-h-screen w-full max-w-[420px] flex-col overflow-hidden bg-primary md:h-[860px] md:min-h-0 md:rounded-[2.5rem] md:shadow-2xl md:ring-1 md:ring-border-secondary">
-                <div className={cx("scrollbar-hide flex-1 overflow-y-auto", showTabBar && "pb-24")}>{children}</div>
+            <div className="relative flex h-dvh w-full max-w-[420px] flex-col overflow-hidden bg-primary md:h-[calc(100dvh-4rem)] md:max-h-[860px] md:min-h-0 md:rounded-[2.5rem] md:shadow-2xl md:ring-1 md:ring-border-secondary">
+                <div className={cx("scrollbar-hide min-h-0 flex-1 overflow-y-auto", showTabBar && "pb-24", bottomBar && "pb-36")}>{children}</div>
+
+                {bottomBar && <div className="pointer-events-none absolute inset-0 z-20">{bottomBar}</div>}
 
                 {showTabBar && (
                     <nav className="absolute inset-x-0 bottom-0 flex items-center justify-around border-t border-secondary bg-primary px-2 pt-2 pb-4">

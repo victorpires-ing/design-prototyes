@@ -1,18 +1,42 @@
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeft, InfoCircle, UserRight01 } from "@untitledui/icons";
-import { Button } from "@/components/base/buttons/button";
+import { ArrowLeft, FaceIdSquare, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
+import { Toggle } from "@/components/base/toggle/toggle";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { AppShell } from "../../components/AppShell";
+import { ActionFab, type FabAction } from "../../components/ActionFab";
 import { StatusBar } from "../../components/StatusBar";
 import { Zigzag } from "../../components/Zigzag";
+import { isTransferido } from "../data/transfer-store";
 
 export function IngressoDetalhe() {
     const navigate = useNavigate();
     const location = useLocation();
-    const transferido = !!(location.state as { transferido?: boolean } | null)?.transferido;
+    const state =
+        (location.state as { transferido?: boolean; evento?: string; title?: string; tipo?: string; sessao?: string; eventId?: string; itemId?: string; acesso?: "qr" | "facial"; portador?: string } | null) ?? {};
+    const transferido = !!state.transferido || isTransferido(state.itemId);
+    const evento = state.evento ?? "ARENA BRASILEIRA 2026";
+    const title = state.title ?? "ARENA | Brasil x Haiti | (19/06)";
+    const tipo = state.tipo ?? "Inteira";
+    const sessao = state.sessao ?? "Sex, 19 jun • 15:00";
+    const portador = state.portador ?? "Janaina Nascimento de Souza";
+    const facial = state.acesso === "facial";
+
+    const [meuIngresso, setMeuIngresso] = useState(true);
+
+    const acoes: FabAction[] = [
+        {
+            icon: Send01,
+            label: "Transferir ingresso",
+            short: "Transferir",
+            onClick: () => navigate("/ingresse-app/ingressos/transferir", { state: { evento, title, tipo, sessao, eventId: state.eventId, itemId: state.itemId, acesso: state.acesso } }),
+        },
+        { icon: Tag01, label: "Revender ingresso", short: "Revender" },
+        { icon: Wallet02, label: "Adicionar à Carteira", short: "Carteira", dark: true },
+    ];
 
     return (
-        <AppShell showTabBar={false}>
+        <AppShell showTabBar={false} bottomBar={transferido ? undefined : <ActionFab actions={acoes} />}>
             <div className="flex min-h-full flex-col bg-secondary">
                 <StatusBar tone="dark" />
 
@@ -21,7 +45,7 @@ export function IngressoDetalhe() {
                     <button
                         type="button"
                         aria-label="Voltar"
-                        onClick={() => navigate("/ingresse-app/ingressos/evento")}
+                        onClick={() => navigate("/ingresse-app/ingressos/evento", { state: { eventId: state.eventId } })}
                         className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                     >
                         <ArrowLeft className="size-5" />
@@ -41,14 +65,21 @@ export function IngressoDetalhe() {
                     <div className="rounded-3xl bg-primary shadow-sm ring-1 ring-border-secondary">
                         {/* Topo: ingresso + sessão */}
                         <div className="p-5">
-                            <p className="text-xs font-medium tracking-wide text-tertiary uppercase">ARENA BRASILEIRA 2026</p>
-                            <p className="mt-1 text-2xl leading-tight font-bold text-primary">ARENA | Brasil x Haiti | (19/06)</p>
-                            <p className="mt-1.5 text-sm text-tertiary">Inteira</p>
+                            <p className="text-xs font-medium tracking-wide text-tertiary uppercase">{evento}</p>
+                            <p className="mt-1 text-2xl leading-tight font-bold text-primary">{title}</p>
+                            {tipo && <p className="mt-1.5 text-sm text-tertiary">{tipo}</p>}
+
+                            {facial && (
+                                <div className="mt-3 flex items-center gap-2.5">
+                                    <Toggle size="sm" isSelected={meuIngresso} onChange={setMeuIngresso} />
+                                    <span className="text-sm font-medium text-primary">Meu ingresso</span>
+                                </div>
+                            )}
 
                             <div className="my-4 border-t border-tertiary" />
 
                             <p className="text-xs font-semibold text-tertiary">Sessão</p>
-                            <p className="mt-1 text-sm font-bold text-primary">Sex, 19 jun • 15:00</p>
+                            <p className="mt-1 text-sm font-bold text-primary">{sessao}</p>
                         </div>
 
                         {/* Rasgadinho (zigzag) */}
@@ -75,9 +106,25 @@ export function IngressoDetalhe() {
 
                                 <p className="text-sm text-tertiary">Transferido para</p>
                                 <p className="mt-0.5 text-md font-bold text-primary">Duny Alves da Silva</p>
+                                <p className="mt-1 text-sm text-tertiary">
+                                    CPF: <span className="font-semibold text-secondary">009.789.568-90</span>
+                                </p>
 
                                 <p className="mt-4 text-sm text-tertiary">Data da transferência</p>
                                 <p className="mt-0.5 text-md font-bold text-primary">10 de junho • 12:20</p>
+                            </div>
+                        ) : facial ? (
+                            /* Acesso por reconhecimento facial */
+                            <div className="px-6 pt-6 pb-7">
+                                <div className="flex flex-col items-center py-2 text-center">
+                                    <FaceIdSquare className="size-24 text-utility-neutral-200" aria-hidden="true" />
+                                    <p className="mt-5 text-sm text-secondary">Seu acesso será feito por reconhecimento facial.</p>
+                                    <p className="text-sm text-secondary">Você já está cadastrado.</p>
+                                </div>
+                                <div className="mt-6 text-left">
+                                    <p className="text-xs text-tertiary">Portador</p>
+                                    <p className="mt-0.5 text-sm font-semibold text-primary">{portador}</p>
+                                </div>
                             </div>
                         ) : (
                             /* QR + portador */
@@ -87,23 +134,11 @@ export function IngressoDetalhe() {
                                 </div>
                                 <div className="mt-5 text-left">
                                     <p className="text-xs text-tertiary">Portador</p>
-                                    <p className="mt-0.5 text-sm font-semibold text-primary">Janaina Nascimento de Souza</p>
+                                    <p className="mt-0.5 text-sm font-semibold text-primary">{portador}</p>
                                 </div>
                             </div>
                         )}
                     </div>
-
-                    {/* Ações (ocultas quando em transferência) */}
-                    {!transferido && (
-                        <div className="flex flex-col gap-3">
-                            <Button size="lg" color="primary" className="rounded-full">
-                                Vender ingresso
-                            </Button>
-                            <Button size="lg" color="secondary" className="rounded-full" onClick={() => navigate("/ingresse-app/ingressos/transferir")}>
-                                Transferir ingresso
-                            </Button>
-                        </div>
-                    )}
                 </div>
             </div>
         </AppShell>

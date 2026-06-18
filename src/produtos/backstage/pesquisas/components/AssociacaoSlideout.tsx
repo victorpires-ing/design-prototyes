@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { Input } from "@/components/base/input/input";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
 import { TIPO_PERGUNTA, usePesquisas, type AssocItem, type Pergunta, type TipoIngresso } from "../data/pesquisas-store";
@@ -19,15 +20,17 @@ interface AssociacaoSlideoutProps {
 }
 
 export function AssociacaoSlideout({ isOpen, onClose, ingresso, onCriarPergunta }: AssociacaoSlideoutProps) {
-    const { perguntas, itensDoIngresso, setAssociacao } = usePesquisas();
+    const { perguntas, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario } = usePesquisas();
 
     // Rascunho local — só grava ao "Salvar" (ou ao "Criar pergunta").
     const [itens, setItens] = useState<AssocItem[]>([]);
+    const [titulo, setTitulo] = useState("");
 
     useEffect(() => {
         if (!isOpen || !ingresso) return;
         setItens(itensDoIngresso(ingresso.id).map((it) => ({ perguntaId: it.pergunta.id, obrigatoria: it.obrigatoria })));
-    }, [isOpen, ingresso, itensDoIngresso]);
+        setTitulo(tituloDoIngresso(ingresso.id));
+    }, [isOpen, ingresso, itensDoIngresso, tituloDoIngresso]);
 
     const selecionadas = useMemo(() => new Set(itens.map((it) => it.perguntaId)), [itens]);
     const disponiveis = useMemo(() => perguntas.filter((p) => !selecionadas.has(p.id) && p.ativa), [perguntas, selecionadas]);
@@ -49,6 +52,7 @@ export function AssociacaoSlideout({ isOpen, onClose, ingresso, onCriarPergunta 
     const commit = () => {
         if (!ingresso) return;
         setAssociacao(ingresso.id, itens);
+        setTituloFormulario(ingresso.id, titulo.trim() || tituloDoIngresso(ingresso.id));
     };
 
     const vincular = () => {
@@ -93,6 +97,14 @@ export function AssociacaoSlideout({ isOpen, onClose, ingresso, onCriarPergunta 
                     </div>
 
                     <div className="flex min-h-0 flex-1 flex-col gap-7 overflow-y-auto px-6 pb-6">
+                        <Input
+                            label="Nome do grupo de perguntas"
+                            hint="Aparece como título da seção no checkout. Serve só para organizar."
+                            value={titulo}
+                            onChange={setTitulo}
+                            placeholder="Ex.: Dados do Participante"
+                        />
+
                         {/* Selecionadas */}
                         <div className="flex flex-col gap-2.5">
                             <span className="text-xs font-semibold tracking-wide text-tertiary uppercase">Selecionadas · {itens.length}</span>

@@ -41,9 +41,9 @@ export function ComboDetalhe() {
     }
 
     const acoes: FabAction[] = [
-        { icon: Wallet02, label: "Adicionar à Carteira", dark: true },
-        { icon: Send01, label: "Transferir ingresso", onClick: () => navigate("/ingresse-app/ingressos/transferir", { state: { eventId: evento.id, comboId: combo.id } }) },
-        { icon: Tag01, label: "Revender ingresso" },
+        { icon: Send01, label: "Transferir ingresso", short: "Transferir", onClick: () => navigate("/ingresse-app/ingressos/transferir", { state: { eventId: evento.id, comboId: combo.id } }) },
+        { icon: Tag01, label: "Revender ingresso", short: "Revender" },
+        { icon: Wallet02, label: "Adicionar à Carteira", short: "Carteira", dark: true },
     ];
 
     return (

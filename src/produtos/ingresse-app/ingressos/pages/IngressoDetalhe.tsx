@@ -25,13 +25,14 @@ export function IngressoDetalhe() {
     const [meuIngresso, setMeuIngresso] = useState(true);
 
     const acoes: FabAction[] = [
-        { icon: Wallet02, label: "Adicionar à Carteira", dark: true },
         {
             icon: Send01,
             label: "Transferir ingresso",
+            short: "Transferir",
             onClick: () => navigate("/ingresse-app/ingressos/transferir", { state: { evento, title, tipo, sessao, eventId: state.eventId, itemId: state.itemId, acesso: state.acesso } }),
         },
-        { icon: Tag01, label: "Revender ingresso" },
+        { icon: Tag01, label: "Revender ingresso", short: "Revender" },
+        { icon: Wallet02, label: "Adicionar à Carteira", short: "Carteira", dark: true },
     ];
 
     return (

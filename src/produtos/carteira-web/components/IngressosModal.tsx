@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { AlertCircle, ChevronDown, ChevronLeft, ClipboardCheck, DotsVertical, Package, Send01, UserRight01, XClose } from "@untitledui/icons";
+import type { FC } from "react";
+import { AlertCircle, ArrowLeft, ChevronDown, ClipboardCheck, InfoCircle, Package, Plus, Send01, Tag01, UserRight01, Wallet02, XClose } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import googleWalletBtn from "../assets/view-in-google-wallet-svg/pt-BR_view_in_wallet_wallet-button.svg";
 import { FakeQR } from "./FakeQR";
-import { SAO_SILVESTRE, type Combo, type ComboItem, type Resposta } from "../data/sao-silvestre";
+import { Zigzag } from "./Zigzag";
+import { SAO_SILVESTRE, type Combo, type ComboItem, type EventoSS, type Resposta } from "../data/sao-silvestre";
 import { getTransferencia } from "../data/transfer-store";
 
 const STATUS: Record<string, { label: string; color: "brand" | "blue" | "gray" }> = {
@@ -14,63 +16,309 @@ const STATUS: Record<string, { label: string; color: "brand" | "blue" | "gray" }
     finalizado: { label: "Finalizado", color: "gray" },
 };
 
+/** Botão de ação circular com rótulo — mesmo formato do ActionFab do app. */
+function CircleAction({
+    icon: Icon,
+    label,
+    variant = "neutral",
+    onClick,
+}: {
+    icon: FC<{ className?: string }>;
+    label: string;
+    variant?: "primary" | "neutral";
+    onClick?: () => void;
+}) {
+    return (
+        <button type="button" onClick={onClick} className="flex w-16 flex-col items-center gap-1.5">
+            <span
+                className={cx(
+                    "flex size-14 items-center justify-center rounded-full shadow-lg transition duration-100 ease-linear active:scale-95",
+                    variant === "primary" ? "bg-brand-solid text-white" : "bg-primary text-fg-secondary ring-1 ring-border-secondary",
+                )}
+            >
+                <Icon className="size-6" />
+            </span>
+            <span className="text-center text-xs leading-tight font-medium text-secondary">{label}</span>
+        </button>
+    );
+}
+
+/* ----------------------------------------------------------------------------
+ * Mobile: tela de ingresso no formato do app (card em formato de ingresso).
+ * -------------------------------------------------------------------------- */
+function MobileComboView({
+    ev,
+    combo,
+    titular,
+    cpf,
+    onClose,
+    onTransfer,
+}: {
+    ev: EventoSS;
+    combo: Combo;
+    titular: string;
+    cpf: string;
+    onClose: () => void;
+    onTransfer?: (combo: Combo) => void;
+}) {
+    const transferencia = getTransferencia(combo.id);
+    const [actionsOpen, setActionsOpen] = useState(false);
+
+    return (
+        <>
+        <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-secondary">
+            {/* Top bar */}
+            <div className="flex items-center justify-between px-5 pt-4">
+                <button
+                    type="button"
+                    aria-label="Voltar"
+                    onClick={onClose}
+                    className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                >
+                    <ArrowLeft className="size-5" />
+                </button>
+                <button
+                    type="button"
+                    aria-label="Informações"
+                    className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                >
+                    <InfoCircle className="size-5" />
+                </button>
+            </div>
+            <h1 className="px-5 pt-4 text-xl font-bold text-primary">Inscrição</h1>
+
+            <div className="flex flex-1 flex-col gap-6 px-5 pt-4 pb-8">
+                {transferencia ? (
+                    <>
+                        {/* Estado transferido (formato de ingresso) */}
+                        <div className="rounded-3xl bg-primary shadow-sm ring-1 ring-border-secondary">
+                            <div className="p-5">
+                                <p className="text-xs font-medium tracking-wide text-tertiary uppercase">{ev.title}</p>
+                                <div className="my-3 border-t border-tertiary" />
+                                <p className="text-2xl leading-tight font-bold text-primary">{combo.nome}</p>
+                                <p className="mt-1.5 text-sm text-tertiary">{combo.dataEvento}</p>
+                            </div>
+
+                            <TicketNotch />
+
+                            <div className="p-5">
+                                <div className="flex items-start gap-3">
+                                    <FeaturedIcon icon={UserRight01} color="gray" theme="modern" size="lg" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-md font-bold text-primary">Inscrição transferida</p>
+                                        <p className="mt-1 text-sm text-tertiary">Esta inscrição foi enviada para outro participante e não pode mais ser utilizada por você.</p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 border-t border-tertiary pt-4">
+                                    <p className="text-sm text-tertiary">Transferido para</p>
+                                    <p className="mt-0.5 text-md font-bold text-primary">{transferencia.destinatario}</p>
+                                    <p className="mt-0.5 text-sm text-tertiary">{transferencia.email}</p>
+
+                                    <p className="mt-4 text-sm text-tertiary">Data da transferência</p>
+                                    <p className="mt-0.5 text-md font-bold text-primary">{transferencia.data}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Itens do combo */}
+                        <div>
+                            <h2 className="pb-3 text-md font-bold text-primary">Itens do combo</h2>
+                            <div className="flex flex-col gap-5">
+                                {combo.itens.map((it, i) => (
+                                    <MobileItem key={i} item={it} />
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Respostas do formulário (preenchidas na transferência) */}
+                        <div>
+                            <div className="flex items-center gap-2 pb-3">
+                                <ClipboardCheck className="size-5 text-brand-secondary" />
+                                <h2 className="text-md font-bold text-primary">Respostas do formulário</h2>
+                            </div>
+                            <div className="divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
+                                {transferencia.respostas.map((q) => (
+                                    <div key={q.pergunta} className="p-4">
+                                        <p className="text-sm font-semibold text-primary">{q.pergunta}</p>
+                                        <p className="mt-0.5 text-sm text-tertiary">{q.resposta}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        {/* Card do ingresso (combo) — mesmo layout do app, com QR único */}
+                        <div className="rounded-3xl bg-primary shadow-sm ring-1 ring-border-secondary">
+                            <div className="p-5">
+                                <p className="text-xs font-medium tracking-wide text-tertiary uppercase">{ev.title}</p>
+                                <p className="mt-1 text-2xl leading-tight font-bold text-primary">{combo.nome}</p>
+
+                                <div className="my-4 border-t border-tertiary" />
+
+                                <p className="text-xs font-semibold text-tertiary">Data do evento</p>
+                                <p className="mt-1 text-sm font-bold text-primary">{combo.dataEvento}</p>
+                            </div>
+
+                            <TicketNotch />
+
+                            {/* QR Code único + titular */}
+                            <div className="px-6 pt-6 pb-7">
+                                <p className="text-center text-sm">
+                                    <span className="font-semibold text-brand-secondary">Este combo tem um QR Code único.</span>{" "}
+                                    <span className="font-normal text-tertiary">Apresente este código para retirada do kit, acesso ao evento e retirada da medalha.</span>
+                                </p>
+                                <div className="mt-5 flex justify-center">
+                                    <FakeQR px={220} />
+                                </div>
+                                <div className="-mx-6 my-5 border-t border-tertiary" />
+                                <div>
+                                    <p className="text-sm text-tertiary">
+                                        Titular: <span className="font-semibold text-primary">{titular}</span>
+                                    </p>
+                                    <p className="mt-1 text-sm text-tertiary">
+                                        CPF: <span className="font-semibold text-primary">{cpf}</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Itens do combo */}
+                        <div>
+                            <h2 className="pb-3 text-md font-bold text-primary">Itens do combo</h2>
+                            <div className="flex flex-col gap-5">
+                                {combo.itens.map((it, i) => (
+                                    <MobileItem key={i} item={it} />
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* CTAs no final da página — formato do app (2 + "Mais") */}
+                        <div className="flex items-start justify-center gap-8 pt-2">
+                            <CircleAction icon={Send01} label="Transferir" variant="primary" onClick={() => onTransfer?.(combo)} />
+                            <CircleAction icon={Tag01} label="Revender" />
+                            <CircleAction icon={Plus} label="Mais" onClick={() => setActionsOpen(true)} />
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+
+        {/* Overlay do "Mais" — mesmo comportamento do app: escurece a tela + degradê + pílulas */}
+        {actionsOpen && (
+            <>
+                <button type="button" aria-label="Fechar" onClick={() => setActionsOpen(false)} className="absolute inset-0 z-10 bg-black/30" />
+                <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center bg-[linear-gradient(to_top,var(--color-bg-secondary)_30%,transparent)] px-5 pt-16 pb-6">
+                    <div className="flex flex-col gap-5">
+                        {/* Ações extras (pílulas) */}
+                        <div className="flex flex-col items-end gap-2.5 duration-150 animate-in fade-in slide-in-from-bottom-2">
+                            <button
+                                type="button"
+                                onClick={() => setActionsOpen(false)}
+                                className="flex items-center gap-2.5 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-1 ring-black/10 transition duration-100 ease-linear active:scale-95"
+                            >
+                                <Wallet02 className="size-5 text-white" />
+                                Adicionar à Carteira
+                            </button>
+                        </div>
+
+                        {/* Linha principal: 2 ações + Fechar */}
+                        <div className="flex items-start justify-center gap-8">
+                            <CircleAction
+                                icon={Send01}
+                                label="Transferir"
+                                variant="primary"
+                                onClick={() => {
+                                    setActionsOpen(false);
+                                    onTransfer?.(combo);
+                                }}
+                            />
+                            <CircleAction icon={Tag01} label="Revender" onClick={() => setActionsOpen(false)} />
+                            <CircleAction icon={XClose} label="Fechar" onClick={() => setActionsOpen(false)} />
+                        </div>
+                    </div>
+                </div>
+            </>
+        )}
+        </>
+    );
+}
+
+/** Recorte (rasgadinho) do card de ingresso. */
+function TicketNotch() {
+    return (
+        <div className="relative py-1">
+            <div className="absolute top-1/2 -left-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
+            <div className="absolute top-1/2 -right-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
+            <div className="px-3">
+                <Zigzag />
+            </div>
+        </div>
+    );
+}
+
+/** Item do combo no mobile — data acima do card (igual app). */
+function MobileItem({ item }: { item: ComboItem }) {
+    const s = item.status ? STATUS[item.status] : null;
+    const finalizado = item.status === "finalizado";
+    const hoje = item.status === "hoje";
+    return (
+        <div>
+            {item.data && <p className="pb-2 text-sm font-bold text-primary">{item.data}</p>}
+            <div className={cx("rounded-2xl bg-primary p-4", hoje ? "ring-2 ring-fg-brand-primary" : "ring-1 ring-border-secondary")}>
+                {s && (
+                    <div className="mb-3">
+                        <Badge size="md" color={s.color} type="pill-color">
+                            {s.label}
+                        </Badge>
+                    </div>
+                )}
+                <p className={cx("text-sm font-bold", finalizado ? "text-tertiary" : "text-primary")}>{item.nome}</p>
+                {item.data && (
+                    <p className={cx("mt-1.5 text-sm text-tertiary", finalizado && "line-through")}>
+                        {item.dataLabel ?? "Data do evento"}: {item.data}
+                    </p>
+                )}
+                {item.acesso && (
+                    <p className="mt-1.5 text-sm text-tertiary">
+                        Acesso por <span className="font-semibold text-secondary">{item.acesso}</span>
+                    </p>
+                )}
+                {item.endereco && <p className="mt-1.5 text-sm text-tertiary">Endereço: {item.endereco}</p>}
+
+                {item.imagem && <img src={item.imagem} alt={item.nome} className="mt-3 w-full rounded-xl object-cover" />}
+
+                {item.conteudo && (
+                    <div className="mt-3">
+                        <p className="text-xs font-semibold text-tertiary">O kit contém</p>
+                        <ul className="mt-2 flex flex-col gap-1.5">
+                            {item.conteudo.map((c) => (
+                                <li key={c} className="flex items-center gap-2 text-sm text-secondary">
+                                    <span className="size-1.5 shrink-0 rounded-full bg-fg-quaternary" />
+                                    {c}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export function IngressosModal({ onClose, compact = false, onTransfer }: { onClose: () => void; compact?: boolean; onTransfer?: (combo: Combo) => void }) {
     const ev = SAO_SILVESTRE;
 
-    // ----- Mobile: folha full-screen com imagem do evento no topo -----
+    // ----- Mobile: tela de ingresso no formato do app (sem header com degradê) -----
     if (compact) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay sm:p-4" role="dialog" aria-modal="true" onClick={onClose}>
                 <div
-                    className="relative flex h-full w-full flex-col overflow-hidden bg-primary sm:h-[92vh] sm:max-h-[820px] sm:w-[390px] sm:max-w-full sm:rounded-3xl sm:shadow-xl sm:ring-1 sm:ring-border-secondary"
+                    className="relative flex h-full w-full flex-col overflow-hidden bg-secondary sm:h-[92vh] sm:max-h-[820px] sm:w-[390px] sm:max-w-full sm:rounded-3xl sm:shadow-xl sm:ring-1 sm:ring-border-secondary"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {/* Imagem do evento */}
-                    <div className="relative h-44 shrink-0" style={{ background: ev.gradient }}>
-                        <button
-                            type="button"
-                            aria-label="Voltar"
-                            onClick={onClose}
-                            className="absolute top-4 left-4 flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary shadow-md transition duration-100 ease-linear active:bg-secondary"
-                        >
-                            <ChevronLeft className="size-5" />
-                        </button>
-                        <button
-                            type="button"
-                            aria-label="Mais opções"
-                            className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-primary text-brand-secondary shadow-md transition duration-100 ease-linear active:bg-secondary"
-                        >
-                            <DotsVertical className="size-5" />
-                        </button>
-                    </div>
-
-                    {/* Folha de conteúdo (sem arredondar o container que rola — evita o flicker do canto) */}
-                    <div className="scrollbar-hide flex-1 overflow-y-auto bg-primary px-5 pt-6 pb-8">
-                        <p className="text-center text-sm text-tertiary">Sua inscrição para</p>
-                        <p className="text-center text-xl leading-tight font-extrabold text-primary">{ev.title}</p>
-
-                        <div className="mt-5 flex justify-center">
-                            <div className="flex flex-col items-center rounded-2xl bg-primary px-5 py-2 shadow-md ring-1 ring-border-secondary">
-                                <span className="text-xs text-tertiary">{ev.diaSemana}</span>
-                                <span className="text-2xl font-bold text-brand-secondary">{ev.dia}</span>
-                                <span className="text-xs text-tertiary">{ev.mes}</span>
-                            </div>
-                        </div>
-
-                        <div className="mt-6 flex flex-col gap-4">
-                            {ev.combos.map((c) => (
-                                <ComboCard
-                                    key={c.id}
-                                    combo={c}
-                                    titular={ev.titular}
-                                    cpf={ev.cpf}
-                                    questionario={ev.questionario}
-                                    compact={compact}
-                                    onTransfer={() => onTransfer?.(c)}
-                                />
-                            ))}
-                        </div>
-                    </div>
+                    <MobileComboView ev={ev} combo={ev.combos[0]} titular={ev.titular} cpf={ev.cpf} onClose={onClose} onTransfer={onTransfer} />
                 </div>
             </div>
         );
@@ -307,21 +555,23 @@ function ComboCard({
                         </div>
                     </div>
 
-                    {/* Ações (lado a lado, centralizadas) */}
-                    <div className="flex flex-wrap items-center justify-center gap-3">
-                        <button
-                            type="button"
-                            onClick={onTransfer}
-                            className="flex items-center justify-center gap-2 rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-semibold text-white transition duration-100 ease-linear hover:brightness-95"
-                        >
-                            <Send01 className="size-5 shrink-0" />
-                            Transferir inscrição
-                        </button>
-                        {/* Selo oficial "Adicionar à Google Wallet" (PT-BR) */}
-                        <button type="button" aria-label="Adicionar à Google Wallet" className="transition duration-100 ease-linear hover:opacity-90">
-                            <img src={googleWalletBtn} alt="Adicionar à Google Wallet" className="h-10 w-auto" />
-                        </button>
-                    </div>
+                    {/* Ações desktop (lado a lado, centralizadas). No mobile, ver rodapé fixo. */}
+                    {!compact && (
+                        <div className="flex flex-wrap items-center justify-center gap-3">
+                            <button
+                                type="button"
+                                onClick={onTransfer}
+                                className="flex items-center justify-center gap-2 rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-semibold text-white transition duration-100 ease-linear hover:brightness-95"
+                            >
+                                <Send01 className="size-5 shrink-0" />
+                                Transferir inscrição
+                            </button>
+                            {/* Selo oficial "Adicionar à Google Wallet" (PT-BR) */}
+                            <button type="button" aria-label="Adicionar à Google Wallet" className="transition duration-100 ease-linear hover:opacity-90">
+                                <img src={googleWalletBtn} alt="Adicionar à Google Wallet" className="h-10 w-auto" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

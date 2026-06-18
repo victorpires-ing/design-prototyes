@@ -301,7 +301,7 @@ function BlocoEditor({
                     <div className="flex items-start gap-3 rounded-xl bg-secondary p-4">
                         <FeaturedIcon icon={AlertTriangle} color="warning" theme="light" size="sm" className="shrink-0" />
                         <span className="self-center text-sm text-tertiary">
-                            Você já tem uma pergunta chamada “<span className="font-semibold text-primary">{semelhante.titulo}</span>” cadastrada. Deseja criar outra muito parecida?
+                            Você já tem uma pergunta chamada “<span className="font-semibold text-primary">{semelhante.titulo}</span>” cadastrada. Deseja continuar assim mesmo?
                         </span>
                     </div>
                 ) : null}

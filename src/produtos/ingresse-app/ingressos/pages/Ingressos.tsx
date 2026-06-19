@@ -68,9 +68,11 @@ export function Ingressos() {
                                       onClick={() => navigate("/ingresse-app/ingressos/combo", { state: { eventId: evento.id, comboId: combo.id } })}
                                       className="flex w-full items-start gap-3 rounded-2xl bg-primary p-4 text-left ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                                   >
-                                      <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-secondary text-fg-brand-primary">
-                                          <Package className="size-6" />
-                                      </span>
+                                      {evento.id !== "sao-silvestre" && (
+                                          <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-secondary text-fg-brand-primary">
+                                              <Package className="size-6" />
+                                          </span>
+                                      )}
                                       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                                           <div className="flex items-start justify-between gap-2">
                                               <p className="text-sm font-bold text-primary">{combo.nome}</p>

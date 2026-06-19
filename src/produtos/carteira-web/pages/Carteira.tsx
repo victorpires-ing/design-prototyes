@@ -104,7 +104,13 @@ const EventoCardView = ({ card, past, onClick }: { card: EventoCard; past?: bool
             onClick={onClick}
             className="relative flex aspect-[4/3] w-[360px] max-w-full flex-col overflow-hidden rounded-2xl text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:-translate-y-0.5 hover:shadow-lg"
         >
-            {escuro ? <div className="absolute inset-0" style={{ background: card.gradient }} /> : <div className="absolute inset-0 bg-secondary" />}
+            {escuro ? (
+                <div className={cx("absolute inset-0 transition", transferido && "grayscale")} style={{ background: card.gradient }} />
+            ) : (
+                <div className="absolute inset-0 bg-secondary" />
+            )}
+            {/* Inscrição transferida: esmaece o card para parecer inativa */}
+            {transferido && <div className="absolute inset-0 bg-primary/40" />}
             {!escuro && (
                 <div className="absolute inset-0 flex items-center justify-center text-quaternary">
                     <Package className="size-24" aria-hidden="true" />

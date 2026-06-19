@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowDown, ArrowLeft, CheckCircle, ChevronRight, ClipboardCheck, Send01, XClose } from "@untitledui/icons";
+import { ArrowDown, ArrowLeft, CheckCircle, ChevronRight, Send01, XClose } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
@@ -78,6 +78,63 @@ export function TransferirIngresso() {
 
     return (
         <AppShell showTabBar={false}>
+            {formOpen ? (
+                /* Tela de formulário do participante (tela cheia, não modal) */
+                <div className="flex min-h-full flex-col bg-secondary">
+                    <StatusBar tone="dark" />
+
+                    <div className="px-5 pt-2">
+                        <button
+                            type="button"
+                            aria-label="Voltar"
+                            onClick={() => setFormOpen(false)}
+                            className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                        >
+                            <ArrowLeft className="size-5" />
+                        </button>
+                        <h1 className="pt-4 text-xl font-bold text-primary">Formulário do participante</h1>
+                    </div>
+
+                    <div className="flex flex-1 flex-col px-5 pt-4 pb-8">
+                        <p className="text-sm text-tertiary">Para concluir, responda as mesmas perguntas da inscrição com os dados de {DESTINATARIO}.</p>
+
+                        {/* Para quem está transferindo */}
+                        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
+                            <Avatar size="md" initials="DA" alt={DESTINATARIO} />
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs text-tertiary">Transferindo para</p>
+                                <p className="text-sm font-bold text-primary">{DESTINATARIO}</p>
+                            </div>
+                        </div>
+
+                        <div className="mt-5 flex flex-col gap-4">
+                            {perguntas.map((q) => (
+                                <Input
+                                    key={q.pergunta}
+                                    isRequired
+                                    label={q.pergunta}
+                                    placeholder="Sua resposta"
+                                    value={respostas[q.pergunta] ?? ""}
+                                    onChange={(v) => setRespostas((r) => ({ ...r, [q.pergunta]: v }))}
+                                />
+                            ))}
+                        </div>
+
+                        <Button
+                            size="lg"
+                            color="primary"
+                            className="mt-6 w-full rounded-full"
+                            isDisabled={!formOk}
+                            onClick={() => {
+                                setFormOpen(false);
+                                setConfirming(true);
+                            }}
+                        >
+                            Continuar
+                        </Button>
+                    </div>
+                </div>
+            ) : (
             <div className="flex min-h-full flex-col bg-secondary">
                 <StatusBar tone="dark" />
 
@@ -215,50 +272,7 @@ export function TransferirIngresso() {
                     )}
                 </div>
             </div>
-
-            {/* Bottom sheet: formulário do participante (apenas eventos com questionário, ex.: São Silvestre) */}
-            <BottomSheet isOpen={formOpen} onClose={() => setFormOpen(false)}>
-                <div className="flex items-start justify-between gap-3">
-                    <FeaturedIcon icon={ClipboardCheck} color="gray" theme="modern" size="lg" />
-                    <button
-                        type="button"
-                        aria-label="Fechar"
-                        onClick={() => setFormOpen(false)}
-                        className="text-fg-quaternary transition duration-100 ease-linear active:text-fg-secondary"
-                    >
-                        <XClose className="size-6" />
-                    </button>
-                </div>
-
-                <h2 className="mt-4 text-lg font-bold text-primary">Formulário do participante</h2>
-                <p className="mt-1 text-sm text-tertiary">Para concluir, responda as mesmas perguntas da inscrição com os dados de {DESTINATARIO}.</p>
-
-                <div className="mt-4 flex flex-col gap-4">
-                    {perguntas.map((q) => (
-                        <Input
-                            key={q.pergunta}
-                            isRequired
-                            label={q.pergunta}
-                            placeholder="Sua resposta"
-                            value={respostas[q.pergunta] ?? ""}
-                            onChange={(v) => setRespostas((r) => ({ ...r, [q.pergunta]: v }))}
-                        />
-                    ))}
-                </div>
-
-                <Button
-                    size="lg"
-                    color="primary"
-                    className="mt-5 w-full rounded-full"
-                    isDisabled={!formOk}
-                    onClick={() => {
-                        setFormOpen(false);
-                        setConfirming(true);
-                    }}
-                >
-                    Continuar
-                </Button>
-            </BottomSheet>
+            )}
 
             {/* Bottom sheet: confirmar transferência */}
             <BottomSheet isOpen={confirming} onClose={() => setConfirming(false)}>

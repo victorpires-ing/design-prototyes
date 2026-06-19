@@ -54,6 +54,7 @@ import { FotoRosto } from '../produtos/ticket-sports/hub/pages/FotoRosto';
 import { Home as TicketSportsHome } from '../produtos/ticket-sports/hub/pages/Home';
 import { ConquistasMes } from '../produtos/ticket-sports/hub/pages/ConquistasMes';
 import { Presentes } from '../produtos/ticket-sports/hub/pages/Presentes';
+import { Plano } from '../produtos/ticket-sports/hub/pages/Plano';
 import { EmpresaHome } from '../produtos/ticket-sports/hub/pages/EmpresaHome';
 import { NovaPublicacao } from '../produtos/ticket-sports/hub/pages/NovaPublicacao';
 import { Notificacoes } from '../produtos/ticket-sports/hub/pages/Notificacoes';
@@ -156,6 +157,7 @@ export default function App() {
         <Route path="/ticket-sports/hub/home" element={<TicketSportsHome />} />
         <Route path="/ticket-sports/hub/conquistas" element={<ConquistasMes />} />
         <Route path="/ticket-sports/hub/presentes" element={<Presentes />} />
+        <Route path="/ticket-sports/hub/plano" element={<Plano />} />
         <Route path="/ticket-sports/hub/empresa" element={<EmpresaHome />} />
         <Route path="/ticket-sports/hub/empresa/publicar" element={<NovaPublicacao />} />
         <Route path="/ticket-sports/hub/notificacoes" element={<Notificacoes />} />

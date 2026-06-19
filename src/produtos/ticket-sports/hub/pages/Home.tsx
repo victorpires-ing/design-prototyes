@@ -143,6 +143,28 @@ export function Home() {
                     ))}
                 </div>
 
+                {/* Chamada: descobrir esporte ideal (nova funcionalidade) */}
+                <button
+                    type="button"
+                    onClick={() => navigate("/ticket-sports/hub/plano")}
+                    className="relative flex items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-[#7C3AED] via-[#9333EA] to-[#D946EF] p-4 text-left text-white shadow-lg"
+                >
+                    <style>{`@keyframes planoShine{0%{transform:translateX(-160%) skewX(-12deg)}60%,100%{transform:translateX(420%) skewX(-12deg)}}@media (prefers-reduced-motion:reduce){[style*="planoShine"]{animation:none}}`}</style>
+                    <span className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-2xl">
+                        <span className="absolute inset-y-0 left-0 w-1/4 bg-white/25 blur-md" style={{ animation: "planoShine 3.4s ease-in-out infinite" }} />
+                    </span>
+                    <span className="pointer-events-none absolute -right-6 -top-6 size-24 rounded-full bg-white/10" />
+                    <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl backdrop-blur-md">✨</span>
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="flex w-max items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide backdrop-blur-md">
+                            Novo
+                        </span>
+                        <span className="text-md font-bold leading-tight">Descubra seu esporte ideal</span>
+                        <span className="text-sm text-white/85">Quiz rápido pra montar sua rotina e alimentação.</span>
+                    </div>
+                    <ChevronRight className="size-5 shrink-0" />
+                </button>
+
                 {/* BLOCO: Sua rotina (meta + esta semana + próximo treino) */}
                 <style>{`@keyframes checkinBreath{0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,0);border-color:rgba(124,58,237,0.25)}50%{box-shadow:0 0 16px 1px rgba(124,58,237,0.22);border-color:rgba(124,58,237,0.6)}}`}</style>
                 <Bloco icon={Activity} titulo="Sua rotina" onVer={() => navigate("/ticket-sports/hub/rotina/desempenho")}>

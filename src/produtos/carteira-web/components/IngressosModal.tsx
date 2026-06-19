@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FC } from "react";
-import { AlertCircle, ArrowLeft, ChevronDown, ClipboardCheck, InfoCircle, Package, Plus, Send01, Tag01, UserRight01, Wallet02, XClose } from "@untitledui/icons";
+import { AlertCircle, ArrowLeft, ChevronDown, ClipboardCheck, InfoCircle, Plus, Send01, Tag01, UserRight01, Wallet02, XClose } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
@@ -15,16 +15,6 @@ const STATUS: Record<string, { label: string; color: "brand" | "blue" | "gray" }
     proximo: { label: "Próximo", color: "blue" },
     finalizado: { label: "Finalizado", color: "gray" },
 };
-
-/** Datas do combo de forma compacta — ex.: "10 e 31, Dez 2026". */
-function datasDoCombo(combo: Combo): string {
-    const partes = combo.itens.map((it) => it.data?.split("•")[0].trim()).filter(Boolean) as string[];
-    const dias = [...new Set(partes.map((p) => p.match(/\d{1,2}/)?.[0]).filter(Boolean))] as string[];
-    const palavras = partes[0]?.split(/\s+/) ?? [];
-    const mesRaw = palavras[palavras.length - 1] ?? "";
-    const mes = mesRaw.charAt(0).toUpperCase() + mesRaw.slice(1);
-    return `${dias.join(" e ")}, ${mes} 2026`;
-}
 
 /** Botão de ação circular com rótulo — mesmo formato do ActionFab do app. */
 function CircleAction({
@@ -106,7 +96,7 @@ function MobileComboView({
                                 <p className="text-xs font-medium tracking-wide text-tertiary uppercase">{ev.title}</p>
                                 <div className="my-3 border-t border-tertiary" />
                                 <p className="text-2xl leading-tight font-bold text-primary">{combo.nome}</p>
-                                <p className="mt-1.5 text-sm text-tertiary">{datasDoCombo(combo)}</p>
+                                <p className="mt-1.5 text-sm text-tertiary">{combo.dataEvento}</p>
                             </div>
 
                             <TicketNotch />
@@ -133,7 +123,7 @@ function MobileComboView({
 
                         {/* Itens do combo */}
                         <div>
-                            <h2 className="pb-3 text-md font-bold text-primary">Itens do combo</h2>
+                            <h2 className="pb-3 text-md font-bold text-primary">Detalhes da inscrição</h2>
                             <div className="flex flex-col gap-5">
                                 {combo.itens.map((it, i) => (
                                     <MobileItem key={i} item={it} />
@@ -168,18 +158,14 @@ function MobileComboView({
                                 <div className="my-4 border-t border-tertiary" />
 
                                 <p className="text-xs font-semibold text-tertiary">Data do evento</p>
-                                <p className="mt-1 text-sm font-bold text-primary">{datasDoCombo(combo)}</p>
+                                <p className="mt-1 text-sm font-bold text-primary">{combo.dataEvento}</p>
                             </div>
 
                             <TicketNotch />
 
-                            {/* QR Code único + titular */}
+                            {/* QR Code + titular */}
                             <div className="px-6 pt-6 pb-7">
-                                <p className="text-center text-sm">
-                                    <span className="font-semibold text-brand-secondary">Este combo tem um QR Code único.</span>{" "}
-                                    <span className="font-normal text-tertiary">Apresente este código para acessar os itens abaixo.</span>
-                                </p>
-                                <div className="mt-5 flex justify-center">
+                                <div className="flex justify-center">
                                     <FakeQR px={220} />
                                 </div>
                                 <div className="-mx-6 my-5 border-t border-tertiary" />
@@ -196,7 +182,7 @@ function MobileComboView({
 
                         {/* Itens do combo */}
                         <div>
-                            <h2 className="pb-3 text-md font-bold text-primary">Itens do combo</h2>
+                            <h2 className="pb-3 text-md font-bold text-primary">Detalhes da inscrição</h2>
                             <div className="flex flex-col gap-5">
                                 {combo.itens.map((it, i) => (
                                     <MobileItem key={i} item={it} />
@@ -315,14 +301,7 @@ function MobileItem({ item }: { item: ComboItem }) {
                         {item.conteudo && (
                             <div>
                                 <p className="text-xs font-semibold text-tertiary">O kit contém</p>
-                                <ul className="mt-2 flex flex-col gap-1.5">
-                                    {item.conteudo.map((c) => (
-                                        <li key={c} className="flex items-center gap-2 text-sm text-secondary">
-                                            <span className="size-1.5 shrink-0 rounded-full bg-fg-quaternary" />
-                                            {c}
-                                        </li>
-                                    ))}
-                                </ul>
+                                <p className="mt-1 text-sm text-secondary">{item.conteudo.join(", ")}</p>
                             </div>
                         )}
                     </div>
@@ -417,28 +396,18 @@ function ComboCard({
 
     return (
         <div className="overflow-hidden rounded-xl ring-1 ring-border-secondary">
-            {/* Cabeçalho do combo (agrupador) */}
+            {/* Cabeçalho do agrupador */}
             <div className="flex items-center gap-3 bg-secondary/50 p-4">
-                <span
-                    className={cx(
-                        "flex size-10 shrink-0 items-center justify-center rounded-lg",
-                        transferencia ? "bg-tertiary text-fg-quaternary" : "bg-brand-secondary text-fg-brand-primary",
-                    )}
-                >
-                    <Package className="size-5" />
-                </span>
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                         <p className="truncate font-bold text-primary">{combo.nome}</p>
-                        {transferencia ? (
+                        {transferencia && (
                             <Badge size="sm" color="gray" type="pill-color">
                                 Transferida
                             </Badge>
-                        ) : (
-                            <span className="shrink-0 rounded-full bg-brand-secondary px-2 py-0.5 text-xs font-medium text-brand-secondary">Combo</span>
                         )}
                     </div>
-                    <p className="mt-0.5 text-sm text-tertiary">Data do evento: {datasDoCombo(combo)}</p>
+                    <p className="mt-0.5 text-sm text-tertiary">Data do evento: {combo.dataEvento}</p>
                 </div>
                 <button
                     type="button"
@@ -473,7 +442,7 @@ function ComboCard({
 
                     {/* Itens do combo */}
                     <div>
-                        <h4 className="text-sm font-bold text-primary">Itens do combo</h4>
+                        <h4 className="text-sm font-bold text-primary">Detalhes da inscrição</h4>
                         <div className="mt-3 flex flex-col gap-5">
                             {combo.itens.map((it, i) => (
                                 <ItemView key={i} item={it} />
@@ -528,7 +497,6 @@ function ComboCard({
                                 <FeaturedIcon icon={AlertCircle} color="warning" theme="outline" size="md" />
                                 <div className="flex flex-1 flex-col gap-1 md:w-0">
                                     <p className="text-sm font-semibold text-secondary">O QR Code é exibido na versão mobile.</p>
-                                    <p className="text-sm text-tertiary">Use o QR Code único deste combo para acessar todos os itens listados abaixo.</p>
                                 </div>
                             </div>
 
@@ -541,7 +509,7 @@ function ComboCard({
                                         <p className="mt-0.5 text-sm font-bold text-primary">{titular}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs text-tertiary">CPF do Titular</p>
+                                        <p className="text-xs text-tertiary">CPF</p>
                                         <p className="mt-0.5 text-sm font-bold text-primary">{cpf}</p>
                                     </div>
                                 </div>
@@ -551,7 +519,7 @@ function ComboCard({
 
                     {/* Itens do combo */}
                     <div>
-                        <h4 className="text-sm font-bold text-primary">Itens do combo</h4>
+                        <h4 className="text-sm font-bold text-primary">Detalhes da inscrição</h4>
                         <div className="mt-3 flex flex-col gap-5">
                             {combo.itens.map((it, i) => (
                                 <ItemView key={i} item={it} />

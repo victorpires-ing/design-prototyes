@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeft, Image01, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
+import { ArrowLeft, ClipboardCheck, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
@@ -148,17 +148,15 @@ export function ComboDetalhe() {
                                     </div>
                                 </div>
 
-                                {/* QR Code único + titular */}
+                                {/* QR Code + titular (SS não exibe o aviso de combo único) */}
                                 <div className="px-6 pt-6 pb-7">
-                                    <p className="text-center text-sm">
-                                        <span className="font-semibold text-brand-secondary">Este combo tem um QR Code único.</span>{" "}
-                                        <span className="font-normal text-tertiary">
-                                            {evento.id === "sao-silvestre"
-                                                ? "Apresente este código para acessar todos os itens da sua inscrição."
-                                                : "Apresente este código para acessar todos os ingressos do combo."}
-                                        </span>
-                                    </p>
-                                    <div className="mt-5 flex justify-center">
+                                    {evento.id !== "sao-silvestre" && (
+                                        <p className="text-center text-sm">
+                                            <span className="font-semibold text-brand-secondary">Este combo tem um QR Code único.</span>{" "}
+                                            <span className="font-normal text-tertiary">Apresente este código para acessar todos os ingressos do combo.</span>
+                                        </p>
+                                    )}
+                                    <div className={cx("flex justify-center", evento.id !== "sao-silvestre" && "mt-5")}>
                                         <FakeQR px={220} />
                                     </div>
                                     <div className="-mx-6 my-5 border-t border-tertiary" />
@@ -200,40 +198,40 @@ export function ComboDetalhe() {
                                                         {inc.grupo && <span className={finalizado ? "text-tertiary" : "text-secondary"}>{inc.grupo} | </span>}
                                                         <span className={cx("font-bold", finalizado ? "text-tertiary" : "text-primary")}>{inc.nome}</span>
                                                     </p>
-                                                    {inc.data && (
-                                                        <p className={cx("mt-1.5 text-sm text-tertiary", finalizado && "line-through")}>
-                                                            {inc.dataLabel ?? "Data do evento"}: {inc.data}
-                                                        </p>
-                                                    )}
                                                     {inc.acesso && (
                                                         <p className="mt-1.5 text-sm text-tertiary">
                                                             Acesso por <span className="font-semibold text-secondary">{inc.acesso}</span>
                                                         </p>
                                                     )}
-                                                    {inc.endereco && <p className="mt-1.5 text-sm text-tertiary">Endereço: {inc.endereco}</p>}
 
-                                                    {/* Imagem do item (ex.: kit) */}
-                                                    {(inc.imagem || inc.conteudo) &&
-                                                        (inc.imagem ? (
-                                                            <img src={inc.imagem} alt={inc.nome} className="mt-3 w-full rounded-xl object-cover" />
-                                                        ) : (
-                                                            <div className="mt-3 flex aspect-[4/3] w-full items-center justify-center rounded-xl bg-tertiary text-fg-quaternary">
-                                                                <Image01 className="size-8" />
-                                                            </div>
-                                                        ))}
+                                                    {/* Imagem do item (degradê ou foto) */}
+                                                    {inc.gradient ? (
+                                                        <div className="mt-3 aspect-[4/3] w-full rounded-xl" style={{ background: inc.gradient }} />
+                                                    ) : (
+                                                        inc.imagem && <img src={inc.imagem} alt={inc.nome} className="mt-3 w-full rounded-xl object-cover" />
+                                                    )}
 
-                                                    {/* Conteúdo do item (ex.: o que vem no kit) */}
-                                                    {inc.conteudo && (
-                                                        <div className="mt-3">
-                                                            <p className="text-xs font-semibold text-tertiary">O kit contém</p>
-                                                            <ul className="mt-2 flex flex-col gap-1.5">
-                                                                {inc.conteudo.map((c) => (
-                                                                    <li key={c} className="flex items-center gap-2 text-sm text-secondary">
-                                                                        <span className="size-1.5 shrink-0 rounded-full bg-fg-quaternary" />
-                                                                        {c}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
+                                                    {/* Descrição do produto: data da retirada + endereço, depois o que contém */}
+                                                    {(inc.endereco || inc.conteudo || (inc.dataLabel && inc.data)) && (
+                                                        <div className="mt-3 flex flex-col gap-3">
+                                                            {inc.dataLabel && inc.data && (
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-tertiary">{inc.dataLabel}</p>
+                                                                    <p className="mt-1 text-sm text-secondary">{inc.data}</p>
+                                                                </div>
+                                                            )}
+                                                            {inc.endereco && (
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-tertiary">Endereço</p>
+                                                                    <p className="mt-1 text-sm text-secondary">{inc.endereco}</p>
+                                                                </div>
+                                                            )}
+                                                            {inc.conteudo && (
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-tertiary">O kit contém</p>
+                                                                    <p className="mt-1 text-sm text-secondary">{inc.conteudo.join(", ")}</p>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -242,6 +240,24 @@ export function ComboDetalhe() {
                                     })}
                                 </div>
                             </div>
+
+                            {/* Respostas do formulário (preenchido na inscrição) */}
+                            {combo.questionario && combo.questionario.length > 0 && (
+                                <div>
+                                    <div className="flex items-center gap-2 pb-3">
+                                        <ClipboardCheck className="size-5 text-brand-secondary" />
+                                        <h2 className="text-md font-bold text-primary">Respostas do formulário</h2>
+                                    </div>
+                                    <div className="divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
+                                        {combo.questionario.map((q) => (
+                                            <div key={q.pergunta} className="p-4">
+                                                <p className="text-sm font-semibold text-primary">{q.pergunta}</p>
+                                                <p className="mt-0.5 text-sm text-tertiary">{q.resposta}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>

@@ -52,20 +52,17 @@ export const SAO_SILVESTRE: EventoSS = {
     combos: [
         {
             id: "combo-sao-silvestre",
-            nome: "Combo São Silvestre",
-            dataEvento: "Qui, 31 dez • 08:00",
-            // Ordenado por data (mais próximo primeiro). Só o próximo recebe badge.
+            nome: "Kit Premium",
+            dataEvento: "30 de Dez 2026",
             itens: [
                 {
-                    status: "proximo",
-                    nome: "Kit do atleta",
+                    nome: "Kit Premium",
                     data: "Qui, 10 dez • 10:00",
                     dataLabel: "Data da retirada",
                     endereco: "Pavilhão do Anhembi • Av. Olavo Fontoura, 1209 - São Paulo/SP",
                     gradient: "linear-gradient(135deg,#16A34A 0%,#0EA5E9 100%)",
                     conteudo: ["Camisa verde G", "Número", "Cronômetro", "Sacola"],
                 },
-                { nome: "Acesso ao evento", data: "Qui, 31 dez • 08:00", acesso: "Largada • Av. Paulista" },
             ],
         },
     ],

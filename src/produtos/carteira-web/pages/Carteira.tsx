@@ -32,9 +32,9 @@ const PROXIMOS: EventoCard[] = [
         hora: "08:00",
         dia: "31",
         mes: "Dezembro",
-        qtd: 2,
+        qtd: 1,
         gradient: "linear-gradient(135deg,#FF4D00 0%,#1d4ed8 100%)",
-        datas: "10 e 31, Dez 2026",
+        datas: "30 de Dez 2026",
         comboId: "combo-sao-silvestre",
     },
 ];
@@ -87,7 +87,7 @@ const TabButton = ({ label, active, onClick }: { label: string; active: boolean;
         onClick={onClick}
         className={cx(
             "-mb-px border-b-2 px-1 pb-3 text-sm font-semibold transition duration-100 ease-linear",
-            active ? "border-brand text-brand-secondary" : "border-transparent text-tertiary hover:text-secondary",
+            active ? "border-fg-brand-primary text-brand-secondary" : "border-transparent text-tertiary hover:text-secondary",
             label === "Anteriores" && "ml-8",
         )}
     >
@@ -114,13 +114,8 @@ const EventoCardView = ({ card, past, onClick }: { card: EventoCard; past?: bool
             <div className="absolute inset-x-4 top-4 flex flex-wrap items-center gap-1.5">
                 <div className="flex items-center gap-1.5 rounded-lg bg-black/70 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur">
                     <Ticket01 className="size-4" />
-                    {card.qtd} {card.qtd === 1 ? "item" : "itens"}
+                    {card.qtd} {card.qtd === 1 ? "inscrição" : "inscrições"}
                 </div>
-                {card.comboId && (
-                    <Badge size="sm" color="brand" type="pill-color">
-                        Combo
-                    </Badge>
-                )}
                 {past ? (
                     <Badge size="sm" color="gray" type="pill-color">
                         Finalizado

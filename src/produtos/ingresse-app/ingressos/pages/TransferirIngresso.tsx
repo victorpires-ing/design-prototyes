@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowDown, ArrowLeft, CheckCircle, ChevronRight, Send01, XClose } from "@untitledui/icons";
+import { ArrowDown, ArrowLeft, CheckCircle, ChevronRight, ClipboardCheck, Send01, XClose } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
@@ -40,6 +40,13 @@ export function TransferirIngresso() {
     const [searched, setSearched] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [done, setDone] = useState(false);
+
+    // Questionário (apenas eventos que pedem formulário, ex.: São Silvestre)
+    const [formOpen, setFormOpen] = useState(false);
+    const [respostas, setRespostas] = useState<Record<string, string>>({});
+    const perguntas = combo?.questionario ?? [];
+    const temFormulario = perguntas.length > 0;
+    const formOk = perguntas.every((q) => (respostas[q.pergunta] ?? "").trim() !== "");
 
     // Ao buscar, rola suavemente até o resultado (feedback de que algo aconteceu).
     const resultRef = useRef<HTMLDivElement>(null);
@@ -194,7 +201,7 @@ export function TransferirIngresso() {
 
                             <button
                                 type="button"
-                                onClick={() => setConfirming(true)}
+                                onClick={() => (temFormulario ? setFormOpen(true) : setConfirming(true))}
                                 className="flex w-full items-center gap-3 text-left transition duration-100 ease-linear active:opacity-70"
                             >
                                 <Avatar size="md" alt={DESTINATARIO} />
@@ -208,6 +215,50 @@ export function TransferirIngresso() {
                     )}
                 </div>
             </div>
+
+            {/* Bottom sheet: formulário do participante (apenas eventos com questionário, ex.: São Silvestre) */}
+            <BottomSheet isOpen={formOpen} onClose={() => setFormOpen(false)}>
+                <div className="flex items-start justify-between gap-3">
+                    <FeaturedIcon icon={ClipboardCheck} color="gray" theme="modern" size="lg" />
+                    <button
+                        type="button"
+                        aria-label="Fechar"
+                        onClick={() => setFormOpen(false)}
+                        className="text-fg-quaternary transition duration-100 ease-linear active:text-fg-secondary"
+                    >
+                        <XClose className="size-6" />
+                    </button>
+                </div>
+
+                <h2 className="mt-4 text-lg font-bold text-primary">Formulário do participante</h2>
+                <p className="mt-1 text-sm text-tertiary">Para concluir, responda as mesmas perguntas da inscrição com os dados de {DESTINATARIO}.</p>
+
+                <div className="mt-4 flex flex-col gap-4">
+                    {perguntas.map((q) => (
+                        <Input
+                            key={q.pergunta}
+                            isRequired
+                            label={q.pergunta}
+                            placeholder="Sua resposta"
+                            value={respostas[q.pergunta] ?? ""}
+                            onChange={(v) => setRespostas((r) => ({ ...r, [q.pergunta]: v }))}
+                        />
+                    ))}
+                </div>
+
+                <Button
+                    size="lg"
+                    color="primary"
+                    className="mt-5 w-full rounded-full"
+                    isDisabled={!formOk}
+                    onClick={() => {
+                        setFormOpen(false);
+                        setConfirming(true);
+                    }}
+                >
+                    Continuar
+                </Button>
+            </BottomSheet>
 
             {/* Bottom sheet: confirmar transferência */}
             <BottomSheet isOpen={confirming} onClose={() => setConfirming(false)}>
@@ -237,10 +288,30 @@ export function TransferirIngresso() {
                     </div>
                 </div>
 
+                {/* Recap das respostas do formulário */}
+                {temFormulario && (
+                    <div className="mt-4 divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
+                        {perguntas.map((q) => (
+                            <div key={q.pergunta} className="p-3">
+                                <p className="text-xs text-tertiary">{q.pergunta}</p>
+                                <p className="mt-0.5 text-sm font-semibold text-primary">{respostas[q.pergunta]}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <Button size="lg" color="primary" className="mt-5 w-full rounded-full" onClick={confirmarTransferencia}>
                     Confirmar transferência
                 </Button>
-                <Button size="lg" color="secondary" className="mt-3 w-full rounded-full" onClick={() => setConfirming(false)}>
+                <Button
+                    size="lg"
+                    color="secondary"
+                    className="mt-3 w-full rounded-full"
+                    onClick={() => {
+                        setConfirming(false);
+                        if (temFormulario) setFormOpen(true);
+                    }}
+                >
                     Cancelar
                 </Button>
             </BottomSheet>

@@ -353,7 +353,7 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
     );
 
     const itensVinculaveis = useMemo<ItemVinculavel[]>(
-        () => [...ingressos.map((i) => ({ ...i, categoria: "ingresso" as const })), ...PRODUTOS_MOCK],
+        () => [...ingressos.map((i) => ({ ...i, categoria: "ingresso" as const }))],
         [ingressos],
     );
 

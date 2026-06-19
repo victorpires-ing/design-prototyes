@@ -177,7 +177,13 @@ export function Carteira() {
                 </div>
             </div>
 
-            {modalOpen && <IngressosModal onClose={() => setModalOpen(false)} compact={viewport === "mobile"} />}
+            {modalOpen && (
+                <IngressosModal
+                    onClose={() => setModalOpen(false)}
+                    compact={viewport === "mobile"}
+                    onTransfer={(combo) => navigate("/carteira-web/transferir", { state: { viewport, comboId: combo.id } })}
+                />
+            )}
         </div>
     );
 }

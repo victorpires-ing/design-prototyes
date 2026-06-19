@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Calendar, ChevronDown, Package, SearchLg, Ticket01 } from "@untitledui/icons";
+import { ArrowLeft, Calendar, ChevronDown, SearchLg, Ticket01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
@@ -75,13 +75,10 @@ export function VinculosPergunta() {
     }, []);
     const estaAberto = (titulo: string) => busca.trim() !== "" || !fechados.has(titulo);
 
-    // Seções: ingressos agrupados por data › setor; produtos numa seção própria.
+    // Seções: ingressos agrupados por data › setor.
     const secoes = useMemo(() => {
         const term = busca.trim().toLowerCase();
-        const itens = term ? itensVinculaveis.filter((i) => i.nome.toLowerCase().includes(term) || i.grupo.toLowerCase().includes(term)) : itensVinculaveis;
-
-        const ingressos = itens.filter((i) => i.categoria === "ingresso");
-        const produtos = itens.filter((i) => i.categoria === "produto");
+        const ingressos = term ? itensVinculaveis.filter((i) => i.nome.toLowerCase().includes(term) || i.grupo.toLowerCase().includes(term)) : itensVinculaveis;
 
         const byData = new Map<string, Map<string, ItemVinculavel[]>>();
         for (const it of ingressos) {
@@ -92,25 +89,19 @@ export function VinculosPergunta() {
             g.get(it.grupo)!.push(it);
         }
 
-        const out: { titulo: string; icon: typeof Calendar; grupos: { nome: string; itens: ItemVinculavel[] }[] }[] = Array.from(byData, ([data, grupos]) => ({
+        return Array.from(byData, ([data, grupos]) => ({
             titulo: data,
             icon: Calendar,
             grupos: Array.from(grupos, ([nome, itensGrupo]) => ({ nome, itens: itensGrupo })),
         }));
-        if (produtos.length) out.push({ titulo: "Produtos", icon: Package, grupos: [{ nome: "Produtos", itens: produtos }] });
-        return out;
     }, [itensVinculaveis, busca]);
 
-    const totalItens = itensVinculaveis.length;
     const vazio = secoes.length === 0;
 
-    // Resumo da seleção: ingressos e produtos selecionados.
+    // Resumo da seleção: ingressos selecionados.
     const resumo = useMemo(() => {
         const selecionados = itensVinculaveis.filter((i) => sel.has(i.id));
-        return {
-            ingressos: selecionados.filter((i) => i.categoria === "ingresso"),
-            produtos: selecionados.filter((i) => i.categoria === "produto"),
-        };
+        return { ingressos: selecionados };
     }, [itensVinculaveis, sel]);
 
     const salvar = () => {
@@ -141,7 +132,7 @@ export function VinculosPergunta() {
                             {meta && <meta.icon className="mt-1 size-5 shrink-0 text-fg-quaternary" />}
                             <div className="flex flex-col gap-0.5">
                                 <h1 className="text-xl font-semibold text-primary">{pergunta?.titulo ?? "Pergunta"}</h1>
-                                <p className="text-sm text-tertiary">Selecione os ingressos e produtos em que esta pergunta será feita ao comprador.</p>
+                                <p className="text-sm text-tertiary">Selecione os ingressos em que esta pergunta será feita ao comprador.</p>
                             </div>
                         </div>
                     </div>
@@ -215,13 +206,6 @@ export function VinculosPergunta() {
                                         <ResumoSection title="Ingressos" onClear={() => setVarios(resumo.ingressos.map((i) => i.id), false)}>
                                             {resumo.ingressos.map((it) => (
                                                 <ResumoIngressoRow key={it.id} item={it} onRemover={() => toggle(it.id)} />
-                                            ))}
-                                        </ResumoSection>
-                                    )}
-                                    {resumo.produtos.length > 0 && (
-                                        <ResumoSection title="Produtos" onClear={() => setVarios(resumo.produtos.map((i) => i.id), false)}>
-                                            {resumo.produtos.map((it) => (
-                                                <ResumoProdutoRow key={it.id} item={it} onRemover={() => toggle(it.id)} />
                                             ))}
                                         </ResumoSection>
                                     )}
@@ -322,18 +306,6 @@ function ResumoIngressoRow({ item, onRemover }: { item: ItemVinculavel; onRemove
                 <span className="truncate text-sm text-tertiary">{item.grupo}</span>
                 {item.data && <span className="truncate text-xs text-tertiary">{item.data}</span>}
             </div>
-            <Button size="xs" color="link-gray" className="font-medium underline" onClick={onRemover}>
-                Remover
-            </Button>
-        </div>
-    );
-}
-
-function ResumoProdutoRow({ item, onRemover }: { item: ItemVinculavel; onRemover: () => void }) {
-    return (
-        <div className="flex items-center gap-3">
-            {item.imagem && <img src={item.imagem} alt="" aria-hidden="true" className="size-10 shrink-0 rounded-md object-cover ring-1 ring-secondary" />}
-            <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary">{item.nome}</span>
             <Button size="xs" color="link-gray" className="font-medium underline" onClick={onRemover}>
                 Remover
             </Button>

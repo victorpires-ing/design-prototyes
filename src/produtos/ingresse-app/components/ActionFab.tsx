@@ -6,33 +6,60 @@ import { cx } from "@/utils/cx";
 export interface FabAction {
     icon: FC<{ className?: string }>;
     label: string;
-    /** Estilo iOS (fundo preto), ex.: Adicionar à Carteira. */
+    /** Rótulo curto exibido sob o botão circular (fallback para label). */
+    short?: string;
+    /** Estilo escuro (ex.: Adicionar à carteira) quando exibido como pílula. */
     dark?: boolean;
     onClick?: () => void;
 }
 
+const CircleAction = ({
+    icon: Icon,
+    label,
+    onClick,
+    variant = "primary",
+}: {
+    icon: FC<{ className?: string }>;
+    label: string;
+    onClick?: () => void;
+    variant?: "primary" | "neutral";
+}) => (
+    <button type="button" onClick={onClick} className="pointer-events-auto flex w-16 flex-col items-center gap-1.5">
+        <span
+            className={cx(
+                "flex size-14 items-center justify-center rounded-full shadow-lg transition duration-100 ease-linear active:scale-95",
+                variant === "primary" ? "bg-brand-solid text-white" : "bg-primary text-fg-secondary ring-1 ring-border-secondary",
+            )}
+        >
+            <Icon className="size-6" />
+        </span>
+        <span className="text-center text-xs leading-tight font-medium text-secondary">{label}</span>
+    </button>
+);
+
 /**
- * Botão flutuante (FAB) no canto inferior direito que abre um menu de ações.
- * Use como `bottomBar` do AppShell para acompanhar o scroll do frame.
+ * Barra de ações no rodapé do frame (botões circulares com rótulo).
+ * Mostra as 2 primeiras ações + um botão "Mais" que revela o restante.
+ * Use como `bottomBar` do AppShell.
  */
 export function ActionFab({ actions }: { actions: FabAction[] }) {
     const [open, setOpen] = useState(false);
+    const primary = actions.slice(0, 2);
+    const rest = actions.slice(2);
 
     return (
         <>
-            {open && (
-                <button
-                    type="button"
-                    aria-label="Fechar menu"
-                    onClick={() => setOpen(false)}
-                    className="pointer-events-auto absolute inset-0 bg-black/30"
-                />
+            {open && rest.length > 0 && (
+                <button type="button" aria-label="Fechar" onClick={() => setOpen(false)} className="pointer-events-auto absolute inset-0 bg-black/30" />
             )}
 
-            <div className="absolute right-5 bottom-10 flex flex-col items-end gap-3">
-                {open && (
+            <div className="absolute inset-x-0 bottom-0 flex flex-col items-center bg-[linear-gradient(to_top,var(--color-bg-secondary)_30%,transparent)] px-5 pt-16 pb-6">
+                {/* Bloco centralizado: a pílula alinha à direita (acima do "Mais/Fechar") */}
+                <div className="flex flex-col gap-5">
+                {/* Ações extras (reveladas pelo "Mais") em formato de pílula */}
+                {open && rest.length > 0 && (
                     <div className="flex flex-col items-end gap-2.5 duration-150 animate-in fade-in slide-in-from-bottom-2">
-                        {actions.map((a) => {
+                        {rest.map((a) => {
                             const Icon = a.icon;
                             return (
                                 <button
@@ -55,14 +82,16 @@ export function ActionFab({ actions }: { actions: FabAction[] }) {
                     </div>
                 )}
 
-                <button
-                    type="button"
-                    aria-label={open ? "Fechar ações" : "Abrir ações"}
-                    onClick={() => setOpen((v) => !v)}
-                    className="pointer-events-auto flex size-14 items-center justify-center rounded-full bg-brand-solid text-white shadow-lg transition duration-100 ease-linear active:scale-95"
-                >
-                    {open ? <XClose className="size-6" /> : <Plus className="size-6" />}
-                </button>
+                {/* Linha principal: 2 ações + Mais */}
+                <div className="flex items-start justify-center gap-8">
+                    {primary.map((a) => (
+                        <CircleAction key={a.label} icon={a.icon} label={a.short ?? a.label} onClick={a.onClick} />
+                    ))}
+                    {rest.length > 0 && (
+                        <CircleAction icon={open ? XClose : Plus} label={open ? "Fechar" : "Mais"} variant="neutral" onClick={() => setOpen((v) => !v)} />
+                    )}
+                </div>
+                </div>
             </div>
         </>
     );

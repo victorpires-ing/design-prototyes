@@ -17,7 +17,7 @@ export function Ingressos() {
 
     const abrirDetalhe = (item: ItemIngresso) =>
         navigate("/ingresse-app/ingressos/detalhe", {
-            state: { evento: evento.title, title: item.title, tipo: item.tipo, sessao: evento.sessao, eventId: evento.id, acesso: item.acesso, portador: item.portador, itemId: item.id },
+            state: { evento: evento.title, title: item.title, tipo: item.tipo, sessao: evento.sessao, eventId: evento.id, acesso: item.acesso, portador: item.portador, cpf: item.cpf, itemId: item.id },
         });
 
     return (

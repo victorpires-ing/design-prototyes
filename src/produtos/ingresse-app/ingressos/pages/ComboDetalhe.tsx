@@ -41,14 +41,14 @@ export function ComboDetalhe() {
     }
 
     const acoes: FabAction[] = [
-        { icon: Wallet02, label: "Adicionar à Carteira", dark: true },
-        { icon: Send01, label: "Transferir ingresso", onClick: () => navigate("/ingresse-app/ingressos/transferir", { state: { eventId: evento.id, comboId: combo.id } }) },
-        { icon: Tag01, label: "Revender ingresso" },
+        { icon: Send01, label: "Transferir ingresso", short: "Transferir", onClick: () => navigate("/ingresse-app/ingressos/transferir", { state: { eventId: evento.id, comboId: combo.id } }) },
+        { icon: Tag01, label: "Revender ingresso", short: "Revender" },
+        { icon: Wallet02, label: "Adicionar à Carteira", short: "Carteira", dark: true },
     ];
 
     return (
         <AppShell showTabBar={false} bottomBar={transferido ? undefined : <ActionFab actions={acoes} />}>
-            <div className={cx("flex min-h-full flex-col", transferido ? "bg-secondary" : "bg-primary")}>
+            <div className="flex min-h-full flex-col bg-secondary">
                 <StatusBar tone="dark" />
 
                 {/* Top bar */}
@@ -127,14 +127,30 @@ export function ComboDetalhe() {
                         </div>
                     ) : (
                         <>
-                            {/* Card do combo */}
-                            <div className="rounded-3xl bg-secondary p-5 ring-1 ring-border-secondary">
-                                <p className="text-lg font-bold text-primary">{combo.nome}</p>
-                                <p className="mt-1 text-sm text-tertiary">Data do evento: {combo.dataEvento}</p>
+                            {/* Card do ingresso (combo) — mesmo layout da Arena, com aviso de QR único */}
+                            <div className="rounded-3xl bg-primary shadow-sm ring-1 ring-border-secondary">
+                                <div className="p-5">
+                                    <p className="text-xs font-medium tracking-wide text-tertiary uppercase">{evento.title}</p>
+                                    <p className="mt-1 text-2xl leading-tight font-bold text-primary">{combo.nome}</p>
 
-                                {/* QR Code único compartilhado por todos os inclusos */}
-                                <div className="mt-5 overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
-                                    <p className="px-5 pt-5 pb-4 text-center text-sm">
+                                    <div className="my-4 border-t border-tertiary" />
+
+                                    <p className="text-xs font-semibold text-tertiary">Data do evento</p>
+                                    <p className="mt-1 text-sm font-bold text-primary">{combo.dataEvento}</p>
+                                </div>
+
+                                {/* Rasgadinho (zigzag) */}
+                                <div className="relative py-1">
+                                    <div className="absolute top-1/2 -left-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
+                                    <div className="absolute top-1/2 -right-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
+                                    <div className="px-3">
+                                        <Zigzag />
+                                    </div>
+                                </div>
+
+                                {/* QR Code único + titular */}
+                                <div className="px-6 pt-6 pb-7">
+                                    <p className="text-center text-sm">
                                         <span className="font-semibold text-brand-secondary">Este combo tem um QR Code único.</span>{" "}
                                         <span className="font-normal text-tertiary">
                                             {evento.id === "sao-silvestre"
@@ -142,18 +158,16 @@ export function ComboDetalhe() {
                                                 : "Apresente este código para acessar todos os ingressos do combo."}
                                         </span>
                                     </p>
-                                    <div className="border-t border-secondary" />
-                                    <div className="flex justify-center px-5 pt-6 pb-6">
-                                        <FakeQR px={230} />
+                                    <div className="mt-5 flex justify-center">
+                                        <FakeQR px={220} />
                                     </div>
-
-                                    {/* Titular */}
-                                    <div className="border-t border-secondary px-5 py-4">
-                                        <p className="text-base text-tertiary">
-                                            Titular: <span className="font-bold text-primary">Duny Alves da Silva</span>
+                                    <div className="-mx-6 my-5 border-t border-tertiary" />
+                                    <div>
+                                        <p className="text-sm text-tertiary">
+                                            Titular: <span className="font-semibold text-primary">{combo.titular ?? "Priscilão Alcantara Raro"}</span>
                                         </p>
-                                        <p className="mt-1 text-base text-tertiary">
-                                            CPF: <span className="font-bold text-primary">94759305</span>
+                                        <p className="mt-1 text-sm text-tertiary">
+                                            CPF: <span className="font-semibold text-primary">{combo.cpf ?? "948.943.130-44"}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -171,7 +185,7 @@ export function ComboDetalhe() {
                                                 {inc.data && <p className="pb-2 text-sm font-bold text-primary">{inc.data}</p>}
                                                 <div
                                                     className={cx(
-                                                        "rounded-2xl bg-secondary p-4",
+                                                        "rounded-2xl bg-primary p-4",
                                                         hoje ? "ring-2 ring-fg-brand-primary" : "ring-1 ring-border-secondary",
                                                     )}
                                                 >

@@ -16,6 +16,16 @@ const STATUS: Record<string, { label: string; color: "brand" | "blue" | "gray" }
     finalizado: { label: "Finalizado", color: "gray" },
 };
 
+/** Datas do combo de forma compacta — ex.: "10 e 31, Dez 2026". */
+function datasDoCombo(combo: Combo): string {
+    const partes = combo.itens.map((it) => it.data?.split("•")[0].trim()).filter(Boolean) as string[];
+    const dias = [...new Set(partes.map((p) => p.match(/\d{1,2}/)?.[0]).filter(Boolean))] as string[];
+    const palavras = partes[0]?.split(/\s+/) ?? [];
+    const mesRaw = palavras[palavras.length - 1] ?? "";
+    const mes = mesRaw.charAt(0).toUpperCase() + mesRaw.slice(1);
+    return `${dias.join(" e ")}, ${mes} 2026`;
+}
+
 /** Botão de ação circular com rótulo — mesmo formato do ActionFab do app. */
 function CircleAction({
     icon: Icon,
@@ -87,7 +97,7 @@ function MobileComboView({
             </div>
             <h1 className="px-5 pt-4 text-xl font-bold text-primary">Inscrição</h1>
 
-            <div className="flex flex-1 flex-col gap-6 px-5 pt-4 pb-8">
+            <div className={cx("flex flex-1 flex-col gap-6 px-5 pt-4", transferencia ? "pb-8" : "pb-40")}>
                 {transferencia ? (
                     <>
                         {/* Estado transferido (formato de ingresso) */}
@@ -96,7 +106,7 @@ function MobileComboView({
                                 <p className="text-xs font-medium tracking-wide text-tertiary uppercase">{ev.title}</p>
                                 <div className="my-3 border-t border-tertiary" />
                                 <p className="text-2xl leading-tight font-bold text-primary">{combo.nome}</p>
-                                <p className="mt-1.5 text-sm text-tertiary">{combo.dataEvento}</p>
+                                <p className="mt-1.5 text-sm text-tertiary">{datasDoCombo(combo)}</p>
                             </div>
 
                             <TicketNotch />
@@ -158,7 +168,7 @@ function MobileComboView({
                                 <div className="my-4 border-t border-tertiary" />
 
                                 <p className="text-xs font-semibold text-tertiary">Data do evento</p>
-                                <p className="mt-1 text-sm font-bold text-primary">{combo.dataEvento}</p>
+                                <p className="mt-1 text-sm font-bold text-primary">{datasDoCombo(combo)}</p>
                             </div>
 
                             <TicketNotch />
@@ -167,7 +177,7 @@ function MobileComboView({
                             <div className="px-6 pt-6 pb-7">
                                 <p className="text-center text-sm">
                                     <span className="font-semibold text-brand-secondary">Este combo tem um QR Code único.</span>{" "}
-                                    <span className="font-normal text-tertiary">Apresente este código para retirada do kit, acesso ao evento e retirada da medalha.</span>
+                                    <span className="font-normal text-tertiary">Apresente este código para acessar os itens abaixo.</span>
                                 </p>
                                 <div className="mt-5 flex justify-center">
                                     <FakeQR px={220} />
@@ -194,36 +204,34 @@ function MobileComboView({
                             </div>
                         </div>
 
-                        {/* CTAs no final da página — formato do app (2 + "Mais") */}
-                        <div className="flex items-start justify-center gap-8 pt-2">
-                            <CircleAction icon={Send01} label="Transferir" variant="primary" onClick={() => onTransfer?.(combo)} />
-                            <CircleAction icon={Tag01} label="Revender" />
-                            <CircleAction icon={Plus} label="Mais" onClick={() => setActionsOpen(true)} />
-                        </div>
                     </>
                 )}
             </div>
         </div>
 
-        {/* Overlay do "Mais" — mesmo comportamento do app: escurece a tela + degradê + pílulas */}
-        {actionsOpen && (
+        {/* Barra de ações flutuante fixa no rodapé (igual ActionFab do app). Oculta quando transferido. */}
+        {!transferencia && (
             <>
-                <button type="button" aria-label="Fechar" onClick={() => setActionsOpen(false)} className="absolute inset-0 z-10 bg-black/30" />
+                {actionsOpen && (
+                    <button type="button" aria-label="Fechar" onClick={() => setActionsOpen(false)} className="absolute inset-0 z-10 bg-black/30" />
+                )}
                 <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center bg-[linear-gradient(to_top,var(--color-bg-secondary)_30%,transparent)] px-5 pt-16 pb-6">
                     <div className="flex flex-col gap-5">
-                        {/* Ações extras (pílulas) */}
-                        <div className="flex flex-col items-end gap-2.5 duration-150 animate-in fade-in slide-in-from-bottom-2">
-                            <button
-                                type="button"
-                                onClick={() => setActionsOpen(false)}
-                                className="flex items-center gap-2.5 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-1 ring-black/10 transition duration-100 ease-linear active:scale-95"
-                            >
-                                <Wallet02 className="size-5 text-white" />
-                                Adicionar à Carteira
-                            </button>
-                        </div>
+                        {/* Ações extras reveladas pelo "Mais" (pílulas) */}
+                        {actionsOpen && (
+                            <div className="flex flex-col items-end gap-2.5 duration-150 animate-in fade-in slide-in-from-bottom-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setActionsOpen(false)}
+                                    className="flex items-center gap-2.5 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-1 ring-black/10 transition duration-100 ease-linear active:scale-95"
+                                >
+                                    <Wallet02 className="size-5 text-white" />
+                                    Adicionar à Carteira
+                                </button>
+                            </div>
+                        )}
 
-                        {/* Linha principal: 2 ações + Fechar */}
+                        {/* Linha principal: 2 ações + Mais/Fechar */}
                         <div className="flex items-start justify-center gap-8">
                             <CircleAction
                                 icon={Send01}
@@ -235,7 +243,7 @@ function MobileComboView({
                                 }}
                             />
                             <CircleAction icon={Tag01} label="Revender" onClick={() => setActionsOpen(false)} />
-                            <CircleAction icon={XClose} label="Fechar" onClick={() => setActionsOpen(false)} />
+                            <CircleAction icon={actionsOpen ? XClose : Plus} label={actionsOpen ? "Fechar" : "Mais"} onClick={() => setActionsOpen((v) => !v)} />
                         </div>
                     </div>
                 </div>
@@ -263,6 +271,8 @@ function MobileItem({ item }: { item: ComboItem }) {
     const s = item.status ? STATUS[item.status] : null;
     const finalizado = item.status === "finalizado";
     const hoje = item.status === "hoje";
+    // Data da retirada, endereço e conteúdo do kit vão dentro da descrição do produto.
+    const temDescricao = !!(item.imagem || item.gradient || item.conteudo || item.endereco || (item.dataLabel && item.data));
     return (
         <div>
             {item.data && <p className="pb-2 text-sm font-bold text-primary">{item.data}</p>}
@@ -275,31 +285,46 @@ function MobileItem({ item }: { item: ComboItem }) {
                     </div>
                 )}
                 <p className={cx("text-sm font-bold", finalizado ? "text-tertiary" : "text-primary")}>{item.nome}</p>
-                {item.data && (
-                    <p className={cx("mt-1.5 text-sm text-tertiary", finalizado && "line-through")}>
-                        {item.dataLabel ?? "Data do evento"}: {item.data}
-                    </p>
-                )}
                 {item.acesso && (
                     <p className="mt-1.5 text-sm text-tertiary">
                         Acesso por <span className="font-semibold text-secondary">{item.acesso}</span>
                     </p>
                 )}
-                {item.endereco && <p className="mt-1.5 text-sm text-tertiary">Endereço: {item.endereco}</p>}
 
-                {item.imagem && <img src={item.imagem} alt={item.nome} className="mt-3 w-full rounded-xl object-cover" />}
+                {item.gradient ? (
+                    <div className="mt-3 aspect-[4/3] w-full rounded-xl" style={{ background: item.gradient }} />
+                ) : (
+                    item.imagem && <img src={item.imagem} alt={item.nome} className="mt-3 w-full rounded-xl object-cover" />
+                )}
 
-                {item.conteudo && (
-                    <div className="mt-3">
-                        <p className="text-xs font-semibold text-tertiary">O kit contém</p>
-                        <ul className="mt-2 flex flex-col gap-1.5">
-                            {item.conteudo.map((c) => (
-                                <li key={c} className="flex items-center gap-2 text-sm text-secondary">
-                                    <span className="size-1.5 shrink-0 rounded-full bg-fg-quaternary" />
-                                    {c}
-                                </li>
-                            ))}
-                        </ul>
+                {/* Descrição do produto: data da retirada + endereço, depois o que contém no kit */}
+                {temDescricao && (
+                    <div className="mt-3 flex flex-col gap-3">
+                        {item.dataLabel && item.data && (
+                            <div>
+                                <p className="text-xs font-semibold text-tertiary">{item.dataLabel}</p>
+                                <p className="mt-1 text-sm text-secondary">{item.data}</p>
+                            </div>
+                        )}
+                        {item.endereco && (
+                            <div>
+                                <p className="text-xs font-semibold text-tertiary">Endereço</p>
+                                <p className="mt-1 text-sm text-secondary">{item.endereco}</p>
+                            </div>
+                        )}
+                        {item.conteudo && (
+                            <div>
+                                <p className="text-xs font-semibold text-tertiary">O kit contém</p>
+                                <ul className="mt-2 flex flex-col gap-1.5">
+                                    {item.conteudo.map((c) => (
+                                        <li key={c} className="flex items-center gap-2 text-sm text-secondary">
+                                            <span className="size-1.5 shrink-0 rounded-full bg-fg-quaternary" />
+                                            {c}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -342,18 +367,13 @@ export function IngressosModal({ onClose, compact = false, onTransfer }: { onClo
                     </button>
 
                     {/* Header */}
-                    <div className="flex items-start gap-4 pr-8">
+                    <div className="flex items-center gap-4 pr-8">
                         <div className="size-20 shrink-0 rounded-xl" style={{ background: ev.gradient }} />
                         <div className="min-w-0 flex-1">
                             <h2 className="text-lg leading-tight font-bold text-primary">
                                 Sua inscrição para <span className="font-extrabold">{ev.title}</span>
                             </h2>
                             <p className="mt-1 text-sm text-tertiary">{ev.local}</p>
-                            <div className="mt-3 inline-flex flex-col items-center rounded-xl px-4 py-1.5 shadow-sm ring-1 ring-border-secondary">
-                                <span className="text-xs text-tertiary">{ev.diaSemana}</span>
-                                <span className="text-xl font-bold text-brand-secondary">{ev.dia}</span>
-                                <span className="text-xs text-tertiary">{ev.mes}</span>
-                            </div>
                         </div>
                     </div>
 
@@ -418,7 +438,7 @@ function ComboCard({
                             <span className="shrink-0 rounded-full bg-brand-secondary px-2 py-0.5 text-xs font-medium text-brand-secondary">Combo</span>
                         )}
                     </div>
-                    <p className="mt-0.5 text-sm text-tertiary">Data do evento: {combo.dataEvento}</p>
+                    <p className="mt-0.5 text-sm text-tertiary">Data do evento: {datasDoCombo(combo)}</p>
                 </div>
                 <button
                     type="button"
@@ -454,7 +474,7 @@ function ComboCard({
                     {/* Itens do combo */}
                     <div>
                         <h4 className="text-sm font-bold text-primary">Itens do combo</h4>
-                        <div className="mt-2 flex flex-col gap-3">
+                        <div className="mt-3 flex flex-col gap-5">
                             {combo.itens.map((it, i) => (
                                 <ItemView key={i} item={it} />
                             ))}
@@ -508,7 +528,7 @@ function ComboCard({
                                 <FeaturedIcon icon={AlertCircle} color="warning" theme="outline" size="md" />
                                 <div className="flex flex-1 flex-col gap-1 md:w-0">
                                     <p className="text-sm font-semibold text-secondary">O QR Code é exibido na versão mobile.</p>
-                                    <p className="text-sm text-tertiary">Este combo tem um QR Code único para retirada do kit, acesso ao evento e retirada da medalha.</p>
+                                    <p className="text-sm text-tertiary">Use o QR Code único deste combo para acessar todos os itens listados abaixo.</p>
                                 </div>
                             </div>
 
@@ -532,7 +552,7 @@ function ComboCard({
                     {/* Itens do combo */}
                     <div>
                         <h4 className="text-sm font-bold text-primary">Itens do combo</h4>
-                        <div className="mt-2 flex flex-col gap-3">
+                        <div className="mt-3 flex flex-col gap-5">
                             {combo.itens.map((it, i) => (
                                 <ItemView key={i} item={it} />
                             ))}
@@ -580,39 +600,59 @@ function ComboCard({
 
 function ItemView({ item }: { item: ComboItem }) {
     const s = item.status ? STATUS[item.status] : null;
+    // Data da retirada, endereço e conteúdo do kit vão dentro da descrição do produto.
+    const temDescricao = !!(item.imagem || item.gradient || item.conteudo || item.endereco || (item.dataLabel && item.data));
     return (
-        <div className="rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
-            {s && (
-                <div className="mb-2">
-                    <Badge size="sm" color={s.color} type="pill-color">
-                        {s.label}
-                    </Badge>
-                </div>
-            )}
-            <p className="text-sm font-bold text-primary">{item.nome}</p>
-            {item.data && (
-                <p className="mt-1 text-sm text-tertiary">
-                    {item.dataLabel ?? "Data do evento"}: {item.data}
-                </p>
-            )}
-            {item.acesso && (
-                <p className="mt-1 text-sm text-tertiary">
-                    Acesso por <span className="font-semibold text-secondary">{item.acesso}</span>
-                </p>
-            )}
-            {item.endereco && <p className="mt-1 text-sm text-tertiary">Endereço: {item.endereco}</p>}
+        <div>
+            {/* Data acima do card (igual mobile/app) */}
+            {item.data && <p className="pb-2 text-sm font-bold text-primary">{item.data}</p>}
 
-            {(item.imagem || item.conteudo) && (
-                <div className="mt-3 flex items-start gap-4">
-                    {item.imagem && <img src={item.imagem} alt={item.nome} className="size-28 shrink-0 rounded-xl object-cover" />}
-                    {item.conteudo && (
-                        <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-tertiary">O kit contém</p>
-                            <p className="mt-1.5 text-sm text-secondary">{item.conteudo.join(", ")}</p>
+            <div className="rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
+                {s && (
+                    <div className="mb-2">
+                        <Badge size="sm" color={s.color} type="pill-color">
+                            {s.label}
+                        </Badge>
+                    </div>
+                )}
+                <p className="text-sm font-bold text-primary">{item.nome}</p>
+                {item.acesso && (
+                    <p className="mt-1 text-sm text-tertiary">
+                        Acesso por <span className="font-semibold text-secondary">{item.acesso}</span>
+                    </p>
+                )}
+
+                {/* Descrição do produto: data da retirada + endereço, depois o que contém no kit */}
+                {temDescricao && (
+                    <div className="mt-3 flex items-start gap-4">
+                        {item.gradient ? (
+                            <div className="size-28 shrink-0 rounded-xl" style={{ background: item.gradient }} />
+                        ) : (
+                            item.imagem && <img src={item.imagem} alt={item.nome} className="size-28 shrink-0 rounded-xl object-cover" />
+                        )}
+                        <div className="min-w-0 flex-1 space-y-3">
+                            {item.dataLabel && item.data && (
+                                <div>
+                                    <p className="text-xs font-semibold text-tertiary">{item.dataLabel}</p>
+                                    <p className="mt-1 text-sm text-secondary">{item.data}</p>
+                                </div>
+                            )}
+                            {item.endereco && (
+                                <div>
+                                    <p className="text-xs font-semibold text-tertiary">Endereço</p>
+                                    <p className="mt-1 text-sm text-secondary">{item.endereco}</p>
+                                </div>
+                            )}
+                            {item.conteudo && (
+                                <div>
+                                    <p className="text-xs font-semibold text-tertiary">O kit contém</p>
+                                    <p className="mt-1 text-sm text-secondary">{item.conteudo.join(", ")}</p>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-            )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

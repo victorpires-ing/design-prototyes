@@ -1,5 +1,4 @@
 /* Dados da São Silvestre replicados do app (produtos isolados) para a modal da Carteira Web. */
-import kitEventoImg from "../assets/kit-evento.png";
 
 export type ItemStatus = "hoje" | "proximo" | "finalizado";
 
@@ -11,6 +10,8 @@ export interface ComboItem {
     acesso?: string;
     endereco?: string;
     imagem?: string;
+    /** Degradê usado como imagem ilustrativa do produto (no lugar de uma foto). */
+    gradient?: string;
     conteudo?: string[];
 }
 
@@ -61,7 +62,7 @@ export const SAO_SILVESTRE: EventoSS = {
                     data: "Qui, 10 dez • 10:00",
                     dataLabel: "Data da retirada",
                     endereco: "Pavilhão do Anhembi • Av. Olavo Fontoura, 1209 - São Paulo/SP",
-                    imagem: kitEventoImg,
+                    gradient: "linear-gradient(135deg,#16A34A 0%,#0EA5E9 100%)",
                     conteudo: ["Camisa verde G", "Número", "Cronômetro", "Sacola"],
                 },
                 { nome: "Acesso ao evento", data: "Qui, 31 dez • 08:00", acesso: "Largada • Av. Paulista" },

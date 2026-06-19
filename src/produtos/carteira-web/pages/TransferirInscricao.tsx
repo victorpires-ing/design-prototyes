@@ -135,7 +135,7 @@ export function TransferirInscricao() {
                                     </div>
                                 </div>
                                 {destinatarioCard}
-                                <Button size="lg" color="primary" className="w-full rounded-full" onClick={voltar}>
+                                <Button size="lg" color="primary" className="w-full rounded-lg" onClick={voltar}>
                                     Concluir
                                 </Button>
                             </div>
@@ -164,7 +164,7 @@ export function TransferirInscricao() {
                                     <Button
                                         size="lg"
                                         color="primary"
-                                        className="mt-5 w-full rounded-full"
+                                        className="mt-5 w-full rounded-lg"
                                         onClick={() => {
                                             marcarTransferido(combo.id, {
                                                 destinatario: DESTINATARIO,
@@ -177,7 +177,7 @@ export function TransferirInscricao() {
                                     >
                                         Confirmar transferência
                                     </Button>
-                                    <Button size="lg" color="secondary" className="mt-3 w-full rounded-full" onClick={() => setStep("formulario")}>
+                                    <Button size="lg" color="secondary" className="mt-3 w-full rounded-lg" onClick={() => setStep("formulario")}>
                                         Cancelar
                                     </Button>
                                 </div>
@@ -210,7 +210,7 @@ export function TransferirInscricao() {
                                             />
                                         ))}
                                     </div>
-                                    <Button size="lg" color="primary" className="mt-5 w-full rounded-full" isDisabled={!formOk} onClick={() => setStep("confirmar")}>
+                                    <Button size="lg" color="primary" className="mt-5 w-full rounded-lg" isDisabled={!formOk} onClick={() => setStep("confirmar")}>
                                         Continuar
                                     </Button>
                                 </div>
@@ -247,7 +247,7 @@ export function TransferirInscricao() {
                                     <Button
                                         size="lg"
                                         color="primary"
-                                        className="mt-4 w-full rounded-full"
+                                        className="mt-4 w-full rounded-lg"
                                         isDisabled={email.trim() === ""}
                                         onClick={() => setSearched(true)}
                                     >

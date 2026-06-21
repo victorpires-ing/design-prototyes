@@ -321,7 +321,9 @@ export function TestRunnerLayer() {
             </AnimatePresence>
 
             {/* Barra única no topo: tarefa à esquerda, "Concluir tarefa" à direita */}
-            {!briefingAberto && declaracaoVisivel && !mostrandoSucesso && <BarraTarefa enunciado={bloco.enunciado} onConcluir={() => concluirAtividade("sucesso", "auto")} />}
+            {!briefingAberto && declaracaoVisivel && !mostrandoSucesso && bloco.criterios.some((c) => c.tipo === "auto") && (
+                <BarraTarefa enunciado={bloco.enunciado} onConcluir={() => concluirAtividade("sucesso", "auto")} />
+            )}
         </TopLayer>
     );
 }

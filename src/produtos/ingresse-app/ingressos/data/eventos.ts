@@ -1,7 +1,6 @@
 /* Dados dos eventos exibidos na carteira / página de ingressos do app.
    Um evento pode ter uma lista simples de ingressos OU combos.
    Cenário de combo: todos os itens/dias inclusos compartilham o MESMO QR Code. */
-import kitEventoImg from "../../assets/kit-evento.png";
 
 export interface ItemIngresso {
     id: string;
@@ -9,6 +8,7 @@ export interface ItemIngresso {
     tipo?: string;
     data: string;
     portador: string;
+    cpf?: string;
     /** Forma de acesso do ingresso. Default: "qr". */
     acesso?: "qr" | "facial";
 }
@@ -31,6 +31,13 @@ export interface ComboIncluso {
     conteudo?: string[];
     /** Imagem ilustrativa do item (ex.: foto do kit). */
     imagem?: string;
+    /** Degradê usado como imagem ilustrativa (no lugar de uma foto). */
+    gradient?: string;
+}
+
+export interface Resposta {
+    pergunta: string;
+    resposta: string;
 }
 
 export interface Combo {
@@ -44,6 +51,10 @@ export interface Combo {
     // qr "unico"
     inclusosTitulo?: string; // ex.: "Eventos inclusos"
     inclusos?: ComboIncluso[];
+    titular?: string;
+    cpf?: string;
+    /** Respostas do formulário preenchido na compra/inscrição. */
+    questionario?: Resposta[];
 }
 
 export interface EventoDetalhe {
@@ -57,7 +68,8 @@ export interface EventoDetalhe {
     combos?: Combo[];
 }
 
-const PORTADOR = "Janaina Nascimento de Souza";
+const PORTADOR = "Priscilão Alcantara Raro";
+const CPF = "948.943.130-44";
 
 export const EVENTOS: Record<string, EventoDetalhe> = {
     arena: {
@@ -68,8 +80,8 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
         gradient: "linear-gradient(150deg, #22C55E 0%, #0EA5E9 55%, #F59E0B 100%)",
         sessao: "Sex, 19 jun • 15:00",
         ingressos: [
-            { id: "1", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR },
-            { id: "2", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR },
+            { id: "1", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR, cpf: CPF },
+            { id: "2", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR, cpf: CPF },
         ],
     },
     "reveillon-copacabana": {
@@ -86,8 +98,8 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
                 dataEvento: "Qui, 31 dez • 22:00",
                 qr: "individual",
                 itens: [
-                    { id: "kit-reveillon", title: "Arena", data: "Qui, 31 dez • 22:00", portador: "Priscilão Alcantara", acesso: "qr" },
-                    { id: "credencial-camarote", title: "Área VIP Open Bar", data: "Qui, 31 dez • 22:00", portador: "Priscilão Alcantara", acesso: "facial" },
+                    { id: "kit-reveillon", title: "Arena", data: "Qui, 31 dez • 22:00", portador: PORTADOR, cpf: CPF, acesso: "qr" },
+                    { id: "credencial-camarote", title: "Área VIP Open Bar", data: "Qui, 31 dez • 22:00", portador: PORTADOR, cpf: CPF, acesso: "facial" },
                 ],
             },
             {
@@ -130,35 +142,43 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
                         acesso: "Setor Praia • Posto 4",
                     },
                 ],
+                titular: PORTADOR,
+                cpf: CPF,
             },
         ],
     },
     "sao-silvestre": {
         id: "sao-silvestre",
         title: "São Silvestre 2026",
-        date: "Qui, 31 dez • 08:00",
+        date: "30 de Dez 2026",
         local: "Av. Paulista • São Paulo/SP",
         gradient: "linear-gradient(135deg,#FF4D00 0%,#1d4ed8 100%)",
-        sessao: "Qui, 31 dez • 08:00",
+        sessao: "30 de Dez 2026",
         combos: [
             {
                 id: "combo-sao-silvestre",
-                nome: "Combo São Silvestre",
-                dataEvento: "Qui, 31 dez • 08:00",
+                nome: "Kit Premium",
+                dataEvento: "30 de Dez 2026",
                 qr: "unico",
-                inclusosTitulo: "Itens do combo",
+                inclusosTitulo: "Detalhes da inscrição",
                 inclusos: [
-                    { status: "proximo", nome: "Acesso ao evento", data: "Qui, 31 dez • 08:00", dataISO: "2026-12-31", acesso: "Largada • Av. Paulista" },
                     {
-                        status: "proximo",
-                        nome: "Kit do atleta",
+                        nome: "Kit Premium",
                         data: "Qui, 10 dez • 10:00",
                         dataLabel: "Data da retirada",
                         dataISO: "2026-12-10",
                         endereco: "Pavilhão do Anhembi • Av. Olavo Fontoura, 1209 - São Paulo/SP",
-                        imagem: kitEventoImg,
+                        gradient: "linear-gradient(135deg,#16A34A 0%,#0EA5E9 100%)",
                         conteudo: ["Camisa verde G", "Número", "Cronômetro", "Sacola"],
                     },
+                ],
+                titular: PORTADOR,
+                cpf: CPF,
+                questionario: [
+                    { pergunta: "Tamanho da camiseta", resposta: "G" },
+                    { pergunta: 'Equipe / assessoria (caso não possua, informe "Avulso")', resposta: "Avulso" },
+                    { pergunta: "Contato de emergência (nome e telefone)", resposta: "Maria Souza • (11) 99999-0000" },
+                    { pergunta: "Tipo sanguíneo", resposta: "O+" },
                 ],
             },
         ],

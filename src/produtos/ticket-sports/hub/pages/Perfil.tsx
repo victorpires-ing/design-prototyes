@@ -146,18 +146,23 @@ export function Perfil() {
                         </button>
                     </div>
 
-                    {/* Recomendações */}
+                    {/* Recomendações — CTA em destaque */}
                     <button
                         type="button"
                         onClick={() => navigate("/ticket-sports/hub/perfil/recomendacoes")}
-                        className="flex w-full items-center gap-3 rounded-2xl bg-primary p-4 text-left ring-1 ring-[#7C3AED]/20"
+                        className="relative flex w-full items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-[#7C3AED] via-[#9333EA] to-[#D946EF] p-4 text-left text-white shadow-lg"
                     >
-                        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#7C3AED] text-lg text-white">✨</span>
+                        <style>{`@keyframes recPerfilShine{0%{transform:translateX(-160%) skewX(-12deg)}60%,100%{transform:translateX(360%) skewX(-12deg)}}@media (prefers-reduced-motion:reduce){[style*="recPerfilShine"]{animation:none}}`}</style>
+                        <span className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-2xl">
+                            <span className="absolute inset-y-0 left-0 w-1/4 bg-white/25 blur-md" style={{ animation: "recPerfilShine 3.2s ease-in-out infinite" }} />
+                        </span>
+                        <span className="pointer-events-none absolute -right-5 -top-6 size-20 rounded-full bg-white/10" />
+                        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/20 text-xl backdrop-blur-md">✨</span>
                         <div className="flex flex-1 flex-col">
-                            <span className="text-md font-semibold text-primary">Recomendações pra você</span>
-                            <span className="text-sm text-tertiary">Sugestões de treino, saúde e conteúdos</span>
+                            <span className="text-md font-bold">Recomendações pra você</span>
+                            <span className="text-sm text-white/85">Treinos, saúde e eventos feitos pro seu perfil</span>
                         </div>
-                        <ChevronRight className="size-5 shrink-0 text-fg-quaternary" />
+                        <ChevronRight className="size-5 shrink-0" />
                     </button>
                 </Bloco>
 

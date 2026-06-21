@@ -53,7 +53,7 @@ export function ActionFab({ actions }: { actions: FabAction[] }) {
                 <button type="button" aria-label="Fechar" onClick={() => setOpen(false)} className="pointer-events-auto absolute inset-0 bg-black/30" />
             )}
 
-            <div className="absolute inset-x-0 bottom-0 flex flex-col items-center bg-[linear-gradient(to_top,var(--color-bg-primary)_62%,transparent)] px-5 pt-12 pb-6">
+            <div className="absolute inset-x-0 bottom-0 flex flex-col items-center bg-[linear-gradient(to_top,var(--color-bg-secondary)_30%,transparent)] px-5 pt-16 pb-6">
                 {/* Bloco centralizado: a pílula alinha à direita (acima do "Mais/Fechar") */}
                 <div className="flex flex-col gap-5">
                 {/* Ações extras (reveladas pelo "Mais") em formato de pílula */}

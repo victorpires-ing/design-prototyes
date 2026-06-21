@@ -27,7 +27,7 @@ export function AppShell({ activeTab, showTabBar = true, bottomBar, children }: 
     return (
         <div className="flex min-h-screen justify-center bg-secondary md:py-8">
             <div className="relative flex h-dvh w-full max-w-[420px] flex-col overflow-hidden bg-primary md:h-[calc(100dvh-4rem)] md:max-h-[860px] md:min-h-0 md:rounded-[2.5rem] md:shadow-2xl md:ring-1 md:ring-border-secondary">
-                <div className={cx("scrollbar-hide min-h-0 flex-1 overflow-y-auto", showTabBar && "pb-24", bottomBar && "pb-36")}>{children}</div>
+                <div className={cx("scrollbar-hide min-h-0 flex-1 overflow-y-auto", showTabBar && "pb-24", bottomBar && "bg-secondary pb-36")}>{children}</div>
 
                 {bottomBar && <div className="pointer-events-none absolute inset-0 z-20">{bottomBar}</div>}
 

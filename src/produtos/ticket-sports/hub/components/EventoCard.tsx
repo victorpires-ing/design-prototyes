@@ -3,7 +3,7 @@ import type { Evento } from "../data/eventos";
 
 export function EventoCard({ e, onClick }: { e: Evento; onClick?: () => void }) {
     return (
-        <button type="button" onClick={onClick} className="flex gap-3 rounded-2xl border border-secondary p-3 text-left">
+        <button type="button" onClick={onClick} className="flex gap-3 rounded-2xl border border-secondary bg-primary p-3 text-left">
             <img src={e.imagem} alt="" className="size-24 shrink-0 rounded-xl object-cover" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="flex w-max items-center gap-1 rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-[11px] font-semibold text-[#7C3AED]">

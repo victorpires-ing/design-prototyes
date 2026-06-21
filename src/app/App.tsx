@@ -55,6 +55,7 @@ import { FotoRosto } from '../produtos/ticket-sports/hub/pages/FotoRosto';
 import { Home as TicketSportsHome } from '../produtos/ticket-sports/hub/pages/Home';
 import { ConquistasMes } from '../produtos/ticket-sports/hub/pages/ConquistasMes';
 import { Presentes } from '../produtos/ticket-sports/hub/pages/Presentes';
+import { Plano } from '../produtos/ticket-sports/hub/pages/Plano';
 import { EmpresaHome } from '../produtos/ticket-sports/hub/pages/EmpresaHome';
 import { NovaPublicacao } from '../produtos/ticket-sports/hub/pages/NovaPublicacao';
 import { Notificacoes } from '../produtos/ticket-sports/hub/pages/Notificacoes';
@@ -87,6 +88,7 @@ import { EntradaTeste } from '../produtos/usabilidade/testes/pages/EntradaTeste'
 import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPagesMenu';
 import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
 import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
+import { TransferirInscricao as CarteiraWebTransferir } from '../produtos/carteira-web/pages/TransferirInscricao';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -157,6 +159,7 @@ export default function App() {
         <Route path="/ticket-sports/hub/home" element={<TicketSportsHome />} />
         <Route path="/ticket-sports/hub/conquistas" element={<ConquistasMes />} />
         <Route path="/ticket-sports/hub/presentes" element={<Presentes />} />
+        <Route path="/ticket-sports/hub/plano" element={<Plano />} />
         <Route path="/ticket-sports/hub/empresa" element={<EmpresaHome />} />
         <Route path="/ticket-sports/hub/empresa/publicar" element={<NovaPublicacao />} />
         <Route path="/ticket-sports/hub/notificacoes" element={<Notificacoes />} />
@@ -196,6 +199,7 @@ export default function App() {
         <Route path="/landing-pages" element={<LandingPagesMenu />} />
         <Route path="/landing-pages/sao-silvestre" element={<SaoSilvestre />} />
         <Route path="/carteira-web" element={<CarteiraWeb />} />
+        <Route path="/carteira-web/transferir" element={<CarteiraWebTransferir />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </PesquisasProvider>

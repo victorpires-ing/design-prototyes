@@ -154,7 +154,7 @@ const TabButton = ({ icon: Icon, label, active, onClick }: { icon: typeof Ticket
         onClick={onClick}
         className={cx(
             "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 pb-3 text-sm font-semibold transition duration-100 ease-linear",
-            active ? "border-brand text-brand-secondary" : "border-transparent text-tertiary",
+            active ? "border-fg-brand-primary text-brand-secondary" : "border-transparent text-tertiary",
         )}
     >
         <Icon className={cx("size-5", active ? "text-fg-brand-primary" : "text-fg-quaternary")} />

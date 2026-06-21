@@ -13,13 +13,14 @@ export function IngressoDetalhe() {
     const navigate = useNavigate();
     const location = useLocation();
     const state =
-        (location.state as { transferido?: boolean; evento?: string; title?: string; tipo?: string; sessao?: string; eventId?: string; itemId?: string; acesso?: "qr" | "facial"; portador?: string } | null) ?? {};
+        (location.state as { transferido?: boolean; evento?: string; title?: string; tipo?: string; sessao?: string; eventId?: string; itemId?: string; acesso?: "qr" | "facial"; portador?: string; cpf?: string } | null) ?? {};
     const transferido = !!state.transferido || isTransferido(state.itemId);
     const evento = state.evento ?? "ARENA BRASILEIRA 2026";
     const title = state.title ?? "ARENA | Brasil x Haiti | (19/06)";
     const tipo = state.tipo ?? "Inteira";
     const sessao = state.sessao ?? "Sex, 19 jun • 15:00";
-    const portador = state.portador ?? "Janaina Nascimento de Souza";
+    const portador = state.portador ?? "Priscilão Alcantara Raro";
+    const cpf = state.cpf ?? "948.943.130-44";
     const facial = state.acesso === "facial";
 
     const [meuIngresso, setMeuIngresso] = useState(true);
@@ -121,9 +122,14 @@ export function IngressoDetalhe() {
                                     <p className="mt-5 text-sm text-secondary">Seu acesso será feito por reconhecimento facial.</p>
                                     <p className="text-sm text-secondary">Você já está cadastrado.</p>
                                 </div>
-                                <div className="mt-6 text-left">
-                                    <p className="text-xs text-tertiary">Portador</p>
-                                    <p className="mt-0.5 text-sm font-semibold text-primary">{portador}</p>
+                                <div className="-mx-6 my-5 border-t border-tertiary" />
+                                <div className="text-left">
+                                    <p className="text-sm text-tertiary">
+                                        Titular: <span className="font-semibold text-primary">{portador}</span>
+                                    </p>
+                                    <p className="mt-1 text-sm text-tertiary">
+                                        CPF: <span className="font-semibold text-primary">{cpf}</span>
+                                    </p>
                                 </div>
                             </div>
                         ) : (
@@ -132,9 +138,14 @@ export function IngressoDetalhe() {
                                 <div className="flex justify-center">
                                     <FakeQR px={220} />
                                 </div>
-                                <div className="mt-5 text-left">
-                                    <p className="text-xs text-tertiary">Portador</p>
-                                    <p className="mt-0.5 text-sm font-semibold text-primary">{portador}</p>
+                                <div className="-mx-6 my-5 border-t border-tertiary" />
+                                <div className="text-left">
+                                    <p className="text-sm text-tertiary">
+                                        Titular: <span className="font-semibold text-primary">{portador}</span>
+                                    </p>
+                                    <p className="mt-1 text-sm text-tertiary">
+                                        CPF: <span className="font-semibold text-primary">{cpf}</span>
+                                    </p>
                                 </div>
                             </div>
                         )}

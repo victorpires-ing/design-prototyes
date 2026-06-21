@@ -17,7 +17,7 @@ export function Ingressos() {
 
     const abrirDetalhe = (item: ItemIngresso) =>
         navigate("/ingresse-app/ingressos/detalhe", {
-            state: { evento: evento.title, title: item.title, tipo: item.tipo, sessao: evento.sessao, eventId: evento.id, acesso: item.acesso, portador: item.portador, itemId: item.id },
+            state: { evento: evento.title, title: item.title, tipo: item.tipo, sessao: evento.sessao, eventId: evento.id, acesso: item.acesso, portador: item.portador, cpf: item.cpf, itemId: item.id },
         });
 
     return (
@@ -68,23 +68,29 @@ export function Ingressos() {
                                       onClick={() => navigate("/ingresse-app/ingressos/combo", { state: { eventId: evento.id, comboId: combo.id } })}
                                       className="flex w-full items-start gap-3 rounded-2xl bg-primary p-4 text-left ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                                   >
-                                      <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-secondary text-fg-brand-primary">
-                                          <Package className="size-6" />
-                                      </span>
+                                      {evento.id !== "sao-silvestre" && (
+                                          <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-secondary text-fg-brand-primary">
+                                              <Package className="size-6" />
+                                          </span>
+                                      )}
                                       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                                           <div className="flex items-start justify-between gap-2">
                                               <p className="text-sm font-bold text-primary">{combo.nome}</p>
                                               <ChevronRight className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
                                           </div>
-                                          <p className="-mt-1 text-sm text-tertiary">{combo.inclusos?.length ?? 0} itens</p>
+                                          <p className="-mt-1 text-sm text-tertiary">
+                                              {evento.id === "sao-silvestre" ? "1 inscrição" : `${combo.inclusos?.length ?? 0} itens`}
+                                          </p>
                                           <p className="flex items-center gap-1.5 text-sm text-secondary">
                                               <Calendar className="size-4 shrink-0 text-fg-quaternary" />
                                               {combo.dataEvento}
                                           </p>
                                           <div className="flex flex-wrap gap-2 pt-1">
-                                              <Badge size="md" color="brand" type="pill-color">
-                                                  Combo
-                                              </Badge>
+                                              {evento.id !== "sao-silvestre" && (
+                                                  <Badge size="md" color="brand" type="pill-color">
+                                                      Combo
+                                                  </Badge>
+                                              )}
                                               {isTransferido(combo.id) ? (
                                                   <Badge size="md" color="blue" type="pill-color">
                                                       Transferido

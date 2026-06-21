@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router";
 import { AlertTriangle, CheckCircle, ChevronDown, ChevronLeft, Copy01, Minus, Package, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
@@ -12,6 +13,7 @@ import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { MarketplaceLayout, accentVars } from "../../components/MarketplaceLayout";
+import { LoginModal } from "../../components/LoginModal";
 import { CupomModal } from "../components/CupomModal";
 import { SelecaoItensModal, type ItemSelecao } from "../components/SelecaoItensModal";
 import { TermosModal } from "../components/TermosModal";
@@ -132,6 +134,10 @@ export function SelecaoEAtribuicao() {
     const [respostas, setRespostas] = useState<Record<string, string>>({});
     const [perguntaModalUnidade, setPerguntaModalUnidade] = useState<string | null>(null);
     const [variacaoProduto, setVariacaoProduto] = useState<Produto | null>(null);
+    // Sessão começa sempre deslogada.
+    const [usuario, setUsuario] = useState<string | null>(null);
+    const [loginOpen, setLoginOpen] = useState(false);
+    const [loginPendente, setLoginPendente] = useState(false);
 
     // Trava o scroll do fundo enquanto o resumo (mobile) estiver aberto.
     useEffect(() => {
@@ -324,12 +330,33 @@ export function SelecaoEAtribuicao() {
         window.scrollTo({ top: 0 });
     };
 
-    const continuar = () => {
-        if (totalItens === 0) return;
+    // Após login (ou já logado): aplica termos e segue para a próxima etapa.
+    const prosseguirSelecao = () => {
         if (config.termos.trim() && !termosAceito) {
             setPendenteFinalizar(true);
             setTermosOpen(true);
         } else irProximo();
+    };
+
+    const continuar = () => {
+        if (totalItens === 0) return;
+        // Passar da seleção para produtos/atribuição exige login.
+        if (!usuario) {
+            setLoginPendente(true);
+            setLoginOpen(true);
+            return;
+        }
+        prosseguirSelecao();
+    };
+
+    // Cadastro concluído (aceita qualquer código): grava o usuário e segue o fluxo pendente.
+    const aoLogar = (nome: string) => {
+        setUsuario(nome || "Victor Pires da Costa");
+        setLoginOpen(false);
+        if (loginPendente) {
+            setLoginPendente(false);
+            prosseguirSelecao();
+        }
     };
     // Aceite dos termos: libera a navegação; se veio do "Continuar", segue para a próxima etapa.
     const aceitarTermos = () => {
@@ -527,7 +554,6 @@ export function SelecaoEAtribuicao() {
     );
 
     const totalIngressosUnid = unidades.filter((u) => !u.isProduto).length;
-    const faltam = unidades.length - unidadesProntas;
     const progresso = unidades.length > 0 ? Math.round((unidadesProntas / unidades.length) * 100) : 0;
     const atribuicaoLayout = (
         <div className="mx-auto flex w-full max-w-[1446px] flex-col gap-6 lg:flex-row lg:justify-center">
@@ -535,12 +561,11 @@ export function SelecaoEAtribuicao() {
                 <h2 className="text-lg font-bold text-primary">Quem usará estes itens?</h2>
 
                 {/* Progresso da atribuição */}
-                <div className="flex flex-col gap-2 rounded-xl bg-tertiary p-4">
+                <div className="flex flex-col gap-2 rounded-xl bg-primary p-0">
                     <div className="flex items-center justify-between gap-3">
                         <span className="text-sm font-semibold text-primary">
-                            {unidadesProntas} de {unidades.length} {unidades.length === 1 ? "concluído" : "concluídos"}
+                            {unidadesProntas} de {unidades.length} {unidades.length === 1 ? "item definido" : "itens definidos"}
                         </span>
-                        <span className="text-sm text-tertiary">{faltam > 0 ? `Faltam ${faltam}` : "Tudo pronto"}</span>
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-quaternary">
                         <div className="h-full rounded-full bg-brand-solid transition-all duration-200 ease-linear" style={{ width: `${progresso}%` }} />
@@ -569,7 +594,7 @@ export function SelecaoEAtribuicao() {
     // Layout dedicado a "uma única data e horário": capa + cabeçalho com hora/data por extenso.
     const soUmaData = datasVenda.length === 1 && fixoTabs.length === 0 && !temDinamicos && !!dataAtiva;
     const dataHeader = dataAtiva ? (
-        <div className="flex flex-col gap-1 px-4 pt-4 md:px-5 md:pt-5">
+        <div className="flex flex-col gap-1">
             <span className="text-sm text-tertiary">
                 {dataAtiva.diaSemana.toLowerCase()}
                 {dataAtiva.hora ? `, ${dataAtiva.hora}` : ""}
@@ -578,7 +603,7 @@ export function SelecaoEAtribuicao() {
         </div>
     ) : null;
     const umaDataLayout = (
-        <div className="grid w-full grid-cols-1 gap-6 lg:h-[calc(100dvh-152px)] lg:grid-cols-[1fr_640px] lg:overflow-hidden">
+        <div className="grid w-full grid-cols-1 gap-6 lg:h-full lg:grid-cols-[1fr_640px] lg:overflow-hidden">
             <div className="-mx-4 -mt-4 h-[260px] overflow-clip bg-secondary lg:mx-0 lg:mt-0 lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary">
                 {config.mapa ? (
                     <img src={config.mapa} alt="Mapa do local" className="h-full w-full object-cover" />
@@ -589,8 +614,10 @@ export function SelecaoEAtribuicao() {
             <div className="flex w-full flex-col gap-4 lg:h-full lg:min-h-0 lg:max-w-[640px]">
                 {cupomBlock}
                 <div className="flex flex-col overflow-clip rounded-2xl bg-primary ring-1 ring-border-secondary lg:min-h-0 lg:flex-1">
-                    {dataHeader}
-                    <div className="flex flex-col px-4 pb-4 md:px-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">{conteudo}</div>
+                    <div className="flex flex-col px-4 pt-4 pb-4 md:px-5 md:pt-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                        {dataHeader}
+                        {conteudo}
+                    </div>
                     {totalItens > 0 && <div className="hidden lg:block">{totalBar}</div>}
                 </div>
             </div>
@@ -625,6 +652,8 @@ export function SelecaoEAtribuicao() {
             logo={config.logo || undefined}
             accent={config.corDestaque || undefined}
             onBack={etapa === "selecao" && config.exibirVoltar === false ? undefined : voltarEtapa}
+            usuario={usuario ?? undefined}
+            onAcessar={() => !usuario && setLoginOpen(true)}
         >
             {etapa === "atribuicao" ? (
                 atribuicaoLayout
@@ -634,7 +663,7 @@ export function SelecaoEAtribuicao() {
                 umaDataLayout
             ) : config.mapa ? (
                 /* Layout com mapa: container em altura total; mapa ocupa o resto, seleção fixa em 640px com scroll interno */
-                <div className="grid w-full grid-cols-1 gap-6 lg:h-[calc(100dvh-152px)] lg:grid-cols-[1fr_640px] lg:overflow-hidden">
+                <div className="grid w-full grid-cols-1 gap-6 lg:h-full lg:grid-cols-[1fr_640px] lg:overflow-hidden">
                     <div className="-mx-4 -mt-4 h-[320px] overflow-clip bg-secondary lg:mx-0 lg:mt-0 lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary">
                         <img src={config.mapa} alt="Mapa do local" className="h-full w-full object-cover" />
                     </div>
@@ -690,12 +719,33 @@ export function SelecaoEAtribuicao() {
                 </div>
             )}
 
-            {/* Resumo fixo no rodapé — apenas mobile, expansível */}
-            {totalItens > 0 && (
+            {/* Resumo fixo no rodapé — apenas mobile, expansível. Em portal no body para ir de ponta a ponta. */}
+            {totalItens > 0 && <div className="h-36 lg:hidden" aria-hidden="true" />}
+            {createPortal(
                 <>
-                    <div className="h-36 lg:hidden" aria-hidden="true" />
-                    {resumoAberto && <div className="fixed inset-0 z-40 bg-overlay/60 lg:hidden" onClick={() => setResumoAberto(false)} />}
-                    <div className="fixed inset-x-0 bottom-0 z-40 flex flex-col rounded-t-2xl bg-primary shadow-lg ring-1 ring-border-secondary lg:hidden">
+                    <AnimatePresence>
+                        {resumoAberto && totalItens > 0 && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="fixed inset-0 z-40 bg-overlay/60 lg:hidden"
+                                onClick={() => setResumoAberto(false)}
+                            />
+                        )}
+                    </AnimatePresence>
+                    <AnimatePresence>
+                        {totalItens > 0 && (
+                            <motion.div
+                                key="footer"
+                                initial={{ y: "100%" }}
+                                animate={{ y: 0 }}
+                                exit={{ y: "100%" }}
+                                transition={{ type: "spring", stiffness: 320, damping: 34 }}
+                                className="fixed inset-x-0 bottom-0 z-40 flex flex-col rounded-t-2xl bg-primary shadow-lg ring-1 ring-border-secondary lg:hidden"
+                                style={accentVars(config.corDestaque || undefined)}
+                            >
                         <button
                             type="button"
                             onClick={() => setResumoAberto((o) => !o)}
@@ -705,7 +755,19 @@ export function SelecaoEAtribuicao() {
                             <ChevronDown className={cx("size-5 text-fg-quaternary transition-transform", resumoAberto && "rotate-180")} />
                         </button>
 
-                        {resumoAberto && <div className="flex max-h-[55vh] flex-col gap-5 overflow-y-auto px-4 py-4">{resumoSecoes}</div>}
+                        <AnimatePresence initial={false}>
+                            {resumoAberto && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: "auto", opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.25, ease: "easeOut" }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="flex max-h-[55vh] flex-col gap-5 overflow-y-auto px-4 py-4">{resumoSecoes}</div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         <div className="flex items-center justify-between gap-3 border-t border-secondary px-4 pt-3 pb-9">
                             <div className="flex flex-col">
@@ -720,8 +782,11 @@ export function SelecaoEAtribuicao() {
                                 Continuar
                             </Button>
                         </div>
-                    </div>
-                </>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </>,
+                document.body,
             )}
 
             <VariacaoModal
@@ -731,6 +796,7 @@ export function SelecaoEAtribuicao() {
                 onSetQtd={(size, n) => variacaoProduto && setProdQtd(variacaoProduto, size, n)}
                 onClose={() => setVariacaoProduto(null)}
             />
+            <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} logoEvento={config.logo || undefined} onSucesso={aoLogar} />
             <SelecaoItensModal combo={comboSelecao} onClose={() => setComboSelecao(null)} onConfirmar={confirmarSelecao} />
             <CupomModal isOpen={cupomOpen} onClose={() => setCupomOpen(false)} onAplicar={aplicarCupom} />
             <TermosModal isOpen={termosOpen} termos={config.termos} onClose={() => setTermosOpen(false)} onConfirmar={aceitarTermos} />
@@ -838,7 +904,7 @@ function AtribuicaoCard({
                     <AnimatePresence initial={false} mode="wait">
                         {tipo === "outro" && !confirmado && (
                             <motion.div key="form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">
-                                <div className="mt-3 flex flex-col gap-1.5">
+                                <div className="mt-3 flex flex-col gap-1.5 px-0.5 pb-1.5">
                                     <div className={cx("flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 ring-1 transition focus-within:ring-2 focus-within:ring-brand", emailInvalido ? "ring-error" : "ring-border-primary")}>
                                         <input
                                             type="email"
@@ -866,7 +932,7 @@ function AtribuicaoCard({
                         )}
                         {tipo === "outro" && confirmado && (
                             <motion.div key="ok" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">
-                                <div className="mt-3 flex flex-col gap-3">
+                                <div className="mt-3 flex flex-col gap-3 px-0.5 pb-1.5">
                                     <div className="flex items-center gap-3 rounded-xl bg-secondary px-3.5 py-2.5">
                                         <Avatar size="sm" initials={(email.trim()[0] ?? "?").toUpperCase()} alt="" />
                                         <div className="flex min-w-0 flex-1 flex-col">

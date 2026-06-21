@@ -26,6 +26,20 @@ import { gerarId, PERGUNTAS_SUS, usabilityStore } from "@/lib/usability";
 import type { Bloco, BlocoAtividade, BlocoPergunta, BlocoSus, Criterio, CriterioTipo, Teste } from "@/lib/usability";
 import { CATALOGO, ICONE_BLOCO, novoTeste, rotuloTipo } from "../data/blocos";
 
+/** Converte um link colado em rota interna (pathname+search+hash), preservando o ?cfg=. */
+function paraRotaInterna(v: string): string {
+    const t = v.trim();
+    if (/^https?:\/\//i.test(t)) {
+        try {
+            const u = new URL(t);
+            return `${u.pathname}${u.search}${u.hash}`;
+        } catch {
+            return t;
+        }
+    }
+    return t;
+}
+
 const CRITERIO_META: Record<CriterioTipo, { label: string; ajuda: string }> = {
     rota: { label: "Chegar numa rota", ajuda: "Conclui ao atingir uma rota (casa por prefixo)." },
     clique: { label: "Clicar num elemento", ajuda: "Conclui ao clicar num elemento específico do protótipo." },
@@ -474,7 +488,7 @@ function ConfigAtividade({
             <div className="flex flex-col gap-2">
                 <Label>Link de início</Label>
                 <div className="flex items-center gap-2">
-                    <Input size="sm" placeholder="/backstage/cortesias" value={bloco.rotaInicial} onChange={(v) => patch({ rotaInicial: v })} className="flex-1" />
+                    <Input size="sm" placeholder="/backstage/cortesias" value={bloco.rotaInicial} onChange={(v) => patch({ rotaInicial: paraRotaInterna(v) })} className="flex-1" />
                     <Button size="sm" color="secondary" iconLeading={Flag05} onClick={onComecarAqui}>
                         Começar nessa tela
                     </Button>
@@ -682,7 +696,8 @@ function PrototipoCaptura({
     selecionandoElemento: boolean;
     dispositivo: "desktop" | "mobile";
 }) {
-    const src = `${bloco.rotaInicial || "/"}?__capture=1`;
+    const rota = bloco.rotaInicial || "/";
+    const src = `${rota}${rota.includes("?") ? "&" : "?"}__capture=1`;
     const areaRef = useRef<HTMLDivElement>(null);
     const [area, setArea] = useState({ w: 0, h: 0 });
 

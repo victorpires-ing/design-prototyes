@@ -9,6 +9,7 @@ import {
     Monitor01,
     Phone01,
     Plus,
+    Star06,
     Trash02,
 } from "@untitledui/icons";
 import { useNavigate, useParams } from "react-router";
@@ -19,12 +20,13 @@ import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { Input } from "@/components/base/input/input";
 import { Label } from "@/components/base/input/label";
-import { TextArea } from "@/components/base/textarea/textarea";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
 import { gerarId, PERGUNTAS_SUS, usabilityStore } from "@/lib/usability";
 import type { Bloco, BlocoAtividade, BlocoPergunta, BlocoSus, Criterio, CriterioTipo, Teste } from "@/lib/usability";
 import { CATALOGO, ICONE_BLOCO, novoTeste, rotuloTipo } from "../data/blocos";
+import { RichText } from "../../components/RichText";
+import { RichTextView } from "@/lib/usability/branding";
 
 /** Converte um link colado em rota interna (pathname+search+hash), preservando o ?cfg=. */
 function paraRotaInterna(v: string): string {
@@ -306,7 +308,26 @@ export function EditorTeste() {
                             {(selecionado.tipo === "welcome" || selecionado.tipo === "obrigado") && (
                                 <>
                                     <Input label="Título" value={selecionado.titulo} onChange={(v) => patchBloco(selecionado.id, { titulo: v } as Partial<Bloco>)} />
-                                    <TextArea label="Mensagem" rows={5} value={selecionado.texto} onChange={(v) => patchBloco(selecionado.id, { texto: v } as Partial<Bloco>)} />
+                                    <div className="flex flex-col gap-1.5">
+                                        <Label>Mensagem</Label>
+                                        <RichText value={selecionado.texto} onChange={(v) => patchBloco(selecionado.id, { texto: v } as Partial<Bloco>)} />
+                                    </div>
+                                    {selecionado.tipo === "welcome" && (
+                                        <>
+                                            <Input
+                                                label="Logo da marca parceira (link)"
+                                                placeholder="https://… (opcional — aparece ao lado da Ingresse)"
+                                                hint="A logo da Ingresse é sempre exibida; informe um link para co-marcar com um parceiro."
+                                                value={teste.logoParceira ?? ""}
+                                                onChange={(v) => patchTeste({ logoParceira: v || undefined })}
+                                            />
+                                            {teste.logoParceira && (
+                                                <span className="flex h-12 w-fit items-center rounded-md bg-primary-solid px-3">
+                                                    <img src={teste.logoParceira} alt="" className="h-6 w-auto object-contain" />
+                                                </span>
+                                            )}
+                                        </>
+                                    )}
                                 </>
                             )}
 
@@ -363,7 +384,11 @@ export function EditorTeste() {
                         {selecionado?.tipo === "atividade" ? (
                             <PrototipoCaptura bloco={selecionado} iframeRef={iframeRef} iframeRota={iframeRota} selecionandoElemento={selElemento === selecionado.id} dispositivo={dispositivo} />
                         ) : (
-                            <PreviewParticipante bloco={selecionado} dispositivo={dispositivo} />
+                            <PreviewParticipante
+                                bloco={selecionado}
+                                dispositivo={dispositivo}
+                                etapas={teste.blocos.filter((b) => b.tipo === "atividade" || b.tipo === "pergunta" || b.tipo === "sus").length}
+                            />
                         )}
                     </div>
                 </section>
@@ -429,6 +454,10 @@ function ConfigPergunta({ bloco, patch }: { bloco: BlocoPergunta; patch: (p: Par
     return (
         <>
             <Input label="Pergunta" placeholder="O que você achou da experiência?" value={bloco.enunciado} onChange={(v) => patch({ enunciado: v })} isRequired />
+            <div className="flex flex-col gap-1.5">
+                <Label>Descrição (opcional)</Label>
+                <RichText value={bloco.descricao ?? ""} onChange={(v) => patch({ descricao: v })} placeholder="Texto de apoio exibido abaixo da pergunta" />
+            </div>
             {bloco.formato !== "aberta" && (
                 <div className="flex flex-col gap-2">
                     <Label>Opções</Label>
@@ -482,7 +511,10 @@ function ConfigAtividade({
     return (
         <>
             <Input label="Tarefa" placeholder="Escreva uma frase que resume a tarefa" value={bloco.enunciado} onChange={(v) => patch({ enunciado: v })} isRequired />
-            <TextArea label="Descrição (opcional)" rows={3} placeholder="Dê detalhes para o participante completar a missão" value={bloco.descricao ?? ""} onChange={(v) => patch({ descricao: v })} />
+            <div className="flex flex-col gap-1.5">
+                <Label>Descrição (opcional)</Label>
+                <RichText value={bloco.descricao ?? ""} onChange={(v) => patch({ descricao: v })} placeholder="Dê detalhes para o participante completar a missão" />
+            </div>
 
             {/* Link de início */}
             <div className="flex flex-col gap-2">
@@ -574,7 +606,10 @@ function ConfigSus({ bloco, patch }: { bloco: BlocoSus; patch: (p: Partial<Bloco
     return (
         <>
             <Input label="Título" value={bloco.titulo} onChange={(v) => patch({ titulo: v })} />
-            <TextArea label="Texto de apoio (opcional)" rows={2} value={bloco.enunciado} onChange={(v) => patch({ enunciado: v })} />
+            <div className="flex flex-col gap-1.5">
+                <Label>Texto de apoio (opcional)</Label>
+                <RichText value={bloco.enunciado} onChange={(v) => patch({ enunciado: v })} />
+            </div>
             <div className="flex flex-col gap-2 rounded-lg bg-secondary p-4">
                 <span className="text-sm font-medium text-primary">Escala de Usabilidade do Sistema</span>
                 <p className="text-xs text-tertiary">
@@ -594,9 +629,9 @@ function ConfigSus({ bloco, patch }: { bloco: BlocoSus; patch: (p: Partial<Bloco
 /*  Preview: card do participante (welcome / obrigado / pergunta)      */
 /* ------------------------------------------------------------------ */
 
-function PreviewParticipante({ bloco, dispositivo }: { bloco: Bloco | null; dispositivo: "desktop" | "mobile" }) {
+function PreviewParticipante({ bloco, dispositivo, etapas }: { bloco: Bloco | null; dispositivo: "desktop" | "mobile"; etapas: number }) {
     if (!bloco) return null;
-    const card = <CardParticipante bloco={bloco} />;
+    const card = <CardParticipante bloco={bloco} etapas={etapas} />;
     if (dispositivo === "mobile") {
         return (
             <div className="flex h-full items-center justify-center">
@@ -620,23 +655,35 @@ function PreviewParticipante({ bloco, dispositivo }: { bloco: Bloco | null; disp
     );
 }
 
-function CardParticipante({ bloco }: { bloco: Bloco }) {
+function CardParticipante({ bloco, etapas }: { bloco: Bloco; etapas: number }) {
     if (bloco.tipo === "welcome" || bloco.tipo === "obrigado") {
+        const ehWelcome = bloco.tipo === "welcome";
         return (
-            <div className="flex w-full max-w-sm flex-col gap-4 text-center">
-                <h3 className="text-xl font-semibold text-primary">{bloco.titulo || (bloco.tipo === "welcome" ? "Bem-vindo" : "Obrigado!")}</h3>
-                <p className="text-sm whitespace-pre-line text-tertiary">{bloco.texto}</p>
-                {bloco.tipo === "welcome" && <div className="mt-2 w-full rounded-lg bg-brand-solid py-2.5 text-center text-sm font-semibold text-white">Começar</div>}
+            <div className="flex w-full max-w-sm flex-col items-center gap-4 text-center">
+                <FeaturedIcon icon={ehWelcome ? Star06 : CheckCircle} color={ehWelcome ? "brand" : "success"} theme="light" size="xl" />
+                <h3 className="text-xl font-semibold text-primary">{bloco.titulo || (ehWelcome ? "Bem-vindo" : "Obrigado!")}</h3>
+                {bloco.texto && <RichTextView html={bloco.texto} className="text-sm text-tertiary" />}
+                {ehWelcome && (
+                    <>
+                        <p className="text-xs text-quaternary">
+                            {etapas} {etapas === 1 ? "etapa" : "etapas"} · sua sessão será gravada para análise
+                        </p>
+                        <div className="mt-1 w-full rounded-lg bg-brand-solid py-2.5 text-center text-sm font-semibold text-white">Começar</div>
+                    </>
+                )}
             </div>
         );
     }
     if (bloco.tipo === "pergunta") {
         return (
             <div className="flex w-full max-w-sm flex-col gap-4">
-                <h3 className="text-lg font-semibold text-primary">
-                    {bloco.enunciado || "Sua pergunta aparece aqui"}
-                    {bloco.obrigatoria && <span className="text-error-primary"> *</span>}
-                </h3>
+                <div className="flex flex-col gap-2">
+                    <h3 className="text-lg font-semibold text-primary">
+                        {bloco.enunciado || "Sua pergunta aparece aqui"}
+                        {bloco.obrigatoria && <span className="text-error-primary"> *</span>}
+                    </h3>
+                    {bloco.descricao && <RichTextView html={bloco.descricao} className="text-sm text-tertiary" />}
+                </div>
                 {bloco.formato === "aberta" ? (
                     <div className="h-24 w-full rounded-lg bg-primary ring-1 ring-border-primary" />
                 ) : (
@@ -658,7 +705,7 @@ function CardParticipante({ bloco }: { bloco: Bloco }) {
             <div className="flex w-full max-w-sm flex-col gap-4">
                 <div className="flex flex-col gap-1">
                     <h3 className="text-lg font-semibold text-primary">{bloco.titulo}</h3>
-                    {bloco.enunciado && <p className="text-sm text-tertiary">{bloco.enunciado}</p>}
+                    {bloco.enunciado && <RichTextView html={bloco.enunciado} className="text-sm text-tertiary" />}
                 </div>
                 {PERGUNTAS_SUS.slice(0, 3).map((p, i) => (
                     <div key={i} className="flex flex-col gap-1.5">

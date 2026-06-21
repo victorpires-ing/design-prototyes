@@ -22,6 +22,7 @@ import { Button } from "@/components/base/buttons/button";
 import { ProgressBarBase } from "@/components/base/progress-indicators/progress-indicators";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
+import { LogoTopo, RichTextView } from "./branding";
 import { carregarClarity, clarityIdentify, clarityTag, pararClarity } from "./clarity";
 import { gravarRun, gravarSessao, lerRun, lerSessao, ouvirRun } from "./run";
 import { marcarFeito, usabilityStore } from "./store";
@@ -123,6 +124,36 @@ export function TestRunnerLayer() {
     useEffect(() => {
         if (bloco?.tipo === "obrigado") finalizar();
     }, [bloco, finalizar]);
+
+    // Autosave parcial: grava a resposta do bloco atual conforme o participante digita/seleciona.
+    useEffect(() => {
+        if (!run || run.preview || !bloco) return;
+        if (bloco.tipo !== "pergunta" && bloco.tipo !== "sus") return;
+        const r = bloco.tipo === "pergunta" ? resposta : susRespostas.map(String);
+        if (!r.some((x) => String(x).trim())) return; // nada inserido ainda
+        const t = setTimeout(() => {
+            registrarEvento({ blocoId: bloco.id, tipo: bloco.tipo, iniciadaEm: run.iniciadaEmBloco, resposta: r, parcial: true });
+        }, 500);
+        return () => clearTimeout(t);
+    }, [run, bloco, resposta, susRespostas, registrarEvento]);
+
+    // Marca abandono ao fechar/recarregar sem ter concluído (autosave do estado parcial já gravado).
+    useEffect(() => {
+        const onSair = () => {
+            if (finalizadaRef.current) return;
+            const atual = lerRun();
+            if (atual?.preview) return;
+            const sessao = lerSessao();
+            if (!sessao || sessao.concluida) return;
+            gravarSessao({ ...sessao, abandonadaEm: new Date().toISOString() });
+        };
+        window.addEventListener("pagehide", onSair);
+        window.addEventListener("beforeunload", onSair);
+        return () => {
+            window.removeEventListener("pagehide", onSair);
+            window.removeEventListener("beforeunload", onSair);
+        };
+    }, []);
 
     /* ------------------------ atividade: sucesso ------------------------ */
 
@@ -240,6 +271,7 @@ export function TestRunnerLayer() {
             <TopLayer>
                 {/* Fundo opaco fixo: o protótipo nunca aparece durante a transição/volta. */}
                 <div className="fixed inset-0 z-[9997] bg-primary" />
+                <LogoTopo logoParceira={run.teste.logoParceira} />
                 {bloco.tipo !== "obrigado" && <BarraProgresso valor={progressoPct} />}
                 <AnimatePresence custom={direcao} initial={false}>
                     {bloco.tipo === "pergunta" ? (
@@ -383,7 +415,7 @@ function Briefing({
                 <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
                     <span className="text-xs font-semibold tracking-wide text-brand-secondary uppercase">Sua tarefa</span>
                     <h2 className="text-xl font-semibold text-primary">{bloco.enunciado}</h2>
-                    {bloco.descricao && <p className="text-sm leading-relaxed text-tertiary">{bloco.descricao}</p>}
+                    {bloco.descricao && <RichTextView html={bloco.descricao} className="text-sm leading-relaxed text-tertiary" />}
                 </div>
                 <Button size="lg" color="primary" onClick={onComecar} className="w-full">
                     Começar
@@ -417,10 +449,13 @@ function TelaPergunta({
     return (
         <Fundo alinhar="start" direcao={direcao}>
             <div className="flex w-full max-w-2xl flex-col gap-6">
-                <h2 className="text-2xl font-semibold text-primary sm:text-3xl">
-                    {bloco.enunciado || "Pergunta"}
-                    {bloco.obrigatoria && <span className="text-error-primary"> *</span>}
-                </h2>
+                <div className="flex flex-col gap-2">
+                    <h2 className="text-2xl font-semibold text-primary sm:text-3xl">
+                        {bloco.enunciado || "Pergunta"}
+                        {bloco.obrigatoria && <span className="text-error-primary"> *</span>}
+                    </h2>
+                    {bloco.descricao && <RichTextView html={bloco.descricao} className="text-base text-tertiary" />}
+                </div>
                 {bloco.formato === "aberta" ? (
                     <input
                         type="text"
@@ -532,7 +567,7 @@ function TelaSus({
             <div className="flex w-full max-w-2xl flex-col gap-6 py-8">
                 <div className="flex flex-col gap-2">
                     <h2 className="text-2xl font-semibold text-primary">{bloco.titulo}</h2>
-                    {bloco.enunciado && <p className="text-sm text-tertiary">{bloco.enunciado}</p>}
+                    {bloco.enunciado && <RichTextView html={bloco.enunciado} className="text-sm text-tertiary" />}
                     <span className="text-sm font-medium text-tertiary">
                         {inicio + 1}–{fim} de {total}
                     </span>
@@ -597,7 +632,7 @@ function TelaObrigado({ bloco, direcao }: { bloco: { titulo?: string; texto?: st
             <div className="flex flex-col items-center gap-4 text-center">
                 <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
                 <h2 className="text-2xl font-semibold text-primary">{bloco.titulo || "Teste concluído"}</h2>
-                <p className="max-w-md text-base whitespace-pre-line text-tertiary">{bloco.texto}</p>
+                {bloco.texto && <RichTextView html={bloco.texto} className="max-w-md text-base text-tertiary" />}
             </div>
         </Fundo>
     );
@@ -606,7 +641,7 @@ function TelaObrigado({ bloco, direcao }: { bloco: { titulo?: string; texto?: st
 /** Indicador de progresso do DS (ProgressBarBase), colado no topo sem margem, em brand-color. */
 function BarraProgresso({ valor }: { valor: number }) {
     return (
-        <div className="fixed inset-x-0 top-0 z-[10000]">
+        <div className="fixed inset-x-0 top-0 z-[10001]">
             <ProgressBarBase value={valor} className="h-1 rounded-none bg-brand-solid/15" progressClassName="rounded-none" />
         </div>
     );
@@ -647,12 +682,13 @@ function Fundo({ children, alinhar = "center", scroll }: { children: React.React
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className={cx("fixed inset-0 z-[9999] flex justify-center bg-primary px-5 sm:px-8", scroll ? "items-start overflow-y-auto" : alinhar === "start" ? "items-center" : "items-center")}
+            className={cx("fixed inset-0 z-[9999] flex justify-center bg-primary px-5 pt-20 sm:px-8", scroll ? "items-start overflow-y-auto" : alinhar === "start" ? "items-center" : "items-center")}
         >
             {children}
         </motion.div>
     );
 }
+
 
 function OverlayCard({ children, fullscreen }: { children: React.ReactNode; fullscreen?: boolean }) {
     return (

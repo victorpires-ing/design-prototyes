@@ -8,6 +8,7 @@ import { Select } from "@/components/base/select/select";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
+import { VIBE_LIST, gradientCss, type VibeId } from "./gradient-families";
 
 export type EventStatus = "venda-ativa" | "soldout-sem-lista" | "soldout-com-lista" | "aguardando-abertura";
 
@@ -37,6 +38,12 @@ export interface EventConfig {
     status: EventStatus;
     /** Datas (chaves ISO) marcadas como esgotadas. */
     esgotadas: string[];
+    /** Família de gradiente (energia) que veste a página. */
+    vibe: VibeId;
+    /** URL de vídeo de fundo do hero (blend duotone). Vazio = animação de palavras. */
+    heroVideoUrl: string;
+    /** URL do banner/pôster. Vazio = pôster padrão. Usado também na cor "From image". */
+    bannerUrl: string;
 }
 
 export const defaultEventConfig: EventConfig = {
@@ -53,6 +60,9 @@ export const defaultEventConfig: EventConfig = {
     lineupComHorario: true,
     status: "venda-ativa",
     esgotadas: [],
+    vibe: "from-image",
+    heroVideoUrl: "",
+    bannerUrl: "",
 };
 
 export const STATUS_LABELS: Record<EventStatus, string> = {
@@ -169,6 +179,13 @@ export function EventConfigSlideout({ isOpen, onClose, config, onChange }: Event
                         {/* Evento */}
                         <Section title="Evento">
                             <Input label="Nome do evento" value={config.nomeEvento} onChange={(v) => set("nomeEvento", v)} />
+                            <Input
+                                label="Banner (URL)"
+                                hint="Imagem do pôster. Vazio usa o padrão. Também alimenta a cor “From image”."
+                                placeholder="https://…/poster.jpg"
+                                value={config.bannerUrl}
+                                onChange={(v) => set("bannerUrl", v)}
+                            />
                             <Select
                                 label="Classificação indicativa"
                                 selectedKey={config.classificacao}
@@ -184,6 +201,36 @@ export function EventConfigSlideout({ isOpen, onClose, config, onChange }: Event
                                             >
                                                 {item.id === "L" ? "L" : item.id}
                                             </span>
+                                            {item.label}
+                                        </span>
+                                    </Select.Item>
+                                )}
+                            </Select>
+                            <Input
+                                label="Vídeo de fundo (YouTube)"
+                                hint="Cole o link do YouTube. O vídeo entra em duotone na família. Vazio usa a animação de palavras."
+                                placeholder="https://www.youtube.com/watch?v=…"
+                                value={config.heroVideoUrl}
+                                onChange={(v) => set("heroVideoUrl", v)}
+                            />
+                        </Section>
+
+                        {/* Energia (família de gradiente) */}
+                        <Section title="Energia do evento">
+                            <p className="-mt-1 text-sm text-tertiary">Define o gradiente que veste a página, conforme o gênero.</p>
+                            <Select
+                                label="Família de gradiente"
+                                selectedKey={config.vibe}
+                                onSelectionChange={(key) => key && set("vibe", key as VibeId)}
+                                items={VIBE_LIST}
+                            >
+                                {(item) => (
+                                    <Select.Item id={item.id} textValue={item.label} supportingText={item.generos}>
+                                        <span className="flex items-center gap-2.5">
+                                            <span
+                                                className="size-5 shrink-0 rounded-full ring-1 ring-border-secondary"
+                                                style={{ backgroundImage: gradientCss(item, 135) }}
+                                            />
                                             {item.label}
                                         </span>
                                     </Select.Item>

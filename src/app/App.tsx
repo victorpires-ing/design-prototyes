@@ -22,6 +22,8 @@ import { Home as FutebolHome } from '../produtos/futebol/landing-pages/pages/hom
 import { PasswordGate } from '../produtos/novo-site/components/PasswordGate';
 import { EventDetails } from '../produtos/novo-site/home/pages/event-details';
 import { Categorias } from '../produtos/novo-site/home/pages/categorias';
+import { Home as NovoSiteHome } from '../produtos/novo-site/home/pages/home';
+import { Busca as NovoSiteBusca } from '../produtos/novo-site/home/pages/busca';
 import { Itens as CatalogoItens } from '../produtos/backstage/catalogo/pages/Itens';
 import { Ingressos as CatalogoIngressos } from '../produtos/backstage/ingressos/pages/Ingressos';
 import { Formulario as IngressosFormulario } from '../produtos/backstage/ingressos/pages/Formulario';
@@ -182,6 +184,8 @@ export default function App() {
         <Route path="/marketplace" element={<MarketplaceConfig />} />
         <Route path="/marketplace/event" element={<SelecaoEAtribuicao />} />
         <Route path="/marketplace/sucesso" element={<MarketplaceSucesso />} />
+        <Route path="/novo-site/home" element={<NovoSiteHome />} />
+        <Route path="/novo-site/home/busca" element={<NovoSiteBusca />} />
         <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />
         <Route path="/novo-site/home/categorias" element={<Categorias />} />
         <Route path="/ingresse-app" element={<IngresseAppHome />} />

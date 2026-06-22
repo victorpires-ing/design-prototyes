@@ -18,7 +18,7 @@ import { CupomModal } from "../components/CupomModal";
 import { SelecaoItensModal, type ItemSelecao } from "../components/SelecaoItensModal";
 import { TermosModal } from "../components/TermosModal";
 import type { ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento, Item, PerguntaEvento, Produto } from "../data/combos";
-import { DEFAULT_CONFIG, decodeConfig } from "../data/config";
+import { DEFAULT_CONFIG, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
 
 const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -53,7 +53,8 @@ export function SelecaoEAtribuicao() {
     const navigate = useNavigate();
     const [params] = useSearchParams();
 
-    const config = useMemo(() => {
+    // Config inicial síncrona: ?cfg= (link longo) → localStorage → DEFAULT.
+    const configInicial = useMemo(() => {
         const raw = params.get("cfg");
         if (raw) {
             const d = decodeConfig(raw);
@@ -70,6 +71,27 @@ export function SelecaoEAtribuicao() {
         }
         return DEFAULT_CONFIG;
     }, [params]);
+
+    const [config, setConfig] = useState<EventConfig>(configInicial);
+    // Link curto (?e=<id>): resolve o cfg no Redis de forma assíncrona.
+    const [carregandoLink, setCarregandoLink] = useState(() => !!params.get("e"));
+    useEffect(() => {
+        const e = params.get("e");
+        if (!e) {
+            setConfig(configInicial);
+            return;
+        }
+        let vivo = true;
+        setCarregandoLink(true);
+        resolverLinkCurto(e).then((c) => {
+            if (!vivo) return;
+            if (c) setConfig(c);
+            setCarregandoLink(false);
+        });
+        return () => {
+            vivo = false;
+        };
+    }, [params, configInicial]);
 
     // Catálogo resolvido por id (ingressos + produtos → Item unificado).
     const itemById = useMemo(() => {
@@ -652,6 +674,16 @@ export function SelecaoEAtribuicao() {
             <div className="flex w-full flex-col gap-4 lg:w-[360px] lg:shrink-0">{grupos.length > 0 && resumoCard}</div>
         </div>
     );
+
+    if (carregandoLink) {
+        return (
+            <MarketplaceLayout title="Carregando…" usuario={usuario ?? undefined}>
+                <div className="flex h-full items-center justify-center py-20">
+                    <span className="size-8 animate-spin rounded-full border-2 border-border-secondary border-t-fg-brand-primary" />
+                </div>
+            </MarketplaceLayout>
+        );
+    }
 
     return (
         <MarketplaceLayout

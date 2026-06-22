@@ -13,7 +13,7 @@ import { cx } from "@/utils/cx";
 import { MarketplaceLayout } from "../../components/MarketplaceLayout";
 import { Slideout } from "../components/Slideout";
 import type { ComboDinamico, ComboFixo, ComboFixoInclui, DataEvento, Ingresso, PerguntaEvento, Produto, TipoPergunta } from "../data/combos";
-import { DEFAULT_CONFIG, buildShareUrl, decodeConfig, encodeConfig, type EventConfig } from "../data/config";
+import { DEFAULT_CONFIG, buildShortShareUrl, decodeConfig, encodeConfig, type EventConfig } from "../data/config";
 
 const STORAGE_KEY = "marketplace:lastConfig:v2";
 const uid = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : `id-${Math.round(performance.now())}`);
@@ -71,15 +71,34 @@ export function Config() {
     const patch = (p: Partial<EventConfig>) => setCfg((c) => ({ ...c, ...p }));
     const itensVinculaveis = useMemo(() => [...cfg.ingressos, ...cfg.produtos].map((x) => ({ id: x.id, nome: x.nome })), [cfg.ingressos, cfg.produtos]);
 
-    const url = buildShareUrl(cfg);
-    const copiar = async () => {
+    const [linkCurto, setLinkCurto] = useState("");
+    const [gerando, setGerando] = useState(false);
+    // O link curto vira obsoleto quando o config muda; o usuário gera de novo quando quiser.
+    useEffect(() => setLinkCurto(""), [cfg]);
+
+    // Só grava no Redis quando o usuário pede explicitamente (evita gerar vários durante a edição).
+    const gerarLink = async () => {
+        setGerando(true);
         try {
-            await navigator.clipboard.writeText(url);
+            const link = await buildShortShareUrl(cfg);
+            setLinkCurto(link);
+            toast.success("Link gerado");
+        } catch {
+            toast.error("Não foi possível gerar o link");
+        } finally {
+            setGerando(false);
+        }
+    };
+    const copiar = async () => {
+        if (!linkCurto) return;
+        try {
+            await navigator.clipboard.writeText(linkCurto);
             toast.success("Link copiado");
         } catch {
             toast.error("Não foi possível copiar");
         }
     };
+    // Preview local — abre a seleção com o config atual (link longo, sem gravar no banco).
     const abrirSelecao = () => navigate(`/marketplace/event?cfg=${encodeURIComponent(encodeConfig(cfg))}`);
     const restaurar = () => {
         setCfg(structuredClone(DEFAULT_CONFIG));
@@ -309,13 +328,20 @@ export function Config() {
                 <div className="flex flex-col gap-3">
                     <div className="sticky top-6 flex flex-col gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
                         <h3 className="text-sm font-semibold text-primary">Link compartilhável</h3>
-                        <p className="text-sm text-tertiary">Suas alterações são salvas automaticamente neste navegador. O link abre a seleção com esta configuração.</p>
-                        <textarea readOnly value={url} rows={4} className="w-full resize-none rounded-lg bg-secondary px-3 py-2 font-mono text-sm break-all text-secondary ring-1 ring-border-secondary outline-hidden" />
-                        <Button size="sm" color="secondary" iconLeading={Copy01} onClick={copiar}>
+                        <p className="text-sm text-tertiary">Suas alterações são salvas automaticamente neste navegador. Gere o link curto para compartilhar esta configuração.</p>
+                        {linkCurto ? (
+                            <textarea readOnly value={linkCurto} rows={2} className="w-full resize-none rounded-lg bg-secondary px-3 py-2 font-mono text-sm break-all text-secondary ring-1 ring-border-secondary outline-hidden" />
+                        ) : (
+                            <span className="rounded-lg bg-secondary px-3 py-2 text-sm text-tertiary ring-1 ring-border-secondary">Nenhum link gerado ainda.</span>
+                        )}
+                        <Button size="sm" color="primary" iconLeading={LinkExternal01} onClick={gerarLink} isLoading={gerando}>
+                            {linkCurto ? "Gerar novo link" : "Gerar link"}
+                        </Button>
+                        <Button size="sm" color="secondary" iconLeading={Copy01} onClick={copiar} isDisabled={!linkCurto}>
                             Copiar link
                         </Button>
-                        <Button size="sm" color="primary" iconLeading={LinkExternal01} onClick={abrirSelecao}>
-                            Abrir seleção
+                        <Button size="sm" color="secondary" onClick={abrirSelecao}>
+                            Abrir seleção (preview)
                         </Button>
                         <Button size="sm" color="link-gray" onClick={restaurar}>
                             Restaurar exemplo

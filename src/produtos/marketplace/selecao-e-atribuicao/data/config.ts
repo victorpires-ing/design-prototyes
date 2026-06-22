@@ -125,3 +125,36 @@ export function buildShareUrl(cfg: EventConfig): string {
     const base = typeof window !== "undefined" ? window.location.origin : "";
     return `${base}/marketplace/event?cfg=${encodeURIComponent(encodeConfig(cfg))}`;
 }
+
+/**
+ * Cria um link curto (id derivado do hash do conteúdo) via /api/links e Redis.
+ * Idempotente: o mesmo config retorna o mesmo id. Cai no link longo (?cfg=) se a API falhar.
+ */
+export async function buildShortShareUrl(cfg: EventConfig): Promise<string> {
+    const base = typeof window !== "undefined" ? window.location.origin : "";
+    try {
+        const data = encodeConfig(cfg);
+        const res = await fetch("/api/links", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ data }),
+        });
+        if (!res.ok) throw new Error("falha ao criar link");
+        const { id } = (await res.json()) as { id: string };
+        return `${base}/marketplace/event?e=${id}`;
+    } catch {
+        return buildShareUrl(cfg);
+    }
+}
+
+/** Resolve um link curto (?e=<id>) buscando o cfg no Redis. */
+export async function resolverLinkCurto(id: string): Promise<EventConfig | null> {
+    try {
+        const res = await fetch(`/api/links?id=${encodeURIComponent(id)}`);
+        if (!res.ok) return null;
+        const { data } = (await res.json()) as { data?: string };
+        return data ? decodeConfig(data) : null;
+    } catch {
+        return null;
+    }
+}

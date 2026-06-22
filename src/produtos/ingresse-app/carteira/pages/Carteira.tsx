@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ChevronRight, Ticket01, Ticket02 } from "@untitledui/icons";
+import type { FC } from "react";
+import { ChevronRight, ClockRewind, Ticket01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import { AppShell } from "../../components/AppShell";
 import { StatusBar } from "../../components/StatusBar";
@@ -104,7 +105,7 @@ export function Carteira() {
                 {/* Tabs */}
                 <div className="flex px-5">
                     <TabButton icon={Ticket01} label="Vem aí" active={tab === "vem-ai"} onClick={() => setTab("vem-ai")} />
-                    <TabButton icon={Ticket02} label="Passados" active={tab === "passados"} onClick={() => setTab("passados")} />
+                    <TabButton icon={ClockRewind} label="Passados" active={tab === "passados"} onClick={() => setTab("passados")} />
                 </div>
                 <div className="h-px bg-border-secondary" />
 
@@ -148,7 +149,7 @@ export function Carteira() {
     );
 }
 
-const TabButton = ({ icon: Icon, label, active, onClick }: { icon: typeof Ticket01; label: string; active: boolean; onClick: () => void }) => (
+const TabButton = ({ icon: Icon, label, active, onClick }: { icon: FC<{ className?: string }>; label: string; active: boolean; onClick: () => void }) => (
     <button
         type="button"
         onClick={onClick}

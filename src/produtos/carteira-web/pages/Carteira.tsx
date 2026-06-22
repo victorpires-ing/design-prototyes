@@ -1,9 +1,11 @@
+import type { FC } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ArrowLeft, Calendar, MarkerPin01, Monitor01, Package, Phone01, Ticket01 } from "@untitledui/icons";
+import { ArrowLeft, Calendar, ChevronRight, ClockRewind, FilterLines, MarkerPin01, Monitor01, Package, Phone01, Ticket01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { cx } from "@/utils/cx";
-import { IngressosModal } from "../components/IngressosModal";
+import { DesktopDetalhe, MobileComboView } from "../components/IngressosModal";
+import { SAO_SILVESTRE } from "../data/sao-silvestre";
 import { isTransferido } from "../data/transfer-store";
 
 type Tab = "proximos" | "anteriores";
@@ -20,6 +22,8 @@ interface EventoCard {
     gradient?: string;
     /** Datas do evento formatadas — ex.: "10 e 31, Dez 2026". */
     datas: string;
+    /** Mês/ano para agrupar na lista mobile (estilo app). */
+    mesAno: string;
     /** Id do combo (quando o evento é um combo) — habilita a badge "Combo" e o estado transferido. */
     comboId?: string;
 }
@@ -35,6 +39,7 @@ const PROXIMOS: EventoCard[] = [
         qtd: 1,
         gradient: "linear-gradient(135deg,#FF4D00 0%,#1d4ed8 100%)",
         datas: "30 de Dez 2026",
+        mesAno: "Dezembro 2026",
         comboId: "combo-sao-silvestre",
     },
 ];
@@ -50,6 +55,7 @@ const ANTERIORES: EventoCard[] = [
         qtd: 2,
         gradient: "linear-gradient(135deg,#db2777 0%,#7c3aed 100%)",
         datas: "28, Mar 2025",
+        mesAno: "Março 2025",
     },
 ];
 
@@ -66,8 +72,8 @@ function CarteiraContent({ onCardClick }: { onCardClick: () => void }) {
 
                 {/* Tabs */}
                 <div className="mt-6 flex border-b border-secondary">
-                    <TabButton label="Próximos" active={tab === "proximos"} onClick={() => setTab("proximos")} />
-                    <TabButton label="Anteriores" active={tab === "anteriores"} onClick={() => setTab("anteriores")} />
+                    <TabButton icon={Ticket01} label="Vem aí" active={tab === "proximos"} onClick={() => setTab("proximos")} />
+                    <TabButton icon={ClockRewind} label="Passados" active={tab === "anteriores"} onClick={() => setTab("anteriores")} />
                 </div>
 
                 {/* Lista de cards — largura fixa (mesmo tamanho do mobile) */}
@@ -81,16 +87,17 @@ function CarteiraContent({ onCardClick }: { onCardClick: () => void }) {
     );
 }
 
-const TabButton = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
+const TabButton = ({ icon: Icon, label, active, onClick }: { icon: FC<{ className?: string }>; label: string; active: boolean; onClick: () => void }) => (
     <button
         type="button"
         onClick={onClick}
         className={cx(
-            "-mb-px border-b-2 px-1 pb-3 text-sm font-semibold transition duration-100 ease-linear",
+            "-mb-px flex items-center gap-2 border-b-2 px-1 pb-3 text-sm font-semibold transition duration-100 ease-linear",
             active ? "border-fg-brand-primary text-brand-secondary" : "border-transparent text-tertiary hover:text-secondary",
-            label === "Anteriores" && "ml-8",
+            label === "Passados" && "ml-8",
         )}
     >
+        <Icon className={cx("size-5", active ? "text-fg-brand-primary" : "text-fg-quaternary")} />
         {label}
     </button>
 );
@@ -102,64 +109,224 @@ const EventoCardView = ({ card, past, onClick }: { card: EventoCard; past?: bool
         <button
             type="button"
             onClick={onClick}
-            className="relative flex aspect-[4/3] w-[360px] max-w-full flex-col overflow-hidden rounded-2xl text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:-translate-y-0.5 hover:shadow-lg"
+            className="flex w-[360px] max-w-full flex-col overflow-hidden rounded-2xl bg-primary text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:-translate-y-0.5 hover:shadow-lg"
         >
-            {escuro ? (
-                <div className={cx("absolute inset-0 transition", transferido && "grayscale")} style={{ background: card.gradient }} />
-            ) : (
-                <div className="absolute inset-0 bg-secondary" />
-            )}
-            {/* Inscrição transferida: esmaece o card para parecer inativa */}
-            {transferido && <div className="absolute inset-0 bg-primary/40" />}
-            {!escuro && (
-                <div className="absolute inset-0 flex items-center justify-center text-quaternary">
-                    <Package className="size-24" aria-hidden="true" />
-                </div>
-            )}
-
-            <div className="absolute inset-x-4 top-4 flex flex-wrap items-center gap-1.5">
-                <div className="flex items-center gap-1.5 rounded-lg bg-black/70 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur">
-                    <Ticket01 className="size-4" />
-                    {card.qtd} {card.qtd === 1 ? "inscrição" : "inscrições"}
-                </div>
-                {past ? (
-                    <Badge size="sm" color="gray" type="pill-color">
-                        Finalizado
-                    </Badge>
-                ) : transferido ? (
-                    <Badge size="sm" color="blue" type="pill-color">
-                        Transferido
-                    </Badge>
+            {/* Foto do evento (em cima) */}
+            <div className="relative aspect-[16/9] w-full shrink-0">
+                {escuro ? (
+                    <div className={cx("absolute inset-0", transferido && "grayscale")} style={{ background: card.gradient }} />
                 ) : (
-                    <Badge size="sm" color="success" type="pill-color">
-                        Pronto para uso
-                    </Badge>
+                    <div className="absolute inset-0 flex items-center justify-center bg-secondary text-quaternary">
+                        <Package className="size-16" aria-hidden="true" />
+                    </div>
                 )}
+                {/* Inscrição transferida: esmaece a foto */}
+                {transferido && <div className="absolute inset-0 bg-primary/40" />}
+
+                {/* Tag de quantidade + badge de status (topo direito, sobre a imagem) */}
+                <div className="absolute top-3 right-3 flex flex-wrap items-center justify-end gap-1.5">
+                    <div className="flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
+                        <Ticket01 className="size-3.5" />
+                        {card.qtd} {card.qtd === 1 ? "inscrição" : "inscrições"}
+                    </div>
+                    {past ? (
+                        <Badge size="sm" color="gray" type="pill-color">
+                            Finalizado
+                        </Badge>
+                    ) : transferido ? (
+                        <Badge size="sm" color="blue" type="pill-color">
+                            Transferido
+                        </Badge>
+                    ) : (
+                        <Badge size="sm" color="success" type="pill-color">
+                            Pronto para uso
+                        </Badge>
+                    )}
+                </div>
             </div>
 
-            <div className="absolute inset-x-3 bottom-3">
-                <div className={cx("rounded-xl p-3 backdrop-blur", escuro ? "bg-black/75 text-white" : "bg-primary text-primary ring-1 ring-border-secondary")}>
-                    <p className="truncate text-base font-bold">{card.title}</p>
-                    <p className={cx("mt-1.5 flex items-center gap-1.5 text-sm", escuro ? "text-white/80" : "text-tertiary")}>
-                        <Calendar className="size-4 shrink-0" />
-                        {card.datas}
-                    </p>
-                    <p className={cx("mt-1 flex items-center gap-1.5 text-sm", escuro ? "text-white/80" : "text-tertiary")}>
-                        <MarkerPin01 className="size-4 shrink-0" />
-                        <span className="truncate">{card.local}</span>
-                    </p>
-                </div>
+            {/* Informações (embaixo, fundo branco) */}
+            <div className="flex flex-col gap-1.5 p-4">
+                <p className="truncate text-base font-bold text-primary">{card.title}</p>
+                <p className="flex items-center gap-1.5 text-sm text-tertiary">
+                    <Calendar className="size-4 shrink-0 text-fg-quaternary" />
+                    {card.datas}
+                </p>
+                <p className="flex items-center gap-1.5 text-sm text-tertiary">
+                    <MarkerPin01 className="size-4 shrink-0 text-fg-quaternary" />
+                    <span className="truncate">{card.local}</span>
+                </p>
             </div>
         </button>
     );
 };
+
+/* ----------- Mobile: fluxo igual ao app (lista de eventos → ingressos) ----------- */
+
+const MobileTab = ({ icon: Icon, label, active, onClick }: { icon: FC<{ className?: string }>; label: string; active: boolean; onClick: () => void }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className={cx(
+            "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 pb-3 text-sm font-semibold transition duration-100 ease-linear",
+            active ? "border-fg-brand-primary text-brand-secondary" : "border-transparent text-tertiary",
+        )}
+    >
+        <Icon className={cx("size-5", active ? "text-fg-brand-primary" : "text-fg-quaternary")} />
+        {label}
+    </button>
+);
+
+/** Lista de eventos agrupada por mês (estilo app), só com a São Silvestre. */
+function MobileEventList({ onEventClick }: { onEventClick: (card: EventoCard) => void }) {
+    const [tab, setTab] = useState<Tab>("proximos");
+    // Só a São Silvestre no mobile.
+    const eventos = tab === "proximos" ? PROXIMOS.filter((e) => e.comboId === "combo-sao-silvestre") : [];
+    const grupos = [...new Set(eventos.map((e) => e.mesAno))].map((mes) => ({ mes, eventos: eventos.filter((e) => e.mesAno === mes) }));
+
+    return (
+        <div className="scrollbar-hide flex-1 overflow-y-auto bg-secondary">
+            <h1 className="px-5 pt-6 pb-5 text-xl font-bold text-primary">Carteira</h1>
+
+            <div className="flex px-5">
+                <MobileTab icon={Ticket01} label="Vem aí" active={tab === "proximos"} onClick={() => setTab("proximos")} />
+                <MobileTab icon={ClockRewind} label="Passados" active={tab === "anteriores"} onClick={() => setTab("anteriores")} />
+            </div>
+            <div className="h-px bg-border-secondary" />
+
+            {grupos.length === 0 && <p className="px-5 pt-10 text-center text-sm text-tertiary">Nenhuma inscrição por aqui.</p>}
+
+            <div className="flex flex-col gap-2 px-5 pt-5 pb-6">
+                {grupos.map((grupo) => (
+                    <section key={grupo.mes} className="pt-2">
+                        <h2 className="pb-3 text-md font-bold text-primary">{grupo.mes}</h2>
+                        <div className="flex flex-col gap-4">
+                            {grupo.eventos.map((evento) => (
+                                <button
+                                    key={evento.id}
+                                    type="button"
+                                    onClick={() => onEventClick(evento)}
+                                    className="flex items-center gap-4 rounded-2xl bg-primary p-3 text-left ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                                >
+                                    <div className="size-24 shrink-0 rounded-xl" style={{ background: evento.gradient }} />
+                                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                        <p className="text-sm font-bold text-primary">{evento.title}</p>
+                                        <p className="text-sm font-medium text-secondary">{evento.datas}</p>
+                                        <p className="text-sm text-tertiary">{evento.local}</p>
+                                        <p className="text-sm text-tertiary">
+                                            {evento.qtd} {evento.qtd === 1 ? "inscrição" : "inscrições"}
+                                        </p>
+                                    </div>
+                                    <ChevronRight className="size-5 shrink-0 text-fg-quaternary" />
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/** Tela intermediária com a listagem de ingressos do evento (estilo app), só SS. */
+function MobileIngressos({ card, onBack, onOpen }: { card: EventoCard; onBack: () => void; onOpen: () => void }) {
+    const combo = SAO_SILVESTRE.combos[0];
+    const transferido = !!card.comboId && isTransferido(card.comboId);
+
+    return (
+        <div className="scrollbar-hide flex-1 overflow-y-auto bg-secondary">
+            {/* Top bar */}
+            <div className="flex items-center justify-between px-5 pt-6">
+                <button
+                    type="button"
+                    aria-label="Voltar"
+                    onClick={onBack}
+                    className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                >
+                    <ArrowLeft className="size-5" />
+                </button>
+                <button
+                    type="button"
+                    aria-label="Filtrar"
+                    className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                >
+                    <FilterLines className="size-5" />
+                </button>
+            </div>
+
+            <h1 className="px-5 pt-4 text-xl font-bold text-primary">Ingressos</h1>
+
+            {/* Card do evento */}
+            <div className="px-5 pt-5">
+                <div className="flex gap-3 rounded-2xl bg-primary p-3 ring-1 ring-border-secondary">
+                    <div className="size-24 shrink-0 rounded-xl" style={{ background: card.gradient }} />
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                        <p className="text-sm font-bold text-primary">{card.title}</p>
+                        <p className="text-sm font-medium text-secondary">{card.datas}</p>
+                        <div className="flex items-end justify-between gap-2">
+                            <p className="text-sm text-tertiary">{card.local}</p>
+                            <button
+                                type="button"
+                                aria-label="Ver no mapa"
+                                className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                            >
+                                <MarkerPin01 className="size-5" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Sessão */}
+            <div className="flex items-center justify-between px-5 pt-6">
+                <h2 className="text-sm font-semibold text-primary">{card.datas}</h2>
+                <span className="flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm font-medium text-secondary ring-1 ring-border-secondary">1</span>
+            </div>
+
+            {/* Inscrição (abre o detalhe) */}
+            <div className="flex flex-col gap-4 px-5 pt-3 pb-6">
+                <button
+                    type="button"
+                    onClick={onOpen}
+                    className="flex w-full items-start gap-3 rounded-2xl bg-primary p-4 text-left ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                >
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-bold text-primary">{combo.nome}</p>
+                            <ChevronRight className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
+                        </div>
+                        <p className="-mt-1 text-sm text-tertiary">1 inscrição</p>
+                        <p className="flex items-center gap-1.5 text-sm text-secondary">
+                            <Calendar className="size-4 shrink-0 text-fg-quaternary" />
+                            {combo.dataEvento}
+                        </p>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                            {transferido ? (
+                                <Badge size="md" color="blue" type="pill-color">
+                                    Transferido
+                                </Badge>
+                            ) : (
+                                <Badge size="md" color="success" type="pill-color">
+                                    Pronto para uso
+                                </Badge>
+                            )}
+                        </div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    );
+}
 
 /* --------------------- Página + toggle de viewport --------------------- */
 
 export function Carteira() {
     const navigate = useNavigate();
     const [viewport, setViewport] = useState<Viewport>("desktop");
-    const [modalOpen, setModalOpen] = useState(false);
+    // Desktop: lista de eventos → tela de detalhe da inscrição
+    const [desktopDetalhe, setDesktopDetalhe] = useState(false);
+    // Mobile espelha o app: lista de eventos → listagem de ingressos → ingresso (detalhe)
+    const [mobileScreen, setMobileScreen] = useState<"lista" | "ingressos" | "detalhe">("lista");
 
     const seg = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear";
 
@@ -194,23 +361,37 @@ export function Carteira() {
             <div className={cx(viewport === "mobile" ? "pt-16 pb-10 sm:px-4" : "pt-14")}>
                 <div
                     className={cx(
-                        "mx-auto bg-primary",
+                        "mx-auto",
                         viewport === "mobile"
-                            ? "w-full sm:w-[390px] sm:max-w-full sm:overflow-hidden sm:rounded-3xl sm:shadow-xl sm:ring-1 sm:ring-border-secondary"
-                            : "w-full",
+                            ? "relative flex h-[calc(100dvh-6.5rem)] w-full flex-col overflow-hidden bg-secondary sm:h-[820px] sm:max-h-[85vh] sm:w-[390px] sm:max-w-full sm:rounded-3xl sm:shadow-xl sm:ring-1 sm:ring-border-secondary"
+                            : "w-full bg-primary",
                     )}
                 >
-                    <CarteiraContent onCardClick={() => setModalOpen(true)} />
+                    {viewport === "desktop" ? (
+                        desktopDetalhe ? (
+                            <DesktopDetalhe
+                                onBack={() => setDesktopDetalhe(false)}
+                                onTransfer={(combo) => navigate("/carteira-web/transferir", { state: { viewport, comboId: combo.id } })}
+                            />
+                        ) : (
+                            <CarteiraContent onCardClick={() => setDesktopDetalhe(true)} />
+                        )
+                    ) : mobileScreen === "lista" ? (
+                        <MobileEventList onEventClick={() => setMobileScreen("ingressos")} />
+                    ) : mobileScreen === "ingressos" ? (
+                        <MobileIngressos card={PROXIMOS[0]} onBack={() => setMobileScreen("lista")} onOpen={() => setMobileScreen("detalhe")} />
+                    ) : (
+                        <MobileComboView
+                            ev={SAO_SILVESTRE}
+                            combo={SAO_SILVESTRE.combos[0]}
+                            titular={SAO_SILVESTRE.titular}
+                            cpf={SAO_SILVESTRE.cpf}
+                            onClose={() => setMobileScreen("ingressos")}
+                            onTransfer={(combo) => navigate("/carteira-web/transferir", { state: { viewport, comboId: combo.id } })}
+                        />
+                    )}
                 </div>
             </div>
-
-            {modalOpen && (
-                <IngressosModal
-                    onClose={() => setModalOpen(false)}
-                    compact={viewport === "mobile"}
-                    onTransfer={(combo) => navigate("/carteira-web/transferir", { state: { viewport, comboId: combo.id } })}
-                />
-            )}
         </div>
     );
 }

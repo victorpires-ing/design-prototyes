@@ -46,7 +46,7 @@ function CircleAction({
 /* ----------------------------------------------------------------------------
  * Mobile: tela de ingresso no formato do app (card em formato de ingresso).
  * -------------------------------------------------------------------------- */
-function MobileComboView({
+export function MobileComboView({
     ev,
     combo,
     titular,
@@ -190,6 +190,23 @@ function MobileComboView({
                             </div>
                         </div>
 
+                        {/* Respostas do formulário (preenchido na compra) */}
+                        {ev.questionario.length > 0 && (
+                            <div>
+                                <div className="flex items-center gap-2 pb-3">
+                                    <ClipboardCheck className="size-5 text-brand-secondary" />
+                                    <h2 className="text-md font-bold text-primary">Respostas do formulário</h2>
+                                </div>
+                                <div className="divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
+                                    {ev.questionario.map((q) => (
+                                        <div key={q.pergunta} className="p-4">
+                                            <p className="text-sm font-semibold text-primary">{q.pergunta}</p>
+                                            <p className="mt-0.5 text-sm text-tertiary">{q.resposta}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
@@ -371,6 +388,51 @@ export function IngressosModal({ onClose, compact = false, onTransfer }: { onClo
                         ))}
                     </div>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+/* ----------------------------------------------------------------------------
+ * Desktop: detalhe da inscrição como TELA (mesma estrutura do modal, sem overlay).
+ * -------------------------------------------------------------------------- */
+export function DesktopDetalhe({ onBack, onTransfer }: { onBack: () => void; onTransfer?: (combo: Combo) => void }) {
+    const ev = SAO_SILVESTRE;
+    return (
+        <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
+            <button
+                type="button"
+                onClick={onBack}
+                className="mb-6 flex items-center gap-1.5 text-sm font-medium text-tertiary transition duration-100 ease-linear hover:text-secondary"
+            >
+                <ArrowLeft className="size-4" />
+                Voltar
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-4">
+                <div className="size-20 shrink-0 rounded-xl" style={{ background: ev.gradient }} />
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-lg leading-tight font-bold text-primary">
+                        Sua inscrição para <span className="font-extrabold">{ev.title}</span>
+                    </h2>
+                    <p className="mt-1 text-sm text-tertiary">{ev.local}</p>
+                </div>
+            </div>
+
+            {/* Inscrição (mesma estrutura do modal) */}
+            <div className="mt-8 flex flex-col gap-4">
+                {ev.combos.map((c) => (
+                    <ComboCard
+                        key={c.id}
+                        combo={c}
+                        titular={ev.titular}
+                        cpf={ev.cpf}
+                        questionario={ev.questionario}
+                        compact={false}
+                        onTransfer={() => onTransfer?.(c)}
+                    />
+                ))}
             </div>
         </div>
     );

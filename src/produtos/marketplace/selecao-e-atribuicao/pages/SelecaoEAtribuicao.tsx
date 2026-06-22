@@ -24,6 +24,14 @@ const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", curren
 
 const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
+/** Máscara de data DD/MM/AAAA a partir de dígitos (melhor no mobile que o seletor nativo). */
+const maskData = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 8);
+    if (d.length <= 2) return d;
+    if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+    return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+};
+
 const MESES_EXT = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const dataPorExtenso = (d: DataEvento) => (d.iso ? `${+d.iso.slice(8, 10)} de ${MESES_EXT[+d.iso.slice(5, 7) - 1]} de ${d.iso.slice(0, 4)}` : `${d.dia} ${d.mes} ${d.ano}`);
 
@@ -1200,8 +1208,8 @@ function CampoPergunta({ pergunta, valor, onChange }: { pergunta: PerguntaEvento
         </span>
     );
 
-    if (tipo === "numero") return <Input size="md" type="number" label={titulo} isRequired={obrigatoria} placeholder="0" value={valor} onChange={onChange} />;
-    if (tipo === "data") return <Input size="md" type="date" label={titulo} isRequired={obrigatoria} value={valor} onChange={onChange} />;
+    if (tipo === "numero") return <Input size="md" type="text" inputMode="numeric" label={titulo} isRequired={obrigatoria} placeholder="0" value={valor} onChange={(v: string) => onChange(v.replace(/\D/g, ""))} />;
+    if (tipo === "data") return <Input size="md" type="text" inputMode="numeric" label={titulo} isRequired={obrigatoria} placeholder="DD/MM/AAAA" value={valor} onChange={(v: string) => onChange(maskData(v))} />;
     if (tipo === "dropdown")
         return (
             <label className="flex flex-col gap-1.5">
@@ -1270,26 +1278,27 @@ function PerguntasModal({
         <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable>
             <Modal className="sm:max-w-[480px]">
                 <Dialog>
-                    <div className="flex max-h-[85vh] w-full flex-col overflow-clip rounded-2xl bg-primary shadow-xl ring-1 ring-border-secondary">
-                    <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-5 pb-4">
-                        <div className="flex flex-col gap-0.5">
-                            <h2 className="text-lg font-semibold text-primary">Questionário do atleta</h2>
-                            <p className="text-sm text-tertiary">{titulo}</p>
+                    {/* Mobile: rolagem única (overlay do DS); footer no fim. Desktop: footer fixo + corpo rolável. */}
+                    <div className="flex w-full flex-col rounded-2xl bg-primary shadow-xl ring-1 ring-border-secondary sm:max-h-[85dvh] sm:overflow-clip">
+                        <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-5 pb-4">
+                            <div className="flex flex-col gap-0.5">
+                                <h2 className="text-lg font-semibold text-primary">Questionário do atleta</h2>
+                                <p className="text-sm text-tertiary">{titulo}</p>
+                            </div>
+                            <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
                         </div>
-                        <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
-                    </div>
 
-                    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-2">
-                        {perguntas.map((p) => (
-                            <CampoPergunta key={p.id} pergunta={p} valor={getResposta(p.id)} onChange={(v) => onResposta(p.id, v)} />
-                        ))}
-                    </div>
+                        <div className="flex flex-col gap-4 px-6 pb-2 sm:min-h-0 sm:flex-1 sm:overflow-y-auto">
+                            {perguntas.map((p) => (
+                                <CampoPergunta key={p.id} pergunta={p} valor={getResposta(p.id)} onChange={(v) => onResposta(p.id, v)} />
+                            ))}
+                        </div>
 
-                    <div className="flex shrink-0 justify-end border-t border-secondary px-6 py-4">
-                        <Button size="md" color="primary" isDisabled={!obrigatoriasOk} onClick={onClose}>
-                            Concluir
-                        </Button>
-                    </div>
+                        <div className="flex shrink-0 justify-end border-t border-secondary px-6 py-4">
+                            <Button size="md" color="primary" isDisabled={!obrigatoriasOk} onClick={onClose}>
+                                Concluir
+                            </Button>
+                        </div>
                     </div>
                 </Dialog>
             </Modal>

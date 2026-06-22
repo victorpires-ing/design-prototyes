@@ -42,6 +42,12 @@ const maskCPF = (v: string) => {
     if (d.length > 3) return `${d.slice(0, 3)}.${d.slice(3)}`;
     return d;
 };
+const maskData = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 8);
+    if (d.length <= 2) return d;
+    if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+    return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+};
 
 function Marca({ logoEvento }: { logoEvento?: string }) {
     return (
@@ -210,10 +216,12 @@ export function LoginModal({ isOpen, onClose, logoEvento, onSucesso }: LoginModa
                             <label className="flex flex-col gap-1.5">
                                 <span className="text-sm font-medium text-secondary">Data de nascimento</span>
                                 <input
-                                    type="date"
+                                    type="text"
+                                    inputMode="numeric"
+                                    placeholder="DD/MM/AAAA"
                                     value={nascimento}
-                                    onChange={(e) => setNascimento(e.target.value)}
-                                    className="h-11 w-full rounded-lg bg-primary px-3.5 text-sm text-primary outline-none ring-1 ring-border-primary transition focus:ring-2 focus:ring-brand"
+                                    onChange={(e) => setNascimento(maskData(e.target.value))}
+                                    className="h-11 w-full rounded-lg bg-primary px-3.5 text-sm text-primary outline-none ring-1 ring-border-primary transition placeholder:text-placeholder focus:ring-2 focus:ring-brand"
                                 />
                             </label>
                             <Button size="lg" color="primary" className="w-full" isDisabled={!cadastroOk} onClick={() => onSucesso(nome.trim())}>

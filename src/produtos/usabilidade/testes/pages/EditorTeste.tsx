@@ -556,36 +556,36 @@ function ConfigAtividade({
                                 </div>
                             )}
                             {ativo && tipo === "auto" && (
-                                <div className="mt-1 ml-6 flex flex-col gap-4 rounded-lg bg-primary p-3.5 ring-1 ring-border-secondary">
-                                    <div className="flex flex-col gap-2">
-                                        <span className="text-xs font-medium text-secondary">Quando mostrar a caixa</span>
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => patch({ declaracaoApos: 0 })}
-                                                className={cx("flex-1 rounded-lg p-2 text-xs font-semibold ring-1 ring-inset transition-colors", bloco.declaracaoApos === 0 ? "bg-secondary text-primary ring-brand" : "text-secondary ring-border-secondary hover:bg-primary_hover")}
-                                            >
-                                                Sempre em tela
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => patch({ declaracaoApos: bloco.declaracaoApos > 0 ? bloco.declaracaoApos : 10 })}
-                                                className={cx("flex-1 rounded-lg p-2 text-xs font-semibold ring-1 ring-inset transition-colors", bloco.declaracaoApos > 0 ? "bg-secondary text-primary ring-brand" : "text-secondary ring-border-secondary hover:bg-primary_hover")}
-                                            >
-                                                Exibir após…
-                                            </button>
-                                        </div>
-                                        {bloco.declaracaoApos > 0 && (
-                                            <div className="flex items-center gap-2">
-                                                <Input size="sm" type="number" value={String(bloco.declaracaoApos)} onChange={(v) => patch({ declaracaoApos: Math.max(1, Number(v) || 1) })} className="w-20" />
-                                                <span className="text-xs text-tertiary">segundos após começar</span>
-                                            </div>
-                                        )}
+                                <div className="mt-1 ml-6 flex flex-col gap-2 rounded-lg bg-primary p-3.5 ring-1 ring-border-secondary">
+                                    <span className="text-xs font-medium text-secondary">Quando mostrar a barra "Concluir tarefa"</span>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => patch({ declaracaoApos: 0 })}
+                                            className={cx("flex-1 rounded-lg p-2 text-xs font-semibold ring-1 ring-inset transition-colors", bloco.declaracaoApos === 0 ? "bg-secondary text-primary ring-brand" : "text-secondary ring-border-secondary hover:bg-primary_hover")}
+                                        >
+                                            Sempre em tela
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => patch({ declaracaoApos: bloco.declaracaoApos > 0 ? bloco.declaracaoApos : 10 })}
+                                            className={cx("flex-1 rounded-lg p-2 text-xs font-semibold ring-1 ring-inset transition-colors", bloco.declaracaoApos > 0 ? "bg-secondary text-primary ring-brand" : "text-secondary ring-border-secondary hover:bg-primary_hover")}
+                                        >
+                                            Exibir após…
+                                        </button>
                                     </div>
-                                    <label className="flex cursor-pointer items-center justify-between gap-3">
-                                        <span className="text-sm text-primary">Pedir justificativa ao desistir</span>
-                                        <Toggle size="sm" isSelected={bloco.pedirJustificativaDesistencia} onChange={(v) => patch({ pedirJustificativaDesistencia: v })} />
-                                    </label>
+                                    {bloco.declaracaoApos > 0 && (
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                value={String(bloco.declaracaoApos)}
+                                                onChange={(e) => patch({ declaracaoApos: Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 1) })}
+                                                className="w-20 rounded-lg bg-primary px-3 py-2 text-sm text-primary ring-1 ring-border-primary outline-none focus:ring-2 focus:ring-brand"
+                                            />
+                                            <span className="text-sm text-tertiary">segundos após começar</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

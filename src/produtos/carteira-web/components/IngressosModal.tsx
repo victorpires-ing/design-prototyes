@@ -6,6 +6,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { cx } from "@/utils/cx";
 import googleWalletBtn from "../assets/view-in-google-wallet-svg/pt-BR_view_in_wallet_wallet-button.svg";
 import { FakeQR } from "./FakeQR";
+import { GradientFill } from "./GradientFill";
 import { Zigzag } from "./Zigzag";
 import { SAO_SILVESTRE, type Combo, type ComboItem, type EventoSS, type Resposta } from "../data/sao-silvestre";
 import { getTransferencia } from "../data/transfer-store";
@@ -295,7 +296,9 @@ function MobileItem({ item }: { item: ComboItem }) {
                 )}
 
                 {item.gradient ? (
-                    <div className="mt-3 h-44 w-full rounded-xl" style={{ background: item.gradient }} />
+                    <div className="mt-3 h-44 w-full overflow-hidden rounded-xl">
+                        <GradientFill gradient={item.gradient} />
+                    </div>
                 ) : (
                     item.imagem && <img src={item.imagem} alt={item.nome} className="mt-3 w-full rounded-xl object-cover" />
                 )}
@@ -364,7 +367,9 @@ export function IngressosModal({ onClose, compact = false, onTransfer }: { onClo
 
                     {/* Header */}
                     <div className="flex items-center gap-4 pr-8">
-                        <div className="size-20 shrink-0 rounded-xl" style={{ background: ev.gradient }} />
+                        <div className="size-20 shrink-0 overflow-hidden rounded-xl">
+                            <GradientFill gradient={ev.gradient} />
+                        </div>
                         <div className="min-w-0 flex-1">
                             <h2 className="text-lg leading-tight font-bold text-primary">
                                 <span>Sua inscrição para </span><span className="font-extrabold">{ev.title}</span>
@@ -411,7 +416,9 @@ export function DesktopDetalhe({ onBack, onTransfer }: { onBack: () => void; onT
 
             {/* Header */}
             <div className="flex items-center gap-4">
-                <div className="size-20 shrink-0 rounded-xl" style={{ background: ev.gradient }} />
+                <div className="size-20 shrink-0 overflow-hidden rounded-xl">
+                    <GradientFill gradient={ev.gradient} />
+                </div>
                 <div className="min-w-0 flex-1">
                     <h2 className="text-lg leading-tight font-bold text-primary">
                         <span>Sua inscrição para </span><span className="font-extrabold">{ev.title}</span>
@@ -656,7 +663,9 @@ function ItemView({ item }: { item: ComboItem }) {
                 {temDescricao && (
                     <div className="mt-3 flex items-start gap-4">
                         {item.gradient ? (
-                            <div className="size-28 shrink-0 rounded-xl" style={{ background: item.gradient }} />
+                            <div className="size-28 shrink-0 overflow-hidden rounded-xl">
+                                <GradientFill gradient={item.gradient} />
+                            </div>
                         ) : (
                             item.imagem && <img src={item.imagem} alt={item.nome} className="size-28 shrink-0 rounded-xl object-cover" />
                         )}

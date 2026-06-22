@@ -3,6 +3,7 @@ import { ArrowLeft, Calendar, ChevronRight, FaceIdSquare, FilterLines, Map01, Pa
 import { Badge } from "@/components/base/badges/badges";
 import { cx } from "@/utils/cx";
 import { AppShell } from "../../components/AppShell";
+import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { getEvento, type ItemIngresso } from "../data/eventos";
 import { isTransferido } from "../data/transfer-store";
@@ -36,7 +37,9 @@ export function Ingressos() {
                 {/* Card do evento */}
                 <div className="px-5 pt-5">
                     <div className="flex gap-3 rounded-2xl bg-primary p-3 ring-1 ring-border-secondary">
-                        <div className="size-24 shrink-0 rounded-xl" style={{ background: evento.gradient }} />
+                        <div className="size-24 shrink-0 overflow-hidden rounded-xl">
+                            <GradientFill gradient={evento.gradient} />
+                        </div>
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
                             <p className="text-sm font-bold text-primary">{evento.title}</p>
                             <p className="text-sm font-medium text-secondary">{evento.date}</p>

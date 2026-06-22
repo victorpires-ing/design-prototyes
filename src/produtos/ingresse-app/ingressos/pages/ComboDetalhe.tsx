@@ -7,6 +7,7 @@ import { AppShell } from "../../components/AppShell";
 import { ActionFab, type FabAction } from "../../components/ActionFab";
 import { StatusBar } from "../../components/StatusBar";
 import { FakeQR } from "../../components/FakeQR";
+import { GradientFill } from "../../components/GradientFill";
 import { Zigzag } from "../../components/Zigzag";
 import { getEvento, type ComboStatus } from "../data/eventos";
 import { isTransferido } from "../data/transfer-store";
@@ -206,7 +207,9 @@ export function ComboDetalhe() {
 
                                                     {/* Imagem do item (degradê ou foto) */}
                                                     {inc.gradient ? (
-                                                        <div className="mt-3 h-44 w-full rounded-xl" style={{ background: inc.gradient }} />
+                                                        <div className="mt-3 h-44 w-full overflow-hidden rounded-xl">
+                                                            <GradientFill gradient={inc.gradient} />
+                                                        </div>
                                                     ) : (
                                                         inc.imagem && <img src={inc.imagem} alt={inc.nome} className="mt-3 w-full rounded-xl object-cover" />
                                                     )}

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { ArrowLeft, Calendar, ChevronRight, ClockRewind, FilterLines, MarkerPin01, Monitor01, Package, Phone01, Ticket01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { cx } from "@/utils/cx";
+import { GradientFill } from "../components/GradientFill";
 import { DesktopDetalhe, MobileComboView } from "../components/IngressosModal";
 import { SAO_SILVESTRE } from "../data/sao-silvestre";
 import { isTransferido } from "../data/transfer-store";
@@ -111,16 +112,15 @@ const EventoCardView = ({ card, past, onClick }: { card: EventoCard; past?: bool
             onClick={onClick}
             className="flex w-[360px] max-w-full flex-col overflow-hidden rounded-2xl bg-primary text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:-translate-y-0.5 hover:shadow-lg"
         >
-            {/* Foto do evento (em cima) — altura explícita + degradê direto no elemento (export-safe) */}
+            {/* Foto do evento (em cima) — altura explícita + degradê como SVG (export-safe) */}
             <div
                 className={cx(
                     "relative h-44 w-full shrink-0 overflow-hidden",
                     !escuro && "flex items-center justify-center bg-secondary text-quaternary",
                     transferido && "grayscale",
                 )}
-                style={escuro ? { background: card.gradient } : undefined}
             >
-                {!escuro && <Package className="size-16" aria-hidden="true" />}
+                {escuro ? <GradientFill gradient={card.gradient} className="absolute inset-0 size-full" /> : <Package className="size-16" aria-hidden="true" />}
                 {/* Inscrição transferida: esmaece a foto */}
                 {transferido && <div className="absolute inset-0 bg-primary/40" />}
 
@@ -211,7 +211,9 @@ function MobileEventList({ onEventClick }: { onEventClick: (card: EventoCard) =>
                                     onClick={() => onEventClick(evento)}
                                     className="flex items-center gap-4 rounded-2xl bg-primary p-3 text-left ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                                 >
-                                    <div className="size-24 shrink-0 rounded-xl" style={{ background: evento.gradient }} />
+                                    <div className="size-24 shrink-0 overflow-hidden rounded-xl">
+                                        <GradientFill gradient={evento.gradient} />
+                                    </div>
                                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                                         <p className="text-sm font-bold text-primary">{evento.title}</p>
                                         <p className="text-sm font-medium text-secondary">{evento.datas}</p>
@@ -262,7 +264,9 @@ function MobileIngressos({ card, onBack, onOpen }: { card: EventoCard; onBack: (
             {/* Card do evento */}
             <div className="px-5 pt-5">
                 <div className="flex gap-3 rounded-2xl bg-primary p-3 ring-1 ring-border-secondary">
-                    <div className="size-24 shrink-0 rounded-xl" style={{ background: card.gradient }} />
+                    <div className="size-24 shrink-0 overflow-hidden rounded-xl">
+                        <GradientFill gradient={card.gradient} />
+                    </div>
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <p className="text-sm font-bold text-primary">{card.title}</p>
                         <p className="text-sm font-medium text-secondary">{card.datas}</p>

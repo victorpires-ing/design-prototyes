@@ -4,6 +4,7 @@ import type { FC } from "react";
 import { ChevronRight, ClockRewind, Ticket01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import { AppShell } from "../../components/AppShell";
+import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 
 interface Evento {
@@ -123,7 +124,9 @@ export function Carteira() {
                                         className="flex items-center gap-4 rounded-2xl bg-primary p-3 text-left ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                                     >
                                         {evento.gradient ? (
-                                            <div className="size-24 shrink-0 rounded-xl" style={{ background: evento.gradient }} />
+                                            <div className="size-24 shrink-0 overflow-hidden rounded-xl">
+                                                <GradientFill gradient={evento.gradient} />
+                                            </div>
                                         ) : (
                                             <div className="flex size-24 shrink-0 items-center justify-center rounded-xl bg-secondary text-fg-quaternary">
                                                 <Ticket01 className="size-8" />

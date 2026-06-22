@@ -111,15 +111,16 @@ const EventoCardView = ({ card, past, onClick }: { card: EventoCard; past?: bool
             onClick={onClick}
             className="flex w-[360px] max-w-full flex-col overflow-hidden rounded-2xl bg-primary text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:-translate-y-0.5 hover:shadow-lg"
         >
-            {/* Foto do evento (em cima) */}
-            <div className="relative aspect-[16/9] w-full shrink-0">
-                {escuro ? (
-                    <div className={cx("absolute inset-0", transferido && "grayscale")} style={{ background: card.gradient }} />
-                ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-secondary text-quaternary">
-                        <Package className="size-16" aria-hidden="true" />
-                    </div>
+            {/* Foto do evento (em cima) — altura explícita + degradê direto no elemento (export-safe) */}
+            <div
+                className={cx(
+                    "relative h-44 w-full shrink-0 overflow-hidden",
+                    !escuro && "flex items-center justify-center bg-secondary text-quaternary",
+                    transferido && "grayscale",
                 )}
+                style={escuro ? { background: card.gradient } : undefined}
+            >
+                {!escuro && <Package className="size-16" aria-hidden="true" />}
                 {/* Inscrição transferida: esmaece a foto */}
                 {transferido && <div className="absolute inset-0 bg-primary/40" />}
 
@@ -127,7 +128,9 @@ const EventoCardView = ({ card, past, onClick }: { card: EventoCard; past?: bool
                 <div className="absolute top-3 right-3 flex flex-wrap items-center justify-end gap-1.5">
                     <div className="flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
                         <Ticket01 className="size-3.5" />
-                        {card.qtd} {card.qtd === 1 ? "inscrição" : "inscrições"}
+                        <span>
+                            {card.qtd} {card.qtd === 1 ? "inscrição" : "inscrições"}
+                        </span>
                     </div>
                     {past ? (
                         <Badge size="sm" color="gray" type="pill-color">
@@ -150,7 +153,7 @@ const EventoCardView = ({ card, past, onClick }: { card: EventoCard; past?: bool
                 <p className="truncate text-base font-bold text-primary">{card.title}</p>
                 <p className="flex items-center gap-1.5 text-sm text-tertiary">
                     <Calendar className="size-4 shrink-0 text-fg-quaternary" />
-                    {card.datas}
+                    <span>{card.datas}</span>
                 </p>
                 <p className="flex items-center gap-1.5 text-sm text-tertiary">
                     <MarkerPin01 className="size-4 shrink-0 text-fg-quaternary" />
@@ -298,7 +301,7 @@ function MobileIngressos({ card, onBack, onOpen }: { card: EventoCard; onBack: (
                         <p className="-mt-1 text-sm text-tertiary">1 inscrição</p>
                         <p className="flex items-center gap-1.5 text-sm text-secondary">
                             <Calendar className="size-4 shrink-0 text-fg-quaternary" />
-                            {combo.dataEvento}
+                            <span>{combo.dataEvento}</span>
                         </p>
                         <div className="flex flex-wrap gap-2 pt-1">
                             {transferido ? (

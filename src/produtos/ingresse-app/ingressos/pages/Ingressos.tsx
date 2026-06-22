@@ -83,7 +83,7 @@ export function Ingressos() {
                                           </p>
                                           <p className="flex items-center gap-1.5 text-sm text-secondary">
                                               <Calendar className="size-4 shrink-0 text-fg-quaternary" />
-                                              {combo.dataEvento}
+                                              <span>{combo.dataEvento}</span>
                                           </p>
                                           <div className="flex flex-wrap gap-2 pt-1">
                                               {evento.id !== "sao-silvestre" && (
@@ -159,11 +159,11 @@ const TicketRow = ({ item, isFirst, onClick }: { item: ItemIngresso; isFirst: bo
             {item.tipo && <p className="-mt-1 text-sm text-tertiary">{item.tipo}</p>}
             <p className="flex items-center gap-1.5 text-sm text-secondary">
                 <Calendar className="size-4 shrink-0 text-fg-quaternary" />
-                {item.data}
+                <span>{item.data}</span>
             </p>
             <p className="flex items-center gap-1.5 text-sm text-secondary">
                 <User01 className="size-4 shrink-0 text-fg-quaternary" />
-                {item.portador}
+                <span>{item.portador}</span>
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
                 {transf ? (

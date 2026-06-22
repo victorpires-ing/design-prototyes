@@ -104,7 +104,7 @@ export function ComboDetalhe() {
                                     <p className="text-sm text-tertiary">Transferido para</p>
                                     <p className="mt-0.5 text-md font-bold text-primary">Duny Alves da Silva</p>
                                     <p className="mt-1 text-sm text-tertiary">
-                                        CPF: <span className="font-semibold text-secondary">009.789.568-90</span>
+                                        <span>CPF: </span><span className="font-semibold text-secondary">009.789.568-90</span>
                                     </p>
 
                                     <p className="mt-4 text-sm text-tertiary">Data da transferência</p>
@@ -162,10 +162,10 @@ export function ComboDetalhe() {
                                     <div className="-mx-6 my-5 border-t border-tertiary" />
                                     <div>
                                         <p className="text-sm text-tertiary">
-                                            Titular: <span className="font-semibold text-primary">{combo.titular ?? "Priscilão Alcantara Raro"}</span>
+                                            <span>Titular: </span><span className="font-semibold text-primary">{combo.titular ?? "Priscilão Alcantara Raro"}</span>
                                         </p>
                                         <p className="mt-1 text-sm text-tertiary">
-                                            CPF: <span className="font-semibold text-primary">{combo.cpf ?? "948.943.130-44"}</span>
+                                            <span>CPF: </span><span className="font-semibold text-primary">{combo.cpf ?? "948.943.130-44"}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -200,13 +200,13 @@ export function ComboDetalhe() {
                                                     </p>
                                                     {inc.acesso && (
                                                         <p className="mt-1.5 text-sm text-tertiary">
-                                                            Acesso por <span className="font-semibold text-secondary">{inc.acesso}</span>
+                                                            <span>Acesso por </span><span className="font-semibold text-secondary">{inc.acesso}</span>
                                                         </p>
                                                     )}
 
                                                     {/* Imagem do item (degradê ou foto) */}
                                                     {inc.gradient ? (
-                                                        <div className="mt-3 aspect-[4/3] w-full rounded-xl" style={{ background: inc.gradient }} />
+                                                        <div className="mt-3 h-44 w-full rounded-xl" style={{ background: inc.gradient }} />
                                                     ) : (
                                                         inc.imagem && <img src={inc.imagem} alt={inc.nome} className="mt-3 w-full rounded-xl object-cover" />
                                                     )}

@@ -108,7 +108,7 @@ export function IngressoDetalhe() {
                                 <p className="text-sm text-tertiary">Transferido para</p>
                                 <p className="mt-0.5 text-md font-bold text-primary">Duny Alves da Silva</p>
                                 <p className="mt-1 text-sm text-tertiary">
-                                    CPF: <span className="font-semibold text-secondary">009.789.568-90</span>
+                                    <span>CPF: </span><span className="font-semibold text-secondary">009.789.568-90</span>
                                 </p>
 
                                 <p className="mt-4 text-sm text-tertiary">Data da transferência</p>
@@ -125,10 +125,10 @@ export function IngressoDetalhe() {
                                 <div className="-mx-6 my-5 border-t border-tertiary" />
                                 <div className="text-left">
                                     <p className="text-sm text-tertiary">
-                                        Titular: <span className="font-semibold text-primary">{portador}</span>
+                                        <span>Titular: </span><span className="font-semibold text-primary">{portador}</span>
                                     </p>
                                     <p className="mt-1 text-sm text-tertiary">
-                                        CPF: <span className="font-semibold text-primary">{cpf}</span>
+                                        <span>CPF: </span><span className="font-semibold text-primary">{cpf}</span>
                                     </p>
                                 </div>
                             </div>
@@ -141,10 +141,10 @@ export function IngressoDetalhe() {
                                 <div className="-mx-6 my-5 border-t border-tertiary" />
                                 <div className="text-left">
                                     <p className="text-sm text-tertiary">
-                                        Titular: <span className="font-semibold text-primary">{portador}</span>
+                                        <span>Titular: </span><span className="font-semibold text-primary">{portador}</span>
                                     </p>
                                     <p className="mt-1 text-sm text-tertiary">
-                                        CPF: <span className="font-semibold text-primary">{cpf}</span>
+                                        <span>CPF: </span><span className="font-semibold text-primary">{cpf}</span>
                                     </p>
                                 </div>
                             </div>

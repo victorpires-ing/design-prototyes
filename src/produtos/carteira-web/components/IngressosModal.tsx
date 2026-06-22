@@ -171,10 +171,10 @@ export function MobileComboView({
                                 <div className="-mx-6 my-5 border-t border-tertiary" />
                                 <div>
                                     <p className="text-sm text-tertiary">
-                                        Titular: <span className="font-semibold text-primary">{titular}</span>
+                                        <span>Titular: </span><span className="font-semibold text-primary">{titular}</span>
                                     </p>
                                     <p className="mt-1 text-sm text-tertiary">
-                                        CPF: <span className="font-semibold text-primary">{cpf}</span>
+                                        <span>CPF: </span><span className="font-semibold text-primary">{cpf}</span>
                                     </p>
                                 </div>
                             </div>
@@ -229,7 +229,7 @@ export function MobileComboView({
                                     className="flex items-center gap-2.5 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-1 ring-black/10 transition duration-100 ease-linear active:scale-95"
                                 >
                                     <Wallet02 className="size-5 text-white" />
-                                    Adicionar à Carteira
+                                    <span>Adicionar à Carteira</span>
                                 </button>
                             </div>
                         )}
@@ -290,12 +290,12 @@ function MobileItem({ item }: { item: ComboItem }) {
                 <p className={cx("text-sm font-bold", finalizado ? "text-tertiary" : "text-primary")}>{item.nome}</p>
                 {item.acesso && (
                     <p className="mt-1.5 text-sm text-tertiary">
-                        Acesso por <span className="font-semibold text-secondary">{item.acesso}</span>
+                        <span>Acesso por </span><span className="font-semibold text-secondary">{item.acesso}</span>
                     </p>
                 )}
 
                 {item.gradient ? (
-                    <div className="mt-3 aspect-[4/3] w-full rounded-xl" style={{ background: item.gradient }} />
+                    <div className="mt-3 h-44 w-full rounded-xl" style={{ background: item.gradient }} />
                 ) : (
                     item.imagem && <img src={item.imagem} alt={item.nome} className="mt-3 w-full rounded-xl object-cover" />
                 )}
@@ -367,7 +367,7 @@ export function IngressosModal({ onClose, compact = false, onTransfer }: { onClo
                         <div className="size-20 shrink-0 rounded-xl" style={{ background: ev.gradient }} />
                         <div className="min-w-0 flex-1">
                             <h2 className="text-lg leading-tight font-bold text-primary">
-                                Sua inscrição para <span className="font-extrabold">{ev.title}</span>
+                                <span>Sua inscrição para </span><span className="font-extrabold">{ev.title}</span>
                             </h2>
                             <p className="mt-1 text-sm text-tertiary">{ev.local}</p>
                         </div>
@@ -414,7 +414,7 @@ export function DesktopDetalhe({ onBack, onTransfer }: { onBack: () => void; onT
                 <div className="size-20 shrink-0 rounded-xl" style={{ background: ev.gradient }} />
                 <div className="min-w-0 flex-1">
                     <h2 className="text-lg leading-tight font-bold text-primary">
-                        Sua inscrição para <span className="font-extrabold">{ev.title}</span>
+                        <span>Sua inscrição para </span><span className="font-extrabold">{ev.title}</span>
                     </h2>
                     <p className="mt-1 text-sm text-tertiary">{ev.local}</p>
                 </div>
@@ -545,10 +545,10 @@ function ComboCard({
                             </div>
                             <div className="border-t border-secondary px-5 py-4">
                                 <p className="text-base text-tertiary">
-                                    Titular: <span className="font-bold text-primary">{titular}</span>
+                                    <span>Titular: </span><span className="font-bold text-primary">{titular}</span>
                                 </p>
                                 <p className="mt-1 text-base text-tertiary">
-                                    CPF: <span className="font-bold text-primary">{cpf}</span>
+                                    <span>CPF: </span><span className="font-bold text-primary">{cpf}</span>
                                 </p>
                             </div>
                         </div>
@@ -648,7 +648,7 @@ function ItemView({ item }: { item: ComboItem }) {
                 <p className="text-sm font-bold text-primary">{item.nome}</p>
                 {item.acesso && (
                     <p className="mt-1 text-sm text-tertiary">
-                        Acesso por <span className="font-semibold text-secondary">{item.acesso}</span>
+                        <span>Acesso por </span><span className="font-semibold text-secondary">{item.acesso}</span>
                     </p>
                 )}
 

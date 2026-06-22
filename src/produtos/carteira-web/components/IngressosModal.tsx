@@ -216,8 +216,8 @@ export function MobileComboView({
                             </div>
                         </div>
 
-                        {/* Respostas do formulário (preenchido na compra) */}
-                        {ev.questionario.length > 0 && (
+                        {/* Respostas do formulário (preenchido na compra) — escondidas no cenário de erro */}
+                        {!erro && ev.questionario.length > 0 && (
                             <div>
                                 <div className="flex items-center gap-2 pb-3">
                                     <ClipboardCheck className="size-5 text-brand-secondary" />
@@ -654,21 +654,23 @@ function ComboCard({
                         </div>
                     </div>
 
-                    {/* Respostas do formulário (preenchido na compra) */}
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <ClipboardCheck className="size-5 text-brand-secondary" />
-                            <h4 className="text-sm font-bold text-primary">Respostas do formulário</h4>
+                    {/* Respostas do formulário (preenchido na compra) — escondidas no cenário de erro */}
+                    {!erro && (
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <ClipboardCheck className="size-5 text-brand-secondary" />
+                                <h4 className="text-sm font-bold text-primary">Respostas do formulário</h4>
+                            </div>
+                            <div className="mt-2 divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+                                {questionario.map((q) => (
+                                    <div key={q.pergunta} className="p-4">
+                                        <p className="text-sm font-semibold text-primary">{q.pergunta}</p>
+                                        <p className="mt-0.5 text-sm text-tertiary">{q.resposta}</p>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <div className="mt-2 divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-                            {questionario.map((q) => (
-                                <div key={q.pergunta} className="p-4">
-                                    <p className="text-sm font-semibold text-primary">{q.pergunta}</p>
-                                    <p className="mt-0.5 text-sm text-tertiary">{q.resposta}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    )}
 
                     {/* Ações desktop (lado a lado, centralizadas). No mobile, ver rodapé fixo. */}
                     {!compact && (

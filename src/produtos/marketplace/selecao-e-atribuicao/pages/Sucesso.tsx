@@ -1,17 +1,17 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { CheckCircle, Mail01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { MarketplaceLayout } from "../../components/MarketplaceLayout";
-import { DEFAULT_CONFIG, decodeConfig } from "../data/config";
+import { DEFAULT_CONFIG, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
 
-/** Tela de sucesso — compra/inscrição concluída. Mantém o branding do evento via ?cfg=. */
+/** Tela de sucesso — compra/inscrição concluída. Mantém o branding do evento via ?cfg= ou ?e=. */
 export function Sucesso() {
     const navigate = useNavigate();
     const [params] = useSearchParams();
 
-    const config = useMemo(() => {
+    const configInicial = useMemo<EventConfig>(() => {
         const raw = params.get("cfg");
         if (raw) {
             const d = decodeConfig(raw);
@@ -29,6 +29,27 @@ export function Sucesso() {
         return DEFAULT_CONFIG;
     }, [params]);
 
+    const [config, setConfig] = useState<EventConfig>(configInicial);
+
+    // Link curto (?e=<id>): resolve o cfg no Redis para herdar o branding do evento.
+    useEffect(() => {
+        const e = params.get("e");
+        if (!e) {
+            setConfig(configInicial);
+            return;
+        }
+        let vivo = true;
+        resolverLinkCurto(e).then((c) => {
+            if (vivo && c) setConfig(c);
+        });
+        return () => {
+            vivo = false;
+        };
+    }, [params, configInicial]);
+
+    const usuario = params.get("u")?.trim() || "";
+    const primeiroNome = usuario.split(" ")[0] || "";
+
     const qs = params.toString();
     const voltarEvento = () => navigate(`/marketplace/event${qs ? `?${qs}` : ""}`);
 
@@ -38,8 +59,10 @@ export function Sucesso() {
                 <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
 
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-2xl font-bold text-primary">Inscrição concluída!</h1>
-                    <p className="text-md text-tertiary">Tudo certo! Sua compra foi confirmada com sucesso.</p>
+                    <h1 className="text-2xl font-bold text-primary">{primeiroNome ? `Inscrição concluída, ${primeiroNome}!` : "Inscrição concluída!"}</h1>
+                    <p className="text-md text-tertiary">
+                        Tudo certo! Sua inscrição em <span className="font-semibold text-secondary">{config.nome}</span> foi confirmada com sucesso.
+                    </p>
                 </div>
 
                 <div className="flex w-full items-start gap-3 rounded-xl bg-secondary p-4 text-left">

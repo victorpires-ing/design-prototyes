@@ -398,7 +398,9 @@ export function SelecaoEAtribuicao() {
         }
     };
     const finalizarPedido = () => {
-        const qs = params.toString();
+        const sp = new URLSearchParams(params);
+        if (usuario) sp.set("u", usuario);
+        const qs = sp.toString();
         navigate(`/marketplace/sucesso${qs ? `?${qs}` : ""}`);
     };
     const avancar = () => {

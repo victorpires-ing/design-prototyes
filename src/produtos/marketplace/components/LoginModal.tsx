@@ -26,7 +26,6 @@ const PAISES = [
 ];
 
 const IMAGEM_LOGIN = "https://auth.prod.ingresse.com/resources/2ibrw/login/custom/img/hero-dark.png";
-const INGRESSE_LOGO = "https://auth.prod.ingresse.com/resources/2ibrw/login/custom/img/ingresse-light.svg";
 
 const maskFone = (v: string) => {
     const d = v.replace(/\D/g, "").slice(0, 11);
@@ -50,15 +49,10 @@ const maskData = (v: string) => {
 };
 
 function Marca({ logoEvento }: { logoEvento?: string }) {
+    if (!logoEvento) return null;
     return (
-        <div className="flex items-center gap-4">
-            <img src={INGRESSE_LOGO} alt="Ingresse" className="h-7 w-auto" />
-            {logoEvento && (
-                <>
-                    <span aria-hidden="true" className="h-6 w-px bg-white/25" />
-                    <img src={logoEvento} alt="Logo do evento" className="h-7 w-auto object-contain" />
-                </>
-            )}
+        <div className="flex items-center">
+            <img src={logoEvento} alt="Logo do evento" className="h-7 w-auto object-contain" />
         </div>
     );
 }

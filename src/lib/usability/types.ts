@@ -72,6 +72,8 @@ export interface BlocoPergunta extends BlocoBase {
     titulo: string;
     /** Enunciado da pergunta exibido ao participante. */
     enunciado: string;
+    /** Descrição/ajuda opcional exibida abaixo do enunciado. */
+    descricao?: string;
     formato: PerguntaFormato;
     /** Opções para `unica`/`multipla`. */
     opcoes: string[];
@@ -97,6 +99,8 @@ export interface Teste {
     blocos: Bloco[];
     /** Se true, o teste só pode ser executado uma vez por dispositivo. */
     umaVezPorDispositivo: boolean;
+    /** Logo de marca parceira exibida ao lado da Ingresse no topo (opcional). */
+    logoParceira?: string;
     criadoEm: string;
 }
 
@@ -115,6 +119,8 @@ export interface EventoBloco {
     justificativa?: string;
     /** Para perguntas e SUS: resposta(s) do participante (no SUS, 10 valores "1".."5"). */
     resposta?: string[];
+    /** Resposta salva parcialmente (autosave) — ainda não confirmada pelo participante. */
+    parcial?: boolean;
 }
 
 export interface SessaoTeste {
@@ -123,6 +129,8 @@ export interface SessaoTeste {
     deviceId: string;
     iniciadaEm: string;
     finalizadaEm?: string;
+    /** Momento em que o participante fechou/abandonou sem concluir (autosave). */
+    abandonadaEm?: string;
     userAgent: string;
     /** Viewport no início da sessão, ex.: "1280x800". */
     viewport: string;

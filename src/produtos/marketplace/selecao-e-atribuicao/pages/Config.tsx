@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Copy01, Edit01, LinkExternal01, Plus, Ticket01, Trash01 } from "@untitledui/icons";
 import { Reorder, useDragControls } from "motion/react";
@@ -13,18 +13,21 @@ import { cx } from "@/utils/cx";
 import { MarketplaceLayout } from "../../components/MarketplaceLayout";
 import { Slideout } from "../components/Slideout";
 import type { ComboDinamico, ComboFixo, ComboFixoInclui, DataEvento, Ingresso, PerguntaEvento, Produto, TipoPergunta } from "../data/combos";
-import { DEFAULT_CONFIG, buildShareUrl, decodeConfig, encodeConfig, type EventConfig } from "../data/config";
+import { DEFAULT_CONFIG, buildShortShareUrl, decodeConfig, encodeConfig, type EventConfig } from "../data/config";
 
-const STORAGE_KEY = "marketplace:lastConfig";
+const STORAGE_KEY = "marketplace:lastConfig:v2";
 const uid = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : `id-${Math.round(performance.now())}`);
 const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const TIPOS: { id: TipoPergunta; label: string }[] = [
-    { id: "texto-curto", label: "Texto curto" },
-    { id: "texto-longo", label: "Texto longo" },
-    { id: "escolha-unica", label: "Escolha única" },
-    { id: "multipla-escolha", label: "Múltipla escolha" },
+    { id: "texto", label: "Texto" },
+    { id: "numero", label: "Número" },
+    { id: "data", label: "Data" },
+    { id: "dropdown", label: "Dropdown" },
+    { id: "radio", label: "Radio" },
+    { id: "checkbox", label: "Checkbox" },
 ];
+const TIPOS_COM_OPCOES: TipoPergunta[] = ["dropdown", "radio", "checkbox"];
 
 type Tipo = "ingresso" | "produto" | "data" | "comboFixo" | "comboDinamico" | "pergunta";
 interface Edicao {
@@ -68,15 +71,34 @@ export function Config() {
     const patch = (p: Partial<EventConfig>) => setCfg((c) => ({ ...c, ...p }));
     const itensVinculaveis = useMemo(() => [...cfg.ingressos, ...cfg.produtos].map((x) => ({ id: x.id, nome: x.nome })), [cfg.ingressos, cfg.produtos]);
 
-    const url = buildShareUrl(cfg);
-    const copiar = async () => {
+    const [linkCurto, setLinkCurto] = useState("");
+    const [gerando, setGerando] = useState(false);
+    // O link curto vira obsoleto quando o config muda; o usuário gera de novo quando quiser.
+    useEffect(() => setLinkCurto(""), [cfg]);
+
+    // Só grava no Redis quando o usuário pede explicitamente (evita gerar vários durante a edição).
+    const gerarLink = async () => {
+        setGerando(true);
         try {
-            await navigator.clipboard.writeText(url);
+            const link = await buildShortShareUrl(cfg);
+            setLinkCurto(link);
+            toast.success("Link gerado");
+        } catch {
+            toast.error("Não foi possível gerar o link");
+        } finally {
+            setGerando(false);
+        }
+    };
+    const copiar = async () => {
+        if (!linkCurto) return;
+        try {
+            await navigator.clipboard.writeText(linkCurto);
             toast.success("Link copiado");
         } catch {
             toast.error("Não foi possível copiar");
         }
     };
+    // Preview local — abre a seleção com o config atual (link longo, sem gravar no banco).
     const abrirSelecao = () => navigate(`/marketplace/event?cfg=${encodeURIComponent(encodeConfig(cfg))}`);
     const restaurar = () => {
         setCfg(structuredClone(DEFAULT_CONFIG));
@@ -105,13 +127,13 @@ export function Config() {
         patch({
             combosDinamicos: [
                 ...cfg.combosDinamicos,
-                { id: uid(), nome: "Novo combo dinâmico", desconto: "", descricao: "", dataLabel: "", sessoesLabel: "", tags: [], minItens: 1, maxItens: 4, datas: [], obrigatorios: [], precoVisivel: [] },
+                { id: uid(), nome: "Novo combo dinâmico", desconto: "", descricao: "", dataLabel: "", sessoesLabel: "", tags: [], minItens: 1, maxItens: 4, datas: [], obrigatorios: [], quantidades: {}, precoVisivel: [], ocultos: [] },
             ],
         });
     };
     const addPergunta = () => {
         setEdicao({ tipo: "pergunta", index: cfg.perguntas.length });
-        patch({ perguntas: [...cfg.perguntas, { id: uid(), titulo: "Nova pergunta", tipo: "texto-curto", obrigatoria: true, vinculos: [] }] });
+        patch({ perguntas: [...cfg.perguntas, { id: uid(), titulo: "Nova pergunta", tipo: "texto", obrigatoria: true, opcoes: [], vinculos: [] }] });
     };
 
     const remover = (tipo: Tipo, i: number) => {
@@ -173,16 +195,39 @@ export function Config() {
                         <Input size="sm" label="Link da capa" value={cfg.capa} onChange={(v) => patch({ capa: v })} placeholder="https://..." />
                         <Input size="sm" label="Link do mapa do local" value={cfg.mapa} onChange={(v) => patch({ mapa: v })} placeholder="https://..." />
                         {cfg.mapa && <img src={cfg.mapa} alt="" className="mt-1 max-h-40 w-auto self-start rounded-lg object-cover ring-1 ring-border-secondary" />}
+
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-sm font-medium text-secondary">Cor de destaque (botões e links)</span>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="color"
+                                    aria-label="Cor de destaque"
+                                    value={cfg.corDestaque || "#ff271a"}
+                                    onChange={(e) => patch({ corDestaque: e.target.value })}
+                                    className="size-9 shrink-0 cursor-pointer rounded-md ring-1 ring-border-primary"
+                                />
+                                <Input size="sm" placeholder="#ff271a" value={cfg.corDestaque ?? ""} onChange={(v) => patch({ corDestaque: v })} />
+                                {cfg.corDestaque && (
+                                    <Button size="sm" color="link-gray" onClick={() => patch({ corDestaque: "" })}>
+                                        Padrão
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
                     </Secao>
 
                     {/* Exibição na venda */}
                     <Secao titulo="Exibição na venda">
-                        <p className="text-xs text-tertiary">Escolha o que aparece para o comprador na tela do evento.</p>
+                        <p className="text-sm text-tertiary">Escolha o que aparece para o comprador na tela do evento.</p>
                         <div className="flex flex-col gap-2.5">
                             <Checkbox size="sm" label="Datas (venda avulsa por data)" isSelected={cfg.exibir.datas} onChange={(on) => patch({ exibir: { ...cfg.exibir, datas: on } })} />
                             <Checkbox size="sm" label="Combos fixos" isSelected={cfg.exibir.combosFixos} onChange={(on) => patch({ exibir: { ...cfg.exibir, combosFixos: on } })} />
                             <Checkbox size="sm" label="Combos dinâmicos" isSelected={cfg.exibir.combosDinamicos} onChange={(on) => patch({ exibir: { ...cfg.exibir, combosDinamicos: on } })} />
+                            <Checkbox size="sm" label="Botão de voltar para as configurações" isSelected={cfg.exibirVoltar !== false} onChange={(on) => patch({ exibirVoltar: on })} />
                         </div>
+                        {cfg.exibir.combosDinamicos && (
+                            <Input size="sm" label="Nome da aba de combos dinâmicos" value={cfg.comboTabLabel} onChange={(v) => patch({ comboTabLabel: v })} placeholder="Ex.: Combo dinâmico" />
+                        )}
                     </Secao>
 
                     {/* Ingressos */}
@@ -190,7 +235,7 @@ export function Config() {
                         {cfg.ingressos.map((it, i) => (
                             <LinhaResumo key={it.id} onEditar={() => setEdicao({ tipo: "ingresso", index: i })} onRemover={() => remover("ingresso", i)}>
                                 <span className="truncate text-sm font-medium text-primary">{it.nome || "Ingresso"}</span>
-                                {it.preco != null && <span className="text-xs text-tertiary">{brl(it.preco)}</span>}
+                                {it.preco != null && <span className="text-sm text-tertiary">{brl(it.preco)}</span>}
                             </LinhaResumo>
                         ))}
                     </Secao>
@@ -201,7 +246,7 @@ export function Config() {
                             <LinhaResumo key={p.id} onEditar={() => setEdicao({ tipo: "produto", index: i })} onRemover={() => remover("produto", i)}>
                                 {p.imagem && <img src={p.imagem} alt="" className="size-6 shrink-0 rounded object-cover ring-1 ring-border-secondary" />}
                                 <span className="truncate text-sm font-medium text-primary">{p.nome || "Produto"}</span>
-                                {p.preco != null && <span className="text-xs text-tertiary">{brl(p.preco)}</span>}
+                                {p.preco != null && <span className="text-sm text-tertiary">{brl(p.preco)}</span>}
                             </LinhaResumo>
                         ))}
                     </Secao>
@@ -214,7 +259,7 @@ export function Config() {
                                     {d.diaSemana}, {d.dia} {d.mes} {d.ano}
                                     {d.hora ? ` • ${d.hora}` : ""}
                                 </span>
-                                <span className="text-xs text-tertiary">{d.itens.length + d.produtos.length} itens</span>
+                                <span className="text-sm text-tertiary">{d.itens.length + d.produtos.length} itens</span>
                             </LinhaResumo>
                         ))}
                     </Secao>
@@ -223,9 +268,9 @@ export function Config() {
                     <Secao titulo="Combos fixos" resumo={`${cfg.combosFixos.length}`} onAdd={addComboFixo} addLabel="Adicionar combo fixo">
                         {cfg.combosFixos.map((c, i) => (
                             <LinhaResumo key={c.id} onEditar={() => setEdicao({ tipo: "comboFixo", index: i })} onRemover={() => remover("comboFixo", i)}>
-                                {c.tab && <span className="rounded bg-secondary px-1.5 py-0.5 text-xs font-medium text-tertiary">{c.tab}</span>}
+                                {c.tab && <span className="rounded bg-secondary px-1.5 py-0.5 text-sm font-medium text-tertiary">{c.tab}</span>}
                                 <span className="truncate text-sm font-medium text-primary">{c.nome || "Combo fixo"}</span>
-                                <span className="text-xs text-tertiary">{brl(c.preco)}</span>
+                                <span className="text-sm text-tertiary">{brl(c.preco)}</span>
                             </LinhaResumo>
                         ))}
                     </Secao>
@@ -235,7 +280,7 @@ export function Config() {
                         {cfg.combosDinamicos.map((c, i) => (
                             <LinhaResumo key={c.id} onEditar={() => setEdicao({ tipo: "comboDinamico", index: i })} onRemover={() => remover("comboDinamico", i)}>
                                 <span className="truncate text-sm font-medium text-primary">{c.nome || "Combo dinâmico"}</span>
-                                <span className="text-xs text-tertiary">
+                                <span className="text-sm text-tertiary">
                                     {c.datas.length} {c.datas.length === 1 ? "data" : "datas"} · {c.minItens}–{c.maxItens} itens
                                 </span>
                             </LinhaResumo>
@@ -247,7 +292,7 @@ export function Config() {
                         {cfg.perguntas.map((p, i) => (
                             <LinhaResumo key={p.id} onEditar={() => setEdicao({ tipo: "pergunta", index: i })} onRemover={() => remover("pergunta", i)}>
                                 <span className="truncate text-sm font-medium text-primary">{p.titulo || "Pergunta"}</span>
-                                <span className="text-xs text-tertiary">
+                                <span className="text-sm text-tertiary">
                                     {TIPOS.find((t) => t.id === p.tipo)?.label}
                                     {p.obrigatoria ? " · obrigatória" : ""} · {p.vinculos.length} {p.vinculos.length === 1 ? "vínculo" : "vínculos"}
                                 </span>
@@ -268,7 +313,7 @@ export function Config() {
 
                     {/* Termos de uso */}
                     <Secao titulo="Termos de uso">
-                        <p className="text-xs text-tertiary">Texto exibido no modal de aceite, antes de finalizar a compra. Deixe vazio para pular essa etapa.</p>
+                        <p className="text-sm text-tertiary">Texto exibido no modal de aceite, antes de finalizar a compra. Deixe vazio para pular essa etapa.</p>
                         <textarea
                             value={cfg.termos}
                             onChange={(e) => patch({ termos: e.target.value })}
@@ -283,13 +328,20 @@ export function Config() {
                 <div className="flex flex-col gap-3">
                     <div className="sticky top-6 flex flex-col gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
                         <h3 className="text-sm font-semibold text-primary">Link compartilhável</h3>
-                        <p className="text-xs text-tertiary">Suas alterações são salvas automaticamente neste navegador. O link abre a seleção com esta configuração.</p>
-                        <textarea readOnly value={url} rows={4} className="w-full resize-none rounded-lg bg-secondary px-3 py-2 font-mono text-xs break-all text-secondary ring-1 ring-border-secondary outline-hidden" />
-                        <Button size="sm" color="secondary" iconLeading={Copy01} onClick={copiar}>
+                        <p className="text-sm text-tertiary">Suas alterações são salvas automaticamente neste navegador. Gere o link curto para compartilhar esta configuração.</p>
+                        {linkCurto ? (
+                            <textarea readOnly value={linkCurto} rows={2} className="w-full resize-none rounded-lg bg-secondary px-3 py-2 font-mono text-sm break-all text-secondary ring-1 ring-border-secondary outline-hidden" />
+                        ) : (
+                            <span className="rounded-lg bg-secondary px-3 py-2 text-sm text-tertiary ring-1 ring-border-secondary">Nenhum link gerado ainda.</span>
+                        )}
+                        <Button size="sm" color="primary" iconLeading={LinkExternal01} onClick={gerarLink} isLoading={gerando}>
+                            {linkCurto ? "Gerar novo link" : "Gerar link"}
+                        </Button>
+                        <Button size="sm" color="secondary" iconLeading={Copy01} onClick={copiar} isDisabled={!linkCurto}>
                             Copiar link
                         </Button>
-                        <Button size="sm" color="primary" iconLeading={LinkExternal01} onClick={abrirSelecao}>
-                            Abrir seleção
+                        <Button size="sm" color="secondary" onClick={abrirSelecao}>
+                            Abrir seleção (preview)
                         </Button>
                         <Button size="sm" color="link-gray" onClick={restaurar}>
                             Restaurar exemplo
@@ -338,7 +390,7 @@ function Secao({ titulo, resumo, children, onAdd, addLabel, defaultOpen = true }
                 <button type="button" onClick={() => setAberto((a) => !a)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                     <ChevronToggle aberto={aberto} />
                     <h2 className="text-md font-semibold text-primary">{titulo}</h2>
-                    {resumo && <span className="truncate text-xs text-tertiary">{resumo}</span>}
+                    {resumo && <span className="truncate text-sm text-tertiary">{resumo}</span>}
                 </button>
                 {onAdd && (
                     <Button size="sm" color="link-color" iconLeading={Plus} onClick={onAdd}>
@@ -373,11 +425,11 @@ function LinhaResumo({ children, onEditar, onRemover }: { children: React.ReactN
 }
 
 function PickIds({ options, selected, onToggle, vazio }: { options: { id: string; nome: string }[]; selected: string[]; onToggle: (id: string) => void; vazio?: string }) {
-    if (options.length === 0) return <span className="text-xs text-tertiary">{vazio ?? "Nada cadastrado."}</span>;
+    if (options.length === 0) return <span className="text-sm text-tertiary">{vazio ?? "Nada cadastrado."}</span>;
     return (
         <div className="flex flex-wrap gap-x-4 gap-y-1.5">
             {options.map((o) => (
-                <label key={o.id} className="flex items-center gap-1.5 text-xs text-secondary">
+                <label key={o.id} className="flex items-center gap-1.5 text-sm text-secondary">
                     <Checkbox size="sm" isSelected={selected.includes(o.id)} onChange={() => onToggle(o.id)} />
                     {o.nome || o.id}
                 </label>
@@ -394,9 +446,72 @@ function IngressoFields({ value, onPatch }: { value: Ingresso; onPatch: (p: Part
     return (
         <>
             <Input size="sm" label="Nome" value={value.nome} onChange={(v) => onPatch({ nome: v })} />
-            <Input size="sm" label="Descrição" value={value.descricao ?? ""} onChange={(v) => onPatch({ descricao: v })} />
+            <div className="grid grid-cols-2 gap-2">
+                <Input
+                    size="sm"
+                    label="Grupos"
+                    placeholder="Ex.: Pista, Camarote"
+                    hint="Separe por vírgula para o ingresso aparecer em vários grupos. Só ingressos com grupo aparecem nas datas."
+                    value={value.grupo ?? ""}
+                    onChange={(v) => onPatch({ grupo: v || undefined })}
+                />
+                <Input size="sm" label="Lote" placeholder="Ex.: Lote 2" value={value.lote ?? ""} onChange={(v) => onPatch({ lote: v || undefined })} />
+            </div>
+            <RichTextEditor label="Descrição" value={value.descricao ?? ""} onChange={(html) => onPatch({ descricao: html || undefined })} />
+            <Input size="sm" label="Link da imagem" placeholder="https://..." value={value.imagem ?? ""} onChange={(v) => onPatch({ imagem: v || undefined })} />
+            {value.imagem && <img src={value.imagem} alt="" className="max-h-40 w-auto self-start rounded-lg object-cover ring-1 ring-border-secondary" />}
             <Input size="sm" label="Preço (R$)" type="number" value={value.preco != null ? String(value.preco) : ""} onChange={(v) => onPatch({ preco: v === "" ? undefined : Number(v) || 0 })} />
         </>
+    );
+}
+
+/** Editor de rich text simples (contentEditable) — negrito, itálico, sublinhado, listas e quebras de linha. */
+function RichTextEditor({ label, value, onChange }: { label?: string; value: string; onChange: (html: string) => void }) {
+    const ref = useRef<HTMLDivElement>(null);
+    // Sincroniza o conteúdo inicial / quando muda externamente (sem sobrescrever enquanto digita).
+    useEffect(() => {
+        if (ref.current && ref.current.innerHTML !== value) ref.current.innerHTML = value;
+    }, [value]);
+    const exec = (cmd: string) => {
+        ref.current?.focus();
+        document.execCommand(cmd, false);
+        onChange(ref.current?.innerHTML ?? "");
+    };
+    const Btn = ({ cmd, children }: { cmd: string; children: React.ReactNode }) => (
+        <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => exec(cmd)}
+            className="flex size-7 items-center justify-center rounded-md text-sm text-secondary transition hover:bg-primary_hover"
+        >
+            {children}
+        </button>
+    );
+    return (
+        <div className="flex flex-col gap-1.5">
+            {label && <span className="text-sm font-medium text-secondary">{label}</span>}
+            <div className="overflow-clip rounded-lg ring-1 ring-border-primary focus-within:ring-2 focus-within:ring-brand">
+                <div className="flex items-center gap-0.5 border-b border-secondary bg-secondary/40 px-1.5 py-1">
+                    <Btn cmd="bold">
+                        <span className="font-bold">B</span>
+                    </Btn>
+                    <Btn cmd="italic">
+                        <span className="italic">I</span>
+                    </Btn>
+                    <Btn cmd="underline">
+                        <span className="underline">U</span>
+                    </Btn>
+                    <Btn cmd="insertUnorderedList">•</Btn>
+                </div>
+                <div
+                    ref={ref}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={(e) => onChange(e.currentTarget.innerHTML)}
+                    className="min-h-[96px] px-3 py-2 text-sm text-primary outline-none [&_b]:font-semibold [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5"
+                />
+            </div>
+        </div>
     );
 }
 
@@ -404,6 +519,7 @@ function ProdutoFields({ value, onPatch }: { value: Produto; onPatch: (p: Partia
     return (
         <>
             <Input size="sm" label="Nome" value={value.nome} onChange={(v) => onPatch({ nome: v })} />
+            <Input size="sm" label="Selo" placeholder="Ex.: Últimas unidades" value={value.selo ?? ""} onChange={(v) => onPatch({ selo: v || undefined })} />
             <Input size="sm" label="Link da imagem do produto" placeholder="https://..." value={value.imagem ?? ""} onChange={(v) => onPatch({ imagem: v || undefined })} />
             {value.imagem && <img src={value.imagem} alt="" className="max-h-40 w-auto self-start rounded-lg object-cover ring-1 ring-border-secondary" />}
             <Input size="sm" label="Preço (R$)" type="number" value={value.preco != null ? String(value.preco) : ""} onChange={(v) => onPatch({ preco: v === "" ? undefined : Number(v) || 0 })} />
@@ -445,11 +561,20 @@ function DataFields({ value, ingressos, produtos, onPatch }: { value: DataEvento
                 />
             </label>
             {value.diaSemana && value.dia && (
-                <span className="text-xs text-tertiary">
+                <span className="text-sm text-tertiary">
                     {value.diaSemana}, {value.dia} {value.mes} {value.ano}
                     {value.hora ? ` • ${value.hora}` : ""}
                 </span>
             )}
+            <Input
+                size="sm"
+                label="Limite de itens por data"
+                type="number"
+                placeholder="Sem limite"
+                hint="Ao atingir, o botão de adicionar é desabilitado. Deixe vazio para não limitar."
+                value={value.limite != null ? String(value.limite) : ""}
+                onChange={(v) => onPatch({ limite: v === "" ? undefined : Math.max(0, Number(v) || 0) })}
+            />
             <SeletorOrdenavel titulo="Ingressos à venda nesta data" options={ingressos} selected={value.itens} onChange={(ids) => onPatch({ itens: ids })} vazio="Cadastre ingressos primeiro." />
             <SeletorOrdenavel titulo="Produtos à venda nesta data" options={produtos} selected={value.produtos} onChange={(ids) => onPatch({ produtos: ids })} vazio="Cadastre produtos primeiro." />
         </>
@@ -502,9 +627,9 @@ function SeletorOrdenavel({
     const naoSel = options.filter((o) => !selected.includes(o.id));
     return (
         <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-tertiary">{titulo}</span>
+            <span className="text-sm font-medium text-tertiary">{titulo}</span>
             {options.length === 0 ? (
-                <span className="text-xs text-tertiary">{vazio ?? "Nada cadastrado."}</span>
+                <span className="text-sm text-tertiary">{vazio ?? "Nada cadastrado."}</span>
             ) : (
                 <>
                     {selected.length > 0 && (
@@ -518,10 +643,10 @@ function SeletorOrdenavel({
                     )}
                     {naoSel.length > 0 && (
                         <>
-                            <span className="text-xs text-tertiary">Não selecionados</span>
+                            <span className="text-sm text-tertiary">Não selecionados</span>
                             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                                 {naoSel.map((o) => (
-                                    <label key={o.id} className="flex items-center gap-1.5 text-xs text-secondary">
+                                    <label key={o.id} className="flex items-center gap-1.5 text-sm text-secondary">
                                         <Checkbox size="sm" isSelected={false} onChange={() => onChange([...selected, o.id])} />
                                         {o.nome || o.id}
                                     </label>
@@ -546,7 +671,7 @@ function ItemArrastavel({ id, index, item, onRemover, controles }: { id: string;
         >
             <DragHandle controls={controls} />
             <Checkbox size="sm" isSelected onChange={onRemover} aria-label={`Remover ${item.nome}`} />
-            <span className="w-4 text-center text-xs text-tertiary tabular-nums">{index + 1}</span>
+            <span className="w-4 text-center text-sm text-tertiary tabular-nums">{index + 1}</span>
             {item.imagem ? <img src={item.imagem} alt="" className="size-7 shrink-0 rounded object-cover ring-1 ring-border-secondary" /> : <Ticket01 className="size-4 shrink-0 text-fg-quaternary" />}
             <span className="min-w-0 flex-1 truncate text-sm text-primary">{item.nome || item.id}</span>
             {controles}
@@ -565,7 +690,7 @@ function ComboFixoFields({ value, onPatch }: { value: ComboFixo; onPatch: (p: Pa
             </div>
             <Input size="sm" label="Descrição" value={value.descricao ?? ""} onChange={(v) => onPatch({ descricao: v })} />
 
-            <span className="text-xs font-medium text-tertiary">Ingressos inclusos (Detalhes)</span>
+            <span className="text-sm font-medium text-tertiary">Ingressos inclusos (Detalhes)</span>
             <Reorder.Group as="div" axis="y" values={value.inclui} onReorder={(novo) => onPatch({ inclui: novo })} className="flex flex-col gap-2">
                 {value.inclui.map((inc, ii) => (
                     <IncluiCard key={inc.id} inc={inc} onChange={(p) => onPatch({ inclui: upd(value.inclui, ii, p) })} onRemove={() => onPatch({ inclui: value.inclui.filter((_, i) => i !== ii) })} />
@@ -584,7 +709,7 @@ function IncluiCard({ inc, onChange, onRemove }: { inc: ComboFixoInclui; onChang
         <Reorder.Item as="div" value={inc} dragListener={false} dragControls={controls} className="flex flex-col gap-2 rounded-lg bg-secondary/40 p-3 ring-1 ring-border-secondary">
             <div className="flex items-center gap-2">
                 <DragHandle controls={controls} />
-                <span className="min-w-0 flex-1 truncate text-xs font-medium text-secondary">{inc.titulo || "Ingresso incluso"}</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-secondary">{inc.titulo || "Ingresso incluso"}</span>
                 <ButtonUtility size="sm" color="tertiary" icon={Trash01} tooltip="Remover" onClick={onRemove} />
             </div>
             <Input size="sm" label="Título" value={inc.titulo} onChange={(v) => onChange({ titulo: v })} />
@@ -610,8 +735,15 @@ function ComboDinamicoFields({
     produtos: Produto[];
     onPatch: (p: Partial<ComboDinamico>) => void;
 }) {
-    const toggleArr = (campo: "obrigatorios" | "precoVisivel", id: string) =>
-        onPatch({ [campo]: value[campo].includes(id) ? value[campo].filter((x) => x !== id) : [...value[campo], id] } as Partial<ComboDinamico>);
+    const toggleArr = (campo: "obrigatorios" | "precoVisivel" | "ocultos", id: string) => {
+        const atual = value[campo] ?? [];
+        onPatch({ [campo]: atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id] } as Partial<ComboDinamico>);
+    };
+    const qtdDe = (id: string) => value.quantidades?.[id] ?? { min: value.obrigatorios.includes(id) ? 1 : 0, max: value.maxItens };
+    const patchQtd = (id: string, campo: "min" | "max", n: number) => {
+        const cur = qtdDe(id);
+        onPatch({ quantidades: { ...(value.quantidades ?? {}), [id]: { ...cur, [campo]: Math.max(0, n) } } });
+    };
     const datasOpts = datas.map((d) => ({ id: d.id, nome: `${d.diaSemana} ${d.dia}/${d.mes}` }));
 
     // Itens herdados das datas selecionadas (união, sem repetir).
@@ -637,26 +769,71 @@ function ComboDinamicoFields({
             </div>
             <Input size="sm" label="Tags (separadas por vírgula)" value={value.tags.join(", ")} onChange={(v) => onPatch({ tags: v.split(",").map((s) => s.trim()).filter(Boolean) })} />
 
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[160px_1fr] sm:items-end">
+                <Input
+                    size="sm"
+                    label="Preço do combo (R$)"
+                    type="number"
+                    value={value.preco != null ? String(value.preco) : ""}
+                    onChange={(v) => onPatch({ preco: v === "" ? undefined : Number(v) || 0 })}
+                />
+                <label className="flex items-center gap-2 pb-2 text-sm text-tertiary">
+                    <Toggle size="sm" isSelected={!!value.exibirPreco} onChange={(on) => onPatch({ exibirPreco: on })} aria-label="Exibir preço na seleção" />
+                    Exibir preço no card de seleção
+                </label>
+            </div>
+
             <SeletorOrdenavel titulo="Datas (sessões) do combo" options={datasOpts} selected={value.datas} onChange={(ids) => onPatch({ datas: ids })} vazio="Cadastre datas primeiro." />
 
-            <span className="text-xs font-medium text-tertiary">Itens herdados das datas</span>
+            <span className="text-sm font-medium text-tertiary">Itens herdados das datas</span>
             {idsHerdados.length === 0 ? (
-                <span className="text-xs text-tertiary">Selecione datas com itens cadastrados.</span>
+                <span className="text-sm text-tertiary">Selecione datas com itens cadastrados.</span>
             ) : (
                 <div className="flex flex-col gap-1.5">
-                    {idsHerdados.map((id) => (
-                        <div key={id} className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-secondary/40 px-2.5 py-2 ring-1 ring-border-secondary">
-                            <span className="min-w-0 flex-1 truncate text-sm text-primary">{nomeById.get(id) || id}</span>
-                            <label className="flex items-center gap-1.5 text-xs text-tertiary">
-                                <Checkbox size="sm" isSelected={value.obrigatorios.includes(id)} onChange={() => toggleArr("obrigatorios", id)} />
-                                Incluso
-                            </label>
-                            <label className="flex items-center gap-1.5 text-xs text-tertiary">
-                                <Checkbox size="sm" isSelected={value.precoVisivel.includes(id)} onChange={() => toggleArr("precoVisivel", id)} />
-                                Mostrar preço
-                            </label>
-                        </div>
-                    ))}
+                    {idsHerdados.map((id) => {
+                        const oculto = (value.ocultos ?? []).includes(id);
+                        return (
+                            <div key={id} className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-secondary/40 px-2.5 py-2 ring-1 ring-border-secondary">
+                                <span className={cx("min-w-0 flex-1 truncate text-sm", oculto ? "text-tertiary line-through" : "text-primary")}>{nomeById.get(id) || id}</span>
+                                <label className={cx("flex items-center gap-1.5 text-sm text-tertiary", oculto && "pointer-events-none opacity-40")}>
+                                    <Checkbox size="sm" isSelected={value.obrigatorios.includes(id)} isDisabled={oculto} onChange={() => toggleArr("obrigatorios", id)} />
+                                    Incluso
+                                </label>
+                                <label className={cx("flex items-center gap-1.5 text-sm text-tertiary", oculto && "pointer-events-none opacity-40")}>
+                                    <Checkbox size="sm" isSelected={value.precoVisivel.includes(id)} isDisabled={oculto} onChange={() => toggleArr("precoVisivel", id)} />
+                                    Mostrar preço
+                                </label>
+                                <label className="flex items-center gap-1.5 text-sm text-tertiary">
+                                    <Checkbox size="sm" isSelected={oculto} onChange={() => toggleArr("ocultos", id)} />
+                                    Ocultar
+                                </label>
+                                {!oculto && (
+                                    <div className="flex items-center gap-2">
+                                        <label className="flex items-center gap-1 text-sm text-tertiary">
+                                            Mín
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                value={qtdDe(id).min}
+                                                onChange={(e) => patchQtd(id, "min", Number(e.target.value) || 0)}
+                                                className="w-14 rounded-md bg-primary px-2 py-1 text-sm text-primary ring-1 ring-border-primary outline-none focus:ring-brand"
+                                            />
+                                        </label>
+                                        <label className="flex items-center gap-1 text-sm text-tertiary">
+                                            Máx
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                value={qtdDe(id).max}
+                                                onChange={(e) => patchQtd(id, "max", Number(e.target.value) || 0)}
+                                                className="w-14 rounded-md bg-primary px-2 py-1 text-sm text-primary ring-1 ring-border-primary outline-none focus:ring-brand"
+                                            />
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </>
@@ -668,24 +845,32 @@ function PerguntaFields({ value, itens, onPatch }: { value: PerguntaEvento; iten
     return (
         <>
             <Input size="sm" label="Título" value={value.titulo} onChange={(v) => onPatch({ titulo: v })} />
-            <span className="text-xs font-medium text-tertiary">Tipo</span>
+            <span className="text-sm font-medium text-tertiary">Tipo</span>
             <div className="flex flex-wrap items-center gap-2">
                 {TIPOS.map((t) => (
                     <button
                         key={t.id}
                         type="button"
                         onClick={() => onPatch({ tipo: t.id })}
-                        className={cx("rounded-md px-2.5 py-1 text-xs font-medium ring-1 transition", value.tipo === t.id ? "bg-brand-primary text-primary ring-brand" : "text-tertiary ring-border-secondary hover:bg-primary_hover")}
+                        className={cx("rounded-md px-2.5 py-1 text-sm font-medium ring-1 transition", value.tipo === t.id ? "bg-brand-primary text-primary ring-brand" : "text-tertiary ring-border-secondary hover:bg-primary_hover")}
                     >
                         {t.label}
                     </button>
                 ))}
             </div>
-            <label className="flex items-center gap-2 text-xs text-tertiary">
+            {TIPOS_COM_OPCOES.includes(value.tipo) && (
+                <Input
+                    size="sm"
+                    label="Opções (separadas por vírgula)"
+                    value={(value.opcoes ?? []).join(", ")}
+                    onChange={(v) => onPatch({ opcoes: v.split(",").map((s) => s.trim()).filter(Boolean) })}
+                />
+            )}
+            <label className="flex items-center gap-2 text-sm text-tertiary">
                 <Toggle size="sm" isSelected={value.obrigatoria} onChange={(on) => onPatch({ obrigatoria: on })} aria-label="Obrigatória" />
                 Obrigatória
             </label>
-            <span className="text-xs font-medium text-tertiary">Vincular a itens</span>
+            <span className="text-sm font-medium text-tertiary">Vincular a itens</span>
             <PickIds options={itens} selected={value.vinculos} onToggle={toggleVinculo} vazio="Cadastre ingressos/produtos para vincular." />
         </>
     );

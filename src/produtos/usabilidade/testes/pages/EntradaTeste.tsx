@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { gerarId, getDeviceId, gravarRun, gravarSessao, jaFez, usabilityStore } from "@/lib/usability";
+import { LogoTopo, RichTextView } from "@/lib/usability/branding";
 import type { SessaoTeste, Teste } from "@/lib/usability";
 
 type Estado = { tela: "carregando" } | { tela: "indisponivel"; motivo: string } | { tela: "ja-fez" } | { tela: "intro"; teste: Teste } | { tela: "rodando" };
@@ -73,10 +74,12 @@ export function EntradaTeste() {
     const welcome = estado.tela === "intro" ? estado.teste.blocos.find((b) => b.tipo === "welcome") : undefined;
     const titulo = welcome?.tipo === "welcome" ? welcome.titulo : "Bem-vindo";
     const texto = welcome?.tipo === "welcome" ? welcome.texto : "";
+    const logoParceira = estado.tela === "intro" ? estado.teste.logoParceira : undefined;
     const nConteudo = estado.tela === "intro" ? estado.teste.blocos.filter((b) => b.tipo === "atividade" || b.tipo === "pergunta" || b.tipo === "sus").length : 0;
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-quaternary px-4 py-10 text-primary">
+        <div className="flex min-h-screen items-center justify-center bg-quaternary px-4 py-20 text-primary">
+            <LogoTopo logoParceira={logoParceira} />
             <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl bg-primary p-8 text-center shadow-sm ring-1 ring-border-secondary">
                 {estado.tela === "carregando" && <p className="py-8 text-sm text-tertiary">Carregando…</p>}
 
@@ -105,7 +108,7 @@ export function EntradaTeste() {
                         )}
                         <FeaturedIcon icon={Star06} color="brand" theme="light" size="xl" />
                         <h1 className="text-xl font-semibold text-primary">{titulo}</h1>
-                        <p className="text-sm whitespace-pre-line text-tertiary">{texto}</p>
+                        {texto && <RichTextView html={texto} className="text-sm text-tertiary" />}
                         <p className="text-xs text-quaternary">
                             {nConteudo} {nConteudo === 1 ? "etapa" : "etapas"} · sua sessão será gravada para análise
                         </p>

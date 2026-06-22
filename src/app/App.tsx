@@ -33,6 +33,7 @@ import { Pesquisas } from '../produtos/backstage/pesquisas/pages/Pesquisas';
 import { VinculosPergunta } from '../produtos/backstage/pesquisas/pages/VinculosPergunta';
 import { SelecaoEAtribuicao } from '../produtos/marketplace/selecao-e-atribuicao/pages/SelecaoEAtribuicao';
 import { Config as MarketplaceConfig } from '../produtos/marketplace/selecao-e-atribuicao/pages/Config';
+import { Sucesso as MarketplaceSucesso } from '../produtos/marketplace/selecao-e-atribuicao/pages/Sucesso';
 import { Home as IngresseAppHome } from '../produtos/ingresse-app/home/pages/Home';
 import { Carteira as IngresseAppCarteira } from '../produtos/ingresse-app/carteira/pages/Carteira';
 import { Ingressos as IngresseAppIngressos } from '../produtos/ingresse-app/ingressos/pages/Ingressos';
@@ -180,6 +181,7 @@ export default function App() {
         <Route path="/futebol/landing-pages" element={<FutebolHome />} />
         <Route path="/marketplace" element={<MarketplaceConfig />} />
         <Route path="/marketplace/event" element={<SelecaoEAtribuicao />} />
+        <Route path="/marketplace/sucesso" element={<MarketplaceSucesso />} />
         <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />
         <Route path="/novo-site/home/categorias" element={<Categorias />} />
         <Route path="/ingresse-app" element={<IngresseAppHome />} />

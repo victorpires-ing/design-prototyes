@@ -1,8 +1,10 @@
 import type { FC } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ArrowLeft, Calendar, ChevronRight, ClockRewind, FilterLines, MarkerPin01, Monitor01, Package, Phone01, Ticket01 } from "@untitledui/icons";
+import { AlertTriangle, ArrowLeft, Calendar, ChevronRight, ClockRewind, FilterLines, MarkerPin01, Monitor01, Package, Phone01, Ticket01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
+import { Button } from "@/components/base/buttons/button";
+import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { GradientFill } from "../components/GradientFill";
 import { DesktopDetalhe, MobileComboView } from "../components/IngressosModal";
@@ -62,7 +64,7 @@ const ANTERIORES: EventoCard[] = [
 
 /* ------------------------------ Conteúdo ------------------------------ */
 
-function CarteiraContent({ onCardClick }: { onCardClick: () => void }) {
+function CarteiraContent({ onCardClick, erro = false }: { onCardClick: () => void; erro?: boolean }) {
     const [tab, setTab] = useState<Tab>("proximos");
     const cards = tab === "proximos" ? PROXIMOS : ANTERIORES;
 
@@ -80,7 +82,7 @@ function CarteiraContent({ onCardClick }: { onCardClick: () => void }) {
                 {/* Lista de cards — largura fixa (mesmo tamanho do mobile) */}
                 <div className="mt-8 flex flex-wrap gap-5">
                     {cards.map((card) => (
-                        <EventoCardView key={card.id} card={card} past={tab === "anteriores"} onClick={onCardClick} />
+                        <EventoCardView key={card.id} card={card} past={tab === "anteriores"} erro={erro && card.comboId === "combo-sao-silvestre"} onClick={onCardClick} />
                     ))}
                 </div>
             </main>
@@ -103,7 +105,7 @@ const TabButton = ({ icon: Icon, label, active, onClick }: { icon: FC<{ classNam
     </button>
 );
 
-const EventoCardView = ({ card, past, onClick }: { card: EventoCard; past?: boolean; onClick: () => void }) => {
+const EventoCardView = ({ card, past, erro = false, onClick }: { card: EventoCard; past?: boolean; erro?: boolean; onClick: () => void }) => {
     const escuro = !!card.gradient;
     const transferido = !!card.comboId && isTransferido(card.comboId);
     return (
@@ -139,6 +141,10 @@ const EventoCardView = ({ card, past, onClick }: { card: EventoCard; past?: bool
                     ) : transferido ? (
                         <Badge size="sm" color="blue" type="pill-color">
                             Transferido
+                        </Badge>
+                    ) : erro ? (
+                        <Badge size="sm" color="error" type="pill-color">
+                            Formulário pendente
                         </Badge>
                     ) : (
                         <Badge size="sm" color="success" type="pill-color">
@@ -234,7 +240,7 @@ function MobileEventList({ onEventClick }: { onEventClick: (card: EventoCard) =>
 }
 
 /** Tela intermediária com a listagem de ingressos do evento (estilo app), só SS. */
-function MobileIngressos({ card, onBack, onOpen }: { card: EventoCard; onBack: () => void; onOpen: () => void }) {
+function MobileIngressos({ card, erro = false, onBack, onOpen }: { card: EventoCard; erro?: boolean; onBack: () => void; onOpen: () => void }) {
     const combo = SAO_SILVESTRE.combos[0];
     const transferido = !!card.comboId && isTransferido(card.comboId);
 
@@ -259,7 +265,7 @@ function MobileIngressos({ card, onBack, onOpen }: { card: EventoCard; onBack: (
                 </button>
             </div>
 
-            <h1 className="px-5 pt-4 text-xl font-bold text-primary">Ingressos</h1>
+            <h1 className="px-5 pt-4 text-xl font-bold text-primary">{card.comboId === "combo-sao-silvestre" ? "Inscrição" : "Ingressos"}</h1>
 
             {/* Card do evento */}
             <div className="px-5 pt-5">
@@ -312,6 +318,10 @@ function MobileIngressos({ card, onBack, onOpen }: { card: EventoCard; onBack: (
                                 <Badge size="md" color="blue" type="pill-color">
                                     Transferido
                                 </Badge>
+                            ) : erro ? (
+                                <Badge size="md" color="error" type="pill-color">
+                                    Formulário pendente
+                                </Badge>
                             ) : (
                                 <Badge size="md" color="success" type="pill-color">
                                     Pronto para uso
@@ -325,15 +335,65 @@ function MobileIngressos({ card, onBack, onOpen }: { card: EventoCard; onBack: (
     );
 }
 
+/** Tela de reenvio do formulário da inscrição (cenário de erro) — usada no mobile e no desktop. */
+function FormularioInscricao({ onBack, onSubmit }: { onBack: () => void; onSubmit: () => void }) {
+    const perguntas = SAO_SILVESTRE.questionario;
+    const [respostas, setRespostas] = useState<Record<string, string>>({});
+    const ok = perguntas.every((q) => (respostas[q.pergunta] ?? "").trim() !== "");
+
+    return (
+        <div className="scrollbar-hide flex-1 overflow-y-auto bg-secondary">
+            <div className="mx-auto w-full max-w-md px-5 pt-6">
+                <button
+                    type="button"
+                    aria-label="Voltar"
+                    onClick={onBack}
+                    className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                >
+                    <ArrowLeft className="size-5" />
+                </button>
+                <h1 className="pt-4 text-xl font-bold text-primary">Formulário</h1>
+            </div>
+
+            <div className="mx-auto w-full max-w-md px-5 pt-4 pb-8">
+                <div className="rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
+                    <h2 className="text-md font-bold text-primary">Formulário da inscrição</h2>
+                    <p className="mt-1 text-sm text-tertiary">Responda novamente para liberar e acessar seu ingresso.</p>
+
+                    <div className="mt-4 flex flex-col gap-4">
+                        {perguntas.map((q) => (
+                            <Input
+                                key={q.pergunta}
+                                isRequired
+                                label={q.pergunta}
+                                placeholder="Sua resposta"
+                                value={respostas[q.pergunta] ?? ""}
+                                onChange={(v) => setRespostas((r) => ({ ...r, [q.pergunta]: v }))}
+                            />
+                        ))}
+                    </div>
+
+                    <Button size="lg" color="primary" className="mt-5 w-full rounded-lg" isDisabled={!ok} onClick={onSubmit}>
+                        Enviar formulário
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /* --------------------- Página + toggle de viewport --------------------- */
 
 export function Carteira() {
     const navigate = useNavigate();
     const [viewport, setViewport] = useState<Viewport>("desktop");
-    // Desktop: lista de eventos → tela de detalhe da inscrição
+    // Desktop: lista de eventos → tela de detalhe da inscrição → formulário (reenvio)
     const [desktopDetalhe, setDesktopDetalhe] = useState(false);
-    // Mobile espelha o app: lista de eventos → listagem de ingressos → ingresso (detalhe)
-    const [mobileScreen, setMobileScreen] = useState<"lista" | "ingressos" | "detalhe">("lista");
+    const [desktopForm, setDesktopForm] = useState(false);
+    // Mobile espelha o app: lista de eventos → listagem de ingressos → ingresso (detalhe) → formulário (reenvio)
+    const [mobileScreen, setMobileScreen] = useState<"lista" | "ingressos" | "detalhe" | "formulario">("lista");
+    // Cenário de erro: formulário não enviado corretamente
+    const [erroFormulario, setErroFormulario] = useState(false);
 
     const seg = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear";
 
@@ -359,7 +419,17 @@ export function Carteira() {
                     </button>
                 </div>
 
-                <span className="hidden w-[120px] text-right text-xs text-tertiary @3xl:inline">{viewport === "mobile" ? "390px" : "Full width"}</span>
+                <button
+                    type="button"
+                    onClick={() => setErroFormulario((v) => !v)}
+                    className={cx(
+                        "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ring-1 transition duration-100 ease-linear",
+                        erroFormulario ? "bg-error-primary text-error-primary ring-error" : "text-tertiary ring-border-secondary hover:text-secondary",
+                    )}
+                >
+                    <AlertTriangle className="size-4" />
+                    <span>Erro no formulário</span>
+                </button>
             </div>
 
             {/* Área de preview. No mobile real (telas pequenas) o frame de 390px é
@@ -375,18 +445,36 @@ export function Carteira() {
                     )}
                 >
                     {viewport === "desktop" ? (
-                        desktopDetalhe ? (
+                        desktopForm ? (
+                            <FormularioInscricao
+                                onBack={() => setDesktopForm(false)}
+                                onSubmit={() => {
+                                    setErroFormulario(false);
+                                    setDesktopForm(false);
+                                }}
+                            />
+                        ) : desktopDetalhe ? (
                             <DesktopDetalhe
                                 onBack={() => setDesktopDetalhe(false)}
                                 onTransfer={(combo) => navigate("/carteira-web/transferir", { state: { viewport, comboId: combo.id } })}
+                                erro={erroFormulario}
+                                onResponderFormulario={() => setDesktopForm(true)}
                             />
                         ) : (
-                            <CarteiraContent onCardClick={() => setDesktopDetalhe(true)} />
+                            <CarteiraContent onCardClick={() => setDesktopDetalhe(true)} erro={erroFormulario} />
                         )
                     ) : mobileScreen === "lista" ? (
                         <MobileEventList onEventClick={() => setMobileScreen("ingressos")} />
                     ) : mobileScreen === "ingressos" ? (
-                        <MobileIngressos card={PROXIMOS[0]} onBack={() => setMobileScreen("lista")} onOpen={() => setMobileScreen("detalhe")} />
+                        <MobileIngressos card={PROXIMOS[0]} erro={erroFormulario} onBack={() => setMobileScreen("lista")} onOpen={() => setMobileScreen("detalhe")} />
+                    ) : mobileScreen === "formulario" ? (
+                        <FormularioInscricao
+                            onBack={() => setMobileScreen("detalhe")}
+                            onSubmit={() => {
+                                setErroFormulario(false);
+                                setMobileScreen("detalhe");
+                            }}
+                        />
                     ) : (
                         <MobileComboView
                             ev={SAO_SILVESTRE}
@@ -395,6 +483,8 @@ export function Carteira() {
                             cpf={SAO_SILVESTRE.cpf}
                             onClose={() => setMobileScreen("ingressos")}
                             onTransfer={(combo) => navigate("/carteira-web/transferir", { state: { viewport, comboId: combo.id } })}
+                            erro={erroFormulario}
+                            onResponderFormulario={() => setMobileScreen("formulario")}
                         />
                     )}
                 </div>

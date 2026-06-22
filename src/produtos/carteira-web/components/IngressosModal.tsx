@@ -54,6 +54,8 @@ export function MobileComboView({
     cpf,
     onClose,
     onTransfer,
+    erro = false,
+    onResponderFormulario,
 }: {
     ev: EventoSS;
     combo: Combo;
@@ -61,6 +63,9 @@ export function MobileComboView({
     cpf: string;
     onClose: () => void;
     onTransfer?: (combo: Combo) => void;
+    /** Erro no formulário: embaça o QR e exibe overlay para responder novamente. */
+    erro?: boolean;
+    onResponderFormulario?: () => void;
 }) {
     const transferencia = getTransferencia(combo.id);
     const [actionsOpen, setActionsOpen] = useState(false);
@@ -166,8 +171,28 @@ export function MobileComboView({
 
                             {/* QR Code + titular */}
                             <div className="px-6 pt-6 pb-7">
-                                <div className="flex justify-center">
-                                    <FakeQR px={220} />
+                                <div className="relative flex justify-center">
+                                    {/* QR quase apagado (apenas um detalhe) quando há erro */}
+                                    <div className={cx(erro && "opacity-10")}>
+                                        <FakeQR px={220} />
+                                    </div>
+                                    {/* Card de erro do formulário sobre o QR */}
+                                    {erro && (
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <div className="flex max-w-[260px] flex-col items-center rounded-2xl bg-primary px-5 py-4 text-center shadow-lg ring-1 ring-border-secondary">
+                                                <FeaturedIcon icon={AlertCircle} color="error" theme="outline" size="md" />
+                                                <p className="mt-4 text-sm font-bold text-primary">Formulário pendente</p>
+                                                <p className="mt-1 text-sm text-tertiary">Complete o formulário para finalizar os dados da inscrição</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={onResponderFormulario}
+                                                    className="mt-4 w-full rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-semibold text-white transition duration-100 ease-linear active:scale-95"
+                                                >
+                                                    Preencher agora
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="-mx-6 my-5 border-t border-tertiary" />
                                 <div>
@@ -401,7 +426,17 @@ export function IngressosModal({ onClose, compact = false, onTransfer }: { onClo
 /* ----------------------------------------------------------------------------
  * Desktop: detalhe da inscrição como TELA (mesma estrutura do modal, sem overlay).
  * -------------------------------------------------------------------------- */
-export function DesktopDetalhe({ onBack, onTransfer }: { onBack: () => void; onTransfer?: (combo: Combo) => void }) {
+export function DesktopDetalhe({
+    onBack,
+    onTransfer,
+    erro = false,
+    onResponderFormulario,
+}: {
+    onBack: () => void;
+    onTransfer?: (combo: Combo) => void;
+    erro?: boolean;
+    onResponderFormulario?: () => void;
+}) {
     const ev = SAO_SILVESTRE;
     return (
         <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
@@ -438,6 +473,8 @@ export function DesktopDetalhe({ onBack, onTransfer }: { onBack: () => void; onT
                         questionario={ev.questionario}
                         compact={false}
                         onTransfer={() => onTransfer?.(c)}
+                        erro={erro}
+                        onResponderFormulario={onResponderFormulario}
                     />
                 ))}
             </div>
@@ -452,6 +489,8 @@ function ComboCard({
     questionario,
     compact = false,
     onTransfer,
+    erro = false,
+    onResponderFormulario,
 }: {
     combo: Combo;
     titular: string;
@@ -459,6 +498,8 @@ function ComboCard({
     questionario: Resposta[];
     compact?: boolean;
     onTransfer?: () => void;
+    erro?: boolean;
+    onResponderFormulario?: () => void;
 }) {
     const [open, setOpen] = useState(true);
     const transferencia = getTransferencia(combo.id);
@@ -471,8 +512,8 @@ function ComboCard({
                     <div className="flex items-center gap-2">
                         <p className="truncate font-bold text-primary">{combo.nome}</p>
                         {transferencia && (
-                            <Badge size="sm" color="gray" type="pill-color">
-                                Transferida
+                            <Badge size="sm" color="blue" type="pill-color">
+                                Transferido
                             </Badge>
                         )}
                     </div>
@@ -561,13 +602,30 @@ function ComboCard({
                         </div>
                     ) : (
                         <>
-                            {/* Desktop: web não exibe o QR — alerta (estrutura do DS) com fundo amarelo claro + borda amarela mais escura */}
-                            <div className="flex flex-col gap-4 rounded-xl border border-utility-yellow-300 bg-utility-yellow-50 p-4 md:flex-row">
-                                <FeaturedIcon icon={AlertCircle} color="warning" theme="outline" size="md" />
-                                <div className="flex flex-1 flex-col gap-1 md:w-0">
-                                    <p className="text-sm font-semibold text-secondary">O QR Code é exibido na versão mobile.</p>
+                            {/* Desktop: web não exibe o QR. Em erro, vira o alerta de formulário pendente. */}
+                            {erro ? (
+                                <div className="flex items-center gap-4 rounded-xl border border-error_subtle bg-error-primary p-4">
+                                    <FeaturedIcon icon={AlertCircle} color="error" theme="outline" size="md" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-semibold text-primary">Formulário pendente</p>
+                                        <p className="text-sm text-tertiary">Complete o formulário para finalizar os dados da inscrição</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={onResponderFormulario}
+                                        className="shrink-0 rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-semibold text-white transition duration-100 ease-linear hover:brightness-95"
+                                    >
+                                        Preencher agora
+                                    </button>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="flex flex-col gap-4 rounded-xl border border-utility-yellow-300 bg-utility-yellow-50 p-4 md:flex-row">
+                                    <FeaturedIcon icon={AlertCircle} color="warning" theme="outline" size="md" />
+                                    <div className="flex flex-1 flex-col gap-1 md:w-0">
+                                        <p className="text-sm font-semibold text-secondary">O QR Code é exibido na versão mobile.</p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Informações */}
                             <div>

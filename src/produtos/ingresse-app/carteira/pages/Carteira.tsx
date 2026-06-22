@@ -101,7 +101,7 @@ export function Carteira() {
             <div className="min-h-full bg-secondary">
                 <StatusBar tone="dark" />
 
-                <h1 className="px-5 pt-4 pb-5 text-xl font-bold text-primary">Carteira de ingressos</h1>
+                <h1 className="px-5 pt-4 pb-5 text-xl font-bold text-primary">Carteira</h1>
 
                 {/* Tabs */}
                 <div className="flex px-5">
@@ -137,7 +137,7 @@ export function Carteira() {
                                             <p className="text-sm font-medium text-secondary">{evento.date}</p>
                                             <p className="text-sm text-tertiary">{evento.local}</p>
                                             <p className="text-sm text-tertiary">
-                                                {evento.qtd} {evento.qtd === 1 ? "ingresso" : "ingressos"}
+                                                {evento.id === "sao-silvestre" ? "1 inscrição" : `${evento.qtd} ${evento.qtd === 1 ? "ingresso" : "ingressos"}`}
                                             </p>
                                         </div>
                                         <ChevronRight className="size-5 shrink-0 text-fg-quaternary" />

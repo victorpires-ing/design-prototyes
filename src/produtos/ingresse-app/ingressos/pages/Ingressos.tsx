@@ -32,7 +32,7 @@ export function Ingressos() {
                     <IconButton icon={FilterLines} label="Filtrar" />
                 </div>
 
-                <h1 className="px-5 pt-4 text-xl font-bold text-primary">Ingressos</h1>
+                <h1 className="px-5 pt-4 text-xl font-bold text-primary">{evento.id === "sao-silvestre" ? "Inscrição" : "Ingressos"}</h1>
 
                 {/* Card do evento */}
                 <div className="px-5 pt-5">

@@ -41,9 +41,10 @@ export function ComboDetalhe() {
         );
     }
 
+    const termo = evento.id === "sao-silvestre" ? "inscrição" : "ingresso";
     const acoes: FabAction[] = [
-        { icon: Send01, label: "Transferir ingresso", short: "Transferir", onClick: () => navigate("/ingresse-app/ingressos/transferir", { state: { eventId: evento.id, comboId: combo.id } }) },
-        { icon: Tag01, label: "Revender ingresso", short: "Revender" },
+        { icon: Send01, label: `Transferir ${termo}`, short: "Transferir", onClick: () => navigate("/ingresse-app/ingressos/transferir", { state: { eventId: evento.id, comboId: combo.id } }) },
+        { icon: Tag01, label: `Revender ${termo}`, short: "Revender" },
         { icon: Wallet02, label: "Adicionar à Carteira", short: "Carteira", dark: true },
     ];
 
@@ -70,7 +71,7 @@ export function ComboDetalhe() {
                         <InfoCircle className="size-5" />
                     </button>
                 </div>
-                <h1 className="px-5 pt-4 text-xl font-bold text-primary">Ingresso</h1>
+                <h1 className="px-5 pt-4 text-xl font-bold text-primary">{evento.id === "sao-silvestre" ? "Inscrição" : "Ingresso"}</h1>
 
                 <div className="flex flex-1 flex-col gap-6 px-5 pt-4 pb-8">
                     {transferido ? (

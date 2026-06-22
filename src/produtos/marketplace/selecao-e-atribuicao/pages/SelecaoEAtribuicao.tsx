@@ -1278,17 +1278,16 @@ function PerguntasModal({
         <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable>
             <Modal className="sm:max-w-[480px]">
                 <Dialog>
-                    {/* Mobile: rolagem única (overlay do DS); footer no fim. Desktop: footer fixo + corpo rolável. */}
-                    <div className="flex w-full flex-col rounded-2xl bg-primary shadow-xl ring-1 ring-border-secondary sm:max-h-[85dvh] sm:overflow-clip">
-                        <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-5 pb-4">
-                            <div className="flex flex-col gap-0.5">
-                                <h2 className="text-lg font-semibold text-primary">Questionário do atleta</h2>
-                                <p className="text-sm text-tertiary">{titulo}</p>
+                    {/* Altura travada na viewport (dvh): só o footer é fixo; header rola com o conteúdo. */}
+                    <div className="flex max-h-[85dvh] w-full flex-col overflow-clip rounded-2xl bg-primary shadow-xl ring-1 ring-border-secondary">
+                        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pt-5 pb-2">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex flex-col gap-0.5">
+                                    <h2 className="text-lg font-semibold text-primary">Questionário do atleta</h2>
+                                    <p className="text-sm text-tertiary">{titulo}</p>
+                                </div>
+                                <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
                             </div>
-                            <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
-                        </div>
-
-                        <div className="flex flex-col gap-4 px-6 pb-2 sm:min-h-0 sm:flex-1 sm:overflow-y-auto">
                             {perguntas.map((p) => (
                                 <CampoPergunta key={p.id} pergunta={p} valor={getResposta(p.id)} onChange={(v) => onResposta(p.id, v)} />
                             ))}

@@ -99,7 +99,7 @@ const TabButton = ({ icon: Icon, label, active, onClick }: { icon: FC<{ classNam
         )}
     >
         <Icon className={cx("size-5", active ? "text-fg-brand-primary" : "text-fg-quaternary")} />
-        {label}
+        <span>{label}</span>
     </button>
 );
 
@@ -176,7 +176,7 @@ const MobileTab = ({ icon: Icon, label, active, onClick }: { icon: FC<{ classNam
         )}
     >
         <Icon className={cx("size-5", active ? "text-fg-brand-primary" : "text-fg-quaternary")} />
-        {label}
+        <span>{label}</span>
     </button>
 );
 
@@ -347,15 +347,15 @@ export function Carteira() {
                     className="flex items-center gap-1.5 text-sm font-medium text-tertiary transition hover:text-secondary"
                 >
                     <ArrowLeft className="size-4" />
-                    Produtos
+                    <span>Produtos</span>
                 </button>
 
                 <div className="flex items-center gap-1 rounded-lg bg-secondary p-1 ring-1 ring-border-secondary">
                     <button type="button" onClick={() => setViewport("desktop")} className={cx(seg, viewport === "desktop" ? "bg-primary text-primary shadow-sm" : "text-tertiary")}>
-                        <Monitor01 className="size-4" /> Desktop
+                        <Monitor01 className="size-4" /> <span>Desktop</span>
                     </button>
                     <button type="button" onClick={() => setViewport("mobile")} className={cx(seg, viewport === "mobile" ? "bg-primary text-primary shadow-sm" : "text-tertiary")}>
-                        <Phone01 className="size-4" /> Mobile
+                        <Phone01 className="size-4" /> <span>Mobile</span>
                     </button>
                 </div>
 

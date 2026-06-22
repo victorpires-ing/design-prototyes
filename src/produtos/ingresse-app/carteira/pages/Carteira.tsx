@@ -162,6 +162,6 @@ const TabButton = ({ icon: Icon, label, active, onClick }: { icon: FC<{ classNam
         )}
     >
         <Icon className={cx("size-5", active ? "text-fg-brand-primary" : "text-fg-quaternary")} />
-        {label}
+        <span>{label}</span>
     </button>
 );

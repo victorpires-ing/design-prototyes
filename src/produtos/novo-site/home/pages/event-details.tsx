@@ -28,11 +28,12 @@ import {
 } from "../../components/EventConfigSlideout";
 import { FROM_IMAGE_ID, INGRESSE_RED, getFamily, gradientCss, type GradientFamily, type VibeMotion } from "../../components/gradient-families";
 import { MatchupCover } from "../components/MatchupCover";
+import { FutebolEvento } from "../components/FutebolEvento";
 import { GradientTexture, NOISE_URI } from "../components/GradientTexture";
 import { useImagePalette } from "../utils/image-palette";
 import { getEvento, type Confronto, type EventStatus as MockStatus } from "../data/events";
 import meshGradient from "../assets/mesh-gradient.png";
-import sideTexture from "../assets/side-bg-texture.svg";
+import sideTexture from "../assets/side-bg-texture.png";
 import { Footer, HeaderNav } from "../components/SiteChrome";
 import bannerImg from "../assets/banner.png";
 import lineupJoao from "../assets/lineup-joao.png";
@@ -197,6 +198,10 @@ export function EventDetails() {
         <div className="min-h-screen bg-primary text-primary">
             <HeaderNav onOpenConfig={() => setIsConfigOpen(true)} />
 
+            {confronto && evento ? (
+                <FutebolEvento evento={evento} />
+            ) : (
+            <>
             {/* Mini-barra fixa — surge por cima do header ao rolar além do hero */}
             <AnimatePresence>
                 {showMini && (
@@ -238,13 +243,13 @@ export function EventDetails() {
 
             {/* Navegação de seções — fixa abaixo do header, largura total */}
             <div className="sticky top-16 z-30 border-b border-secondary bg-primary/90 backdrop-blur-md">
-                <div className="mx-auto max-w-2xl px-5">
+                <div className="mx-auto max-w-5xl px-5 lg:px-8">
                     <SectionTabsBar tabs={sectionTabs} family={family} />
                 </div>
             </div>
 
             {/* Conteúdo editorial */}
-            <main className="mx-auto flex w-full max-w-2xl flex-col gap-16 px-5 pt-14 pb-40 lg:gap-20 lg:pb-32">
+            <main className="mx-auto flex w-full max-w-5xl flex-col gap-16 px-5 pt-14 pb-40 lg:gap-20 lg:px-8 lg:pb-32">
                 {config.temLineup && (
                     <Section id="lineup">
                         <Lineup config={config} />
@@ -273,8 +278,6 @@ export function EventDetails() {
                 </Reveal>
             </main>
 
-            <Footer />
-
             {/* Barra de venda persistente — fade/blur no topo, mesma lógica de status */}
             <div className="fixed inset-x-0 bottom-0 z-30">
                 <div
@@ -286,11 +289,15 @@ export function EventDetails() {
                     }}
                 />
                 <div className="border-t border-secondary bg-primary/85 backdrop-blur-lg">
-                    <div className="mx-auto max-w-2xl px-5 pt-3 pb-7 lg:max-w-3xl">
+                    <div className="mx-auto max-w-5xl px-5 pt-3 pb-7 lg:px-8">
                         <SaleStatus status={config.status} preco={config.preco} />
                     </div>
                 </div>
             </div>
+            </>
+            )}
+
+            <Footer />
 
             <EventConfigSlideout isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} config={config} onChange={setConfig} />
         </div>

@@ -129,53 +129,69 @@ const FAQ = [
 /* Modal (estilo DS) com o procedimento de inscrição de grupos e assessorias. */
 function GrupoModal({ viewport, onClose, onAcessar }: { viewport: Viewport; onClose: () => void; onAcessar: () => void }) {
     const mobile = viewport === "mobile";
+
+    const card = (
+        <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl bg-primary shadow-xl">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-secondary p-5 @3xl:p-6">
+                <h3 className="text-lg font-bold text-primary">Inscrição de grupos e assessorias</h3>
+                <button
+                    type="button"
+                    aria-label="Fechar"
+                    onClick={onClose}
+                    className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary"
+                >
+                    <XClose className="size-5" />
+                </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-5 @3xl:p-6">
+                <div className="space-y-3 text-sm text-secondary">
+                    <p>Grupos e assessorias de corrida são muito bem-vindos na São Silvestre.</p>
+                    <p>Acreditamos na força da comunidade de corredores e no impacto que o esporte pode gerar quando pessoas se unem por uma causa.</p>
+                    <p>Reúna sua equipe, convide seus alunos e venha fazer parte de uma das corridas mais tradicionais do Brasil.</p>
+                </div>
+
+                <p className="mt-6 text-sm font-bold text-primary">Procedimento para inscrições de grupos:</p>
+                <div className="mt-2 space-y-3 text-sm text-tertiary">
+                    <p>
+                        1. Faça o seu cadastro no sistema TicketSports com os dados que usará para faturamento do pedido de grupos. Se você deseja que o boleto
+                        saia em nome de empresa faça um cadastro como Pessoa Jurídica informando a razão social ou fantasia com seu respectivo CNPJ. Caso já
+                        possua o cadastro informe seus dados de acesso.
+                    </p>
+                    <p>
+                        2. Solicite via sistema a quantidade total de vagas para seu grupo. Após o recebimento, o organizador irá validar sua solicitação
+                        autorizando, ou não, a reserva das vagas até a data limite de inscrições para grupos.
+                    </p>
+                    <p>3. Aguarde o e-mail com a resposta de aprovação das vagas que será enviada pelo organizador.</p>
+                    <p>4. Siga as instruções do e-mail que irá receber para realizar as inscrições.</p>
+                </div>
+
+                <BlueButton onClick={onAcessar} className="mt-6 w-full py-3.5">
+                    Acessar novo processo de grupos
+                </BlueButton>
+            </div>
+        </div>
+    );
+
+    // Mobile: confina overlay + card à coluna de 390px (o "celular" do preview),
+    // com 16px de margem lateral/inferior DENTRO dessa coluna.
+    if (mobile) {
+        return createPortal(
+            <div className="fixed inset-0 z-[70] flex justify-center" role="dialog" aria-modal="true">
+                <div className="relative h-full w-[390px] max-w-full">
+                    <button type="button" aria-label="Fechar" onClick={onClose} className="absolute inset-0 bg-black/50" />
+                    <div className="absolute inset-x-4 bottom-4 z-10 max-h-[calc(100%-2rem)]">{card}</div>
+                </div>
+            </div>,
+            document.body,
+        );
+    }
+
+    // Desktop: modal centralizado padrão, com respiro de 16px via padding do overlay.
     return createPortal(
-        <div className={cx("fixed inset-0 z-[70] flex justify-center bg-black/50", mobile ? "items-end pb-4" : "items-center py-4")} role="dialog" aria-modal="true" onClick={onClose}>
-            <div
-                className={cx(
-                    "flex w-[calc(100%-2rem)] flex-col overflow-hidden rounded-2xl bg-primary shadow-xl",
-                    mobile ? "max-h-[92vh] max-w-[420px]" : "max-h-[90vh] max-w-2xl",
-                )}
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="flex items-start justify-between gap-3 border-b border-secondary p-5 @3xl:p-6">
-                    <h3 className="text-lg font-bold text-primary">Inscrição de grupos e assessorias</h3>
-                    <button
-                        type="button"
-                        aria-label="Fechar"
-                        onClick={onClose}
-                        className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary"
-                    >
-                        <XClose className="size-5" />
-                    </button>
-                </div>
-
-                <div className="overflow-y-auto p-5 @3xl:p-6">
-                    <div className="space-y-3 text-sm text-secondary">
-                        <p>Grupos e assessorias de corrida são muito bem-vindos na São Silvestre.</p>
-                        <p>Acreditamos na força da comunidade de corredores e no impacto que o esporte pode gerar quando pessoas se unem por uma causa.</p>
-                        <p>Reúna sua equipe, convide seus alunos e venha fazer parte de uma das corridas mais tradicionais do Brasil.</p>
-                    </div>
-
-                    <p className="mt-6 text-sm font-bold text-primary">Procedimento para inscrições de grupos:</p>
-                    <div className="mt-2 space-y-3 text-sm text-tertiary">
-                        <p>
-                            1. Faça o seu cadastro no sistema TicketSports com os dados que usará para faturamento do pedido de grupos. Se você deseja que o boleto
-                            saia em nome de empresa faça um cadastro como Pessoa Jurídica informando a razão social ou fantasia com seu respectivo CNPJ. Caso já
-                            possua o cadastro informe seus dados de acesso.
-                        </p>
-                        <p>
-                            2. Solicite via sistema a quantidade total de vagas para seu grupo. Após o recebimento, o organizador irá validar sua solicitação
-                            autorizando, ou não, a reserva das vagas até a data limite de inscrições para grupos.
-                        </p>
-                        <p>3. Aguarde o e-mail com a resposta de aprovação das vagas que será enviada pelo organizador.</p>
-                        <p>4. Siga as instruções do e-mail que irá receber para realizar as inscrições.</p>
-                    </div>
-
-                    <BlueButton onClick={onAcessar} className="mt-6 w-full py-3.5">
-                        Acessar novo processo de grupos
-                    </BlueButton>
-                </div>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" onClick={onClose}>
+            <div className="max-h-[90vh] w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+                {card}
             </div>
         </div>,
         document.body,

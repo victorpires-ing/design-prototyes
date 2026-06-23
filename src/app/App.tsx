@@ -89,6 +89,7 @@ import { Resultados as TesteResultados } from '../produtos/usabilidade/testes/pa
 import { EntradaTeste } from '../produtos/usabilidade/testes/pages/EntradaTeste';
 import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPagesMenu';
 import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
+import { SolicitacaoVagas } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoVagas';
 import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
 import { TransferirInscricao as CarteiraWebTransferir } from '../produtos/carteira-web/pages/TransferirInscricao';
 
@@ -202,6 +203,7 @@ export default function App() {
         <Route path="/t/:id" element={<EntradaTeste />} />
         <Route path="/landing-pages" element={<LandingPagesMenu />} />
         <Route path="/landing-pages/sao-silvestre" element={<SaoSilvestre />} />
+        <Route path="/landing-pages/sao-silvestre/solicitar-vagas" element={<SolicitacaoVagas />} />
         <Route path="/carteira-web" element={<CarteiraWeb />} />
         <Route path="/carteira-web/transferir" element={<CarteiraWebTransferir />} />
       </Routes>

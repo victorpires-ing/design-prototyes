@@ -28,11 +28,12 @@ import {
 } from "../../components/EventConfigSlideout";
 import { FROM_IMAGE_ID, INGRESSE_RED, getFamily, gradientCss, type GradientFamily, type VibeMotion } from "../../components/gradient-families";
 import { MatchupCover } from "../components/MatchupCover";
+import { FutebolEvento } from "../components/FutebolEvento";
 import { GradientTexture, NOISE_URI } from "../components/GradientTexture";
 import { useImagePalette } from "../utils/image-palette";
-import { getEvento, type Confronto, type EventStatus as MockStatus } from "../data/events";
+import { getEvento, type Confronto, type EventoMock, type EventStatus as MockStatus } from "../data/events";
 import meshGradient from "../assets/mesh-gradient.png";
-import sideTexture from "../assets/side-bg-texture.svg";
+import sideTexture from "../assets/side-bg-texture.png";
 import { Footer, HeaderNav } from "../components/SiteChrome";
 import bannerImg from "../assets/banner.png";
 import lineupJoao from "../assets/lineup-joao.png";
@@ -129,10 +130,11 @@ function configFromParam(ev: string | null): EventConfig {
         localEndereco: e.cidade,
         preco: e.preco === 0 ? "Gratuito" : `R$ ${e.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
         dataInicio: e.data,
-        dataFim: e.data,
+        dataFim: e.dataFim ?? e.data,
         status: statusMap[e.status],
         bannerUrl: e.cover ?? "",
-        temLineup: e.id === "dominguinho",
+        heroVideoUrl: e.heroVideoUrl ?? defaultEventConfig.heroVideoUrl,
+        temLineup: !!e.lineup?.length,
     };
 }
 
@@ -197,6 +199,10 @@ export function EventDetails() {
         <div className="min-h-screen bg-primary text-primary">
             <HeaderNav onOpenConfig={() => setIsConfigOpen(true)} />
 
+            {confronto && evento ? (
+                <FutebolEvento evento={evento} videoUrl={config.heroVideoUrl} />
+            ) : (
+            <>
             {/* Mini-barra fixa — surge por cima do header ao rolar além do hero */}
             <AnimatePresence>
                 {showMini && (
@@ -238,26 +244,26 @@ export function EventDetails() {
 
             {/* Navegação de seções — fixa abaixo do header, largura total */}
             <div className="sticky top-16 z-30 border-b border-secondary bg-primary/90 backdrop-blur-md">
-                <div className="mx-auto max-w-2xl px-5">
+                <div className="mx-auto max-w-5xl px-5 lg:px-8">
                     <SectionTabsBar tabs={sectionTabs} family={family} />
                 </div>
             </div>
 
             {/* Conteúdo editorial */}
-            <main className="mx-auto flex w-full max-w-2xl flex-col gap-16 px-5 pt-14 pb-40 lg:gap-20 lg:pb-32">
+            <main className="mx-auto flex w-full max-w-5xl flex-col gap-16 px-5 pt-14 pb-40 lg:gap-20 lg:px-8 lg:pb-32">
                 {config.temLineup && (
                     <Section id="lineup">
-                        <Lineup config={config} />
+                        <Lineup config={config} evento={evento} />
                     </Section>
                 )}
                 <Section id="descricao">
-                    <Descricao family={family} />
+                    <Descricao family={family} evento={evento} />
                 </Section>
                 <Section id="endereco">
                     <ComoChegar config={config} family={family} />
                 </Section>
                 <Reveal>
-                    <ProduzidoPor />
+                    <ProduzidoPor evento={evento} />
                 </Reveal>
                 <Section id="experiencia">
                     <Complementos />
@@ -273,8 +279,6 @@ export function EventDetails() {
                 </Reveal>
             </main>
 
-            <Footer />
-
             {/* Barra de venda persistente — fade/blur no topo, mesma lógica de status */}
             <div className="fixed inset-x-0 bottom-0 z-30">
                 <div
@@ -286,11 +290,15 @@ export function EventDetails() {
                     }}
                 />
                 <div className="border-t border-secondary bg-primary/85 backdrop-blur-lg">
-                    <div className="mx-auto max-w-2xl px-5 pt-3 pb-7 lg:max-w-3xl">
+                    <div className="mx-auto max-w-5xl px-5 pt-3 pb-7 lg:px-8">
                         <SaleStatus status={config.status} preco={config.preco} />
                     </div>
                 </div>
             </div>
+            </>
+            )}
+
+            <Footer />
 
             <EventConfigSlideout isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} config={config} onChange={setConfig} />
         </div>
@@ -864,18 +872,27 @@ function Countdown() {
 /*  Seções de conteúdo                                                */
 /* ------------------------------------------------------------------ */
 
-function Lineup({ config }: { config: EventConfig }) {
+const lineupInitials = (nome: string) =>
+    nome
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((p) => p[0])
+        .join("")
+        .toUpperCase();
+
+function Lineup({ config, evento }: { config: EventConfig; evento?: EventoMock }) {
+    const list = evento?.lineup ?? LINEUP;
     return (
         <section className="flex flex-col gap-5">
             <SectionHeading title="Lineup" sub="Datas e horários sujeitas a alteração" />
             <div className="flex flex-col gap-5">
-                {LINEUP.map((atracao) => (
+                {list.map((atracao) => (
                     <div key={atracao.name} className="flex items-center gap-3">
-                        <Avatar src={atracao.img} alt={atracao.name} size="md" />
+                        <Avatar src={atracao.img} initials={lineupInitials(atracao.name)} alt={atracao.name} size="md" />
                         <div className="flex flex-col gap-1.5">
                             <span className="text-sm font-semibold text-primary">{atracao.name}</span>
                             <div className="flex flex-wrap gap-1.5">
-                                {atracao.dates.map((date, i) => (
+                                {(atracao.dates ?? []).map((date, i) => (
                                     <span
                                         key={i}
                                         className="rounded-full border border-secondary bg-secondary px-2 py-0.5 text-xs font-medium text-secondary"
@@ -913,24 +930,43 @@ function Complementos() {
     );
 }
 
-function Descricao({ family }: { family: GradientFamily }) {
+function Descricao({ family, evento }: { family: GradientFamily; evento?: EventoMock }) {
     const [expanded, setExpanded] = useState(false);
+    // Sem evento (showcase) usa os textos padrão; com evento usa a descrição
+    // oficial; evento sem descrição mostra placeholder editável.
+    const para = evento?.descricao;
+    const isPlaceholder = !!evento && !para?.length;
+    const resumo = para ? para.slice(0, 4) : DESCRICAO_RESUMO;
+    const completo = para ? para.slice(4) : DESCRICAO_COMPLETO;
+
+    if (isPlaceholder) {
+        return (
+            <section className="flex flex-col gap-4">
+                <h2 className="text-display-xs font-extrabold tracking-tight text-primary uppercase">Descrição</h2>
+                <p className="rounded-xl border border-dashed border-secondary bg-secondary/40 p-4 text-sm text-tertiary">
+                    Descrição em breve. Aqui entra o texto oficial do evento.
+                </p>
+                <span aria-hidden="true" className="mt-2 h-0.5 w-16 rounded-full" style={{ backgroundImage: gradientCss(family, 90) }} />
+            </section>
+        );
+    }
     return (
         <section className="flex flex-col gap-4">
             <h2 className="text-display-xs font-extrabold tracking-tight text-primary uppercase">Descrição</h2>
             <div className="relative">
                 <div className="flex flex-col gap-3.5 text-sm leading-5 text-secondary">
-                    {DESCRICAO_RESUMO.map((p, i) => (
+                    {resumo.map((p, i) => (
                         <p key={i} className={cx(i === 0 && "font-bold text-primary")}>
                             {p}
                         </p>
                     ))}
-                    {expanded && DESCRICAO_COMPLETO.map((p, i) => <p key={`c-${i}`}>{p}</p>)}
+                    {expanded && completo.map((p, i) => <p key={`c-${i}`}>{p}</p>)}
                 </div>
-                {!expanded && (
+                {!expanded && completo.length > 0 && (
                     <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-primary to-transparent" />
                 )}
             </div>
+            {completo.length > 0 && (
             <Button
                 size="sm"
                 color="link-color"
@@ -940,6 +976,7 @@ function Descricao({ family }: { family: GradientFamily }) {
             >
                 {expanded ? "Recolher" : "Expandir"}
             </Button>
+            )}
             <span aria-hidden="true" className="mt-2 h-0.5 w-16 rounded-full" style={{ backgroundImage: gradientCss(family, 90) }} />
         </section>
     );
@@ -991,9 +1028,20 @@ const PRODUTORES: { name: string; initials: string; img?: string; eventos?: numb
     { name: "Dume", initials: "D" },
 ];
 
-function ProduzidoPor() {
+function ProduzidoPor({ evento }: { evento?: EventoMock }) {
     const [expanded, setExpanded] = useState(false);
     const PREVIEW = 3;
+    // Evento real ainda sem dados de produtor → placeholder editável.
+    if (evento) {
+        return (
+            <section className="flex flex-col gap-4">
+                <h2 className="text-display-xs font-extrabold tracking-tight text-primary uppercase">Produzido por</h2>
+                <p className="rounded-xl border border-dashed border-secondary bg-secondary/40 p-4 text-sm text-tertiary">
+                    Organização em breve. Aqui entram o produtor e seus eventos.
+                </p>
+            </section>
+        );
+    }
     const preview = PRODUTORES.slice(0, PREVIEW);
     const hidden = PRODUTORES.length - PREVIEW;
 

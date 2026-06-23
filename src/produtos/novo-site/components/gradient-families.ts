@@ -167,6 +167,33 @@ export const gradientCss = (family: GradientFamily, angle = 165): string =>
 export const radialCss = (family: GradientFamily, at = "50% 30%"): string =>
     `radial-gradient(120% 90% at ${at}, ${family.stops.join(", ")})`;
 
+/*
+ *  Mesh gradient — cada parada vira um blob radial ancorado num canto/borda;
+ *  os blobs se sobrepõem e se fundem no centro (look "Designjoy"), sem a
+ *  transição reta do linear nem o foco único do radial. Determinístico:
+ *  o mesmo family sempre rende o mesmo mesh.
+ */
+const MESH_ANCHORS = ["8% 12%", "92% 8%", "88% 86%", "12% 92%", "52% 46%", "98% 52%", "4% 50%", "50% 4%"];
+
+/**
+ * Mesh a partir das paradas da família. `seed` permite variar a ancoragem
+ * por elemento (cada tile fica único) sem perder o determinismo.
+ */
+const meshLayers = (stops: string[], seed: number): string =>
+    stops
+        .map((color, i) => {
+            const at = MESH_ANCHORS[(i + seed) % MESH_ANCHORS.length];
+            // blobs grandes (130%) que desvanecem em ~70% → fusão suave no centro
+            return `radial-gradient(130% 130% at ${at}, ${color} 0%, transparent 70%)`;
+        })
+        .join(", ");
+
+export const meshCss = (family: GradientFamily, seed = 0): string =>
+    `${meshLayers(family.stops, seed)}, ${family.stops[Math.floor(family.stops.length / 2)]}`;
+
+/** Mesh a partir de paradas avulsas + cor de base (ex.: P&B para esportes). */
+export const meshCssFromStops = (stops: string[], base: string, seed = 0): string => `${meshLayers(stops, seed)}, ${base}`;
+
 /** Palavras que irradiam no fundo do hero (tipografia como comportamento). */
 export const CHANT_WORDS = ["ARREPIANTE", "ELETRIZANTE", "IMPRESSIONANTE", "INESQUECÍVEL", "AO VIVO"];
 

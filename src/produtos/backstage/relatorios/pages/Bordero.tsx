@@ -1,24 +1,21 @@
-import { Fragment, useState, type ReactNode } from "react";
-import { ChevronDown, CurrencyDollarCircle, Receipt, Ticket01, UploadCloud02, XClose } from "@untitledui/icons";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { ChevronDown, CurrencyDollarCircle, Receipt, Ticket01, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
 import { AlertFloating } from "@/components/application/alerts/alerts";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { TabList, Tabs } from "@/components/application/tabs/tabs";
 import { Badge } from "@/components/base/badges/badges";
-import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
-
-/* ------------------------------------------------------------------ */
-/*  Formatters                                                        */
-/* ------------------------------------------------------------------ */
+import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
+import { RelatorioFiltersProvider, dateRangeFraction, useRelatorioFilters } from "../components/relatorio-filters";
+import { SortableHeader } from "../components/SortableHeader";
+import { useSortableTable } from "../utils/useSortableTable";
+import { EVENT, currencyFormatter, numberFormatter } from "../data/event";
 
 const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
-const currencyFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const numberFormatter = new Intl.NumberFormat("pt-BR");
 
 /* ------------------------------------------------------------------ */
 /*  Tree types + helpers                                              */
@@ -32,10 +29,8 @@ interface ColDef {
 
 interface TreeNode {
     label: string;
-    /** Leaf metric values, aligned to the columns. */
     values?: number[];
     children?: TreeNode[];
-    /** Linha que mudou nos últimos 5 minutos. */
     changed?: boolean;
 }
 
@@ -59,7 +54,6 @@ const grandTotalOf = (nodes: TreeNode[]): number[] =>
 /*  Mock data — 3 visões                                              */
 /* ------------------------------------------------------------------ */
 
-// Ingressos · Validados · No-Show · Valor unitário · Faturado
 const MACRO_COLUMNS: ColDef[] = [
     { label: "Ingressos", type: "int" },
     { label: "Validados", type: "int" },
@@ -114,7 +108,6 @@ const macroData: TreeNode[] = [
     },
 ];
 
-// Ingressos · Valor unitário · Faturado
 const PDV_COLUMNS: ColDef[] = [
     { label: "Ingressos", type: "int" },
     { label: "Valor unitário", type: "currency" },
@@ -190,7 +183,6 @@ const meiosData: TreeNode[] = [
     },
 ];
 
-/* Transações que alteraram o borderô nos últimos 5 minutos. */
 type ChangeType = "venda" | "cancelamento" | "estorno";
 
 interface BorderoChange {
@@ -216,11 +208,6 @@ const changedTransacoes: BorderoChange[] = [
     { id: "c4", hora: "há 4 min", tipo: "estorno", canal: "Online", descricao: "Lounge Premium · Inteira", ingressos: -1, valor: -240 },
 ];
 
-const macroGrand = grandTotalOf(macroData);
-const totalIngressos = macroGrand[0] ?? 0;
-const totalFaturado = macroGrand[4] ?? 0;
-const ticketMedio = totalIngressos === 0 ? 0 : totalFaturado / totalIngressos;
-
 type BorderoView = "macro" | "pdv" | "meios";
 
 const VIEWS: Record<BorderoView, { nodes: TreeNode[]; columns: ColDef[]; firstCol: string }> = {
@@ -230,110 +217,118 @@ const VIEWS: Record<BorderoView, { nodes: TreeNode[]; columns: ColDef[]; firstCo
 };
 
 /* ------------------------------------------------------------------ */
+/*  Scaling (sessão + intervalo de data afetam todas as visões)        */
+/* ------------------------------------------------------------------ */
+
+const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 0.46, [EVENT.sessoes[1].id]: 0.54 };
+
+// Escala valores de quantidade/faturado; mantém colunas de "valor unitário" intactas.
+const scaleNodes = (nodes: TreeNode[], columns: ColDef[], factor: number): TreeNode[] =>
+    nodes.map((n) => ({
+        ...n,
+        values: n.values?.map((v, i) => (columns[i]?.label === "Valor unitário" ? v : Math.round(v * factor * 100) / 100)),
+        children: n.children ? scaleNodes(n.children, columns, factor) : undefined,
+    }));
+
+/* ------------------------------------------------------------------ */
 /*  Page                                                              */
 /* ------------------------------------------------------------------ */
 
 export function Bordero() {
+    return (
+        <BackstageLayout activeSection="relatorios" activeItem="bordero">
+            <RelatorioFiltersProvider sessoes={EVENT.sessoes}>
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                        <RelatorioPageHeader
+                            title="Borderô"
+                            actions={<ExportMenu onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "O borderô será exportado." })} />}
+                        />
+                        <BorderoBody />
+                    </main>
+                </div>
+            </RelatorioFiltersProvider>
+        </BackstageLayout>
+    );
+}
+
+const BorderoBody = () => {
+    const { dateRange, sessao } = useRelatorioFilters();
     const [view, setView] = useState<BorderoView>("macro");
     const [acknowledged, setAcknowledged] = useState(false);
     const [detailsOpen, setDetailsOpen] = useState(false);
 
-    const active = VIEWS[view];
+    const factor = (SESSAO_WEIGHT[sessao] ?? 1) * dateRangeFraction(dateRange);
+
+    const scaled = useMemo(
+        () => ({
+            macro: scaleNodes(macroData, MACRO_COLUMNS, factor),
+            pdv: scaleNodes(pdvData, PDV_COLUMNS, factor),
+            meios: scaleNodes(meiosData, PDV_COLUMNS, factor),
+        }),
+        [factor],
+    );
+
+    const activeNodes = view === "macro" ? scaled.macro : view === "pdv" ? scaled.pdv : scaled.meios;
+    const activeMeta = VIEWS[view];
+
+    const macroGrand = useMemo(() => grandTotalOf(scaled.macro), [scaled.macro]);
+    const totalIngressos = macroGrand[0] ?? 0;
+    const totalFaturado = macroGrand[4] ?? 0;
+    const ticketMedio = totalIngressos === 0 ? 0 : totalFaturado / totalIngressos;
+
     const changedCount = changedTransacoes.length;
     const showBanner = changedCount > 0 && !acknowledged;
 
-    const exportarExcel = () =>
-        toast.success("Exportando Excel", { description: "O borderô será salvo como planilha." });
-
     return (
-        <BackstageLayout activeSection="relatorios" activeItem="bordero">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
-                    <RelatorioPageHeader
-                        title="Borderô"
-                        actions={
-                            <Button size="md" color="secondary" iconLeading={UploadCloud02} onClick={exportarExcel}>
-                                Exportar em Excel
-                            </Button>
-                        }
-                    />
+        <>
+            {showBanner && (
+                <AlertFloating
+                    color="warning"
+                    title="Borderô atualizado"
+                    description={`${changedCount} ${changedCount === 1 ? "transação alterou" : "transações alteraram"} o borderô nos últimos 5 minutos.`}
+                    confirmLabel="Detalhes"
+                    onConfirm={() => setDetailsOpen(true)}
+                    dismissLabel="Marcar como visto"
+                    onClose={() => setAcknowledged(true)}
+                />
+            )}
 
-                    {/* Aviso de variação t → t+5min */}
-                    {showBanner && (
-                        <AlertFloating
-                            color="warning"
-                            title="Borderô atualizado"
-                            description={`${changedCount} ${changedCount === 1 ? "transação alterou" : "transações alteraram"} o borderô nos últimos 5 minutos.`}
-                            confirmLabel="Detalhes"
-                            onConfirm={() => setDetailsOpen(true)}
-                            dismissLabel="Marcar como visto"
-                            onClose={() => setAcknowledged(true)}
-                        />
-                    )}
-
-                    {/* Métricas */}
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                        <MetricsIcon03
-                            icon={CurrencyDollarCircle}
-                            subtitle="Total faturado"
-                            title={currencyFormatter.format(totalFaturado)}
-                            change={null}
-                            changeTrend="positive"
-                            actions={false}
-                            className={HIDE_TREND_AND_MENU}
-                        />
-                        <MetricsIcon03
-                            icon={Ticket01}
-                            subtitle="Total de ingressos"
-                            title={numberFormatter.format(totalIngressos)}
-                            change={null}
-                            changeTrend="positive"
-                            actions={false}
-                            className={HIDE_TREND_AND_MENU}
-                        />
-                        <MetricsIcon03
-                            icon={Receipt}
-                            subtitle="Ticket médio"
-                            title={currencyFormatter.format(ticketMedio)}
-                            change={null}
-                            changeTrend="positive"
-                            actions={false}
-                            className={HIDE_TREND_AND_MENU}
-                        />
-                    </div>
-
-                    {/* Tabs + tabela */}
-                    <section className="flex flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-                        <header className="flex flex-col gap-3 border-b border-secondary px-4 py-4 md:flex-row md:items-center md:justify-between">
-                            <h3 className="text-md font-semibold text-primary">Detalhamento do borderô</h3>
-                            <Tabs
-                                selectedKey={view}
-                                onSelectionChange={(value: React.Key) => {
-                                    setView(value as BorderoView);
-                                    setAcknowledged(false);
-                                }}
-                                className="w-auto shrink-0"
-                            >
-                                <TabList
-                                    type="button-minimal"
-                                    items={[
-                                        { id: "macro", label: "Visão macro" },
-                                        { id: "pdv", label: "Por PDV" },
-                                        { id: "meios", label: "Por meios de pagamento" },
-                                    ]}
-                                />
-                            </Tabs>
-                        </header>
-
-                        <TreeTable key={view} nodes={active.nodes} columns={active.columns} firstCol={active.firstCol} />
-                    </section>
-                </main>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <MetricsIcon03 icon={CurrencyDollarCircle} subtitle="Total faturado" title={currencyFormatter.format(totalFaturado)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
+                <MetricsIcon03 icon={Ticket01} subtitle="Total de ingressos" title={numberFormatter.format(totalIngressos)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
+                <MetricsIcon03 icon={Receipt} subtitle="Ticket médio" title={currencyFormatter.format(ticketMedio)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
             </div>
 
+            <section className="flex flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
+                <header className="flex flex-col gap-3 border-b border-secondary px-4 py-4 md:flex-row md:items-center md:justify-between">
+                    <h3 className="text-md font-semibold text-primary">Detalhamento do borderô</h3>
+                    <Tabs
+                        selectedKey={view}
+                        onSelectionChange={(value: React.Key) => {
+                            setView(value as BorderoView);
+                            setAcknowledged(false);
+                        }}
+                        className="w-auto shrink-0"
+                    >
+                        <TabList
+                            type="button-minimal"
+                            items={[
+                                { id: "macro", label: "Visão macro" },
+                                { id: "pdv", label: "Por PDV" },
+                                { id: "meios", label: "Por meios de pagamento" },
+                            ]}
+                        />
+                    </Tabs>
+                </header>
+
+                <TreeTable key={view} nodes={activeNodes} columns={activeMeta.columns} firstCol={activeMeta.firstCol} />
+            </section>
+
             <BorderoChangesSlideout isOpen={detailsOpen} onClose={() => setDetailsOpen(false)} changes={changedTransacoes} />
-        </BackstageLayout>
+        </>
     );
-}
+};
 
 /* ------------------------------------------------------------------ */
 /*  Slideout — detalhes das transações                                */
@@ -344,34 +339,14 @@ const signed = (value: number, currency: boolean) => {
     return `${value >= 0 ? "+" : "−"}${formatted}`;
 };
 
-interface BorderoChangesSlideoutProps {
-    isOpen: boolean;
-    onClose: () => void;
-    changes: BorderoChange[];
-}
-
-const BorderoChangesSlideout = ({ isOpen, onClose, changes }: BorderoChangesSlideoutProps) => (
+const BorderoChangesSlideout = ({ isOpen, onClose, changes }: { isOpen: boolean; onClose: () => void; changes: BorderoChange[] }) => (
     <AriaModalOverlay
         isOpen={isOpen}
         onOpenChange={(open) => !open && onClose()}
         isDismissable
-        className={({ isEntering, isExiting }) =>
-            cx(
-                "fixed inset-0 z-50 flex justify-end bg-overlay/70 outline-hidden backdrop-blur-[2px]",
-                isEntering && "duration-300 ease-out animate-in fade-in",
-                isExiting && "duration-200 ease-in animate-out fade-out",
-            )
-        }
+        className={({ isEntering, isExiting }) => cx("fixed inset-0 z-50 flex justify-end bg-overlay/70 outline-hidden backdrop-blur-[2px]", isEntering && "duration-300 ease-out animate-in fade-in", isExiting && "duration-200 ease-in animate-out fade-out")}
     >
-        <AriaModal
-            className={({ isEntering, isExiting }) =>
-                cx(
-                    "h-full w-full max-w-[440px] bg-primary shadow-xl outline-hidden",
-                    isEntering && "duration-300 ease-out animate-in slide-in-from-right",
-                    isExiting && "duration-200 ease-in animate-out slide-out-to-right",
-                )
-            }
-        >
+        <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[440px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
             <AriaDialog className="flex h-full flex-col outline-hidden">
                 <div className="flex shrink-0 items-start justify-between gap-4 border-b border-secondary px-5 py-4">
                     <div className="flex flex-col gap-0.5">
@@ -389,9 +364,7 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: BorderoChangesSlid
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="flex min-w-0 flex-col">
                                         <span className="text-sm font-medium text-primary">{change.descricao}</span>
-                                        <span className="text-xs text-tertiary">
-                                            {change.canal} · {change.hora}
-                                        </span>
+                                        <span className="text-xs text-tertiary">{change.canal} · {change.hora}</span>
                                     </div>
                                     <Badge size="sm" color={meta.color} type="pill-color">
                                         {meta.label}
@@ -399,16 +372,10 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: BorderoChangesSlid
                                 </div>
                                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-tertiary">
                                     <span>
-                                        Ingressos:{" "}
-                                        <b className={cx("tabular-nums", change.ingressos >= 0 ? "text-success-primary" : "text-error-primary")}>
-                                            {signed(change.ingressos, false)}
-                                        </b>
+                                        Ingressos: <b className={cx("tabular-nums", change.ingressos >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.ingressos, false)}</b>
                                     </span>
                                     <span>
-                                        Faturado:{" "}
-                                        <b className={cx("tabular-nums", change.valor >= 0 ? "text-success-primary" : "text-error-primary")}>
-                                            {signed(change.valor, true)}
-                                        </b>
+                                        Faturado: <b className={cx("tabular-nums", change.valor >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.valor, true)}</b>
                                     </span>
                                 </div>
                             </li>
@@ -421,21 +388,26 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: BorderoChangesSlid
 );
 
 /* ------------------------------------------------------------------ */
-/*  Tree table (mesmo visual de "Ocupação por setor")                 */
+/*  Tree table (com ordenação dos nós de topo)                        */
 /* ------------------------------------------------------------------ */
 
-interface TreeTableProps {
-    nodes: TreeNode[];
-    columns: ColDef[];
-    firstCol: string;
-}
-
-const TreeTable = ({ nodes, columns, firstCol }: TreeTableProps) => {
-    // Começa tudo fechado.
+const TreeTable = ({ nodes, columns, firstCol }: { nodes: TreeNode[]; columns: ColDef[]; firstCol: string }) => {
     const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-    const grand = grandTotalOf(nodes);
     const lastCol = columns.length - 1;
     const indent = (depth: number) => 16 + depth * 24;
+
+    const accessors = useMemo(() => {
+        const acc: Record<string, (n: TreeNode) => string | number> = { label: (n) => n.label };
+        columns.forEach((_, i) => {
+            acc[`c${i}`] = (n) => subtotalOf(n)[i] ?? 0;
+        });
+        return acc;
+    }, [columns]);
+
+    const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(nodes as unknown as Record<string, unknown>[], accessors as Partial<Record<string, (r: Record<string, unknown>) => string | number>>);
+    const sortedNodes = sorted as unknown as TreeNode[];
+
+    const grand = grandTotalOf(nodes);
 
     const toggle = (key: string) =>
         setExpanded((prev) => {
@@ -446,27 +418,20 @@ const TreeTable = ({ nodes, columns, firstCol }: TreeTableProps) => {
         });
 
     const metricCell = (value: number, colIdx: number, valueClass: string) => (
-        <td
-            key={colIdx}
-            className={cx("whitespace-nowrap px-4 py-3.5 text-right text-sm", colIdx < lastCol && "hidden md:table-cell", valueClass)}
-        >
+        <td key={colIdx} className={cx("whitespace-nowrap px-4 py-3.5 text-right text-sm", colIdx < lastCol && "hidden md:table-cell", valueClass)}>
             {fmt(value, columns[colIdx].type)}
         </td>
     );
 
     const renderNodes = (list: TreeNode[], depth: number, prefix: string): ReactNode[] => {
         const out: ReactNode[] = [];
-
         list.forEach((node, idx) => {
             const key = `${prefix}-${idx}`;
-
             if (node.children) {
                 const isExpanded = expanded.has(key);
                 const sub = subtotalOf(node);
-                // Nível 0 (canal/PDV) mais forte; níveis internos um pouco mais leves.
                 const labelClass = depth === 0 ? "font-bold text-primary" : "font-semibold text-secondary";
                 const valueClass = depth === 0 ? "font-semibold text-primary" : "font-medium text-secondary";
-
                 out.push(
                     <Fragment key={key}>
                         <tr
@@ -480,20 +445,11 @@ const TreeTable = ({ nodes, columns, firstCol }: TreeTableProps) => {
                                     toggle(key);
                                 }
                             }}
-                            className={cx(
-                                "cursor-pointer border-b border-secondary transition duration-100 ease-linear hover:bg-primary_hover",
-                                depth === 0 && "bg-primary",
-                            )}
+                            className={cx("cursor-pointer border-b border-secondary transition duration-100 ease-linear hover:bg-primary_hover", depth === 0 && "bg-primary")}
                         >
                             <td className="py-3.5 pr-4 text-sm" style={{ paddingLeft: indent(depth) }}>
                                 <span className="flex items-center gap-2">
-                                    <ChevronDown
-                                        aria-hidden="true"
-                                        className={cx(
-                                            "size-4 shrink-0 text-fg-quaternary transition-transform duration-150",
-                                            isExpanded && "rotate-180",
-                                        )}
-                                    />
+                                    <ChevronDown aria-hidden="true" className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", isExpanded && "rotate-180")} />
                                     <span className={cx("line-clamp-2", labelClass)}>{node.label}</span>
                                 </span>
                             </td>
@@ -504,7 +460,6 @@ const TreeTable = ({ nodes, columns, firstCol }: TreeTableProps) => {
                 );
                 return;
             }
-
             out.push(
                 <tr key={key} className="border-b border-secondary bg-secondary/60">
                     <td className="py-3 pr-4 text-sm text-tertiary" style={{ paddingLeft: indent(depth) }}>
@@ -514,7 +469,6 @@ const TreeTable = ({ nodes, columns, firstCol }: TreeTableProps) => {
                 </tr>,
             );
         });
-
         return out;
     };
 
@@ -529,32 +483,22 @@ const TreeTable = ({ nodes, columns, firstCol }: TreeTableProps) => {
                 </colgroup>
                 <thead className="bg-secondary">
                     <tr className="border-b border-secondary text-left">
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">{firstCol}</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">
+                            <SortableHeader label={firstCol} sortKey="label" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                        </th>
                         {columns.map((col, i) => (
-                            <th
-                                key={col.label}
-                                className={cx(
-                                    "whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary",
-                                    i < lastCol && "hidden md:table-cell",
-                                )}
-                            >
-                                {col.label}
+                            <th key={col.label} className={cx("whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary", i < lastCol && "hidden md:table-cell")}>
+                                <SortableHeader label={col.label} align="right" sortKey={`c${i}`} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                             </th>
                         ))}
                     </tr>
                 </thead>
                 <tbody>
-                    {renderNodes(nodes, 0, "n")}
+                    {renderNodes(sortedNodes, 0, "n")}
                     <tr className="border-t-2 border-secondary bg-secondary">
                         <td className="px-4 py-3.5 text-sm font-bold text-primary">Total geral</td>
                         {grand.map((v, i) => (
-                            <td
-                                key={i}
-                                className={cx(
-                                    "whitespace-nowrap px-4 py-3.5 text-right text-sm font-bold text-primary",
-                                    i < lastCol && "hidden md:table-cell",
-                                )}
-                            >
+                            <td key={i} className={cx("whitespace-nowrap px-4 py-3.5 text-right text-sm font-bold text-primary", i < lastCol && "hidden md:table-cell")}>
                                 {fmt(v, columns[i].type)}
                             </td>
                         ))}

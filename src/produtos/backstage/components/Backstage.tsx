@@ -95,7 +95,7 @@ export function BackstageLayout({
     }, [isMobileMenuOpen]);
 
     return (
-        <div className="min-h-screen bg-quaternary">
+        <div className="min-h-screen bg-secondary dark:bg-[#0a0a0a]">
             <MobileTopBar onOpenMenu={() => setIsMobileMenuOpen(true)} />
             <MobileDrawer
                 isOpen={isMobileMenuOpen}

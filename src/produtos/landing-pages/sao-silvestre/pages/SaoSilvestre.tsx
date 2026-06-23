@@ -127,11 +127,18 @@ const FAQ = [
 /* ------------------------- Landing (responsiva) ------------------------ */
 
 /* Modal (estilo DS) com o procedimento de inscrição de grupos e assessorias. */
-function GrupoModal({ onClose, onAcessar }: { onClose: () => void; onAcessar: () => void }) {
-    return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" onClick={onClose}>
-            <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-primary shadow-xl" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-start justify-between gap-3 border-b border-secondary p-6">
+function GrupoModal({ viewport, onClose, onAcessar }: { viewport: Viewport; onClose: () => void; onAcessar: () => void }) {
+    const mobile = viewport === "mobile";
+    return createPortal(
+        <div className={cx("fixed inset-0 z-[70] flex justify-center bg-black/50", mobile ? "items-end pb-4" : "items-center py-4")} role="dialog" aria-modal="true" onClick={onClose}>
+            <div
+                className={cx(
+                    "flex w-[calc(100%-2rem)] flex-col overflow-hidden rounded-2xl bg-primary shadow-xl",
+                    mobile ? "max-h-[92vh] max-w-[420px]" : "max-h-[90vh] max-w-2xl",
+                )}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-start justify-between gap-3 border-b border-secondary p-5 @3xl:p-6">
                     <h3 className="text-lg font-bold text-primary">Inscrição de grupos e assessorias</h3>
                     <button
                         type="button"
@@ -143,7 +150,7 @@ function GrupoModal({ onClose, onAcessar }: { onClose: () => void; onAcessar: ()
                     </button>
                 </div>
 
-                <div className="overflow-y-auto p-6">
+                <div className="overflow-y-auto p-5 @3xl:p-6">
                     <div className="space-y-3 text-sm text-secondary">
                         <p>Grupos e assessorias de corrida são muito bem-vindos na São Silvestre.</p>
                         <p>Acreditamos na força da comunidade de corredores e no impacto que o esporte pode gerar quando pessoas se unem por uma causa.</p>
@@ -170,7 +177,8 @@ function GrupoModal({ onClose, onAcessar }: { onClose: () => void; onAcessar: ()
                     </BlueButton>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }
 
@@ -459,7 +467,13 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
             </footer>
 
             {/* Modal: inscrição de grupos e assessorias */}
-            {grupoModal && <GrupoModal onClose={() => setGrupoModal(false)} onAcessar={() => navigate("/landing-pages/sao-silvestre/solicitar-vagas")} />}
+            {grupoModal && (
+                <GrupoModal
+                    viewport={viewport}
+                    onClose={() => setGrupoModal(false)}
+                    onAcessar={() => navigate("/landing-pages/sao-silvestre/solicitar-vagas", { state: { viewport } })}
+                />
+            )}
 
             {/* Barra de ação fixa no rodapé (mobile) — via portal para escapar do @container */}
             {mobileBar &&

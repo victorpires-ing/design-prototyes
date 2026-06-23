@@ -1,18 +1,22 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
-import { ArrowLeft, ChevronDown, InfoCircle } from "@untitledui/icons";
+import { useLocation, useNavigate } from "react-router";
+import { ArrowLeft, ChevronDown, InfoCircle, Monitor01, Phone01 } from "@untitledui/icons";
 import { useTheme } from "@/providers/theme-provider";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { Input } from "@/components/base/input/input";
+import { cx } from "@/utils/cx";
 import logoTicketSports from "../assets/LOGO TICKET INGRESSE.svg";
 
 const BLUE = "#0099FF";
+type Viewport = "desktop" | "mobile";
 
 /** Formulário de solicitação de vagas para grupos/assessorias (a partir da landing da SS). */
 export function SolicitacaoVagas() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { theme, setTheme } = useTheme();
     const prevTheme = useRef(theme);
+    const [viewport, setViewport] = useState<Viewport>(((location.state as { viewport?: Viewport } | null)?.viewport) ?? "desktop");
 
     // A página é sempre exibida em light mode (igual à landing).
     useEffect(() => {
@@ -24,13 +28,76 @@ export function SolicitacaoVagas() {
     const [vagas, setVagas] = useState("");
     const [segmento, setSegmento] = useState("Grupos Esportivos");
     const [nome, setNome] = useState("");
-
     const ok = vagas.trim() !== "" && nome.trim() !== "";
 
+    const seg = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear";
+
+    const conteudo = (
+        <div className="mx-auto max-w-md px-5 py-8">
+            {/* Logo no topo (mesmo tamanho da LP) */}
+            <div className="flex justify-center">
+                <img src={logoTicketSports} alt="TicketSports by Ingresse" className="h-9 w-auto" />
+            </div>
+
+            {/* Card do formulário (estilo da transferência) */}
+            <div className="mt-6 rounded-2xl bg-primary p-6 shadow-sm ring-1 ring-border-secondary">
+                <h1 className="text-xl font-bold text-primary">Solicitação de vagas</h1>
+                <p className="mt-2 text-sm text-tertiary">
+                    Sua solicitação para <span className="font-semibold text-primary">São Silvestre 2026</span> será enviada para o organizador e estará sujeita a aprovação.
+                </p>
+
+                {/* Prazo (alert do DS, sem truncar a legenda) */}
+                <div className="mt-5 flex gap-4 rounded-xl border border-secondary bg-secondary/60 p-4">
+                    <FeaturedIcon icon={InfoCircle} color="gray" theme="modern" size="md" />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-secondary">Inscrições de grupos até 20/11/2026</p>
+                        <p className="mt-0.5 text-sm text-tertiary">Você receberá um e-mail com a resposta assim que analisada.</p>
+                    </div>
+                </div>
+
+                {/* Campos */}
+                <div className="mt-5 space-y-4">
+                    <Input label="Informe a quantidade de vagas" placeholder="Mínimo de 10" value={vagas} onChange={setVagas} />
+
+                    <div>
+                        <label htmlFor="segmento" className="text-sm font-medium text-secondary">
+                            Segmento
+                        </label>
+                        <div className="relative mt-1.5">
+                            <select
+                                id="segmento"
+                                value={segmento}
+                                onChange={(e) => setSegmento(e.target.value)}
+                                className="w-full appearance-none rounded-lg bg-primary px-3.5 py-2.5 pr-10 text-md text-primary shadow-xs outline-none ring-1 ring-border-primary ring-inset focus:ring-2 focus:ring-brand"
+                            >
+                                <option>Grupos Esportivos</option>
+                                <option>Assessoria de corrida</option>
+                                <option>Empresa</option>
+                                <option>Família e amigos</option>
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute top-1/2 right-3.5 size-5 -translate-y-1/2 text-fg-quaternary" />
+                        </div>
+                    </div>
+
+                    <Input label="Nome do grupo, equipe ou assessoria" placeholder="Digite aqui" value={nome} onChange={setNome} />
+                </div>
+
+                <button
+                    type="button"
+                    disabled={!ok}
+                    className="mt-6 w-full rounded-lg px-5 py-3.5 text-sm font-semibold text-white transition duration-100 ease-linear hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ backgroundColor: BLUE }}
+                >
+                    Enviar solicitação
+                </button>
+            </div>
+        </div>
+    );
+
     return (
-        <div className="min-h-screen bg-secondary text-primary">
-            {/* Barra de controle do protótipo (sem logo) */}
-            <div className="fixed inset-x-0 top-0 z-30 flex items-center gap-2 border-b border-secondary bg-primary/90 px-4 py-2.5 backdrop-blur">
+        <div className={cx("min-h-screen", viewport === "mobile" ? "bg-secondary" : "bg-secondary")}>
+            {/* Barra de controle do protótipo */}
+            <div className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 border-b border-secondary bg-primary/90 px-4 py-2.5 backdrop-blur">
                 <button
                     type="button"
                     onClick={() => navigate("/landing-pages/sao-silvestre")}
@@ -39,67 +106,28 @@ export function SolicitacaoVagas() {
                     <ArrowLeft className="size-4" />
                     <span>São Silvestre</span>
                 </button>
+
+                <div className="flex items-center gap-1 rounded-lg bg-secondary p-1 ring-1 ring-border-secondary">
+                    <button type="button" onClick={() => setViewport("desktop")} className={cx(seg, viewport === "desktop" ? "bg-primary text-primary shadow-sm" : "text-tertiary")}>
+                        <Monitor01 className="size-4" /> <span>Desktop</span>
+                    </button>
+                    <button type="button" onClick={() => setViewport("mobile")} className={cx(seg, viewport === "mobile" ? "bg-primary text-primary shadow-sm" : "text-tertiary")}>
+                        <Phone01 className="size-4" /> <span>Mobile</span>
+                    </button>
+                </div>
+
+                <span className="hidden w-[120px] text-right text-xs text-tertiary sm:inline">{viewport === "mobile" ? "390px" : "Full width"}</span>
             </div>
 
-            <div className="pt-14">
-                <div className="mx-auto max-w-md px-5 py-8">
-                    {/* Logo no topo (mesmo tamanho da LP) */}
-                    <div className="flex justify-center">
-                        <img src={logoTicketSports} alt="TicketSports by Ingresse" className="h-9 w-auto" />
-                    </div>
-
-                    {/* Card do formulário (estilo da transferência) */}
-                    <div className="mt-6 rounded-2xl bg-primary p-6 shadow-sm ring-1 ring-border-secondary">
-                        <h1 className="text-xl font-bold text-primary">Solicitação de vagas</h1>
-                        <p className="mt-2 text-sm text-tertiary">
-                            Sua solicitação para <span className="font-semibold text-primary">São Silvestre 2026</span> será enviada para o organizador e estará sujeita a aprovação.
-                        </p>
-
-                        {/* Prazo (alert do DS, sem truncar a legenda) */}
-                        <div className="mt-5 flex gap-4 rounded-xl border border-secondary bg-secondary/60 p-4">
-                            <FeaturedIcon icon={InfoCircle} color="gray" theme="modern" size="md" />
-                            <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-secondary">Inscrições de grupos até 20/11/2026</p>
-                                <p className="mt-0.5 text-sm text-tertiary">Você receberá um e-mail com a resposta assim que analisada.</p>
-                            </div>
-                        </div>
-
-                        {/* Campos */}
-                        <div className="mt-5 space-y-4">
-                            <Input label="Informe a quantidade de vagas" placeholder="Mínimo de 10" value={vagas} onChange={setVagas} />
-
-                            <div>
-                                <label htmlFor="segmento" className="text-sm font-medium text-secondary">
-                                    Segmento
-                                </label>
-                                <div className="relative mt-1.5">
-                                    <select
-                                        id="segmento"
-                                        value={segmento}
-                                        onChange={(e) => setSegmento(e.target.value)}
-                                        className="w-full appearance-none rounded-lg bg-primary px-3.5 py-2.5 pr-10 text-md text-primary shadow-xs outline-none ring-1 ring-border-primary ring-inset focus:ring-2 focus:ring-brand"
-                                    >
-                                        <option>Grupos Esportivos</option>
-                                        <option>Assessoria de corrida</option>
-                                        <option>Empresa</option>
-                                        <option>Família e amigos</option>
-                                    </select>
-                                    <ChevronDown className="pointer-events-none absolute top-1/2 right-3.5 size-5 -translate-y-1/2 text-fg-quaternary" />
-                                </div>
-                            </div>
-
-                            <Input label="Nome do grupo, equipe ou assessoria" placeholder="Digite aqui" value={nome} onChange={setNome} />
-                        </div>
-
-                        <button
-                            type="button"
-                            disabled={!ok}
-                            className="mt-6 w-full rounded-lg px-5 py-3.5 text-sm font-semibold text-white transition duration-100 ease-linear hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
-                            style={{ backgroundColor: BLUE }}
-                        >
-                            Enviar solicitação
-                        </button>
-                    </div>
+            {/* Área de preview */}
+            <div className={cx(viewport === "mobile" ? "px-4 pt-16 pb-10" : "pt-14")}>
+                <div
+                    className={cx(
+                        "mx-auto bg-secondary",
+                        viewport === "mobile" ? "w-[390px] max-w-full overflow-hidden rounded-3xl shadow-xl ring-1 ring-border-secondary" : "w-full",
+                    )}
+                >
+                    {conteudo}
                 </div>
             </div>
         </div>

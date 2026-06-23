@@ -130,10 +130,22 @@ const FAQ = [
 function GrupoModal({ viewport, onClose, onAcessar }: { viewport: Viewport; onClose: () => void; onAcessar: () => void }) {
     const mobile = viewport === "mobile";
 
-    const card = (
-        <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl bg-primary shadow-xl">
+    // Trava o scroll da página de fundo enquanto o modal está aberto, senão o
+    // gesto "vaza" e rola a página atrás em vez do conteúdo do modal.
+    useEffect(() => {
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = prev;
+        };
+    }, []);
+
+    // Header (fixo) + corpo rolável + rodapé (fixo) com o botão. O max-h vai no
+    // próprio container flex, então o corpo rola e o botão fica sempre visível.
+    const inner = (
+        <>
             <div className="flex shrink-0 items-start justify-between gap-3 border-b border-secondary p-5 @3xl:p-6">
-                <h3 className="text-lg font-bold text-primary">Inscrição de grupos e assessorias</h3>
+                <h3 className="text-lg font-bold text-primary">Inscrição de grupos esportivos</h3>
                 <button
                     type="button"
                     aria-label="Fechar"
@@ -144,7 +156,7 @@ function GrupoModal({ viewport, onClose, onAcessar }: { viewport: Viewport; onCl
                 </button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-5 @3xl:p-6">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 @3xl:p-6">
                 <div className="space-y-3 text-sm text-secondary">
                     <p>Grupos e assessorias de corrida são muito bem-vindos na São Silvestre.</p>
                     <p>Acreditamos na força da comunidade de corredores e no impacto que o esporte pode gerar quando pessoas se unem por uma causa.</p>
@@ -165,12 +177,14 @@ function GrupoModal({ viewport, onClose, onAcessar }: { viewport: Viewport; onCl
                     <p>3. Aguarde o e-mail com a resposta de aprovação das vagas que será enviada pelo organizador.</p>
                     <p>4. Siga as instruções do e-mail que irá receber para realizar as inscrições.</p>
                 </div>
+            </div>
 
-                <BlueButton onClick={onAcessar} className="mt-6 w-full py-3.5">
+            <div className="shrink-0 border-t border-secondary p-5 @3xl:p-6">
+                <BlueButton onClick={onAcessar} className="w-full py-3.5">
                     Acessar novo processo de grupos
                 </BlueButton>
             </div>
-        </div>
+        </>
     );
 
     // Mobile: confina overlay + card à coluna de 390px (o "celular" do preview),
@@ -180,7 +194,9 @@ function GrupoModal({ viewport, onClose, onAcessar }: { viewport: Viewport; onCl
             <div className="fixed inset-0 z-[70] flex justify-center" role="dialog" aria-modal="true">
                 <div className="relative h-full w-[390px] max-w-full">
                     <button type="button" aria-label="Fechar" onClick={onClose} className="absolute inset-0 bg-black/50" />
-                    <div className="absolute inset-x-4 bottom-4 z-10 max-h-[calc(100%-2rem)]">{card}</div>
+                    <div className="absolute inset-x-4 bottom-4 z-10 flex max-h-[calc(100%-2rem)] flex-col overflow-hidden rounded-2xl bg-primary shadow-xl">
+                        {inner}
+                    </div>
                 </div>
             </div>,
             document.body,
@@ -190,8 +206,8 @@ function GrupoModal({ viewport, onClose, onAcessar }: { viewport: Viewport; onCl
     // Desktop: modal centralizado padrão, com respiro de 16px via padding do overlay.
     return createPortal(
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" onClick={onClose}>
-            <div className="max-h-[90vh] w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
-                {card}
+            <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-primary shadow-xl" onClick={(e) => e.stopPropagation()}>
+                {inner}
             </div>
         </div>,
         document.body,
@@ -429,17 +445,13 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                                 </div>
                             </div>
 
-                            {/* Vai participar com grupo ou assessoria */}
+                            {/* Grupos Esportivos */}
                             <div className="border-t border-secondary bg-secondary p-6">
-                                <p className="text-md font-bold text-primary">Vai participar com grupo ou assessoria?</p>
+                                <p className="text-md font-bold text-primary">Grupos Esportivos</p>
                                 <p className="mt-2 text-sm text-tertiary">Solicite vagas para sua equipe, grupo esportivo ou assessoria da corrida.</p>
-                                <button
-                                    type="button"
-                                    onClick={() => setGrupoModal(true)}
-                                    className="mt-4 w-full rounded-xl border border-secondary bg-primary px-5 py-3.5 text-sm font-semibold text-primary transition duration-100 ease-linear hover:bg-secondary"
-                                >
+                                <BlueButton onClick={() => setGrupoModal(true)} className="mt-4 w-full rounded-xl py-3.5">
                                     Solicitar vagas para grupo
-                                </button>
+                                </BlueButton>
                             </div>
 
                             {/* Já se inscreveu */}

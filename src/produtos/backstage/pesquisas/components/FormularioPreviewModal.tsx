@@ -96,13 +96,21 @@ function Label({ pergunta, obrigatoria }: { pergunta: Pergunta; obrigatoria: boo
 }
 
 function CampoPreview({ pergunta, obrigatoria }: { pergunta: Pergunta; obrigatoria: boolean }) {
+    const { consumoDaOpcao } = usePesquisas();
+    // Opção esgotada (consumo ≥ limite) fica desabilitada, mas continua visível com "(indisponível)".
+    const esgotada = (i: number) => {
+        const limite = pergunta.estoqueOpcoes?.[i];
+        return limite != null && consumoDaOpcao(pergunta.id, i) >= limite;
+    };
+    const rotulo = (o: string, i: number) => (esgotada(i) ? `${o} (indisponível)` : o);
+
     if (pergunta.tipo === "selecao-unica") {
         return (
             <div className="flex flex-col gap-2">
                 <Label pergunta={pergunta} obrigatoria={obrigatoria} />
                 <RadioGroup aria-label={pergunta.titulo}>
-                    {pergunta.opcoes.map((o) => (
-                        <RadioButton key={o} value={o} label={o} />
+                    {pergunta.opcoes.map((o, i) => (
+                        <RadioButton key={o} value={o} label={rotulo(o, i)} isDisabled={esgotada(i)} />
                     ))}
                 </RadioGroup>
             </div>
@@ -114,8 +122,8 @@ function CampoPreview({ pergunta, obrigatoria }: { pergunta: Pergunta; obrigator
             <div className="flex flex-col gap-2">
                 <Label pergunta={pergunta} obrigatoria={obrigatoria} />
                 <div className="flex flex-col gap-2">
-                    {pergunta.opcoes.map((o) => (
-                        <Checkbox key={o} size="sm" label={o} />
+                    {pergunta.opcoes.map((o, i) => (
+                        <Checkbox key={o} size="sm" label={rotulo(o, i)} isDisabled={esgotada(i)} />
                     ))}
                 </div>
             </div>

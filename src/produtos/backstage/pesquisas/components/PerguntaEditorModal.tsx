@@ -8,8 +8,9 @@ import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
-import { TIPO_PERGUNTA, TIPOS_ORDENADOS, usePesquisas, type Pergunta, type PerguntaInput, type TipoPergunta } from "../data/pesquisas-store";
+import { LIMITE_PERTO, TIPO_PERGUNTA, TIPOS_ORDENADOS, usePesquisas, type Pergunta, type PerguntaInput, type TipoPergunta } from "../data/pesquisas-store";
 import { perguntaSemelhante } from "../utils/similaridade";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface PerguntaEditorModalProps {
     isOpen: boolean;
@@ -22,22 +23,42 @@ interface PerguntaEditorModalProps {
     onExcluir?: (pergunta: Pergunta) => void;
 }
 
-/** Bloco de pergunta no construtor (PerguntaInput + chave local). */
-type Bloco = PerguntaInput & { key: string };
+/** Bloco de pergunta no construtor (PerguntaInput + chave local). `estoque` guarda o texto cru por opção (alinhado a `opcoes`); "" = ilimitado. */
+type Bloco = Omit<PerguntaInput, "estoqueOpcoes"> & { key: string; estoque: string[] };
 
-const blocoVazio = (key: string): Bloco => ({ key, titulo: "", ajuda: "", tipo: "texto-curto", opcoes: [], ativa: true, obrigatoria: true });
+const blocoVazio = (key: string): Bloco => ({ key, titulo: "", ajuda: "", tipo: "texto-curto", opcoes: [], estoque: [], ativa: true, obrigatoria: true });
 const temOpcoes = (tipo: TipoPergunta) => TIPO_PERGUNTA[tipo].temOpcoes;
-const opcoesValidas = (b: Bloco) => b.opcoes.filter((o) => o.trim() !== "");
-const blocoValido = (b: Bloco) => b.titulo.trim() !== "" && (!temOpcoes(b.tipo) || opcoesValidas(b).length >= 2);
-const toInput = (b: Bloco): PerguntaInput => ({ titulo: b.titulo.trim(), ajuda: b.ajuda?.trim() || undefined, tipo: b.tipo, opcoes: temOpcoes(b.tipo) ? opcoesValidas(b) : [], ativa: b.ativa, obrigatoria: b.obrigatoria });
+/** Pares (opção, estoque cru) com texto preenchido. */
+const paresValidos = (b: Bloco) => b.opcoes.map((o, i) => ({ opcao: o.trim(), estoque: (b.estoque[i] ?? "").trim() })).filter((p) => p.opcao !== "");
+const parseEstoque = (s: string): number | null => {
+    const n = parseInt(s, 10);
+    return s.trim() === "" || Number.isNaN(n) ? null : n;
+};
+const blocoValido = (b: Bloco) => b.titulo.trim() !== "" && (!temOpcoes(b.tipo) || paresValidos(b).length >= 2);
+const toInput = (b: Bloco): PerguntaInput => {
+    const usaOpcoes = temOpcoes(b.tipo);
+    const pares = paresValidos(b);
+    return {
+        titulo: b.titulo.trim(),
+        ajuda: b.ajuda?.trim() || undefined,
+        tipo: b.tipo,
+        opcoes: usaOpcoes ? pares.map((p) => p.opcao) : [],
+        estoqueOpcoes: usaOpcoes ? pares.map((p) => parseEstoque(p.estoque)) : undefined,
+        ativa: b.ativa,
+        obrigatoria: b.obrigatoria,
+    };
+};
 
 export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcluir }: PerguntaEditorModalProps) {
-    const { addPergunta, updatePergunta, perguntas } = usePesquisas();
+    const { addPergunta, updatePergunta, perguntas, consumoDaOpcao } = usePesquisas();
     const seq = useRef(0);
     const [blocos, setBlocos] = useState<Bloco[]>([]);
     const [expandido, setExpandido] = useState<string | null>(null);
     const [semelhante, setSemelhante] = useState<{ titulo: string } | null>(null);
     const [verificando, setVerificando] = useState(false);
+    // Edição em uso: o usuário mexeu no estoque de alguma opção → confirmar impacto no relatório antes de salvar.
+    const [estoqueTocado, setEstoqueTocado] = useState(false);
+    const [confirmEstoque, setConfirmEstoque] = useState(false);
 
     const editando = pergunta !== null;
     const emUso = (pergunta?.respostas ?? 0) > 0;
@@ -46,9 +67,15 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
         if (!isOpen) return;
         setSemelhante(null);
         setVerificando(false);
+        setEstoqueTocado(false);
+        setConfirmEstoque(false);
         seq.current = 0;
         if (pergunta) {
-            const b: Bloco = { key: "edit", titulo: pergunta.titulo, ajuda: pergunta.ajuda ?? "", tipo: pergunta.tipo, opcoes: [...pergunta.opcoes], ativa: pergunta.ativa, obrigatoria: pergunta.obrigatoria };
+            const estoque = pergunta.opcoes.map((_, i) => {
+                const e = pergunta.estoqueOpcoes?.[i];
+                return e == null ? "" : String(e);
+            });
+            const b: Bloco = { key: "edit", titulo: pergunta.titulo, ajuda: pergunta.ajuda ?? "", tipo: pergunta.tipo, opcoes: [...pergunta.opcoes], estoque, ativa: pergunta.ativa, obrigatoria: pergunta.obrigatoria };
             setBlocos([b]);
             setExpandido("edit");
         } else {
@@ -110,10 +137,28 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
 
     const setBloco = (key: string, patch: Partial<Bloco>) => setBlocos((prev) => prev.map((b) => (b.key === key ? { ...b, ...patch } : b)));
     const escolherTipo = (key: string, tipo: TipoPergunta) =>
-        setBlocos((prev) => prev.map((b) => (b.key === key ? { ...b, tipo, opcoes: temOpcoes(tipo) && b.opcoes.length === 0 ? ["", ""] : b.opcoes } : b)));
+        setBlocos((prev) =>
+            prev.map((b) => {
+                if (b.key !== key) return b;
+                const init = temOpcoes(tipo) && b.opcoes.length === 0;
+                return { ...b, tipo, opcoes: init ? ["", ""] : b.opcoes, estoque: init ? ["", ""] : b.estoque };
+            }),
+        );
     const setOpcao = (key: string, i: number, v: string) => setBlocos((prev) => prev.map((b) => (b.key === key ? { ...b, opcoes: b.opcoes.map((o, idx) => (idx === i ? v : o)) } : b)));
-    const addOpcao = (key: string) => setBlocos((prev) => prev.map((b) => (b.key === key ? { ...b, opcoes: [...b.opcoes, ""] } : b)));
-    const removeOpcao = (key: string, i: number) => setBlocos((prev) => prev.map((b) => (b.key === key ? { ...b, opcoes: b.opcoes.filter((_, idx) => idx !== i) } : b)));
+    const setEstoque = (key: string, i: number, v: string) => {
+        const limpo = v.replace(/\D/g, "");
+        if (emUso) setEstoqueTocado(true);
+        setBlocos((prev) => prev.map((b) => (b.key === key ? { ...b, estoque: b.estoque.map((e, idx) => (idx === i ? limpo : e)) } : b)));
+    };
+    const addOpcao = (key: string) => setBlocos((prev) => prev.map((b) => (b.key === key ? { ...b, opcoes: [...b.opcoes, ""], estoque: [...b.estoque, ""] } : b)));
+    const removeOpcao = (key: string, i: number) =>
+        setBlocos((prev) =>
+            prev.map((b) => {
+                if (b.key !== key) return b;
+                if (emUso && (b.estoque[i] ?? "").trim() !== "") setEstoqueTocado(true);
+                return { ...b, opcoes: b.opcoes.filter((_, idx) => idx !== i), estoque: b.estoque.filter((_, idx) => idx !== i) };
+            }),
+        );
 
     const removerBloco = (key: string) =>
         setBlocos((prev) => {
@@ -122,9 +167,31 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
             return next;
         });
 
-    const podeSalvar = blocos.length > 0 && blocos.every(blocoValido) && !blocos.some((b) => tituloDuplicado(b.titulo));
+    // Regra: ao editar uma pergunta em uso, o limite de uma opção nunca pode ficar abaixo do já consumido.
+    const limiteAbaixoConsumido = useMemo(() => {
+        if (!editando || !emUso || !pergunta) return false;
+        const b = blocos[0];
+        if (!b || !temOpcoes(b.tipo)) return false;
+        return b.opcoes.some((op, i) => {
+            if (op.trim() === "") return false;
+            const limite = parseEstoque(b.estoque[i] ?? "");
+            return limite != null && limite < consumoDaOpcao(pergunta.id, i);
+        });
+    }, [editando, emUso, pergunta, blocos, consumoDaOpcao]);
+
+    const podeSalvar = blocos.length > 0 && blocos.every(blocoValido) && !blocos.some((b) => tituloDuplicado(b.titulo)) && !limiteAbaixoConsumido;
 
     const salvar = () => {
+        if (!podeSalvar) return;
+        // Editar o estoque de uma pergunta que já coleta respostas pode afetar o relatório do time de dados.
+        if (editando && emUso && estoqueTocado) {
+            setConfirmEstoque(true);
+            return;
+        }
+        doSalvar();
+    };
+
+    const doSalvar = () => {
         if (!podeSalvar) return;
         if (editando && pergunta) {
             const input = toInput(blocos[0]);
@@ -198,9 +265,13 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
                                     verificando={verificando}
                                     tipoItems={tipoItems}
                                     tipoBloqueado={emUso}
+                                    mostrarConsumo={emUso}
+                                    consumoOpcao={(i) => (pergunta ? consumoDaOpcao(pergunta.id, i) : 0)}
+                                    minEstoque={(i) => (pergunta && emUso ? consumoDaOpcao(pergunta.id, i) : 0)}
                                     onTitulo={(v) => setBloco(b.key, { titulo: v })}
                                     onTipo={(t) => escolherTipo(b.key, t)}
                                     onSetOpcao={(i, v) => setOpcao(b.key, i, v)}
+                                    onSetEstoque={(i, v) => setEstoque(b.key, i, v)}
                                     onAddOpcao={() => addOpcao(b.key)}
                                     onRemoveOpcao={(i) => removeOpcao(b.key, i)}
                                     onRemover={() => removerBloco(b.key)}
@@ -231,6 +302,17 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
                     </div>
                 </AriaDialog>
             </AriaModal>
+
+            <ConfirmDialog
+                isOpen={confirmEstoque}
+                onClose={() => setConfirmEstoque(false)}
+                onConfirm={doSalvar}
+                tone="warning"
+                title="Alterar o limite de respostas das opções?"
+                description="Esta pergunta já coletou respostas. Mudar o limite de respostas de uma opção pode impactar o relatório de respostas que o time de dados gera para o cliente. Deseja salvar mesmo assim?"
+                confirmLabel="Salvar mesmo assim"
+                cancelLabel="Cancelar"
+            />
         </AriaModalOverlay>
     );
 }
@@ -249,9 +331,13 @@ function BlocoEditor({
     verificando,
     tipoItems,
     tipoBloqueado,
+    mostrarConsumo,
+    consumoOpcao,
+    minEstoque,
     onTitulo,
     onTipo,
     onSetOpcao,
+    onSetEstoque,
     onAddOpcao,
     onRemoveOpcao,
     onRemover,
@@ -265,9 +351,15 @@ function BlocoEditor({
     verificando: boolean;
     tipoItems: { id: TipoPergunta; label: string; descricao: string; icon: React.FC<{ className?: string }> }[];
     tipoBloqueado?: boolean;
+    /** Mostra o consumo do estoque por opção (pergunta já coletando respostas). */
+    mostrarConsumo?: boolean;
+    consumoOpcao: (i: number) => number;
+    /** Limite mínimo permitido por opção (= já consumido). 0 quando não há trava. */
+    minEstoque: (i: number) => number;
     onTitulo: (v: string) => void;
     onTipo: (t: TipoPergunta) => void;
     onSetOpcao: (i: number, v: string) => void;
+    onSetEstoque: (i: number, v: string) => void;
     onAddOpcao: () => void;
     onRemoveOpcao: (i: number) => void;
     onRemover: () => void;
@@ -317,14 +409,55 @@ function BlocoEditor({
 
             {opcoes && (
                 <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium text-secondary">Opções</span>
-                    <div className="flex flex-col gap-2">
-                        {bloco.opcoes.map((opcao, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                                <Input aria-label={`Opção ${i + 1}`} placeholder={`Opção ${i + 1}`} value={opcao} onChange={(v) => onSetOpcao(i, v)} className="flex-1" />
-                                <ButtonUtility size="sm" color="tertiary" icon={Trash01} tooltip="Remover opção" isDisabled={bloco.opcoes.length <= 2} onClick={() => onRemoveOpcao(i)} />
-                            </div>
-                        ))}
+                    <div className="flex items-center gap-2">
+                        <span className="flex-1 text-sm font-medium text-secondary">Opções</span>
+                        <span className="w-28 text-sm font-medium text-secondary">Limite</span>
+                        <span className="size-9 shrink-0" aria-hidden="true" />
+                    </div>
+                    <div className="flex flex-col gap-3">
+                        {bloco.opcoes.map((opcao, i) => {
+                            const cru = bloco.estoque[i] ?? "";
+                            const limite = parseEstoque(cru);
+                            const consumo = mostrarConsumo ? consumoOpcao(i) : 0;
+                            const min = mostrarConsumo ? minEstoque(i) : 0;
+                            const abaixoConsumido = opcao.trim() !== "" && limite != null && limite < min;
+                            const usados = limite != null ? Math.min(consumo, limite) : consumo;
+                            const pct = limite && limite > 0 ? Math.min(100, Math.round((usados / limite) * 100)) : 0;
+                            const esgotado = !abaixoConsumido && limite != null && usados >= limite;
+                            const perto = !esgotado && !abaixoConsumido && limite != null && limite > 0 && usados / limite >= LIMITE_PERTO;
+                            return (
+                                <div key={i} className="flex flex-col gap-1.5">
+                                    <div className="flex items-center gap-2">
+                                        <Input aria-label={`Opção ${i + 1}`} placeholder={`Opção ${i + 1}`} value={opcao} onChange={(v) => onSetOpcao(i, v)} className="flex-1" />
+                                        <Input
+                                            aria-label={`Limite de respostas da opção ${i + 1}`}
+                                            inputMode="numeric"
+                                            placeholder="Ilimitado"
+                                            value={cru}
+                                            isInvalid={abaixoConsumido}
+                                            onChange={(v) => onSetEstoque(i, v)}
+                                            className="w-28"
+                                        />
+                                        <ButtonUtility size="sm" color="tertiary" icon={Trash01} tooltip="Remover opção" isDisabled={bloco.opcoes.length <= 2} onClick={() => onRemoveOpcao(i)} />
+                                    </div>
+                                    {abaixoConsumido ? (
+                                        <span className="text-xs text-error-primary">O limite não pode ser menor que {min} (já preenchidas).</span>
+                                    ) : mostrarConsumo && limite != null && (
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-1.5 w-full max-w-[180px] overflow-hidden rounded-full bg-quaternary">
+                                                <div
+                                                    className={cx("h-full rounded-full", esgotado ? "bg-error-solid" : perto ? "bg-warning-solid" : "bg-brand-solid")}
+                                                    style={{ width: `${pct}%` }}
+                                                />
+                                            </div>
+                                            <span className={cx("shrink-0 text-xs tabular-nums", esgotado ? "text-error-primary" : perto ? "text-warning-primary" : "text-tertiary")}>
+                                                {esgotado ? "Esgotado" : perto ? `${usados} preenchidas · perto do limite` : `${usados} preenchidas`}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                     <Button size="sm" color="link-color" iconLeading={Plus} onClick={onAddOpcao} className="self-start">
                         Adicionar opção

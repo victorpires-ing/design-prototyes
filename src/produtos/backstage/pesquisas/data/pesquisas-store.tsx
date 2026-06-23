@@ -48,6 +48,8 @@ export interface Pergunta {
     ajuda?: string;
     tipo: TipoPergunta;
     opcoes: string[];
+    /** Limite de respostas por opção (só tipos com opções). Alinhado por índice a `opcoes`; `null` = ilimitado. */
+    estoqueOpcoes?: (number | null)[];
     ativa: boolean;
     /** Se a resposta é obrigatória no formulário (vale onde a pergunta aparecer). */
     obrigatoria: boolean;
@@ -88,6 +90,8 @@ export interface PerguntaInput {
     ajuda?: string;
     tipo: TipoPergunta;
     opcoes: string[];
+    /** Limite de respostas por opção (só tipos com opções). Alinhado por índice a `opcoes`; `null` = ilimitado. */
+    estoqueOpcoes?: (number | null)[];
     ativa: boolean;
     obrigatoria: boolean;
 }
@@ -105,6 +109,7 @@ const PERGUNTAS_MOCK: Pergunta[] = [
         ajuda: "O kit do evento inclui uma camiseta.",
         tipo: "selecao-unica",
         opcoes: ["P", "M", "G", "GG"],
+        estoqueOpcoes: [80, 150, 150, 60],
         ativa: true,
         obrigatoria: true,
         respostas: 42,
@@ -114,6 +119,7 @@ const PERGUNTAS_MOCK: Pergunta[] = [
         titulo: "Restrições alimentares",
         tipo: "multipla-escolha",
         opcoes: ["Vegetariano", "Vegano", "Sem glúten", "Sem lactose"],
+        estoqueOpcoes: [120, 80, 60, 60],
         ativa: true,
         obrigatoria: false,
         respostas: 0,
@@ -212,6 +218,10 @@ interface PesquisasStoreValue {
     /** Simulação (protótipo): esvazia o banco de perguntas / restaura o mock. */
     esvaziarBanco: () => void;
     restaurarBanco: () => void;
+    /** Consumo (mock) de uma opção ao longo do tempo — 0 enquanto a pergunta não coleta respostas. */
+    consumoDaOpcao: (perguntaId: string, indice: number) => number;
+    /** Resumo do limite de respostas das opções de uma pergunta (quantas esgotaram / estão perto). */
+    statusLimiteDaPergunta: (perguntaId: string) => { comLimite: number; esgotadas: number; perto: number };
     /** Quantos tipos de ingresso usam a pergunta. */
     countIngressosDaPergunta: (perguntaId: string) => number;
     /** Tipos de ingresso que usam a pergunta. */
@@ -255,6 +265,10 @@ function hashId(s: string): number {
     return Math.abs(h);
 }
 const mockRespostas = (id: string) => 23 + (hashId(id) % 137);
+// Consumo (mock estável) de uma opção ao longo do tempo — só faz sentido quando a pergunta já coleta respostas.
+const mockConsumoOpcao = (perguntaId: string, indice: number) => 8 + (hashId(`${perguntaId}:opt:${indice}`) % 92);
+// A partir de quantos % do limite uma opção é considerada "perto do limite".
+export const LIMITE_PERTO = 0.8;
 
 export function PesquisasProvider({ children }: { children: ReactNode }) {
     // Começa VAZIO — o teste de usabilidade inicia no empty state ("Crie sua primeira pergunta").
@@ -314,6 +328,32 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
         setPerguntas(PERGUNTAS_MOCK);
         setAssociacoes(ASSOCIACOES_MOCK);
     }, []);
+
+    const consumoDaOpcao = useCallback(
+        (perguntaId: string, indice: number) => (temAssociacao(perguntaId) ? mockConsumoOpcao(perguntaId, indice) : 0),
+        [temAssociacao],
+    );
+
+    const statusLimiteDaPergunta = useCallback(
+        (perguntaId: string) => {
+            const p = perguntasView.find((x) => x.id === perguntaId);
+            let comLimite = 0;
+            let esgotadas = 0;
+            let perto = 0;
+            if (p && TIPO_PERGUNTA[p.tipo].temOpcoes && p.estoqueOpcoes) {
+                p.opcoes.forEach((_, i) => {
+                    const limite = p.estoqueOpcoes?.[i];
+                    if (limite == null) return;
+                    comLimite++;
+                    const usados = Math.min(consumoDaOpcao(perguntaId, i), limite);
+                    if (usados >= limite) esgotadas++;
+                    else if (limite > 0 && usados / limite >= LIMITE_PERTO) perto++;
+                });
+            }
+            return { comLimite, esgotadas, perto };
+        },
+        [perguntasView, consumoDaOpcao],
+    );
 
     const countIngressosDaPergunta = useCallback(
         (perguntaId: string) => Object.values(associacoes).filter((itens) => itens.some((it) => it.perguntaId === perguntaId)).length,
@@ -463,6 +503,8 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
             removePergunta,
             esvaziarBanco,
             restaurarBanco,
+            consumoDaOpcao,
+            statusLimiteDaPergunta,
             countIngressosDaPergunta,
             ingressosDaPergunta,
             reorderPerguntas,
@@ -479,7 +521,7 @@ export function PesquisasProvider({ children }: { children: ReactNode }) {
             tituloDoIngresso,
             setTituloFormulario,
         }),
-        [perguntasView, ingressos, associacoes, getPergunta, addPergunta, updatePergunta, togglePergunta, setObrigatoriaPergunta, removePergunta, esvaziarBanco, restaurarBanco, countIngressosDaPergunta, ingressosDaPergunta, reorderPerguntas, setIngressosDaPergunta, itensVinculaveis, itensDaPergunta, countItensDaPergunta, setItensDaPergunta, togglePerguntaNoIngresso, vincularPerguntasEmIngressos, perguntasDoIngresso, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario],
+        [perguntasView, ingressos, associacoes, getPergunta, addPergunta, updatePergunta, togglePergunta, setObrigatoriaPergunta, removePergunta, esvaziarBanco, restaurarBanco, consumoDaOpcao, statusLimiteDaPergunta, countIngressosDaPergunta, ingressosDaPergunta, reorderPerguntas, setIngressosDaPergunta, itensVinculaveis, itensDaPergunta, countItensDaPergunta, setItensDaPergunta, togglePerguntaNoIngresso, vincularPerguntasEmIngressos, perguntasDoIngresso, itensDoIngresso, setAssociacao, tituloDoIngresso, setTituloFormulario],
     );
 
     return <PesquisasContext.Provider value={value}>{children}</PesquisasContext.Provider>;

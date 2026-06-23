@@ -13,10 +13,12 @@ interface ConfirmDialogProps {
     description: ReactNode;
     confirmLabel?: string;
     cancelLabel?: string;
+    /** "destructive" (excluir) ou "warning" (ação não destrutiva que exige atenção). */
+    tone?: "destructive" | "warning";
 }
 
 /** Confirmação centralizada para ações destrutivas — previne perdas acidentais. */
-export function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel = "Excluir", cancelLabel = "Cancelar" }: ConfirmDialogProps) {
+export function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, confirmLabel = "Excluir", cancelLabel = "Cancelar", tone = "destructive" }: ConfirmDialogProps) {
     return (
         <AriaModalOverlay
             isOpen={isOpen}
@@ -40,7 +42,7 @@ export function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, 
                 }
             >
                 <AriaDialog className="flex flex-col gap-4 outline-hidden">
-                    <FeaturedIcon icon={AlertTriangle} color="error" theme="light" size="lg" />
+                    <FeaturedIcon icon={AlertTriangle} color={tone === "warning" ? "warning" : "error"} theme="light" size="lg" />
                     <div className="flex flex-col gap-1">
                         <h2 className="text-md font-semibold text-primary">{title}</h2>
                         <p className="text-sm text-tertiary">{description}</p>
@@ -51,7 +53,7 @@ export function ConfirmDialog({ isOpen, onClose, onConfirm, title, description, 
                         </Button>
                         <Button
                             size="md"
-                            color="primary-destructive"
+                            color={tone === "warning" ? "primary" : "primary-destructive"}
                             onClick={() => {
                                 onConfirm();
                                 onClose();

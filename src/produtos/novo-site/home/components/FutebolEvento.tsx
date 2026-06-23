@@ -4,6 +4,7 @@ import { Calendar, ChevronDown, Clock, FaceId, LinkExternal02, MarkerPin01, Tick
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import { hslToHex, rgbToHsl } from "../../components/gradient-families";
+import { NOISE_URI } from "./GradientTexture";
 import type { EventoMock } from "../data/events";
 import meshGradient from "../assets/mesh-gradient.png";
 import sideTexture from "../assets/side-bg-texture.png";
@@ -35,15 +36,19 @@ interface Setor {
 
 const real = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
+const youtubeId = (url: string): string | null => {
+    const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/);
+    return m ? m[1] : null;
+};
+
 const TABS = [
-    { id: "setores", label: "Ingressos" },
-    { id: "dia", label: "Dia do jogo" },
+    { id: "dia", label: "No dia do jogo" },
     { id: "socio", label: "Sócio & meia" },
     { id: "acesso", label: "Acesso" },
     { id: "faq", label: "Dúvidas" },
 ];
 
-export function FutebolEvento({ evento }: { evento: EventoMock }) {
+export function FutebolEvento({ evento, videoUrl = "" }: { evento: EventoMock; videoUrl?: string }) {
     const c = evento.futebol!;
     const { casa, fora } = c;
     const base = evento.preco || 60;
@@ -62,17 +67,20 @@ export function FutebolEvento({ evento }: { evento: EventoMock }) {
     const precoMin = Math.min(...setores.filter((s) => s.restam > 0).map((s) => s.preco));
 
     // Navegação: scroll-spy + progresso (barra na cor do mandante).
-    const [activeTab, setActiveTab] = useState("setores");
+    const [activeTab, setActiveTab] = useState(TABS[0].id);
     const [progress, setProgress] = useState(0);
     useEffect(() => {
         const onScroll = () => {
-            const first = document.getElementById("setores");
+            const first = document.getElementById(TABS[0].id);
             const last = document.getElementById("faq");
             if (first && last) {
-                const start = first.getBoundingClientRect().top + window.scrollY;
+                // Progresso fiel: 0 quando a 1ª seção encosta na nav; 100% quando o
+                // fim do FAQ chega à base da tela (sem adiantar uma tela inteira).
+                const start = first.getBoundingClientRect().top + window.scrollY - 130;
                 const end = last.getBoundingClientRect().bottom + window.scrollY;
-                const seen = window.scrollY + window.innerHeight - start;
-                setProgress(end > start ? Math.min(1, Math.max(0, seen / (end - start))) : 0);
+                const denom = end - window.innerHeight - start;
+                const seen = window.scrollY - start;
+                setProgress(denom > 0 ? Math.min(1, Math.max(0, seen / denom)) : 0);
             }
             let cur = TABS[0].id;
             for (const t of TABS) {
@@ -144,12 +152,15 @@ export function FutebolEvento({ evento }: { evento: EventoMock }) {
             </AnimatePresence>
 
             {/* HERO — confronto, só cor do mandante */}
-            <section ref={heroRef} className="relative isolate overflow-hidden text-white" style={{ background: heroBg }}>
+            <section ref={heroRef} className="relative isolate h-[calc(100dvh-4rem)] min-h-[560px] overflow-hidden text-white" style={{ background: heroBg }}>
+                <HeroVideo url={videoUrl} />
                 <div aria-hidden className="absolute inset-0 -z-10 mix-blend-overlay" style={{ backgroundImage: `url(${meshGradient})`, backgroundSize: "cover" }} />
                 <div aria-hidden className="absolute inset-y-0 left-0 -z-10 w-[38vw] max-w-[280px]" style={sideMask(casa.cor, false)} />
                 <div aria-hidden className="absolute inset-y-0 right-0 -z-10 w-[38vw] max-w-[280px] -scale-x-100" style={sideMask(casa.cor, false)} />
+                {/* Com vídeo: overlay preto a 30% para legibilidade */}
+                {videoUrl.trim() && <div aria-hidden className="absolute inset-0 -z-10 bg-black/50" />}
 
-                <div className="mx-auto flex max-w-5xl flex-col items-center gap-7 px-5 pt-16 pb-12 text-center lg:px-8 lg:pt-20">
+                <div className="relative z-10 mx-auto flex h-full max-w-5xl flex-col items-center justify-center gap-7 px-5 py-10 text-center lg:px-8">
                     <div className="flex flex-wrap items-center justify-center gap-2">
                         <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold tracking-[0.16em] uppercase">Venda oficial</span>
                         {torcidaUnica && <span className="rounded-full bg-white px-3 py-1 text-xs font-bold tracking-[0.16em] text-black uppercase">Torcida única</span>}
@@ -210,19 +221,21 @@ export function FutebolEvento({ evento }: { evento: EventoMock }) {
             <main className="mx-auto flex w-full max-w-5xl flex-col gap-16 px-5 pt-12 pb-40 lg:px-8">
                 {/* SETORES & valores — assento marcado é escolhido na compra (seats.io) */}
                 <section id="setores" className="scroll-mt-32 flex flex-col gap-5">
-                    <Titulo titulo="Ingressos" sub="Setor e assento são escolhidos na etapa de compra." />
                     {/* Aviso de dependentes — antes da compra */}
-                    <div className="flex items-start gap-3 rounded-xl border px-4 py-3" style={{ borderColor: shade(casa.cor, 0.4), backgroundColor: shade(casa.cor, 0.12) }}>
+                    <div className="flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center" style={{ borderColor: shade(casa.cor, 0.4), backgroundColor: shade(casa.cor, 0.12) }}>
                         <Users01 className="mt-0.5 size-5 shrink-0 text-white" />
-                        <p className="text-sm text-white/90">
-                            <span className="font-bold text-white">Cadastre seus dependentes antes de comprar.</span> Ingressos de futebol são nominais — cada torcedor precisa de nome e documento cadastrados.
+                        <p className="flex-1 text-sm text-white/90">
+                            <span className="font-bold text-white">Cadastre seus dependentes antes de comprar.</span> Ingressos de futebol são nominais, cada torcedor precisa de nome e documento cadastrados.
                         </p>
+                        <Button size="sm" color="secondary" iconLeading={Users01} className="shrink-0 max-sm:w-full">
+                            Cadastrar dependentes
+                        </Button>
                     </div>
                 </section>
 
                 {/* DIA DO JOGO */}
                 <section id="dia" className="scroll-mt-32 flex flex-col gap-5">
-                    <Titulo titulo="Dia do jogo" sub="Tudo que importa pra chegar tranquilo." />
+                    <Titulo titulo="No dia do jogo" sub="Tudo que importa pra chegar tranquilo." />
                     <div className="grid gap-4 sm:grid-cols-3">
                         <InfoCard icon={Clock} titulo="Portões" texto="Abrem 14h. Bola rola às 16h. Chegue cedo para a revista." />
                         <InfoCard icon={MarkerPin01} titulo="Estádio" texto={`${evento.local}, ${evento.cidade}.`} />
@@ -243,6 +256,47 @@ export function FutebolEvento({ evento }: { evento: EventoMock }) {
                             </Button>
                         </div>
                     </div>
+
+                    {/* Entradas (portões) — endereço de cada acesso por setor */}
+                    {c.entradas && c.entradas.length > 0 && (
+                        <div className="flex flex-col gap-3">
+                            <h3 className="text-md font-bold text-primary">Entradas do estádio</h3>
+                            <p className="text-sm text-tertiary">Acesse pelo portão do seu setor — confira o endereço de cada um.</p>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                {c.entradas.map((e) => (
+                                    <div key={e.nome} className="flex flex-col gap-2 rounded-2xl border border-secondary p-4">
+                                        <div className="flex items-center gap-2">
+                                            <span
+                                                className="grid size-9 shrink-0 place-items-center rounded-lg text-sm font-extrabold text-white"
+                                                style={{ backgroundColor: shade(casa.cor, 0.32) }}
+                                            >
+                                                {e.nome.replace(/[^A-Z0-9]/g, "").slice(-1)}
+                                            </span>
+                                            <div className="flex min-w-0 flex-col">
+                                                <span className="text-sm font-bold text-primary">{e.nome}</span>
+                                                <span className="line-clamp-1 text-xs text-tertiary">{e.setores}</span>
+                                            </div>
+                                        </div>
+                                        <p className="flex items-start gap-1.5 text-sm text-secondary">
+                                            <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-fg-quaternary" />
+                                            {e.endereco}
+                                        </p>
+                                        <Button
+                                            size="sm"
+                                            color="link-color"
+                                            iconTrailing={LinkExternal02}
+                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.endereco)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-fit"
+                                        >
+                                            Ver no mapa
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </section>
 
                 {/* SÓCIO & MEIA */}
@@ -302,6 +356,86 @@ export function FutebolEvento({ evento }: { evento: EventoMock }) {
 }
 
 /* ---- subcomponentes ---- */
+
+/** Velocidade do vídeo de fundo (mais lento = mais cinematográfico). */
+const HERO_VIDEO_RATE = 1;
+
+/**
+ * Vídeo de fundo do hero — em duotone (mix-blend-luminosity), por isso a
+ * footage assume a cor do mandante que vem do gradiente abaixo. Mesmos
+ * filtros/efeitos do hero de evento: motion blur direcional + grão.
+ * Aceita YouTube (iframe) ou arquivo direto (.mp4/.webm).
+ */
+function HeroVideo({ url }: { url: string }) {
+    const u = url.trim();
+    const ytId = u ? youtubeId(u) : null;
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    // YouTube: reduz a velocidade via IFrame API (postMessage).
+    useEffect(() => {
+        if (!u || !ytId) return;
+        let tries = 0;
+        const id = setInterval(() => {
+            const win = iframeRef.current?.contentWindow;
+            if (win) {
+                win.postMessage(JSON.stringify({ event: "command", func: "setPlaybackRate", args: [HERO_VIDEO_RATE] }), "*");
+                win.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*");
+            }
+            if (++tries > 12) clearInterval(id);
+        }, 600);
+        return () => clearInterval(id);
+    }, [u, ytId]);
+
+    // Arquivo de vídeo direto: define playbackRate.
+    useEffect(() => {
+        if (!u || ytId) return;
+        const v = videoRef.current;
+        if (v) v.playbackRate = HERO_VIDEO_RATE;
+    }, [u, ytId]);
+
+    if (!u) return null;
+
+    const coverCls =
+        "pointer-events-none absolute top-1/2 left-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 opacity-55 mix-blend-luminosity [filter:url(#fut-hero-motion-blur)_contrast(1.05)_saturate(1.1)]";
+    const coverStyle = {
+        width: "max(100vw, 177.78vh)",
+        height: "max(100vh, 56.25vw)",
+    } as const;
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const media = ytId ? (
+        <iframe
+            ref={iframeRef}
+            aria-hidden="true"
+            title="Vídeo de fundo do evento"
+            src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${ytId}&playsinline=1&modestbranding=1&rel=0&disablekb=1&fs=0&iv_load_policy=3&enablejsapi=1&origin=${encodeURIComponent(origin)}`}
+            allow="autoplay; encrypted-media"
+            className={coverCls}
+            style={coverStyle}
+        />
+    ) : (
+        <video ref={videoRef} aria-hidden="true" src={u} autoPlay loop muted playsInline className={cx(coverCls, "object-cover")} style={coverStyle} />
+    );
+
+    return (
+        <>
+            {/* Motion blur direcional (rastro horizontal). */}
+            <svg aria-hidden="true" className="absolute size-0">
+                <filter id="fut-hero-motion-blur" x="-10%" y="-10%" width="120%" height="120%">
+                    <feGaussianBlur stdDeviation="1 3" edgeMode="duplicate" />
+                </filter>
+            </svg>
+            {media}
+            {/* Grão reforçado sobre o vídeo. */}
+            <div
+                aria-hidden="true"
+                className="absolute inset-0 -z-10 mix-blend-overlay"
+                style={{ backgroundImage: `url("${NOISE_URI}")`, backgroundSize: "160px 160px", opacity: 0.4 }}
+            />
+        </>
+    );
+}
 
 function sideMask(cor: string, _x: boolean) {
     return {

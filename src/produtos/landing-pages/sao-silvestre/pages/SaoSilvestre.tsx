@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { useTheme } from "@/providers/theme-provider";
-import { ArrowLeft, MarkerPin06, Monitor01, Phone01, MinusCircle, PlusCircle } from "@untitledui/icons";
+import { ArrowLeft, MarkerPin06, Monitor01, Phone01, MinusCircle, PlusCircle, XClose } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import logoTicketSports from "../assets/LOGO TICKET INGRESSE.svg";
 import heroCorredores from "../assets/imagem-corredores.png";
@@ -126,6 +126,54 @@ const FAQ = [
 
 /* ------------------------- Landing (responsiva) ------------------------ */
 
+/* Modal (estilo DS) com o procedimento de inscrição de grupos e assessorias. */
+function GrupoModal({ onClose, onAcessar }: { onClose: () => void; onAcessar: () => void }) {
+    return (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" onClick={onClose}>
+            <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-primary shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-start justify-between gap-3 border-b border-secondary p-6">
+                    <h3 className="text-lg font-bold text-primary">Inscrição de grupos e assessorias</h3>
+                    <button
+                        type="button"
+                        aria-label="Fechar"
+                        onClick={onClose}
+                        className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary"
+                    >
+                        <XClose className="size-5" />
+                    </button>
+                </div>
+
+                <div className="overflow-y-auto p-6">
+                    <div className="space-y-3 text-sm text-secondary">
+                        <p>Grupos e assessorias de corrida são muito bem-vindos na São Silvestre.</p>
+                        <p>Acreditamos na força da comunidade de corredores e no impacto que o esporte pode gerar quando pessoas se unem por uma causa.</p>
+                        <p>Reúna sua equipe, convide seus alunos e venha fazer parte de uma das corridas mais tradicionais do Brasil.</p>
+                    </div>
+
+                    <p className="mt-6 text-sm font-bold text-primary">Procedimento para inscrições de grupos:</p>
+                    <div className="mt-2 space-y-3 text-sm text-tertiary">
+                        <p>
+                            1. Faça o seu cadastro no sistema TicketSports com os dados que usará para faturamento do pedido de grupos. Se você deseja que o boleto
+                            saia em nome de empresa faça um cadastro como Pessoa Jurídica informando a razão social ou fantasia com seu respectivo CNPJ. Caso já
+                            possua o cadastro informe seus dados de acesso.
+                        </p>
+                        <p>
+                            2. Solicite via sistema a quantidade total de vagas para seu grupo. Após o recebimento, o organizador irá validar sua solicitação
+                            autorizando, ou não, a reserva das vagas até a data limite de inscrições para grupos.
+                        </p>
+                        <p>3. Aguarde o e-mail com a resposta de aprovação das vagas que será enviada pelo organizador.</p>
+                        <p>4. Siga as instruções do e-mail que irá receber para realizar as inscrições.</p>
+                    </div>
+
+                    <BlueButton onClick={onAcessar} className="mt-6 w-full py-3.5">
+                        Acessar novo processo de grupos
+                    </BlueButton>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
     return (
         <div className={cx("rounded-xl border border-secondary transition", open ? "bg-primary" : "bg-secondary/60")}>
@@ -143,7 +191,9 @@ function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean
 }
 
 function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | "mobile" }) {
+    const navigate = useNavigate();
     const [openFaq, setOpenFaq] = useState(0);
+    const [grupoModal, setGrupoModal] = useState(false);
     const mobileBar = viewport === "mobile";
 
     // Barra escura que destaca, na trilha, o bloco de informação ativo.
@@ -271,7 +321,7 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
             {/* ===== SOBRE + INSCRIÇÃO ===== */}
             <section className="px-6 pt-16 pb-16 @3xl:px-12">
                 <div className="mx-auto flex max-w-6xl flex-col gap-10 @3xl:flex-row @3xl:gap-12">
-                    {/* Conteúdo */}
+                    {/* Sobre o evento */}
                     <div className="min-w-0 flex-1">
                         <h2 className="text-2xl font-bold">Sobre o evento</h2>
                         <div className="mt-4 space-y-4">
@@ -281,7 +331,6 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                                 </p>
                             ))}
                         </div>
-
                         {/* Informações importantes */}
                         <h2 className="mt-12 text-2xl font-bold">Informações importantes</h2>
 
@@ -340,30 +389,42 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                     {/* Card de inscrição (no mobile, logo abaixo do banner) */}
                     <aside className="order-first w-full @3xl:order-none @3xl:w-[360px] @3xl:shrink-0">
                         <div className="overflow-hidden rounded-3xl border border-secondary bg-primary shadow-sm @3xl:sticky @3xl:top-20">
-                            {/* Topo branco */}
-                            <div className="p-8">
+                            {/* Inscrição */}
+                            <div className="p-6">
                                 <h3 className="text-2xl font-bold text-primary">Inscrição</h3>
                                 <p className="mt-4 text-base font-bold text-primary">Data do evento: 29/12/2026</p>
-                                <p className="mt-1.5 text-base text-tertiary">Inscrições até: 20/11/2026</p>
+                                <p className="mt-1.5 text-sm text-tertiary">Inscrições até: 20/11/2026</p>
 
-                                <div className="mt-6 flex items-center gap-2.5 text-base text-secondary">
+                                <div className="mt-5 flex items-center gap-2.5 text-sm text-secondary">
                                     <MarkerPin06 className="size-5 shrink-0 text-fg-quaternary" />
                                     Av. Paulista, São Paulo - SP
                                 </div>
 
                                 <div ref={inscreveRef} className="mt-6">
-                                    <BlueButton className="w-full rounded-xl py-4 text-base">Inscreva-se agora</BlueButton>
+                                    <BlueButton className="w-full rounded-xl py-3.5 text-base">Inscreva-se agora</BlueButton>
                                 </div>
                             </div>
 
-                            {/* Base cinza */}
-                            <div className="bg-secondary p-8">
-                                <p className="text-xl font-bold text-primary">Já se inscreveu?</p>
-                                <p className="mt-2 text-sm text-tertiary">Acompanhe sua inscrição, credencial e detalhes da compra pela sua conta TicketSports by Ingresse.</p>
-
+                            {/* Vai participar com grupo ou assessoria */}
+                            <div className="border-t border-secondary bg-secondary p-6">
+                                <p className="text-md font-bold text-primary">Vai participar com grupo ou assessoria?</p>
+                                <p className="mt-2 text-sm text-tertiary">Solicite vagas para sua equipe, grupo esportivo ou assessoria da corrida.</p>
                                 <button
                                     type="button"
-                                    className="mt-5 w-full rounded-xl border border-secondary bg-primary px-5 py-3.5 text-base font-semibold text-primary transition duration-100 ease-linear hover:bg-secondary"
+                                    onClick={() => setGrupoModal(true)}
+                                    className="mt-4 w-full rounded-xl border border-secondary bg-primary px-5 py-3.5 text-sm font-semibold text-primary transition duration-100 ease-linear hover:bg-secondary"
+                                >
+                                    Solicitar vagas para grupo
+                                </button>
+                            </div>
+
+                            {/* Já se inscreveu */}
+                            <div className="border-t border-secondary bg-secondary p-6">
+                                <p className="text-md font-bold text-primary">Já se inscreveu?</p>
+                                <p className="mt-2 text-sm text-tertiary">Acompanhe sua inscrição, credencial e detalhes da compra pela sua conta TicketSports by Ingresse.</p>
+                                <button
+                                    type="button"
+                                    className="mt-4 w-full rounded-xl border border-secondary bg-primary px-5 py-3.5 text-sm font-semibold text-primary transition duration-100 ease-linear hover:bg-secondary"
                                 >
                                     Acessar minha inscrição
                                 </button>
@@ -396,6 +457,9 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                 </div>
                 <p className="mt-4 text-xs text-tertiary">© 2026 São Silvestre. Todos os direitos reservados.</p>
             </footer>
+
+            {/* Modal: inscrição de grupos e assessorias */}
+            {grupoModal && <GrupoModal onClose={() => setGrupoModal(false)} onAcessar={() => navigate("/landing-pages/sao-silvestre/solicitar-vagas")} />}
 
             {/* Barra de ação fixa no rodapé (mobile) — via portal para escapar do @container */}
             {mobileBar &&

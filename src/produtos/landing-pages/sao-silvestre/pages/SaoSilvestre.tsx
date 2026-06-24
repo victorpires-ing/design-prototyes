@@ -448,11 +448,11 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
 
                         <div ref={infoRef} className="relative mt-6 space-y-8 pl-6">
                         {/* Trilha clara (caminho) */}
-                        <div className="absolute inset-y-0 left-0 w-[3px] rounded-full bg-quaternary" />
-                        {/* Barra escura que percorre a trilha conforme o scroll */}
+                        <div className="absolute inset-y-0 left-0 w-[3px] rounded-full bg-tertiary" />
+                        {/* Barra (azul SS) que percorre a trilha conforme o scroll */}
                         <div
                             className="absolute left-0 w-[3px] rounded-full"
-                            style={{ top: thumb.top, height: thumb.height, backgroundColor: "#BFBFBF" }}
+                            style={{ top: thumb.top, height: thumb.height, backgroundColor: BLUE }}
                         />
                         <div data-info-block>
                             <h3 className="text-sm font-bold text-primary">Kits de participação</h3>
@@ -494,6 +494,20 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                                 <p className="pt-2">8h30min - 5 e 6 anos de idade.<br />8h40min - 7 e 8 anos de idade.<br />8h50min - 9 a 10 anos de idade.<br />9h00min - 11 a 12 anos de idade.<br />9h10min - 13 e 14 anos de idade.</p>
                                 <p className="pt-2">LARGADA CATEGORIA BABY<br />Será realizada a partir das 9h20 de acordo com ordem de chegada na pistinha da TITI.</p>
                             </div>
+                        </div>
+
+                        <div data-info-block>
+                            <h3 className="text-sm font-bold text-primary">Reembolso e detalhes da sua inscrição</h3>
+                            <div className="mt-2 space-y-2 text-sm text-tertiary">
+                                <p>
+                                    Depois de concluir sua inscrição para a São Silvestre, você poderá consultar os detalhes da compra, acessar sua credencial e
+                                    verificar informações sobre reembolso pela sua conta TicketSports by Ingresse.
+                                </p>
+                                <p>Use o mesmo e-mail informado no momento da inscrição para acessar seus dados.</p>
+                            </div>
+                            <button type="button" className="mt-3 text-sm font-semibold transition hover:underline" style={{ color: BLUE }}>
+                                Acompanhar minha inscrição
+                            </button>
                         </div>
                         </div>
                     </div>

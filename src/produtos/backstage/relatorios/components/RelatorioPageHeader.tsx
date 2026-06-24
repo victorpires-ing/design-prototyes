@@ -112,11 +112,15 @@ const FiltersStrip = () => {
 
 interface RelatorioPageHeaderProps {
     title: string;
-    /** Ações extras (ex.: ExportMenu). O botão de Filtros já é incluído. */
+    /** Ações extras (ex.: ExportMenu). O botão de Filtros já é incluído quando withFilters. */
     actions?: ReactNode;
+    /** Renderiza o botão de Filtros + tira de filtros (exige RelatorioFiltersProvider). Default true. */
+    withFilters?: boolean;
+    /** Controles fixos exibidos numa linha dentro do header (ex.: toggles de métrica). */
+    toolbar?: ReactNode;
 }
 
-export const RelatorioPageHeader = ({ title, actions }: RelatorioPageHeaderProps) => {
+export const RelatorioPageHeader = ({ title, actions, withFilters = true, toolbar }: RelatorioPageHeaderProps) => {
     return (
         <div className={cx("sticky top-0 z-40 -mt-6 flex flex-col gap-3 border-x-8 border-[var(--color-bg-secondary)] bg-secondary pb-3 pt-6 dark:border-[#0a0a0a] dark:bg-[#0a0a0a]")}>
             <div className="max-lg:hidden">
@@ -128,12 +132,15 @@ export const RelatorioPageHeader = ({ title, actions }: RelatorioPageHeaderProps
             </div>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <p className="text-xl font-semibold text-primary">{title}</p>
-                <div className="flex flex-wrap items-center gap-3">
-                    {actions}
-                    <RelatorioFilterSlideout />
-                </div>
+                {(actions || withFilters) && (
+                    <div className="flex flex-wrap items-center gap-3">
+                        {actions}
+                        {withFilters && <RelatorioFilterSlideout />}
+                    </div>
+                )}
             </div>
-            <FiltersStrip />
+            {withFilters && <FiltersStrip />}
+            {toolbar && <div className="flex flex-wrap items-end gap-x-6 gap-y-3 overflow-x-auto">{toolbar}</div>}
         </div>
     );
 };

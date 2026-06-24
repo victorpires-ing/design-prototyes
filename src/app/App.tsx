@@ -12,6 +12,7 @@ import { SelecaoItens } from '../produtos/backstage/cortesias/pages/SelecaoItens
 import { VerificacaoFinal } from '../produtos/backstage/cortesias/pages/VerificacaoFinal';
 import { Acesso } from '../produtos/backstage/relatorios/pages/Acesso';
 import { Bordero } from '../produtos/backstage/relatorios/pages/Bordero';
+import { Comparativos } from '../produtos/backstage/relatorios/pages/Comparativos';
 import { Transacoes } from '../produtos/backstage/relatorios/pages/Transacoes';
 import { Transferencias } from '../produtos/backstage/relatorios/pages/Transferencias';
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
@@ -131,6 +132,7 @@ export default function App() {
         <Route path="/backstage/relatorios/acesso" element={<Acesso />} />
         <Route path="/backstage/relatorios/bordero" element={<Bordero />} />
         <Route path="/backstage/relatorios/transferencias" element={<Transferencias />} />
+        <Route path="/backstage/relatorios/comparativos" element={<Comparativos />} />
         <Route path="/backstage/marketing/chave-de-acesso" element={<ChaveDeAcesso />} />
         <Route path="/backstage/marketing/chave-de-acesso/vincular-itens" element={<VincularItens />} />
         <Route path="/backstage/marketing/chave-de-acesso/lista" element={<ListaChaves />} />

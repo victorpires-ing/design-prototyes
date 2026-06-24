@@ -308,9 +308,16 @@ export function PerguntaEditorModal({ isOpen, onClose, pergunta, onSaved, onExcl
                 onClose={() => setConfirmEstoque(false)}
                 onConfirm={doSalvar}
                 tone="warning"
-                title="Alterar o limite de respostas das opções?"
-                description="Esta pergunta já coletou respostas. Mudar o limite de respostas de uma opção pode impactar o relatório de respostas que o time de dados gera para o cliente. Deseja salvar mesmo assim?"
-                confirmLabel="Salvar mesmo assim"
+                title="Alterar limite de respostas?"
+                description={
+                    <>
+                        Esta pergunta já recebeu respostas. Ao alterar o limite de uma opção, os dados exibidos no relatório podem ser atualizados.
+                        <br />
+                        <br />
+                        Deseja salvar a alteração?
+                    </>
+                }
+                confirmLabel="Salvar alteração"
                 cancelLabel="Cancelar"
             />
         </AriaModalOverlay>
@@ -411,7 +418,7 @@ function BlocoEditor({
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
                         <span className="flex-1 text-sm font-medium text-secondary">Opções</span>
-                        <span className="w-28 text-sm font-medium text-secondary">Limite</span>
+                        <span className="w-44 text-sm font-medium whitespace-nowrap text-secondary">Limite de respostas</span>
                         <span className="size-9 shrink-0" aria-hidden="true" />
                     </div>
                     <div className="flex flex-col gap-3">
@@ -436,12 +443,12 @@ function BlocoEditor({
                                             value={cru}
                                             isInvalid={abaixoConsumido}
                                             onChange={(v) => onSetEstoque(i, v)}
-                                            className="w-28"
+                                            className="w-44"
                                         />
                                         <ButtonUtility size="sm" color="tertiary" icon={Trash01} tooltip="Remover opção" isDisabled={bloco.opcoes.length <= 2} onClick={() => onRemoveOpcao(i)} />
                                     </div>
                                     {abaixoConsumido ? (
-                                        <span className="text-xs text-error-primary">O limite não pode ser menor que {min} (já preenchidas).</span>
+                                        <span className="text-xs text-error-primary">O limite deve ser {min} ou maior. Esta opção já foi selecionada {min} vezes.</span>
                                     ) : mostrarConsumo && limite != null && (
                                         <div className="flex items-center gap-2">
                                             <div className="h-1.5 w-full max-w-[180px] overflow-hidden rounded-full bg-quaternary">
@@ -451,7 +458,7 @@ function BlocoEditor({
                                                 />
                                             </div>
                                             <span className={cx("shrink-0 text-xs tabular-nums", esgotado ? "text-error-primary" : perto ? "text-warning-primary" : "text-tertiary")}>
-                                                {esgotado ? "Esgotado" : perto ? `${usados} preenchidas · perto do limite` : `${usados} preenchidas`}
+                                                {esgotado ? "Limite atingido" : perto ? `Selecionada ${usados} vezes · perto do limite` : `Selecionada ${usados} vezes`}
                                             </span>
                                         </div>
                                     )}

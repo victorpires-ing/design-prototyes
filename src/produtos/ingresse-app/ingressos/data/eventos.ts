@@ -11,6 +11,8 @@ export interface ItemIngresso {
     cpf?: string;
     /** Forma de acesso do ingresso. Default: "qr". */
     acesso?: "qr" | "facial";
+    /** Estado do cadastro facial (apenas quando acesso === "facial"). Default: "pendente". */
+    facial?: "pendente" | "cadastrada";
 }
 
 export type ComboStatus = "finalizado" | "hoje" | "proximo";
@@ -82,6 +84,7 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
         ingressos: [
             { id: "1", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR, cpf: CPF },
             { id: "2", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR, cpf: CPF },
+            { id: "uniforme-oficial", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR, cpf: CPF, acesso: "facial", facial: "cadastrada" },
         ],
     },
     "reveillon-copacabana": {
@@ -99,7 +102,7 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
                 qr: "individual",
                 itens: [
                     { id: "kit-reveillon", title: "Arena", data: "Qui, 31 dez • 22:00", portador: PORTADOR, cpf: CPF, acesso: "qr" },
-                    { id: "credencial-camarote", title: "Área VIP Open Bar", data: "Qui, 31 dez • 22:00", portador: PORTADOR, cpf: CPF, acesso: "facial" },
+                    { id: "credencial-camarote", title: "Área VIP Open Bar", data: "Qui, 31 dez • 22:00", portador: PORTADOR, cpf: CPF, acesso: "facial", facial: "pendente" },
                 ],
             },
             {

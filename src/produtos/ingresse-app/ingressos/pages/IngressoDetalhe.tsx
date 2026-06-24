@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeft, FaceIdSquare, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
+import { AnimatePresence, motion } from "motion/react";
+import Lottie, { type LottieRefCurrentProps } from "lottie-react";
+import { ArrowLeft, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
 import { Toggle } from "@/components/base/toggle/toggle";
+import faceIdSuccess from "../assets/face-id-success.json";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { AppShell } from "../../components/AppShell";
 import { ActionFab, type FabAction } from "../../components/ActionFab";
@@ -9,11 +12,33 @@ import { StatusBar } from "../../components/StatusBar";
 import { Zigzag } from "../../components/Zigzag";
 import { isTransferido } from "../data/transfer-store";
 
+/** Carinha de reconhecimento facial: toca 2 vezes e congela no último frame. */
+function FaceAnimation() {
+    const lottieRef = useRef<LottieRefCurrentProps>(null);
+    const plays = useRef(1);
+    return (
+        <Lottie
+            lottieRef={lottieRef}
+            animationData={faceIdSuccess}
+            loop={false}
+            autoplay
+            onComplete={() => {
+                if (plays.current < 2) {
+                    plays.current += 1;
+                    lottieRef.current?.goToAndPlay(0, true);
+                }
+            }}
+            aria-hidden="true"
+            className="size-28"
+        />
+    );
+}
+
 export function IngressoDetalhe() {
     const navigate = useNavigate();
     const location = useLocation();
     const state =
-        (location.state as { transferido?: boolean; evento?: string; title?: string; tipo?: string; sessao?: string; eventId?: string; itemId?: string; acesso?: "qr" | "facial"; portador?: string; cpf?: string } | null) ?? {};
+        (location.state as { transferido?: boolean; evento?: string; title?: string; tipo?: string; sessao?: string; eventId?: string; itemId?: string; acesso?: "qr" | "facial"; facial?: "pendente" | "cadastrada"; portador?: string; cpf?: string } | null) ?? {};
     const transferido = !!state.transferido || isTransferido(state.itemId);
     const evento = state.evento ?? "ARENA BRASILEIRA 2026";
     const title = state.title ?? "ARENA | Brasil x Haiti | (19/06)";
@@ -24,6 +49,9 @@ export function IngressoDetalhe() {
     const facial = state.acesso === "facial";
 
     const [meuIngresso, setMeuIngresso] = useState(true);
+    const [showQR, setShowQR] = useState(false);
+    // Facial pendente começa não cadastrado; "Cadastrar agora" leva ao estado cadastrado.
+    const [registered, setRegistered] = useState(state.facial !== "pendente");
 
     const acoes: FabAction[] = [
         {
@@ -115,12 +143,76 @@ export function IngressoDetalhe() {
                                 <p className="mt-0.5 text-md font-bold text-primary">10 de junho • 12:20</p>
                             </div>
                         ) : facial ? (
-                            /* Acesso por reconhecimento facial */
+                            /* Acesso por reconhecimento facial (com troca animada para o QR) */
                             <div className="px-6 pt-6 pb-7">
-                                <div className="flex flex-col items-center py-2 text-center">
-                                    <FaceIdSquare className="size-24 text-utility-neutral-200" aria-hidden="true" />
-                                    <p className="mt-5 text-sm text-secondary">Seu acesso será feito por reconhecimento facial.</p>
-                                    <p className="text-sm text-secondary">Você já está cadastrado.</p>
+                                <div className="[perspective:1000px]">
+                                    <AnimatePresence mode="wait" initial={false}>
+                                        {!registered ? (
+                                            /* Facial pendente: cadastrar */
+                                            <motion.div
+                                                key="pendente"
+                                                className="py-1"
+                                                initial={{ opacity: 0, rotateY: 90 }}
+                                                animate={{ opacity: 1, rotateY: 0 }}
+                                                exit={{ opacity: 0, rotateY: -90 }}
+                                                transition={{ duration: 0.32, ease: "easeInOut" }}
+                                            >
+                                                <div className="rounded-2xl border border-error_subtle p-6 text-center">
+                                                    <div className="relative mx-auto mb-4 size-16">
+                                                        <span className="absolute inset-0 animate-pulse rounded-full border border-error_subtle opacity-40" />
+                                                        <span className="absolute inset-2 rounded-full border border-error_subtle opacity-70" />
+                                                        <span className="absolute inset-4 flex items-center justify-center text-fg-error-primary">
+                                                            <InfoCircle className="size-8" />
+                                                        </span>
+                                                    </div>
+                                                    <h3 className="text-md font-bold text-primary">Cadastre sua facial</h3>
+                                                    <p className="mt-1.5 text-sm text-tertiary">
+                                                        O acesso a este ingresso é feito por reconhecimento facial. Sem isso, não será possível acessar o evento.
+                                                    </p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setRegistered(true)}
+                                                        className="mt-5 w-full rounded-lg bg-error-solid px-5 py-3 text-sm font-semibold text-white transition duration-100 ease-linear hover:bg-error-solid_hover active:bg-error-solid_hover"
+                                                    >
+                                                        Cadastrar agora
+                                                    </button>
+                                                </div>
+                                            </motion.div>
+                                        ) : !showQR ? (
+                                            /* Facial cadastrada: carinha + abrir QR */
+                                            <motion.div
+                                                key="cadastrada"
+                                                className="flex flex-col items-center py-2 text-center"
+                                                initial={{ opacity: 0, rotateY: 90 }}
+                                                animate={{ opacity: 1, rotateY: 0 }}
+                                                exit={{ opacity: 0, rotateY: -90 }}
+                                                transition={{ duration: 0.32, ease: "easeInOut" }}
+                                            >
+                                                <FaceAnimation />
+                                                <p className="mt-5 text-sm text-secondary">Seu acesso será feito por reconhecimento facial.</p>
+                                                <p className="text-sm text-secondary">Você já está cadastrado.</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowQR(true)}
+                                                    className="mt-5 rounded-lg border border-secondary bg-primary px-5 py-2.5 text-sm font-semibold text-primary transition duration-100 ease-linear active:bg-secondary"
+                                                >
+                                                    Abrir QR code
+                                                </button>
+                                            </motion.div>
+                                        ) : (
+                                            /* QR code */
+                                            <motion.div
+                                                key="qr"
+                                                className="flex flex-col items-center py-2 text-center"
+                                                initial={{ opacity: 0, rotateY: 90 }}
+                                                animate={{ opacity: 1, rotateY: 0 }}
+                                                exit={{ opacity: 0, rotateY: -90 }}
+                                                transition={{ duration: 0.32, ease: "easeInOut" }}
+                                            >
+                                                <FakeQR px={220} />
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
                                 <div className="-mx-6 my-5 border-t border-tertiary" />
                                 <div className="text-left">

@@ -55,25 +55,6 @@ const VEM_AI: GrupoMes[] = [
             },
         ],
     },
-    {
-        mes: "Janeiro 2027",
-        eventos: [
-            { id: "combo", title: "TESTE MINI COMBO", date: "Seg, 04 jan • 20:00", local: "Japaratinga • Japaratinga/AL", qtd: 2 },
-        ],
-    },
-    {
-        mes: "Março 2027",
-        eventos: [
-            {
-                id: "mirella",
-                title: "Mirella teste 2",
-                date: "Sáb, 27 mar • 00:00",
-                local: "Estádio Olímpico Nilton Santos",
-                qtd: 1,
-                gradient: "linear-gradient(135deg,#1f2937 0%,#0b0f19 100%)",
-            },
-        ],
-    },
 ];
 
 const PASSADOS: GrupoMes[] = [
@@ -97,7 +78,7 @@ export function Carteira() {
     const grupos = tab === "vem-ai" ? VEM_AI : PASSADOS;
 
     return (
-        <AppShell activeTab="ingressos">
+        <AppShell activeTab="ingressos" scrollClassName="bg-secondary">
             <div className="min-h-full bg-secondary">
                 <StatusBar tone="dark" />
 

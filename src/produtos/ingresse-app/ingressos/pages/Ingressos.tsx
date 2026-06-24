@@ -1,11 +1,14 @@
+import { useLayoutEffect, useRef, useState } from "react";
+import type { FC, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeft, Calendar, ChevronRight, FaceIdSquare, FilterLines, Map01, Package, QrCode02, User01 } from "@untitledui/icons";
+import { ArrowLeft, Calendar, ChevronRight, FaceIdSquare, FilterLines, Map01, Package, QrCode02, Send01, Tag01, User01 } from "@untitledui/icons";
+import { AnimatePresence, motion } from "motion/react";
 import { Badge } from "@/components/base/badges/badges";
 import { cx } from "@/utils/cx";
 import { AppShell } from "../../components/AppShell";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
-import { getEvento, type ItemIngresso } from "../data/eventos";
+import { getEvento, type Combo, type EventoDetalhe, type ItemIngresso } from "../data/eventos";
 import { isTransferido } from "../data/transfer-store";
 
 export function Ingressos() {
@@ -16,13 +19,49 @@ export function Ingressos() {
 
     const total = evento.combos ? evento.combos.length : (evento.ingressos?.length ?? 0);
 
+    // Toque curto abre o detalhe; pressionar e segurar abre o menu de contexto (estilo iOS).
+    const [menu, setMenu] = useState<{ rect: DOMRect; content: ReactNode; actions: MenuAction[] } | null>(null);
+
     const abrirDetalhe = (item: ItemIngresso) =>
         navigate("/ingresse-app/ingressos/detalhe", {
-            state: { evento: evento.title, title: item.title, tipo: item.tipo, sessao: evento.sessao, eventId: evento.id, acesso: item.acesso, portador: item.portador, cpf: item.cpf, itemId: item.id },
+            state: { evento: evento.title, title: item.title, tipo: item.tipo, sessao: evento.sessao, eventId: evento.id, acesso: item.acesso, facial: item.facial, portador: item.portador, cpf: item.cpf, itemId: item.id },
+        });
+
+    // "Cadastrar facial" só aparece em ingressos de acesso facial.
+    const acoes = (transferir: () => void, facial: boolean): MenuAction[] => [
+        ...(facial ? [{ icon: FaceIdSquare, label: "Cadastrar facial" }] : []),
+        { icon: Send01, label: "Transferir", onClick: transferir },
+        { icon: Tag01, label: "Revender" },
+    ];
+
+    const abrirMenuIngresso = (item: ItemIngresso, rect: DOMRect) =>
+        setMenu({
+            rect,
+            content: <TicketRowContent item={item} />,
+            actions: acoes(
+                () =>
+                    navigate("/ingresse-app/ingressos/transferir", {
+                        state: { evento: evento.title, title: item.title, tipo: item.tipo, sessao: evento.sessao, eventId: evento.id, itemId: item.id, acesso: item.acesso },
+                    }),
+                item.acesso === "facial",
+            ),
+        });
+
+    const abrirMenuCombo = (combo: Combo, rect: DOMRect) =>
+        setMenu({
+            rect,
+            content: <ComboCardContent combo={combo} evento={evento} />,
+            actions: acoes(
+                () =>
+                    navigate("/ingresse-app/ingressos/transferir", {
+                        state: { evento: evento.title, title: combo.nome, sessao: evento.sessao, eventId: evento.id, itemId: combo.id },
+                    }),
+                false,
+            ),
         });
 
     return (
-        <AppShell activeTab="ingressos">
+        <AppShell activeTab="ingressos" scrollClassName="bg-secondary">
             <div className="min-h-full bg-secondary">
                 <StatusBar tone="dark" />
 
@@ -65,47 +104,13 @@ export function Ingressos() {
                         ? evento.combos.map((combo) =>
                               combo.qr === "unico" ? (
                                   /* Combo de QR único: um item que abre a tela do combo */
-                                  <button
+                                  <ComboCard
                                       key={combo.id}
-                                      type="button"
-                                      onClick={() => navigate("/ingresse-app/ingressos/combo", { state: { eventId: evento.id, comboId: combo.id } })}
-                                      className="flex w-full items-start gap-3 rounded-2xl bg-primary p-4 text-left ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
-                                  >
-                                      {evento.id !== "sao-silvestre" && (
-                                          <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-secondary text-fg-brand-primary">
-                                              <Package className="size-6" />
-                                          </span>
-                                      )}
-                                      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                                          <div className="flex items-start justify-between gap-2">
-                                              <p className="text-sm font-bold text-primary">{combo.nome}</p>
-                                              <ChevronRight className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
-                                          </div>
-                                          <p className="-mt-1 text-sm text-tertiary">
-                                              {evento.id === "sao-silvestre" ? "1 inscrição" : `${combo.inclusos?.length ?? 0} itens`}
-                                          </p>
-                                          <p className="flex items-center gap-1.5 text-sm text-secondary">
-                                              <Calendar className="size-4 shrink-0 text-fg-quaternary" />
-                                              <span>{combo.dataEvento}</span>
-                                          </p>
-                                          <div className="flex flex-wrap gap-2 pt-1">
-                                              {evento.id !== "sao-silvestre" && (
-                                                  <Badge size="md" color="brand" type="pill-color">
-                                                      Combo
-                                                  </Badge>
-                                              )}
-                                              {isTransferido(combo.id) ? (
-                                                  <Badge size="md" color="blue" type="pill-color">
-                                                      Transferido
-                                                  </Badge>
-                                              ) : (
-                                                  <Badge size="md" color="success" type="pill-color">
-                                                      Pronto para uso
-                                                  </Badge>
-                                              )}
-                                          </div>
-                                      </div>
-                                  </button>
+                                      combo={combo}
+                                      evento={evento}
+                                      onTap={() => navigate("/ingresse-app/ingressos/combo", { state: { eventId: evento.id, comboId: combo.id } })}
+                                      onLongPress={(rect) => abrirMenuCombo(combo, rect)}
+                                  />
                               ) : (
                                   /* Combo de QR individual: agrupador com itens, cada um com seu QR */
                                   <div key={combo.id} className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
@@ -124,7 +129,7 @@ export function Ingressos() {
                                           </Badge>
                                       </div>
                                       {combo.itens?.map((item, i) => (
-                                          <TicketRow key={item.id} item={item} isFirst={i === 0} onClick={() => abrirDetalhe(item)} />
+                                          <TicketRow key={item.id} item={item} isFirst={i === 0} onTap={() => abrirDetalhe(item)} onLongPress={(rect) => abrirMenuIngresso(item, rect)} />
                                       ))}
                                   </div>
                               ),
@@ -132,44 +137,213 @@ export function Ingressos() {
                         : (
                               <div className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
                                   {evento.ingressos?.map((item, i) => (
-                                      <TicketRow key={item.id} item={item} isFirst={i === 0} onClick={() => abrirDetalhe(item)} />
+                                      <TicketRow key={item.id} item={item} isFirst={i === 0} onTap={() => abrirDetalhe(item)} onLongPress={(rect) => abrirMenuIngresso(item, rect)} />
                                   ))}
                               </div>
                           )}
                 </div>
             </div>
+
+            <AnimatePresence>
+                {menu && <TicketContextMenu rect={menu.rect} content={menu.content} actions={menu.actions} onClose={() => setMenu(null)} />}
+            </AnimatePresence>
         </AppShell>
     );
 }
 
-const TicketRow = ({ item, isFirst, onClick }: { item: ItemIngresso; isFirst: boolean; onClick: () => void }) => {
-    const Icon = item.acesso === "facial" ? FaceIdSquare : QrCode02;
-    const transf = isTransferido(item.id);
+interface MenuAction {
+    icon: FC<{ className?: string }>;
+    label: string;
+    onClick?: () => void;
+}
+
+const MENU_W = 232;
+const GAP = 10;
+
+/**
+ * Menu de contexto estilo iOS/WhatsApp: ao segurar, o fundo borra/escurece, o
+ * card pressionado "levita" na própria posição e o menu de ações aparece ancorado a ele.
+ */
+const TicketContextMenu = ({ rect, content, actions, onClose }: { rect: DOMRect; content: ReactNode; actions: MenuAction[]; onClose: () => void }) => {
+    const overlayRef = useRef<HTMLDivElement>(null);
+    const [box, setBox] = useState<{ top: number; left: number; width: number; height: number; menuTop: number; menuLeft: number; below: boolean } | null>(null);
+
+    // Converte a posição do card (viewport) para coordenadas relativas ao frame.
+    useLayoutEffect(() => {
+        const o = overlayRef.current?.getBoundingClientRect();
+        if (!o) return;
+        const top = rect.top - o.top;
+        const left = rect.left - o.left;
+        const menuH = actions.length * 52 + 12;
+        const below = top + rect.height + GAP + menuH <= o.height - 12;
+        const menuTop = below ? top + rect.height + GAP : Math.max(12, top - GAP - menuH);
+        const menuLeft = Math.max(12, Math.min(left, o.width - 12 - MENU_W));
+        setBox({ top, left, width: rect.width, height: rect.height, menuTop, menuLeft, below });
+    }, [rect, actions.length]);
+
     return (
-    <button
-        type="button"
-        onClick={onClick}
-        className={cx("flex w-full items-start gap-3 p-4 text-left transition duration-100 ease-linear active:bg-secondary", !isFirst && "border-t border-secondary")}
-    >
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-secondary text-fg-secondary">
-            <Icon className="size-6" />
-        </span>
+        <motion.div ref={overlayRef} className="absolute inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
+            {/* Fundo borrado + escuro */}
+            <button type="button" aria-label="Fechar" onClick={onClose} className="absolute inset-0 bg-black/40 backdrop-blur-md" />
+
+            {box && (
+                <>
+                    {/* Card levitado (na posição original) */}
+                    <motion.div
+                        className="pointer-events-none absolute"
+                        style={{ top: box.top, left: box.left, width: box.width, transformOrigin: "center" }}
+                        initial={{ scale: 0.96 }}
+                        animate={{ scale: 1.02 }}
+                        exit={{ scale: 0.96 }}
+                        transition={{ type: "spring", damping: 22, stiffness: 340 }}
+                    >
+                        <div className="overflow-hidden rounded-2xl bg-primary shadow-2xl ring-1 ring-border-secondary">{content}</div>
+                    </motion.div>
+
+                    {/* Menu de ações ancorado ao card */}
+                    <motion.div
+                        className="absolute"
+                        style={{ top: box.menuTop, left: box.menuLeft, width: MENU_W, transformOrigin: box.below ? "top left" : "bottom left" }}
+                        initial={{ opacity: 0, scale: 0.85 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ type: "spring", damping: 24, stiffness: 360 }}
+                    >
+                        <div className="overflow-hidden rounded-2xl bg-primary shadow-2xl ring-1 ring-border-secondary">
+                            {actions.map((a, i) => {
+                                const Icon = a.icon;
+                                return (
+                                    <button
+                                        key={a.label}
+                                        type="button"
+                                        onClick={() => {
+                                            onClose();
+                                            a.onClick?.();
+                                        }}
+                                        className={cx(
+                                            "flex w-full items-center gap-3 px-4 py-3.5 text-left transition duration-100 ease-linear active:bg-secondary",
+                                            i > 0 && "border-t border-secondary",
+                                        )}
+                                    >
+                                        <Icon className="size-5 shrink-0 text-fg-quaternary" />
+                                        <span className="text-md font-medium text-primary">{a.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </motion.div>
+                </>
+            )}
+        </motion.div>
+    );
+};
+
+const LONG_PRESS_MS = 450;
+
+/** Toque curto (onTap) vs. pressionar e segurar (onLongPress, com o rect do elemento). */
+function useLongPress(onLongPress: (rect: DOMRect) => void, onTap: () => void) {
+    const timer = useRef<number | null>(null);
+    const el = useRef<HTMLElement | null>(null);
+    const fired = useRef(false);
+    const [pressing, setPressing] = useState(false);
+
+    const cancel = () => {
+        setPressing(false);
+        if (timer.current != null) {
+            clearTimeout(timer.current);
+            timer.current = null;
+        }
+    };
+
+    return {
+        pressing,
+        handlers: {
+            onPointerDown: (e: ReactPointerEvent<HTMLElement>) => {
+                el.current = e.currentTarget;
+                fired.current = false;
+                setPressing(true);
+                timer.current = window.setTimeout(() => {
+                    fired.current = true;
+                    timer.current = null;
+                    setPressing(false);
+                    if (el.current) onLongPress(el.current.getBoundingClientRect());
+                }, LONG_PRESS_MS);
+            },
+            onPointerUp: cancel,
+            onPointerLeave: cancel,
+            onPointerCancel: cancel,
+            onContextMenu: (e: ReactMouseEvent) => e.preventDefault(),
+            onClick: () => {
+                // Se o long-press já disparou, ignora o clique de soltar o dedo.
+                if (fired.current) {
+                    fired.current = false;
+                    return;
+                }
+                onTap();
+            },
+        },
+    };
+}
+
+const TicketRow = ({ item, isFirst, onTap, onLongPress }: { item: ItemIngresso; isFirst: boolean; onTap: () => void; onLongPress: (rect: DOMRect) => void }) => {
+    const { pressing, handlers } = useLongPress(onLongPress, onTap);
+    return (
+        <button
+            type="button"
+            {...handlers}
+            className={cx(
+                "block w-full select-none transition duration-100 ease-linear active:bg-secondary",
+                pressing && "scale-[0.98] bg-secondary",
+                !isFirst && "border-t border-secondary",
+            )}
+        >
+            <TicketRowContent item={item} />
+        </button>
+    );
+};
+
+/** Card de combo (QR único) com o mesmo atalho de pressionar e segurar. */
+const ComboCard = ({ combo, evento, onTap, onLongPress }: { combo: Combo; evento: EventoDetalhe; onTap: () => void; onLongPress: (rect: DOMRect) => void }) => {
+    const { pressing, handlers } = useLongPress(onLongPress, onTap);
+    return (
+        <button
+            type="button"
+            {...handlers}
+            className={cx(
+                "block w-full select-none rounded-2xl bg-primary text-left ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary",
+                pressing && "scale-[0.98] bg-secondary",
+            )}
+        >
+            <ComboCardContent combo={combo} evento={evento} />
+        </button>
+    );
+};
+
+/** Conteúdo visual do card de combo (reaproveitado no card levitado do menu). */
+const ComboCardContent = ({ combo, evento }: { combo: Combo; evento: EventoDetalhe }) => (
+    <div className="flex items-start gap-3 p-4 text-left">
+        {evento.id !== "sao-silvestre" && (
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-secondary text-fg-brand-primary">
+                <Package className="size-6" />
+            </span>
+        )}
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-bold text-primary">{item.title}</p>
+                <p className="text-sm font-bold text-primary">{combo.nome}</p>
                 <ChevronRight className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
             </div>
-            {item.tipo && <p className="-mt-1 text-sm text-tertiary">{item.tipo}</p>}
+            <p className="-mt-1 text-sm text-tertiary">{evento.id === "sao-silvestre" ? "1 inscrição" : `${combo.inclusos?.length ?? 0} itens`}</p>
             <p className="flex items-center gap-1.5 text-sm text-secondary">
                 <Calendar className="size-4 shrink-0 text-fg-quaternary" />
-                <span>{item.data}</span>
-            </p>
-            <p className="flex items-center gap-1.5 text-sm text-secondary">
-                <User01 className="size-4 shrink-0 text-fg-quaternary" />
-                <span>{item.portador}</span>
+                <span>{combo.dataEvento}</span>
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
-                {transf ? (
+                {evento.id !== "sao-silvestre" && (
+                    <Badge size="md" color="brand" type="pill-color">
+                        Combo
+                    </Badge>
+                )}
+                {isTransferido(combo.id) ? (
                     <Badge size="md" color="blue" type="pill-color">
                         Transferido
                     </Badge>
@@ -180,7 +354,49 @@ const TicketRow = ({ item, isFirst, onClick }: { item: ItemIngresso; isFirst: bo
                 )}
             </div>
         </div>
-    </button>
+    </div>
+);
+
+/** Conteúdo visual de uma linha de ingresso (reaproveitado no card levitado do menu). */
+const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
+    const Icon = item.acesso === "facial" ? FaceIdSquare : QrCode02;
+    const transf = isTransferido(item.id);
+    return (
+        <div className="flex items-start gap-3 p-4 text-left">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-secondary text-fg-secondary">
+                <Icon className="size-6" />
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-bold text-primary">{item.title}</p>
+                    <ChevronRight className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
+                </div>
+                {item.tipo && <p className="-mt-1 text-sm text-tertiary">{item.tipo}</p>}
+                <p className="flex items-center gap-1.5 text-sm text-secondary">
+                    <Calendar className="size-4 shrink-0 text-fg-quaternary" />
+                    <span>{item.data}</span>
+                </p>
+                <p className="flex items-center gap-1.5 text-sm text-secondary">
+                    <User01 className="size-4 shrink-0 text-fg-quaternary" />
+                    <span>{item.portador}</span>
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                    {transf ? (
+                        <Badge size="md" color="blue" type="pill-color">
+                            Transferido
+                        </Badge>
+                    ) : item.acesso === "facial" && item.facial !== "cadastrada" ? (
+                        <Badge size="md" color="warning" type="pill-color">
+                            Facial pendente
+                        </Badge>
+                    ) : (
+                        <Badge size="md" color="success" type="pill-color">
+                            Pronto para uso
+                        </Badge>
+                    )}
+                </div>
+            </div>
+        </div>
     );
 };
 

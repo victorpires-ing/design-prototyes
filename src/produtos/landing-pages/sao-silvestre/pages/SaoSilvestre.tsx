@@ -37,6 +37,21 @@ function BlueButton({ children, className, ...props }: React.ButtonHTMLAttribute
     );
 }
 
+function OutlineButton({ children, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+    return (
+        <button
+            type="button"
+            className={cx(
+                "w-full rounded-xl border border-secondary bg-primary px-5 py-3.5 text-sm font-semibold text-primary transition duration-100 ease-linear hover:bg-secondary",
+                className,
+            )}
+            {...props}
+        >
+            {children}
+        </button>
+    );
+}
+
 function HeroCarousel({ variant }: { variant: "desktop" | "mobile" }) {
     const N = HERO_SLIDES.length;
     const [active, setActive] = useState(0);
@@ -126,8 +141,23 @@ const FAQ = [
 
 /* ------------------------- Landing (responsiva) ------------------------ */
 
-/* Modal (estilo DS) com o procedimento de inscrição de grupos e assessorias. */
-function GrupoModal({ viewport, onClose, onAcessar }: { viewport: Viewport; onClose: () => void; onAcessar: () => void }) {
+/* Modal reutilizável (estilo DS): header fixo + corpo rolável + rodapé com CTA.
+   Usado pelos fluxos de "Grupos esportivos" e "Benefício PCD". */
+function InfoModal({
+    viewport,
+    title,
+    ctaLabel,
+    onCta,
+    onClose,
+    children,
+}: {
+    viewport: Viewport;
+    title: string;
+    ctaLabel: string;
+    onCta: () => void;
+    onClose: () => void;
+    children: React.ReactNode;
+}) {
     const mobile = viewport === "mobile";
 
     // Trava o scroll da página de fundo enquanto o modal está aberto, senão o
@@ -145,7 +175,7 @@ function GrupoModal({ viewport, onClose, onAcessar }: { viewport: Viewport; onCl
     const inner = (
         <>
             <div className="flex shrink-0 items-start justify-between gap-3 border-b border-secondary p-5 @3xl:p-6">
-                <h3 className="text-lg font-bold text-primary">Inscrição de grupos esportivos</h3>
+                <h3 className="text-lg font-bold text-primary">{title}</h3>
                 <button
                     type="button"
                     aria-label="Fechar"
@@ -156,32 +186,11 @@ function GrupoModal({ viewport, onClose, onAcessar }: { viewport: Viewport; onCl
                 </button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 @3xl:p-6">
-                <div className="space-y-3 text-sm text-secondary">
-                    <p>Grupos e assessorias de corrida são muito bem-vindos na São Silvestre.</p>
-                    <p>Acreditamos na força da comunidade de corredores e no impacto que o esporte pode gerar quando pessoas se unem por uma causa.</p>
-                    <p>Reúna sua equipe, convide seus alunos e venha fazer parte de uma das corridas mais tradicionais do Brasil.</p>
-                </div>
-
-                <p className="mt-6 text-sm font-bold text-primary">Procedimento para inscrições de grupos:</p>
-                <div className="mt-2 space-y-3 text-sm text-tertiary">
-                    <p>
-                        1. Faça o seu cadastro no sistema TicketSports com os dados que usará para faturamento do pedido de grupos. Se você deseja que o boleto
-                        saia em nome de empresa faça um cadastro como Pessoa Jurídica informando a razão social ou fantasia com seu respectivo CNPJ. Caso já
-                        possua o cadastro informe seus dados de acesso.
-                    </p>
-                    <p>
-                        2. Solicite via sistema a quantidade total de vagas para seu grupo. Após o recebimento, o organizador irá validar sua solicitação
-                        autorizando, ou não, a reserva das vagas até a data limite de inscrições para grupos.
-                    </p>
-                    <p>3. Aguarde o e-mail com a resposta de aprovação das vagas que será enviada pelo organizador.</p>
-                    <p>4. Siga as instruções do e-mail que irá receber para realizar as inscrições.</p>
-                </div>
-            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 @3xl:p-6">{children}</div>
 
             <div className="shrink-0 border-t border-secondary p-5 @3xl:p-6">
-                <BlueButton onClick={onAcessar} className="w-full py-3.5">
-                    Acessar novo processo de grupos
+                <BlueButton onClick={onCta} className="w-full py-3.5">
+                    {ctaLabel}
                 </BlueButton>
             </div>
         </>
@@ -214,6 +223,58 @@ function GrupoModal({ viewport, onClose, onAcessar }: { viewport: Viewport; onCl
     );
 }
 
+/* Corpo do modal de grupos esportivos. */
+function GrupoModalBody() {
+    return (
+        <>
+            <div className="space-y-3 text-sm text-secondary">
+                <p>Grupos e assessorias de corrida são muito bem-vindos na São Silvestre.</p>
+                <p>Acreditamos na força da comunidade de corredores e no impacto que o esporte pode gerar quando pessoas se unem por uma causa.</p>
+                <p>Reúna sua equipe, convide seus alunos e venha fazer parte de uma das corridas mais tradicionais do Brasil.</p>
+            </div>
+
+            <p className="mt-6 text-sm font-bold text-primary">Procedimento para inscrições de grupos:</p>
+            <div className="mt-2 space-y-3 text-sm text-tertiary">
+                <p>
+                    1. Faça o seu cadastro no sistema TicketSports com os dados que usará para faturamento do pedido de grupos. Se você deseja que o boleto
+                    saia em nome de empresa faça um cadastro como Pessoa Jurídica informando a razão social ou fantasia com seu respectivo CNPJ. Caso já
+                    possua o cadastro informe seus dados de acesso.
+                </p>
+                <p>
+                    2. Solicite via sistema a quantidade total de vagas para seu grupo. Após o recebimento, o organizador irá validar sua solicitação
+                    autorizando, ou não, a reserva das vagas até a data limite de inscrições para grupos.
+                </p>
+                <p>3. Aguarde o e-mail com a resposta de aprovação das vagas que será enviada pelo organizador.</p>
+                <p>4. Siga as instruções do e-mail que irá receber para realizar as inscrições.</p>
+            </div>
+        </>
+    );
+}
+
+/* Corpo do modal de benefício PCD. */
+function PcdModalBody() {
+    return (
+        <>
+            <div className="space-y-3 text-sm text-secondary">
+                <p>Para solicitar o benefício, tenha em mãos os documentos da pessoa PCD que irá participar da São Silvestre.</p>
+                <p>
+                    A solicitação será analisada pela organização do evento. Se aprovada, o CPF informado será habilitado para visualizar e comprar a
+                    inscrição PCD no fluxo de compra.
+                </p>
+            </div>
+
+            <p className="mt-6 text-sm font-bold text-primary">Você vai precisar de:</p>
+            <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-tertiary">
+                <li>CPF e data de nascimento do atleta PCD;</li>
+                <li>CID;</li>
+                <li>documento de identificação;</li>
+                <li>laudo ou documento comprobatório;</li>
+                <li>aceite do termo de compartilhamento de dados.</li>
+            </ul>
+        </>
+    );
+}
+
 function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
     return (
         <div className={cx("rounded-xl border border-secondary transition", open ? "bg-primary" : "bg-secondary/60")}>
@@ -234,6 +295,7 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
     const navigate = useNavigate();
     const [openFaq, setOpenFaq] = useState(0);
     const [grupoModal, setGrupoModal] = useState(false);
+    const [pcdModal, setPcdModal] = useState(false);
     const mobileBar = viewport === "mobile";
 
     // Barra escura que destaca, na trilha, o bloco de informação ativo.
@@ -348,6 +410,16 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                             Paulo conta uma história.
                         </p>
                         <BlueButton className="mt-7 w-full px-7 py-4 text-base @3xl:w-auto">Inscreva-se agora</BlueButton>
+
+                        {/* Já se inscreveu? */}
+                        <div className="mt-6">
+                            <p className="text-sm text-tertiary">
+                                <span className="font-semibold text-primary">Já se inscreveu?</span> Acompanhe sua inscrição e detalhes de compra pela sua conta.
+                            </p>
+                            <button type="button" className="mt-1.5 text-sm font-semibold transition hover:underline" style={{ color: BLUE }}>
+                                Acessar minha inscrição
+                            </button>
+                        </div>
                     </div>
 
                     {/* Banner rotativo */}
@@ -449,21 +521,16 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                             <div className="border-t border-secondary bg-secondary p-6">
                                 <p className="text-md font-bold text-primary">Grupos Esportivos</p>
                                 <p className="mt-2 text-sm text-tertiary">Solicite vagas para sua equipe, grupo esportivo ou assessoria da corrida.</p>
-                                <BlueButton onClick={() => setGrupoModal(true)} className="mt-4 w-full rounded-xl py-3.5">
+                                <OutlineButton onClick={() => setGrupoModal(true)} className="mt-4">
                                     Solicitar vagas para grupo
-                                </BlueButton>
+                                </OutlineButton>
                             </div>
 
-                            {/* Já se inscreveu */}
+                            {/* Benefício PCD */}
                             <div className="border-t border-secondary bg-secondary p-6">
-                                <p className="text-md font-bold text-primary">Já se inscreveu?</p>
-                                <p className="mt-2 text-sm text-tertiary">Acompanhe sua inscrição, credencial e detalhes da compra pela sua conta TicketSports by Ingresse.</p>
-                                <button
-                                    type="button"
-                                    className="mt-4 w-full rounded-xl border border-secondary bg-primary px-5 py-3.5 text-sm font-semibold text-primary transition duration-100 ease-linear hover:bg-secondary"
-                                >
-                                    Acessar minha inscrição
-                                </button>
+                                <p className="text-md font-bold text-primary">Benefício PCD</p>
+                                <p className="mt-2 text-sm text-tertiary">Solicite a análise do seu benefício enviando seus dados e documentos comprobatórios.</p>
+                                <OutlineButton onClick={() => setPcdModal(true)} className="mt-4">Solicitar benefício</OutlineButton>
                             </div>
                         </div>
                     </aside>
@@ -494,13 +561,30 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                 <p className="mt-4 text-xs text-tertiary">© 2026 São Silvestre. Todos os direitos reservados.</p>
             </footer>
 
-            {/* Modal: inscrição de grupos e assessorias */}
+            {/* Modal: inscrição de grupos esportivos */}
             {grupoModal && (
-                <GrupoModal
+                <InfoModal
                     viewport={viewport}
+                    title="Inscrição de grupos esportivos"
+                    ctaLabel="Acessar novo processo de grupos"
+                    onCta={() => navigate("/landing-pages/sao-silvestre/solicitar-vagas", { state: { viewport } })}
                     onClose={() => setGrupoModal(false)}
-                    onAcessar={() => navigate("/landing-pages/sao-silvestre/solicitar-vagas", { state: { viewport } })}
-                />
+                >
+                    <GrupoModalBody />
+                </InfoModal>
+            )}
+
+            {/* Modal: benefício PCD */}
+            {pcdModal && (
+                <InfoModal
+                    viewport={viewport}
+                    title="Benefício PCD"
+                    ctaLabel="Solicitar benefício PCD"
+                    onCta={() => navigate("/landing-pages/sao-silvestre/solicitar-beneficio-pcd", { state: { viewport } })}
+                    onClose={() => setPcdModal(false)}
+                >
+                    <PcdModalBody />
+                </InfoModal>
             )}
 
             {/* Barra de ação fixa no rodapé (mobile) — via portal para escapar do @container */}

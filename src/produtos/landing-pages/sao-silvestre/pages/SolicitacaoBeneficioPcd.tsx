@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeft, CheckCircle, ChevronDown, InfoCircle, Monitor01, Phone01 } from "@untitledui/icons";
+import { ArrowLeft, Check, CheckCircle, Monitor01, Phone01, UploadCloud02 } from "@untitledui/icons";
 import { useTheme } from "@/providers/theme-provider";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { Input } from "@/components/base/input/input";
@@ -11,7 +11,7 @@ import logoTicketSports from "../assets/LOGO TICKET INGRESSE.svg";
 const BLUE = "#0099FF";
 type Viewport = "desktop" | "mobile";
 
-/** Modal de confirmação exibido após o envio da solicitação de vagas. */
+/** Modal de confirmação exibido após o envio da solicitação. */
 function ConfirmacaoModal({ viewport, onVoltar, onInfos }: { viewport: Viewport; onVoltar: () => void; onInfos: () => void }) {
     const mobile = viewport === "mobile";
 
@@ -28,9 +28,9 @@ function ConfirmacaoModal({ viewport, onVoltar, onInfos }: { viewport: Viewport;
             <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="lg" />
             <h3 className="mt-4 text-lg font-bold text-primary">Solicitação enviada</h3>
             <div className="mt-2 space-y-3 text-sm text-tertiary">
-                <p>Recebemos sua solicitação de vagas para grupos na São Silvestre.</p>
-                <p>A organização vai analisar o pedido. Se aprovado, você receberá por e-mail as instruções e o prazo para concluir as inscrições do seu grupo.</p>
-                <p>Fique de olho na sua caixa de entrada — e também no spam — para não perder nenhuma atualização.</p>
+                <p>Recebemos sua solicitação de benefício PCD para a São Silvestre.</p>
+                <p>A organização irá analisar os dados e documentos enviados. A resposta será enviada por e-mail.</p>
+                <p>Se a solicitação for aprovada, você poderá acessar o fluxo de inscrição e visualizar a categoria PCD disponível para compra.</p>
             </div>
             <div className="mt-6 space-y-3">
                 <button
@@ -73,8 +73,31 @@ function ConfirmacaoModal({ viewport, onVoltar, onInfos }: { viewport: Viewport;
     );
 }
 
-/** Formulário de solicitação de vagas para grupos/assessorias (a partir da landing da SS). */
-export function SolicitacaoVagas() {
+/** Campo de upload de arquivo (apenas captura o nome, é um protótipo). */
+function UploadField({ label, value, onChange }: { label: string; value: string; onChange: (name: string) => void }) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    return (
+        <div>
+            <label className="text-sm font-medium text-secondary">{label}</label>
+            <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="mt-1.5 flex w-full items-center gap-3 rounded-lg border border-dashed border-border-primary bg-primary px-3.5 py-3 text-left transition duration-100 ease-linear hover:bg-secondary"
+            >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-fg-quaternary">
+                    <UploadCloud02 className="size-5" />
+                </span>
+                <span className={cx("min-w-0 flex-1 truncate text-sm", value ? "font-medium text-primary" : "text-tertiary")}>
+                    {value || "Clique para enviar um arquivo"}
+                </span>
+            </button>
+            <input ref={inputRef} type="file" className="hidden" onChange={(e) => onChange(e.target.files?.[0]?.name ?? "")} />
+        </div>
+    );
+}
+
+/** Formulário de solicitação de benefício PCD (a partir da landing da SS). */
+export function SolicitacaoBeneficioPcd() {
     const navigate = useNavigate();
     const location = useLocation();
     const { theme, setTheme } = useTheme();
@@ -90,11 +113,18 @@ export function SolicitacaoVagas() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const [vagas, setVagas] = useState("");
-    const [segmento, setSegmento] = useState("Grupos Esportivos");
     const [nome, setNome] = useState("");
+    const [cpf, setCpf] = useState("");
+    const [nascimento, setNascimento] = useState("");
+    const [email, setEmail] = useState("");
+    const [telefone, setTelefone] = useState("");
+    const [cid, setCid] = useState("");
+    const [docId, setDocId] = useState("");
+    const [laudo, setLaudo] = useState("");
+    const [aceite, setAceite] = useState(false);
     const [enviado, setEnviado] = useState(false);
-    const ok = vagas.trim() !== "" && nome.trim() !== "";
+
+    const ok = nome.trim() !== "" && cpf.trim() !== "" && email.trim() !== "" && aceite;
 
     const seg = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear";
 
@@ -105,47 +135,53 @@ export function SolicitacaoVagas() {
                 <img src={logoTicketSports} alt="TicketSports by Ingresse" className="h-9 w-auto" />
             </div>
 
-            {/* Card do formulário (estilo da transferência) */}
+            {/* Card do formulário */}
             <div className="mt-6 rounded-2xl bg-primary p-6 shadow-sm ring-1 ring-border-secondary">
-                <h1 className="text-xl font-bold text-primary">Solicitação de vagas</h1>
+                <h1 className="text-xl font-bold text-primary">Solicitação de benefício PCD</h1>
                 <p className="mt-2 text-sm text-tertiary">
-                    Sua solicitação para <span className="font-semibold text-primary">São Silvestre 2026</span> será enviada para o organizador e estará sujeita a aprovação.
+                    Preencha os dados abaixo para que a organização avalie sua elegibilidade ao benefício PCD. A resposta será enviada por e-mail.
                 </p>
 
-                {/* Prazo (alert do DS, sem truncar a legenda) */}
-                <div className="mt-5 flex gap-4 rounded-xl border border-secondary bg-secondary/60 p-4">
-                    <FeaturedIcon icon={InfoCircle} color="gray" theme="modern" size="md" />
-                    <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-secondary">Inscrições de grupos até 20/11/2026</p>
-                        <p className="mt-0.5 text-sm text-tertiary">Você receberá um e-mail com a resposta assim que analisada.</p>
-                    </div>
+                {/* Dados do atleta */}
+                <p className="mt-6 text-sm font-bold text-primary">Dados do atleta</p>
+                <div className="mt-3 space-y-4">
+                    <Input label="Nome completo" placeholder="Digite o nome do atleta PCD" value={nome} onChange={setNome} />
+                    <Input label="CPF" placeholder="000.000.000-00" value={cpf} onChange={setCpf} />
+                    <Input label="Data de nascimento" placeholder="DD/MM/AAAA" value={nascimento} onChange={setNascimento} />
+                    <Input label="E-mail" placeholder="email@exemplo.com" value={email} onChange={setEmail} />
+                    <Input label="Telefone" placeholder="(00) 00000-0000" value={telefone} onChange={setTelefone} />
                 </div>
 
-                {/* Campos */}
-                <div className="mt-5 space-y-4">
-                    <Input label="Informe a quantidade de vagas" placeholder="Mínimo de 10" value={vagas} onChange={setVagas} />
+                {/* Informações para análise */}
+                <p className="mt-6 text-sm font-bold text-primary">Informações para análise</p>
+                <div className="mt-3 space-y-4">
+                    <Input label="CID" placeholder="Informe o CID" value={cid} onChange={setCid} />
+                    <UploadField label="Documento de identificação" value={docId} onChange={setDocId} />
+                    <UploadField label="Laudo ou documento comprobatório" value={laudo} onChange={setLaudo} />
+                </div>
 
-                    <div>
-                        <label htmlFor="segmento" className="text-sm font-medium text-secondary">
-                            Segmento
-                        </label>
-                        <div className="relative mt-1.5">
-                            <select
-                                id="segmento"
-                                value={segmento}
-                                onChange={(e) => setSegmento(e.target.value)}
-                                className="w-full appearance-none rounded-lg bg-primary px-3.5 py-2.5 pr-10 text-md text-primary shadow-xs outline-none ring-1 ring-border-primary ring-inset focus:ring-2 focus:ring-brand"
-                            >
-                                <option>Grupos Esportivos</option>
-                                <option>Assessoria de corrida</option>
-                                <option>Empresa</option>
-                                <option>Família e amigos</option>
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute top-1/2 right-3.5 size-5 -translate-y-1/2 text-fg-quaternary" />
+                {/* Termo obrigatório */}
+                <p className="mt-6 text-sm font-bold text-primary">Termo obrigatório</p>
+                <div className="mt-3 rounded-xl border border-secondary bg-secondary/60 p-4">
+                    <button type="button" role="checkbox" aria-checked={aceite} onClick={() => setAceite(!aceite)} className="flex w-full items-start gap-3 text-left">
+                        <span
+                            className={cx(
+                                "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md text-white ring-1 ring-inset transition duration-100 ease-linear",
+                                aceite ? "ring-transparent" : "bg-primary ring-primary",
+                            )}
+                            style={aceite ? { backgroundColor: BLUE } : undefined}
+                        >
+                            {aceite && <Check className="size-3.5" strokeWidth={3} />}
+                        </span>
+                        <div className="min-w-0">
+                            <p className="text-sm font-medium text-secondary">
+                                Li e autorizo o uso dos dados e documentos enviados para análise da solicitação de benefício PCD, conforme a política de privacidade.
+                            </p>
+                            <p className="mt-1 text-sm text-tertiary">
+                                Seus documentos serão usados apenas para análise da solicitação e tratados conforme as regras de segurança e privacidade.
+                            </p>
                         </div>
-                    </div>
-
-                    <Input label="Nome do grupo, equipe ou assessoria" placeholder="Digite aqui" value={nome} onChange={setNome} />
+                    </button>
                 </div>
 
                 <button
@@ -162,7 +198,7 @@ export function SolicitacaoVagas() {
     );
 
     return (
-        <div className={cx("min-h-screen", viewport === "mobile" ? "bg-secondary" : "bg-secondary")}>
+        <div className="min-h-screen bg-secondary">
             {/* Barra de controle do protótipo */}
             <div className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 border-b border-secondary bg-primary/90 px-4 py-2.5 backdrop-blur">
                 <button

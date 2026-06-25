@@ -101,7 +101,7 @@ export function Carteira() {
                                     <button
                                         key={evento.id}
                                         type="button"
-                                        onClick={() => navigate("/ingresse-app/ingressos/evento", { state: { eventId: evento.id } })}
+                                        onClick={() => navigate(`/ingresse-app/ingressos/evento/${evento.id}`)}
                                         className="flex items-center gap-4 rounded-2xl bg-primary p-3 text-left ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                                     >
                                         {evento.gradient ? (

@@ -2,6 +2,8 @@
    Um evento pode ter uma lista simples de ingressos OU combos.
    Cenário de combo: todos os itens/dias inclusos compartilham o MESMO QR Code. */
 
+import arenaCamisa from "../assets/arena-camisa.png";
+
 export interface ItemIngresso {
     id: string;
     title: string;
@@ -13,6 +15,12 @@ export interface ItemIngresso {
     acesso?: "qr" | "facial";
     /** Estado do cadastro facial (apenas quando acesso === "facial"). Default: "pendente". */
     facial?: "pendente" | "cadastrada";
+    /** Marca o item como produto/merchandising (em vez de ingresso). */
+    produto?: boolean;
+    /** Degradê usado como imagem ilustrativa do produto. */
+    imagem?: string;
+    /** Status de retirada do produto. */
+    retirada?: "pendente" | "retirado";
 }
 
 export type ComboStatus = "finalizado" | "hoje" | "proximo";
@@ -83,8 +91,8 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
         sessao: "Sex, 19 jun • 15:00",
         ingressos: [
             { id: "1", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR, cpf: CPF },
-            { id: "2", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR, cpf: CPF },
             { id: "uniforme-oficial", title: "ARENA | Brasil x Haiti | (19/06)", tipo: "Inteira", data: "Sex, 19 jun • 15:00", portador: PORTADOR, cpf: CPF, acesso: "facial", facial: "cadastrada" },
+            { id: "tshirt-bienal", title: "Produto Arena Oficial Camisa Amarela Tam G", data: "Sex, 19 jun • 15:00", portador: PORTADOR, produto: true, retirada: "pendente", imagem: arenaCamisa },
         ],
     },
     "reveillon-copacabana": {
@@ -189,3 +197,22 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
 };
 
 export const getEvento = (id?: string): EventoDetalhe => (id && EVENTOS[id]) || EVENTOS.arena;
+
+/** Busca um item (ingresso ou produto) pelo evento + id, procurando na lista e dentro de combos. */
+export const getItem = (eventId?: string, itemId?: string): ItemIngresso | undefined => {
+    const ev = eventId ? EVENTOS[eventId] : undefined;
+    if (!ev || !itemId) return undefined;
+    const direto = ev.ingressos?.find((i) => i.id === itemId);
+    if (direto) return direto;
+    for (const c of ev.combos ?? []) {
+        const dentro = c.itens?.find((i) => i.id === itemId);
+        if (dentro) return dentro;
+    }
+    return undefined;
+};
+
+/** Busca um combo pelo evento + id. */
+export const getCombo = (eventId?: string, comboId?: string): Combo | undefined => {
+    const ev = eventId ? EVENTOS[eventId] : undefined;
+    return ev?.combos?.find((c) => c.id === comboId);
+};

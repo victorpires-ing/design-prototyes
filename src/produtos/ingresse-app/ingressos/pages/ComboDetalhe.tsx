@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { ArrowLeft, ClipboardCheck, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -20,11 +20,10 @@ const STATUS: Record<ComboStatus, { label: string; color: "gray" | "brand" | "bl
 
 export function ComboDetalhe() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const state = (location.state as { eventId?: string; comboId?: string; transferido?: boolean } | null) ?? {};
-    const transferido = !!state.transferido || isTransferido(state.comboId);
-    const evento = getEvento(state.eventId);
-    const combo = evento.combos?.find((c) => c.id === state.comboId) ?? evento.combos?.find((c) => c.qr === "unico");
+    const { eventId, comboId } = useParams();
+    const transferido = isTransferido(comboId);
+    const evento = getEvento(eventId);
+    const combo = evento.combos?.find((c) => c.id === comboId) ?? evento.combos?.find((c) => c.qr === "unico");
     // Ordem: por status (hoje, próximo, finalizado) e, dentro do mesmo status, o de data mais próxima primeiro.
     const RANK: Record<string, number> = { hoje: 0, proximo: 1, finalizado: 2 };
     const inclusos = [...(combo?.inclusos ?? [])].sort((a, b) => {
@@ -43,7 +42,7 @@ export function ComboDetalhe() {
 
     const termo = evento.id === "sao-silvestre" ? "inscrição" : "ingresso";
     const acoes: FabAction[] = [
-        { icon: Send01, label: `Transferir ${termo}`, short: "Transferir", onClick: () => navigate("/ingresse-app/ingressos/transferir", { state: { eventId: evento.id, comboId: combo.id } }) },
+        { icon: Send01, label: `Transferir ${termo}`, short: "Transferir", onClick: () => navigate(`/ingresse-app/ingressos/transferir/${evento.id}/${combo.id}`) },
         { icon: Tag01, label: `Revender ${termo}`, short: "Revender" },
         { icon: Wallet02, label: "Adicionar à Carteira", short: "Carteira", dark: true },
     ];
@@ -58,7 +57,7 @@ export function ComboDetalhe() {
                     <button
                         type="button"
                         aria-label="Voltar"
-                        onClick={() => navigate("/ingresse-app/ingressos/evento", { state: { eventId: evento.id } })}
+                        onClick={() => navigate(`/ingresse-app/ingressos/evento/${evento.id}`)}
                         className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                     >
                         <ArrowLeft className="size-5" />

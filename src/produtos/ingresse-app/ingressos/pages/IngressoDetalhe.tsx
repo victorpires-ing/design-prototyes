@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import Lottie, { type LottieRefCurrentProps } from "lottie-react";
 import { ArrowLeft, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
@@ -10,6 +10,7 @@ import { AppShell } from "../../components/AppShell";
 import { ActionFab, type FabAction } from "../../components/ActionFab";
 import { StatusBar } from "../../components/StatusBar";
 import { Zigzag } from "../../components/Zigzag";
+import { getEvento, getItem } from "../data/eventos";
 import { isTransferido } from "../data/transfer-store";
 
 /** Carinha de reconhecimento facial: toca 2 vezes e congela no último frame. */
@@ -36,29 +37,30 @@ function FaceAnimation() {
 
 export function IngressoDetalhe() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const state =
-        (location.state as { transferido?: boolean; evento?: string; title?: string; tipo?: string; sessao?: string; eventId?: string; itemId?: string; acesso?: "qr" | "facial"; facial?: "pendente" | "cadastrada"; portador?: string; cpf?: string } | null) ?? {};
-    const transferido = !!state.transferido || isTransferido(state.itemId);
-    const evento = state.evento ?? "ARENA BRASILEIRA 2026";
-    const title = state.title ?? "ARENA | Brasil x Haiti | (19/06)";
-    const tipo = state.tipo ?? "Inteira";
-    const sessao = state.sessao ?? "Sex, 19 jun • 15:00";
-    const portador = state.portador ?? "Priscilão Alcantara Raro";
-    const cpf = state.cpf ?? "948.943.130-44";
-    const facial = state.acesso === "facial";
+    const { eventId, itemId } = useParams();
+    const eventoObj = getEvento(eventId);
+    const item = getItem(eventId, itemId);
+
+    const transferido = isTransferido(itemId);
+    const evento = eventoObj.title;
+    const title = item?.title ?? "Ingresso";
+    const tipo = item?.tipo;
+    const sessao = eventoObj.sessao;
+    const portador = item?.portador ?? "Priscilão Alcantara Raro";
+    const cpf = item?.cpf ?? "948.943.130-44";
+    const facial = item?.acesso === "facial";
 
     const [meuIngresso, setMeuIngresso] = useState(true);
     const [showQR, setShowQR] = useState(false);
     // Facial pendente começa não cadastrado; "Cadastrar agora" leva ao estado cadastrado.
-    const [registered, setRegistered] = useState(state.facial !== "pendente");
+    const [registered, setRegistered] = useState(item?.facial !== "pendente");
 
     const acoes: FabAction[] = [
         {
             icon: Send01,
             label: "Transferir ingresso",
             short: "Transferir",
-            onClick: () => navigate("/ingresse-app/ingressos/transferir", { state: { evento, title, tipo, sessao, eventId: state.eventId, itemId: state.itemId, acesso: state.acesso } }),
+            onClick: () => navigate(`/ingresse-app/ingressos/transferir/${eventoObj.id}/${itemId}`),
         },
         { icon: Tag01, label: "Revender ingresso", short: "Revender" },
         { icon: Wallet02, label: "Adicionar à Carteira", short: "Carteira", dark: true },
@@ -74,7 +76,7 @@ export function IngressoDetalhe() {
                     <button
                         type="button"
                         aria-label="Voltar"
-                        onClick={() => navigate("/ingresse-app/ingressos/evento", { state: { eventId: state.eventId } })}
+                        onClick={() => navigate(`/ingresse-app/ingressos/evento/${eventoObj.id}`)}
                         className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                     >
                         <ArrowLeft className="size-5" />

@@ -138,12 +138,23 @@ interface Transacao {
     bundleDinamico: boolean;
 }
 
+// Setores e tipos de ingresso do jogo (Grêmio x Santos). Nome do ingresso = lote = tipo.
+const t = (nome: string, valor: number) => ({ nome, valor, lote: nome });
 const CATALOGO = [
-    { setor: "VIP", peso: 0.1, tipos: [{ nome: "VIP (Inteira)", valor: 1368, lote: "Lote 2" }, { nome: "VIP (Meia)", valor: 684, lote: "Lote 2" }] },
-    { setor: "Camarote Premium", peso: 0.12, tipos: [{ nome: "Camarote (Inteira)", valor: 980, lote: "Lote 2" }, { nome: "Camarote (Meia)", valor: 490, lote: "Lote 2" }] },
-    { setor: "Pista Premium", peso: 0.22, tipos: [{ nome: "Pista Premium (Inteira)", valor: 520, lote: "Lote 1" }, { nome: "Pista Premium (Meia)", valor: 260, lote: "Lote 1" }] },
-    { setor: "Pista", peso: 0.46, tipos: [{ nome: "Pista (Inteira)", valor: 240, lote: "Lote 3" }, { nome: "Pista (Meia)", valor: 120, lote: "Lote 3" }] },
-    { setor: "Mezanino", peso: 0.1, tipos: [{ nome: "Mezanino (Inteira)", valor: 300, lote: "Lote 1" }, { nome: "Mezanino (Meia)", valor: 150, lote: "Lote 1" }] },
+    { setor: "Superior Leste", peso: 0.195, tipos: [t("Inteira", 80), t("Meia-Entrada", 40), t("Diamante", 200)] },
+    { setor: "Gramado Leste", peso: 0.192, tipos: [t("Inteira", 150), t("Meia-Entrada", 75), t("Ouro", 300)] },
+    { setor: "Arquibancada Norte", peso: 0.108, tipos: [t("Inteira", 100), t("Meia-Entrada", 50)] },
+    { setor: "Adversário (Superior Visitante)", peso: 0.108, tipos: [t("Inteira", 130), t("Meia-Entrada", 65)] },
+    { setor: "Gramado Oeste", peso: 0.077, tipos: [t("Inteira", 150), t("Meia-Entrada", 75), t("Diamante", 300)] },
+    { setor: "Gramado Sul", peso: 0.076, tipos: [t("Inteira", 150), t("Meia-Entrada", 75)] },
+    { setor: "Superior Oeste", peso: 0.052, tipos: [t("Inteira", 80), t("Meia-Entrada", 40), t("Acompanhante", 80)] },
+    { setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", peso: 0.044, tipos: [t("Inteira", 220), t("Meia-Entrada", 110)] },
+    { setor: "Gold Leste", peso: 0.043, tipos: [t("Inteira", 180), t("Meia-Entrada", 90)] },
+    { setor: "Superior Norte", peso: 0.04, tipos: [t("Inteira", 80), t("Meia-Entrada", 40)] },
+    { setor: "Gold Norte", peso: 0.029, tipos: [t("Inteira", 220), t("Meia-Entrada", 110)] },
+    { setor: "Superior Sul", peso: 0.025, tipos: [t("Inteira", 80), t("Meia-Entrada", 40)] },
+    { setor: "Camarote", peso: 0.011, tipos: [t("Inteira", 400)] },
+    { setor: "Gold Oeste", peso: 0.004, tipos: [t("Lote único", 250)] },
 ];
 
 const PRIMEIROS = ["Adriano", "Mariana", "Pedro", "Camila", "Roberto", "Larissa", "Vinicius", "Davi", "Beatriz", "Gustavo", "Fernanda", "Rafael", "Juliana", "Bruno", "Aline", "Thiago", "Patrícia", "Lucas", "Carolina", "Felipe"];
@@ -157,11 +168,21 @@ const LOCAIS = [
     { estado: "PR", cidade: "Curitiba", ddd: "41" },
     { estado: "RS", cidade: "Porto Alegre", ddd: "51" },
 ];
-const OPERADORES = ["Operadora Estação Central", "Bilheteria Arena", "PDV Shopping Norte"];
+const OPERADORES = ["Bilheteria Arena do Grêmio", "Loja Oficial Grêmio - Arena", "Loja Oficial Grêmio - Shopping Iguatemi"];
 const CUPONS = [
-    { cupom: "FAN15", pct: 0.15 },
-    { cupom: "VIPACCESS", pct: 0.1 },
-    { cupom: "PREMIERE10", pct: 0.1 },
+    { cupom: "TRICOLOR15", pct: 0.15 },
+    { cupom: "SOCIO10", pct: 0.1 },
+    { cupom: "IMORTAL10", pct: 0.1 },
+];
+// Meios de pagamento (online) com pesos aproximados do relatório real.
+const MEIOS_PAGAMENTO: { nome: string; peso: number; isento?: boolean }[] = [
+    { nome: "Pix", peso: 0.637 },
+    { nome: "Cartão de Crédito", peso: 0.234 },
+    { nome: "Isento", peso: 0.103, isento: true },
+    { nome: "Apple Pay", peso: 0.014 },
+    { nome: "Google Pay", peso: 0.007 },
+    { nome: "Cartão de Débito", peso: 0.004 },
+    { nome: "Grátis", peso: 0.001, isento: true },
 ];
 
 /** dd/mm/aaaa a partir de um offset (em dias) sobre a data de início de vendas. */
@@ -217,16 +238,19 @@ const transacoes: Transacao[] = (() => {
         const cat = pickWeighted(CATALOGO);
         const tipo = pick(cat.tipos);
         const qtdItem = rng() < 0.82 ? 1 : rng() < 0.7 ? 2 : rng() < 0.7 ? 3 : 4;
-        const valor = tipo.valor * qtdItem;
 
-        const temCupom = rng() < 0.12;
+        // Jogo único; vendas majoritariamente online. Offline (bilheteria) usa dinheiro.
+        const isPdv = rng() < 0.01;
+        const canal = isPdv ? "Offline" : "Online";
+        const meio = isPdv ? { nome: "Dinheiro", peso: 1 } : pickWeighted(MEIOS_PAGAMENTO);
+        const tipoPagamento = meio.nome;
+        const isento = "isento" in meio && meio.isento === true;
+
+        const valor = isento ? 0 : tipo.valor * qtdItem;
+        const temCupom = !isento && rng() < 0.12;
         const cupomDef = temCupom ? pick(CUPONS) : null;
         const valorDesconto = cupomDef ? Math.round(valor * cupomDef.pct * 100) / 100 : 0;
         const valorFinal = Math.round((valor - valorDesconto) * 100) / 100;
-
-        const isPdv = rng() < 0.1;
-        const canal = isPdv ? "PDV" : "Online";
-        const tipoPagamento = rng() < 0.42 ? "Pix" : "Cartão de Crédito";
         const local = pick(LOCAIS);
         const nome = `${pick(PRIMEIROS)} ${pick(SOBRENOMES)}`;
         const emailUser = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z]+/g, ".");
@@ -258,10 +282,10 @@ const transacoes: Transacao[] = (() => {
             valorDesconto,
             valorFinal,
             qtdItem,
-            passkey: cat.setor === "VIP" && rng() < 0.4 ? "VIP2026" : "—",
+            passkey: "—",
             pdv: isPdv,
-            bundle: rng() < 0.08,
-            bundleDinamico: rng() < 0.04,
+            bundle: false,
+            bundleDinamico: false,
         });
     }
     // Ordena do mais recente para o mais antigo (como uma lista de transações real).
@@ -276,11 +300,17 @@ const transacoes: Transacao[] = (() => {
 const STATUS_OPTIONS = Object.entries(STATUS_META).map(([, m]) => ({ id: m.label, label: m.label }));
 const CANAL_OPTIONS = [
     { id: "Online", label: "Online" },
-    { id: "PDV", label: "PDV" },
+    { id: "Offline", label: "Offline" },
 ];
 const MEIO_PAGAMENTO_OPTIONS = [
     { id: "Pix", label: "Pix" },
     { id: "Cartão de Crédito", label: "Cartão de Crédito" },
+    { id: "Cartão de Débito", label: "Cartão de Débito" },
+    { id: "Apple Pay", label: "Apple Pay" },
+    { id: "Google Pay", label: "Google Pay" },
+    { id: "Dinheiro", label: "Dinheiro" },
+    { id: "Isento", label: "Isento" },
+    { id: "Grátis", label: "Grátis" },
 ];
 const SETOR_OPTIONS = CATALOGO.map((c) => ({ id: c.setor, label: c.setor }));
 
@@ -558,7 +588,7 @@ const ChartCursor = ({ points, top = 0, height = 0 }: { points?: { x: number; y:
 };
 
 const QTD_COLOR = "var(--color-utility-blue-400)";
-const TOTAL_COLOR = "var(--color-brand-600)";
+const TOTAL_COLOR = "var(--color-bg-quaternary)";
 
 const TransacionadoChartCard = ({ data }: { data: ChartPoint[] }) => {
     const isMobile = useIsMobile();
@@ -608,12 +638,12 @@ const TransacionadoChartCard = ({ data }: { data: ChartPoint[] }) => {
                         <YAxis yAxisId="total" orientation="left" tickFormatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`} tick={{ fill: "var(--color-text-tertiary)", fontSize }} tickLine={false} axisLine={false} tickMargin={8} width={isMobile ? 44 : 56} />
                         <YAxis yAxisId="qtd" orientation="right" tickFormatter={(v) => numberFormatter.format(Number(v))} tick={{ fill: "var(--color-text-tertiary)", fontSize }} tickLine={false} axisLine={false} tickMargin={8} width={isMobile ? 36 : 44} />
                         <Tooltip content={<ChartTooltip />} cursor={<ChartCursor />} />
-                        <Bar yAxisId="total" dataKey="total" name="Total Transacionado" fill={TOTAL_COLOR} radius={[3, 3, 0, 0]} maxBarSize={isMobile ? 10 : 18}>
+                        <Bar yAxisId="total" dataKey="total" name="Total Transacionado" fill={TOTAL_COLOR} fillOpacity={0.7} radius={[3, 3, 0, 0]} maxBarSize={isMobile ? 10 : 18}>
                             {metric === "total" && data.length <= 20 && (
                                 <LabelList dataKey="total" position="top" fill="var(--color-text-primary)" fontSize={isMobile ? 9 : 11} fontWeight={600} offset={isMobile ? 6 : 8} formatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`} />
                             )}
                         </Bar>
-                        <Area yAxisId="qtd" type="monotone" dataKey="quantidade" name="Quantidade de Ingressos" stroke={QTD_COLOR} strokeWidth={2.5} fill="url(#qtdAreaFill)" dot={false} activeDot={{ r: 6, fill: QTD_COLOR, stroke: "var(--color-bg-primary)", strokeWidth: 2 }}>
+                        <Area yAxisId="qtd" type="monotone" dataKey="quantidade" name="Quantidade de Ingressos" stroke={QTD_COLOR} strokeWidth={3} fill="url(#qtdAreaFill)" dot={false} activeDot={{ r: 6, fill: QTD_COLOR, stroke: "var(--color-bg-primary)", strokeWidth: 2 }}>
                             {metric === "quantidade" && data.length <= 20 && (
                                 <LabelList dataKey="quantidade" position="top" fill="var(--color-text-primary)" fontSize={isMobile ? 9 : 11} fontWeight={600} offset={isMobile ? 16 : 30} formatter={(v) => numberFormatter.format(Number(v))} />
                             )}

@@ -83,85 +83,182 @@ interface CupomRow {
 /*  Mock data (base = todas as sessões)                               */
 /* ------------------------------------------------------------------ */
 
-const setores: SetorRow[] = [
-    {
-        id: "vip",
-        nome: "VIP",
-        estoque: 2000,
-        vendido: 1800,
-        ingressos: [
-            { id: "vip-1l-int", nome: "VIP - 1º Lote (Inteira)", estoque: 800, vendido: 800 },
-            { id: "vip-1l-mei", nome: "VIP - 1º Lote (Meia)", estoque: 400, vendido: 400 },
-            { id: "vip-2l-int", nome: "VIP - 2º Lote (Inteira)", estoque: 500, vendido: 380 },
-            { id: "vip-2l-mei", nome: "VIP - 2º Lote (Meia)", estoque: 300, vendido: 220 },
-        ],
-    },
-    {
-        id: "camarote",
-        nome: "Camarote Premium",
-        estoque: 1500,
-        vendido: 1200,
-        ingressos: [
-            { id: "cam-1l-int", nome: "Camarote - 1º Lote (Inteira)", estoque: 500, vendido: 500 },
-            { id: "cam-1l-mei", nome: "Camarote - 1º Lote (Meia)", estoque: 300, vendido: 300 },
-            { id: "cam-2l-int", nome: "Camarote - 2º Lote (Inteira)", estoque: 400, vendido: 250 },
-            { id: "cam-2l-mei", nome: "Camarote - 2º Lote (Meia)", estoque: 300, vendido: 150 },
-        ],
-    },
-    {
-        id: "pista-premium",
-        nome: "Pista Premium",
-        estoque: 8000,
-        vendido: 6400,
-        ingressos: [
-            { id: "pp-1l-int", nome: "Pista Premium - 1º Lote (Inteira)", estoque: 3000, vendido: 3000 },
-            { id: "pp-1l-mei", nome: "Pista Premium - 1º Lote (Meia)", estoque: 1500, vendido: 1500 },
-            { id: "pp-2l-int", nome: "Pista Premium - 2º Lote (Inteira)", estoque: 2500, vendido: 1400 },
-            { id: "pp-2l-mei", nome: "Pista Premium - 2º Lote (Meia)", estoque: 1000, vendido: 500 },
-        ],
-    },
-    {
-        id: "pista",
-        nome: "Pista",
-        estoque: 20000,
-        vendido: 18000,
-        ingressos: [
-            { id: "p-1l-int", nome: "Pista - 1º Lote (Inteira)", estoque: 5000, vendido: 5000 },
-            { id: "p-1l-mei", nome: "Pista - 1º Lote (Meia)", estoque: 4000, vendido: 4000 },
-            { id: "p-2l-int", nome: "Pista - 2º Lote (Inteira)", estoque: 6000, vendido: 5500 },
-            { id: "p-2l-mei", nome: "Pista - 2º Lote (Meia)", estoque: 3000, vendido: 2500 },
-            { id: "p-3l-int", nome: "Pista - 3º Lote (Inteira)", estoque: 2000, vendido: 1000 },
-        ],
-    },
-    {
-        id: "mezanino",
-        nome: "Mezanino",
-        estoque: 5807,
-        vendido: 2400,
-        ingressos: [
-            { id: "mez-1l-int", nome: "Mezanino - 1º Lote (Inteira)", estoque: 2000, vendido: 1500 },
-            { id: "mez-1l-mei", nome: "Mezanino - 1º Lote (Meia)", estoque: 1500, vendido: 600 },
-            { id: "mez-2l-int", nome: "Mezanino - 2º Lote (Inteira)", estoque: 1500, vendido: 200 },
-            { id: "mez-2l-mei", nome: "Mezanino - 2º Lote (Meia)", estoque: 807, vendido: 100 },
-        ],
-    },
-];
+/* ------------------------------------------------------------------ */
+/*  Quantidade de ingresso por setor — espelha o relatório real de      */
+/*  futebol (Grêmio x Santos). Cada linha = tipo de ingresso × setor.   */
+/*  "Estoque" é a capacidade do pool compartilhado do setor (repetida    */
+/*  por linha, como no relatório); Meia-Entrada tem sub-limite próprio.  */
+/*  Nenhum item tem combo → itemCombo sempre "-".                        */
+/*                                                                       */
+/*  Setores sem print de tabela (Gold Leste, Camarote, Arquibancada     */
+/*  Norte, Adversário) e linhas ocultas por scroll (Gramado Sul, Gold    */
+/*  Norte) foram simulados p/ casar com o gráfico de ocupação e o total  */
+/*  geral de 27.121 itens.                                               */
+/* ------------------------------------------------------------------ */
 
 const ingressosPorSetor: IngressoPorSetorRow[] = [
-    { id: "ips1", setor: "VIP", tipoIngresso: "Inteira", lote: "1º Lote", itemCombo: "Combo Camarote + Open Bar", vendidos: 800, estoque: 800 },
-    { id: "ips2", setor: "VIP", tipoIngresso: "Meia", lote: "1º Lote", itemCombo: "—", vendidos: 400, estoque: 400 },
-    { id: "ips3", setor: "VIP", tipoIngresso: "Inteira", lote: "2º Lote", itemCombo: "—", vendidos: 380, estoque: 500 },
-    { id: "ips4", setor: "VIP", tipoIngresso: "Meia", lote: "2º Lote", itemCombo: "—", vendidos: 220, estoque: 300 },
-    { id: "ips5", setor: "Camarote Premium", tipoIngresso: "Inteira", lote: "1º Lote", itemCombo: "Combo Camarote + Open Bar", vendidos: 500, estoque: 500 },
-    { id: "ips6", setor: "Camarote Premium", tipoIngresso: "Meia", lote: "1º Lote", itemCombo: "—", vendidos: 300, estoque: 300 },
-    { id: "ips7", setor: "Camarote Premium", tipoIngresso: "Inteira", lote: "2º Lote", itemCombo: "—", vendidos: 250, estoque: 400 },
-    { id: "ips8", setor: "Pista Premium", tipoIngresso: "Inteira", lote: "1º Lote", itemCombo: "—", vendidos: 3000, estoque: 3000 },
-    { id: "ips9", setor: "Pista Premium", tipoIngresso: "Meia", lote: "1º Lote", itemCombo: "—", vendidos: 1500, estoque: 1500 },
-    { id: "ips10", setor: "Pista Premium", tipoIngresso: "Inteira", lote: "2º Lote", itemCombo: "—", vendidos: 1400, estoque: 2500 },
-    { id: "ips11", setor: "Pista", tipoIngresso: "Inteira", lote: "1º Lote", itemCombo: "—", vendidos: 5000, estoque: 5000 },
-    { id: "ips12", setor: "Pista", tipoIngresso: "Meia | Caravanas", lote: "2º Lote", itemCombo: "—", vendidos: 2500, estoque: 3000 },
-    { id: "ips13", setor: "Mezanino", tipoIngresso: "Inteira", lote: "1º Lote", itemCombo: "—", vendidos: 1500, estoque: 2000 },
+    // Superior Sul
+    { id: "ips1", setor: "Superior Sul", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 289, estoque: 2003 },
+    { id: "ips2", setor: "Superior Sul", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 241, estoque: 901 },
+    { id: "ips3", setor: "Superior Sul", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 68, estoque: 2003 },
+    { id: "ips4", setor: "Superior Sul", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 8, estoque: 2003 },
+    { id: "ips5", setor: "Superior Sul", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 23, estoque: 2003 },
+    { id: "ips6", setor: "Superior Sul", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 23, estoque: 2003 },
+    { id: "ips7", setor: "Superior Sul", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 3, estoque: 2003 },
+    { id: "ips8", setor: "Superior Sul", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 9, estoque: 2003 },
+    { id: "ips9", setor: "Superior Sul", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 2, estoque: 2003 },
+    // Superior Oeste
+    { id: "ips10", setor: "Superior Oeste", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 284, estoque: 2585 },
+    { id: "ips11", setor: "Superior Oeste", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 409, estoque: 1163 },
+    { id: "ips12", setor: "Superior Oeste", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 520, estoque: 2585 },
+    { id: "ips13", setor: "Superior Oeste", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 56, estoque: 2585 },
+    { id: "ips14", setor: "Superior Oeste", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 81, estoque: 2585 },
+    { id: "ips15", setor: "Superior Oeste", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 9, estoque: 2585 },
+    { id: "ips16", setor: "Superior Oeste", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 12, estoque: 2585 },
+    { id: "ips17", setor: "Superior Oeste", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 14, estoque: 2585 },
+    { id: "ips18", setor: "Superior Oeste", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 30, estoque: 2585 },
+    { id: "ips19", setor: "Superior Oeste", tipoIngresso: "Acompanhante..", lote: "ac", itemCombo: "-", vendidos: 1, estoque: 10 },
+    { id: "ips20", setor: "Superior Oeste", tipoIngresso: "Acompanhante.", lote: "Acompanhante.", itemCombo: "-", vendidos: 1, estoque: 2585 },
+    // Superior Norte
+    { id: "ips21", setor: "Superior Norte", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 437, estoque: 1089 },
+    { id: "ips22", setor: "Superior Norte", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 17, estoque: 1089 },
+    { id: "ips23", setor: "Superior Norte", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 240, estoque: 490 },
+    { id: "ips24", setor: "Superior Norte", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 205, estoque: 1089 },
+    { id: "ips25", setor: "Superior Norte", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 30, estoque: 1089 },
+    { id: "ips26", setor: "Superior Norte", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 61, estoque: 1089 },
+    { id: "ips27", setor: "Superior Norte", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 49, estoque: 1089 },
+    { id: "ips28", setor: "Superior Norte", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 30, estoque: 1089 },
+    { id: "ips29", setor: "Superior Norte", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 6, estoque: 1089 },
+    // Superior Leste
+    { id: "ips30", setor: "Superior Leste", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 2126, estoque: 5303 },
+    { id: "ips31", setor: "Superior Leste", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 2014, estoque: 2386 },
+    { id: "ips32", setor: "Superior Leste", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 318, estoque: 5303 },
+    { id: "ips33", setor: "Superior Leste", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 181, estoque: 5303 },
+    { id: "ips34", setor: "Superior Leste", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 385, estoque: 5303 },
+    { id: "ips35", setor: "Superior Leste", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 60, estoque: 5303 },
+    { id: "ips36", setor: "Superior Leste", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 153, estoque: 5303 },
+    { id: "ips37", setor: "Superior Leste", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 32, estoque: 5303 },
+    { id: "ips38", setor: "Superior Leste", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 33, estoque: 5303 },
+    // Gramado Sul (linhas do meio simuladas — ocultas por scroll no print)
+    { id: "ips39", setor: "Gramado Sul", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 5, estoque: 50 },
+    { id: "ips40", setor: "Gramado Sul", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 108, estoque: 2955 },
+    { id: "ips41", setor: "Gramado Sul", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 771, estoque: 2955 },
+    { id: "ips42", setor: "Gramado Sul", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 620, estoque: 1300 },
+    { id: "ips43", setor: "Gramado Sul", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 280, estoque: 2955 },
+    { id: "ips44", setor: "Gramado Sul", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 95, estoque: 2955 },
+    { id: "ips45", setor: "Gramado Sul", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 70, estoque: 2955 },
+    { id: "ips46", setor: "Gramado Sul", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 60, estoque: 2955 },
+    { id: "ips47", setor: "Gramado Sul", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 25, estoque: 2955 },
+    { id: "ips48", setor: "Gramado Sul", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 20, estoque: 2955 },
+    { id: "ips49", setor: "Gramado Sul", tipoIngresso: "PCR", lote: "PCR", itemCombo: "-", vendidos: 1, estoque: 12 },
+    // Gramado Oeste
+    { id: "ips50", setor: "Gramado Oeste", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 598, estoque: 1172 },
+    { id: "ips51", setor: "Gramado Oeste", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 339, estoque: 2605 },
+    { id: "ips52", setor: "Gramado Oeste", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 157, estoque: 2605 },
+    { id: "ips53", setor: "Gramado Oeste", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 605, estoque: 2605 },
+    { id: "ips54", setor: "Gramado Oeste", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 81, estoque: 2605 },
+    { id: "ips55", setor: "Gramado Oeste", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 138, estoque: 2605 },
+    { id: "ips56", setor: "Gramado Oeste", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 92, estoque: 2605 },
+    { id: "ips57", setor: "Gramado Oeste", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 28, estoque: 2605 },
+    { id: "ips58", setor: "Gramado Oeste", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 51, estoque: 2605 },
+    { id: "ips59", setor: "Gramado Oeste", tipoIngresso: "Acompanhante.", lote: "Acompanhante.", itemCombo: "-", vendidos: 9, estoque: 2605 },
+    { id: "ips60", setor: "Gramado Oeste", tipoIngresso: "Acompanhante..", lote: "Inteira", itemCombo: "-", vendidos: 1, estoque: 1 },
+    // Gramado Leste
+    { id: "ips61", setor: "Gramado Leste", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 172, estoque: 5319 },
+    { id: "ips62", setor: "Gramado Leste", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 1552, estoque: 2131 },
+    { id: "ips63", setor: "Gramado Leste", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 2401, estoque: 5319 },
+    { id: "ips64", setor: "Gramado Leste", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 177, estoque: 5319 },
+    { id: "ips65", setor: "Gramado Leste", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 251, estoque: 5319 },
+    { id: "ips66", setor: "Gramado Leste", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 273, estoque: 5319 },
+    { id: "ips67", setor: "Gramado Leste", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 183, estoque: 5319 },
+    { id: "ips68", setor: "Gramado Leste", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 163, estoque: 5319 },
+    { id: "ips69", setor: "Gramado Leste", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 43, estoque: 5319 },
+    { id: "ips70", setor: "Gramado Leste", tipoIngresso: "PCR", lote: "PCR", itemCombo: "-", vendidos: 3, estoque: 24 },
+    { id: "ips71", setor: "Gramado Leste", tipoIngresso: "Acompanhante.", lote: "Acompanhante.", itemCombo: "-", vendidos: 1, estoque: 5319 },
+    // Gold Premium Sul – Bebidas não alcoólicas e comida à vontade
+    { id: "ips72", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 321, estoque: 1559 },
+    { id: "ips73", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 404, estoque: 702 },
+    { id: "ips74", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 78, estoque: 1559 },
+    { id: "ips75", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Inteira.", lote: "Inteira.", itemCombo: "-", vendidos: 271, estoque: 276 },
+    { id: "ips76", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 66, estoque: 1559 },
+    { id: "ips77", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 27, estoque: 1559 },
+    { id: "ips78", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 12, estoque: 1559 },
+    { id: "ips79", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "PMR", lote: "PMR", itemCombo: "-", vendidos: 1, estoque: 16 },
+    { id: "ips80", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "PNE", lote: "PNE", itemCombo: "-", vendidos: 1, estoque: 77 },
+    // Gold Oeste (blocos numerados, lote único)
+    { id: "ips81", setor: "Gold Oeste", tipoIngresso: "Bloco - A08", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
+    { id: "ips82", setor: "Gold Oeste", tipoIngresso: "Bloco - A09", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
+    { id: "ips83", setor: "Gold Oeste", tipoIngresso: "Bloco - A10", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
+    { id: "ips84", setor: "Gold Oeste", tipoIngresso: "Bloco - A11", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
+    { id: "ips85", setor: "Gold Oeste", tipoIngresso: "Bloco - B07", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
+    { id: "ips86", setor: "Gold Oeste", tipoIngresso: "Bloco - B08", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
+    { id: "ips87", setor: "Gold Oeste", tipoIngresso: "Bloco - B09", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
+    { id: "ips88", setor: "Gold Oeste", tipoIngresso: "Bloco - B10", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
+    { id: "ips89", setor: "Gold Oeste", tipoIngresso: "Bloco - B11", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
+    { id: "ips90", setor: "Gold Oeste", tipoIngresso: "Bloco - B12", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
+    // Gold Norte (Meia-Entrada do print; demais tipos simulados)
+    { id: "ips91", setor: "Gold Norte", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 186, estoque: 776 },
+    { id: "ips92", setor: "Gold Norte", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 380, estoque: 1940 },
+    { id: "ips93", setor: "Gold Norte", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 90, estoque: 1940 },
+    { id: "ips94", setor: "Gold Norte", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 45, estoque: 1940 },
+    { id: "ips95", setor: "Gold Norte", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 35, estoque: 1940 },
+    { id: "ips96", setor: "Gold Norte", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 20, estoque: 1940 },
+    { id: "ips97", setor: "Gold Norte", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 8, estoque: 1940 },
+    { id: "ips98", setor: "Gold Norte", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 12, estoque: 1940 },
+    // Gold Leste (sem print de tabela — simulado p/ ocupação ~97%)
+    { id: "ips99", setor: "Gold Leste", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 560, estoque: 1200 },
+    { id: "ips100", setor: "Gold Leste", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 380, estoque: 480 },
+    { id: "ips101", setor: "Gold Leste", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 95, estoque: 1200 },
+    { id: "ips102", setor: "Gold Leste", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 55, estoque: 1200 },
+    { id: "ips103", setor: "Gold Leste", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 40, estoque: 1200 },
+    { id: "ips104", setor: "Gold Leste", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 22, estoque: 1200 },
+    { id: "ips105", setor: "Gold Leste", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 12, estoque: 1200 },
+    // Camarote (sem print de tabela — simulado p/ ocupação ~100%)
+    { id: "ips106", setor: "Camarote", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 210, estoque: 300 },
+    { id: "ips107", setor: "Camarote", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 70, estoque: 120 },
+    { id: "ips108", setor: "Camarote", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 20, estoque: 300 },
+    // Arquibancada Norte (sem print de tabela — simulado p/ ocupação ~98%)
+    { id: "ips109", setor: "Arquibancada Norte", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 1480, estoque: 3000 },
+    { id: "ips110", setor: "Arquibancada Norte", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 980, estoque: 1200 },
+    { id: "ips111", setor: "Arquibancada Norte", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 240, estoque: 3000 },
+    { id: "ips112", setor: "Arquibancada Norte", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 120, estoque: 3000 },
+    { id: "ips113", setor: "Arquibancada Norte", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 75, estoque: 3000 },
+    { id: "ips114", setor: "Arquibancada Norte", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 30, estoque: 3000 },
+    { id: "ips115", setor: "Arquibancada Norte", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 15, estoque: 3000 },
+    // Adversário (Superior Visitante) (sem print de tabela — simulado p/ ocupação ~25%)
+    { id: "ips116", setor: "Adversário (Superior Visitante)", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 1688, estoque: 11668 },
+    { id: "ips117", setor: "Adversário (Superior Visitante)", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 980, estoque: 5246 },
+    { id: "ips118", setor: "Adversário (Superior Visitante)", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 140, estoque: 11668 },
+    { id: "ips119", setor: "Adversário (Superior Visitante)", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 65, estoque: 11668 },
+    { id: "ips120", setor: "Adversário (Superior Visitante)", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 30, estoque: 11668 },
+    { id: "ips121", setor: "Adversário (Superior Visitante)", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 14, estoque: 11668 },
 ];
+
+/* Setores derivados das linhas acima: vendido = soma das linhas; estoque =
+   capacidade do pool (máximo entre as linhas, pois o estoque é compartilhado). */
+const setores: SetorRow[] = (() => {
+    const slug = (s: string) =>
+        s
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/\p{Diacritic}/gu, "")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "");
+    const order: string[] = [];
+    const map = new Map<string, SetorRow>();
+    for (const r of ingressosPorSetor) {
+        let s = map.get(r.setor);
+        if (!s) {
+            s = { id: slug(r.setor), nome: r.setor, estoque: 0, vendido: 0, ingressos: [] };
+            map.set(r.setor, s);
+            order.push(r.setor);
+        }
+        s.vendido += r.vendidos;
+        s.estoque = Math.max(s.estoque, r.estoque);
+        s.ingressos!.push({ id: r.id, nome: r.tipoIngresso, estoque: r.estoque, vendido: r.vendidos });
+    }
+    return order.map((n) => map.get(n)!);
+})();
 
 const combos: ComboRow[] = [
     { id: "c1", nome: "Combo Camarote + Open Bar", quantidade: 1480, valorUnitario: 379, gmv: 560440, gmvComDesconto: 560440 },
@@ -243,14 +340,13 @@ interface MixReceitaItem {
     fill: string;
 }
 
+// Futebol vende apenas ingressos avulsos (sem combos nem produtos).
 const mixReceita: MixReceitaItem[] = [
-    { id: "ingressos", nome: "Ingressos", quantidade: 33500, gmv: 2612500.0, gmvComDesconto: 2479350.0, fill: "var(--color-utility-brand-700)" },
-    { id: "combos", nome: "Combos", quantidade: 3807, gmv: 1100000.0, gmvComDesconto: 1043726.0, fill: "var(--color-utility-brand-500)" },
-    { id: "produtos", nome: "Produtos", quantidade: 498, gmv: 48578.9, gmvComDesconto: 45579.2, fill: "var(--color-utility-brand-300)" },
+    { id: "ingressos", nome: "Ingresso Avulso", quantidade: 27121, gmv: 1634183.0, gmvComDesconto: 1634183.0, fill: "var(--color-utility-brand-700)" },
 ];
 
-const VALOR_TOTAL_BASE = 2888877.13;
-const TOTAL_ITENS_BASE = 37307;
+const VALOR_TOTAL_BASE = 1634183.0;
+const TOTAL_ITENS_BASE = 27121;
 
 /* ------------------------------------------------------------------ */
 /*  Drill-down tree (Data = sessão → Tipo → Setor → Ingresso → Lote)  */
@@ -267,68 +363,58 @@ interface TreeNode {
 }
 
 const buildDrillTree = (): TreeNode[] => {
-    const tipos = (base: number, idPrefix: string): TreeNode[] => [
-        { id: `${idPrefix}-int`, key: "int", label: "Inteira", value: Math.round(base * 0.62) },
-        { id: `${idPrefix}-mei`, key: "mei", label: "Meia", value: Math.round(base * 0.3) },
-        { id: `${idPrefix}-pro`, key: "pro", label: "Promo", value: Math.round(base * 0.08) },
-    ];
     const lotes = (base: number, idPrefix: string): TreeNode[] => [
-        { id: `${idPrefix}-1l`, key: "1l", label: "1º Lote", value: Math.round(base * 0.5), childrenLabel: "Tipo", children: tipos(base * 0.5, `${idPrefix}-1l`) },
-        { id: `${idPrefix}-2l`, key: "2l", label: "2º Lote", value: Math.round(base * 0.35), childrenLabel: "Tipo", children: tipos(base * 0.35, `${idPrefix}-2l`) },
-        { id: `${idPrefix}-3l`, key: "3l", label: "3º Lote", value: Math.round(base * 0.15), childrenLabel: "Tipo", children: tipos(base * 0.15, `${idPrefix}-3l`) },
+        { id: `${idPrefix}-int`, key: "int", label: "Inteira", value: Math.round(base * 0.5) },
+        { id: `${idPrefix}-mei`, key: "mei", label: "Meia-Entrada", value: Math.round(base * 0.42) },
+        { id: `${idPrefix}-out`, key: "out", label: "Outros", value: Math.round(base * 0.08) },
     ];
-    const ingressosPorSetorNodes = (setorValue: number, setorId: string, setorLabel: string): TreeNode[] => {
+    const ingressosPorSetorNodes = (setorValue: number, setorId: string): TreeNode[] => {
         const seeds = [
-            { key: "1l-int", label: `${setorLabel} 1º Lote (Inteira)`, w: 0.4 },
-            { key: "1l-mei", label: `${setorLabel} 1º Lote (Meia)`, w: 0.25 },
-            { key: "2l-int", label: `${setorLabel} 2º Lote (Inteira)`, w: 0.2 },
-            { key: "2l-mei", label: `${setorLabel} 2º Lote (Meia)`, w: 0.15 },
+            { key: "int", label: "Inteira", w: 0.46 },
+            { key: "mei", label: "Meia-Entrada", w: 0.4 },
+            { key: "dia", label: "Diamante", w: 0.06 },
+            { key: "our", label: "Ouro", w: 0.04 },
+            { key: "inf", label: "Infantil", w: 0.04 },
         ];
         return seeds.map((s) => ({
             id: `${setorId}-${s.key}`,
             key: s.key,
             label: s.label,
             value: Math.round(setorValue * s.w),
-            childrenLabel: "Lote",
+            childrenLabel: "Tipo de público",
             children: lotes(setorValue * s.w, `${setorId}-${s.key}`),
         }));
     };
     const setoresFor = (dateId: string, base: number): TreeNode[] => {
         const seeds = [
-            { key: "vip", label: "VIP", w: 0.28 },
-            { key: "cam", label: "Camarote Premium", w: 0.24 },
-            { key: "pp", label: "Pista Premium", w: 0.22 },
-            { key: "p", label: "Pista", w: 0.2 },
-            { key: "mez", label: "Mezanino", w: 0.06 },
+            { key: "sup-leste", label: "Superior Leste", w: 0.196 },
+            { key: "gra-leste", label: "Gramado Leste", w: 0.192 },
+            { key: "arq-norte", label: "Arquibancada Norte", w: 0.108 },
+            { key: "adversario", label: "Adversário (Superior Visitante)", w: 0.108 },
+            { key: "gra-oeste", label: "Gramado Oeste", w: 0.077 },
+            { key: "gra-sul", label: "Gramado Sul", w: 0.076 },
+            { key: "sup-oeste", label: "Superior Oeste", w: 0.052 },
+            { key: "gold-prem-sul", label: "Gold Premium Sul", w: 0.044 },
+            { key: "gold-leste", label: "Gold Leste", w: 0.043 },
+            { key: "sup-norte", label: "Superior Norte", w: 0.04 },
+            { key: "gold-norte", label: "Gold Norte", w: 0.029 },
+            { key: "sup-sul", label: "Superior Sul", w: 0.025 },
+            { key: "camarote", label: "Camarote", w: 0.011 },
         ];
         return seeds.map((s) => {
             const setorId = `${dateId}-${s.key}`;
             const setorValue = Math.round(base * s.w);
-            return { id: setorId, key: s.key, label: s.label, value: setorValue, childrenLabel: "Ingresso", children: ingressosPorSetorNodes(setorValue, setorId, s.label) };
+            return { id: setorId, key: s.key, label: s.label, value: setorValue, childrenLabel: "Tipo de ingresso", children: ingressosPorSetorNodes(setorValue, setorId) };
         });
     };
-    const combosFor = (dateId: string, base: number): TreeNode[] => {
-        const seeds = [
-            { key: "c1", label: "Combo Camarote + Open Bar", w: 0.5 },
-            { key: "c2", label: "Combo VIP + Welcome Drink", w: 0.27 },
-            { key: "c3", label: "Combo Família (4 ingressos)", w: 0.1 },
-            { key: "c4", label: "Combo Premium + Estacionamento", w: 0.07 },
-            { key: "c5", label: "Combo Casal Camarote", w: 0.04 },
-            { key: "c6", label: "Combo VIP Solo + Brinde", w: 0.02 },
-        ];
-        return seeds.map((s) => ({ id: `${dateId}-${s.key}`, key: s.key, label: s.label, value: Math.round(base * s.w) }));
-    };
-    // Cada "data" é uma sessão do evento.
-    const dates: { id: string; label: string; estoque: number; ocupacao: number; comboRatio: number }[] = [
-        { id: EVENT.sessoes[0].id, label: EVENT.sessoes[0].label, estoque: 17000, ocupacao: 0.79, comboRatio: 0.1 },
-        { id: EVENT.sessoes[1].id, label: EVENT.sessoes[1].label, estoque: 20307, ocupacao: 0.86, comboRatio: 0.12 },
+    // Jogo único: uma só "data" (a sessão da partida). Futebol vende apenas ingressos.
+    const dates: { id: string; label: string; estoque: number; ocupacao: number }[] = [
+        { id: EVENT.sessoes[0].id, label: EVENT.sessoes[0].label, estoque: 41576, ocupacao: 0.6523 },
     ];
     return dates.map((d) => {
         const ingressosVendidos = Math.round(d.estoque * d.ocupacao);
-        const comboQty = Math.round(ingressosVendidos * d.comboRatio);
         const tiposDeItem: TreeNode[] = [
             { id: `${d.id}-ingressos`, key: "ingressos", label: "Ingressos", value: ingressosVendidos, childrenLabel: "Setor", children: setoresFor(d.id, ingressosVendidos) },
-            { id: `${d.id}-combos`, key: "combos", label: "Combos", value: comboQty, childrenLabel: "Combo", children: combosFor(d.id, comboQty) },
         ];
         const total = tiposDeItem.reduce((s, x) => s + x.value, 0);
         return { id: d.id, key: d.id, label: d.label, value: total, estoque: d.estoque, childrenLabel: "Tipo do item", children: tiposDeItem };
@@ -337,19 +423,8 @@ const buildDrillTree = (): TreeNode[] => {
 
 const drillTree = buildDrillTree();
 
-const aggregatedProdutos: TreeNode[] = (() => {
-    const seeds = [
-        { key: "pr1", label: "Kit Oficial #BahxVit", w: 0.45 },
-        { key: "pr2", label: "Camisa Oficial - M", w: 0.18 },
-        { key: "pr3", label: "Sacochila Oficial", w: 0.12 },
-        { key: "pr4", label: "Boneco Mascote - Fandom Box", w: 0.1 },
-        { key: "pr5", label: "Camisa Oficial - G", w: 0.08 },
-        { key: "pr6", label: "Camisa Oficial - P", w: 0.04 },
-        { key: "pr7", label: "Copo Oficial", w: 0.03 },
-    ];
-    const totalQty = 1200;
-    return seeds.map((s) => ({ id: s.key, key: s.key, label: s.label, value: Math.round(totalQty * s.w) }));
-})();
+// Sem produtos no futebol — root vazio mantém o componente, mas o botão "Produtos" não renderiza.
+const aggregatedProdutos: TreeNode[] = [];
 
 const PRODUTOS_ROOT_ID = "produtos-all";
 const produtosRootNode: TreeNode = {
@@ -365,7 +440,8 @@ const produtosRootNode: TreeNode = {
 /*  Scaling helpers (sessão + intervalo de data afetam tudo)          */
 /* ------------------------------------------------------------------ */
 
-const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 0.46, [EVENT.sessoes[1].id]: 0.54 };
+// Jogo único: a sessão da partida concentra 100% das vendas.
+const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 1 };
 
 const scaleTree = (nodes: TreeNode[], f: number): TreeNode[] =>
     nodes.map((n) => ({ ...n, value: Math.round(n.value * f), children: n.children ? scaleTree(n.children, f) : undefined }));
@@ -447,8 +523,6 @@ const VendasBody = () => {
             <DrillDownGmvCard tree={view.drillView} produtosRoot={view.produtosRootView} />
             <OcupacaoPorSetorCard setores={view.setoresView} />
             <QuantidadeIngressosPorSetorCard rows={view.ingressosPorSetorView} />
-            <ComboCard rows={view.combosView} />
-            <ProdutosCard rows={view.produtosView} />
             <IngressosComCupomCard cupons={view.cuponsView} />
         </>
     );
@@ -783,7 +857,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
                                             </ul>
                                         </div>
 
-                                        {colIndex === 0 && (
+                                        {colIndex === 0 && (produtosRoot.children?.length ?? 0) > 0 && (
                                             <div className="flex flex-col gap-2">
                                                 <span className="pb-2 text-xs font-semibold text-tertiary uppercase tracking-wide">Produto</span>
                                                 {(() => {
@@ -855,7 +929,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
 /* ------------------------------------------------------------------ */
 
 const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] }) => {
-    const [expanded, setExpanded] = useState<Set<string>>(new Set(["pista-premium"]));
+    const [expanded, setExpanded] = useState<Set<string>>(new Set(["superior-leste"]));
 
     const toggleExpanded = (id: string) =>
         setExpanded((prev) => {
@@ -1018,7 +1092,8 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
             const g = map.get(row.setor) ?? { setor: row.setor, rows: [], vendidos: 0, estoque: 0 };
             g.rows.push(row);
             g.vendidos += row.vendidos;
-            g.estoque += row.estoque;
+            // Estoque é o pool compartilhado do setor (repetido por linha), não a soma.
+            g.estoque = Math.max(g.estoque, row.estoque);
             map.set(row.setor, g);
         });
         return Array.from(map.values());

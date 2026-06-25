@@ -31,92 +31,31 @@ interface AcessoNode {
     children?: AcessoNode[];
 }
 
+// Setor → Tipo de ingresso. Vendidos batem com o relatório de Vendas; validados ≈ comparecimento.
+const mkSetor = (id: string, nome: string, inteira: number, meia: number, rate: number): AcessoNode => ({
+    id,
+    nome,
+    children: [
+        { id: `${id}-int`, nome: "Inteira", vendidos: inteira, validados: Math.round(inteira * rate) },
+        { id: `${id}-mei`, nome: "Meia-Entrada", vendidos: meia, validados: Math.round(meia * rate) },
+    ],
+});
+
 const setores: AcessoNode[] = [
-    {
-        id: "pista",
-        nome: "Pista",
-        children: [
-            {
-                id: "pista-inteira",
-                nome: "Inteira",
-                children: [
-                    { id: "pista-inteira-l1", nome: "1º Lote", vendidos: 450, validados: 370 },
-                    { id: "pista-inteira-l2", nome: "2º Lote", vendidos: 250, validados: 190 },
-                ],
-            },
-            {
-                id: "pista-meia",
-                nome: "Meia-entrada",
-                children: [
-                    { id: "pista-meia-l1", nome: "1º Lote", vendidos: 250, validados: 200 },
-                    { id: "pista-meia-l2", nome: "2º Lote", vendidos: 150, validados: 100 },
-                ],
-            },
-            { id: "pista-cortesia", nome: "Cortesia", vendidos: 140, validados: 91 },
-        ],
-    },
-    {
-        id: "pista-premium",
-        nome: "Pista Premium",
-        children: [
-            {
-                id: "pp-inteira",
-                nome: "Inteira",
-                children: [
-                    { id: "pp-inteira-l1", nome: "1º Lote", vendidos: 220, validados: 190 },
-                    { id: "pp-inteira-l2", nome: "2º Lote", vendidos: 140, validados: 110 },
-                ],
-            },
-            {
-                id: "pp-meia",
-                nome: "Meia-entrada",
-                children: [
-                    { id: "pp-meia-l1", nome: "1º Lote", vendidos: 120, validados: 100 },
-                    { id: "pp-meia-l2", nome: "2º Lote", vendidos: 80, validados: 60 },
-                ],
-            },
-            { id: "pp-cortesia", nome: "Cortesia", vendidos: 52, validados: 35 },
-        ],
-    },
-    {
-        id: "camarote-a",
-        nome: "Camarote A",
-        children: [
-            {
-                id: "ca-inteira",
-                nome: "Inteira",
-                children: [
-                    { id: "ca-inteira-l1", nome: "1º Lote", vendidos: 60, validados: 54 },
-                    { id: "ca-inteira-l2", nome: "2º Lote", vendidos: 40, validados: 32 },
-                ],
-            },
-            { id: "ca-meia", nome: "Meia-entrada", vendidos: 48, validados: 38 },
-        ],
-    },
-    {
-        id: "camarote-b",
-        nome: "Camarote B",
-        children: [
-            { id: "cb-inteira", nome: "Inteira", vendidos: 60, validados: 52 },
-            { id: "cb-meia", nome: "Meia-entrada", vendidos: 26, validados: 21 },
-        ],
-    },
-    {
-        id: "camarote-central",
-        nome: "Camarote Central",
-        children: [
-            { id: "cc-inteira", nome: "Inteira", vendidos: 40, validados: 39 },
-            { id: "cc-meia", nome: "Meia-entrada", vendidos: 14, validados: 13 },
-        ],
-    },
-    {
-        id: "mesa-vip",
-        nome: "Mesa VIP",
-        children: [
-            { id: "mv-inteira", nome: "Inteira", vendidos: 20, validados: 20 },
-            { id: "mv-cortesia", nome: "Cortesia", vendidos: 12, validados: 11 },
-        ],
-    },
+    mkSetor("superior-leste", "Superior Leste", 3176, 2126, 0.88),
+    mkSetor("gramado-leste", "Gramado Leste", 3667, 1552, 0.86),
+    mkSetor("arquibancada-norte", "Arquibancada Norte", 1960, 980, 0.85),
+    mkSetor("adversario", "Adversário (Superior Visitante)", 1937, 980, 0.79),
+    mkSetor("gramado-oeste", "Gramado Oeste", 1501, 598, 0.84),
+    mkSetor("gramado-sul", "Gramado Sul", 1435, 620, 0.83),
+    mkSetor("superior-oeste", "Superior Oeste", 1008, 409, 0.82),
+    mkSetor("gold-premium-sul", "Gold Premium Sul", 777, 404, 0.9),
+    mkSetor("gold-leste", "Gold Leste", 784, 380, 0.87),
+    mkSetor("superior-norte", "Superior Norte", 835, 240, 0.85),
+    mkSetor("gold-norte", "Gold Norte", 590, 186, 0.84),
+    mkSetor("superior-sul", "Superior Sul", 425, 241, 0.8),
+    mkSetor("camarote", "Camarote", 230, 70, 0.95),
+    mkSetor("gold-oeste", "Gold Oeste", 10, 0, 0.7),
 ];
 
 const sumVendidos = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumVendidos(c), 0) : node.vendidos ?? 0);
@@ -150,15 +89,21 @@ interface PortadorAcesso {
     canal: string;
     grupo: string;
     tipoIngresso: string;
+    operadorVendas: string;
     portao?: string;
     status: StatusAcesso;
     horario?: string;
 }
 
-const CANAIS = ["Online", "Bilheteria", "PDV Loja"];
-const GRUPOS = ["Pista", "Pista Premium", "Camarote A", "Camarote B", "Camarote Central", "Mesa VIP"];
-const TIPOS = ["Inteira", "Meia-entrada", "Cortesia"];
-const PORTOES = ["Portão A", "Portão B", "Portão VIP"];
+const CANAIS = ["Online", "Offline"];
+const GRUPOS = [
+    "Superior Leste", "Gramado Leste", "Arquibancada Norte", "Adversário (Superior Visitante)",
+    "Gramado Oeste", "Gramado Sul", "Superior Oeste", "Gold Premium Sul",
+    "Gold Leste", "Superior Norte", "Gold Norte", "Superior Sul", "Camarote",
+];
+const TIPOS = ["Inteira", "Meia-Entrada", "Acompanhante", "Diamante", "Ouro", "Infantil"];
+const PORTOES = ["Portão A", "Portão B", "Portão C", "Portão D", "Portão E"];
+const OPERADORES = ["Giovanna Batista", "Josué da Fonseca Lima", "Bilheteria Arena do Grêmio", "Loja Oficial Grêmio - Arena"];
 
 const NOMES = [
     "João Barbosa", "Mariana Lopes", "Gabriel Souza", "Rafael Silva", "Camila Rodrigues",
@@ -195,9 +140,10 @@ const portadores: PortadorAcesso[] = Array.from({ length: 247 }, (_, idx) => {
         canal: pick(CANAIS, idx + (idx % 3)),
         grupo: pick(GRUPOS, idx * 3 + (idx % 6)),
         tipoIngresso: pick(TIPOS, idx * 2 + (idx % 3)),
+        operadorVendas: pick(OPERADORES, idx + (idx % 4)),
         portao: validado ? pick(PORTOES, idx) : undefined,
         status: validado ? "validado" : "pendente",
-        horario: validado ? `${19 + ((idx * 3) % 4)}:${pad((idx * 7) % 60, 2)}` : undefined,
+        horario: validado ? `${13 + ((idx * 3) % 4)}:${pad((idx * 7) % 60, 2)}` : undefined,
     };
 });
 
@@ -207,7 +153,7 @@ const portadores: PortadorAcesso[] = Array.from({ length: 247 }, (_, idx) => {
 
 const FILTER_FIELDS: FilterFieldDef[] = [
     { id: "canal", label: "Canal", multi: { options: CANAIS.map((c) => ({ id: c, label: c })) } },
-    { id: "grupo", label: "Grupo", multi: { options: GRUPOS.map((g) => ({ id: g, label: g })) } },
+    { id: "grupo", label: "Setor", multi: { options: GRUPOS.map((g) => ({ id: g, label: g })) } },
     { id: "tipoIngresso", label: "Tipo de ingresso", multi: { options: TIPOS.map((t) => ({ id: t, label: t })) } },
     { id: "status", label: "Status", multi: { options: [{ id: "Validado", label: "Validado" }, { id: "Não validado", label: "Não validado" }] } },
 ];
@@ -292,13 +238,13 @@ const AcessoBody = () => {
             buckets.set(key, (buckets.get(key) ?? 0) + 1);
         }
         const out: { hora: string; checkins: number }[] = [];
-        for (let h = 19; h <= 22; h++) {
+        for (let h = 13; h <= 16; h++) {
             for (let m = 0; m < 60; m += 15) {
                 const key = `${pad(h, 2)}:${pad(m, 2)}`;
                 out.push({ hora: key, checkins: buckets.get(key) ?? 0 });
             }
         }
-        return out.filter((f) => f.checkins > 0 || (f.hora >= "19:00" && f.hora <= "22:00"));
+        return out.filter((f) => f.checkins > 0 || (f.hora >= "13:00" && f.hora <= "16:00"));
     }, [filteredPortadores]);
 
     // Árvore filtrada pelos grupos selecionados (se houver).

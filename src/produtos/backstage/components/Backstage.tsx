@@ -27,7 +27,7 @@ import { TreeView } from "@/components/application/tree-view/tree-view";
 import { cx } from "@/utils/cx";
 import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
-import eventCover from "../../../assets/event-cover.png";
+const eventCover = "https://ticket-backend-prod.imgix.net/media/event/ef34a6c4-89b7-4ea6-a93d-1513d0414c32/8b25727f-965a-40a6-a54f-614275ab45ac.jpeg";
 
 const BrandLogo = ({ className }: { className?: string }) => (
     <>
@@ -141,7 +141,7 @@ const MobileEventCard = () => (
     <div className="flex items-start gap-3 rounded-xl bg-secondary p-3">
         <img
             src={eventCover}
-            alt="Bahia x Vitória"
+            alt="Grêmio x Santos - Campeonato Brasileiro"
             className="size-16 shrink-0 rounded-lg object-cover"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -152,7 +152,7 @@ const MobileEventCard = () => (
                 </Badge>
             </div>
             <p className="text-sm font-semibold leading-snug text-primary line-clamp-2">
-                Bahia x Vitória
+                Grêmio x Santos - Campeonato Brasileiro
             </p>
         </div>
     </div>
@@ -468,22 +468,22 @@ const EventDetailsCard = () => (
         <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-secondary">
             <img
                 src={eventCover}
-                alt="Bahia x Vitória"
+                alt="Grêmio x Santos - Campeonato Brasileiro"
                 className="size-full object-cover"
             />
             <span className="absolute top-3 left-3 rounded-xl bg-white/50 px-3 py-1 text-[12px] font-medium tracking-wide text-primary uppercase backdrop-blur-md">
                 Rascunho
             </span>
             <div className="absolute bottom-3 right-3 flex w-12 flex-col items-center rounded-xl bg-white/50 px-2 py-3 text-primary backdrop-blur-md">
-                <span className="text-[10px] font-medium tracking-wide uppercase">Sex</span>
-                <span className="text-base font-bold leading-tight">27</span>
-                <span className="text-[10px] font-medium tracking-wide uppercase">Dez</span>
+                <span className="text-[10px] font-medium tracking-wide uppercase">Sáb</span>
+                <span className="text-base font-bold leading-tight">23</span>
+                <span className="text-[10px] font-medium tracking-wide uppercase">Mai</span>
             </div>
         </div>
         <div className="flex flex-col gap-0.5 px-1">
             <span className="text-xs text-tertiary">ID: 1234</span>
-            <h3 className="text-md font-bold text-primary">Bahia x Vitória</h3>
-            <p className="text-sm text-tertiary">Arena Fonte Nova - Salvador, BA</p>
+            <h3 className="text-md font-bold text-primary">Grêmio x Santos - Campeonato Brasileiro</h3>
+            <p className="text-sm text-tertiary">Arena do Grêmio</p>
         </div>
         <div className="flex items-center gap-2 px-1">
             <button

@@ -16,19 +16,18 @@ export interface Sessao {
 }
 
 export const EVENT = {
-    nome: "Bahia x Vitória",
+    nome: "Grêmio x Santos - Campeonato Brasileiro",
     locale: "pt-BR",
     currency: "BRL",
     /** Código exibido em alguns lugares como prefixo de moeda. */
     currencyLabel: "R$",
     timeZone: "America/Sao_Paulo",
     tzLabel: "Horário de Brasília (GMT-3)",
-    /** Janela de vendas (dd/mm/aaaa). Hoje = 23/06/2026 (evento recém-realizado). */
+    /** Janela de vendas (dd/mm/aaaa). Jogo único — partida em 13/06/2026. */
     salesStart: "01/02/2026",
-    salesEnd: "15/06/2026",
+    salesEnd: "13/06/2026",
     sessoes: [
         { id: "s-13-06", label: "13/06", descricao: "Sábado · 13/06 · 16h00", data: "13/06/2026" },
-        { id: "s-15-06", label: "15/06", descricao: "Segunda · 15/06 · 21h00", data: "15/06/2026" },
     ] as Sessao[],
 } as const;
 

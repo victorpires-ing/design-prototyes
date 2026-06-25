@@ -64,45 +64,54 @@ const MACRO_COLUMNS: ColDef[] = [
 
 const macroData: TreeNode[] = [
     {
-        label: "IMPRESSO/BILHETERIA",
+        label: "ONLINE",
         children: [
             {
-                label: "Cadeira Norte",
+                label: "Superior Leste",
                 children: [
-                    { label: "Inteira", values: [768, 0, 768, 85, 65280], changed: true },
-                    { label: "Meia-entrada", values: [434, 0, 434, 42.5, 18445] },
-                    { label: "Sócio 50%", values: [217, 0, 217, 42.5, 9222.5] },
+                    { label: "Inteira", values: [2126, 0, 2126, 80, 170080], changed: true },
+                    { label: "Meia-Entrada", values: [2014, 0, 2014, 40, 80560] },
+                    { label: "Diamante", values: [318, 0, 318, 200, 63600] },
                 ],
             },
             {
-                label: "Cadeira Leste",
+                label: "Gramado Leste",
                 children: [
-                    { label: "Inteira", values: [664, 0, 664, 90, 59760] },
-                    { label: "Meia-entrada", values: [227, 0, 227, 45, 10215] },
+                    { label: "Inteira", values: [2401, 0, 2401, 150, 360150] },
+                    { label: "Meia-Entrada", values: [1552, 0, 1552, 75, 116400] },
+                    { label: "Ouro", values: [251, 0, 251, 300, 75300] },
                 ],
             },
             {
-                label: "Visitante Superior",
+                label: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade",
                 children: [
-                    { label: "Inteira", values: [289, 0, 289, 130, 37570], changed: true },
-                    { label: "Meia-entrada", values: [137, 0, 137, 65, 8905] },
+                    { label: "Inteira", values: [321, 0, 321, 220, 70620], changed: true },
+                    { label: "Meia-Entrada", values: [404, 0, 404, 110, 44440] },
                 ],
             },
         ],
     },
     {
-        label: "ONLINE",
+        label: "IMPRESSO/BILHETERIA",
         children: [
             {
-                label: "Sócio Esquadrão",
-                children: [{ label: "Sócio Esquadrão", values: [21094, 0, 21094, 19.5, 265897.5], changed: true }],
+                label: "Superior Sul",
+                children: [
+                    { label: "Inteira", values: [289, 0, 289, 80, 23120], changed: true },
+                    { label: "Meia-Entrada", values: [241, 0, 241, 40, 9640] },
+                    { label: "Acompanhante", values: [68, 0, 68, 80, 5440] },
+                ],
             },
             {
-                label: "Lounge Premium",
+                label: "Adversário (Superior Visitante)",
                 children: [
-                    { label: "Inteira", values: [80, 0, 80, 240, 19200], changed: true },
-                    { label: "Lounge Criança", values: [15, 0, 15, 150, 2250] },
+                    { label: "Inteira", values: [1688, 0, 1688, 130, 219440], changed: true },
+                    { label: "Meia-Entrada", values: [980, 0, 980, 65, 63700] },
                 ],
+            },
+            {
+                label: "Camarote",
+                children: [{ label: "Inteira", values: [210, 0, 210, 400, 84000] }],
             },
         ],
     },
@@ -116,47 +125,50 @@ const PDV_COLUMNS: ColDef[] = [
 
 const pdvData: TreeNode[] = [
     {
-        label: "Loja Tricolor - Fonte Nova",
+        label: "Bilheteria Arena do Grêmio",
         children: [
             {
-                label: "Cadeira Norte",
+                label: "Superior Sul",
                 children: [
-                    { label: "Inteira", values: [768, 85, 65280] },
-                    { label: "Meia-entrada", values: [434, 42.5, 18445] },
+                    { label: "Inteira", values: [289, 80, 23120] },
+                    { label: "Meia-Entrada", values: [241, 40, 9640] },
                 ],
             },
-            { label: "Sócio Esquadrão", children: [{ label: "Sócio Esquadrão", values: [21094, 19.5, 265897.5], changed: true }] },
-        ],
-    },
-    {
-        label: "Loja Tricolor - Shopping da Bahia",
-        children: [
             {
-                label: "Cadeira Leste",
+                label: "Adversário (Superior Visitante)",
                 children: [
-                    { label: "Inteira", values: [664, 90, 59760], changed: true },
-                    { label: "Inteira Promocional", values: [300, 50, 15000] },
-                    { label: "Meia-entrada", values: [227, 45, 10215] },
+                    { label: "Inteira", values: [1688, 130, 219440], changed: true },
+                    { label: "Meia-Entrada", values: [980, 65, 63700] },
                 ],
             },
         ],
     },
     {
-        label: "Loja Tricolor - Salvador Norte Shopping",
+        label: "Loja Oficial Grêmio - Arena",
         children: [
             {
-                label: "Visitante Superior",
+                label: "Gramado Leste",
                 children: [
-                    { label: "Inteira", values: [289, 130, 37570] },
-                    { label: "Meia-entrada", values: [137, 65, 8905] },
+                    { label: "Inteira", values: [2401, 150, 360150], changed: true },
+                    { label: "Meia-Entrada", values: [1552, 75, 116400] },
+                    { label: "Ouro", values: [251, 300, 75300] },
+                ],
+            },
+        ],
+    },
+    {
+        label: "Loja Oficial Grêmio - Shopping Iguatemi",
+        children: [
+            {
+                label: "Superior Leste",
+                children: [
+                    { label: "Inteira", values: [2126, 80, 170080] },
+                    { label: "Meia-Entrada", values: [2014, 40, 80560] },
                 ],
             },
             {
-                label: "Lounge Premium",
-                children: [
-                    { label: "Inteira", values: [80, 240, 19200], changed: true },
-                    { label: "Lounge Criança", values: [15, 150, 2250] },
-                ],
+                label: "Camarote",
+                children: [{ label: "Inteira", values: [210, 400, 84000], changed: true }],
             },
         ],
     },
@@ -164,21 +176,21 @@ const pdvData: TreeNode[] = [
 
 const meiosData: TreeNode[] = [
     {
-        label: "Loja Tricolor - Fonte Nova",
+        label: "Bilheteria Arena do Grêmio",
         children: [
             { label: "Cartão de Crédito", values: [612, 120, 73440] },
             { label: "Cartão de Débito", values: [438, 95, 41610] },
             { label: "Dinheiro", values: [205, 60, 12300], changed: true },
-            { label: "PIX", values: [21258, 18, 382644] },
+            { label: "PIX", values: [3258, 78, 254124] },
         ],
     },
     {
-        label: "Loja Tricolor - Shopping da Bahia",
+        label: "Loja Oficial Grêmio - Arena",
         children: [
-            { label: "Cartão de Crédito", values: [684, 78, 53352] },
-            { label: "Cartão de Débito", values: [312, 64, 19968] },
-            { label: "Dinheiro", values: [98, 55, 5390], changed: true },
-            { label: "PIX", values: [97, 47, 4559] },
+            { label: "Cartão de Crédito", values: [684, 110, 75240] },
+            { label: "Cartão de Débito", values: [312, 95, 29640] },
+            { label: "Dinheiro", values: [98, 80, 7840], changed: true },
+            { label: "PIX", values: [2410, 95, 228950] },
         ],
     },
 ];
@@ -202,10 +214,10 @@ const CHANGE_META: Record<ChangeType, { label: string; color: "success" | "gray"
 };
 
 const changedTransacoes: BorderoChange[] = [
-    { id: "c1", hora: "há 1 min", tipo: "venda", canal: "Online", descricao: "Sócio Esquadrão · Sócio Esquadrão", ingressos: 12, valor: 234 },
-    { id: "c2", hora: "há 2 min", tipo: "venda", canal: "Impresso/Bilheteria", descricao: "Cadeira Norte · Inteira", ingressos: 5, valor: 425 },
-    { id: "c3", hora: "há 3 min", tipo: "cancelamento", canal: "Impresso/Bilheteria", descricao: "Visitante Superior · Inteira", ingressos: -1, valor: -130 },
-    { id: "c4", hora: "há 4 min", tipo: "estorno", canal: "Online", descricao: "Lounge Premium · Inteira", ingressos: -1, valor: -240 },
+    { id: "c1", hora: "há 1 min", tipo: "venda", canal: "Online", descricao: "Superior Leste · Inteira", ingressos: 4, valor: 320 },
+    { id: "c2", hora: "há 2 min", tipo: "venda", canal: "Impresso/Bilheteria", descricao: "Superior Sul · Inteira", ingressos: 5, valor: 400 },
+    { id: "c3", hora: "há 3 min", tipo: "cancelamento", canal: "Impresso/Bilheteria", descricao: "Adversário (Superior Visitante) · Inteira", ingressos: -1, valor: -130 },
+    { id: "c4", hora: "há 4 min", tipo: "estorno", canal: "Online", descricao: "Gold Premium Sul · Inteira", ingressos: -1, valor: -220 },
 ];
 
 type BorderoView = "macro" | "pdv" | "meios";
@@ -220,7 +232,8 @@ const VIEWS: Record<BorderoView, { nodes: TreeNode[]; columns: ColDef[]; firstCo
 /*  Scaling (sessão + intervalo de data afetam todas as visões)        */
 /* ------------------------------------------------------------------ */
 
-const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 0.46, [EVENT.sessoes[1].id]: 0.54 };
+// Jogo único: a sessão da partida concentra 100% das vendas.
+const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 1 };
 
 // Escala valores de quantidade/faturado; mantém colunas de "valor unitário" intactas.
 const scaleNodes = (nodes: TreeNode[], columns: ColDef[], factor: number): TreeNode[] =>

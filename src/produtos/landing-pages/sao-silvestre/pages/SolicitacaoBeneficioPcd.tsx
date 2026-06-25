@@ -134,7 +134,7 @@ export function SolicitacaoBeneficioPcd() {
     const seg = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear";
 
     const conteudo = (
-        <div className="mx-auto max-w-[33.6rem] px-5 py-8">
+        <div className="mx-auto max-w-2xl px-5 py-8">
             {/* Logo no topo (mesmo tamanho da LP) */}
             <div className="flex justify-center">
                 <img src={logoTicketSports} alt="TicketSports by Ingresse" className="h-9 w-auto" />

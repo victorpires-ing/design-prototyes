@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeft, CheckCircle, ChevronDown, InfoCircle, Monitor01, Phone01 } from "@untitledui/icons";
+import { ArrowLeft, CheckCircle, ChevronDown, InfoCircle, Monitor01, Phone01, XClose } from "@untitledui/icons";
 import { useTheme } from "@/providers/theme-provider";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { Input } from "@/components/base/input/input";
@@ -12,7 +12,7 @@ const BLUE = "#0099FF";
 type Viewport = "desktop" | "mobile";
 
 /** Modal de confirmação exibido após o envio da solicitação de vagas. */
-function ConfirmacaoModal({ viewport, onVoltar, onInfos }: { viewport: Viewport; onVoltar: () => void; onInfos: () => void }) {
+function ConfirmacaoModal({ viewport, onClose, onVoltar }: { viewport: Viewport; onClose: () => void; onVoltar: () => void }) {
     const mobile = viewport === "mobile";
 
     useEffect(() => {
@@ -25,30 +25,31 @@ function ConfirmacaoModal({ viewport, onVoltar, onInfos }: { viewport: Viewport;
 
     const conteudo = (
         <div className="overflow-y-auto p-6">
-            <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="lg" />
+            <div className="flex items-start justify-between gap-3">
+                <FeaturedIcon icon={CheckCircle} color="success" theme="outline" size="lg" />
+                <button
+                    type="button"
+                    aria-label="Fechar"
+                    onClick={onClose}
+                    className="-mt-1.5 -mr-1.5 flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary"
+                >
+                    <XClose className="size-5" />
+                </button>
+            </div>
             <h3 className="mt-4 text-lg font-bold text-primary">Solicitação enviada</h3>
             <div className="mt-2 space-y-3 text-sm text-tertiary">
                 <p>Recebemos sua solicitação de vagas para grupos na São Silvestre.</p>
                 <p>A organização vai analisar o pedido. Se aprovado, você receberá por e-mail as instruções e o prazo para concluir as inscrições do seu grupo.</p>
                 <p>Fique de olho na sua caixa de entrada — e também no spam — para não perder nenhuma atualização.</p>
             </div>
-            <div className="mt-6 space-y-3">
-                <button
-                    type="button"
-                    onClick={onVoltar}
-                    className="w-full rounded-lg px-5 py-3.5 text-sm font-semibold text-white transition duration-100 ease-linear hover:brightness-95"
-                    style={{ backgroundColor: BLUE }}
-                >
-                    Voltar para a página da São Silvestre
-                </button>
-                <button
-                    type="button"
-                    onClick={onInfos}
-                    className="w-full rounded-lg border border-secondary bg-primary px-5 py-3.5 text-sm font-semibold text-primary transition duration-100 ease-linear hover:bg-secondary"
-                >
-                    Ver informações do evento
-                </button>
-            </div>
+            <button
+                type="button"
+                onClick={onVoltar}
+                className="mt-6 w-full rounded-lg px-5 py-3.5 text-sm font-semibold text-white transition duration-100 ease-linear hover:brightness-95"
+                style={{ backgroundColor: BLUE }}
+            >
+                Voltar para página da São Silvestre
+            </button>
         </div>
     );
 
@@ -201,8 +202,8 @@ export function SolicitacaoVagas() {
             {enviado && (
                 <ConfirmacaoModal
                     viewport={viewport}
+                    onClose={() => setEnviado(false)}
                     onVoltar={() => navigate("/landing-pages/sao-silvestre", { state: { viewport } })}
-                    onInfos={() => navigate("/landing-pages/sao-silvestre", { state: { viewport } })}
                 />
             )}
         </div>

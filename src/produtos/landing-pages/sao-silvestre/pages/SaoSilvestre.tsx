@@ -256,21 +256,27 @@ function PcdModalBody() {
     return (
         <>
             <div className="space-y-3 text-sm text-secondary">
-                <p>Para solicitar o benefício, tenha em mãos os documentos da pessoa PCD que irá participar da São Silvestre.</p>
                 <p>
-                    A solicitação será analisada pela organização do evento. Se aprovada, o CPF informado será habilitado para visualizar e comprar a
-                    inscrição PCD no fluxo de compra.
+                    A solicitação será analisada pela organização do evento. Caso seja aprovada, a conta utilizada na solicitação será habilitada para
+                    visualizar e resgatar a inscrição PCD.
                 </p>
             </div>
 
-            <p className="mt-6 text-sm font-bold text-primary">Você vai precisar de:</p>
+            <p className="mt-6 text-sm font-bold text-primary">Para concluir a solicitação, você precisará:</p>
             <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-tertiary">
-                <li>CPF e data de nascimento do atleta PCD;</li>
-                <li>CID;</li>
-                <li>documento de identificação;</li>
-                <li>laudo ou documento comprobatório;</li>
-                <li>aceite do termo de compartilhamento de dados.</li>
+                <li>Documento de identificação do atleta;</li>
+                <li>Laudo médico ou documento comprobatório da condição informada;</li>
+                <li>Informações necessárias para validação da elegibilidade do benefício;</li>
+                <li>Aceite do termo de tratamento e compartilhamento de dados para análise da solicitação.</li>
             </ul>
+
+            <div className="mt-4 space-y-3 text-sm text-tertiary">
+                <p>
+                    Os dados informados serão utilizados exclusivamente para validação da solicitação e concessão do benefício, em conformidade com a
+                    legislação vigente de proteção de dados.
+                </p>
+                <p>Caso ainda não possua cadastro, não se preocupe: o processo é rápido e seguro.</p>
+            </div>
         </>
     );
 }

@@ -18,6 +18,14 @@ export function Ingressos() {
 
     const total = evento.combos ? evento.combos.length : (evento.ingressos?.length ?? 0);
 
+    // Ingressos (não-combo) agrupados por data — cada data vira um cabeçalho.
+    const gruposPorData = Object.entries(
+        (evento.ingressos ?? []).reduce<Record<string, ItemIngresso[]>>((acc, item) => {
+            (acc[item.data] ??= []).push(item);
+            return acc;
+        }, {}),
+    );
+
     // Toque curto abre o detalhe; pressionar e segurar abre o menu de contexto (estilo iOS).
     const [menu, setMenu] = useState<{ rect: DOMRect; content: ReactNode; actions: MenuAction[] } | null>(null);
 
@@ -77,58 +85,72 @@ export function Ingressos() {
                     </div>
                 </div>
 
-                {/* Sessão */}
-                <div className="flex items-center justify-between px-5 pt-6">
-                    <h2 className="text-sm font-semibold text-primary">{evento.sessao}</h2>
-                    <span className="flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm font-medium text-secondary ring-1 ring-border-secondary">
-                        {total}
-                    </span>
-                </div>
+                {evento.combos ? (
+                    <>
+                        {/* Sessão */}
+                        <div className="flex items-center justify-between px-5 pt-6">
+                            <h2 className="text-sm font-semibold text-primary">{evento.sessao}</h2>
+                            <span className="flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm font-medium text-secondary ring-1 ring-border-secondary">
+                                {total}
+                            </span>
+                        </div>
 
-                {/* Conteúdo: combos (QR individual ou único) ou lista de ingressos */}
-                <div className="flex flex-col gap-4 px-5 pt-3 pb-6">
-                    {evento.combos
-                        ? evento.combos.map((combo) =>
-                              combo.qr === "unico" ? (
-                                  /* Combo de QR único: um item que abre a tela do combo */
-                                  <ComboCard
-                                      key={combo.id}
-                                      combo={combo}
-                                      evento={evento}
-                                      onTap={() => navigate(`/ingresse-app/ingressos/combo/${evento.id}/${combo.id}`)}
-                                      onLongPress={(rect) => abrirMenuCombo(combo, rect)}
-                                  />
-                              ) : (
-                                  /* Combo de QR individual: agrupador com itens, cada um com seu QR */
-                                  <div key={combo.id} className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
-                                      <div className="flex items-center gap-3 border-b border-secondary bg-secondary/50 px-4 py-3">
-                                          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-secondary text-fg-brand-primary">
-                                              <Package className="size-5" />
-                                          </span>
-                                          <div className="min-w-0 flex-1">
-                                              <p className="text-sm font-bold text-primary">{combo.nome}</p>
-                                              <p className="text-xs text-tertiary">
-                                                  {combo.itens?.length ?? 0} {combo.itens?.length === 1 ? "item" : "itens"}
-                                              </p>
-                                          </div>
-                                          <Badge size="sm" color="brand" type="pill-color">
-                                              Combo
-                                          </Badge>
-                                      </div>
-                                      {combo.itens?.map((item, i) => (
-                                          <TicketRow key={item.id} item={item} isFirst={i === 0} onTap={() => abrirItem(item)} onLongPress={(rect) => abrirMenuIngresso(item, rect)} />
-                                      ))}
-                                  </div>
-                              ),
-                          )
-                        : (
-                              <div className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
-                                  {evento.ingressos?.map((item, i) => (
-                                      <TicketRow key={item.id} item={item} isFirst={i === 0} onTap={() => abrirItem(item)} onLongPress={(rect) => abrirMenuIngresso(item, rect)} />
-                                  ))}
-                              </div>
-                          )}
-                </div>
+                        <div className="flex flex-col gap-4 px-5 pt-3 pb-6">
+                            {evento.combos.map((combo) =>
+                                combo.qr === "unico" ? (
+                                    /* Combo de QR único: um item que abre a tela do combo */
+                                    <ComboCard
+                                        key={combo.id}
+                                        combo={combo}
+                                        evento={evento}
+                                        onTap={() => navigate(`/ingresse-app/ingressos/combo/${evento.id}/${combo.id}`)}
+                                        onLongPress={(rect) => abrirMenuCombo(combo, rect)}
+                                    />
+                                ) : (
+                                    /* Combo de QR individual: agrupador com itens, cada um com seu QR */
+                                    <div key={combo.id} className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
+                                        <div className="flex items-center gap-3 border-b border-secondary bg-secondary/50 px-4 py-3">
+                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-secondary text-fg-brand-primary">
+                                                <Package className="size-5" />
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-bold text-primary">{combo.nome}</p>
+                                                <p className="text-xs text-tertiary">
+                                                    {combo.itens?.length ?? 0} {combo.itens?.length === 1 ? "item" : "itens"}
+                                                </p>
+                                            </div>
+                                            <Badge size="sm" color="brand" type="pill-color">
+                                                Combo
+                                            </Badge>
+                                        </div>
+                                        {combo.itens?.map((item, i) => (
+                                            <TicketRow key={item.id} item={item} isFirst={i === 0} onTap={() => abrirItem(item)} onLongPress={(rect) => abrirMenuIngresso(item, rect)} />
+                                        ))}
+                                    </div>
+                                ),
+                            )}
+                        </div>
+                    </>
+                ) : (
+                    /* Ingressos agrupados por data (cada data vira um cabeçalho) */
+                    <div className="flex flex-col gap-6 px-5 pt-6 pb-6">
+                        {gruposPorData.map(([data, itens]) => (
+                            <section key={data}>
+                                <div className="flex items-center justify-between pb-3">
+                                    <h2 className="text-sm font-semibold text-primary">{data}</h2>
+                                    <span className="flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm font-medium text-secondary ring-1 ring-border-secondary">
+                                        {itens.length}
+                                    </span>
+                                </div>
+                                <div className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
+                                    {itens.map((item, i) => (
+                                        <TicketRow key={item.id} item={item} isFirst={i === 0} onTap={() => abrirItem(item)} onLongPress={(rect) => abrirMenuIngresso(item, rect)} />
+                                    ))}
+                                </div>
+                            </section>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <AnimatePresence>

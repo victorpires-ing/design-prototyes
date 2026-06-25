@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import Lottie, { type LottieRefCurrentProps } from "lottie-react";
-import { ArrowLeft, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
+import { ArrowLeft, CheckCircle, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
 import { Toggle } from "@/components/base/toggle/toggle";
+import { cx } from "@/utils/cx";
 import faceIdSuccess from "../assets/face-id-success.json";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { AppShell } from "../../components/AppShell";
@@ -45,10 +46,11 @@ export function IngressoDetalhe() {
     const evento = eventoObj.title;
     const title = item?.title ?? "Ingresso";
     const tipo = item?.tipo;
-    const sessao = eventoObj.sessao;
+    const sessao = item?.data ?? eventoObj.sessao;
     const portador = item?.portador ?? "Priscilão Alcantara Raro";
     const cpf = item?.cpf ?? "948.943.130-44";
     const facial = item?.acesso === "facial";
+    const qrModo = item?.qrModo;
 
     const [meuIngresso, setMeuIngresso] = useState(true);
     const [showQR, setShowQR] = useState(false);
@@ -229,9 +231,29 @@ export function IngressoDetalhe() {
                         ) : (
                             /* QR + portador */
                             <div className="px-6 pt-6 pb-7">
-                                <div className="flex justify-center">
-                                    <FakeQR px={220} />
-                                </div>
+                                {qrModo === "oculto" ? (
+                                    /* QR oculto: liberado no dia do evento (QR a 10% + card por cima) */
+                                    <div className="relative flex items-center justify-center">
+                                        <div className="opacity-10">
+                                            <FakeQR px={220} />
+                                        </div>
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <div className="mx-2 w-full max-w-[260px] rounded-2xl border border-secondary bg-primary p-5 text-center shadow-sm">
+                                                <div className="flex justify-center">
+                                                    <FeaturedIcon icon={CheckCircle} color="success" theme="outline" size="md" />
+                                                </div>
+                                                <p className="mt-3 text-md font-bold text-primary">Ingresso confirmado</p>
+                                                <p className="mt-1 text-sm text-tertiary">O QR Code ficará disponível no dia do evento, às 12:00.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : qrModo === "dinamico" ? (
+                                    <DynamicQR px={220} />
+                                ) : (
+                                    <div className="flex justify-center">
+                                        <FakeQR px={220} />
+                                    </div>
+                                )}
                                 <div className="-mx-6 my-5 border-t border-tertiary" />
                                 <div className="text-left">
                                     <p className="text-sm text-tertiary">
@@ -250,15 +272,15 @@ export function IngressoDetalhe() {
     );
 }
 
-/* QR Code simples (placeholder), sem molduras. */
-const FakeQR = ({ px = 200 }: { px?: number }) => {
+/* QR Code simples (placeholder), sem molduras. O `seed` varia o padrão (usado no QR dinâmico). */
+const FakeQR = ({ px = 200, seed = 0 }: { px?: number; seed?: number }) => {
     const N = 25;
     const isFinder = (r: number, c: number) => (r < 7 && c < 7) || (r < 7 && c >= N - 7) || (r >= N - 7 && c < 7);
     const cells: { x: number; y: number }[] = [];
     for (let r = 0; r < N; r++) {
         for (let c = 0; c < N; c++) {
             if (isFinder(r, c)) continue;
-            if ((r * 3 + c * 7 + ((r * c) % 5)) % 3 === 0) cells.push({ x: c, y: r });
+            if ((r * 3 + c * 7 + ((r * c) % 5) + seed) % 3 === 0) cells.push({ x: c, y: r });
         }
     }
     const Finder = ({ x, y }: { x: number; y: number }) => (
@@ -280,3 +302,47 @@ const FakeQR = ({ px = 200 }: { px?: number }) => {
         </svg>
     );
 };
+
+/* QR dinâmico: atualiza a cada 30s. A barra preenche durante o ciclo, o QR pisca
+   nos últimos 5s e, ao completar, um novo QR aparece e a barra reinicia. */
+const QR_TOTAL = 30;
+function DynamicQR({ px }: { px: number }) {
+    const [version, setVersion] = useState(0);
+    const [remaining, setRemaining] = useState(QR_TOTAL);
+
+    useEffect(() => {
+        setRemaining(QR_TOTAL);
+        const id = setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000);
+        return () => clearInterval(id);
+    }, [version]);
+
+    const piscando = remaining <= 5 && remaining > 0;
+
+    return (
+        <div>
+            <div className="flex justify-center">
+                <motion.div
+                    key={version}
+                    animate={piscando ? { opacity: [1, 0.2, 1] } : { opacity: 1 }}
+                    transition={piscando ? { duration: 0.9, repeat: Infinity, ease: "easeInOut" } : { duration: 0.25 }}
+                >
+                    <FakeQR px={px} seed={version} />
+                </motion.div>
+            </div>
+
+            <p className="mt-5 text-center text-sm text-tertiary">
+                O QR code será atualizado em {remaining} {remaining === 1 ? "segundo" : "segundos"}
+            </p>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                <motion.div
+                    key={version}
+                    className="h-full rounded-full bg-brand-solid"
+                    initial={{ width: "0%" }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: QR_TOTAL, ease: "linear" }}
+                    onAnimationComplete={() => setVersion((v) => v + 1)}
+                />
+            </div>
+        </div>
+    );
+}

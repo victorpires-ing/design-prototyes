@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { ArrowDown, ArrowLeft, CheckCircle, ChevronRight, Send01, XClose } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
@@ -9,7 +9,7 @@ import { AppShell } from "../../components/AppShell";
 import { BottomSheet } from "../../components/BottomSheet";
 import { StatusBar } from "../../components/StatusBar";
 import { Zigzag } from "../../components/Zigzag";
-import { getEvento } from "../data/eventos";
+import { getCombo, getEvento, getItem } from "../data/eventos";
 import { marcarTransferido } from "../data/transfer-store";
 import alertAmareloIcon from "../../assets/alert-amarelo.png";
 
@@ -23,18 +23,16 @@ const maskEmail = (e: string) => {
 
 export function TransferirIngresso() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const st =
-        (location.state as { eventId?: string; comboId?: string; itemId?: string; acesso?: "qr" | "facial"; evento?: string; title?: string; tipo?: string; sessao?: string } | null) ?? {};
-    const isCombo = !!st.comboId;
-    const evento = getEvento(st.eventId);
-    const combo = isCombo ? evento.combos?.find((c) => c.id === st.comboId) : undefined;
+    const { eventId, id } = useParams();
+    const evento = getEvento(eventId);
+    const combo = getCombo(eventId, id);
+    const item = getItem(eventId, id);
+    const isCombo = !!combo;
 
-    // Ingresso individual (fallback ARENA, ou o que vier no state)
-    const evNome = st.evento ?? "ARENA BRASILEIRA 2026";
-    const title = st.title ?? "ARENA | Brasil x Haiti | (19/06)";
-    const tipo = st.tipo ?? "Inteira";
-    const sessao = st.sessao ?? "Sex, 19 jun • 15:00";
+    const evNome = evento.title;
+    const title = item?.title ?? "Ingresso";
+    const tipo = item?.tipo;
+    const sessao = evento.sessao;
 
     const [email, setEmail] = useState("");
     const [searched, setSearched] = useState(false);
@@ -54,10 +52,8 @@ export function TransferirIngresso() {
         if (searched) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, [searched]);
 
-    const voltar = () =>
-        isCombo
-            ? navigate("/ingresse-app/ingressos/combo", { state: { eventId: st.eventId, comboId: st.comboId } })
-            : navigate("/ingresse-app/ingressos/detalhe");
+    const destino = isCombo ? `/ingresse-app/ingressos/combo/${evento.id}/${id}` : `/ingresse-app/ingressos/detalhe/${evento.id}/${id}`;
+    const voltar = () => navigate(destino);
 
     const confirmarTransferencia = () => {
         setConfirming(false);
@@ -65,15 +61,8 @@ export function TransferirIngresso() {
     };
     const concluir = () => {
         setDone(false);
-        if (isCombo) {
-            marcarTransferido(st.comboId);
-            navigate("/ingresse-app/ingressos/combo", { state: { eventId: st.eventId, comboId: st.comboId, transferido: true } });
-        } else {
-            marcarTransferido(st.itemId);
-            navigate("/ingresse-app/ingressos/detalhe", {
-                state: { transferido: true, evento: evNome, title, tipo, sessao, eventId: st.eventId, itemId: st.itemId, acesso: st.acesso },
-            });
-        }
+        marcarTransferido(id);
+        navigate(destino);
     };
 
     return (

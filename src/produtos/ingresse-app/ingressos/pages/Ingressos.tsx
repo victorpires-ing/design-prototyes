@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { FC, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
-import { useLocation, useNavigate } from "react-router";
-import { ArrowLeft, Calendar, ChevronRight, FaceIdSquare, FilterLines, Map01, Package, QrCode02, Send01, Tag01, User01 } from "@untitledui/icons";
+import { useNavigate, useParams } from "react-router";
+import { ArrowLeft, ChevronRight, FaceIdSquare, FilterLines, Map01, Package, QrCode02, Send01, Tag01, User01 } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Badge } from "@/components/base/badges/badges";
 import { cx } from "@/utils/cx";
@@ -13,8 +13,7 @@ import { isTransferido } from "../data/transfer-store";
 
 export function Ingressos() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const eventId = (location.state as { eventId?: string } | null)?.eventId;
+    const { eventId } = useParams();
     const evento = getEvento(eventId);
 
     const total = evento.combos ? evento.combos.length : (evento.ingressos?.length ?? 0);
@@ -22,10 +21,10 @@ export function Ingressos() {
     // Toque curto abre o detalhe; pressionar e segurar abre o menu de contexto (estilo iOS).
     const [menu, setMenu] = useState<{ rect: DOMRect; content: ReactNode; actions: MenuAction[] } | null>(null);
 
-    const abrirDetalhe = (item: ItemIngresso) =>
-        navigate("/ingresse-app/ingressos/detalhe", {
-            state: { evento: evento.title, title: item.title, tipo: item.tipo, sessao: evento.sessao, eventId: evento.id, acesso: item.acesso, facial: item.facial, portador: item.portador, cpf: item.cpf, itemId: item.id },
-        });
+    const abrirItem = (item: ItemIngresso) => {
+        const base = item.produto ? "produto" : "detalhe";
+        navigate(`/ingresse-app/ingressos/${base}/${evento.id}/${item.id}`);
+    };
 
     // "Cadastrar facial" só aparece em ingressos de acesso facial.
     const acoes = (transferir: () => void, facial: boolean): MenuAction[] => [
@@ -38,26 +37,14 @@ export function Ingressos() {
         setMenu({
             rect,
             content: <TicketRowContent item={item} />,
-            actions: acoes(
-                () =>
-                    navigate("/ingresse-app/ingressos/transferir", {
-                        state: { evento: evento.title, title: item.title, tipo: item.tipo, sessao: evento.sessao, eventId: evento.id, itemId: item.id, acesso: item.acesso },
-                    }),
-                item.acesso === "facial",
-            ),
+            actions: acoes(() => navigate(`/ingresse-app/ingressos/transferir/${evento.id}/${item.id}`), item.acesso === "facial"),
         });
 
     const abrirMenuCombo = (combo: Combo, rect: DOMRect) =>
         setMenu({
             rect,
             content: <ComboCardContent combo={combo} evento={evento} />,
-            actions: acoes(
-                () =>
-                    navigate("/ingresse-app/ingressos/transferir", {
-                        state: { evento: evento.title, title: combo.nome, sessao: evento.sessao, eventId: evento.id, itemId: combo.id },
-                    }),
-                false,
-            ),
+            actions: acoes(() => navigate(`/ingresse-app/ingressos/transferir/${evento.id}/${combo.id}`), false),
         });
 
     return (
@@ -108,7 +95,7 @@ export function Ingressos() {
                                       key={combo.id}
                                       combo={combo}
                                       evento={evento}
-                                      onTap={() => navigate("/ingresse-app/ingressos/combo", { state: { eventId: evento.id, comboId: combo.id } })}
+                                      onTap={() => navigate(`/ingresse-app/ingressos/combo/${evento.id}/${combo.id}`)}
                                       onLongPress={(rect) => abrirMenuCombo(combo, rect)}
                                   />
                               ) : (
@@ -129,7 +116,7 @@ export function Ingressos() {
                                           </Badge>
                                       </div>
                                       {combo.itens?.map((item, i) => (
-                                          <TicketRow key={item.id} item={item} isFirst={i === 0} onTap={() => abrirDetalhe(item)} onLongPress={(rect) => abrirMenuIngresso(item, rect)} />
+                                          <TicketRow key={item.id} item={item} isFirst={i === 0} onTap={() => abrirItem(item)} onLongPress={(rect) => abrirMenuIngresso(item, rect)} />
                                       ))}
                                   </div>
                               ),
@@ -137,7 +124,7 @@ export function Ingressos() {
                         : (
                               <div className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
                                   {evento.ingressos?.map((item, i) => (
-                                      <TicketRow key={item.id} item={item} isFirst={i === 0} onTap={() => abrirDetalhe(item)} onLongPress={(rect) => abrirMenuIngresso(item, rect)} />
+                                      <TicketRow key={item.id} item={item} isFirst={i === 0} onTap={() => abrirItem(item)} onLongPress={(rect) => abrirMenuIngresso(item, rect)} />
                                   ))}
                               </div>
                           )}
@@ -333,10 +320,6 @@ const ComboCardContent = ({ combo, evento }: { combo: Combo; evento: EventoDetal
                 <ChevronRight className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
             </div>
             <p className="-mt-1 text-sm text-tertiary">{evento.id === "sao-silvestre" ? "1 inscrição" : `${combo.inclusos?.length ?? 0} itens`}</p>
-            <p className="flex items-center gap-1.5 text-sm text-secondary">
-                <Calendar className="size-4 shrink-0 text-fg-quaternary" />
-                <span>{combo.dataEvento}</span>
-            </p>
             <div className="flex flex-wrap gap-2 pt-1">
                 {evento.id !== "sao-silvestre" && (
                     <Badge size="md" color="brand" type="pill-color">
@@ -361,6 +344,44 @@ const ComboCardContent = ({ combo, evento }: { combo: Combo; evento: EventoDetal
 const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
     const Icon = item.acesso === "facial" ? FaceIdSquare : QrCode02;
     const transf = isTransferido(item.id);
+
+    // Item de produto/merchandising (ex.: camiseta) — visual diferente do ingresso.
+    if (item.produto) {
+        return (
+            <div className="flex items-center gap-3 p-4 text-left">
+                <div className="h-16 w-12 shrink-0 overflow-hidden rounded-xl bg-secondary">
+                    {item.imagem ? (
+                        item.imagem.startsWith("linear-gradient") ? (
+                            <GradientFill gradient={item.imagem} />
+                        ) : (
+                            <img src={item.imagem} alt="" className="size-full object-cover" />
+                        )
+                    ) : null}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-bold text-primary">{item.title}</p>
+                        <ChevronRight className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                        <Badge size="md" color="pink" type="pill-color">
+                            Produto
+                        </Badge>
+                        {item.retirada === "retirado" ? (
+                            <Badge size="md" color="success" type="pill-color">
+                                Retirado
+                            </Badge>
+                        ) : (
+                            <Badge size="md" color="warning" type="pill-color">
+                                Retirada pendente
+                            </Badge>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex items-start gap-3 p-4 text-left">
             <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-secondary text-fg-secondary">
@@ -371,11 +392,6 @@ const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
                     <p className="text-sm font-bold text-primary">{item.title}</p>
                     <ChevronRight className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
                 </div>
-                {item.tipo && <p className="-mt-1 text-sm text-tertiary">{item.tipo}</p>}
-                <p className="flex items-center gap-1.5 text-sm text-secondary">
-                    <Calendar className="size-4 shrink-0 text-fg-quaternary" />
-                    <span>{item.data}</span>
-                </p>
                 <p className="flex items-center gap-1.5 text-sm text-secondary">
                     <User01 className="size-4 shrink-0 text-fg-quaternary" />
                     <span>{item.portador}</span>

@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { ArrowLeft, ClipboardCheck, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -7,6 +7,7 @@ import { AppShell } from "../../components/AppShell";
 import { ActionFab, type FabAction } from "../../components/ActionFab";
 import { StatusBar } from "../../components/StatusBar";
 import { FakeQR } from "../../components/FakeQR";
+import { GradientFill } from "../../components/GradientFill";
 import { Zigzag } from "../../components/Zigzag";
 import { getEvento, type ComboStatus } from "../data/eventos";
 import { isTransferido } from "../data/transfer-store";
@@ -19,11 +20,10 @@ const STATUS: Record<ComboStatus, { label: string; color: "gray" | "brand" | "bl
 
 export function ComboDetalhe() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const state = (location.state as { eventId?: string; comboId?: string; transferido?: boolean } | null) ?? {};
-    const transferido = !!state.transferido || isTransferido(state.comboId);
-    const evento = getEvento(state.eventId);
-    const combo = evento.combos?.find((c) => c.id === state.comboId) ?? evento.combos?.find((c) => c.qr === "unico");
+    const { eventId, comboId } = useParams();
+    const transferido = isTransferido(comboId);
+    const evento = getEvento(eventId);
+    const combo = evento.combos?.find((c) => c.id === comboId) ?? evento.combos?.find((c) => c.qr === "unico");
     // Ordem: por status (hoje, próximo, finalizado) e, dentro do mesmo status, o de data mais próxima primeiro.
     const RANK: Record<string, number> = { hoje: 0, proximo: 1, finalizado: 2 };
     const inclusos = [...(combo?.inclusos ?? [])].sort((a, b) => {
@@ -40,9 +40,10 @@ export function ComboDetalhe() {
         );
     }
 
+    const termo = evento.id === "sao-silvestre" ? "inscrição" : "ingresso";
     const acoes: FabAction[] = [
-        { icon: Send01, label: "Transferir ingresso", short: "Transferir", onClick: () => navigate("/ingresse-app/ingressos/transferir", { state: { eventId: evento.id, comboId: combo.id } }) },
-        { icon: Tag01, label: "Revender ingresso", short: "Revender" },
+        { icon: Send01, label: `Transferir ${termo}`, short: "Transferir", onClick: () => navigate(`/ingresse-app/ingressos/transferir/${evento.id}/${combo.id}`) },
+        { icon: Tag01, label: `Revender ${termo}`, short: "Revender" },
         { icon: Wallet02, label: "Adicionar à Carteira", short: "Carteira", dark: true },
     ];
 
@@ -56,7 +57,7 @@ export function ComboDetalhe() {
                     <button
                         type="button"
                         aria-label="Voltar"
-                        onClick={() => navigate("/ingresse-app/ingressos/evento", { state: { eventId: evento.id } })}
+                        onClick={() => navigate(`/ingresse-app/ingressos/evento/${evento.id}`)}
                         className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                     >
                         <ArrowLeft className="size-5" />
@@ -69,7 +70,7 @@ export function ComboDetalhe() {
                         <InfoCircle className="size-5" />
                     </button>
                 </div>
-                <h1 className="px-5 pt-4 text-xl font-bold text-primary">Ingresso</h1>
+                <h1 className="px-5 pt-4 text-xl font-bold text-primary">{evento.id === "sao-silvestre" ? "Inscrição" : "Ingresso"}</h1>
 
                 <div className="flex flex-1 flex-col gap-6 px-5 pt-4 pb-8">
                     {transferido ? (
@@ -104,7 +105,7 @@ export function ComboDetalhe() {
                                     <p className="text-sm text-tertiary">Transferido para</p>
                                     <p className="mt-0.5 text-md font-bold text-primary">Duny Alves da Silva</p>
                                     <p className="mt-1 text-sm text-tertiary">
-                                        CPF: <span className="font-semibold text-secondary">009.789.568-90</span>
+                                        <span>CPF: </span><span className="font-semibold text-secondary">009.789.568-90</span>
                                     </p>
 
                                     <p className="mt-4 text-sm text-tertiary">Data da transferência</p>
@@ -162,10 +163,10 @@ export function ComboDetalhe() {
                                     <div className="-mx-6 my-5 border-t border-tertiary" />
                                     <div>
                                         <p className="text-sm text-tertiary">
-                                            Titular: <span className="font-semibold text-primary">{combo.titular ?? "Priscilão Alcantara Raro"}</span>
+                                            <span>Titular: </span><span className="font-semibold text-primary">{combo.titular ?? "Priscilão Alcantara Raro"}</span>
                                         </p>
                                         <p className="mt-1 text-sm text-tertiary">
-                                            CPF: <span className="font-semibold text-primary">{combo.cpf ?? "948.943.130-44"}</span>
+                                            <span>CPF: </span><span className="font-semibold text-primary">{combo.cpf ?? "948.943.130-44"}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -200,13 +201,15 @@ export function ComboDetalhe() {
                                                     </p>
                                                     {inc.acesso && (
                                                         <p className="mt-1.5 text-sm text-tertiary">
-                                                            Acesso por <span className="font-semibold text-secondary">{inc.acesso}</span>
+                                                            <span>Acesso por </span><span className="font-semibold text-secondary">{inc.acesso}</span>
                                                         </p>
                                                     )}
 
                                                     {/* Imagem do item (degradê ou foto) */}
                                                     {inc.gradient ? (
-                                                        <div className="mt-3 aspect-[4/3] w-full rounded-xl" style={{ background: inc.gradient }} />
+                                                        <div className="mt-3 h-44 w-full overflow-hidden rounded-xl">
+                                                            <GradientFill gradient={inc.gradient} />
+                                                        </div>
                                                     ) : (
                                                         inc.imagem && <img src={inc.imagem} alt={inc.nome} className="mt-3 w-full rounded-xl object-cover" />
                                                     )}

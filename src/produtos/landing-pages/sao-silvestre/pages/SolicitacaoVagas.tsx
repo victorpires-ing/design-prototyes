@@ -96,7 +96,7 @@ export function SolicitacaoVagas() {
     const [nome, setNome] = useState("");
     const [email, setEmail] = useState("");
     const [enviado, setEnviado] = useState(false);
-    const emailValido = /@gmail\.com$/i.test(email.trim());
+    const emailValido = /^\S+@\S+\.\S+$/.test(email.trim());
     const ok = vagas.trim() !== "" && nome.trim() !== "" && emailValido;
 
     const seg = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear";
@@ -130,7 +130,7 @@ export function SolicitacaoVagas() {
                         <Input label="E-mail" type="email" placeholder="seuemail@gmail.com" value={email} onChange={setEmail} />
                         <div className="mt-1.5 flex items-center gap-1.5 text-warning-primary">
                             <AlertTriangle className="size-4 shrink-0" />
-                            <span className="text-sm">É necessário usar um e-mail @gmail.com</span>
+                            <span className="text-sm">Recomendamos usar um e-mail Gmail ou com domínio Google</span>
                         </div>
                     </div>
 

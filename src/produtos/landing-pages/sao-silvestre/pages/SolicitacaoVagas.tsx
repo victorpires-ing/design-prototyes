@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeft, CheckCircle, ChevronDown, InfoCircle, Monitor01, Phone01, XClose } from "@untitledui/icons";
+import { AlertTriangle, ArrowLeft, CheckCircle, ChevronDown, InfoCircle, Monitor01, Phone01, XClose } from "@untitledui/icons";
 import { useTheme } from "@/providers/theme-provider";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { Input } from "@/components/base/input/input";
@@ -94,8 +94,10 @@ export function SolicitacaoVagas() {
     const [vagas, setVagas] = useState("");
     const [segmento, setSegmento] = useState("Grupos Esportivos");
     const [nome, setNome] = useState("");
+    const [email, setEmail] = useState("");
     const [enviado, setEnviado] = useState(false);
-    const ok = vagas.trim() !== "" && nome.trim() !== "";
+    const emailValido = /@gmail\.com$/i.test(email.trim());
+    const ok = vagas.trim() !== "" && nome.trim() !== "" && emailValido;
 
     const seg = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear";
 
@@ -124,6 +126,14 @@ export function SolicitacaoVagas() {
 
                 {/* Campos */}
                 <div className="mt-5 space-y-4">
+                    <div>
+                        <Input label="E-mail" type="email" placeholder="seuemail@gmail.com" value={email} onChange={setEmail} />
+                        <div className="mt-1.5 flex items-center gap-1.5 text-warning-primary">
+                            <AlertTriangle className="size-4 shrink-0" />
+                            <span className="text-sm">É necessário usar um e-mail @gmail.com</span>
+                        </div>
+                    </div>
+
                     <Input label="Informe a quantidade de vagas" placeholder="Mínimo de 10" value={vagas} onChange={setVagas} />
 
                     <div>

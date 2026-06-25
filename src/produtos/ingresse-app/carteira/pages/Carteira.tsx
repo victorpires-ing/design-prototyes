@@ -35,6 +35,19 @@ const VEM_AI: GrupoMes[] = [
         ],
     },
     {
+        mes: "Julho 2026",
+        eventos: [
+            {
+                id: "samba-independente",
+                title: "SAMBA INDEPENDENTE DOS BONS COSTUMES",
+                date: "4 e 18 jul • 2026",
+                local: "Fundição Progresso • Rio de Janeiro/RJ",
+                qtd: 2,
+                gradient: "linear-gradient(135deg,#F59E0B 0%,#DB2777 55%,#7C3AED 100%)",
+            },
+        ],
+    },
+    {
         mes: "Dezembro 2026",
         eventos: [
             {
@@ -114,7 +127,7 @@ export function Carteira() {
                                             </div>
                                         )}
                                         <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                            <p className="text-sm font-bold text-primary">{evento.title}</p>
+                                            <p className="truncate text-sm font-bold text-primary">{evento.title}</p>
                                             <p className="text-sm font-medium text-secondary">{evento.date}</p>
                                             <p className="text-sm text-tertiary">{evento.local}</p>
                                             <p className="text-sm text-tertiary">

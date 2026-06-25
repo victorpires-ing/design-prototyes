@@ -15,6 +15,8 @@ export interface ItemIngresso {
     acesso?: "qr" | "facial";
     /** Estado do cadastro facial (apenas quando acesso === "facial"). Default: "pendente". */
     facial?: "pendente" | "cadastrada";
+    /** Comportamento do QR: "oculto" (libera no dia) ou "dinamico" (atualiza a cada X seg). Default: QR fixo. */
+    qrModo?: "oculto" | "dinamico";
     /** Marca o item como produto/merchandising (em vez de ingresso). */
     produto?: boolean;
     /** Degradê usado como imagem ilustrativa do produto. */
@@ -192,6 +194,18 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
                     { pergunta: "Tipo sanguíneo", resposta: "O+" },
                 ],
             },
+        ],
+    },
+    "samba-independente": {
+        id: "samba-independente",
+        title: "SAMBA INDEPENDENTE DOS BONS COSTUMES",
+        date: "4 e 18 Jul • 2026",
+        local: "Fundição Progresso • Rio de Janeiro/RJ",
+        gradient: "linear-gradient(135deg,#F59E0B 0%,#DB2777 55%,#7C3AED 100%)",
+        sessao: "4 e 18 de Jul • 2026",
+        ingressos: [
+            { id: "samba-04jul", title: "SAMBA INDEPENDENTE | 04 Jul", tipo: "Inteira", data: "Sáb, 4 jul • 22:00", portador: PORTADOR, cpf: CPF, qrModo: "oculto" },
+            { id: "samba-18jul", title: "SAMBA INDEPENDENTE | 18 Jul", tipo: "Inteira", data: "Sáb, 18 jul • 22:00", portador: PORTADOR, cpf: CPF, qrModo: "dinamico" },
         ],
     },
 };

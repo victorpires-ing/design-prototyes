@@ -94,6 +94,7 @@ function UploadField({ label, value, onChange, disabled }: { label: string; valu
                     {value || "Clique para enviar um arquivo"}
                 </span>
             </button>
+            <p className="mt-1.5 text-xs text-tertiary">Formatos: PDF, JPG ou PNG · até 10 MB.</p>
             <input ref={inputRef} type="file" className="hidden" onChange={(e) => onChange(e.target.files?.[0]?.name ?? "")} />
         </div>
     );

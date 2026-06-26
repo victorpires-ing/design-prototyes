@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
-import { CheckCircle, ChevronDown, ChevronLeft, ChevronRight, ClockFastForward, QrCode01, SearchLg, XClose } from "@untitledui/icons";
+import { CheckCircle, ChevronDown, ChevronLeft, ChevronRight, ClockFastForward, SearchLg, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { Bar, CartesianGrid, Cell, ComposedChart, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
@@ -41,22 +41,47 @@ const mkSetor = (id: string, nome: string, inteira: number, meia: number, rate: 
     ],
 });
 
+// Entrada por facial só nos 4 setores principais de arquibancada (turnstiles).
 const setores: AcessoNode[] = [
-    mkSetor("superior-leste", "Superior Leste", 3176, 2126, 0.88),
-    mkSetor("gramado-leste", "Gramado Leste", 3667, 1552, 0.86),
-    mkSetor("arquibancada-norte", "Arquibancada Norte", 1960, 980, 0.85),
-    mkSetor("adversario", "Adversário (Superior Visitante)", 1937, 980, 0.79),
-    mkSetor("gramado-oeste", "Gramado Oeste", 1501, 598, 0.84),
-    mkSetor("gramado-sul", "Gramado Sul", 1435, 620, 0.83),
-    mkSetor("superior-oeste", "Superior Oeste", 1008, 409, 0.82),
-    mkSetor("gold-premium-sul", "Gold Premium Sul", 777, 404, 0.9),
-    mkSetor("gold-leste", "Gold Leste", 784, 380, 0.87),
-    mkSetor("superior-norte", "Superior Norte", 835, 240, 0.85),
-    mkSetor("gold-norte", "Gold Norte", 590, 186, 0.84),
-    mkSetor("superior-sul", "Superior Sul", 425, 241, 0.8),
-    mkSetor("camarote", "Camarote", 230, 70, 0.95),
-    mkSetor("gold-oeste", "Gold Oeste", 10, 0, 0.7),
+    mkSetor("leste-superior", "Leste Superior", 2225, 3877, 0.9),
+    mkSetor("leste-inferior", "Leste Inferior", 700, 1491, 0.9),
+    mkSetor("oeste-inferior", "Oeste Inferior", 508, 1337, 0.88),
+    mkSetor("oeste-superior-b", "Oeste Superior B", 1051, 1683, 0.87),
 ];
+
+// Histórico real de validação (check-ins) no dia do jogo, em faixas de 15 min.
+// Pico às 16:30 (jogo às 16h); total de 23.181 validações.
+const CHECKINS_FAIXAS: { hora: string; checkins: number }[] = [
+    { hora: "12:00", checkins: 1 },
+    { hora: "12:15", checkins: 3 },
+    { hora: "12:30", checkins: 5 },
+    { hora: "12:45", checkins: 5 },
+    { hora: "13:00", checkins: 8 },
+    { hora: "13:15", checkins: 13 },
+    { hora: "13:30", checkins: 9 },
+    { hora: "13:45", checkins: 16 },
+    { hora: "14:00", checkins: 5 },
+    { hora: "14:15", checkins: 3 },
+    { hora: "14:30", checkins: 3 },
+    { hora: "14:45", checkins: 0 },
+    { hora: "15:00", checkins: 456 },
+    { hora: "15:15", checkins: 448 },
+    { hora: "15:30", checkins: 936 },
+    { hora: "15:45", checkins: 1782 },
+    { hora: "16:00", checkins: 2940 },
+    { hora: "16:15", checkins: 4146 },
+    { hora: "16:30", checkins: 4833 },
+    { hora: "16:45", checkins: 4176 },
+    { hora: "17:00", checkins: 2186 },
+    { hora: "17:15", checkins: 959 },
+    { hora: "17:30", checkins: 165 },
+    { hora: "17:45", checkins: 59 },
+    { hora: "18:00", checkins: 24 },
+];
+
+// Totais reais do jogo (apenas os 4 setores com entrada por facial).
+const TOTAL_VALIDADOS = CHECKINS_FAIXAS.reduce((s, f) => s + f.checkins, 0); // 23.181
+const TOTAL_VENDIDOS = 23909; // ingressos vendidos nos setores Leste/Oeste (Sup/Inf)
 
 const sumVendidos = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumVendidos(c), 0) : node.vendidos ?? 0);
 const sumValidados = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumValidados(c), 0) : node.validados ?? 0);
@@ -96,14 +121,10 @@ interface PortadorAcesso {
 }
 
 const CANAIS = ["Online", "Offline"];
-const GRUPOS = [
-    "Superior Leste", "Gramado Leste", "Arquibancada Norte", "Adversário (Superior Visitante)",
-    "Gramado Oeste", "Gramado Sul", "Superior Oeste", "Gold Premium Sul",
-    "Gold Leste", "Superior Norte", "Gold Norte", "Superior Sul", "Camarote",
-];
-const TIPOS = ["Inteira", "Meia-Entrada", "Acompanhante", "Diamante", "Ouro", "Infantil"];
+const GRUPOS = ["Leste Superior", "Leste Inferior", "Oeste Inferior", "Oeste Superior B"];
+const TIPOS = ["Meia-Entrada", "Inteira", "Alvinegro", "Glorioso", "Preto", "Branco", "Cortesia"];
 const PORTOES = ["Portão A", "Portão B", "Portão C", "Portão D", "Portão E"];
-const OPERADORES = ["Giovanna Batista", "Josué da Fonseca Lima", "Bilheteria Arena do Grêmio", "Loja Oficial Grêmio - Arena"];
+const OPERADORES = ["Giovanna Batista", "Josué da Fonseca Lima", "Bilheteria Estádio Nilton Santos", "Loja Oficial Botafogo - Nilton Santos"];
 
 const NOMES = [
     "João Barbosa", "Mariana Lopes", "Gabriel Souza", "Rafael Silva", "Camila Rodrigues",
@@ -135,7 +156,7 @@ const portadores: PortadorAcesso[] = Array.from({ length: 247 }, (_, idx) => {
         emailComprador: email,
         idTransacao: `TRX-${840192 - idx}`,
         idIngresso: `ING-${pad(451 + idx, 4)}`,
-        qrCode: `QR-${pad((idx * 48271) % 100000000, 8)}`,
+        qrCode: pad((idx * 48271) % 100000000, 8),
         sessao: sessao.descricao,
         canal: pick(CANAIS, idx + (idx % 3)),
         grupo: pick(GRUPOS, idx * 3 + (idx % 6)),
@@ -222,30 +243,11 @@ const AcessoBody = () => {
         });
     }, [sessao, filters]);
 
-    const totals = useMemo(() => {
-        const validados = filteredPortadores.filter((p) => p.status === "validado").length;
-        const total = filteredPortadores.length;
-        return { validados, pendentes: total - validados, total };
-    }, [filteredPortadores]);
+    // Totais reais do histórico de validação (23.181 validados de 23.909 vendidos).
+    const totals = useMemo(() => ({ validados: TOTAL_VALIDADOS, pendentes: TOTAL_VENDIDOS - TOTAL_VALIDADOS, total: TOTAL_VENDIDOS }), []);
 
-    // Check-ins por faixa de 15 min, derivados das entradas validadas filtradas.
-    const faixas = useMemo(() => {
-        const buckets = new Map<string, number>();
-        for (const p of filteredPortadores) {
-            if (p.status !== "validado" || !p.horario) continue;
-            const [h, m] = p.horario.split(":").map(Number);
-            const key = `${pad(h, 2)}:${pad(Math.floor(m / 15) * 15, 2)}`;
-            buckets.set(key, (buckets.get(key) ?? 0) + 1);
-        }
-        const out: { hora: string; checkins: number }[] = [];
-        for (let h = 13; h <= 16; h++) {
-            for (let m = 0; m < 60; m += 15) {
-                const key = `${pad(h, 2)}:${pad(m, 2)}`;
-                out.push({ hora: key, checkins: buckets.get(key) ?? 0 });
-            }
-        }
-        return out.filter((f) => f.checkins > 0 || (f.hora >= "13:00" && f.hora <= "16:00"));
-    }, [filteredPortadores]);
+    // Check-ins por faixa de 15 min — histórico real de validação do jogo.
+    const faixas = CHECKINS_FAIXAS;
 
     // Árvore filtrada pelos grupos selecionados (se houver).
     const selectedGrupos = useMemo(() => {
@@ -570,7 +572,7 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                     size="sm"
                     icon={SearchLg}
                     aria-label="Buscar entradas"
-                    placeholder="Buscar por nome, CPF, QR Code, ID da transação ou ingresso"
+                    placeholder="Buscar por nome, CPF, Code, ID da transação ou ingresso"
                     value={search}
                     onChange={onSearch}
                     className="w-full max-w-[420px]"
@@ -582,7 +584,7 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                     <thead className="bg-secondary">
                         <tr className="border-b border-secondary text-left">
                             <th className="px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Portador" sortKey="portador" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell"><SortableHeader label="QR Code" sortKey="qrCode" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell"><SortableHeader label="Code" sortKey="qrCode" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary lg:table-cell"><SortableHeader label="Grupo" sortKey="grupo" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary xl:table-cell"><SortableHeader label="Tipo" sortKey="tipoIngresso" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary xl:table-cell"><SortableHeader label="Canal" sortKey="canal" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
@@ -624,8 +626,7 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                                         </div>
                                     </td>
                                     <td className="hidden px-4 py-3 md:table-cell">
-                                        <span className="inline-flex items-center gap-1.5 text-sm text-tertiary tabular-nums">
-                                            <QrCode01 aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
+                                        <span className="inline-flex items-center text-sm text-tertiary tabular-nums">
                                             {p.qrCode}
                                         </span>
                                     </td>
@@ -716,7 +717,7 @@ const AcessoDetailsSlideOut = ({ isOpen, row, onClose }: { isOpen: boolean; row:
                             <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
                                 <h3 className="text-md font-semibold text-primary">Ingresso</h3>
                                 <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="QR Code" value={row.qrCode} isMono />
+                                    <DetailRow label="Code" value={row.qrCode} isMono />
                                     <DetailRow label="ID do ingresso" value={row.idIngresso} isMono />
                                     <DetailRow label="ID da transação" value={row.idTransacao} isMono />
                                     <DetailRow label="Sessão" value={row.sessao} />

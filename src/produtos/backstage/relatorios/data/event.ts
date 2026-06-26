@@ -16,18 +16,19 @@ export interface Sessao {
 }
 
 export const EVENT = {
-    nome: "Grêmio x Santos - Campeonato Brasileiro",
+    nome: "Botafogo x Chapecoense - Copa do Brasil",
     locale: "pt-BR",
     currency: "BRL",
     /** Código exibido em alguns lugares como prefixo de moeda. */
     currencyLabel: "R$",
     timeZone: "America/Sao_Paulo",
     tzLabel: "Horário de Brasília (GMT-3)",
-    /** Janela de vendas (dd/mm/aaaa). Jogo único — partida em 13/06/2026. */
-    salesStart: "01/02/2026",
-    salesEnd: "13/06/2026",
+    /** Janela de vendas (dd/mm/aaaa). Futebol: vendas abrem 7 dias antes do jogo.
+     *  Abertura 14/06/2026; partida 21/06/2026. */
+    salesStart: "14/06/2026",
+    salesEnd: "21/06/2026",
     sessoes: [
-        { id: "s-13-06", label: "13/06", descricao: "Sábado · 13/06 · 16h00", data: "13/06/2026" },
+        { id: "s-21-06", label: "21/06", descricao: "Domingo · 21/06 · 16h00", data: "21/06/2026" },
     ] as Sessao[],
 } as const;
 

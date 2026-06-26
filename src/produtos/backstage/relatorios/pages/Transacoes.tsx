@@ -138,23 +138,18 @@ interface Transacao {
     bundleDinamico: boolean;
 }
 
-// Setores e tipos de ingresso do jogo (Grêmio x Santos). Nome do ingresso = lote = tipo.
+// Setores e tipos de ingresso do jogo (Botafogo x Chapecoense). Nome do ingresso = lote = tipo.
 const t = (nome: string, valor: number) => ({ nome, valor, lote: nome });
 const CATALOGO = [
-    { setor: "Superior Leste", peso: 0.195, tipos: [t("Inteira", 80), t("Meia-Entrada", 40), t("Diamante", 200)] },
-    { setor: "Gramado Leste", peso: 0.192, tipos: [t("Inteira", 150), t("Meia-Entrada", 75), t("Ouro", 300)] },
-    { setor: "Arquibancada Norte", peso: 0.108, tipos: [t("Inteira", 100), t("Meia-Entrada", 50)] },
-    { setor: "Adversário (Superior Visitante)", peso: 0.108, tipos: [t("Inteira", 130), t("Meia-Entrada", 65)] },
-    { setor: "Gramado Oeste", peso: 0.077, tipos: [t("Inteira", 150), t("Meia-Entrada", 75), t("Diamante", 300)] },
-    { setor: "Gramado Sul", peso: 0.076, tipos: [t("Inteira", 150), t("Meia-Entrada", 75)] },
-    { setor: "Superior Oeste", peso: 0.052, tipos: [t("Inteira", 80), t("Meia-Entrada", 40), t("Acompanhante", 80)] },
-    { setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", peso: 0.044, tipos: [t("Inteira", 220), t("Meia-Entrada", 110)] },
-    { setor: "Gold Leste", peso: 0.043, tipos: [t("Inteira", 180), t("Meia-Entrada", 90)] },
-    { setor: "Superior Norte", peso: 0.04, tipos: [t("Inteira", 80), t("Meia-Entrada", 40)] },
-    { setor: "Gold Norte", peso: 0.029, tipos: [t("Inteira", 220), t("Meia-Entrada", 110)] },
-    { setor: "Superior Sul", peso: 0.025, tipos: [t("Inteira", 80), t("Meia-Entrada", 40)] },
-    { setor: "Camarote", peso: 0.011, tipos: [t("Inteira", 400)] },
-    { setor: "Gold Oeste", peso: 0.004, tipos: [t("Lote único", 250)] },
+    { setor: "Leste Superior", peso: 0.382, tipos: [t("Meia-Entrada", 20), t("Inteira", 40), t("Alvinegro", 0)] },
+    { setor: "Oeste Inferior", peso: 0.212, tipos: [t("Meia-Entrada", 50), t("Inteira", 100), t("Acompanhante Glorioso", 40)] },
+    { setor: "Leste Inferior", peso: 0.19, tipos: [t("Meia-Entrada", 40), t("Inteira", 80), t("Alvinegro", 0)] },
+    { setor: "Oeste Superior B", peso: 0.128, tipos: [t("Meia-Entrada", 30), t("Inteira", 60), t("Preto", 24)] },
+    { setor: "3º Andar Leste", peso: 0.062, tipos: [t("Meia-Entrada", 20), t("Inteira", 40)] },
+    { setor: "3º Andar Oeste", peso: 0.013, tipos: [t("Inteira", 40), t("Alvinegro", 0)] },
+    { setor: "Camarote", peso: 0.006, tipos: [t("Inteira", 60)] },
+    { setor: "Sul (Visitante)", peso: 0.004, tipos: [t("Meia-Entrada", 40), t("Inteira", 80)] },
+    { setor: "Tribuna", peso: 0.003, tipos: [t("Futebol", 120)] },
 ];
 
 const PRIMEIROS = ["Adriano", "Mariana", "Pedro", "Camila", "Roberto", "Larissa", "Vinicius", "Davi", "Beatriz", "Gustavo", "Fernanda", "Rafael", "Juliana", "Bruno", "Aline", "Thiago", "Patrícia", "Lucas", "Carolina", "Felipe"];
@@ -168,11 +163,11 @@ const LOCAIS = [
     { estado: "PR", cidade: "Curitiba", ddd: "41" },
     { estado: "RS", cidade: "Porto Alegre", ddd: "51" },
 ];
-const OPERADORES = ["Bilheteria Arena do Grêmio", "Loja Oficial Grêmio - Arena", "Loja Oficial Grêmio - Shopping Iguatemi"];
+const OPERADORES = ["Bilheteria Estádio Nilton Santos", "Loja Oficial Botafogo - Nilton Santos", "Loja Oficial Botafogo - Shopping Rio Sul"];
 const CUPONS = [
-    { cupom: "TRICOLOR15", pct: 0.15 },
-    { cupom: "SOCIO10", pct: 0.1 },
-    { cupom: "IMORTAL10", pct: 0.1 },
+    { cupom: "FOGAO15", pct: 0.15 },
+    { cupom: "GLORIOSO10", pct: 0.1 },
+    { cupom: "ALVINEGRO10", pct: 0.1 },
 ];
 // Meios de pagamento (online) com pesos aproximados do relatório real.
 const MEIOS_PAGAMENTO: { nome: string; peso: number; isento?: boolean }[] = [

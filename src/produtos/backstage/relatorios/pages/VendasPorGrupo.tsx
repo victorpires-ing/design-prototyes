@@ -85,157 +85,143 @@ interface CupomRow {
 
 /* ------------------------------------------------------------------ */
 /*  Quantidade de ingresso por setor — espelha o relatório real de      */
-/*  futebol (Grêmio x Santos). Cada linha = tipo de ingresso × setor.   */
-/*  "Estoque" é a capacidade do pool compartilhado do setor (repetida    */
-/*  por linha, como no relatório); Meia-Entrada tem sub-limite próprio.  */
-/*  Nenhum item tem combo → itemCombo sempre "-".                        */
+/*  futebol (Botafogo x Chapecoense - Copa do Brasil). Cada linha =      */
+/*  tipo de ingresso × setor. "Estoque" por linha é como no relatório    */
+/*  (pool compartilhado repetido, ou sub-limite p/ Meia/Gratuidade).     */
+/*  A capacidade do setor (p/ ocupação) está em SETOR_CAP. Nenhum item   */
+/*  tem combo → itemCombo sempre "-".                                    */
 /*                                                                       */
-/*  Setores sem print de tabela (Gold Leste, Camarote, Arquibancada     */
-/*  Norte, Adversário) e linhas ocultas por scroll (Gramado Sul, Gold    */
-/*  Norte) foram simulados p/ casar com o gráfico de ocupação e o total  */
-/*  geral de 27.121 itens.                                               */
+/*  Linhas ocultas por scroll (Leste Inferior) e setores sem print de    */
+/*  tabela (Camarote, 3º Andar Oeste/Leste) foram simulados p/ casar     */
+/*  com o gráfico de ocupação e o total geral de 26.183 itens.           */
 /* ------------------------------------------------------------------ */
 
+// Capacidade física de cada setor (denominador da ocupação).
+const SETOR_CAP: Record<string, number> = {
+    "Tribuna": 126,
+    "Sul (Visitante)": 2000,
+    "Oeste Superior B": 4300,
+    "Oeste Inferior": 6659,
+    "Leste Superior": 11005,
+    "Leste Inferior": 5189,
+    "Camarote": 400,
+    "3º Andar Oeste": 3000,
+    "3º Andar Leste": 3000,
+};
+
 const ingressosPorSetor: IngressoPorSetorRow[] = [
-    // Superior Sul
-    { id: "ips1", setor: "Superior Sul", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 289, estoque: 2003 },
-    { id: "ips2", setor: "Superior Sul", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 241, estoque: 901 },
-    { id: "ips3", setor: "Superior Sul", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 68, estoque: 2003 },
-    { id: "ips4", setor: "Superior Sul", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 8, estoque: 2003 },
-    { id: "ips5", setor: "Superior Sul", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 23, estoque: 2003 },
-    { id: "ips6", setor: "Superior Sul", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 23, estoque: 2003 },
-    { id: "ips7", setor: "Superior Sul", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 3, estoque: 2003 },
-    { id: "ips8", setor: "Superior Sul", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 9, estoque: 2003 },
-    { id: "ips9", setor: "Superior Sul", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 2, estoque: 2003 },
-    // Superior Oeste
-    { id: "ips10", setor: "Superior Oeste", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 284, estoque: 2585 },
-    { id: "ips11", setor: "Superior Oeste", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 409, estoque: 1163 },
-    { id: "ips12", setor: "Superior Oeste", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 520, estoque: 2585 },
-    { id: "ips13", setor: "Superior Oeste", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 56, estoque: 2585 },
-    { id: "ips14", setor: "Superior Oeste", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 81, estoque: 2585 },
-    { id: "ips15", setor: "Superior Oeste", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 9, estoque: 2585 },
-    { id: "ips16", setor: "Superior Oeste", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 12, estoque: 2585 },
-    { id: "ips17", setor: "Superior Oeste", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 14, estoque: 2585 },
-    { id: "ips18", setor: "Superior Oeste", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 30, estoque: 2585 },
-    { id: "ips19", setor: "Superior Oeste", tipoIngresso: "Acompanhante..", lote: "ac", itemCombo: "-", vendidos: 1, estoque: 10 },
-    { id: "ips20", setor: "Superior Oeste", tipoIngresso: "Acompanhante.", lote: "Acompanhante.", itemCombo: "-", vendidos: 1, estoque: 2585 },
-    // Superior Norte
-    { id: "ips21", setor: "Superior Norte", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 437, estoque: 1089 },
-    { id: "ips22", setor: "Superior Norte", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 17, estoque: 1089 },
-    { id: "ips23", setor: "Superior Norte", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 240, estoque: 490 },
-    { id: "ips24", setor: "Superior Norte", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 205, estoque: 1089 },
-    { id: "ips25", setor: "Superior Norte", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 30, estoque: 1089 },
-    { id: "ips26", setor: "Superior Norte", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 61, estoque: 1089 },
-    { id: "ips27", setor: "Superior Norte", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 49, estoque: 1089 },
-    { id: "ips28", setor: "Superior Norte", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 30, estoque: 1089 },
-    { id: "ips29", setor: "Superior Norte", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 6, estoque: 1089 },
-    // Superior Leste
-    { id: "ips30", setor: "Superior Leste", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 2126, estoque: 5303 },
-    { id: "ips31", setor: "Superior Leste", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 2014, estoque: 2386 },
-    { id: "ips32", setor: "Superior Leste", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 318, estoque: 5303 },
-    { id: "ips33", setor: "Superior Leste", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 181, estoque: 5303 },
-    { id: "ips34", setor: "Superior Leste", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 385, estoque: 5303 },
-    { id: "ips35", setor: "Superior Leste", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 60, estoque: 5303 },
-    { id: "ips36", setor: "Superior Leste", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 153, estoque: 5303 },
-    { id: "ips37", setor: "Superior Leste", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 32, estoque: 5303 },
-    { id: "ips38", setor: "Superior Leste", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 33, estoque: 5303 },
-    // Gramado Sul (linhas do meio simuladas — ocultas por scroll no print)
-    { id: "ips39", setor: "Gramado Sul", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 5, estoque: 50 },
-    { id: "ips40", setor: "Gramado Sul", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 108, estoque: 2955 },
-    { id: "ips41", setor: "Gramado Sul", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 771, estoque: 2955 },
-    { id: "ips42", setor: "Gramado Sul", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 620, estoque: 1300 },
-    { id: "ips43", setor: "Gramado Sul", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 280, estoque: 2955 },
-    { id: "ips44", setor: "Gramado Sul", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 95, estoque: 2955 },
-    { id: "ips45", setor: "Gramado Sul", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 70, estoque: 2955 },
-    { id: "ips46", setor: "Gramado Sul", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 60, estoque: 2955 },
-    { id: "ips47", setor: "Gramado Sul", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 25, estoque: 2955 },
-    { id: "ips48", setor: "Gramado Sul", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 20, estoque: 2955 },
-    { id: "ips49", setor: "Gramado Sul", tipoIngresso: "PCR", lote: "PCR", itemCombo: "-", vendidos: 1, estoque: 12 },
-    // Gramado Oeste
-    { id: "ips50", setor: "Gramado Oeste", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 598, estoque: 1172 },
-    { id: "ips51", setor: "Gramado Oeste", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 339, estoque: 2605 },
-    { id: "ips52", setor: "Gramado Oeste", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 157, estoque: 2605 },
-    { id: "ips53", setor: "Gramado Oeste", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 605, estoque: 2605 },
-    { id: "ips54", setor: "Gramado Oeste", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 81, estoque: 2605 },
-    { id: "ips55", setor: "Gramado Oeste", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 138, estoque: 2605 },
-    { id: "ips56", setor: "Gramado Oeste", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 92, estoque: 2605 },
-    { id: "ips57", setor: "Gramado Oeste", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 28, estoque: 2605 },
-    { id: "ips58", setor: "Gramado Oeste", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 51, estoque: 2605 },
-    { id: "ips59", setor: "Gramado Oeste", tipoIngresso: "Acompanhante.", lote: "Acompanhante.", itemCombo: "-", vendidos: 9, estoque: 2605 },
-    { id: "ips60", setor: "Gramado Oeste", tipoIngresso: "Acompanhante..", lote: "Inteira", itemCombo: "-", vendidos: 1, estoque: 1 },
-    // Gramado Leste
-    { id: "ips61", setor: "Gramado Leste", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 172, estoque: 5319 },
-    { id: "ips62", setor: "Gramado Leste", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 1552, estoque: 2131 },
-    { id: "ips63", setor: "Gramado Leste", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 2401, estoque: 5319 },
-    { id: "ips64", setor: "Gramado Leste", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 177, estoque: 5319 },
-    { id: "ips65", setor: "Gramado Leste", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 251, estoque: 5319 },
-    { id: "ips66", setor: "Gramado Leste", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 273, estoque: 5319 },
-    { id: "ips67", setor: "Gramado Leste", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 183, estoque: 5319 },
-    { id: "ips68", setor: "Gramado Leste", tipoIngresso: "Acompanhante Ouro", lote: "Acompanhante Ouro", itemCombo: "-", vendidos: 163, estoque: 5319 },
-    { id: "ips69", setor: "Gramado Leste", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 43, estoque: 5319 },
-    { id: "ips70", setor: "Gramado Leste", tipoIngresso: "PCR", lote: "PCR", itemCombo: "-", vendidos: 3, estoque: 24 },
-    { id: "ips71", setor: "Gramado Leste", tipoIngresso: "Acompanhante.", lote: "Acompanhante.", itemCombo: "-", vendidos: 1, estoque: 5319 },
-    // Gold Premium Sul – Bebidas não alcoólicas e comida à vontade
-    { id: "ips72", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 321, estoque: 1559 },
-    { id: "ips73", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 404, estoque: 702 },
-    { id: "ips74", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 78, estoque: 1559 },
-    { id: "ips75", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Inteira.", lote: "Inteira.", itemCombo: "-", vendidos: 271, estoque: 276 },
-    { id: "ips76", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 66, estoque: 1559 },
-    { id: "ips77", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 27, estoque: 1559 },
-    { id: "ips78", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 12, estoque: 1559 },
-    { id: "ips79", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "PMR", lote: "PMR", itemCombo: "-", vendidos: 1, estoque: 16 },
-    { id: "ips80", setor: "Gold Premium Sul – Bebidas não alcoólicas e comida à vontade", tipoIngresso: "PNE", lote: "PNE", itemCombo: "-", vendidos: 1, estoque: 77 },
-    // Gold Oeste (blocos numerados, lote único)
-    { id: "ips81", setor: "Gold Oeste", tipoIngresso: "Bloco - A08", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
-    { id: "ips82", setor: "Gold Oeste", tipoIngresso: "Bloco - A09", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
-    { id: "ips83", setor: "Gold Oeste", tipoIngresso: "Bloco - A10", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
-    { id: "ips84", setor: "Gold Oeste", tipoIngresso: "Bloco - A11", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
-    { id: "ips85", setor: "Gold Oeste", tipoIngresso: "Bloco - B07", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
-    { id: "ips86", setor: "Gold Oeste", tipoIngresso: "Bloco - B08", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
-    { id: "ips87", setor: "Gold Oeste", tipoIngresso: "Bloco - B09", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
-    { id: "ips88", setor: "Gold Oeste", tipoIngresso: "Bloco - B10", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
-    { id: "ips89", setor: "Gold Oeste", tipoIngresso: "Bloco - B11", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
-    { id: "ips90", setor: "Gold Oeste", tipoIngresso: "Bloco - B12", lote: "Lote único", itemCombo: "-", vendidos: 1, estoque: 50 },
-    // Gold Norte (Meia-Entrada do print; demais tipos simulados)
-    { id: "ips91", setor: "Gold Norte", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 186, estoque: 776 },
-    { id: "ips92", setor: "Gold Norte", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 380, estoque: 1940 },
-    { id: "ips93", setor: "Gold Norte", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 90, estoque: 1940 },
-    { id: "ips94", setor: "Gold Norte", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 45, estoque: 1940 },
-    { id: "ips95", setor: "Gold Norte", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 35, estoque: 1940 },
-    { id: "ips96", setor: "Gold Norte", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 20, estoque: 1940 },
-    { id: "ips97", setor: "Gold Norte", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 8, estoque: 1940 },
-    { id: "ips98", setor: "Gold Norte", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 12, estoque: 1940 },
-    // Gold Leste (sem print de tabela — simulado p/ ocupação ~97%)
-    { id: "ips99", setor: "Gold Leste", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 560, estoque: 1200 },
-    { id: "ips100", setor: "Gold Leste", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 380, estoque: 480 },
-    { id: "ips101", setor: "Gold Leste", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 95, estoque: 1200 },
-    { id: "ips102", setor: "Gold Leste", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 55, estoque: 1200 },
-    { id: "ips103", setor: "Gold Leste", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 40, estoque: 1200 },
-    { id: "ips104", setor: "Gold Leste", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 22, estoque: 1200 },
-    { id: "ips105", setor: "Gold Leste", tipoIngresso: "Acompanhante Diamante", lote: "Acompanhante Diamante", itemCombo: "-", vendidos: 12, estoque: 1200 },
-    // Camarote (sem print de tabela — simulado p/ ocupação ~100%)
-    { id: "ips106", setor: "Camarote", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 210, estoque: 300 },
-    { id: "ips107", setor: "Camarote", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 70, estoque: 120 },
-    { id: "ips108", setor: "Camarote", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 20, estoque: 300 },
-    // Arquibancada Norte (sem print de tabela — simulado p/ ocupação ~98%)
-    { id: "ips109", setor: "Arquibancada Norte", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 1480, estoque: 3000 },
-    { id: "ips110", setor: "Arquibancada Norte", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 980, estoque: 1200 },
-    { id: "ips111", setor: "Arquibancada Norte", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 240, estoque: 3000 },
-    { id: "ips112", setor: "Arquibancada Norte", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 120, estoque: 3000 },
-    { id: "ips113", setor: "Arquibancada Norte", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 75, estoque: 3000 },
-    { id: "ips114", setor: "Arquibancada Norte", tipoIngresso: "Ouro", lote: "Ouro", itemCombo: "-", vendidos: 30, estoque: 3000 },
-    { id: "ips115", setor: "Arquibancada Norte", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 15, estoque: 3000 },
-    // Adversário (Superior Visitante) (sem print de tabela — simulado p/ ocupação ~25%)
-    { id: "ips116", setor: "Adversário (Superior Visitante)", tipoIngresso: "Inteira", lote: "Inteira", itemCombo: "-", vendidos: 1688, estoque: 11668 },
-    { id: "ips117", setor: "Adversário (Superior Visitante)", tipoIngresso: "Meia-Entrada", lote: "Meia-Entrada", itemCombo: "-", vendidos: 980, estoque: 5246 },
-    { id: "ips118", setor: "Adversário (Superior Visitante)", tipoIngresso: "Acompanhante", lote: "Acompanhante", itemCombo: "-", vendidos: 140, estoque: 11668 },
-    { id: "ips119", setor: "Adversário (Superior Visitante)", tipoIngresso: "Infantil", lote: "Infantil", itemCombo: "-", vendidos: 65, estoque: 11668 },
-    { id: "ips120", setor: "Adversário (Superior Visitante)", tipoIngresso: "Diamante", lote: "Diamante", itemCombo: "-", vendidos: 30, estoque: 11668 },
-    { id: "ips121", setor: "Adversário (Superior Visitante)", tipoIngresso: "Juvenil", lote: "Juvenil", itemCombo: "-", vendidos: 14, estoque: 11668 },
+    // Tribuna
+    { id: "ips1", setor: "Tribuna", tipoIngresso: "Família Jogadores", lote: "Cortesia", itemCombo: "-", vendidos: 54, estoque: 72 },
+    { id: "ips2", setor: "Tribuna", tipoIngresso: "Futebol", lote: "Lote único", itemCombo: "-", vendidos: 10, estoque: 40 },
+    { id: "ips3", setor: "Tribuna", tipoIngresso: "Estádio", lote: "Cortesia", itemCombo: "-", vendidos: 4, estoque: 10 },
+    { id: "ips4", setor: "Tribuna", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 1, estoque: 4 },
+    // Sul (Visitante)
+    { id: "ips5", setor: "Sul (Visitante)", tipoIngresso: "Gratuidade - PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 8, estoque: 20 },
+    { id: "ips6", setor: "Sul (Visitante)", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 37, estoque: 40 },
+    { id: "ips7", setor: "Sul (Visitante)", tipoIngresso: "Acompanhante PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 2, estoque: 15 },
+    { id: "ips8", setor: "Sul (Visitante)", tipoIngresso: "Reciprocidade", lote: "Cortesia", itemCombo: "-", vendidos: 35, estoque: 130 },
+    { id: "ips9", setor: "Sul (Visitante)", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 6, estoque: 700 },
+    { id: "ips10", setor: "Sul (Visitante)", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 7, estoque: 2000 },
+    // Oeste Superior B
+    { id: "ips11", setor: "Oeste Superior B", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 1683, estoque: 1714 },
+    { id: "ips12", setor: "Oeste Superior B", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 1051, estoque: 4300 },
+    { id: "ips13", setor: "Oeste Superior B", tipoIngresso: "Acompanhante Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 61, estoque: 4300 },
+    { id: "ips14", setor: "Oeste Superior B", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 245, estoque: 300 },
+    { id: "ips15", setor: "Oeste Superior B", tipoIngresso: "Branco", lote: "Sócio torcedor", itemCombo: "-", vendidos: 71, estoque: 4300 },
+    { id: "ips16", setor: "Oeste Superior B", tipoIngresso: "Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 44, estoque: 4300 },
+    { id: "ips17", setor: "Oeste Superior B", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 40, estoque: 100 },
+    { id: "ips18", setor: "Oeste Superior B", tipoIngresso: "Alvinegro OFF Rio", lote: "Sócio torcedor", itemCombo: "-", vendidos: 11, estoque: 4300 },
+    { id: "ips19", setor: "Oeste Superior B", tipoIngresso: "Preto", lote: "Sócio torcedor", itemCombo: "-", vendidos: 65, estoque: 4300 },
+    { id: "ips20", setor: "Oeste Superior B", tipoIngresso: "Alvinegro", lote: "Sócio torcedor", itemCombo: "-", vendidos: 93, estoque: 4300 },
+    // Oeste Inferior
+    { id: "ips21", setor: "Oeste Inferior", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 1337, estoque: 2406 },
+    { id: "ips22", setor: "Oeste Inferior", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 508, estoque: 6659 },
+    { id: "ips23", setor: "Oeste Inferior", tipoIngresso: "Alvinegro", lote: "Sócio torcedor", itemCombo: "-", vendidos: 1163, estoque: 6659 },
+    { id: "ips24", setor: "Oeste Inferior", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 410, estoque: 410 },
+    { id: "ips25", setor: "Oeste Inferior", tipoIngresso: "Preto", lote: "Sócio torcedor", itemCombo: "-", vendidos: 314, estoque: 6659 },
+    { id: "ips26", setor: "Oeste Inferior", tipoIngresso: "Acompanhante Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 351, estoque: 6659 },
+    { id: "ips27", setor: "Oeste Inferior", tipoIngresso: "Familia Jogadores", lote: "Cortesia", itemCombo: "-", vendidos: 139, estoque: 240 },
+    { id: "ips28", setor: "Oeste Inferior", tipoIngresso: "Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 502, estoque: 6659 },
+    { id: "ips29", setor: "Oeste Inferior", tipoIngresso: "Acompanhante PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 20, estoque: 20 },
+    { id: "ips30", setor: "Oeste Inferior", tipoIngresso: "Funcionário Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 30, estoque: 6659 },
+    { id: "ips31", setor: "Oeste Inferior", tipoIngresso: "Branco", lote: "Sócio torcedor", itemCombo: "-", vendidos: 262, estoque: 6659 },
+    { id: "ips32", setor: "Oeste Inferior", tipoIngresso: "FERJ", lote: "Cortesia", itemCombo: "-", vendidos: 14, estoque: 50 },
+    { id: "ips33", setor: "Oeste Inferior", tipoIngresso: "Gratuidade - PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 40, estoque: 40 },
+    { id: "ips34", setor: "Oeste Inferior", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 80, estoque: 80 },
+    { id: "ips35", setor: "Oeste Inferior", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 59, estoque: 158 },
+    { id: "ips36", setor: "Oeste Inferior", tipoIngresso: "Sócio Proprietário", lote: "Cortesia", itemCombo: "-", vendidos: 115, estoque: 150 },
+    { id: "ips37", setor: "Oeste Inferior", tipoIngresso: "Relacionamento", lote: "Cortesia", itemCombo: "-", vendidos: 78, estoque: 134 },
+    { id: "ips38", setor: "Oeste Inferior", tipoIngresso: "BEPE", lote: "Cortesia", itemCombo: "-", vendidos: 21, estoque: 30 },
+    { id: "ips39", setor: "Oeste Inferior", tipoIngresso: "Resgate OFF Rio", lote: "Cortesia", itemCombo: "-", vendidos: 9, estoque: 16 },
+    { id: "ips40", setor: "Oeste Inferior", tipoIngresso: "NIKE", lote: "Cortesia", itemCombo: "-", vendidos: 7, estoque: 26 },
+    { id: "ips41", setor: "Oeste Inferior", tipoIngresso: "CPE Estado Maior", lote: "Cortesia", itemCombo: "-", vendidos: 3, estoque: 5 },
+    { id: "ips42", setor: "Oeste Inferior", tipoIngresso: "Alvinegro OFF Rio", lote: "Sócio torcedor", itemCombo: "-", vendidos: 48, estoque: 6659 },
+    { id: "ips43", setor: "Oeste Inferior", tipoIngresso: "Aquecimento", lote: "Cortesia", itemCombo: "-", vendidos: 8, estoque: 17 },
+    { id: "ips44", setor: "Oeste Inferior", tipoIngresso: "Bombeiro (DDP)", lote: "Cortesia", itemCombo: "-", vendidos: 9, estoque: 10 },
+    { id: "ips45", setor: "Oeste Inferior", tipoIngresso: "Acompanhante Backstage Tour", lote: "Cortesia", itemCombo: "-", vendidos: 3, estoque: 7 },
+    { id: "ips46", setor: "Oeste Inferior", tipoIngresso: "3º BATALHÃO", lote: "Cortesia", itemCombo: "-", vendidos: 10, estoque: 10 },
+    { id: "ips47", setor: "Oeste Inferior", tipoIngresso: "Intervalo", lote: "Cortesia", itemCombo: "-", vendidos: 2, estoque: 5 },
+    { id: "ips48", setor: "Oeste Inferior", tipoIngresso: "24 DP", lote: "Cortesia", itemCombo: "-", vendidos: 3, estoque: 10 },
+    { id: "ips49", setor: "Oeste Inferior", tipoIngresso: "Backstage Tour", lote: "Cortesia", itemCombo: "-", vendidos: 3, estoque: 7 },
+    // Leste Superior
+    { id: "ips50", setor: "Leste Superior", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 3877, estoque: 4114 },
+    { id: "ips51", setor: "Leste Superior", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 2225, estoque: 11005 },
+    { id: "ips52", setor: "Leste Superior", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 285, estoque: 285 },
+    { id: "ips53", setor: "Leste Superior", tipoIngresso: "Acompanhante Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 423, estoque: 11005 },
+    { id: "ips54", setor: "Leste Superior", tipoIngresso: "Preto", lote: "Sócio torcedor", itemCombo: "-", vendidos: 441, estoque: 11005 },
+    { id: "ips55", setor: "Leste Superior", tipoIngresso: "Branco", lote: "Sócio torcedor", itemCombo: "-", vendidos: 364, estoque: 11005 },
+    { id: "ips56", setor: "Leste Superior", tipoIngresso: "Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 402, estoque: 11005 },
+    { id: "ips57", setor: "Leste Superior", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 714, estoque: 715 },
+    { id: "ips58", setor: "Leste Superior", tipoIngresso: "Alvinegro", lote: "Sócio torcedor", itemCombo: "-", vendidos: 1089, estoque: 11005 },
+    { id: "ips59", setor: "Leste Superior", tipoIngresso: "Alvinegro OFF Rio", lote: "Sócio torcedor", itemCombo: "-", vendidos: 110, estoque: 11005 },
+    { id: "ips60", setor: "Leste Superior", tipoIngresso: "Sócio Torcida", lote: "Sócio torcedor", itemCombo: "-", vendidos: 68, estoque: 11005 },
+    { id: "ips61", setor: "Leste Superior", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 7, estoque: 15 },
+    { id: "ips62", setor: "Leste Superior", tipoIngresso: "Bateria", lote: "Cortesia", itemCombo: "-", vendidos: 11, estoque: 15 },
+    // Leste Inferior (Meia/Gratuidade do print; demais linhas simuladas)
+    { id: "ips63", setor: "Leste Inferior", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 1491, estoque: 2329 },
+    { id: "ips64", setor: "Leste Inferior", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 355, estoque: 356 },
+    { id: "ips65", setor: "Leste Inferior", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 700, estoque: 5189 },
+    { id: "ips66", setor: "Leste Inferior", tipoIngresso: "Alvinegro", lote: "Sócio torcedor", itemCombo: "-", vendidos: 900, estoque: 5189 },
+    { id: "ips67", setor: "Leste Inferior", tipoIngresso: "Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 400, estoque: 5189 },
+    { id: "ips68", setor: "Leste Inferior", tipoIngresso: "Acompanhante Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 200, estoque: 5189 },
+    { id: "ips69", setor: "Leste Inferior", tipoIngresso: "Preto", lote: "Sócio torcedor", itemCombo: "-", vendidos: 150, estoque: 5189 },
+    { id: "ips70", setor: "Leste Inferior", tipoIngresso: "Branco", lote: "Sócio torcedor", itemCombo: "-", vendidos: 120, estoque: 5189 },
+    { id: "ips71", setor: "Leste Inferior", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 30, estoque: 60 },
+    { id: "ips72", setor: "Leste Inferior", tipoIngresso: "Relacionamento", lote: "Cortesia", itemCombo: "-", vendidos: 40, estoque: 80 },
+    { id: "ips73", setor: "Leste Inferior", tipoIngresso: "Sócio Proprietário", lote: "Cortesia", itemCombo: "-", vendidos: 45, estoque: 80 },
+    { id: "ips74", setor: "Leste Inferior", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 100, estoque: 100 },
+    { id: "ips75", setor: "Leste Inferior", tipoIngresso: "Gratuidade - PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 30, estoque: 30 },
+    { id: "ips76", setor: "Leste Inferior", tipoIngresso: "Acompanhante PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 15, estoque: 15 },
+    { id: "ips77", setor: "Leste Inferior", tipoIngresso: "Reciprocidade", lote: "Cortesia", itemCombo: "-", vendidos: 60, estoque: 130 },
+    { id: "ips78", setor: "Leste Inferior", tipoIngresso: "Familia Jogadores", lote: "Cortesia", itemCombo: "-", vendidos: 80, estoque: 120 },
+    { id: "ips79", setor: "Leste Inferior", tipoIngresso: "Alvinegro OFF Rio", lote: "Sócio torcedor", itemCombo: "-", vendidos: 65, estoque: 5189 },
+    { id: "ips80", setor: "Leste Inferior", tipoIngresso: "Funcionário Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 50, estoque: 5189 },
+    { id: "ips81", setor: "Leste Inferior", tipoIngresso: "Bateria", lote: "Cortesia", itemCombo: "-", vendidos: 15, estoque: 20 },
+    { id: "ips82", setor: "Leste Inferior", tipoIngresso: "Sócio Torcida", lote: "Sócio torcedor", itemCombo: "-", vendidos: 135, estoque: 5189 },
+    // Camarote (simulado — sem print de tabela)
+    { id: "ips83", setor: "Camarote", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 40, estoque: 400 },
+    { id: "ips84", setor: "Camarote", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 60, estoque: 80 },
+    { id: "ips85", setor: "Camarote", tipoIngresso: "Família Jogadores", lote: "Cortesia", itemCombo: "-", vendidos: 30, estoque: 60 },
+    { id: "ips86", setor: "Camarote", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 30, estoque: 60 },
+    // 3º Andar Oeste (simulado — sem print de tabela)
+    { id: "ips87", setor: "3º Andar Oeste", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 50, estoque: 3000 },
+    { id: "ips88", setor: "3º Andar Oeste", tipoIngresso: "Alvinegro", lote: "Sócio torcedor", itemCombo: "-", vendidos: 120, estoque: 3000 },
+    { id: "ips89", setor: "3º Andar Oeste", tipoIngresso: "Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 80, estoque: 3000 },
+    { id: "ips90", setor: "3º Andar Oeste", tipoIngresso: "Branco", lote: "Sócio torcedor", itemCombo: "-", vendidos: 30, estoque: 3000 },
+    { id: "ips91", setor: "3º Andar Oeste", tipoIngresso: "Preto", lote: "Sócio torcedor", itemCombo: "-", vendidos: 50, estoque: 3000 },
+    // 3º Andar Leste (simulado — sem print de tabela)
+    { id: "ips92", setor: "3º Andar Leste", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 175, estoque: 1500 },
+    { id: "ips93", setor: "3º Andar Leste", tipoIngresso: "Branco", lote: "Sócio torcedor", itemCombo: "-", vendidos: 40, estoque: 3000 },
+    { id: "ips94", setor: "3º Andar Leste", tipoIngresso: "Alvinegro OFF Rio", lote: "Sócio torcedor", itemCombo: "-", vendidos: 1, estoque: 3000 },
+    { id: "ips95", setor: "3º Andar Leste", tipoIngresso: "Alvinegro", lote: "Sócio torcedor", itemCombo: "-", vendidos: 800, estoque: 3000 },
+    { id: "ips96", setor: "3º Andar Leste", tipoIngresso: "Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 350, estoque: 3000 },
+    { id: "ips97", setor: "3º Andar Leste", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 150, estoque: 200 },
+    { id: "ips98", setor: "3º Andar Leste", tipoIngresso: "Família Jogadores", lote: "Cortesia", itemCombo: "-", vendidos: 50, estoque: 80 },
+    { id: "ips99", setor: "3º Andar Leste", tipoIngresso: "Reciprocidade", lote: "Cortesia", itemCombo: "-", vendidos: 54, estoque: 130 },
 ];
 
-/* Setores derivados das linhas acima: vendido = soma das linhas; estoque =
-   capacidade do pool (máximo entre as linhas, pois o estoque é compartilhado). */
+/* Setores derivados das linhas: vendido = soma das linhas; estoque = capacidade
+   física do setor (SETOR_CAP), pois o estoque por linha é pool compartilhado. */
 const setores: SetorRow[] = (() => {
     const slug = (s: string) =>
         s
@@ -249,12 +235,12 @@ const setores: SetorRow[] = (() => {
     for (const r of ingressosPorSetor) {
         let s = map.get(r.setor);
         if (!s) {
-            s = { id: slug(r.setor), nome: r.setor, estoque: 0, vendido: 0, ingressos: [] };
+            s = { id: slug(r.setor), nome: r.setor, estoque: SETOR_CAP[r.setor] ?? 0, vendido: 0, ingressos: [] };
             map.set(r.setor, s);
             order.push(r.setor);
         }
         s.vendido += r.vendidos;
-        s.estoque = Math.max(s.estoque, r.estoque);
+        if (!(r.setor in SETOR_CAP)) s.estoque = Math.max(s.estoque, r.estoque);
         s.ingressos!.push({ id: r.id, nome: r.tipoIngresso, estoque: r.estoque, vendido: r.vendidos });
     }
     return order.map((n) => map.get(n)!);
@@ -342,11 +328,11 @@ interface MixReceitaItem {
 
 // Futebol vende apenas ingressos avulsos (sem combos nem produtos).
 const mixReceita: MixReceitaItem[] = [
-    { id: "ingressos", nome: "Ingresso Avulso", quantidade: 27121, gmv: 1634183.0, gmvComDesconto: 1634183.0, fill: "var(--color-utility-brand-700)" },
+    { id: "ingressos", nome: "Ingresso Avulso", quantidade: 26183, gmv: 598273.0, gmvComDesconto: 598273.0, fill: "var(--color-utility-brand-700)" },
 ];
 
-const VALOR_TOTAL_BASE = 1634183.0;
-const TOTAL_ITENS_BASE = 27121;
+const VALOR_TOTAL_BASE = 598273.0;
+const TOTAL_ITENS_BASE = 26183;
 
 /* ------------------------------------------------------------------ */
 /*  Drill-down tree (Data = sessão → Tipo → Setor → Ingresso → Lote)  */
@@ -370,11 +356,12 @@ const buildDrillTree = (): TreeNode[] => {
     ];
     const ingressosPorSetorNodes = (setorValue: number, setorId: string): TreeNode[] => {
         const seeds = [
-            { key: "int", label: "Inteira", w: 0.46 },
-            { key: "mei", label: "Meia-Entrada", w: 0.4 },
-            { key: "dia", label: "Diamante", w: 0.06 },
-            { key: "our", label: "Ouro", w: 0.04 },
-            { key: "inf", label: "Infantil", w: 0.04 },
+            { key: "mei", label: "Meia-Entrada", w: 0.42 },
+            { key: "int", label: "Inteira", w: 0.26 },
+            { key: "alv", label: "Alvinegro", w: 0.14 },
+            { key: "glo", label: "Glorioso", w: 0.08 },
+            { key: "gra", label: "Gratuidade", w: 0.06 },
+            { key: "cor", label: "Cortesia", w: 0.04 },
         ];
         return seeds.map((s) => ({
             id: `${setorId}-${s.key}`,
@@ -387,19 +374,15 @@ const buildDrillTree = (): TreeNode[] => {
     };
     const setoresFor = (dateId: string, base: number): TreeNode[] => {
         const seeds = [
-            { key: "sup-leste", label: "Superior Leste", w: 0.196 },
-            { key: "gra-leste", label: "Gramado Leste", w: 0.192 },
-            { key: "arq-norte", label: "Arquibancada Norte", w: 0.108 },
-            { key: "adversario", label: "Adversário (Superior Visitante)", w: 0.108 },
-            { key: "gra-oeste", label: "Gramado Oeste", w: 0.077 },
-            { key: "gra-sul", label: "Gramado Sul", w: 0.076 },
-            { key: "sup-oeste", label: "Superior Oeste", w: 0.052 },
-            { key: "gold-prem-sul", label: "Gold Premium Sul", w: 0.044 },
-            { key: "gold-leste", label: "Gold Leste", w: 0.043 },
-            { key: "sup-norte", label: "Superior Norte", w: 0.04 },
-            { key: "gold-norte", label: "Gold Norte", w: 0.029 },
-            { key: "sup-sul", label: "Superior Sul", w: 0.025 },
-            { key: "camarote", label: "Camarote", w: 0.011 },
+            { key: "leste-sup", label: "Leste Superior", w: 0.382 },
+            { key: "oeste-inf", label: "Oeste Inferior", w: 0.212 },
+            { key: "leste-inf", label: "Leste Inferior", w: 0.19 },
+            { key: "oeste-sup-b", label: "Oeste Superior B", w: 0.128 },
+            { key: "andar3-leste", label: "3º Andar Leste", w: 0.062 },
+            { key: "andar3-oeste", label: "3º Andar Oeste", w: 0.013 },
+            { key: "camarote", label: "Camarote", w: 0.006 },
+            { key: "sul-visit", label: "Sul (Visitante)", w: 0.004 },
+            { key: "tribuna", label: "Tribuna", w: 0.003 },
         ];
         return seeds.map((s) => {
             const setorId = `${dateId}-${s.key}`;
@@ -409,7 +392,7 @@ const buildDrillTree = (): TreeNode[] => {
     };
     // Jogo único: uma só "data" (a sessão da partida). Futebol vende apenas ingressos.
     const dates: { id: string; label: string; estoque: number; ocupacao: number }[] = [
-        { id: EVENT.sessoes[0].id, label: EVENT.sessoes[0].label, estoque: 41576, ocupacao: 0.6523 },
+        { id: EVENT.sessoes[0].id, label: EVENT.sessoes[0].label, estoque: 35679, ocupacao: 0.7339 },
     ];
     return dates.map((d) => {
         const ingressosVendidos = Math.round(d.estoque * d.ocupacao);
@@ -929,7 +912,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
 /* ------------------------------------------------------------------ */
 
 const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] }) => {
-    const [expanded, setExpanded] = useState<Set<string>>(new Set(["superior-leste"]));
+    const [expanded, setExpanded] = useState<Set<string>>(new Set(["leste-superior"]));
 
     const toggleExpanded = (id: string) =>
         setExpanded((prev) => {
@@ -1092,8 +1075,8 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
             const g = map.get(row.setor) ?? { setor: row.setor, rows: [], vendidos: 0, estoque: 0 };
             g.rows.push(row);
             g.vendidos += row.vendidos;
-            // Estoque é o pool compartilhado do setor (repetido por linha), não a soma.
-            g.estoque = Math.max(g.estoque, row.estoque);
+            // Estoque do setor = capacidade física (SETOR_CAP); fallback p/ máximo das linhas.
+            g.estoque = SETOR_CAP[row.setor] ?? Math.max(g.estoque, row.estoque);
             map.set(row.setor, g);
         });
         return Array.from(map.values());

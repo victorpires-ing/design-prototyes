@@ -21,7 +21,7 @@ const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&
 /*  Tree types + helpers                                              */
 /* ------------------------------------------------------------------ */
 
-type ColType = "int" | "currency";
+type ColType = "int" | "currency" | "text";
 interface ColDef {
     label: string;
     type: ColType;
@@ -34,7 +34,7 @@ interface TreeNode {
     changed?: boolean;
 }
 
-const fmt = (value: number, type: ColType) => (type === "currency" ? currencyFormatter.format(value) : numberFormatter.format(value));
+const fmt = (value: number, type: ColType) => (type === "text" ? "-" : type === "currency" ? currencyFormatter.format(value) : numberFormatter.format(value));
 
 const subtotalOf = (node: TreeNode): number[] => {
     if (node.values) return node.values;
@@ -55,37 +55,104 @@ const grandTotalOf = (nodes: TreeNode[]): number[] =>
 /* ------------------------------------------------------------------ */
 
 const MACRO_COLUMNS: ColDef[] = [
-    { label: "Ingressos", type: "int" },
-    { label: "Validados", type: "int" },
-    { label: "No-Show", type: "int" },
+    { label: "Bundle", type: "text" },
+    { label: "Produto", type: "text" },
+    { label: "Quantidade", type: "int" },
     { label: "Valor unitário", type: "currency" },
-    { label: "Faturado", type: "currency" },
+    { label: "Valor Total", type: "currency" },
 ];
 
 const macroData: TreeNode[] = [
     {
-        label: "IMPRESSO/BILHETERIA",
+        label: "BILHETERIA",
         children: [
             {
-                label: "Cadeira Norte",
+                label: "Tribuna",
                 children: [
-                    { label: "Inteira", values: [768, 0, 768, 85, 65280], changed: true },
-                    { label: "Meia-entrada", values: [434, 0, 434, 42.5, 18445] },
-                    { label: "Sócio 50%", values: [217, 0, 217, 42.5, 9222.5] },
+                    { label: "Família Jogadores", values: [0, 0, 54, 0, 0] },
+                    { label: "Estádio", values: [0, 0, 4, 0, 0] },
+                    { label: "Patrocinador", values: [0, 0, 1, 0, 0] },
                 ],
             },
             {
-                label: "Cadeira Leste",
+                label: "Sul (Visitante)",
                 children: [
-                    { label: "Inteira", values: [664, 0, 664, 90, 59760] },
-                    { label: "Meia-entrada", values: [227, 0, 227, 45, 10215] },
+                    { label: "Gratuidade - PCD", values: [0, 0, 8, 0, 0] },
+                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 37, 0, 0] },
+                    { label: "Acompanhante PCD", values: [0, 0, 2, 0, 0] },
+                    { label: "Reciprocidade", values: [0, 0, 35, 0, 0] },
                 ],
             },
             {
-                label: "Visitante Superior",
+                label: "Oeste Superior B",
                 children: [
-                    { label: "Inteira", values: [289, 0, 289, 130, 37570], changed: true },
-                    { label: "Meia-entrada", values: [137, 0, 137, 65, 8905] },
+                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 245, 0, 0] },
+                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 40, 0, 0] },
+                ],
+            },
+            {
+                label: "Oeste Inferior",
+                children: [
+                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 410, 0, 0] },
+                    { label: "Familia Jogadores", values: [0, 0, 139, 0, 0] },
+                    { label: "Acompanhante PCD", values: [0, 0, 20, 0, 0] },
+                    { label: "FERJ", values: [0, 0, 14, 0, 0] },
+                    { label: "Gratuidade - PCD", values: [0, 0, 40, 0, 0] },
+                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 80, 0, 0] },
+                    { label: "Patrocinador", values: [0, 0, 59, 0, 0] },
+                    { label: "Sócio Proprietário", values: [0, 0, 115, 0, 0] },
+                    { label: "Relacionamento", values: [0, 0, 78, 0, 0] },
+                    { label: "BEPE", values: [0, 0, 21, 0, 0] },
+                    { label: "Resgate OFF Rio", values: [0, 0, 9, 0, 0] },
+                    { label: "NIKE", values: [0, 0, 7, 0, 0] },
+                    { label: "CPE Estado Maior", values: [0, 0, 3, 0, 0] },
+                    { label: "Aquecimento", values: [0, 0, 8, 0, 0] },
+                    { label: "Bombeiro (DDP)", values: [0, 0, 9, 0, 0] },
+                    { label: "Acompanhante Backstage Tour", values: [0, 0, 3, 0, 0] },
+                    { label: "3º BATALHÃO", values: [0, 0, 10, 0, 0] },
+                    { label: "Intervalo", values: [0, 0, 2, 0, 0] },
+                    { label: "24 DP", values: [0, 0, 3, 0, 0] },
+                    { label: "Backstage Tour", values: [0, 0, 3, 0, 0] },
+                ],
+            },
+            {
+                label: "Leste Superior",
+                children: [
+                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 285, 0, 0] },
+                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 714, 0, 0] },
+                    { label: "Patrocinador", values: [0, 0, 7, 0, 0] },
+                    { label: "Bateria", values: [0, 0, 11, 0, 0] },
+                ],
+            },
+            {
+                label: "Leste Inferior",
+                children: [
+                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 355, 0, 0] },
+                    { label: "Patrocinador", values: [0, 0, 30, 0, 0] },
+                    { label: "Relacionamento", values: [0, 0, 40, 0, 0] },
+                    { label: "Sócio Proprietário", values: [0, 0, 45, 0, 0] },
+                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 100, 0, 0] },
+                    { label: "Gratuidade - PCD", values: [0, 0, 30, 0, 0] },
+                    { label: "Acompanhante PCD", values: [0, 0, 15, 0, 0] },
+                    { label: "Reciprocidade", values: [0, 0, 60, 0, 0] },
+                    { label: "Familia Jogadores", values: [0, 0, 80, 0, 0] },
+                    { label: "Bateria", values: [0, 0, 15, 0, 0] },
+                ],
+            },
+            {
+                label: "Camarote",
+                children: [
+                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 60, 0, 0] },
+                    { label: "Família Jogadores", values: [0, 0, 30, 0, 0] },
+                    { label: "Patrocinador", values: [0, 0, 30, 0, 0] },
+                ],
+            },
+            {
+                label: "3º Andar Leste",
+                children: [
+                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 150, 0, 0] },
+                    { label: "Família Jogadores", values: [0, 0, 50, 0, 0] },
+                    { label: "Reciprocidade", values: [0, 0, 54, 0, 0] },
                 ],
             },
         ],
@@ -94,14 +161,98 @@ const macroData: TreeNode[] = [
         label: "ONLINE",
         children: [
             {
-                label: "Sócio Esquadrão",
-                children: [{ label: "Sócio Esquadrão", values: [21094, 0, 21094, 19.5, 265897.5], changed: true }],
+                label: "Tribuna",
+                children: [
+                    { label: "Futebol", values: [0, 0, 10, 120, 1200] },
+                ],
             },
             {
-                label: "Lounge Premium",
+                label: "Sul (Visitante)",
                 children: [
-                    { label: "Inteira", values: [80, 0, 80, 240, 19200], changed: true },
-                    { label: "Lounge Criança", values: [15, 0, 15, 150, 2250] },
+                    { label: "Meia-Entrada", values: [0, 0, 6, 40, 240] },
+                    { label: "Inteira", values: [0, 0, 7, 80, 560] },
+                ],
+            },
+            {
+                label: "Oeste Superior B",
+                children: [
+                    { label: "Meia-Entrada", values: [0, 0, 1683, 30, 50490] },
+                    { label: "Inteira", values: [0, 0, 1051, 60, 63060] },
+                    { label: "Acompanhante Glorioso", values: [0, 0, 61, 24, 1464] },
+                    { label: "Branco", values: [0, 0, 71, 30, 2130] },
+                    { label: "Glorioso", values: [0, 0, 44, 0, 0] },
+                    { label: "Alvinegro OFF Rio", values: [0, 0, 11, 12, 132] },
+                    { label: "Preto", values: [0, 0, 65, 24, 1560] },
+                    { label: "Alvinegro", values: [0, 0, 93, 0, 0] },
+                ],
+            },
+            {
+                label: "Oeste Inferior",
+                children: [
+                    { label: "Meia-Entrada", values: [0, 0, 1337, 50, 66850] },
+                    { label: "Inteira", values: [0, 0, 508, 100, 50800] },
+                    { label: "Alvinegro", values: [0, 0, 1163, 0, 0] },
+                    { label: "Preto", values: [0, 0, 314, 20, 6280] },
+                    { label: "Acompanhante Glorioso", values: [0, 0, 351, 40, 14040] },
+                    { label: "Glorioso", values: [0, 0, 502, 0, 0] },
+                    { label: "Funcionário Glorioso", values: [0, 0, 30, 0, 0] },
+                    { label: "Branco", values: [0, 0, 262, 30, 7860] },
+                    { label: "Alvinegro OFF Rio", values: [0, 0, 48, 20, 960] },
+                ],
+            },
+            {
+                label: "Leste Superior",
+                children: [
+                    { label: "Meia-Entrada", values: [0, 0, 3877, 20, 77540] },
+                    { label: "Inteira", values: [0, 0, 2225, 40, 89000] },
+                    { label: "Acompanhante Glorioso", values: [0, 0, 423, 16, 6768] },
+                    { label: "Preto", values: [0, 0, 441, 15, 6615] },
+                    { label: "Branco", values: [0, 0, 364, 20, 7280] },
+                    { label: "Glorioso", values: [0, 0, 402, 0, 0] },
+                    { label: "Alvinegro", values: [0, 0, 1089, 0, 0] },
+                    { label: "Alvinegro OFF Rio", values: [0, 0, 110, 8, 880] },
+                    { label: "Sócio Torcida", values: [0, 0, 68, 0, 0] },
+                ],
+            },
+            {
+                label: "Leste Inferior",
+                children: [
+                    { label: "Meia-Entrada", values: [0, 0, 1491, 40, 59640] },
+                    { label: "Inteira", values: [0, 0, 700, 80, 56000] },
+                    { label: "Alvinegro", values: [0, 0, 900, 0, 0] },
+                    { label: "Glorioso", values: [0, 0, 400, 0, 0] },
+                    { label: "Acompanhante Glorioso", values: [0, 0, 200, 40, 8000] },
+                    { label: "Preto", values: [0, 0, 150, 20, 3000] },
+                    { label: "Branco", values: [0, 0, 120, 30, 3600] },
+                    { label: "Alvinegro OFF Rio", values: [0, 0, 65, 20, 1300] },
+                    { label: "Funcionário Glorioso", values: [0, 0, 50, 0, 0] },
+                    { label: "Sócio Torcida", values: [0, 0, 135, 0, 0] },
+                ],
+            },
+            {
+                label: "Camarote",
+                children: [
+                    { label: "Inteira", values: [0, 0, 40, 60, 2400] },
+                ],
+            },
+            {
+                label: "3º Andar Oeste",
+                children: [
+                    { label: "Inteira", values: [0, 0, 50, 60, 3000] },
+                    { label: "Alvinegro", values: [0, 0, 120, 0, 0] },
+                    { label: "Glorioso", values: [0, 0, 80, 0, 0] },
+                    { label: "Branco", values: [0, 0, 30, 30, 900] },
+                    { label: "Preto", values: [0, 0, 50, 0, 0] },
+                ],
+            },
+            {
+                label: "3º Andar Leste",
+                children: [
+                    { label: "Meia-Entrada", values: [0, 0, 175, 20, 3500] },
+                    { label: "Branco", values: [0, 0, 40, 30, 1200] },
+                    { label: "Alvinegro OFF Rio", values: [0, 0, 1, 24, 24] },
+                    { label: "Alvinegro", values: [0, 0, 800, 0, 0] },
+                    { label: "Glorioso", values: [0, 0, 350, 0, 0] },
                 ],
             },
         ],
@@ -109,53 +260,48 @@ const macroData: TreeNode[] = [
 ];
 
 const PDV_COLUMNS: ColDef[] = [
-    { label: "Ingressos", type: "int" },
+    { label: "Quantidade", type: "int" },
     { label: "Valor unitário", type: "currency" },
-    { label: "Faturado", type: "currency" },
+    { label: "Valor Total", type: "currency" },
 ];
 
 const pdvData: TreeNode[] = [
     {
-        label: "Loja Tricolor - Fonte Nova",
+        label: "Bilheteria Estádio Nilton Santos",
         children: [
             {
-                label: "Cadeira Norte",
-                children: [
-                    { label: "Inteira", values: [768, 85, 65280] },
-                    { label: "Meia-entrada", values: [434, 42.5, 18445] },
-                ],
+                label: "Tribuna",
+                children: [{ label: "Futebol", values: [10, 120, 1200] }],
             },
-            { label: "Sócio Esquadrão", children: [{ label: "Sócio Esquadrão", values: [21094, 19.5, 265897.5], changed: true }] },
-        ],
-    },
-    {
-        label: "Loja Tricolor - Shopping da Bahia",
-        children: [
             {
-                label: "Cadeira Leste",
+                label: "Sul (Visitante)",
                 children: [
-                    { label: "Inteira", values: [664, 90, 59760], changed: true },
-                    { label: "Inteira Promocional", values: [300, 50, 15000] },
-                    { label: "Meia-entrada", values: [227, 45, 10215] },
+                    { label: "Inteira", values: [7, 80, 560], changed: true },
+                    { label: "Meia-Entrada", values: [6, 40, 240] },
                 ],
             },
         ],
     },
     {
-        label: "Loja Tricolor - Salvador Norte Shopping",
+        label: "Loja Oficial Botafogo - Nilton Santos",
         children: [
             {
-                label: "Visitante Superior",
+                label: "Oeste Inferior",
                 children: [
-                    { label: "Inteira", values: [289, 130, 37570] },
-                    { label: "Meia-entrada", values: [137, 65, 8905] },
+                    { label: "Meia-Entrada", values: [1337, 50, 66850], changed: true },
+                    { label: "Inteira", values: [508, 100, 50800] },
                 ],
             },
+        ],
+    },
+    {
+        label: "Loja Oficial Botafogo - Shopping Rio Sul",
+        children: [
             {
-                label: "Lounge Premium",
+                label: "Leste Inferior",
                 children: [
-                    { label: "Inteira", values: [80, 240, 19200], changed: true },
-                    { label: "Lounge Criança", values: [15, 150, 2250] },
+                    { label: "Meia-Entrada", values: [1491, 40, 59640] },
+                    { label: "Inteira", values: [700, 80, 56000], changed: true },
                 ],
             },
         ],
@@ -164,21 +310,17 @@ const pdvData: TreeNode[] = [
 
 const meiosData: TreeNode[] = [
     {
-        label: "Loja Tricolor - Fonte Nova",
+        label: "Bilheteria Estádio Nilton Santos",
         children: [
-            { label: "Cartão de Crédito", values: [612, 120, 73440] },
-            { label: "Cartão de Débito", values: [438, 95, 41610] },
-            { label: "Dinheiro", values: [205, 60, 12300], changed: true },
-            { label: "PIX", values: [21258, 18, 382644] },
+            { label: "Dinheiro", values: [23, 150, 3450], changed: true },
+            { label: "Cartão de Débito", values: [10, 90, 900] },
         ],
     },
     {
-        label: "Loja Tricolor - Shopping da Bahia",
+        label: "Loja Oficial Botafogo - Shopping Rio Sul",
         children: [
-            { label: "Cartão de Crédito", values: [684, 78, 53352] },
-            { label: "Cartão de Débito", values: [312, 64, 19968] },
-            { label: "Dinheiro", values: [98, 55, 5390], changed: true },
-            { label: "PIX", values: [97, 47, 4559] },
+            { label: "Cartão de Crédito", values: [320, 95, 30400] },
+            { label: "PIX", values: [1800, 55, 99000], changed: true },
         ],
     },
 ];
@@ -202,17 +344,17 @@ const CHANGE_META: Record<ChangeType, { label: string; color: "success" | "gray"
 };
 
 const changedTransacoes: BorderoChange[] = [
-    { id: "c1", hora: "há 1 min", tipo: "venda", canal: "Online", descricao: "Sócio Esquadrão · Sócio Esquadrão", ingressos: 12, valor: 234 },
-    { id: "c2", hora: "há 2 min", tipo: "venda", canal: "Impresso/Bilheteria", descricao: "Cadeira Norte · Inteira", ingressos: 5, valor: 425 },
-    { id: "c3", hora: "há 3 min", tipo: "cancelamento", canal: "Impresso/Bilheteria", descricao: "Visitante Superior · Inteira", ingressos: -1, valor: -130 },
-    { id: "c4", hora: "há 4 min", tipo: "estorno", canal: "Online", descricao: "Lounge Premium · Inteira", ingressos: -1, valor: -240 },
+    { id: "c1", hora: "há 1 min", tipo: "venda", canal: "Online", descricao: "Leste Superior · Meia-Entrada", ingressos: 4, valor: 80 },
+    { id: "c2", hora: "há 2 min", tipo: "venda", canal: "Impresso/Bilheteria", descricao: "Tribuna · Futebol", ingressos: 2, valor: 240 },
+    { id: "c3", hora: "há 3 min", tipo: "cancelamento", canal: "Online", descricao: "Oeste Inferior · Inteira", ingressos: -1, valor: -100 },
+    { id: "c4", hora: "há 4 min", tipo: "estorno", canal: "Online", descricao: "Oeste Superior B · Inteira", ingressos: -1, valor: -60 },
 ];
 
 type BorderoView = "macro" | "pdv" | "meios";
 
 const VIEWS: Record<BorderoView, { nodes: TreeNode[]; columns: ColDef[]; firstCol: string }> = {
-    macro: { nodes: macroData, columns: MACRO_COLUMNS, firstCol: "Canal · Setor · Tipo" },
-    pdv: { nodes: pdvData, columns: PDV_COLUMNS, firstCol: "PDV · Setor · Tipo" },
+    macro: { nodes: macroData, columns: MACRO_COLUMNS, firstCol: "Canal · Setor · Tipo de Ingresso" },
+    pdv: { nodes: pdvData, columns: PDV_COLUMNS, firstCol: "PDV · Setor · Tipo de Ingresso" },
     meios: { nodes: meiosData, columns: PDV_COLUMNS, firstCol: "PDV · Meio de pagamento" },
 };
 
@@ -220,7 +362,8 @@ const VIEWS: Record<BorderoView, { nodes: TreeNode[]; columns: ColDef[]; firstCo
 /*  Scaling (sessão + intervalo de data afetam todas as visões)        */
 /* ------------------------------------------------------------------ */
 
-const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 0.46, [EVENT.sessoes[1].id]: 0.54 };
+// Jogo único: a sessão da partida concentra 100% das vendas.
+const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 1 };
 
 // Escala valores de quantidade/faturado; mantém colunas de "valor unitário" intactas.
 const scaleNodes = (nodes: TreeNode[], columns: ColDef[], factor: number): TreeNode[] =>
@@ -273,7 +416,7 @@ const BorderoBody = () => {
     const activeMeta = VIEWS[view];
 
     const macroGrand = useMemo(() => grandTotalOf(scaled.macro), [scaled.macro]);
-    const totalIngressos = macroGrand[0] ?? 0;
+    const totalIngressos = macroGrand[2] ?? 0;
     const totalFaturado = macroGrand[4] ?? 0;
     const ticketMedio = totalIngressos === 0 ? 0 : totalFaturado / totalIngressos;
 

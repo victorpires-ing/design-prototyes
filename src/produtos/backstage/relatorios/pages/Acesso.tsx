@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
-import { CheckCircle, ChevronDown, ChevronLeft, ChevronRight, ClockFastForward, QrCode01, SearchLg, XClose } from "@untitledui/icons";
+import { CheckCircle, ChevronDown, ChevronLeft, ChevronRight, ClockFastForward, SearchLg, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { Bar, CartesianGrid, Cell, ComposedChart, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
@@ -31,93 +31,57 @@ interface AcessoNode {
     children?: AcessoNode[];
 }
 
+// Setor → Tipo de ingresso. Vendidos batem com o relatório de Vendas; validados ≈ comparecimento.
+const mkSetor = (id: string, nome: string, inteira: number, meia: number, rate: number): AcessoNode => ({
+    id,
+    nome,
+    children: [
+        { id: `${id}-int`, nome: "Inteira", vendidos: inteira, validados: Math.round(inteira * rate) },
+        { id: `${id}-mei`, nome: "Meia-Entrada", vendidos: meia, validados: Math.round(meia * rate) },
+    ],
+});
+
+// Entrada por facial só nos 4 setores principais de arquibancada (turnstiles).
 const setores: AcessoNode[] = [
-    {
-        id: "pista",
-        nome: "Pista",
-        children: [
-            {
-                id: "pista-inteira",
-                nome: "Inteira",
-                children: [
-                    { id: "pista-inteira-l1", nome: "1º Lote", vendidos: 450, validados: 370 },
-                    { id: "pista-inteira-l2", nome: "2º Lote", vendidos: 250, validados: 190 },
-                ],
-            },
-            {
-                id: "pista-meia",
-                nome: "Meia-entrada",
-                children: [
-                    { id: "pista-meia-l1", nome: "1º Lote", vendidos: 250, validados: 200 },
-                    { id: "pista-meia-l2", nome: "2º Lote", vendidos: 150, validados: 100 },
-                ],
-            },
-            { id: "pista-cortesia", nome: "Cortesia", vendidos: 140, validados: 91 },
-        ],
-    },
-    {
-        id: "pista-premium",
-        nome: "Pista Premium",
-        children: [
-            {
-                id: "pp-inteira",
-                nome: "Inteira",
-                children: [
-                    { id: "pp-inteira-l1", nome: "1º Lote", vendidos: 220, validados: 190 },
-                    { id: "pp-inteira-l2", nome: "2º Lote", vendidos: 140, validados: 110 },
-                ],
-            },
-            {
-                id: "pp-meia",
-                nome: "Meia-entrada",
-                children: [
-                    { id: "pp-meia-l1", nome: "1º Lote", vendidos: 120, validados: 100 },
-                    { id: "pp-meia-l2", nome: "2º Lote", vendidos: 80, validados: 60 },
-                ],
-            },
-            { id: "pp-cortesia", nome: "Cortesia", vendidos: 52, validados: 35 },
-        ],
-    },
-    {
-        id: "camarote-a",
-        nome: "Camarote A",
-        children: [
-            {
-                id: "ca-inteira",
-                nome: "Inteira",
-                children: [
-                    { id: "ca-inteira-l1", nome: "1º Lote", vendidos: 60, validados: 54 },
-                    { id: "ca-inteira-l2", nome: "2º Lote", vendidos: 40, validados: 32 },
-                ],
-            },
-            { id: "ca-meia", nome: "Meia-entrada", vendidos: 48, validados: 38 },
-        ],
-    },
-    {
-        id: "camarote-b",
-        nome: "Camarote B",
-        children: [
-            { id: "cb-inteira", nome: "Inteira", vendidos: 60, validados: 52 },
-            { id: "cb-meia", nome: "Meia-entrada", vendidos: 26, validados: 21 },
-        ],
-    },
-    {
-        id: "camarote-central",
-        nome: "Camarote Central",
-        children: [
-            { id: "cc-inteira", nome: "Inteira", vendidos: 40, validados: 39 },
-            { id: "cc-meia", nome: "Meia-entrada", vendidos: 14, validados: 13 },
-        ],
-    },
-    {
-        id: "mesa-vip",
-        nome: "Mesa VIP",
-        children: [
-            { id: "mv-inteira", nome: "Inteira", vendidos: 20, validados: 20 },
-            { id: "mv-cortesia", nome: "Cortesia", vendidos: 12, validados: 11 },
-        ],
-    },
+    mkSetor("leste-superior", "Leste Superior", 2225, 3877, 0.9),
+    mkSetor("leste-inferior", "Leste Inferior", 700, 1491, 0.9),
+    mkSetor("oeste-inferior", "Oeste Inferior", 508, 1337, 0.88),
+    mkSetor("oeste-superior-b", "Oeste Superior B", 1051, 1683, 0.87),
 ];
+
+// Histórico real de validação (check-ins) no dia do jogo, em faixas de 15 min.
+// Pico às 16:30 (jogo às 16h); total de 23.181 validações.
+const CHECKINS_FAIXAS: { hora: string; checkins: number }[] = [
+    { hora: "12:00", checkins: 1 },
+    { hora: "12:15", checkins: 3 },
+    { hora: "12:30", checkins: 5 },
+    { hora: "12:45", checkins: 5 },
+    { hora: "13:00", checkins: 8 },
+    { hora: "13:15", checkins: 13 },
+    { hora: "13:30", checkins: 9 },
+    { hora: "13:45", checkins: 16 },
+    { hora: "14:00", checkins: 5 },
+    { hora: "14:15", checkins: 3 },
+    { hora: "14:30", checkins: 3 },
+    { hora: "14:45", checkins: 0 },
+    { hora: "15:00", checkins: 456 },
+    { hora: "15:15", checkins: 448 },
+    { hora: "15:30", checkins: 936 },
+    { hora: "15:45", checkins: 1782 },
+    { hora: "16:00", checkins: 2940 },
+    { hora: "16:15", checkins: 4146 },
+    { hora: "16:30", checkins: 4833 },
+    { hora: "16:45", checkins: 4176 },
+    { hora: "17:00", checkins: 2186 },
+    { hora: "17:15", checkins: 959 },
+    { hora: "17:30", checkins: 165 },
+    { hora: "17:45", checkins: 59 },
+    { hora: "18:00", checkins: 24 },
+];
+
+// Totais reais do jogo (apenas os 4 setores com entrada por facial).
+const TOTAL_VALIDADOS = CHECKINS_FAIXAS.reduce((s, f) => s + f.checkins, 0); // 23.181
+const TOTAL_VENDIDOS = 23909; // ingressos vendidos nos setores Leste/Oeste (Sup/Inf)
 
 const sumVendidos = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumVendidos(c), 0) : node.vendidos ?? 0);
 const sumValidados = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumValidados(c), 0) : node.validados ?? 0);
@@ -150,15 +114,17 @@ interface PortadorAcesso {
     canal: string;
     grupo: string;
     tipoIngresso: string;
+    operadorVendas: string;
     portao?: string;
     status: StatusAcesso;
     horario?: string;
 }
 
-const CANAIS = ["Online", "Bilheteria", "PDV Loja"];
-const GRUPOS = ["Pista", "Pista Premium", "Camarote A", "Camarote B", "Camarote Central", "Mesa VIP"];
-const TIPOS = ["Inteira", "Meia-entrada", "Cortesia"];
-const PORTOES = ["Portão A", "Portão B", "Portão VIP"];
+const CANAIS = ["Online", "Offline"];
+const GRUPOS = ["Leste Superior", "Leste Inferior", "Oeste Inferior", "Oeste Superior B"];
+const TIPOS = ["Meia-Entrada", "Inteira", "Alvinegro", "Glorioso", "Preto", "Branco", "Cortesia"];
+const PORTOES = ["Portão A", "Portão B", "Portão C", "Portão D", "Portão E"];
+const OPERADORES = ["Giovanna Batista", "Josué da Fonseca Lima", "Bilheteria Estádio Nilton Santos", "Loja Oficial Botafogo - Nilton Santos"];
 
 const NOMES = [
     "João Barbosa", "Mariana Lopes", "Gabriel Souza", "Rafael Silva", "Camila Rodrigues",
@@ -190,14 +156,15 @@ const portadores: PortadorAcesso[] = Array.from({ length: 247 }, (_, idx) => {
         emailComprador: email,
         idTransacao: `TRX-${840192 - idx}`,
         idIngresso: `ING-${pad(451 + idx, 4)}`,
-        qrCode: `QR-${pad((idx * 48271) % 100000000, 8)}`,
+        qrCode: pad((idx * 48271) % 100000000, 8),
         sessao: sessao.descricao,
         canal: pick(CANAIS, idx + (idx % 3)),
         grupo: pick(GRUPOS, idx * 3 + (idx % 6)),
         tipoIngresso: pick(TIPOS, idx * 2 + (idx % 3)),
+        operadorVendas: pick(OPERADORES, idx + (idx % 4)),
         portao: validado ? pick(PORTOES, idx) : undefined,
         status: validado ? "validado" : "pendente",
-        horario: validado ? `${19 + ((idx * 3) % 4)}:${pad((idx * 7) % 60, 2)}` : undefined,
+        horario: validado ? `${13 + ((idx * 3) % 4)}:${pad((idx * 7) % 60, 2)}` : undefined,
     };
 });
 
@@ -207,7 +174,7 @@ const portadores: PortadorAcesso[] = Array.from({ length: 247 }, (_, idx) => {
 
 const FILTER_FIELDS: FilterFieldDef[] = [
     { id: "canal", label: "Canal", multi: { options: CANAIS.map((c) => ({ id: c, label: c })) } },
-    { id: "grupo", label: "Grupo", multi: { options: GRUPOS.map((g) => ({ id: g, label: g })) } },
+    { id: "grupo", label: "Setor", multi: { options: GRUPOS.map((g) => ({ id: g, label: g })) } },
     { id: "tipoIngresso", label: "Tipo de ingresso", multi: { options: TIPOS.map((t) => ({ id: t, label: t })) } },
     { id: "status", label: "Status", multi: { options: [{ id: "Validado", label: "Validado" }, { id: "Não validado", label: "Não validado" }] } },
 ];
@@ -276,30 +243,11 @@ const AcessoBody = () => {
         });
     }, [sessao, filters]);
 
-    const totals = useMemo(() => {
-        const validados = filteredPortadores.filter((p) => p.status === "validado").length;
-        const total = filteredPortadores.length;
-        return { validados, pendentes: total - validados, total };
-    }, [filteredPortadores]);
+    // Totais reais do histórico de validação (23.181 validados de 23.909 vendidos).
+    const totals = useMemo(() => ({ validados: TOTAL_VALIDADOS, pendentes: TOTAL_VENDIDOS - TOTAL_VALIDADOS, total: TOTAL_VENDIDOS }), []);
 
-    // Check-ins por faixa de 15 min, derivados das entradas validadas filtradas.
-    const faixas = useMemo(() => {
-        const buckets = new Map<string, number>();
-        for (const p of filteredPortadores) {
-            if (p.status !== "validado" || !p.horario) continue;
-            const [h, m] = p.horario.split(":").map(Number);
-            const key = `${pad(h, 2)}:${pad(Math.floor(m / 15) * 15, 2)}`;
-            buckets.set(key, (buckets.get(key) ?? 0) + 1);
-        }
-        const out: { hora: string; checkins: number }[] = [];
-        for (let h = 19; h <= 22; h++) {
-            for (let m = 0; m < 60; m += 15) {
-                const key = `${pad(h, 2)}:${pad(m, 2)}`;
-                out.push({ hora: key, checkins: buckets.get(key) ?? 0 });
-            }
-        }
-        return out.filter((f) => f.checkins > 0 || (f.hora >= "19:00" && f.hora <= "22:00"));
-    }, [filteredPortadores]);
+    // Check-ins por faixa de 15 min — histórico real de validação do jogo.
+    const faixas = CHECKINS_FAIXAS;
 
     // Árvore filtrada pelos grupos selecionados (se houver).
     const selectedGrupos = useMemo(() => {
@@ -624,7 +572,7 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                     size="sm"
                     icon={SearchLg}
                     aria-label="Buscar entradas"
-                    placeholder="Buscar por nome, CPF, QR Code, ID da transação ou ingresso"
+                    placeholder="Buscar por nome, CPF, Code, ID da transação ou ingresso"
                     value={search}
                     onChange={onSearch}
                     className="w-full max-w-[420px]"
@@ -636,7 +584,7 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                     <thead className="bg-secondary">
                         <tr className="border-b border-secondary text-left">
                             <th className="px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Portador" sortKey="portador" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell"><SortableHeader label="QR Code" sortKey="qrCode" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell"><SortableHeader label="Code" sortKey="qrCode" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary lg:table-cell"><SortableHeader label="Grupo" sortKey="grupo" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary xl:table-cell"><SortableHeader label="Tipo" sortKey="tipoIngresso" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary xl:table-cell"><SortableHeader label="Canal" sortKey="canal" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
@@ -678,8 +626,7 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                                         </div>
                                     </td>
                                     <td className="hidden px-4 py-3 md:table-cell">
-                                        <span className="inline-flex items-center gap-1.5 text-sm text-tertiary tabular-nums">
-                                            <QrCode01 aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
+                                        <span className="inline-flex items-center text-sm text-tertiary tabular-nums">
                                             {p.qrCode}
                                         </span>
                                     </td>
@@ -770,7 +717,7 @@ const AcessoDetailsSlideOut = ({ isOpen, row, onClose }: { isOpen: boolean; row:
                             <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
                                 <h3 className="text-md font-semibold text-primary">Ingresso</h3>
                                 <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="QR Code" value={row.qrCode} isMono />
+                                    <DetailRow label="Code" value={row.qrCode} isMono />
                                     <DetailRow label="ID do ingresso" value={row.idIngresso} isMono />
                                     <DetailRow label="ID da transação" value={row.idTransacao} isMono />
                                     <DetailRow label="Sessão" value={row.sessao} />

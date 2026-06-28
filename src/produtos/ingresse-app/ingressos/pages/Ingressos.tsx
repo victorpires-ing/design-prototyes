@@ -1,15 +1,20 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { FC, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, ChevronRight, FaceIdSquare, FilterLines, Map01, Package, QrCode02, Send01, Tag01, User01 } from "@untitledui/icons";
+import { ArrowLeft, ChevronRight, FaceIdSquare, FilterLines, Map01, Package, QrCode02, Send01, Tag01, User01, XClose } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Badge } from "@/components/base/badges/badges";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { AppShell } from "../../components/AppShell";
+import { BottomSheet } from "../../components/BottomSheet";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { getEvento, type Combo, type EventoDetalhe, type ItemIngresso } from "../data/eventos";
 import { isTransferido } from "../data/transfer-store";
+import googleMapsLogo from "../assets/google-maps.png";
+import appleMapsLogo from "../assets/apple-maps.png";
+import wazeLogo from "../assets/waze.png";
 
 export function Ingressos() {
     const navigate = useNavigate();
@@ -28,6 +33,15 @@ export function Ingressos() {
 
     // Toque curto abre o detalhe; pressionar e segurar abre o menu de contexto (estilo iOS).
     const [menu, setMenu] = useState<{ rect: DOMRect; content: ReactNode; actions: MenuAction[] } | null>(null);
+
+    // Bottom sheet "Abrir mapa em" (acionado pelo ícone de mapa no card do evento).
+    const [mapaOpen, setMapaOpen] = useState(false);
+    const localQuery = encodeURIComponent(evento.local);
+    const mapas = [
+        { nome: "Google Maps", logo: googleMapsLogo, url: `https://www.google.com/maps/search/?api=1&query=${localQuery}` },
+        { nome: "Apple Maps", logo: appleMapsLogo, url: `https://maps.apple.com/?q=${localQuery}` },
+        { nome: "Waze", logo: wazeLogo, url: `https://waze.com/ul?q=${localQuery}` },
+    ];
 
     const abrirItem = (item: ItemIngresso) => {
         const base = item.produto ? "produto" : "detalhe";
@@ -79,7 +93,7 @@ export function Ingressos() {
                             <p className="text-sm font-medium text-secondary">{evento.date}</p>
                             <div className="flex items-end justify-between gap-2">
                                 <p className="text-sm text-tertiary">{evento.local}</p>
-                                <IconButton icon={Map01} label="Ver no mapa" small />
+                                <IconButton icon={Map01} label="Ver no mapa" small onClick={() => setMapaOpen(true)} />
                             </div>
                         </div>
                     </div>
@@ -142,9 +156,11 @@ export function Ingressos() {
                                         {itens.length}
                                     </span>
                                 </div>
-                                <div className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
-                                    {itens.map((item, i) => (
-                                        <TicketRow key={item.id} item={item} isFirst={i === 0} onTap={() => abrirItem(item)} onLongPress={(rect) => abrirMenuIngresso(item, rect)} />
+                                <div className="flex flex-col gap-3">
+                                    {itens.map((item) => (
+                                        <div key={item.id} className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
+                                            <TicketRow item={item} isFirst onTap={() => abrirItem(item)} onLongPress={(rect) => abrirMenuIngresso(item, rect)} />
+                                        </div>
                                     ))}
                                 </div>
                             </section>
@@ -156,6 +172,44 @@ export function Ingressos() {
             <AnimatePresence>
                 {menu && <TicketContextMenu rect={menu.rect} content={menu.content} actions={menu.actions} onClose={() => setMenu(null)} />}
             </AnimatePresence>
+
+            {/* Bottom sheet: escolher app de mapa (mesmo padrão da confirmação de transferência) */}
+            <BottomSheet isOpen={mapaOpen} onClose={() => setMapaOpen(false)}>
+                <div className="flex items-start justify-between gap-3">
+                    <FeaturedIcon icon={Map01} color="gray" theme="modern" size="lg" />
+                    <button
+                        type="button"
+                        aria-label="Fechar"
+                        onClick={() => setMapaOpen(false)}
+                        className="text-fg-quaternary transition duration-100 ease-linear active:text-fg-secondary"
+                    >
+                        <XClose className="size-6" />
+                    </button>
+                </div>
+
+                <h2 className="mt-4 text-lg font-bold text-primary">Abrir mapa em</h2>
+                <p className="mt-1 text-sm text-tertiary">Escolha o aplicativo para ver a localização do evento.</p>
+
+                <div className="mt-4 flex flex-col gap-1">
+                    {mapas.map((m) => (
+                        <button
+                            key={m.nome}
+                            type="button"
+                            onClick={() => {
+                                setMapaOpen(false);
+                                window.open(m.url, "_blank");
+                            }}
+                            className="flex items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition duration-100 ease-linear active:bg-secondary"
+                        >
+                            <span className="size-10 shrink-0 overflow-hidden rounded-xl ring-1 ring-border-secondary">
+                                <img src={m.logo} alt="" className="size-full object-cover" />
+                            </span>
+                            <span className="text-md font-semibold text-primary">{m.nome}</span>
+                            <ChevronRight className="ml-auto size-5 text-fg-quaternary" />
+                        </button>
+                    ))}
+                </div>
+            </BottomSheet>
         </AppShell>
     );
 }

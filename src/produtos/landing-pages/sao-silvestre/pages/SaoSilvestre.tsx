@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { useTheme } from "@/providers/theme-provider";
-import { ArrowLeft, MarkerPin06, Monitor01, Phone01, MinusCircle, PlusCircle } from "@untitledui/icons";
+import { ArrowLeft, MarkerPin06, Monitor01, Phone01, MinusCircle, PlusCircle, XClose } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import logoTicketSports from "../assets/LOGO TICKET INGRESSE.svg";
 import heroCorredores from "../assets/imagem-corredores.png";
@@ -30,6 +30,21 @@ function BlueButton({ children, className, ...props }: React.ButtonHTMLAttribute
                 className,
             )}
             style={{ backgroundColor: BLUE }}
+            {...props}
+        >
+            {children}
+        </button>
+    );
+}
+
+function OutlineButton({ children, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+    return (
+        <button
+            type="button"
+            className={cx(
+                "w-full rounded-xl border border-secondary bg-primary px-5 py-3.5 text-sm font-semibold text-primary transition duration-100 ease-linear hover:bg-secondary",
+                className,
+            )}
             {...props}
         >
             {children}
@@ -126,6 +141,146 @@ const FAQ = [
 
 /* ------------------------- Landing (responsiva) ------------------------ */
 
+/* Modal reutilizável (estilo DS): header fixo + corpo rolável + rodapé com CTA.
+   Usado pelos fluxos de "Grupos esportivos" e "Benefício PCD". */
+function InfoModal({
+    viewport,
+    title,
+    ctaLabel,
+    onCta,
+    onClose,
+    children,
+}: {
+    viewport: Viewport;
+    title: string;
+    ctaLabel: string;
+    onCta: () => void;
+    onClose: () => void;
+    children: React.ReactNode;
+}) {
+    const mobile = viewport === "mobile";
+
+    // Trava o scroll da página de fundo enquanto o modal está aberto, senão o
+    // gesto "vaza" e rola a página atrás em vez do conteúdo do modal.
+    useEffect(() => {
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = prev;
+        };
+    }, []);
+
+    // Header (fixo) + corpo rolável + rodapé (fixo) com o botão. O max-h vai no
+    // próprio container flex, então o corpo rola e o botão fica sempre visível.
+    const inner = (
+        <>
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-secondary p-5 @3xl:p-6">
+                <h3 className="text-lg font-bold text-primary">{title}</h3>
+                <button
+                    type="button"
+                    aria-label="Fechar"
+                    onClick={onClose}
+                    className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary"
+                >
+                    <XClose className="size-5" />
+                </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 @3xl:p-6">{children}</div>
+
+            <div className="shrink-0 border-t border-secondary p-5 @3xl:p-6">
+                <BlueButton onClick={onCta} className="w-full py-3.5">
+                    {ctaLabel}
+                </BlueButton>
+            </div>
+        </>
+    );
+
+    // Mobile: confina overlay + card à coluna de 390px (o "celular" do preview),
+    // com 16px de margem lateral/inferior DENTRO dessa coluna.
+    if (mobile) {
+        return createPortal(
+            <div className="fixed inset-0 z-[70] flex justify-center" role="dialog" aria-modal="true">
+                <div className="relative h-full w-[390px] max-w-full">
+                    <button type="button" aria-label="Fechar" onClick={onClose} className="absolute inset-0 bg-black/50" />
+                    <div className="absolute inset-x-4 bottom-4 z-10 flex max-h-[calc(100%-2rem)] flex-col overflow-hidden rounded-2xl bg-primary shadow-xl">
+                        {inner}
+                    </div>
+                </div>
+            </div>,
+            document.body,
+        );
+    }
+
+    // Desktop: modal centralizado padrão, com respiro de 16px via padding do overlay.
+    return createPortal(
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" onClick={onClose}>
+            <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-primary shadow-xl" onClick={(e) => e.stopPropagation()}>
+                {inner}
+            </div>
+        </div>,
+        document.body,
+    );
+}
+
+/* Corpo do modal de grupos esportivos. */
+function GrupoModalBody() {
+    return (
+        <>
+            <div className="space-y-3 text-sm text-secondary">
+                <p>Grupos e assessorias de corrida são muito bem-vindos na São Silvestre.</p>
+                <p>Acreditamos na força da comunidade de corredores e no impacto que o esporte pode gerar quando pessoas se unem por uma causa.</p>
+                <p>Reúna sua equipe, convide seus alunos e venha fazer parte de uma das corridas mais tradicionais do Brasil.</p>
+            </div>
+
+            <p className="mt-6 text-sm font-bold text-primary">Procedimento para inscrições de grupos:</p>
+            <div className="mt-2 space-y-3 text-sm text-tertiary">
+                <p>
+                    1. Faça o seu cadastro no sistema TicketSports com os dados que usará para faturamento do pedido de grupos. Se você deseja que o boleto
+                    saia em nome de empresa faça um cadastro como Pessoa Jurídica informando a razão social ou fantasia com seu respectivo CNPJ. Caso já
+                    possua o cadastro informe seus dados de acesso.
+                </p>
+                <p>
+                    2. Solicite via sistema a quantidade total de vagas para seu grupo. Após o recebimento, o organizador irá validar sua solicitação
+                    autorizando, ou não, a reserva das vagas até a data limite de inscrições para grupos.
+                </p>
+                <p>3. Aguarde o e-mail com a resposta de aprovação das vagas que será enviada pelo organizador.</p>
+                <p>4. Siga as instruções do e-mail que irá receber para realizar as inscrições.</p>
+            </div>
+        </>
+    );
+}
+
+/* Corpo do modal de benefício PCD. */
+function PcdModalBody() {
+    return (
+        <>
+            <div className="space-y-3 text-sm text-secondary">
+                <p>
+                    A solicitação será analisada pela organização do evento. Caso seja aprovada, a conta utilizada na solicitação será habilitada para
+                    visualizar e resgatar a inscrição PCD.
+                </p>
+            </div>
+
+            <p className="mt-6 text-sm font-bold text-primary">Para concluir a solicitação, você precisará:</p>
+            <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-tertiary">
+                <li>Documento de identificação do atleta;</li>
+                <li>Laudo médico ou documento comprobatório da condição informada;</li>
+                <li>Informações necessárias para validação da elegibilidade do benefício;</li>
+                <li>Aceite do termo de tratamento e compartilhamento de dados para análise da solicitação.</li>
+            </ul>
+
+            <div className="mt-4 space-y-3 text-sm text-tertiary">
+                <p>
+                    Os dados informados serão utilizados exclusivamente para validação da solicitação e concessão do benefício, em conformidade com a
+                    legislação vigente de proteção de dados.
+                </p>
+                <p>Caso ainda não possua cadastro, não se preocupe: o processo é rápido e seguro.</p>
+            </div>
+        </>
+    );
+}
+
 function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
     return (
         <div className={cx("rounded-xl border border-secondary transition", open ? "bg-primary" : "bg-secondary/60")}>
@@ -143,7 +298,10 @@ function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean
 }
 
 function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | "mobile" }) {
+    const navigate = useNavigate();
     const [openFaq, setOpenFaq] = useState(0);
+    const [grupoModal, setGrupoModal] = useState(false);
+    const [pcdModal, setPcdModal] = useState(false);
     const mobileBar = viewport === "mobile";
 
     // Barra escura que destaca, na trilha, o bloco de informação ativo.
@@ -258,6 +416,16 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                             Paulo conta uma história.
                         </p>
                         <BlueButton className="mt-7 w-full px-7 py-4 text-base @3xl:w-auto">Inscreva-se agora</BlueButton>
+
+                        {/* Já se inscreveu? */}
+                        <div className="mt-6">
+                            <p className="text-sm text-tertiary">
+                                <span className="font-semibold text-primary">Já se inscreveu?</span> Acompanhe sua inscrição e detalhes de compra pela sua conta.
+                            </p>
+                            <button type="button" className="mt-1.5 text-sm font-semibold transition hover:underline" style={{ color: BLUE }}>
+                                Acessar minha inscrição
+                            </button>
+                        </div>
                     </div>
 
                     {/* Banner rotativo */}
@@ -271,7 +439,7 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
             {/* ===== SOBRE + INSCRIÇÃO ===== */}
             <section className="px-6 pt-16 pb-16 @3xl:px-12">
                 <div className="mx-auto flex max-w-6xl flex-col gap-10 @3xl:flex-row @3xl:gap-12">
-                    {/* Conteúdo */}
+                    {/* Sobre o evento */}
                     <div className="min-w-0 flex-1">
                         <h2 className="text-2xl font-bold">Sobre o evento</h2>
                         <div className="mt-4 space-y-4">
@@ -281,17 +449,16 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                                 </p>
                             ))}
                         </div>
-
                         {/* Informações importantes */}
                         <h2 className="mt-12 text-2xl font-bold">Informações importantes</h2>
 
                         <div ref={infoRef} className="relative mt-6 space-y-8 pl-6">
                         {/* Trilha clara (caminho) */}
-                        <div className="absolute inset-y-0 left-0 w-[3px] rounded-full bg-quaternary" />
-                        {/* Barra escura que percorre a trilha conforme o scroll */}
+                        <div className="absolute inset-y-0 left-0 w-[3px] rounded-full bg-tertiary" />
+                        {/* Barra (azul SS) que percorre a trilha conforme o scroll */}
                         <div
                             className="absolute left-0 w-[3px] rounded-full"
-                            style={{ top: thumb.top, height: thumb.height, backgroundColor: "#BFBFBF" }}
+                            style={{ top: thumb.top, height: thumb.height, backgroundColor: BLUE }}
                         />
                         <div data-info-block>
                             <h3 className="text-sm font-bold text-primary">Kits de participação</h3>
@@ -334,39 +501,56 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                                 <p className="pt-2">LARGADA CATEGORIA BABY<br />Será realizada a partir das 9h20 de acordo com ordem de chegada na pistinha da TITI.</p>
                             </div>
                         </div>
+
+                        <div data-info-block>
+                            <h3 className="text-sm font-bold text-primary">Reembolso e detalhes da sua inscrição</h3>
+                            <div className="mt-2 space-y-2 text-sm text-tertiary">
+                                <p>
+                                    Depois de concluir sua inscrição para a São Silvestre, você poderá consultar os detalhes da compra, acessar sua credencial e
+                                    verificar informações sobre reembolso pela sua conta TicketSports by Ingresse.
+                                </p>
+                                <p>Use o mesmo e-mail informado no momento da inscrição para acessar seus dados.</p>
+                            </div>
+                            <button type="button" className="mt-3 text-sm font-semibold transition hover:underline" style={{ color: BLUE }}>
+                                Acompanhar minha inscrição
+                            </button>
+                        </div>
                         </div>
                     </div>
 
                     {/* Card de inscrição (no mobile, logo abaixo do banner) */}
                     <aside className="order-first w-full @3xl:order-none @3xl:w-[360px] @3xl:shrink-0">
                         <div className="overflow-hidden rounded-3xl border border-secondary bg-primary shadow-sm @3xl:sticky @3xl:top-20">
-                            {/* Topo branco */}
-                            <div className="p-8">
+                            {/* Inscrição */}
+                            <div className="p-6">
                                 <h3 className="text-2xl font-bold text-primary">Inscrição</h3>
                                 <p className="mt-4 text-base font-bold text-primary">Data do evento: 29/12/2026</p>
-                                <p className="mt-1.5 text-base text-tertiary">Inscrições até: 20/11/2026</p>
+                                <p className="mt-1.5 text-sm text-tertiary">Inscrições até: 20/11/2026</p>
 
-                                <div className="mt-6 flex items-center gap-2.5 text-base text-secondary">
+                                <div className="mt-5 flex items-center gap-2.5 text-sm text-secondary">
                                     <MarkerPin06 className="size-5 shrink-0 text-fg-quaternary" />
                                     Av. Paulista, São Paulo - SP
                                 </div>
 
                                 <div ref={inscreveRef} className="mt-6">
-                                    <BlueButton className="w-full rounded-xl py-4 text-base">Inscreva-se agora</BlueButton>
+                                    <BlueButton className="w-full rounded-xl py-3.5 text-base">Inscreva-se agora</BlueButton>
                                 </div>
                             </div>
 
-                            {/* Base cinza */}
-                            <div className="bg-secondary p-8">
-                                <p className="text-xl font-bold text-primary">Já se inscreveu?</p>
-                                <p className="mt-2 text-sm text-tertiary">Acompanhe sua inscrição, credencial e detalhes da compra pela sua conta TicketSports by Ingresse.</p>
+                            {/* Grupos Esportivos */}
+                            <div className="border-t border-secondary bg-secondary p-6">
+                                <p className="text-md font-bold text-primary">Grupos Esportivos</p>
+                                <p className="mt-2 text-sm text-tertiary">Solicite vagas para sua equipe, grupo esportivo ou assessoria da corrida.</p>
+                                <OutlineButton onClick={() => setGrupoModal(true)} className="mt-4">
+                                    Solicitar vagas para grupo
+                                </OutlineButton>
+                            </div>
 
-                                <button
-                                    type="button"
-                                    className="mt-5 w-full rounded-xl border border-secondary bg-primary px-5 py-3.5 text-base font-semibold text-primary transition duration-100 ease-linear hover:bg-secondary"
-                                >
-                                    Acessar minha inscrição
-                                </button>
+                            {/* Benefício PCD */}
+                            <div className="border-t border-secondary bg-secondary p-6">
+                                <p className="text-md font-bold text-primary">Benefício PCD</p>
+                                <p className="mt-2 text-sm text-tertiary">Solicite a análise do seu benefício enviando seus dados e documentos comprobatórios.</p>
+                                <OutlineButton onClick={() => setPcdModal(true)} className="mt-4">Solicitar benefício</OutlineButton>
                             </div>
                         </div>
                     </aside>
@@ -396,6 +580,32 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                 </div>
                 <p className="mt-4 text-xs text-tertiary">© 2026 São Silvestre. Todos os direitos reservados.</p>
             </footer>
+
+            {/* Modal: inscrição de grupos esportivos */}
+            {grupoModal && (
+                <InfoModal
+                    viewport={viewport}
+                    title="Inscrição de grupos esportivos"
+                    ctaLabel="Acessar novo processo de grupos"
+                    onCta={() => navigate("/landing-pages/sao-silvestre/solicitar-vagas", { state: { viewport } })}
+                    onClose={() => setGrupoModal(false)}
+                >
+                    <GrupoModalBody />
+                </InfoModal>
+            )}
+
+            {/* Modal: benefício PCD */}
+            {pcdModal && (
+                <InfoModal
+                    viewport={viewport}
+                    title="Benefício PCD"
+                    ctaLabel="Solicitar benefício PCD"
+                    onCta={() => navigate("/landing-pages/sao-silvestre/solicitar-beneficio-pcd", { state: { viewport } })}
+                    onClose={() => setPcdModal(false)}
+                >
+                    <PcdModalBody />
+                </InfoModal>
+            )}
 
             {/* Barra de ação fixa no rodapé (mobile) — via portal para escapar do @container */}
             {mobileBar &&

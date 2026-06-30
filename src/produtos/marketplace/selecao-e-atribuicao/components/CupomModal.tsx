@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { XClose } from "@untitledui/icons";
-import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
+import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
-import { cx } from "@/utils/cx";
 
 interface CupomModalProps {
     isOpen: boolean;
@@ -32,28 +31,10 @@ export function CupomModal({ isOpen, onClose, onAplicar }: CupomModalProps) {
     };
 
     return (
-        <AriaModalOverlay
-            isOpen={isOpen}
-            onOpenChange={(open) => !open && onClose()}
-            isDismissable
-            className={({ isEntering, isExiting }) =>
-                cx(
-                    "fixed inset-0 z-50 flex items-center justify-center bg-overlay/70 p-4 backdrop-blur-[2px] outline-hidden",
-                    isEntering && "duration-200 ease-out animate-in fade-in",
-                    isExiting && "duration-150 ease-in animate-out fade-out",
-                )
-            }
-        >
-            <AriaModal
-                className={({ isEntering, isExiting }) =>
-                    cx(
-                        "flex w-full max-w-[400px] flex-col rounded-2xl bg-primary p-6 shadow-xl outline-hidden",
-                        isEntering && "duration-200 ease-out animate-in zoom-in-95 fade-in",
-                        isExiting && "duration-150 ease-in animate-out zoom-out-95 fade-out",
-                    )
-                }
-            >
-                <AriaDialog className="flex flex-col outline-hidden">
+        <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable>
+            <Modal className="sm:max-w-[400px]">
+                <Dialog>
+                    <div className="w-full rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex flex-col gap-0.5">
                             <h2 className="text-lg font-semibold text-primary">Adicionar código ou cupom</h2>
@@ -77,16 +58,17 @@ export function CupomModal({ isOpen, onClose, onAplicar }: CupomModalProps) {
                         {erro && <span className="text-sm text-error-primary">Cupom inválido ou não encontrado.</span>}
                     </div>
 
-                    <div className="mt-6 flex items-center justify-between gap-3">
-                        <Button size="md" color="link-gray" onClick={onClose}>
+                    <div className="-mx-6 mt-5 flex items-center gap-3 border-t border-secondary px-6 pt-5">
+                        <Button size="lg" color="secondary" className="flex-1" onClick={onClose}>
                             Cancelar
                         </Button>
-                        <Button size="md" color="primary" onClick={aplicar} isDisabled={codigo.trim() === ""}>
+                        <Button size="lg" color="primary" className="flex-1" onClick={aplicar} isDisabled={codigo.trim() === ""}>
                             Aplicar
                         </Button>
                     </div>
-                </AriaDialog>
-            </AriaModal>
-        </AriaModalOverlay>
+                    </div>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
     );
 }

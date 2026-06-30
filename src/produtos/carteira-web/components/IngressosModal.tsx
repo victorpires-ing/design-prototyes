@@ -1,11 +1,12 @@
 import { useState } from "react";
 import type { FC } from "react";
-import { AlertCircle, ArrowLeft, ChevronDown, ClipboardCheck, InfoCircle, Package, Plus, Send01, Tag01, UserRight01, Wallet02, XClose } from "@untitledui/icons";
+import { AlertCircle, ArrowLeft, ChevronDown, ClipboardCheck, InfoCircle, Plus, Send01, Tag01, UserRight01, Wallet02, XClose } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import googleWalletBtn from "../assets/view-in-google-wallet-svg/pt-BR_view_in_wallet_wallet-button.svg";
 import { FakeQR } from "./FakeQR";
+import { GradientFill } from "./GradientFill";
 import { Zigzag } from "./Zigzag";
 import { SAO_SILVESTRE, type Combo, type ComboItem, type EventoSS, type Resposta } from "../data/sao-silvestre";
 import { getTransferencia } from "../data/transfer-store";
@@ -46,13 +47,15 @@ function CircleAction({
 /* ----------------------------------------------------------------------------
  * Mobile: tela de ingresso no formato do app (card em formato de ingresso).
  * -------------------------------------------------------------------------- */
-function MobileComboView({
+export function MobileComboView({
     ev,
     combo,
     titular,
     cpf,
     onClose,
     onTransfer,
+    erro = false,
+    onResponderFormulario,
 }: {
     ev: EventoSS;
     combo: Combo;
@@ -60,6 +63,9 @@ function MobileComboView({
     cpf: string;
     onClose: () => void;
     onTransfer?: (combo: Combo) => void;
+    /** Erro no formulário: embaça o QR e exibe overlay para responder novamente. */
+    erro?: boolean;
+    onResponderFormulario?: () => void;
 }) {
     const transferencia = getTransferencia(combo.id);
     const [actionsOpen, setActionsOpen] = useState(false);
@@ -87,7 +93,7 @@ function MobileComboView({
             </div>
             <h1 className="px-5 pt-4 text-xl font-bold text-primary">Inscrição</h1>
 
-            <div className="flex flex-1 flex-col gap-6 px-5 pt-4 pb-8">
+            <div className={cx("flex flex-1 flex-col gap-6 px-5 pt-4", transferencia ? "pb-8" : "pb-40")}>
                 {transferencia ? (
                     <>
                         {/* Estado transferido (formato de ingresso) */}
@@ -123,7 +129,7 @@ function MobileComboView({
 
                         {/* Itens do combo */}
                         <div>
-                            <h2 className="pb-3 text-md font-bold text-primary">Itens do combo</h2>
+                            <h2 className="pb-3 text-md font-bold text-primary">Detalhes da inscrição</h2>
                             <div className="flex flex-col gap-5">
                                 {combo.itens.map((it, i) => (
                                     <MobileItem key={i} item={it} />
@@ -163,22 +169,38 @@ function MobileComboView({
 
                             <TicketNotch />
 
-                            {/* QR Code único + titular */}
+                            {/* QR Code + titular */}
                             <div className="px-6 pt-6 pb-7">
-                                <p className="text-center text-sm">
-                                    <span className="font-semibold text-brand-secondary">Este combo tem um QR Code único.</span>{" "}
-                                    <span className="font-normal text-tertiary">Apresente este código para retirada do kit, acesso ao evento e retirada da medalha.</span>
-                                </p>
-                                <div className="mt-5 flex justify-center">
-                                    <FakeQR px={220} />
+                                <div className="relative flex justify-center">
+                                    {/* QR quase apagado (apenas um detalhe) quando há erro */}
+                                    <div className={cx(erro && "opacity-10")}>
+                                        <FakeQR px={220} />
+                                    </div>
+                                    {/* Card de erro do formulário sobre o QR */}
+                                    {erro && (
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <div className="flex max-w-[260px] flex-col items-center rounded-2xl bg-primary px-5 py-4 text-center shadow-lg ring-1 ring-border-secondary">
+                                                <FeaturedIcon icon={AlertCircle} color="error" theme="outline" size="md" />
+                                                <p className="mt-4 text-sm font-bold text-primary">Formulário pendente</p>
+                                                <p className="mt-1 text-sm text-tertiary">Complete o formulário para finalizar os dados da inscrição</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={onResponderFormulario}
+                                                    className="mt-4 w-full rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-semibold text-white transition duration-100 ease-linear active:scale-95"
+                                                >
+                                                    Preencher agora
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="-mx-6 my-5 border-t border-tertiary" />
                                 <div>
                                     <p className="text-sm text-tertiary">
-                                        Titular: <span className="font-semibold text-primary">{titular}</span>
+                                        <span>Titular: </span><span className="font-semibold text-primary">{titular}</span>
                                     </p>
                                     <p className="mt-1 text-sm text-tertiary">
-                                        CPF: <span className="font-semibold text-primary">{cpf}</span>
+                                        <span>CPF: </span><span className="font-semibold text-primary">{cpf}</span>
                                     </p>
                                 </div>
                             </div>
@@ -186,7 +208,7 @@ function MobileComboView({
 
                         {/* Itens do combo */}
                         <div>
-                            <h2 className="pb-3 text-md font-bold text-primary">Itens do combo</h2>
+                            <h2 className="pb-3 text-md font-bold text-primary">Detalhes da inscrição</h2>
                             <div className="flex flex-col gap-5">
                                 {combo.itens.map((it, i) => (
                                     <MobileItem key={i} item={it} />
@@ -194,36 +216,51 @@ function MobileComboView({
                             </div>
                         </div>
 
-                        {/* CTAs no final da página — formato do app (2 + "Mais") */}
-                        <div className="flex items-start justify-center gap-8 pt-2">
-                            <CircleAction icon={Send01} label="Transferir" variant="primary" onClick={() => onTransfer?.(combo)} />
-                            <CircleAction icon={Tag01} label="Revender" />
-                            <CircleAction icon={Plus} label="Mais" onClick={() => setActionsOpen(true)} />
-                        </div>
+                        {/* Respostas do formulário (preenchido na compra) — escondidas no cenário de erro */}
+                        {!erro && ev.questionario.length > 0 && (
+                            <div>
+                                <div className="flex items-center gap-2 pb-3">
+                                    <ClipboardCheck className="size-5 text-brand-secondary" />
+                                    <h2 className="text-md font-bold text-primary">Respostas do formulário</h2>
+                                </div>
+                                <div className="divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
+                                    {ev.questionario.map((q) => (
+                                        <div key={q.pergunta} className="p-4">
+                                            <p className="text-sm font-semibold text-primary">{q.pergunta}</p>
+                                            <p className="mt-0.5 text-sm text-tertiary">{q.resposta}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
         </div>
 
-        {/* Overlay do "Mais" — mesmo comportamento do app: escurece a tela + degradê + pílulas */}
-        {actionsOpen && (
+        {/* Barra de ações flutuante fixa no rodapé (igual ActionFab do app). Oculta quando transferido. */}
+        {!transferencia && (
             <>
-                <button type="button" aria-label="Fechar" onClick={() => setActionsOpen(false)} className="absolute inset-0 z-10 bg-black/30" />
+                {actionsOpen && (
+                    <button type="button" aria-label="Fechar" onClick={() => setActionsOpen(false)} className="absolute inset-0 z-10 bg-black/30" />
+                )}
                 <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center bg-[linear-gradient(to_top,var(--color-bg-secondary)_30%,transparent)] px-5 pt-16 pb-6">
                     <div className="flex flex-col gap-5">
-                        {/* Ações extras (pílulas) */}
-                        <div className="flex flex-col items-end gap-2.5 duration-150 animate-in fade-in slide-in-from-bottom-2">
-                            <button
-                                type="button"
-                                onClick={() => setActionsOpen(false)}
-                                className="flex items-center gap-2.5 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-1 ring-black/10 transition duration-100 ease-linear active:scale-95"
-                            >
-                                <Wallet02 className="size-5 text-white" />
-                                Adicionar à Carteira
-                            </button>
-                        </div>
+                        {/* Ações extras reveladas pelo "Mais" (pílulas) */}
+                        {actionsOpen && (
+                            <div className="flex flex-col items-end gap-2.5 duration-150 animate-in fade-in slide-in-from-bottom-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setActionsOpen(false)}
+                                    className="flex items-center gap-2.5 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-1 ring-black/10 transition duration-100 ease-linear active:scale-95"
+                                >
+                                    <Wallet02 className="size-5 text-white" />
+                                    <span>Adicionar à Carteira</span>
+                                </button>
+                            </div>
+                        )}
 
-                        {/* Linha principal: 2 ações + Fechar */}
+                        {/* Linha principal: 2 ações + Mais/Fechar */}
                         <div className="flex items-start justify-center gap-8">
                             <CircleAction
                                 icon={Send01}
@@ -235,7 +272,7 @@ function MobileComboView({
                                 }}
                             />
                             <CircleAction icon={Tag01} label="Revender" onClick={() => setActionsOpen(false)} />
-                            <CircleAction icon={XClose} label="Fechar" onClick={() => setActionsOpen(false)} />
+                            <CircleAction icon={actionsOpen ? XClose : Plus} label={actionsOpen ? "Fechar" : "Mais"} onClick={() => setActionsOpen((v) => !v)} />
                         </div>
                     </div>
                 </div>
@@ -263,6 +300,8 @@ function MobileItem({ item }: { item: ComboItem }) {
     const s = item.status ? STATUS[item.status] : null;
     const finalizado = item.status === "finalizado";
     const hoje = item.status === "hoje";
+    // Data da retirada, endereço e conteúdo do kit vão dentro da descrição do produto.
+    const temDescricao = !!(item.imagem || item.gradient || item.conteudo || item.endereco || (item.dataLabel && item.data));
     return (
         <div>
             {item.data && <p className="pb-2 text-sm font-bold text-primary">{item.data}</p>}
@@ -275,31 +314,41 @@ function MobileItem({ item }: { item: ComboItem }) {
                     </div>
                 )}
                 <p className={cx("text-sm font-bold", finalizado ? "text-tertiary" : "text-primary")}>{item.nome}</p>
-                {item.data && (
-                    <p className={cx("mt-1.5 text-sm text-tertiary", finalizado && "line-through")}>
-                        {item.dataLabel ?? "Data do evento"}: {item.data}
-                    </p>
-                )}
                 {item.acesso && (
                     <p className="mt-1.5 text-sm text-tertiary">
-                        Acesso por <span className="font-semibold text-secondary">{item.acesso}</span>
+                        <span>Acesso por </span><span className="font-semibold text-secondary">{item.acesso}</span>
                     </p>
                 )}
-                {item.endereco && <p className="mt-1.5 text-sm text-tertiary">Endereço: {item.endereco}</p>}
 
-                {item.imagem && <img src={item.imagem} alt={item.nome} className="mt-3 w-full rounded-xl object-cover" />}
+                {item.gradient ? (
+                    <div className="mt-3 h-44 w-full overflow-hidden rounded-xl">
+                        <GradientFill gradient={item.gradient} />
+                    </div>
+                ) : (
+                    item.imagem && <img src={item.imagem} alt={item.nome} className="mt-3 w-full rounded-xl object-cover" />
+                )}
 
-                {item.conteudo && (
-                    <div className="mt-3">
-                        <p className="text-xs font-semibold text-tertiary">O kit contém</p>
-                        <ul className="mt-2 flex flex-col gap-1.5">
-                            {item.conteudo.map((c) => (
-                                <li key={c} className="flex items-center gap-2 text-sm text-secondary">
-                                    <span className="size-1.5 shrink-0 rounded-full bg-fg-quaternary" />
-                                    {c}
-                                </li>
-                            ))}
-                        </ul>
+                {/* Descrição do produto: data da retirada + endereço, depois o que contém no kit */}
+                {temDescricao && (
+                    <div className="mt-3 flex flex-col gap-3">
+                        {item.dataLabel && item.data && (
+                            <div>
+                                <p className="text-xs font-semibold text-tertiary">{item.dataLabel}</p>
+                                <p className="mt-1 text-sm text-secondary">{item.data}</p>
+                            </div>
+                        )}
+                        {item.endereco && (
+                            <div>
+                                <p className="text-xs font-semibold text-tertiary">Endereço</p>
+                                <p className="mt-1 text-sm text-secondary">{item.endereco}</p>
+                            </div>
+                        )}
+                        {item.conteudo && (
+                            <div>
+                                <p className="text-xs font-semibold text-tertiary">O kit contém</p>
+                                <p className="mt-1 text-sm text-secondary">{item.conteudo.join(", ")}</p>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -342,18 +391,15 @@ export function IngressosModal({ onClose, compact = false, onTransfer }: { onClo
                     </button>
 
                     {/* Header */}
-                    <div className="flex items-start gap-4 pr-8">
-                        <div className="size-20 shrink-0 rounded-xl" style={{ background: ev.gradient }} />
+                    <div className="flex items-center gap-4 pr-8">
+                        <div className="size-20 shrink-0 overflow-hidden rounded-xl">
+                            <GradientFill gradient={ev.gradient} />
+                        </div>
                         <div className="min-w-0 flex-1">
                             <h2 className="text-lg leading-tight font-bold text-primary">
-                                Sua inscrição para <span className="font-extrabold">{ev.title}</span>
+                                <span>Sua inscrição para </span><span className="font-extrabold">{ev.title}</span>
                             </h2>
                             <p className="mt-1 text-sm text-tertiary">{ev.local}</p>
-                            <div className="mt-3 inline-flex flex-col items-center rounded-xl px-4 py-1.5 shadow-sm ring-1 ring-border-secondary">
-                                <span className="text-xs text-tertiary">{ev.diaSemana}</span>
-                                <span className="text-xl font-bold text-brand-secondary">{ev.dia}</span>
-                                <span className="text-xs text-tertiary">{ev.mes}</span>
-                            </div>
                         </div>
                     </div>
 
@@ -377,6 +423,65 @@ export function IngressosModal({ onClose, compact = false, onTransfer }: { onClo
     );
 }
 
+/* ----------------------------------------------------------------------------
+ * Desktop: detalhe da inscrição como TELA (mesma estrutura do modal, sem overlay).
+ * -------------------------------------------------------------------------- */
+export function DesktopDetalhe({
+    onBack,
+    onTransfer,
+    erro = false,
+    onResponderFormulario,
+}: {
+    onBack: () => void;
+    onTransfer?: (combo: Combo) => void;
+    erro?: boolean;
+    onResponderFormulario?: () => void;
+}) {
+    const ev = SAO_SILVESTRE;
+    return (
+        <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
+            <button
+                type="button"
+                onClick={onBack}
+                className="mb-6 flex items-center gap-1.5 text-sm font-medium text-tertiary transition duration-100 ease-linear hover:text-secondary"
+            >
+                <ArrowLeft className="size-4" />
+                Voltar
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-4">
+                <div className="size-20 shrink-0 overflow-hidden rounded-xl">
+                    <GradientFill gradient={ev.gradient} />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-lg leading-tight font-bold text-primary">
+                        <span>Sua inscrição para </span><span className="font-extrabold">{ev.title}</span>
+                    </h2>
+                    <p className="mt-1 text-sm text-tertiary">{ev.local}</p>
+                </div>
+            </div>
+
+            {/* Inscrição (mesma estrutura do modal) */}
+            <div className="mt-8 flex flex-col gap-4">
+                {ev.combos.map((c) => (
+                    <ComboCard
+                        key={c.id}
+                        combo={c}
+                        titular={ev.titular}
+                        cpf={ev.cpf}
+                        questionario={ev.questionario}
+                        compact={false}
+                        onTransfer={() => onTransfer?.(c)}
+                        erro={erro}
+                        onResponderFormulario={onResponderFormulario}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function ComboCard({
     combo,
     titular,
@@ -384,6 +489,8 @@ function ComboCard({
     questionario,
     compact = false,
     onTransfer,
+    erro = false,
+    onResponderFormulario,
 }: {
     combo: Combo;
     titular: string;
@@ -391,31 +498,23 @@ function ComboCard({
     questionario: Resposta[];
     compact?: boolean;
     onTransfer?: () => void;
+    erro?: boolean;
+    onResponderFormulario?: () => void;
 }) {
     const [open, setOpen] = useState(true);
     const transferencia = getTransferencia(combo.id);
 
     return (
         <div className="overflow-hidden rounded-xl ring-1 ring-border-secondary">
-            {/* Cabeçalho do combo (agrupador) */}
+            {/* Cabeçalho do agrupador */}
             <div className="flex items-center gap-3 bg-secondary/50 p-4">
-                <span
-                    className={cx(
-                        "flex size-10 shrink-0 items-center justify-center rounded-lg",
-                        transferencia ? "bg-tertiary text-fg-quaternary" : "bg-brand-secondary text-fg-brand-primary",
-                    )}
-                >
-                    <Package className="size-5" />
-                </span>
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                         <p className="truncate font-bold text-primary">{combo.nome}</p>
-                        {transferencia ? (
-                            <Badge size="sm" color="gray" type="pill-color">
-                                Transferida
+                        {transferencia && (
+                            <Badge size="sm" color="blue" type="pill-color">
+                                Transferido
                             </Badge>
-                        ) : (
-                            <span className="shrink-0 rounded-full bg-brand-secondary px-2 py-0.5 text-xs font-medium text-brand-secondary">Combo</span>
                         )}
                     </div>
                     <p className="mt-0.5 text-sm text-tertiary">Data do evento: {combo.dataEvento}</p>
@@ -453,8 +552,8 @@ function ComboCard({
 
                     {/* Itens do combo */}
                     <div>
-                        <h4 className="text-sm font-bold text-primary">Itens do combo</h4>
-                        <div className="mt-2 flex flex-col gap-3">
+                        <h4 className="text-sm font-bold text-primary">Detalhes da inscrição</h4>
+                        <div className="mt-3 flex flex-col gap-5">
                             {combo.itens.map((it, i) => (
                                 <ItemView key={i} item={it} />
                             ))}
@@ -494,23 +593,39 @@ function ComboCard({
                             </div>
                             <div className="border-t border-secondary px-5 py-4">
                                 <p className="text-base text-tertiary">
-                                    Titular: <span className="font-bold text-primary">{titular}</span>
+                                    <span>Titular: </span><span className="font-bold text-primary">{titular}</span>
                                 </p>
                                 <p className="mt-1 text-base text-tertiary">
-                                    CPF: <span className="font-bold text-primary">{cpf}</span>
+                                    <span>CPF: </span><span className="font-bold text-primary">{cpf}</span>
                                 </p>
                             </div>
                         </div>
                     ) : (
                         <>
-                            {/* Desktop: web não exibe o QR — alerta (estrutura do DS) com fundo amarelo claro + borda amarela mais escura */}
-                            <div className="flex flex-col gap-4 rounded-xl border border-utility-yellow-300 bg-utility-yellow-50 p-4 md:flex-row">
-                                <FeaturedIcon icon={AlertCircle} color="warning" theme="outline" size="md" />
-                                <div className="flex flex-1 flex-col gap-1 md:w-0">
-                                    <p className="text-sm font-semibold text-secondary">O QR Code é exibido na versão mobile.</p>
-                                    <p className="text-sm text-tertiary">Este combo tem um QR Code único para retirada do kit, acesso ao evento e retirada da medalha.</p>
+                            {/* Desktop: web não exibe o QR. Em erro, vira o alerta de formulário pendente. */}
+                            {erro ? (
+                                <div className="flex items-center gap-4 rounded-xl border border-error_subtle bg-error-primary p-4">
+                                    <FeaturedIcon icon={AlertCircle} color="error" theme="outline" size="md" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-semibold text-primary">Formulário pendente</p>
+                                        <p className="text-sm text-tertiary">Complete o formulário para finalizar os dados da inscrição</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={onResponderFormulario}
+                                        className="shrink-0 rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-semibold text-white transition duration-100 ease-linear hover:brightness-95"
+                                    >
+                                        Preencher agora
+                                    </button>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="flex flex-col gap-4 rounded-xl border border-utility-yellow-300 bg-utility-yellow-50 p-4 md:flex-row">
+                                    <FeaturedIcon icon={AlertCircle} color="warning" theme="outline" size="md" />
+                                    <div className="flex flex-1 flex-col gap-1 md:w-0">
+                                        <p className="text-sm font-semibold text-secondary">O QR Code é exibido na versão mobile.</p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Informações */}
                             <div>
@@ -521,7 +636,7 @@ function ComboCard({
                                         <p className="mt-0.5 text-sm font-bold text-primary">{titular}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs text-tertiary">CPF do Titular</p>
+                                        <p className="text-xs text-tertiary">CPF</p>
                                         <p className="mt-0.5 text-sm font-bold text-primary">{cpf}</p>
                                     </div>
                                 </div>
@@ -531,29 +646,31 @@ function ComboCard({
 
                     {/* Itens do combo */}
                     <div>
-                        <h4 className="text-sm font-bold text-primary">Itens do combo</h4>
-                        <div className="mt-2 flex flex-col gap-3">
+                        <h4 className="text-sm font-bold text-primary">Detalhes da inscrição</h4>
+                        <div className="mt-3 flex flex-col gap-5">
                             {combo.itens.map((it, i) => (
                                 <ItemView key={i} item={it} />
                             ))}
                         </div>
                     </div>
 
-                    {/* Respostas do formulário (preenchido na compra) */}
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <ClipboardCheck className="size-5 text-brand-secondary" />
-                            <h4 className="text-sm font-bold text-primary">Respostas do formulário</h4>
+                    {/* Respostas do formulário (preenchido na compra) — escondidas no cenário de erro */}
+                    {!erro && (
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <ClipboardCheck className="size-5 text-brand-secondary" />
+                                <h4 className="text-sm font-bold text-primary">Respostas do formulário</h4>
+                            </div>
+                            <div className="mt-2 divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+                                {questionario.map((q) => (
+                                    <div key={q.pergunta} className="p-4">
+                                        <p className="text-sm font-semibold text-primary">{q.pergunta}</p>
+                                        <p className="mt-0.5 text-sm text-tertiary">{q.resposta}</p>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <div className="mt-2 divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-                            {questionario.map((q) => (
-                                <div key={q.pergunta} className="p-4">
-                                    <p className="text-sm font-semibold text-primary">{q.pergunta}</p>
-                                    <p className="mt-0.5 text-sm text-tertiary">{q.resposta}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    )}
 
                     {/* Ações desktop (lado a lado, centralizadas). No mobile, ver rodapé fixo. */}
                     {!compact && (
@@ -580,39 +697,61 @@ function ComboCard({
 
 function ItemView({ item }: { item: ComboItem }) {
     const s = item.status ? STATUS[item.status] : null;
+    // Data da retirada, endereço e conteúdo do kit vão dentro da descrição do produto.
+    const temDescricao = !!(item.imagem || item.gradient || item.conteudo || item.endereco || (item.dataLabel && item.data));
     return (
-        <div className="rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
-            {s && (
-                <div className="mb-2">
-                    <Badge size="sm" color={s.color} type="pill-color">
-                        {s.label}
-                    </Badge>
-                </div>
-            )}
-            <p className="text-sm font-bold text-primary">{item.nome}</p>
-            {item.data && (
-                <p className="mt-1 text-sm text-tertiary">
-                    {item.dataLabel ?? "Data do evento"}: {item.data}
-                </p>
-            )}
-            {item.acesso && (
-                <p className="mt-1 text-sm text-tertiary">
-                    Acesso por <span className="font-semibold text-secondary">{item.acesso}</span>
-                </p>
-            )}
-            {item.endereco && <p className="mt-1 text-sm text-tertiary">Endereço: {item.endereco}</p>}
+        <div>
+            {/* Data acima do card (igual mobile/app) */}
+            {item.data && <p className="pb-2 text-sm font-bold text-primary">{item.data}</p>}
 
-            {(item.imagem || item.conteudo) && (
-                <div className="mt-3 flex items-start gap-4">
-                    {item.imagem && <img src={item.imagem} alt={item.nome} className="size-28 shrink-0 rounded-xl object-cover" />}
-                    {item.conteudo && (
-                        <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-tertiary">O kit contém</p>
-                            <p className="mt-1.5 text-sm text-secondary">{item.conteudo.join(", ")}</p>
+            <div className="rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
+                {s && (
+                    <div className="mb-2">
+                        <Badge size="sm" color={s.color} type="pill-color">
+                            {s.label}
+                        </Badge>
+                    </div>
+                )}
+                <p className="text-sm font-bold text-primary">{item.nome}</p>
+                {item.acesso && (
+                    <p className="mt-1 text-sm text-tertiary">
+                        <span>Acesso por </span><span className="font-semibold text-secondary">{item.acesso}</span>
+                    </p>
+                )}
+
+                {/* Descrição do produto: data da retirada + endereço, depois o que contém no kit */}
+                {temDescricao && (
+                    <div className="mt-3 flex items-start gap-4">
+                        {item.gradient ? (
+                            <div className="size-28 shrink-0 overflow-hidden rounded-xl">
+                                <GradientFill gradient={item.gradient} />
+                            </div>
+                        ) : (
+                            item.imagem && <img src={item.imagem} alt={item.nome} className="size-28 shrink-0 rounded-xl object-cover" />
+                        )}
+                        <div className="min-w-0 flex-1 space-y-3">
+                            {item.dataLabel && item.data && (
+                                <div>
+                                    <p className="text-xs font-semibold text-tertiary">{item.dataLabel}</p>
+                                    <p className="mt-1 text-sm text-secondary">{item.data}</p>
+                                </div>
+                            )}
+                            {item.endereco && (
+                                <div>
+                                    <p className="text-xs font-semibold text-tertiary">Endereço</p>
+                                    <p className="mt-1 text-sm text-secondary">{item.endereco}</p>
+                                </div>
+                            )}
+                            {item.conteudo && (
+                                <div>
+                                    <p className="text-xs font-semibold text-tertiary">O kit contém</p>
+                                    <p className="mt-1 text-sm text-secondary">{item.conteudo.join(", ")}</p>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-            )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

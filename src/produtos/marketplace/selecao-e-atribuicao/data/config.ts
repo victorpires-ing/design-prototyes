@@ -28,6 +28,11 @@ export interface EventConfig {
     mapa: string;
     termos: string;
     selo: string;
+    comboTabLabel: string;
+    /** Cor de destaque do evento (botões primários e links). Hex; vazio = cor padrão. */
+    corDestaque?: string;
+    /** Exibe o botão de voltar (para as configurações) na tela de seleção. */
+    exibirVoltar?: boolean;
     exibir: Exibir;
     ingressos: Ingresso[];
     produtos: Produto[];
@@ -47,6 +52,9 @@ export const DEFAULT_CONFIG: EventConfig = {
     termos:
         "Ticket Sports by Ingresse é plataforma de vendas dos ingressos / inscrições on-line. Não temos responsabilidade e poder sobre organização e ocorrências relativas a este evento.\n\nDeclaro que:\n\n1. Estarei presente neste evento por minha livre e espontânea vontade, isentando de quaisquer responsabilidades os ORGANIZADORES e as empresas envolvidas, em meu nome e de meus herdeiros;\n\n2. Estou em plenas condições físicas e de saúde para participar do evento.",
     selo: "Rascunho",
+    comboTabLabel: "Combo dinâmico",
+    corDestaque: "",
+    exibirVoltar: true,
     exibir: EXIBIR_PADRAO,
     ingressos: INGRESSOS,
     produtos: PRODUTOS,
@@ -89,12 +97,22 @@ export function decodeConfig(param: string): EventConfig | null {
             mapa: obj.mapa ?? "",
             termos: obj.termos ?? "",
             selo: obj.selo ?? "",
+            comboTabLabel: obj.comboTabLabel ?? "Combo dinâmico",
+            corDestaque: obj.corDestaque ?? "",
+            exibirVoltar: obj.exibirVoltar ?? true,
             exibir: { datas: true, combosFixos: true, combosDinamicos: true, ...(obj.exibir ?? {}) },
             ingressos: Array.isArray(obj.ingressos) ? obj.ingressos : [],
             produtos: Array.isArray(obj.produtos) ? obj.produtos : [],
             datas: Array.isArray(obj.datas) ? obj.datas : [],
             combosFixos: Array.isArray(obj.combosFixos) ? obj.combosFixos : [],
-            combosDinamicos: Array.isArray(obj.combosDinamicos) ? obj.combosDinamicos.map((c) => ({ ...c, precoVisivel: Array.isArray(c.precoVisivel) ? c.precoVisivel : [] })) : [],
+            combosDinamicos: Array.isArray(obj.combosDinamicos)
+                ? obj.combosDinamicos.map((c) => ({
+                      ...c,
+                      precoVisivel: Array.isArray(c.precoVisivel) ? c.precoVisivel : [],
+                      ocultos: Array.isArray(c.ocultos) ? c.ocultos : [],
+                      quantidades: c.quantidades && typeof c.quantidades === "object" ? c.quantidades : {},
+                  }))
+                : [],
             perguntas: Array.isArray(obj.perguntas) ? obj.perguntas : [],
             cupons: Array.isArray(obj.cupons) ? obj.cupons : [],
         };
@@ -106,4 +124,37 @@ export function decodeConfig(param: string): EventConfig | null {
 export function buildShareUrl(cfg: EventConfig): string {
     const base = typeof window !== "undefined" ? window.location.origin : "";
     return `${base}/marketplace/event?cfg=${encodeURIComponent(encodeConfig(cfg))}`;
+}
+
+/**
+ * Cria um link curto (id derivado do hash do conteúdo) via /api/links e Redis.
+ * Idempotente: o mesmo config retorna o mesmo id. Cai no link longo (?cfg=) se a API falhar.
+ */
+export async function buildShortShareUrl(cfg: EventConfig): Promise<string> {
+    const base = typeof window !== "undefined" ? window.location.origin : "";
+    try {
+        const data = encodeConfig(cfg);
+        const res = await fetch("/api/links", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ data }),
+        });
+        if (!res.ok) throw new Error("falha ao criar link");
+        const { id } = (await res.json()) as { id: string };
+        return `${base}/marketplace/event?e=${id}`;
+    } catch {
+        return buildShareUrl(cfg);
+    }
+}
+
+/** Resolve um link curto (?e=<id>) buscando o cfg no Redis. */
+export async function resolverLinkCurto(id: string): Promise<EventConfig | null> {
+    try {
+        const res = await fetch(`/api/links?id=${encodeURIComponent(id)}`);
+        if (!res.ok) return null;
+        const { data } = (await res.json()) as { data?: string };
+        return data ? decodeConfig(data) : null;
+    } catch {
+        return null;
+    }
 }

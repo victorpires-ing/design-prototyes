@@ -1,14 +1,17 @@
 import { useLocation } from "react-router";
-import { Bell01, ChevronDown, MarkerPin01, SearchLg, Settings01 } from "@untitledui/icons";
+import { Bell01, ChevronDown, MarkerPin01, Settings01, Stars01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { cx } from "@/utils/cx";
 import { CIDADES, setCidade, useCidade } from "../data/cidade-store";
+import { openSearch } from "../data/search-store";
+import { SearchOverlay } from "./SearchOverlay";
 import logoBlack from "../../../../assets/Company logo_black.svg";
 import logoWhite from "../../../../assets/Company logo_white.svg";
 
 // Links provisórios para navegar entre as páginas criadas (header real vem depois).
 const NAV_LINKS = [
+    { label: "Início", href: "/novo-site/home" },
     { label: "Categorias", href: "/novo-site/home/categorias" },
     { label: "Evento", href: "/novo-site/home/event-details" },
 ];
@@ -22,6 +25,8 @@ export function HeaderNav({ onOpenConfig }: { onOpenConfig?: () => void }) {
     const { pathname } = useLocation();
     const cidade = useCidade();
     return (
+        <>
+        <SearchOverlay />
         <header className="sticky top-0 z-40 border-b border-secondary bg-primary">
             <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 lg:gap-5 lg:px-8">
                 <img src={logoBlack} alt="Ingresse" className="h-6 shrink-0 dark:invert" />
@@ -60,7 +65,7 @@ export function HeaderNav({ onOpenConfig }: { onOpenConfig?: () => void }) {
                 </nav>
 
                 <div className="flex flex-1 items-center justify-end gap-1">
-                    <IconButton icon={SearchLg} label="Buscar" />
+                    <IconButton icon={Stars01} label="Descobrir" onClick={() => openSearch()} />
                     {onOpenConfig && <IconButton icon={Settings01} label="Configurar evento" onClick={onOpenConfig} />}
                     <div className="relative">
                         <IconButton icon={Bell01} label="Notificações" />
@@ -74,6 +79,7 @@ export function HeaderNav({ onOpenConfig }: { onOpenConfig?: () => void }) {
                 </div>
             </div>
         </header>
+        </>
     );
 }
 

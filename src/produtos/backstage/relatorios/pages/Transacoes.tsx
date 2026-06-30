@@ -1,19 +1,14 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { getLocalTimeZone, today } from "@internationalized/date";
-import type { DateValue, Selection } from "react-aria-components";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
     Bank,
     CheckCircle,
-    ChevronDown,
     ClockFastForward,
     CreditCard02,
     CurrencyDollarCircle,
-    FilterLines,
     RefreshCcw01,
     SearchLg,
     ShoppingCart01,
     SlashCircle01,
-    UploadCloud02,
 } from "@untitledui/icons";
 import {
     Area,
@@ -31,30 +26,18 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
-import {
-    CountBadge,
-    FilterDropdown,
-    type FilterRow,
-} from "@/components/application/filter-bar/filter-dropdown-menu";
-import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
-import { Button } from "@/components/base/buttons/button";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Input } from "@/components/base/input/input";
-import { MultiSelect } from "@/components/base/select/multi-select";
-import { Select } from "@/components/base/select/select";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
-
-/* ------------------------------------------------------------------ */
-/*  Shared constants                                                  */
-/* ------------------------------------------------------------------ */
-
-const HIDE_TREND_AND_MENU =
-    "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
+import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
+import { RelatorioFiltersProvider, matchRow, inDateRange, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
+import { SortableHeader } from "../components/SortableHeader";
+import { useSortableTable } from "../utils/useSortableTable";
+import { EVENT, currencyFormatter, numberFormatter, percentFormatter, parseEventDate } from "../data/event";
 
 /* ------------------------------------------------------------------ */
 /*  Hooks                                                             */
@@ -73,39 +56,25 @@ function useIsMobile(): boolean {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Formatters                                                        */
-/* ------------------------------------------------------------------ */
-
-const currencyFormatter = new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-});
-const numberFormatter = new Intl.NumberFormat("pt-BR");
-const percentFormatter = new Intl.NumberFormat("pt-BR", {
-    style: "percent",
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-});
-
-/* ------------------------------------------------------------------ */
-/*  Mock data                                                         */
+/*  Status + meios                                                    */
 /* ------------------------------------------------------------------ */
 
 type StatusTransacao = "aprovado" | "pendente" | "cancelado" | "estornado" | "reembolso";
 
-const STATUS_META: Record<
-    StatusTransacao,
-    {
-        label: string;
-        icon: typeof CheckCircle;
-        color: "success" | "warning" | "error" | "gray";
-    }
-> = {
+const STATUS_META: Record<StatusTransacao, { label: string; icon: typeof CheckCircle; color: "success" | "warning" | "error" | "gray" }> = {
     aprovado: { label: "Aprovado", icon: CheckCircle, color: "success" },
     pendente: { label: "Pendente", icon: ClockFastForward, color: "warning" },
     cancelado: { label: "Carrinho Abandonado", icon: ShoppingCart01, color: "gray" },
     estornado: { label: "Cancelado", icon: SlashCircle01, color: "error" },
     reembolso: { label: "Reembolso", icon: RefreshCcw01, color: "warning" },
+};
+
+const STATUS_FILL: Record<StatusTransacao, string> = {
+    aprovado: "var(--color-utility-green-500)",
+    pendente: "var(--color-utility-yellow-500)",
+    cancelado: "var(--color-utility-neutral-500)",
+    estornado: "var(--color-utility-red-500)",
+    reembolso: "var(--color-utility-orange-500)",
 };
 
 interface IngressoStatusRow {
@@ -115,14 +84,6 @@ interface IngressoStatusRow {
     totalIngressos: number;
     total: number;
 }
-
-const ingressosPorStatus: IngressoStatusRow[] = [
-    { id: "ap", status: "aprovado", canal: "Online", totalIngressos: 11124, total: 2798311.19 },
-    { id: "pe", status: "pendente", canal: "Online", totalIngressos: 384, total: 95616.0 },
-    { id: "ca", status: "cancelado", canal: "Online", totalIngressos: 127, total: 31750.0 },
-    { id: "es", status: "estornado", canal: "Online", totalIngressos: 64, total: 16000.0 },
-    { id: "re", status: "reembolso", canal: "Online", totalIngressos: 41, total: 10250.0 },
-];
 
 interface MeioPagamentoRow {
     id: string;
@@ -136,71 +97,21 @@ interface MeioPagamentoRow {
     pctValor: number;
 }
 
-const meiosPagamento: MeioPagamentoRow[] = [
-    {
-        id: "pix",
-        nome: "Pix",
-        icon: Bank,
-        quantidadeTransacoes: 2368,
-        pctQtdTransacoes: 0.375,
-        quantidadeIngressos: 3554,
-        pctQtdIngressos: 0.319,
-        valor: 842254.57,
-        pctValor: 0.301,
-    },
-    {
-        id: "cartao",
-        nome: "Cartão de Crédito",
-        icon: CreditCard02,
-        quantidadeTransacoes: 3945,
-        pctQtdTransacoes: 0.625,
-        quantidadeIngressos: 7570,
-        pctQtdIngressos: 0.681,
-        valor: 1956056.62,
-        pctValor: 0.699,
-    },
-];
-
 interface ChartPoint {
     data: string;
     quantidade: number;
     total: number;
 }
 
-const chartData: ChartPoint[] = [
-    { data: "4/4", quantidade: 2540, total: 638570 },
-    { data: "5/4", quantidade: 787, total: 197887 },
-    { data: "6/4", quantidade: 552, total: 138750 },
-    { data: "7/4", quantidade: 320, total: 80450 },
-    { data: "8/4", quantidade: 287, total: 72148 },
-    { data: "9/4", quantidade: 248, total: 62356 },
-    { data: "10/4", quantidade: 259, total: 65117 },
-    { data: "11/4", quantidade: 198, total: 49786 },
-    { data: "12/4", quantidade: 153, total: 38478 },
-    { data: "13/4", quantidade: 89, total: 22384 },
-    { data: "14/4", quantidade: 102, total: 25653 },
-    { data: "15/4", quantidade: 94, total: 23641 },
-    { data: "16/4", quantidade: 120, total: 30187 },
-    { data: "17/4", quantidade: 87, total: 21879 },
-    { data: "18/4", quantidade: 90, total: 22631 },
-    { data: "19/4", quantidade: 128, total: 32193 },
-    { data: "20/4", quantidade: 83, total: 20872 },
-    { data: "22/4", quantidade: 110, total: 27664 },
-    { data: "24/4", quantidade: 104, total: 26152 },
-    { data: "26/4", quantidade: 116, total: 29173 },
-    { data: "28/4", quantidade: 158, total: 39738 },
-    { data: "1/5", quantidade: 215, total: 54068 },
-    { data: "3/5", quantidade: 273, total: 68665 },
-    { data: "5/5", quantidade: 318, total: 79973 },
-    { data: "8/5", quantidade: 358, total: 90034 },
-    { data: "11/5", quantidade: 515, total: 129541 },
-    { data: "14/5", quantidade: 358, total: 90042 },
-    { data: "17/5", quantidade: 86, total: 21632 },
-    { data: "19/5", quantidade: 32, total: 8050 },
-];
+/* ------------------------------------------------------------------ */
+/*  Mock data — gerador determinístico de transações                  */
+/*  Todos os cards derivam DESTE conjunto, então qualquer filtro       */
+/*  (período, sessão ou campo) recompõe todas as visões da página.     */
+/* ------------------------------------------------------------------ */
 
 interface Transacao {
     id: string;
+    sessaoId: string;
     dataCriacao: string;
     ultimaAtualizacao: string;
     status: StatusTransacao;
@@ -227,228 +138,191 @@ interface Transacao {
     bundleDinamico: boolean;
 }
 
-const transacoes: Transacao[] = [
-    {
-        id: "023fcb61-8493-4c9a-98ca-68d35b5c5c07",
-        dataCriacao: "22/5/2026, 00:14",
-        ultimaAtualizacao: "22/5/2026, 00:15",
-        status: "aprovado",
-        nomeIngresso: "Meia",
-        setor: "DOMINGO (11/10)",
-        lote: "Lote 3",
-        comprador: "Adriano Albuquerque",
-        cpf: "11180301412",
-        telefone: "+5513996179250",
-        email: "adrianofilho2009@gmail.com",
-        canal: "Online",
-        tipoPagamento: "Pix",
-        estado: "—",
-        cidade: "—",
-        operadorVendas: "—",
-        valor: 199.0,
-        cupom: "—",
-        valorDesconto: 0,
-        valorFinal: 199.0,
-        qtdItem: 1,
-        passkey: "—",
-        pdv: false,
-        bundle: false,
-        bundleDinamico: false,
-    },
-    {
-        id: "c61d7db2-3ac4-4fa5-8d99-3f74f3e62e90",
-        dataCriacao: "22/5/2026, 00:13",
-        ultimaAtualizacao: "22/5/2026, 00:14",
-        status: "aprovado",
-        nomeIngresso: "Meia",
-        setor: "SÁBADO (10/10)",
-        lote: "Lote 3",
-        comprador: "Davi Marinho da Silva",
-        cpf: "50332360830",
-        telefone: "+5511986215159",
-        email: "davim222@hotmail.com",
-        canal: "Online",
-        tipoPagamento: "Cartão de Crédito",
-        estado: "SP",
-        cidade: "São Paulo",
-        operadorVendas: "—",
-        valor: 199.0,
-        cupom: "—",
-        valorDesconto: 0,
-        valorFinal: 199.0,
-        qtdItem: 1,
-        passkey: "—",
-        pdv: false,
-        bundle: false,
-        bundleDinamico: false,
-    },
-    {
-        id: "12da9cde-e5be-4431-b299-b10b7aee7cac",
-        dataCriacao: "21/5/2026, 23:01",
-        ultimaAtualizacao: "21/5/2026, 23:02",
-        status: "aprovado",
-        nomeIngresso: "Meia",
-        setor: "SÁBADO (10/10)",
-        lote: "Lote 3",
-        comprador: "Vinicius Cayres",
-        cpf: "45659058841",
-        telefone: "+5511999007839",
-        email: "cayres2000@gmail.com",
-        canal: "Online",
-        tipoPagamento: "Cartão de Crédito",
-        estado: "SP",
-        cidade: "São Paulo",
-        operadorVendas: "—",
-        valor: 199.0,
-        cupom: "—",
-        valorDesconto: 0,
-        valorFinal: 199.0,
-        qtdItem: 1,
-        passkey: "—",
-        pdv: false,
-        bundle: false,
-        bundleDinamico: false,
-    },
-    {
-        id: "8a124f30-9b21-4c11-bb14-a87e3d2c4519",
-        dataCriacao: "21/5/2026, 19:42",
-        ultimaAtualizacao: "21/5/2026, 19:43",
-        status: "aprovado",
-        nomeIngresso: "Inteira - Combo Camarote + Open Bar",
-        setor: "DOMINGO (11/10) - PREMIUM",
-        lote: "Lote 2",
-        comprador: "Mariana Lopes Ferreira",
-        cpf: "32145678912",
-        telefone: "+5521987654321",
-        email: "mariana.lopes@gmail.com",
-        canal: "Online",
-        tipoPagamento: "Cartão de Crédito",
-        estado: "RJ",
-        cidade: "Rio de Janeiro",
-        operadorVendas: "—",
-        valor: 758.0,
-        cupom: "FAN15",
-        valorDesconto: 113.7,
-        valorFinal: 644.3,
-        qtdItem: 1,
-        passkey: "—",
-        pdv: false,
-        bundle: true,
-        bundleDinamico: false,
-    },
-    {
-        id: "4e8b2a17-5d3c-4ee9-b412-7f9a6d1c8e23",
-        dataCriacao: "21/5/2026, 18:30",
-        ultimaAtualizacao: "21/5/2026, 18:35",
-        status: "pendente",
-        nomeIngresso: "Meia | Caravanas",
-        setor: "SÁBADO (10/10)",
-        lote: "Lote 3",
-        comprador: "Pedro Henrique Costa",
-        cpf: "78912345607",
-        telefone: "+5531998877665",
-        email: "pedrohcosta@outlook.com",
-        canal: "Online",
-        tipoPagamento: "Pix",
-        estado: "MG",
-        cidade: "Belo Horizonte",
-        operadorVendas: "—",
-        valor: 99.5,
-        cupom: "—",
-        valorDesconto: 0,
-        valorFinal: 99.5,
-        qtdItem: 1,
-        passkey: "—",
-        pdv: false,
-        bundle: false,
-        bundleDinamico: false,
-    },
-    {
-        id: "2c9f5a08-3b7e-4ad1-9c08-6e4b2f8d3a91",
-        dataCriacao: "21/5/2026, 17:15",
-        ultimaAtualizacao: "21/5/2026, 17:16",
-        status: "aprovado",
-        nomeIngresso: "VIP - 1º Lote (Inteira)",
-        setor: "VIP",
-        lote: "Lote 1",
-        comprador: "Camila Rodrigues",
-        cpf: "98765432100",
-        telefone: "+5511912345678",
-        email: "camila.rodrigues@gmail.com",
-        canal: "PDV",
-        tipoPagamento: "Cartão de Crédito",
-        estado: "SP",
-        cidade: "Campinas",
-        operadorVendas: "Operadora Estação Central",
-        valor: 1368.0,
-        cupom: "—",
-        valorDesconto: 0,
-        valorFinal: 1368.0,
-        qtdItem: 1,
-        passkey: "VIP2026",
-        pdv: true,
-        bundle: false,
-        bundleDinamico: false,
-    },
-    {
-        id: "f5a37b29-1c4d-4e8b-a213-7d9c8e6f4b15",
-        dataCriacao: "21/5/2026, 15:22",
-        ultimaAtualizacao: "21/5/2026, 15:48",
-        status: "cancelado",
-        nomeIngresso: "Camarote - 2º Lote (Inteira)",
-        setor: "Camarote Premium",
-        lote: "Lote 2",
-        comprador: "Roberto Santos Júnior",
-        cpf: "12378945612",
-        telefone: "+5571988776655",
-        email: "roberto.sj@yahoo.com",
-        canal: "Online",
-        tipoPagamento: "Cartão de Crédito",
-        estado: "BA",
-        cidade: "Salvador",
-        operadorVendas: "—",
-        valor: 681.0,
-        cupom: "VIPACCESS",
-        valorDesconto: 68.1,
-        valorFinal: 612.9,
-        qtdItem: 1,
-        passkey: "—",
-        pdv: false,
-        bundle: false,
-        bundleDinamico: true,
-    },
-    {
-        id: "9d1e4c52-8f6a-4b27-c513-2a9b7f3e8d61",
-        dataCriacao: "21/5/2026, 14:08",
-        ultimaAtualizacao: "21/5/2026, 14:09",
-        status: "aprovado",
-        nomeIngresso: "Pista Premium - 1º Lote (Meia)",
-        setor: "Pista Premium",
-        lote: "Lote 1",
-        comprador: "Larissa Almeida",
-        cpf: "65498712345",
-        telefone: "+5511933445566",
-        email: "lari.almeida@hotmail.com",
-        canal: "Online",
-        tipoPagamento: "Pix",
-        estado: "SP",
-        cidade: "São Paulo",
-        operadorVendas: "—",
-        valor: 379.0,
-        cupom: "PREMIERE10",
-        valorDesconto: 37.9,
-        valorFinal: 341.1,
-        qtdItem: 1,
-        passkey: "—",
-        pdv: false,
-        bundle: false,
-        bundleDinamico: false,
-    },
+// Setores e tipos de ingresso do jogo (Botafogo x Chapecoense). Nome do ingresso = lote = tipo.
+const t = (nome: string, valor: number) => ({ nome, valor, lote: nome });
+const CATALOGO = [
+    { setor: "Leste Superior", peso: 0.382, tipos: [t("Meia-Entrada", 20), t("Inteira", 40), t("Alvinegro", 0)] },
+    { setor: "Oeste Inferior", peso: 0.212, tipos: [t("Meia-Entrada", 50), t("Inteira", 100), t("Acompanhante Glorioso", 40)] },
+    { setor: "Leste Inferior", peso: 0.19, tipos: [t("Meia-Entrada", 40), t("Inteira", 80), t("Alvinegro", 0)] },
+    { setor: "Oeste Superior B", peso: 0.128, tipos: [t("Meia-Entrada", 30), t("Inteira", 60), t("Preto", 24)] },
+    { setor: "3º Andar Leste", peso: 0.062, tipos: [t("Meia-Entrada", 20), t("Inteira", 40)] },
+    { setor: "3º Andar Oeste", peso: 0.013, tipos: [t("Inteira", 40), t("Alvinegro", 0)] },
+    { setor: "Camarote", peso: 0.006, tipos: [t("Inteira", 60)] },
+    { setor: "Sul (Visitante)", peso: 0.004, tipos: [t("Meia-Entrada", 40), t("Inteira", 80)] },
+    { setor: "Tribuna", peso: 0.003, tipos: [t("Futebol", 120)] },
 ];
 
+const PRIMEIROS = ["Adriano", "Mariana", "Pedro", "Camila", "Roberto", "Larissa", "Vinicius", "Davi", "Beatriz", "Gustavo", "Fernanda", "Rafael", "Juliana", "Bruno", "Aline", "Thiago", "Patrícia", "Lucas", "Carolina", "Felipe"];
+const SOBRENOMES = ["Albuquerque", "Lopes Ferreira", "Henrique Costa", "Rodrigues", "Santos Júnior", "Almeida", "Cayres", "Marinho da Silva", "Oliveira", "Souza", "Pereira", "Carvalho", "Ribeiro", "Gomes", "Martins", "Araújo", "Barbosa", "Nunes"];
+const LOCAIS = [
+    { estado: "SP", cidade: "São Paulo", ddd: "11" },
+    { estado: "SP", cidade: "Campinas", ddd: "19" },
+    { estado: "RJ", cidade: "Rio de Janeiro", ddd: "21" },
+    { estado: "MG", cidade: "Belo Horizonte", ddd: "31" },
+    { estado: "BA", cidade: "Salvador", ddd: "71" },
+    { estado: "PR", cidade: "Curitiba", ddd: "41" },
+    { estado: "RS", cidade: "Porto Alegre", ddd: "51" },
+];
+const OPERADORES = ["Bilheteria Estádio Nilton Santos", "Loja Oficial Botafogo - Nilton Santos", "Loja Oficial Botafogo - Shopping Rio Sul"];
+const CUPONS = [
+    { cupom: "FOGAO15", pct: 0.15 },
+    { cupom: "GLORIOSO10", pct: 0.1 },
+    { cupom: "ALVINEGRO10", pct: 0.1 },
+];
+// Meios de pagamento (online) com pesos aproximados do relatório real.
+const MEIOS_PAGAMENTO: { nome: string; peso: number; isento?: boolean }[] = [
+    { nome: "Pix", peso: 0.637 },
+    { nome: "Cartão de Crédito", peso: 0.234 },
+    { nome: "Isento", peso: 0.103, isento: true },
+    { nome: "Apple Pay", peso: 0.014 },
+    { nome: "Google Pay", peso: 0.007 },
+    { nome: "Cartão de Débito", peso: 0.004 },
+    { nome: "Grátis", peso: 0.001, isento: true },
+];
+
+/** dd/mm/aaaa a partir de um offset (em dias) sobre a data de início de vendas. */
+const SALES_START_DATE = parseEventDate(EVENT.salesStart)!;
+const SALES_TOTAL_DAYS =
+    Math.round((parseEventDate(EVENT.salesEnd)!.getTime() - SALES_START_DATE.getTime()) / 86_400_000) + 1;
+
+const pad = (n: number, size = 2) => String(n).padStart(size, "0");
+const fmtDateTime = (d: Date) =>
+    `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+function mulberry32(seed: number) {
+    return function () {
+        seed |= 0;
+        seed = (seed + 0x6d2b79f5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+const transacoes: Transacao[] = (() => {
+    const rng = mulberry32(20260615);
+    const pick = <T,>(arr: T[]) => arr[Math.floor(rng() * arr.length)];
+    const pickWeighted = <T extends { peso: number }>(arr: T[]): T => {
+        const total = arr.reduce((s, x) => s + x.peso, 0);
+        let r = rng() * total;
+        for (const x of arr) {
+            r -= x.peso;
+            if (r <= 0) return x;
+        }
+        return arr[arr.length - 1];
+    };
+    const rows: Transacao[] = [];
+    const COUNT = 2400;
+    for (let i = 0; i < COUNT; i++) {
+        // Data enviesada para o fim da janela (rampa em direção ao evento), com pico no anúncio.
+        let dayOffset: number;
+        if (rng() < 0.16) {
+            dayOffset = Math.floor(rng() * 8); // pico de anúncio (1ª semana)
+        } else {
+            dayOffset = Math.floor((SALES_TOTAL_DAYS - 1) * Math.pow(rng(), 0.55));
+        }
+        const created = new Date(SALES_START_DATE);
+        created.setDate(created.getDate() + dayOffset);
+        created.setHours(Math.floor(rng() * 24), Math.floor(rng() * 60));
+        const updated = new Date(created.getTime() + Math.floor(rng() * 30) * 60_000);
+
+        const statusRoll = rng();
+        const status: StatusTransacao =
+            statusRoll < 0.86 ? "aprovado" : statusRoll < 0.91 ? "pendente" : statusRoll < 0.96 ? "cancelado" : statusRoll < 0.98 ? "estornado" : "reembolso";
+
+        const cat = pickWeighted(CATALOGO);
+        const tipo = pick(cat.tipos);
+        const qtdItem = rng() < 0.82 ? 1 : rng() < 0.7 ? 2 : rng() < 0.7 ? 3 : 4;
+
+        // Jogo único; vendas majoritariamente online. Offline (bilheteria) usa dinheiro.
+        const isPdv = rng() < 0.01;
+        const canal = isPdv ? "Offline" : "Online";
+        const meio = isPdv ? { nome: "Dinheiro", peso: 1 } : pickWeighted(MEIOS_PAGAMENTO);
+        const tipoPagamento = meio.nome;
+        const isento = "isento" in meio && meio.isento === true;
+
+        const valor = isento ? 0 : tipo.valor * qtdItem;
+        const temCupom = !isento && rng() < 0.12;
+        const cupomDef = temCupom ? pick(CUPONS) : null;
+        const valorDesconto = cupomDef ? Math.round(valor * cupomDef.pct * 100) / 100 : 0;
+        const valorFinal = Math.round((valor - valorDesconto) * 100) / 100;
+        const local = pick(LOCAIS);
+        const nome = `${pick(PRIMEIROS)} ${pick(SOBRENOMES)}`;
+        const emailUser = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z]+/g, ".");
+        const email = `${emailUser}${Math.floor(rng() * 90 + 10)}@${pick(["gmail.com", "outlook.com", "hotmail.com", "yahoo.com"])}`;
+        const cpf = String(Math.floor(rng() * 9e10 + 1e10));
+        const telefone = `+55${local.ddd}9${String(Math.floor(rng() * 9e7 + 1e7))}`;
+        const sessao = pick(EVENT.sessoes);
+
+        rows.push({
+            id: `${pad(Math.floor(rng() * 9e7), 8)}-${pad(Math.floor(rng() * 9000), 4)}-4${pad(Math.floor(rng() * 900), 3)}-${pad(Math.floor(rng() * 9000), 4)}`,
+            sessaoId: sessao.id,
+            dataCriacao: fmtDateTime(created),
+            ultimaAtualizacao: fmtDateTime(updated),
+            status,
+            nomeIngresso: tipo.nome,
+            setor: cat.setor,
+            lote: tipo.lote,
+            comprador: nome,
+            cpf,
+            telefone,
+            email,
+            canal,
+            tipoPagamento,
+            estado: local.estado,
+            cidade: local.cidade,
+            operadorVendas: isPdv ? pick(OPERADORES) : "—",
+            valor,
+            cupom: cupomDef?.cupom ?? "—",
+            valorDesconto,
+            valorFinal,
+            qtdItem,
+            passkey: "—",
+            pdv: isPdv,
+            bundle: false,
+            bundleDinamico: false,
+        });
+    }
+    // Ordena do mais recente para o mais antigo (como uma lista de transações real).
+    rows.sort((a, b) => (parseEventDate(b.dataCriacao)?.getTime() ?? 0) - (parseEventDate(a.dataCriacao)?.getTime() ?? 0));
+    return rows;
+})();
+
 /* ------------------------------------------------------------------ */
-/*  Filter state                                                      */
+/*  Filtros — definição de campos (usada pelo slideout global)         */
 /* ------------------------------------------------------------------ */
+
+const STATUS_OPTIONS = Object.entries(STATUS_META).map(([, m]) => ({ id: m.label, label: m.label }));
+const CANAL_OPTIONS = [
+    { id: "Online", label: "Online" },
+    { id: "Offline", label: "Offline" },
+];
+const MEIO_PAGAMENTO_OPTIONS = [
+    { id: "Pix", label: "Pix" },
+    { id: "Cartão de Crédito", label: "Cartão de Crédito" },
+    { id: "Cartão de Débito", label: "Cartão de Débito" },
+    { id: "Apple Pay", label: "Apple Pay" },
+    { id: "Google Pay", label: "Google Pay" },
+    { id: "Dinheiro", label: "Dinheiro" },
+    { id: "Isento", label: "Isento" },
+    { id: "Grátis", label: "Grátis" },
+];
+const SETOR_OPTIONS = CATALOGO.map((c) => ({ id: c.setor, label: c.setor }));
+
+const FILTER_FIELDS: FilterFieldDef[] = [
+    { id: "status", label: "Status", multi: { options: STATUS_OPTIONS } },
+    { id: "canal", label: "Canal", multi: { options: CANAL_OPTIONS } },
+    { id: "meioPagamento", label: "Meio de Pagamento", multi: { options: MEIO_PAGAMENTO_OPTIONS } },
+    { id: "setor", label: "Setor", multi: { options: SETOR_OPTIONS } },
+    { id: "email", label: "Email" },
+    { id: "cpf", label: "CPF" },
+    { id: "passkey", label: "Passkey" },
+    { id: "nomeComprador", label: "Nome Comprador" },
+    { id: "operador", label: "Operador de Vendas" },
+    { id: "tipoIngresso", label: "Tipo do Ingresso" },
+    { id: "idTransacao", label: "ID Transação" },
+    { id: "cupom", label: "Cupom" },
+];
 
 function getFieldValue(t: Transacao, field: string): string {
     switch (field) {
@@ -481,232 +355,125 @@ function getFieldValue(t: Transacao, field: string): string {
     }
 }
 
-function matchFilterValue(haystack: string, needle: string, operator: string): boolean {
-    const h = haystack.toLowerCase();
-    const n = needle.toLowerCase();
-    switch (operator) {
-        case "equals":
-        case "is":
-            return h === n;
-        case "is-not":
-            return h !== n;
-        case "starts-with":
-            return h.startsWith(n);
-        case "does-not-contain":
-            return !h.includes(n);
-        case "contains":
-        default:
-            return h.includes(n);
-    }
-}
-
-function matchTransacao(t: Transacao, rows: FilterRow[]): boolean {
-    for (const r of rows) {
-        if (!r.field || !r.value) continue;
-        const haystack = getFieldValue(t, r.field);
-        const values = r.value
-            .split(",")
-            .map((v: string) => v.trim())
-            .filter(Boolean);
-        if (!values.length) continue;
-        const negate = r.operator === "is-not" || r.operator === "does-not-contain";
-        const matched = negate
-            ? values.every((v: string) => matchFilterValue(haystack, v, r.operator))
-            : values.some((v: string) => matchFilterValue(haystack, v, r.operator));
-        if (!matched) return false;
-    }
-    return true;
-}
-
 /* ------------------------------------------------------------------ */
 /*  Page                                                              */
 /* ------------------------------------------------------------------ */
 
 export function Transacoes() {
-    const totalFinal = useMemo(() => transacoes.reduce((s, t) => s + t.valorFinal, 0), []);
-
-    const exportarExcel = () =>
-        toast.success("Exportando Excel", { description: "As transações serão salvas como planilha." });
-
     return (
         <BackstageLayout activeSection="relatorios" activeItem="transacoes">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
-                    <RelatorioPageHeader
-                        title="Transações"
-                        actions={
-                            <Button size="md" color="secondary" iconLeading={UploadCloud02} onClick={exportarExcel}>
-                                Exportar em Excel
-                            </Button>
-                        }
-                    />
-
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                        <TotalTransacionadoCard total={totalFinal} />
-                    </div>
-                    <IngressosValorPorStatusCard rows={ingressosPorStatus} />
-
-                    <TransacionadoChartCard />
-                    <MeioPagamentosCard rows={meiosPagamento} />
-                    <ListaTransacoesCard rows={transacoes} />
-                </main>
-            </div>
+            <RelatorioFiltersProvider fields={FILTER_FIELDS} sessoes={EVENT.sessoes}>
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                        <RelatorioPageHeader
+                            title="Transações"
+                            actions={<ExportMenu onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "As transações serão exportadas." })} />}
+                        />
+                        <TransacoesBody />
+                    </main>
+                </div>
+            </RelatorioFiltersProvider>
         </BackstageLayout>
     );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Filters bar                                                       */
-/* ------------------------------------------------------------------ */
+const TransacoesBody = () => {
+    const { dateRange, sessao, filters } = useRelatorioFilters();
 
-const STATUS_OPTIONS = [
-    { id: "Aprovado", label: "Aprovado" },
-    { id: "Pendente", label: "Pendente" },
-    { id: "Carrinho Abandonado", label: "Carrinho Abandonado" },
-    { id: "Cancelado", label: "Cancelado" },
-    { id: "Reembolso", label: "Reembolso" },
-];
+    const filtered = useMemo(() => {
+        const validFilters = filters.filter((f) => f.field && f.value);
+        return transacoes.filter((t) => {
+            if (sessao !== "all" && t.sessaoId !== sessao) return false;
+            if (!inDateRange(parseEventDate(t.dataCriacao), dateRange)) return false;
+            if (!matchRow(t, validFilters, getFieldValue)) return false;
+            return true;
+        });
+    }, [dateRange, sessao, filters]);
 
-const CANAL_OPTIONS = [
-    { id: "Online", label: "Online" },
-    { id: "PDV", label: "PDV" },
-];
+    const totalFinal = useMemo(() => filtered.reduce((s, t) => s + t.valorFinal, 0), [filtered]);
 
-const MEIO_PAGAMENTO_OPTIONS = [
-    { id: "Pix", label: "Pix" },
-    { id: "Cartão de Crédito", label: "Cartão de Crédito" },
-];
+    const statusRows = useMemo<IngressoStatusRow[]>(() => {
+        const order: StatusTransacao[] = ["aprovado", "pendente", "cancelado", "estornado", "reembolso"];
+        return order
+            .map((status) => {
+                const rows = filtered.filter((t) => t.status === status);
+                if (!rows.length) return null;
+                const canais = new Set(rows.map((r) => r.canal));
+                return {
+                    id: status,
+                    status,
+                    canal: canais.size > 1 ? "Online + PDV" : [...canais][0],
+                    totalIngressos: rows.reduce((s, r) => s + r.qtdItem, 0),
+                    total: rows.reduce((s, r) => s + r.valorFinal, 0),
+                };
+            })
+            .filter(Boolean) as IngressoStatusRow[];
+    }, [filtered]);
 
-type FilterFieldId =
-    | "status"
-    | "canal"
-    | "meioPagamento"
-    | "email"
-    | "cpf"
-    | "passkey"
-    | "nomeComprador"
-    | "operador"
-    | "setor"
-    | "tipoIngresso"
-    | "idTransacao"
-    | "cupom";
+    const meiosRows = useMemo<MeioPagamentoRow[]>(() => {
+        const defs = [
+            { id: "pix", nome: "Pix", icon: Bank, match: "Pix" },
+            { id: "cartao", nome: "Cartão de Crédito", icon: CreditCard02, match: "Cartão de Crédito" },
+        ];
+        const totalTx = filtered.length || 1;
+        const totalIng = filtered.reduce((s, r) => s + r.qtdItem, 0) || 1;
+        const totalVal = filtered.reduce((s, r) => s + r.valorFinal, 0) || 1;
+        return defs
+            .map((d) => {
+                const rows = filtered.filter((t) => t.tipoPagamento === d.match);
+                if (!rows.length) return null;
+                const qtdTx = rows.length;
+                const qtdIng = rows.reduce((s, r) => s + r.qtdItem, 0);
+                const val = rows.reduce((s, r) => s + r.valorFinal, 0);
+                return {
+                    id: d.id,
+                    nome: d.nome,
+                    icon: d.icon,
+                    quantidadeTransacoes: qtdTx,
+                    pctQtdTransacoes: qtdTx / totalTx,
+                    quantidadeIngressos: qtdIng,
+                    pctQtdIngressos: qtdIng / totalIng,
+                    valor: val,
+                    pctValor: val / totalVal,
+                };
+            })
+            .filter(Boolean) as MeioPagamentoRow[];
+    }, [filtered]);
 
-interface FilterFieldDef {
-    id: FilterFieldId;
-    label: string;
-    multi?: { options: { id: string; label: string }[] };
-}
-
-const FILTER_FIELDS: FilterFieldDef[] = [
-    { id: "status", label: "Status", multi: { options: STATUS_OPTIONS } },
-    { id: "canal", label: "Canal", multi: { options: CANAL_OPTIONS } },
-    {
-        id: "meioPagamento",
-        label: "Meio de Pagamento",
-        multi: { options: MEIO_PAGAMENTO_OPTIONS },
-    },
-    { id: "email", label: "Email" },
-    { id: "cpf", label: "CPF" },
-    { id: "passkey", label: "Passkey" },
-    { id: "nomeComprador", label: "Nome Comprador" },
-    { id: "operador", label: "Operador de Vendas" },
-    { id: "setor", label: "Setor" },
-    { id: "tipoIngresso", label: "Tipo do Ingresso" },
-    { id: "idTransacao", label: "ID Transação" },
-    { id: "cupom", label: "Cupom" },
-];
-
-const OPERATOR_OPTIONS_MULTI = [
-    { id: "is", label: "É" },
-    { id: "is-not", label: "Não é" },
-];
-
-const OPERATOR_OPTIONS_TEXT = [
-    { id: "contains", label: "Contém" },
-    { id: "equals", label: "Igual a" },
-    { id: "does-not-contain", label: "Não contém" },
-    { id: "starts-with", label: "Começa com" },
-];
-
-const FilterValueInput = ({
-    filter,
-    onChange,
-}: {
-    filter: FilterRow;
-    onChange: (patch: Partial<Omit<FilterRow, "id">>) => void;
-}) => {
-    const def = FILTER_FIELDS.find((f) => f.id === filter.field);
-
-    if (def?.multi) {
-        const options = def.multi.options;
-        const selectedKeys: Selection = filter.value
-            ? new Set(filter.value.split(",").filter(Boolean))
-            : new Set();
-        const count = selectedKeys instanceof Set ? selectedKeys.size : 0;
-
-        return (
-            <MultiSelect
-                className="min-w-0 flex-1"
-                size="sm"
-                aria-label="Valor"
-                placeholder="Selecione"
-                items={options}
-                selectedKeys={selectedKeys}
-                onSelectionChange={(keys: Selection) => {
-                    if (keys === "all") {
-                        onChange({ value: options.map((o) => o.id).join(",") });
-                    } else {
-                        onChange({ value: Array.from(keys).join(",") });
-                    }
-                }}
-                supportingText={count > 0 ? `${count} selecionados` : undefined}
-                onReset={() => onChange({ value: "" })}
-                onSelectAll={() =>
-                    onChange({ value: options.map((o) => o.id).join(",") })
-                }
-            >
-                {(item: { id: string; label: string }) => (
-                    <MultiSelect.Item
-                        id={item.id}
-                        selectionIndicator="checkbox"
-                        selectionIndicatorAlign="left"
-                    >
-                        {item.label}
-                    </MultiSelect.Item>
-                )}
-            </MultiSelect>
-        );
-    }
+    const chartData = useMemo<ChartPoint[]>(() => {
+        const byDay = new Map<number, { d: Date; quantidade: number; total: number }>();
+        for (const t of filtered) {
+            const d = parseEventDate(t.dataCriacao);
+            if (!d) continue;
+            const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+            const acc = byDay.get(key) ?? { d: new Date(key), quantidade: 0, total: 0 };
+            acc.quantidade += t.qtdItem;
+            acc.total += t.valorFinal;
+            byDay.set(key, acc);
+        }
+        return [...byDay.values()]
+            .sort((a, b) => a.d.getTime() - b.d.getTime())
+            .map((x) => ({ data: `${x.d.getDate()}/${x.d.getMonth() + 1}`, quantidade: x.quantidade, total: Math.round(x.total) }));
+    }, [filtered]);
 
     return (
-        <Input
-            className="min-w-0 flex-1"
-            size="sm"
-            aria-label="Valor"
-            placeholder="Digite um valor"
-            value={filter.value}
-            onChange={(value: string) => onChange({ value })}
-        />
+        <>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <TotalTransacionadoCard total={totalFinal} />
+            </div>
+            <IngressosValorPorStatusCard rows={statusRows} />
+            <TransacionadoChartCard data={chartData} />
+            <MeioPagamentosCard rows={meiosRows} />
+            <ListaTransacoesCard rows={filtered} />
+        </>
     );
 };
-
-let nextFilterId = 1;
-const createEmptyFilter = (): FilterRow => ({
-    id: `f${nextFilterId++}`,
-    field: "",
-    operator: "is",
-    value: "",
-});
 
 /* ------------------------------------------------------------------ */
 /*  Total transacionado (big number)                                  */
 /* ------------------------------------------------------------------ */
 
-interface TotalTransacionadoCardProps {
-    total: number;
-}
-
-const TotalTransacionadoCard = ({ total }: TotalTransacionadoCardProps) => (
+const TotalTransacionadoCard = ({ total }: { total: number }) => (
     <MetricsIcon03
         icon={CurrencyDollarCircle}
         title={currencyFormatter.format(total)}
@@ -719,28 +486,14 @@ const TotalTransacionadoCard = ({ total }: TotalTransacionadoCardProps) => (
 );
 
 /* ------------------------------------------------------------------ */
-/*  Quantidade de ingressos e valor por status (DetalhePorItem-like)  */
+/*  Quantidade de ingressos e valor por status                        */
 /* ------------------------------------------------------------------ */
 
-interface IngressosValorPorStatusCardProps {
-    rows: IngressoStatusRow[];
-}
-
-const STATUS_FILL: Record<StatusTransacao, string> = {
-    aprovado: "var(--color-utility-green-500)",
-    pendente: "var(--color-utility-yellow-500)",
-    cancelado: "var(--color-utility-neutral-500)",
-    estornado: "var(--color-utility-red-500)",
-    reembolso: "var(--color-utility-orange-500)",
-};
-
-const IngressosValorPorStatusCard = ({ rows }: IngressosValorPorStatusCardProps) => {
+const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) => {
     if (rows.length === 0) {
         return (
             <Card title="Quantidade de Ingressos e Valor por status">
-                <div className="px-4 py-12 text-center text-sm text-tertiary">
-                    Nenhum status corresponde aos filtros.
-                </div>
+                <div className="px-4 py-12 text-center text-sm text-tertiary">Nenhum status corresponde aos filtros.</div>
             </Card>
         );
     }
@@ -752,17 +505,7 @@ const IngressosValorPorStatusCard = ({ rows }: IngressosValorPorStatusCardProps)
                     <div className="size-44">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                                <Pie
-                                    data={rows}
-                                    dataKey="total"
-                                    innerRadius="65%"
-                                    outerRadius="100%"
-                                    paddingAngle={2}
-                                    startAngle={90}
-                                    endAngle={-270}
-                                    stroke="none"
-                                    isAnimationActive={false}
-                                >
+                                <Pie data={rows} dataKey="total" innerRadius="65%" outerRadius="100%" paddingAngle={2} startAngle={90} endAngle={-270} stroke="none" isAnimationActive={false}>
                                     {rows.map((r) => (
                                         <Cell key={r.id} fill={STATUS_FILL[r.status]} />
                                     ))}
@@ -770,50 +513,25 @@ const IngressosValorPorStatusCard = ({ rows }: IngressosValorPorStatusCardProps)
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <span className="text-xs font-medium text-tertiary">
-                        Distribuição por valor
-                    </span>
+                    <span className="text-xs font-medium text-tertiary">Distribuição por valor</span>
                 </div>
 
                 <ul className="flex w-full flex-1 flex-col divide-y divide-secondary">
                     {rows.map((row) => {
                         const meta = STATUS_META[row.status];
-                        const pct =
-                            totalValor === 0
-                                ? 0
-                                : Math.round((row.total / totalValor) * 100);
+                        const pct = totalValor === 0 ? 0 : Math.round((row.total / totalValor) * 100);
                         return (
-                            <li
-                                key={row.id}
-                                className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:gap-4"
-                            >
+                            <li key={row.id} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:gap-4">
                                 <div className="flex min-w-0 items-center gap-3 md:flex-1">
-                                    <span
-                                        className="size-3 shrink-0 rounded-full"
-                                        style={{
-                                            backgroundColor: STATUS_FILL[row.status],
-                                        }}
-                                    />
+                                    <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: STATUS_FILL[row.status] }} />
                                     <div className="flex min-w-0 flex-1 flex-col">
-                                        <span className="text-sm font-semibold text-primary">
-                                            {meta.label}
-                                        </span>
-                                        <span className="text-xs text-tertiary">
-                                            {pct}% · {row.canal}
-                                        </span>
+                                        <span className="text-sm font-semibold text-primary">{meta.label}</span>
+                                        <span className="text-xs text-tertiary">{pct}% · {row.canal}</span>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4 md:flex md:gap-8">
-                                    <StatBlock
-                                        className="md:w-32"
-                                        label="Total ingressos"
-                                        value={numberFormatter.format(row.totalIngressos)}
-                                    />
-                                    <StatBlock
-                                        className="md:w-36"
-                                        label="Total"
-                                        value={currencyFormatter.format(row.total)}
-                                    />
+                                    <StatBlock className="md:w-32" label="Total ingressos" value={numberFormatter.format(row.totalIngressos)} />
+                                    <StatBlock className="md:w-36" label="Total" value={currencyFormatter.format(row.total)} />
                                 </div>
                             </li>
                         );
@@ -835,41 +553,21 @@ interface ChartTooltipPayloadEntry {
     color: string;
 }
 
-interface ChartTooltipProps {
-    active?: boolean;
-    label?: string;
-    payload?: ChartTooltipPayloadEntry[];
-}
-
-const ChartTooltip = ({ active, label, payload }: ChartTooltipProps) => {
+const ChartTooltip = ({ active, label, payload }: { active?: boolean; label?: string; payload?: ChartTooltipPayloadEntry[] }) => {
     if (!active || !payload || payload.length === 0) return null;
-    // Bars render first → ensure line/area appears last in the list
-    const ordered = [...payload].sort((a, b) =>
-        a.dataKey === "total" ? -1 : b.dataKey === "total" ? 1 : 0,
-    );
+    const ordered = [...payload].sort((a, b) => (a.dataKey === "total" ? -1 : b.dataKey === "total" ? 1 : 0));
     return (
         <div className="rounded-lg bg-primary-solid px-3 py-2.5 shadow-xl ring-1 ring-secondary_alt">
             <p className="mb-1.5 text-sm font-semibold text-white">{label}</p>
             <ul className="flex flex-col gap-1">
                 {ordered.map((entry) => {
                     const isMonetary = entry.dataKey === "total";
-                    const formatted = isMonetary
-                        ? currencyFormatter.format(Number(entry.value))
-                        : numberFormatter.format(Number(entry.value));
+                    const formatted = isMonetary ? currencyFormatter.format(Number(entry.value)) : numberFormatter.format(Number(entry.value));
                     return (
-                        <li
-                            key={entry.dataKey}
-                            className="flex items-center gap-2 text-xs"
-                        >
-                            <span
-                                aria-hidden="true"
-                                className="size-2 shrink-0 rounded-full"
-                                style={{ background: entry.color }}
-                            />
+                        <li key={entry.dataKey} className="flex items-center gap-2 text-xs">
+                            <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: entry.color }} />
                             <span className="text-white/70">{entry.name}:</span>
-                            <span className="font-semibold text-white">
-                                {formatted}
-                            </span>
+                            <span className="font-semibold text-white">{formatted}</span>
                         </li>
                     );
                 })}
@@ -878,122 +576,51 @@ const ChartTooltip = ({ active, label, payload }: ChartTooltipProps) => {
     );
 };
 
-interface ChartCursorProps {
-    points?: { x: number; y: number }[];
-    top?: number;
-    height?: number;
-}
-
-const ChartCursor = ({ points, top = 0, height = 0 }: ChartCursorProps) => {
+const ChartCursor = ({ points, top = 0, height = 0 }: { points?: { x: number; y: number }[]; top?: number; height?: number }) => {
     if (!points || points.length === 0) return null;
     const x = points[0].x;
-    return (
-        <line
-            x1={x}
-            x2={x}
-            y1={top}
-            y2={top + height}
-            stroke="var(--color-border-primary)"
-            strokeWidth={1}
-        />
-    );
+    return <line x1={x} x2={x} y1={top} y2={top + height} stroke="var(--color-border-primary)" strokeWidth={1} />;
 };
 
-// Cor adaptável para a série de quantidade (visível no claro e no escuro).
 const QTD_COLOR = "var(--color-utility-blue-400)";
-const TOTAL_COLOR = "var(--color-brand-600)";
+const TOTAL_COLOR = "var(--color-bg-quaternary)";
 
-const TransacionadoChartCard = () => {
+const TransacionadoChartCard = ({ data }: { data: ChartPoint[] }) => {
     const isMobile = useIsMobile();
     const fontSize = isMobile ? 10 : 11;
     const [metric, setMetric] = useState<"total" | "quantidade">("total");
-
-    // Período de vendas do evento — limita o range e gera os presets do projeto.
-    const { salesStart, salesEnd, salesPresets } = useMemo(() => {
-        const tz = getLocalTimeZone();
-        const end = today(tz);
-        const start = end.subtract({ days: chartData.length - 1 });
-        return {
-            salesStart: start,
-            salesEnd: end,
-            salesPresets: {
-                last7: { label: "Últimos 7 dias de vendas", value: { start: end.subtract({ days: 6 }), end } },
-                last15: { label: "Últimos 15 dias de vendas", value: { start: end.subtract({ days: 14 }), end } },
-                last30: { label: "Últimos 30 dias de vendas", value: { start: end.subtract({ days: 29 }), end } },
-                allSales: { label: "Todo o período de vendas", value: { start, end } },
-            },
-        };
-    }, []);
-
-    const [range, setRange] = useState<{ start: DateValue; end: DateValue } | null>(salesPresets.last7.value);
-
-    const visibleChartData = useMemo(() => {
-        if (!range) return chartData;
-        const tz = getLocalTimeZone();
-        const days = Math.round((range.end.toDate(tz).getTime() - range.start.toDate(tz).getTime()) / 86400000) + 1;
-        if (days >= chartData.length) return chartData;
-        return chartData.slice(-Math.max(1, days));
-    }, [range]);
 
     return (
         <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
             <header className="flex flex-col gap-3 border-b border-secondary px-5 pt-4 pb-4 md:flex-row md:items-start md:justify-between">
                 <div className="flex flex-col gap-1">
-                    <h3 className="text-md font-semibold text-primary">
-                        Total transacionado e número de ingressos
-                    </h3>
-                    <p className="text-sm text-tertiary">
-                        Distribuição diária de transações e ingressos vendidos
-                    </p>
+                    <h3 className="text-md font-semibold text-primary">Total transacionado e número de ingressos</h3>
+                    <p className="text-sm text-tertiary">Distribuição diária de transações e ingressos vendidos</p>
                 </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-
-                    <DateRangePicker
-                        value={range}
-                        onChange={setRange}
-                        minValue={salesStart}
-                        maxValue={salesEnd}
-                        presets={salesPresets}
-                        className="shrink-0"
-                    />
-                    <ButtonGroup
-                        size="sm"
-                        selectedKeys={[metric]}
-                        onSelectionChange={(keys: Set<React.Key> | "all") => {
-                            if (keys === "all") return;
-                            const next = [...keys][0] as "total" | "quantidade" | undefined;
-                            if (next) setMetric(next);
-                        }}
-                    >
-                        <ButtonGroupItem id="total">Total</ButtonGroupItem>
-                        <ButtonGroupItem id="quantidade">Quantidade</ButtonGroupItem>
-                    </ButtonGroup>
-                </div>
+                <ButtonGroup
+                    size="sm"
+                    selectedKeys={[metric]}
+                    onSelectionChange={(keys: Set<React.Key> | "all") => {
+                        if (keys === "all") return;
+                        const next = [...keys][0] as "total" | "quantidade" | undefined;
+                        if (next) setMetric(next);
+                    }}
+                >
+                    <ButtonGroupItem id="total">Total</ButtonGroupItem>
+                    <ButtonGroupItem id="quantidade">Quantidade</ButtonGroupItem>
+                </ButtonGroup>
             </header>
 
             <div className="h-[280px] w-full px-2 pt-5 pb-2 md:h-[380px] md:px-4">
                 <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart
-                        data={visibleChartData}
-                        margin={{
-                            top: isMobile ? 16 : 28,
-                            right: isMobile ? 8 : 16,
-                            bottom: isMobile ? 0 : 4,
-                            left: isMobile ? 0 : 4,
-                        }}
-                    >
+                    <ComposedChart data={data} margin={{ top: isMobile ? 16 : 28, right: isMobile ? 8 : 16, bottom: isMobile ? 0 : 4, left: isMobile ? 0 : 4 }}>
                         <defs>
                             <linearGradient id="qtdAreaFill" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor={QTD_COLOR} stopOpacity={0.28} />
                                 <stop offset="80%" stopColor={QTD_COLOR} stopOpacity={0} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid
-                            stroke="var(--color-border-secondary)"
-                            strokeDasharray="2 4"
-                            strokeOpacity={0.6}
-                            vertical={false}
-                        />
+                        <CartesianGrid stroke="var(--color-border-secondary)" strokeDasharray="2 4" strokeOpacity={0.6} vertical={false} />
                         <XAxis
                             dataKey="data"
                             tick={{ fill: "var(--color-text-tertiary)", fontSize }}
@@ -1001,80 +628,19 @@ const TransacionadoChartCard = () => {
                             axisLine={false}
                             tickMargin={10}
                             interval={isMobile ? "preserveStartEnd" : "preserveStart"}
-                            minTickGap={isMobile ? 24 : 12}
+                            minTickGap={isMobile ? 24 : 16}
                         />
-                        <YAxis
-                            yAxisId="total"
-                            orientation="left"
-                            tickFormatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`}
-                            tick={{ fill: "var(--color-text-tertiary)", fontSize }}
-                            tickLine={false}
-                            axisLine={false}
-                            tickMargin={8}
-                            width={isMobile ? 44 : 56}
-                        />
-                        <YAxis
-                            yAxisId="qtd"
-                            orientation="right"
-                            tickFormatter={(v) => numberFormatter.format(Number(v))}
-                            tick={{ fill: "var(--color-text-tertiary)", fontSize }}
-                            tickLine={false}
-                            axisLine={false}
-                            tickMargin={8}
-                            width={isMobile ? 36 : 44}
-                        />
+                        <YAxis yAxisId="total" orientation="left" tickFormatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`} tick={{ fill: "var(--color-text-tertiary)", fontSize }} tickLine={false} axisLine={false} tickMargin={8} width={isMobile ? 44 : 56} />
+                        <YAxis yAxisId="qtd" orientation="right" tickFormatter={(v) => numberFormatter.format(Number(v))} tick={{ fill: "var(--color-text-tertiary)", fontSize }} tickLine={false} axisLine={false} tickMargin={8} width={isMobile ? 36 : 44} />
                         <Tooltip content={<ChartTooltip />} cursor={<ChartCursor />} />
-                        <Bar
-                            yAxisId="total"
-                            dataKey="total"
-                            name="Total Transacionado"
-                            fill={TOTAL_COLOR}
-                            radius={[3, 3, 0, 0]}
-                            maxBarSize={isMobile ? 14 : 26}
-                        >
-                            {metric === "total" && (
-                                <LabelList
-                                    dataKey="total"
-                                    position="top"
-                                    fill="var(--color-text-primary)"
-                                    fontSize={isMobile ? 9 : 11}
-                                    fontWeight={600}
-                                    offset={isMobile ? 6 : 8}
-                                    formatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`}
-                                />
+                        <Bar yAxisId="total" dataKey="total" name="Total Transacionado" fill={TOTAL_COLOR} fillOpacity={0.7} radius={[3, 3, 0, 0]} maxBarSize={isMobile ? 10 : 18}>
+                            {metric === "total" && data.length <= 20 && (
+                                <LabelList dataKey="total" position="top" fill="var(--color-text-primary)" fontSize={isMobile ? 9 : 11} fontWeight={600} offset={isMobile ? 6 : 8} formatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`} />
                             )}
                         </Bar>
-                        <Area
-                            yAxisId="qtd"
-                            type="monotone"
-                            dataKey="quantidade"
-                            name="Quantidade de Ingressos"
-                            stroke={QTD_COLOR}
-                            strokeWidth={2.5}
-                            fill="url(#qtdAreaFill)"
-                            dot={{
-                                r: isMobile ? 3 : 4,
-                                fill: "var(--color-bg-primary)",
-                                stroke: QTD_COLOR,
-                                strokeWidth: 2,
-                            }}
-                            activeDot={{
-                                r: 6,
-                                fill: QTD_COLOR,
-                                stroke: "var(--color-bg-primary)",
-                                strokeWidth: 2,
-                            }}
-                        >
-                            {metric === "quantidade" && (
-                                <LabelList
-                                    dataKey="quantidade"
-                                    position="top"
-                                    fill="var(--color-text-primary)"
-                                    fontSize={isMobile ? 9 : 11}
-                                    fontWeight={600}
-                                    offset={isMobile ? 16 : 30}
-                                    formatter={(v) => numberFormatter.format(Number(v))}
-                                />
+                        <Area yAxisId="qtd" type="monotone" dataKey="quantidade" name="Quantidade de Ingressos" stroke={QTD_COLOR} strokeWidth={3} fill="url(#qtdAreaFill)" dot={false} activeDot={{ r: 6, fill: QTD_COLOR, stroke: "var(--color-bg-primary)", strokeWidth: 2 }}>
+                            {metric === "quantidade" && data.length <= 20 && (
+                                <LabelList dataKey="quantidade" position="top" fill="var(--color-text-primary)" fontSize={isMobile ? 9 : 11} fontWeight={600} offset={isMobile ? 16 : 30} formatter={(v) => numberFormatter.format(Number(v))} />
                             )}
                         </Area>
                     </ComposedChart>
@@ -1082,7 +648,6 @@ const TransacionadoChartCard = () => {
             </div>
 
             <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary px-5 py-3">
-                {/* Legenda do gráfico (estática) */}
                 <div className="flex flex-wrap items-center gap-4 text-xs text-tertiary">
                     <span className="flex items-center gap-1.5">
                         <span aria-hidden="true" className="size-2.5 rounded-sm" style={{ background: TOTAL_COLOR }} />
@@ -1102,16 +667,12 @@ const TransacionadoChartCard = () => {
 /*  Meio de Pagamentos                                                */
 /* ------------------------------------------------------------------ */
 
-interface MeioPagamentosCardProps {
-    rows: MeioPagamentoRow[];
-}
-
 const MEIO_FILL: Record<string, string> = {
     pix: "var(--color-utility-green-500)",
     cartao: "var(--color-utility-blue-500)",
 };
 
-const MeioPagamentosCard = ({ rows }: MeioPagamentosCardProps) => {
+const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
     if (rows.length === 0) {
         return (
             <Card title="Meio de Pagamentos">
@@ -1119,9 +680,7 @@ const MeioPagamentosCard = ({ rows }: MeioPagamentosCardProps) => {
             </Card>
         );
     }
-
     const fillFor = (id: string) => MEIO_FILL[id] ?? "var(--color-utility-gray-400)";
-
     return (
         <Card title="Meio de Pagamentos">
             <div className="flex flex-col gap-6 px-4 py-5 md:flex-row md:items-center md:gap-8 md:px-5">
@@ -1129,17 +688,7 @@ const MeioPagamentosCard = ({ rows }: MeioPagamentosCardProps) => {
                     <div className="size-44">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                                <Pie
-                                    data={rows}
-                                    dataKey="valor"
-                                    innerRadius="65%"
-                                    outerRadius="100%"
-                                    paddingAngle={2}
-                                    startAngle={90}
-                                    endAngle={-270}
-                                    stroke="none"
-                                    isAnimationActive={false}
-                                >
+                                <Pie data={rows} dataKey="valor" innerRadius="65%" outerRadius="100%" paddingAngle={2} startAngle={90} endAngle={-270} stroke="none" isAnimationActive={false}>
                                     {rows.map((r) => (
                                         <Cell key={r.id} fill={fillFor(r.id)} />
                                     ))}
@@ -1162,16 +711,8 @@ const MeioPagamentosCard = ({ rows }: MeioPagamentosCardProps) => {
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 gap-4 md:flex md:gap-8">
-                                <StatBlock
-                                    className="md:w-28"
-                                    label="Transações"
-                                    value={`${numberFormatter.format(row.quantidadeTransacoes)} · ${percentFormatter.format(row.pctQtdTransacoes)}`}
-                                />
-                                <StatBlock
-                                    className="md:w-28"
-                                    label="Ingressos"
-                                    value={`${numberFormatter.format(row.quantidadeIngressos)} · ${percentFormatter.format(row.pctQtdIngressos)}`}
-                                />
+                                <StatBlock className="md:w-28" label="Transações" value={`${numberFormatter.format(row.quantidadeTransacoes)} · ${percentFormatter.format(row.pctQtdTransacoes)}`} />
+                                <StatBlock className="md:w-28" label="Ingressos" value={`${numberFormatter.format(row.quantidadeIngressos)} · ${percentFormatter.format(row.pctQtdIngressos)}`} />
                                 <StatBlock className="md:w-36" label="Valor" value={currencyFormatter.format(row.valor)} />
                             </div>
                         </li>
@@ -1221,86 +762,45 @@ const renderTransacaoCell = (row: Transacao, key: keyof Transacao | "status"): R
     }
     const value = row[key];
     if (typeof value === "boolean") return value ? "Sim" : "Não";
-    if (key === "valor" || key === "valorDesconto" || key === "valorFinal") {
-        return currencyFormatter.format(Number(value));
-    }
+    if (key === "valor" || key === "valorDesconto" || key === "valorFinal") return currencyFormatter.format(Number(value));
     if (key === "qtdItem") return numberFormatter.format(Number(value));
     return String(value);
 };
 
-interface ListaTransacoesCardProps {
-    rows: Transacao[];
-}
-
-const parseTxDate = (s: string): Date | null => {
-    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (!m) return null;
-    return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+const SORT_ACCESSORS: Partial<Record<string, (t: Transacao) => string | number>> = {
+    status: (t) => STATUS_META[t.status].label,
+    dataCriacao: (t) => parseEventDate(t.dataCriacao)?.getTime() ?? 0,
+    ultimaAtualizacao: (t) => parseEventDate(t.ultimaAtualizacao)?.getTime() ?? 0,
 };
 
-const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
+const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(50);
     const [search, setSearch] = useState("");
-    const [dateRange, setDateRange] = useState<{ start: DateValue; end: DateValue } | null>(null);
 
-    // Filtro avançado multi-campo — escopo apenas da tabela (não da página inteira).
-    const [filters, setFilters] = useState<FilterRow[]>([]);
-    const [appliedCount, setAppliedCount] = useState(0);
-
-    const handleAddFilter = useCallback(() => setFilters((prev) => [...prev, createEmptyFilter()]), []);
-    const handleRemoveFilter = useCallback((id: string) => setFilters((prev) => prev.filter((f) => f.id !== id)), []);
-    const handleFilterChange = useCallback(
-        (id: string, patch: Partial<Omit<FilterRow, "id">>) =>
-            setFilters((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f))),
-        [],
-    );
-    const handleApply = useCallback(
-        (applied: FilterRow[]) => setAppliedCount(applied.filter((f) => f.field && f.value).length),
-        [],
-    );
-    const handleClearAll = useCallback(() => {
-        setFilters([]);
-        setAppliedCount(0);
-    }, []);
-
-    // Filtros locais da lista: busca (id, status, setor, dados do comprador), filtro avançado e data.
-    const filtered = useMemo(() => {
+    const searched = useMemo(() => {
         const term = search.trim().toLowerCase();
-        const validFilters = filters.filter((f) => f.field && f.value);
-        const tz = getLocalTimeZone();
-        const startMs = dateRange ? dateRange.start.toDate(tz).getTime() : null;
-        const endMs = dateRange ? dateRange.end.toDate(tz).getTime() + 86_400_000 - 1 : null;
+        if (!term) return rows;
+        return rows.filter((t) =>
+            [t.id, STATUS_META[t.status].label, t.setor, t.comprador, t.cpf, t.telefone, t.email].join(" ").toLowerCase().includes(term),
+        );
+    }, [rows, search]);
 
-        return rows.filter((t) => {
-            if (term) {
-                const haystack = [t.id, STATUS_META[t.status].label, t.setor, t.comprador, t.cpf, t.telefone, t.email]
-                    .join(" ")
-                    .toLowerCase();
-                if (!haystack.includes(term)) return false;
-            }
-            if (!matchTransacao(t, validFilters)) return false;
-            if (startMs != null && endMs != null) {
-                const d = parseTxDate(t.dataCriacao);
-                if (!d) return false;
-                const ms = d.getTime();
-                if (ms < startMs || ms > endMs) return false;
-            }
-            return true;
-        });
-    }, [rows, search, filters, dateRange]);
+    const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(
+        searched as unknown as Record<string, unknown>[],
+        SORT_ACCESSORS as Partial<Record<string, (r: Record<string, unknown>) => string | number>>,
+    );
 
-    // Volta para a primeira página sempre que os filtros mudam.
     useEffect(() => {
         setPage(1);
-    }, [search, filters, dateRange]);
+    }, [search, rows]);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
     const safePage = Math.min(page, totalPages);
     const visibleRows = useMemo(() => {
         const start = (safePage - 1) * pageSize;
-        return filtered.slice(start, start + pageSize);
-    }, [filtered, safePage, pageSize]);
+        return (sorted as unknown as Transacao[]).slice(start, start + pageSize);
+    }, [sorted, safePage, pageSize]);
 
     return (
         <Card
@@ -1308,12 +808,11 @@ const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
                 <>
                     Lista de transações
                     <Badge size="sm" color="gray" type="pill-color">
-                        {numberFormatter.format(filtered.length)}
+                        {numberFormatter.format(sorted.length)}
                     </Badge>
                 </>
             }
         >
-            {/* Toolbar: busca, filtro de status e período */}
             <div className="flex flex-col gap-3 border-b border-secondary px-4 py-3 lg:flex-row lg:items-center">
                 <Input
                     size="sm"
@@ -1324,59 +823,6 @@ const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
                     onChange={setSearch}
                     className="lg:max-w-xs lg:flex-1"
                 />
-                <div className="flex flex-col gap-3 lg:ml-auto lg:flex-row lg:items-center">
-                    <FilterDropdown
-                        filters={filters}
-                        appliedCount={appliedCount}
-                        placement="bottom end"
-                        onAddFilter={handleAddFilter}
-                        onRemoveFilter={handleRemoveFilter}
-                        onFilterChange={handleFilterChange}
-                        onApply={handleApply}
-                        onClearAll={handleClearAll}
-                        renderFilterRow={(filter: FilterRow, onChange: (patch: Partial<Omit<FilterRow, "id">>) => void) => (
-                            <>
-                                <Select
-                                    className="max-w-40 flex-1"
-                                    size="sm"
-                                    aria-label="Campo"
-                                    placeholder="Selecione"
-                                    items={FILTER_FIELDS}
-                                    selectedKey={filter.field || null}
-                                    onSelectionChange={(key: React.Key | null) => onChange({ field: key ? String(key) : "", value: "" })}
-                                >
-                                    {(item: FilterFieldDef) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-                                </Select>
-                                <Select
-                                    className="max-w-40 flex-1"
-                                    size="sm"
-                                    aria-label="Operador"
-                                    placeholder="Operador"
-                                    items={FILTER_FIELDS.find((f) => f.id === filter.field)?.multi ? OPERATOR_OPTIONS_MULTI : OPERATOR_OPTIONS_TEXT}
-                                    selectedKey={filter.operator || null}
-                                    onSelectionChange={(key: React.Key | null) => onChange({ operator: key ? String(key) : "" })}
-                                >
-                                    {(item: { id: string; label: string }) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-                                </Select>
-                                <FilterValueInput filter={filter} onChange={onChange} />
-                            </>
-                        )}
-                    >
-                        <Button
-                            color="secondary"
-                            size="sm"
-                            iconLeading={FilterLines}
-                            iconTrailing={ChevronDown}
-                            className={cx("max-h-9 w-full lg:w-auto", appliedCount > 0 && "bg-primary_hover")}
-                        >
-                            <span className="flex items-center gap-1.5">
-                                Filtros
-                                {appliedCount > 0 && <CountBadge count={appliedCount} />}
-                            </span>
-                        </Button>
-                    </FilterDropdown>
-                    <DateRangePicker value={dateRange} onChange={setDateRange} className="shrink-0" />
-                </div>
             </div>
 
             <div className="overflow-x-auto overflow-y-clip">
@@ -1384,14 +830,8 @@ const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
                             {TRANSACAO_COLUMNS.map((col) => (
-                                <th
-                                    key={String(col.key)}
-                                    className={cx(
-                                        "whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary",
-                                        col.align === "right" && "text-right",
-                                    )}
-                                >
-                                    <SortableHeader label={col.label} align={col.align} />
+                                <th key={String(col.key)} className={cx("whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary", col.align === "right" && "text-right")}>
+                                    <SortableHeader label={col.label} align={col.align} sortKey={String(col.key)} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                                 </th>
                             ))}
                         </tr>
@@ -1399,31 +839,15 @@ const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
                     <tbody>
                         {visibleRows.length === 0 && (
                             <tr>
-                                <td
-                                    colSpan={TRANSACAO_COLUMNS.length}
-                                    className="px-4 py-12 text-center text-sm text-tertiary"
-                                >
+                                <td colSpan={TRANSACAO_COLUMNS.length} className="px-4 py-12 text-center text-sm text-tertiary">
                                     Nenhuma transação corresponde aos filtros aplicados.
                                 </td>
                             </tr>
                         )}
                         {visibleRows.map((row, i) => (
-                            <tr
-                                key={row.id}
-                                className={cx(
-                                    "transition duration-100 ease-linear hover:bg-primary_hover",
-                                    i !== visibleRows.length - 1 && "border-b border-secondary",
-                                )}
-                            >
+                            <tr key={row.id} className={cx("transition duration-100 ease-linear hover:bg-primary_hover", i !== visibleRows.length - 1 && "border-b border-secondary")}>
                                 {TRANSACAO_COLUMNS.map((col) => (
-                                    <td
-                                        key={String(col.key)}
-                                        className={cx(
-                                            "whitespace-nowrap px-4 py-4 text-sm text-tertiary",
-                                            col.align === "right" && "text-right",
-                                            col.key === "id" && "font-mono text-xs text-secondary",
-                                        )}
-                                    >
+                                    <td key={String(col.key)} className={cx("whitespace-nowrap px-4 py-4 text-sm text-tertiary", col.align === "right" && "text-right", col.key === "id" && "font-mono text-xs text-secondary")}>
                                         {renderTransacaoCell(row, col.key)}
                                     </td>
                                 ))}
@@ -1447,47 +871,22 @@ const ListaTransacoesCard = ({ rows }: ListaTransacoesCardProps) => {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Shared primitives (consistency with VendasPorGrupo)               */
+/*  Shared primitives                                                 */
 /* ------------------------------------------------------------------ */
 
-interface CardProps {
-    title: ReactNode;
-    children: ReactNode;
-    headerRight?: ReactNode;
-}
-
-const Card = ({ title, children, headerRight }: CardProps) => (
+const Card = ({ title, children, headerRight }: { title: ReactNode; children: ReactNode; headerRight?: ReactNode }) => (
     <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
         <header className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-4">
-            <h3 className="flex items-center gap-2 text-md font-semibold text-primary">
-                {title}
-            </h3>
+            <h3 className="flex items-center gap-2 text-md font-semibold text-primary">{title}</h3>
             {headerRight}
         </header>
         {children}
     </section>
 );
 
-interface StatBlockProps {
-    label: string;
-    value: string;
-    className?: string;
-}
-
-const StatBlock = ({ label, value, className }: StatBlockProps) => (
+const StatBlock = ({ label, value, className }: { label: string; value: string; className?: string }) => (
     <div className={cx("flex flex-col gap-0.5", className)}>
         <span className="text-xs text-tertiary">{label}</span>
         <span className="text-sm font-medium text-primary tabular-nums">{value}</span>
     </div>
-);
-
-interface SortableHeaderProps {
-    label: string;
-    align?: "left" | "right";
-}
-
-const SortableHeader = ({ label, align = "left" }: SortableHeaderProps) => (
-    <span className={cx("inline-flex items-center", align === "right" && "justify-end")}>
-        {label}
-    </span>
 );

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { ArrowDown, ArrowLeft, CheckCircle, ChevronRight, Send01, XClose } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
@@ -9,7 +9,7 @@ import { AppShell } from "../../components/AppShell";
 import { BottomSheet } from "../../components/BottomSheet";
 import { StatusBar } from "../../components/StatusBar";
 import { Zigzag } from "../../components/Zigzag";
-import { getEvento } from "../data/eventos";
+import { getCombo, getEvento, getItem } from "../data/eventos";
 import { marcarTransferido } from "../data/transfer-store";
 import alertAmareloIcon from "../../assets/alert-amarelo.png";
 
@@ -23,23 +23,28 @@ const maskEmail = (e: string) => {
 
 export function TransferirIngresso() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const st =
-        (location.state as { eventId?: string; comboId?: string; itemId?: string; acesso?: "qr" | "facial"; evento?: string; title?: string; tipo?: string; sessao?: string } | null) ?? {};
-    const isCombo = !!st.comboId;
-    const evento = getEvento(st.eventId);
-    const combo = isCombo ? evento.combos?.find((c) => c.id === st.comboId) : undefined;
+    const { eventId, id } = useParams();
+    const evento = getEvento(eventId);
+    const combo = getCombo(eventId, id);
+    const item = getItem(eventId, id);
+    const isCombo = !!combo;
 
-    // Ingresso individual (fallback ARENA, ou o que vier no state)
-    const evNome = st.evento ?? "ARENA BRASILEIRA 2026";
-    const title = st.title ?? "ARENA | Brasil x Haiti | (19/06)";
-    const tipo = st.tipo ?? "Inteira";
-    const sessao = st.sessao ?? "Sex, 19 jun • 15:00";
+    const evNome = evento.title;
+    const title = item?.title ?? "Ingresso";
+    const tipo = item?.tipo;
+    const sessao = evento.sessao;
 
     const [email, setEmail] = useState("");
     const [searched, setSearched] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [done, setDone] = useState(false);
+
+    // Questionário (apenas eventos que pedem formulário, ex.: São Silvestre)
+    const [formOpen, setFormOpen] = useState(false);
+    const [respostas, setRespostas] = useState<Record<string, string>>({});
+    const perguntas = combo?.questionario ?? [];
+    const temFormulario = perguntas.length > 0;
+    const formOk = perguntas.every((q) => (respostas[q.pergunta] ?? "").trim() !== "");
 
     // Ao buscar, rola suavemente até o resultado (feedback de que algo aconteceu).
     const resultRef = useRef<HTMLDivElement>(null);
@@ -47,10 +52,8 @@ export function TransferirIngresso() {
         if (searched) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, [searched]);
 
-    const voltar = () =>
-        isCombo
-            ? navigate("/ingresse-app/ingressos/combo", { state: { eventId: st.eventId, comboId: st.comboId } })
-            : navigate("/ingresse-app/ingressos/detalhe");
+    const destino = isCombo ? `/ingresse-app/ingressos/combo/${evento.id}/${id}` : `/ingresse-app/ingressos/detalhe/${evento.id}/${id}`;
+    const voltar = () => navigate(destino);
 
     const confirmarTransferencia = () => {
         setConfirming(false);
@@ -58,19 +61,69 @@ export function TransferirIngresso() {
     };
     const concluir = () => {
         setDone(false);
-        if (isCombo) {
-            marcarTransferido(st.comboId);
-            navigate("/ingresse-app/ingressos/combo", { state: { eventId: st.eventId, comboId: st.comboId, transferido: true } });
-        } else {
-            marcarTransferido(st.itemId);
-            navigate("/ingresse-app/ingressos/detalhe", {
-                state: { transferido: true, evento: evNome, title, tipo, sessao, eventId: st.eventId, itemId: st.itemId, acesso: st.acesso },
-            });
-        }
+        marcarTransferido(id);
+        navigate(destino);
     };
 
     return (
         <AppShell showTabBar={false}>
+            {formOpen ? (
+                /* Tela de formulário do participante (tela cheia, não modal) */
+                <div className="flex min-h-full flex-col bg-secondary">
+                    <StatusBar tone="dark" />
+
+                    <div className="px-5 pt-2">
+                        <button
+                            type="button"
+                            aria-label="Voltar"
+                            onClick={() => setFormOpen(false)}
+                            className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                        >
+                            <ArrowLeft className="size-5" />
+                        </button>
+                        <h1 className="pt-4 text-xl font-bold text-primary">Formulário do participante</h1>
+                    </div>
+
+                    <div className="flex flex-1 flex-col px-5 pt-4 pb-8">
+                        <p className="text-sm text-tertiary">Para concluir, responda as mesmas perguntas da inscrição com os dados de {DESTINATARIO}.</p>
+
+                        {/* Para quem está transferindo */}
+                        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
+                            <Avatar size="md" initials="DA" alt={DESTINATARIO} />
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs text-tertiary">Transferindo para</p>
+                                <p className="text-sm font-bold text-primary">{DESTINATARIO}</p>
+                            </div>
+                        </div>
+
+                        <div className="mt-5 flex flex-col gap-4">
+                            {perguntas.map((q) => (
+                                <Input
+                                    key={q.pergunta}
+                                    isRequired
+                                    label={q.pergunta}
+                                    placeholder="Sua resposta"
+                                    value={respostas[q.pergunta] ?? ""}
+                                    onChange={(v) => setRespostas((r) => ({ ...r, [q.pergunta]: v }))}
+                                />
+                            ))}
+                        </div>
+
+                        <Button
+                            size="lg"
+                            color="primary"
+                            className="mt-6 w-full rounded-full"
+                            isDisabled={!formOk}
+                            onClick={() => {
+                                setFormOpen(false);
+                                setConfirming(true);
+                            }}
+                        >
+                            Continuar
+                        </Button>
+                    </div>
+                </div>
+            ) : (
             <div className="flex min-h-full flex-col bg-secondary">
                 <StatusBar tone="dark" />
 
@@ -194,7 +247,7 @@ export function TransferirIngresso() {
 
                             <button
                                 type="button"
-                                onClick={() => setConfirming(true)}
+                                onClick={() => (temFormulario ? setFormOpen(true) : setConfirming(true))}
                                 className="flex w-full items-center gap-3 text-left transition duration-100 ease-linear active:opacity-70"
                             >
                                 <Avatar size="md" alt={DESTINATARIO} />
@@ -208,6 +261,7 @@ export function TransferirIngresso() {
                     )}
                 </div>
             </div>
+            )}
 
             {/* Bottom sheet: confirmar transferência */}
             <BottomSheet isOpen={confirming} onClose={() => setConfirming(false)}>
@@ -237,10 +291,30 @@ export function TransferirIngresso() {
                     </div>
                 </div>
 
+                {/* Recap das respostas do formulário */}
+                {temFormulario && (
+                    <div className="mt-4 divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
+                        {perguntas.map((q) => (
+                            <div key={q.pergunta} className="p-3">
+                                <p className="text-xs text-tertiary">{q.pergunta}</p>
+                                <p className="mt-0.5 text-sm font-semibold text-primary">{respostas[q.pergunta]}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <Button size="lg" color="primary" className="mt-5 w-full rounded-full" onClick={confirmarTransferencia}>
                     Confirmar transferência
                 </Button>
-                <Button size="lg" color="secondary" className="mt-3 w-full rounded-full" onClick={() => setConfirming(false)}>
+                <Button
+                    size="lg"
+                    color="secondary"
+                    className="mt-3 w-full rounded-full"
+                    onClick={() => {
+                        setConfirming(false);
+                        if (temFormulario) setFormOpen(true);
+                    }}
+                >
                     Cancelar
                 </Button>
             </BottomSheet>

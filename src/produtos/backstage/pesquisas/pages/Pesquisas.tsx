@@ -5,6 +5,7 @@ import { Reorder, useDragControls } from "motion/react";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
+import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Toggle } from "@/components/base/toggle/toggle";
@@ -17,7 +18,7 @@ import { TIPO_PERGUNTA, usePesquisas, type Pergunta } from "../data/pesquisas-st
 
 export function Pesquisas() {
     const navigate = useNavigate();
-    const { perguntas, ingressos, itensVinculaveis, countItensDaPergunta, reorderPerguntas, togglePergunta, removePergunta } = usePesquisas();
+    const { perguntas, ingressos, itensVinculaveis, countItensDaPergunta, statusLimiteDaPergunta, reorderPerguntas, togglePergunta, removePergunta } = usePesquisas();
 
     const [editorOpen, setEditorOpen] = useState(false);
     const [editorPergunta, setEditorPergunta] = useState<Pergunta | null>(null);
@@ -79,6 +80,7 @@ export function Pesquisas() {
                                     pergunta={pergunta}
                                     emItens={countItensDaPergunta(pergunta.id)}
                                     totalItens={totalItens}
+                                    limiteStatus={statusLimiteDaPergunta(pergunta.id)}
                                     onAbrir={() => abrirVinculos(pergunta)}
                                     onToggle={() => {
                                         togglePergunta(pergunta.id);
@@ -141,6 +143,7 @@ function PerguntaRow({
     pergunta,
     emItens,
     totalItens,
+    limiteStatus,
     onAbrir,
     onToggle,
     onEditar,
@@ -149,6 +152,7 @@ function PerguntaRow({
     pergunta: Pergunta;
     emItens: number;
     totalItens: number;
+    limiteStatus: { comLimite: number; esgotadas: number; perto: number };
     onAbrir: () => void;
     onToggle: () => void;
     onEditar: () => void;
@@ -185,12 +189,26 @@ function PerguntaRow({
                 />
 
                 {/* Conteúdo: título e, abaixo, tipo · status de vinculação */}
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <span className="truncate text-sm font-medium text-primary">{pergunta.titulo}</span>
                     <span className="flex items-center gap-1.5 truncate text-xs text-tertiary">
                         <meta.icon className="size-3.5 shrink-0 text-fg-quaternary" />
                         {meta.label} <span className="text-quaternary">•</span> {vinculoLabel}
                     </span>
+                    {(limiteStatus.esgotadas > 0 || limiteStatus.perto > 0) && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                            {limiteStatus.esgotadas > 0 && (
+                                <BadgeWithDot size="sm" color="error" type="modern">
+                                    {limiteStatus.esgotadas === 1 ? "1 opção esgotada" : `${limiteStatus.esgotadas} opções esgotadas`}
+                                </BadgeWithDot>
+                            )}
+                            {limiteStatus.perto > 0 && (
+                                <BadgeWithDot size="sm" color="warning" type="modern">
+                                    {limiteStatus.perto === 1 ? "1 opção perto do limite" : `${limiteStatus.perto} opções perto do limite`}
+                                </BadgeWithDot>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Ações: editar vínculos · editar · excluir */}

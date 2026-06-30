@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ChevronRight, Ticket01, Ticket02 } from "@untitledui/icons";
+import type { FC } from "react";
+import { ChevronRight, ClockRewind, Ticket01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import { AppShell } from "../../components/AppShell";
+import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 
 interface Evento {
@@ -33,6 +35,19 @@ const VEM_AI: GrupoMes[] = [
         ],
     },
     {
+        mes: "Julho 2026",
+        eventos: [
+            {
+                id: "samba-independente",
+                title: "SAMBA INDEPENDENTE DOS BONS COSTUMES",
+                date: "4 e 18 jul • 2026",
+                local: "Fundição Progresso • Rio de Janeiro/RJ",
+                qtd: 2,
+                gradient: "linear-gradient(135deg,#F59E0B 0%,#DB2777 55%,#7C3AED 100%)",
+            },
+        ],
+    },
+    {
         mes: "Dezembro 2026",
         eventos: [
             {
@@ -50,25 +65,6 @@ const VEM_AI: GrupoMes[] = [
                 local: "Av. Paulista • São Paulo/SP",
                 qtd: 2,
                 gradient: "linear-gradient(135deg,#FF4D00 0%,#1d4ed8 100%)",
-            },
-        ],
-    },
-    {
-        mes: "Janeiro 2027",
-        eventos: [
-            { id: "combo", title: "TESTE MINI COMBO", date: "Seg, 04 jan • 20:00", local: "Japaratinga • Japaratinga/AL", qtd: 2 },
-        ],
-    },
-    {
-        mes: "Março 2027",
-        eventos: [
-            {
-                id: "mirella",
-                title: "Mirella teste 2",
-                date: "Sáb, 27 mar • 00:00",
-                local: "Estádio Olímpico Nilton Santos",
-                qtd: 1,
-                gradient: "linear-gradient(135deg,#1f2937 0%,#0b0f19 100%)",
             },
         ],
     },
@@ -95,16 +91,16 @@ export function Carteira() {
     const grupos = tab === "vem-ai" ? VEM_AI : PASSADOS;
 
     return (
-        <AppShell activeTab="ingressos">
+        <AppShell activeTab="ingressos" scrollClassName="bg-secondary">
             <div className="min-h-full bg-secondary">
                 <StatusBar tone="dark" />
 
-                <h1 className="px-5 pt-4 pb-5 text-xl font-bold text-primary">Carteira de ingressos</h1>
+                <h1 className="px-5 pt-4 pb-5 text-xl font-bold text-primary">Carteira</h1>
 
                 {/* Tabs */}
                 <div className="flex px-5">
                     <TabButton icon={Ticket01} label="Vem aí" active={tab === "vem-ai"} onClick={() => setTab("vem-ai")} />
-                    <TabButton icon={Ticket02} label="Passados" active={tab === "passados"} onClick={() => setTab("passados")} />
+                    <TabButton icon={ClockRewind} label="Passados" active={tab === "passados"} onClick={() => setTab("passados")} />
                 </div>
                 <div className="h-px bg-border-secondary" />
 
@@ -118,22 +114,24 @@ export function Carteira() {
                                     <button
                                         key={evento.id}
                                         type="button"
-                                        onClick={() => navigate("/ingresse-app/ingressos/evento", { state: { eventId: evento.id } })}
+                                        onClick={() => navigate(`/ingresse-app/ingressos/evento/${evento.id}`)}
                                         className="flex items-center gap-4 rounded-2xl bg-primary p-3 text-left ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                                     >
                                         {evento.gradient ? (
-                                            <div className="size-24 shrink-0 rounded-xl" style={{ background: evento.gradient }} />
+                                            <div className="size-24 shrink-0 overflow-hidden rounded-xl">
+                                                <GradientFill gradient={evento.gradient} />
+                                            </div>
                                         ) : (
                                             <div className="flex size-24 shrink-0 items-center justify-center rounded-xl bg-secondary text-fg-quaternary">
                                                 <Ticket01 className="size-8" />
                                             </div>
                                         )}
                                         <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                            <p className="text-sm font-bold text-primary">{evento.title}</p>
+                                            <p className="truncate text-sm font-bold text-primary">{evento.title}</p>
                                             <p className="text-sm font-medium text-secondary">{evento.date}</p>
                                             <p className="text-sm text-tertiary">{evento.local}</p>
                                             <p className="text-sm text-tertiary">
-                                                {evento.qtd} {evento.qtd === 1 ? "ingresso" : "ingressos"}
+                                                {evento.id === "sao-silvestre" ? "1 inscrição" : `${evento.qtd} ${evento.qtd === 1 ? "ingresso" : "ingressos"}`}
                                             </p>
                                         </div>
                                         <ChevronRight className="size-5 shrink-0 text-fg-quaternary" />
@@ -148,16 +146,16 @@ export function Carteira() {
     );
 }
 
-const TabButton = ({ icon: Icon, label, active, onClick }: { icon: typeof Ticket01; label: string; active: boolean; onClick: () => void }) => (
+const TabButton = ({ icon: Icon, label, active, onClick }: { icon: FC<{ className?: string }>; label: string; active: boolean; onClick: () => void }) => (
     <button
         type="button"
         onClick={onClick}
         className={cx(
             "-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 pb-3 text-sm font-semibold transition duration-100 ease-linear",
-            active ? "border-brand text-brand-secondary" : "border-transparent text-tertiary",
+            active ? "border-fg-brand-primary text-brand-secondary" : "border-transparent text-tertiary",
         )}
     >
         <Icon className={cx("size-5", active ? "text-fg-brand-primary" : "text-fg-quaternary")} />
-        {label}
+        <span>{label}</span>
     </button>
 );

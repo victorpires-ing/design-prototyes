@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useSearchParams } from "react-router";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
-    Bell01,
     BellRinging02,
     Calendar,
     ChevronDown,
@@ -12,8 +12,6 @@ import {
     LinkExternal02,
     MarkerPin01,
     MarkerPin02,
-    SearchLg,
-    Settings01,
     Tag01,
 } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
@@ -28,8 +26,15 @@ import {
     type EventConfig,
     type EventStatus,
 } from "../../components/EventConfigSlideout";
+import { FROM_IMAGE_ID, INGRESSE_RED, getFamily, gradientCss, type GradientFamily, type VibeMotion } from "../../components/gradient-families";
+import { MatchupCover } from "../components/MatchupCover";
+import { FutebolEvento } from "../components/FutebolEvento";
+import { GradientTexture, NOISE_URI } from "../components/GradientTexture";
+import { useImagePalette } from "../utils/image-palette";
+import { getEvento, type Confronto, type EventoMock, type EventStatus as MockStatus } from "../data/events";
+import meshGradient from "../assets/mesh-gradient.png";
+import sideTexture from "../assets/side-bg-texture.png";
 import { Footer, HeaderNav } from "../components/SiteChrome";
-import headerBg from "../assets/header-bg.png";
 import bannerImg from "../assets/banner.png";
 import lineupJoao from "../assets/lineup-joao.png";
 import lineupJota from "../assets/lineup-jota.png";
@@ -104,128 +109,178 @@ const FAQ = [
     },
 ];
 
-
 /* ------------------------------------------------------------------ */
 /*  Página                                                            */
 /* ------------------------------------------------------------------ */
 
+/** Mapeia um evento do mock (via ?ev=) para a config da página. */
+function configFromParam(ev: string | null): EventConfig {
+    const e = ev ? getEvento(ev) : null;
+    if (!e) return defaultEventConfig;
+    const statusMap: Record<MockStatus, EventStatus> = {
+        venda: "venda-ativa",
+        esgotado: "soldout-com-lista",
+        "pre-venda": "aguardando-abertura",
+        "fura-fila": "venda-ativa",
+    };
+    return {
+        ...defaultEventConfig,
+        nomeEvento: e.titulo,
+        localNome: e.local,
+        localEndereco: e.cidade,
+        preco: e.preco === 0 ? "Gratuito" : `R$ ${e.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+        dataInicio: e.data,
+        dataFim: e.dataFim ?? e.data,
+        status: statusMap[e.status],
+        bannerUrl: e.cover ?? "",
+        heroVideoUrl: e.heroVideoUrl ?? defaultEventConfig.heroVideoUrl,
+        temLineup: !!e.lineup?.length,
+    };
+}
+
 export function EventDetails() {
-    const [config, setConfig] = useState<EventConfig>(defaultEventConfig);
+    const [params] = useSearchParams();
+    const [config, setConfig] = useState<EventConfig>(() => configFromParam(params.get("ev")));
     const [isConfigOpen, setIsConfigOpen] = useState(false);
-    const [showMiniBar, setShowMiniBar] = useState(false);
-    const bannerRef = useRef<HTMLImageElement>(null);
+
+    // Jogo principal de futebol: confronto vira o "pôster" e as cores vêm dos times.
+    const evento = useMemo(() => getEvento(params.get("ev") ?? ""), [params]);
+    const confronto = evento?.futebol ?? null;
+
+    // Pôster: URL configurável (vazio = padrão).
+    const poster = config.bannerUrl.trim() || bannerImg;
+
+    // "From image": esquema de cores extraído do banner (desativado no futebol — sem imagem).
+    const palette = useImagePalette(poster, config.vibe === FROM_IMAGE_ID && !confronto);
+    const family = useMemo<GradientFamily>(() => {
+        const base = getFamily(config.vibe);
+        if (config.vibe === FROM_IMAGE_ID && palette) {
+            return { ...base, stops: [palette.primary, palette.accent, palette.base] };
+        }
+        return base;
+    }, [config.vibe, palette]);
+
+    // Fundo do hero.
+    const isImg = config.vibe === FROM_IMAGE_ID && !!palette;
+    const heroBg = confronto
+        ? `linear-gradient(160deg, ${confronto.casa.cor} 0%, #0d0d12 52%, ${confronto.fora.cor} 100%)`
+        : isImg
+          ? `linear-gradient(160deg, ${palette!.primary} 0%, ${palette!.base} 100%)`
+          : gradientCss(family, 160);
+    const heroAccent = confronto ? INGRESSE_RED : isImg ? palette!.accent : (family.stops[1] ?? family.stops[0]);
+
+    // Mini-barra: aparece por cima do header quando o hero sai da tela.
+    const heroRef = useRef<HTMLElement>(null);
+    const [showMini, setShowMini] = useState(false);
+    useEffect(() => {
+        const onScroll = () => {
+            const el = heroRef.current;
+            if (!el) return;
+            setShowMini(el.getBoundingClientRect().bottom < 140);
+        };
+        onScroll();
+        window.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("resize", onScroll);
+        return () => {
+            window.removeEventListener("scroll", onScroll);
+            window.removeEventListener("resize", onScroll);
+        };
+    }, []);
 
     const sectionTabs: SectionTab[] = [
         ...(config.temLineup ? [{ id: "lineup", label: "Lineup" }] : []),
-        { id: "experiencia", label: "Experiência" },
         { id: "descricao", label: "Descrição" },
         { id: "endereco", label: "Endereço" },
+        { id: "experiencia", label: "Experiência" },
         { id: "faq", label: "FAQ" },
     ];
-
-    useEffect(() => {
-        const el = bannerRef.current;
-        if (!el) return;
-        const observer = new IntersectionObserver(([entry]) => setShowMiniBar(!entry.isIntersecting), {
-            rootMargin: "-64px 0px 0px 0px",
-            threshold: 0,
-        });
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, []);
 
     return (
         <div className="min-h-screen bg-primary text-primary">
             <HeaderNav onOpenConfig={() => setIsConfigOpen(true)} />
 
-            {/* Mini-barra (mobile) — fixa, surge ao rolar além do banner (sem empurrar layout) */}
+            {confronto && evento ? (
+                <FutebolEvento evento={evento} videoUrl={config.heroVideoUrl} />
+            ) : (
+            <>
+            {/* Mini-barra fixa — surge por cima do header ao rolar além do hero */}
             <AnimatePresence>
-                {showMiniBar && (
+                {showMini && (
                     <motion.div
                         key="minibar"
                         initial={{ y: "-100%" }}
                         animate={{ y: 0 }}
                         exit={{ y: "-100%" }}
-                        transition={{ duration: 0.25, ease: "easeOut" }}
-                        className="fixed inset-x-0 top-0 z-50 border-b border-secondary bg-primary lg:hidden"
+                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                        className="fixed inset-x-0 top-0 z-50 border-b border-secondary bg-primary/95 backdrop-blur-md"
                     >
-                        <div className="flex h-16 items-center gap-3 px-4">
-                            <img src={bannerImg} alt="" className="h-11 w-9 shrink-0 rounded-sm object-cover" />
-                            <p className="line-clamp-2 flex-1 text-sm font-bold leading-snug text-primary">{config.nomeEvento}</p>
-                            <AgeBadge value={config.classificacao} />
-                        </div>
-                        {/* Tab de seções — entra junto com a mini-barra */}
-                        <div className="border-t border-secondary">
-                            <SectionTabsBar tabs={sectionTabs} />
+                        <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 lg:px-8">
+                            {confronto ? (
+                                <div className="flex h-11 shrink-0 items-center gap-1">
+                                    {[confronto.casa, confronto.fora].map((t) =>
+                                        t.escudo ? <img key={t.abbr} src={t.escudo} alt={t.nome} className="size-9 object-contain" /> : null,
+                                    )}
+                                </div>
+                            ) : (
+                                <img src={poster} alt="" className="h-11 w-9 shrink-0 rounded-sm object-cover" />
+                            )}
+                            <div className="flex min-w-0 flex-1 flex-col">
+                                <p className="line-clamp-1 text-sm font-bold text-primary">{config.nomeEvento}</p>
+                                <span className="line-clamp-1 text-xs text-tertiary">
+                                    <HeroDateText config={config} />
+                                </span>
+                            </div>
+                            <MiniAge value={config.classificacao} />
+                            <Button size="sm" color="primary" className="max-sm:hidden">
+                                Garantir ingresso
+                            </Button>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Hero band — fundo com grafismo/gradient exportado */}
-            <div className="relative">
-                <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[360px] overflow-hidden lg:h-[540px]">
-                    <img src={headerBg} alt="" className="size-full object-cover" />
-                </div>
+            {/* Hero full-bleed — a página veste a energia do evento */}
+            <Hero heroRef={heroRef} config={config} family={family} poster={poster} heroBg={heroBg} heroAccent={heroAccent} confronto={confronto} />
 
-                <div className="relative mx-auto max-w-7xl px-4 lg:flex lg:gap-10 lg:px-8 lg:py-10">
-                    <main className="flex w-full flex-col gap-10 pt-6 pb-32 lg:min-w-0 lg:flex-1 lg:py-0">
-                        {/* Poster — sem limite de largura */}
-                        <img
-                            ref={bannerRef}
-                            src={bannerImg}
-                            alt={config.nomeEvento}
-                            className="mx-auto w-[240px] max-w-full rounded-2xl shadow-lg lg:w-[354px]"
-                        />
-
-                        {/* Tab de seções (desktop) — sticky em fluxo; no mobile vai na mini-barra */}
-                        <div className="sticky top-16 z-30 hidden max-w-[540px] border-b border-secondary bg-primary/90 backdrop-blur-md lg:block">
-                            <SectionTabsBar tabs={sectionTabs} />
-                        </div>
-
-                        {/* Seções de conteúdo — largura máxima de 540px */}
-                        <div className="flex flex-col gap-12 lg:max-w-[540px]">
-                            {/* Info do evento — inline no mobile (sem o CTA, que é fixo) */}
-                            <div className="lg:hidden">
-                                <EventInfo config={config} card={false} />
-                            </div>
-
-                            {config.temLineup && (
-                                <div id="lineup" className="scroll-mt-32">
-                                    <Lineup config={config} />
-                                </div>
-                            )}
-                            <div id="experiencia" className="scroll-mt-32">
-                                <Complementos />
-                            </div>
-                            <div id="descricao" className="scroll-mt-32">
-                                <Descricao />
-                            </div>
-                            <div id="endereco" className="scroll-mt-32">
-                                <ComoChegar config={config} />
-                            </div>
-                            <ProduzidoPor />
-                            <div id="faq" className="scroll-mt-32">
-                                <Faq />
-                            </div>
-                            <HelpCta />
-                            <RegrasVenda />
-                        </div>
-                    </main>
-
-                    {/* Card sticky — desktop */}
-                    <aside className="hidden lg:block lg:w-[440px] lg:shrink-0">
-                        <div className="sticky top-24">
-                            <EventInfo config={config} card />
-                        </div>
-                    </aside>
+            {/* Navegação de seções — fixa abaixo do header, largura total */}
+            <div className="sticky top-16 z-30 border-b border-secondary bg-primary/90 backdrop-blur-md">
+                <div className="mx-auto max-w-5xl px-5 lg:px-8">
+                    <SectionTabsBar tabs={sectionTabs} family={family} />
                 </div>
             </div>
 
-            <Footer />
+            {/* Conteúdo editorial */}
+            <main className="mx-auto flex w-full max-w-5xl flex-col gap-16 px-5 pt-14 pb-40 lg:gap-20 lg:px-8 lg:pb-32">
+                {config.temLineup && (
+                    <Section id="lineup">
+                        <Lineup config={config} evento={evento} />
+                    </Section>
+                )}
+                <Section id="descricao">
+                    <Descricao family={family} evento={evento} />
+                </Section>
+                <Section id="endereco">
+                    <ComoChegar config={config} family={family} />
+                </Section>
+                <Reveal>
+                    <ProduzidoPor evento={evento} />
+                </Reveal>
+                <Section id="experiencia">
+                    <Complementos />
+                </Section>
+                <Section id="faq">
+                    <Faq />
+                </Section>
+                <Reveal>
+                    <HelpCta family={family} />
+                </Reveal>
+                <Reveal>
+                    <RegrasVenda />
+                </Reveal>
+            </main>
 
-            {/* Barra de venda fixa (mobile) com fade/blur no topo */}
-            <div className="fixed inset-x-0 bottom-0 z-30 lg:hidden">
+            {/* Barra de venda persistente — fade/blur no topo, mesma lógica de status */}
+            <div className="fixed inset-x-0 bottom-0 z-30">
                 <div
                     aria-hidden="true"
                     className="h-8 backdrop-blur-md"
@@ -234,13 +289,294 @@ export function EventDetails() {
                         maskImage: "linear-gradient(to bottom, transparent, black)",
                     }}
                 />
-                <div className="border-t border-secondary bg-primary/85 px-4 pt-3 pb-8 backdrop-blur-lg">
-                    <SaleStatus status={config.status} preco={config.preco} />
+                <div className="border-t border-secondary bg-primary/85 backdrop-blur-lg">
+                    <div className="mx-auto max-w-5xl px-5 pt-3 pb-7 lg:px-8">
+                        <SaleStatus status={config.status} preco={config.preco} />
+                    </div>
                 </div>
             </div>
+            </>
+            )}
+
+            <Footer />
 
             <EventConfigSlideout isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} config={config} onChange={setConfig} />
         </div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Motion helpers                                                    */
+/* ------------------------------------------------------------------ */
+
+/** Reveal no scroll — entrada de baixo, dispara uma vez ao entrar na viewport. */
+function Reveal({ children, className, delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
+    const reduce = useReducedMotion();
+    if (reduce) return <div className={className}>{children}</div>;
+    return (
+        <motion.div
+            className={className}
+            initial={{ opacity: 0, y: 28 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay }}
+        >
+            {children}
+        </motion.div>
+    );
+}
+
+/** Seção navegável (âncora + reveal). */
+function Section({ id, children }: { id: string; children: ReactNode }) {
+    return (
+        <div id={id} className="scroll-mt-32">
+            <Reveal>{children}</Reveal>
+        </div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Hero                                                              */
+/* ------------------------------------------------------------------ */
+
+function Hero({
+    config,
+    family,
+    poster,
+    heroBg,
+    heroAccent,
+    confronto,
+    heroRef,
+}: {
+    config: EventConfig;
+    family: GradientFamily;
+    poster: string;
+    heroBg: string;
+    heroAccent: string;
+    confronto: Confronto | null;
+    heroRef?: RefObject<HTMLElement | null>;
+}) {
+    const reduce = useReducedMotion();
+    return (
+        <section ref={heroRef} className="relative">
+            <div className="relative isolate h-[calc(100dvh-4rem)] min-h-[560px] overflow-hidden">
+                {/* Fundo: gradiente LINEAR da cor dominante */}
+                <div aria-hidden="true" className="absolute inset-0 -z-10" style={{ background: heroBg }} />
+
+                {/* Vídeo (duotone) ou malha (mesh) + texturas laterais da marca */}
+                <HeroBackdrop accent={heroAccent} videoUrl={config.heroVideoUrl} reduce={!!reduce} />
+
+                {/* Escurecimento só na base — garante contraste do texto branco sem apagar a cor
+                <div
+                    aria-hidden="true"
+                    className="absolute inset-x-0 bottom-0 -z-10 h-2/3 bg-gradient-to-b from-transparent via-black/35 to-black/80"
+                /> */}
+
+                <div className="relative z-10 mx-auto flex h-[calc(100dvh-4rem)] min-h-[560px] max-w-5xl flex-col items-center justify-center gap-5 px-5 py-6 text-center text-white">
+                    {/* Pôster (ou confronto, no jogo principal) — destaque na primeira dobra */}
+                    {confronto ? (
+                        <motion.div
+                            initial={reduce ? false : { opacity: 0, scale: 0.92, y: 24 }}
+                            animate={reduce ? undefined : { opacity: 1, scale: 1, y: 0 }}
+                            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                            className="relative aspect-square w-[min(80vw,320px)] overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/15 lg:w-[420px]"
+                        >
+                            <MatchupCover confronto={confronto} />
+                        </motion.div>
+                    ) : (
+                        <motion.img
+                            src={poster}
+                            alt={config.nomeEvento}
+                            initial={reduce ? false : { opacity: 0, scale: 0.92, y: 24 }}
+                            animate={reduce ? undefined : { opacity: 1, scale: 1, y: 0 }}
+                            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                            className="h-auto max-h-[42vh] w-auto max-w-[min(74vw,300px)] rounded-2xl shadow-2xl ring-1 ring-white/15 lg:max-w-[420px]"
+                        />
+                    )}
+
+                    {/* Título cinético */}
+                    <KineticTitle text={config.nomeEvento} motionCfg={family.motion} reduce={!!reduce} />
+
+                    {/* Data + classificação */}
+                    <motion.div
+                        initial={reduce ? false : { opacity: 0, y: 12 }}
+                        animate={reduce ? undefined : { opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.45 }}
+                        className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2"
+                    >
+                        <span className="flex items-center gap-2 text-sm font-medium text-white/85">
+                            <Calendar className="size-4 shrink-0" />
+                            <HeroDateText config={config} />
+                        </span>
+                        <span aria-hidden="true" className="h-4 w-px bg-white/25" />
+                        <span className="flex items-center gap-2 text-sm font-medium text-white/85">
+                            <Clock className="size-4 shrink-0" />
+                            A partir das {config.horarioTipo === "fixo" ? config.horarioFixo : HORARIOS_VARIADOS[0]}
+                        </span>
+                        <span aria-hidden="true" className="h-4 w-px bg-white/25" />
+                        <span className="flex items-center gap-2 text-sm font-medium text-white/85">
+                            <MarkerPin01 className="size-4 shrink-0" />
+                            {config.localNome}
+                        </span>
+                        <AgeMark value={config.classificacao} />
+                    </motion.div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+/** Extrai o ID de um vídeo do YouTube (watch, youtu.be, shorts, embed, live). */
+function youtubeId(url: string): string | null {
+    const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/);
+    return m ? m[1] : null;
+}
+
+/**
+ * Fundo do hero. Com URL de vídeo → footage em duotone (mix-blend-luminosity).
+ * Sem vídeo → textura cimática (máscara) tingida com a cor de destaque do banner.
+ */
+/** Velocidade do vídeo de fundo (mais lento = mais cinematográfico). */
+const HERO_VIDEO_RATE = 1;
+
+function HeroBackdrop({ accent, videoUrl, reduce }: { accent: string; videoUrl: string; reduce: boolean }) {
+    const url = videoUrl.trim();
+    const ytId = url ? youtubeId(url) : null;
+    const active = !!url && !reduce;
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    // YouTube: reduz a velocidade via IFrame API (postMessage). Tenta até o player ficar pronto.
+    useEffect(() => {
+        if (!active || !ytId) return;
+        let tries = 0;
+        const id = setInterval(() => {
+            const win = iframeRef.current?.contentWindow;
+            if (win) {
+                win.postMessage(JSON.stringify({ event: "command", func: "setPlaybackRate", args: [HERO_VIDEO_RATE] }), "*");
+                win.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*");
+            }
+            if (++tries > 12) clearInterval(id);
+        }, 600);
+        return () => clearInterval(id);
+    }, [active, ytId]);
+
+    // Arquivo de vídeo direto: define playbackRate.
+    useEffect(() => {
+        if (!active || ytId) return;
+        const v = videoRef.current;
+        if (v) v.playbackRate = HERO_VIDEO_RATE;
+    }, [active, ytId, url]);
+
+    if (active) {
+        // Dimensões que cobrem o hero mantendo 16:9 (recorta a UI do player).
+        const coverStyle = {
+            width: "max(100vw, calc((100dvh - 4rem) * 1.7778))",
+            height: "max(calc(100dvh - 4rem), 56.25vw)",
+        } as const;
+        // opacity menor (não compete com o texto) + motion blur direcional + duotone na família.
+        const coverCls =
+            "pointer-events-none absolute top-1/2 left-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 opacity-55 mix-blend-luminosity [filter:url(#hero-motion-blur)_contrast(1.05)_saturate(1.1)]";
+
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        const media = ytId ? (
+            <iframe
+                ref={iframeRef}
+                aria-hidden="true"
+                title="Vídeo de fundo do evento"
+                src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${ytId}&playsinline=1&modestbranding=1&rel=0&disablekb=1&fs=0&iv_load_policy=3&enablejsapi=1&origin=${encodeURIComponent(origin)}`}
+                allow="autoplay; encrypted-media"
+                className={coverCls}
+                style={coverStyle}
+            />
+        ) : (
+            // Arquivo de vídeo direto (.mp4/.webm) como bônus.
+            <video ref={videoRef} aria-hidden="true" src={url} autoPlay loop muted playsInline className={cx(coverCls, "object-cover")} style={coverStyle} />
+        );
+
+        return (
+            <>
+                {/* Filtro de motion blur direcional (rastro horizontal). */}
+                <svg aria-hidden="true" className="absolute size-0">
+                    <filter id="hero-motion-blur" x="-10%" y="-10%" width="120%" height="120%">
+                        <feGaussianBlur stdDeviation="3 9" edgeMode="duplicate" />
+                    </filter>
+                </svg>
+                {media}
+                {/* Grão reforçado sobre o vídeo. */}
+                <div
+                    aria-hidden="true"
+                    className="absolute inset-0 -z-10 mix-blend-overlay"
+                    style={{ backgroundImage: `url("${NOISE_URI}")`, backgroundSize: "160px 160px", opacity: 0.4 }}
+                />
+            </>
+        );
+    }
+
+    // Malha (mesh) dá forma orgânica ao gradiente; texturas laterais da marca
+    // (mascaradas, na cor de destaque) entram nas duas bordas; grão sutil.
+    const sideStyle = {
+        backgroundColor: accent,
+        WebkitMaskImage: `url(${sideTexture})`,
+        maskImage: `url(${sideTexture})`,
+        WebkitMaskSize: "auto 100%",
+        maskSize: "auto 100%",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+    } as const;
+    return (
+        <>
+            <div
+                aria-hidden="true"
+                className="absolute inset-0 -z-10 mix-blend-overlay"
+                style={{ backgroundImage: `url(${meshGradient})`, backgroundSize: "cover", backgroundPosition: "center" }}
+            />
+            {/* Texturas da marca nas laterais (esquerda e espelhada à direita) */}
+            <div
+                aria-hidden="true"
+                className="absolute inset-y-0 left-0 -z-10 w-[42vw] max-w-[300px]"
+                style={{ ...sideStyle, WebkitMaskPosition: "left center", maskPosition: "left center" }}
+            />
+            <div
+                aria-hidden="true"
+                className="absolute inset-y-0 right-0 -z-10 w-[42vw] max-w-[300px] -scale-x-100"
+                style={{ ...sideStyle, WebkitMaskPosition: "left center", maskPosition: "left center" }}
+            />
+            <div
+                aria-hidden="true"
+                className="absolute inset-0 -z-10 opacity-[0.12] mix-blend-soft-light"
+                style={{ backgroundImage: `url("${NOISE_URI}")`, backgroundSize: "200px 200px" }}
+            />
+        </>
+    );
+}
+
+/** Título grande com palavras subindo em sequência (entrada de fonte). */
+/** Tamanho do título por faixa de caracteres — mantém ~2 linhas bem ajustadas. */
+function titleSizeClass(len: number): string {
+    if (len <= 16) return "text-display-md lg:text-display-2xl";
+    if (len <= 26) return "text-display-sm lg:text-display-xl";
+    if (len <= 38) return "text-display-xs lg:text-display-lg";
+    return "text-2xl lg:text-display-md";
+}
+
+function KineticTitle({ text, motionCfg, reduce }: { text: string; motionCfg: VibeMotion; reduce: boolean }) {
+    const words = text.split(" ");
+    return (
+        <h1 className={cx("leading-[0.92] font-extrabold tracking-tight text-white uppercase", titleSizeClass(text.length))}>
+            {words.map((word, i) => (
+                <span key={i} className="-mt-[0.22em] inline-block overflow-hidden pt-[0.22em] pr-[0.22em] align-top">
+                    <motion.span
+                        className="inline-block"
+                        initial={reduce ? false : { y: "110%" }}
+                        animate={reduce ? undefined : { y: 0 }}
+                        transition={{ duration: 0.85 * motionCfg.tempo, ease: [0.16, 1, 0.3, 1], delay: 0.2 + i * motionCfg.stagger }}
+                    >
+                        {word}
+                    </motion.span>
+                </span>
+            ))}
+        </h1>
     );
 }
 
@@ -253,8 +589,7 @@ interface SectionTab {
     label: string;
 }
 
-/** Progresso de rolagem APENAS pelas seções navegáveis (1ª → última tab),
- *  ignorando o que vem depois (ex.: regras de venda). 0 → 1. */
+/** Progresso de rolagem APENAS pelas seções navegáveis (1ª → última tab). 0 → 1. */
 function useSectionsProgress(firstId: string | undefined, lastId: string | undefined): number {
     const [progress, setProgress] = useState(0);
     useEffect(() => {
@@ -301,7 +636,7 @@ function useScrollSpy(ids: string[], offset: number): string | null {
     return active;
 }
 
-function SectionTabsBar({ tabs }: { tabs: SectionTab[] }) {
+function SectionTabsBar({ tabs, family }: { tabs: SectionTab[]; family: GradientFamily }) {
     const active = useScrollSpy(
         tabs.map((t) => t.id),
         130,
@@ -310,7 +645,7 @@ function SectionTabsBar({ tabs }: { tabs: SectionTab[] }) {
     const navRef = useRef<HTMLElement>(null);
     const activeRef = useRef<HTMLButtonElement>(null);
 
-    // Mantém a tab ativa visível: centraliza-a no scroll horizontal da própria tab (mobile).
+    // Mantém a tab ativa visível (centraliza no scroll horizontal — mobile).
     useEffect(() => {
         const nav = navRef.current;
         const btn = activeRef.current;
@@ -344,7 +679,7 @@ function SectionTabsBar({ tabs }: { tabs: SectionTab[] }) {
                             aria-current={isActive || undefined}
                             className={cx(
                                 "flex-1 px-3 py-3.5 text-center text-sm font-semibold whitespace-nowrap transition-colors duration-100",
-                                isActive ? "text-brand-secondary" : "text-tertiary hover:text-secondary",
+                                isActive ? "text-primary" : "text-tertiary hover:text-secondary",
                             )}
                         >
                             {tab.label}
@@ -352,16 +687,19 @@ function SectionTabsBar({ tabs }: { tabs: SectionTab[] }) {
                     );
                 })}
             </nav>
-            {/* Barra de progresso de navegação (vermelha) na base da tab */}
+            {/* Barra de progresso — vestida com o gradiente da família */}
             <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[3px]">
-                <div className="h-full bg-brand-solid transition-[width] duration-150 ease-out" style={{ width: `${progress * 100}%` }} />
+                <div
+                    className="h-full transition-[width] duration-150 ease-out"
+                    style={{ width: `${progress * 100}%`, backgroundImage: gradientCss(family, 90) }}
+                />
             </div>
         </div>
     );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Header navigation                                                 */
+/*  Marca Ingresse                                                    */
 /* ------------------------------------------------------------------ */
 
 function IngresseMark({ className }: { className?: string }) {
@@ -373,9 +711,8 @@ function IngresseMark({ className }: { className?: string }) {
     );
 }
 
-
 /* ------------------------------------------------------------------ */
-/*  Texto de datas (única / intervalo contínuo / não contínuo)        */
+/*  Texto de datas                                                    */
 /* ------------------------------------------------------------------ */
 
 const WEEKDAYS_LONG = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
@@ -394,125 +731,47 @@ const fmtDate = (iso: string, longMonth: boolean) => {
     return `${WEEKDAYS_LONG[dt.getDay()]} ${dt.getDate()} de ${months[dt.getMonth()]}`;
 };
 
-function EventDateText({ config }: { config: EventConfig }) {
+/** Resumo curto de data para o hero (uma linha). */
+function HeroDateText({ config }: { config: EventConfig }) {
     const dias = enumerateDays(config.dataInicio, config.dataFim);
     if (dias.length === 0) return null;
-
-    const data = "font-semibold text-brand-secondary";
-    const conector = "text-secondary";
-    const time = config.horarioTipo === "fixo" ? config.horarioFixo : HORARIOS_VARIADOS[0];
-
-    // Data única
-    if (dias.length === 1) {
-        return (
-            <p className="text-sm">
-                <span className={data}>{fmtDate(config.dataInicio, true)}</span> <span className={conector}>às {time}</span>
-            </p>
-        );
-    }
-
-    // Intervalo não contínuo (vários horários) — "Entre … e …", sem horário
-    if (config.horarioTipo === "varios") {
-        return (
-            <div className="flex flex-col text-sm leading-6">
-                <span>
-                    <span className={conector}>Entre </span>
-                    <span className={data}>{fmtDate(config.dataInicio, false)}</span>
-                </span>
-                <span>
-                    <span className={conector}>e </span>
-                    <span className={data}>{fmtDate(config.dataFim, true)}</span>
-                </span>
-            </div>
-        );
-    }
-
-    // Intervalo contínuo (horário fixo) — "De … às … / Até … às …"
+    const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    if (dias.length === 1) return <>{cap(fmtDate(config.dataInicio, false))}</>;
+    const ini = parseDate(config.dataInicio);
+    const fim = parseDate(config.dataFim);
     return (
-        <div className="flex flex-col text-sm leading-6">
-            <span>
-                <span className={conector}>De </span>
-                <span className={data}>{fmtDate(config.dataInicio, false)}</span>
-                <span className={conector}> às {time}</span>
-            </span>
-            <span>
-                <span className={conector}>Até </span>
-                <span className={data}>{fmtDate(config.dataFim, true)}</span>
-                <span className={conector}> às {time}</span>
-            </span>
-        </div>
+        <>
+            {ini.getDate()} a {fim.getDate()} de {MONTHS_LONG[fim.getMonth()]}
+        </>
     );
 }
 
-function EventInfo({ config, card }: { config: EventConfig; card: boolean }) {
-    return (
-        <div className={cx("flex flex-col gap-5", card && "rounded-2xl bg-primary p-6 shadow-lg ring-1 ring-border-secondary")}>
-            {/* Breadcrumb */}
-            <nav className="flex items-center gap-1.5" aria-label="Breadcrumb">
-                <IngresseMark className="h-4 w-auto text-fg-quaternary" />
-                <ChevronRight className="size-4 text-fg-quaternary" />
-                <span className="text-sm font-semibold text-quaternary">Turnê</span>
-            </nav>
 
-            {/* Título + classificação */}
-            <div className="flex items-start gap-4">
-                <h1 className="flex-1 text-display-xs font-bold text-primary lg:text-display-sm">{config.nomeEvento}</h1>
-                <AgeBadge value={config.classificacao} />
-            </div>
-
-            {/* Datas e horários */}
-            <div className="flex flex-col gap-3">
-                <div className="flex items-start gap-3">
-                    <Calendar className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
-                    <EventDateText config={config} />
-                </div>
-                <div className="flex items-center gap-3">
-                    <Clock className="size-5 shrink-0 text-fg-quaternary" />
-                    <span className="text-sm text-secondary">
-                        A partir das {config.horarioTipo === "fixo" ? config.horarioFixo : HORARIOS_VARIADOS[0]}00
-                    </span>
-                </div>
-            </div>
-
-            {/* Local */}
-            <div className="flex flex-col gap-3 border-t border-secondary pt-4">
-                <div className="flex items-center gap-3">
-                    <HomeLine className="size-5 shrink-0 text-fg-quaternary" />
-                    <span className="text-sm font-semibold text-secondary">{config.localNome}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                    <MarkerPin01 className="size-5 shrink-0 text-fg-quaternary" />
-                    <span className="text-sm text-secondary">{config.localEndereco}</span>
-                </div>
-            </div>
-
-            {/* Preço + CTA — só no card (desktop); no mobile fica na barra fixa */}
-            {card && (
-                <div className="border-t border-secondary pt-4">
-                    <SaleStatus status={config.status} preco={config.preco} />
-                </div>
-            )}
-        </div>
-    );
-}
-
-function AgeBadge({ value = "16" }: { value?: string }) {
+/** Classificação compacta para a mini-barra (fundo claro). */
+function MiniAge({ value = "16" }: { value?: string }) {
     const classif = CLASSIFICACOES.find((c) => c.id === value) ?? CLASSIFICACOES[4];
     return (
-        <div className="flex shrink-0 flex-col items-center">
-            <span
-                className="grid size-6 place-items-center rounded-xs text-sm font-semibold text-white"
-                style={{ backgroundColor: classif.cor }}
-            >
+        <span className="grid size-7 shrink-0 place-items-center rounded-xs text-xs font-bold text-white" style={{ backgroundColor: classif.cor }}>
+            {classif.id === "L" ? "L" : classif.id}
+        </span>
+    );
+}
+
+/** Classificação no hero — texto claro sobre fundo escuro. */
+function AgeMark({ value = "16" }: { value?: string }) {
+    const classif = CLASSIFICACOES.find((c) => c.id === value) ?? CLASSIFICACOES[4];
+    return (
+        <span className="flex items-center gap-1.5">
+            <span className="grid size-6 place-items-center rounded-xs text-sm font-semibold text-white" style={{ backgroundColor: classif.cor }}>
                 {classif.id === "L" ? "L" : classif.id}
             </span>
-            <span className="text-xs text-secondary">{classif.legenda}</span>
-        </div>
+            <span className="text-sm text-white/70">{classif.legenda}</span>
+        </span>
     );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Status de venda (varia conforme config.status)                    */
+/*  Status de venda                                                   */
 /* ------------------------------------------------------------------ */
 
 function SaleStatus({ status, preco }: { status: EventStatus; preco: string }) {
@@ -565,7 +824,7 @@ function SaleStatus({ status, preco }: { status: EventStatus; preco: string }) {
             <div className="flex flex-col">
                 <span className="text-sm text-tertiary">A partir de</span>
                 <span className="text-md font-bold text-primary">
-                    {preco} <span className="font-normal text-sm text-tertiary">+ taxa</span>
+                    {preco} <span className="text-sm font-normal text-tertiary">+ taxa</span>
                 </span>
             </div>
             <Button size="lg" color="primary">
@@ -613,18 +872,27 @@ function Countdown() {
 /*  Seções de conteúdo                                                */
 /* ------------------------------------------------------------------ */
 
-function Lineup({ config }: { config: EventConfig }) {
+const lineupInitials = (nome: string) =>
+    nome
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((p) => p[0])
+        .join("")
+        .toUpperCase();
+
+function Lineup({ config, evento }: { config: EventConfig; evento?: EventoMock }) {
+    const list = evento?.lineup ?? LINEUP;
     return (
         <section className="flex flex-col gap-5">
             <SectionHeading title="Lineup" sub="Datas e horários sujeitas a alteração" />
             <div className="flex flex-col gap-5">
-                {LINEUP.map((atracao) => (
+                {list.map((atracao) => (
                     <div key={atracao.name} className="flex items-center gap-3">
-                        <Avatar src={atracao.img} alt={atracao.name} size="md" />
+                        <Avatar src={atracao.img} initials={lineupInitials(atracao.name)} alt={atracao.name} size="md" />
                         <div className="flex flex-col gap-1.5">
                             <span className="text-sm font-semibold text-primary">{atracao.name}</span>
                             <div className="flex flex-wrap gap-1.5">
-                                {atracao.dates.map((date, i) => (
+                                {(atracao.dates ?? []).map((date, i) => (
                                     <span
                                         key={i}
                                         className="rounded-full border border-secondary bg-secondary px-2 py-0.5 text-xs font-medium text-secondary"
@@ -662,25 +930,43 @@ function Complementos() {
     );
 }
 
-function Descricao() {
+function Descricao({ family, evento }: { family: GradientFamily; evento?: EventoMock }) {
     const [expanded, setExpanded] = useState(false);
+    // Sem evento (showcase) usa os textos padrão; com evento usa a descrição
+    // oficial; evento sem descrição mostra placeholder editável.
+    const para = evento?.descricao;
+    const isPlaceholder = !!evento && !para?.length;
+    const resumo = para ? para.slice(0, 4) : DESCRICAO_RESUMO;
+    const completo = para ? para.slice(4) : DESCRICAO_COMPLETO;
+
+    if (isPlaceholder) {
+        return (
+            <section className="flex flex-col gap-4">
+                <h2 className="text-display-xs font-extrabold tracking-tight text-primary uppercase">Descrição</h2>
+                <p className="rounded-xl border border-dashed border-secondary bg-secondary/40 p-4 text-sm text-tertiary">
+                    Descrição em breve. Aqui entra o texto oficial do evento.
+                </p>
+                <span aria-hidden="true" className="mt-2 h-0.5 w-16 rounded-full" style={{ backgroundImage: gradientCss(family, 90) }} />
+            </section>
+        );
+    }
     return (
         <section className="flex flex-col gap-4">
-            <h2 className="text-xl font-semibold text-primary">Descrição</h2>
+            <h2 className="text-display-xs font-extrabold tracking-tight text-primary uppercase">Descrição</h2>
             <div className="relative">
                 <div className="flex flex-col gap-3.5 text-sm leading-5 text-secondary">
-                    {DESCRICAO_RESUMO.map((p, i) => (
+                    {resumo.map((p, i) => (
                         <p key={i} className={cx(i === 0 && "font-bold text-primary")}>
                             {p}
                         </p>
                     ))}
-                    {expanded && DESCRICAO_COMPLETO.map((p, i) => <p key={`c-${i}`}>{p}</p>)}
+                    {expanded && completo.map((p, i) => <p key={`c-${i}`}>{p}</p>)}
                 </div>
-                {/* Fade na base indicando conteúdo oculto */}
-                {!expanded && (
+                {!expanded && completo.length > 0 && (
                     <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-primary to-transparent" />
                 )}
             </div>
+            {completo.length > 0 && (
             <Button
                 size="sm"
                 color="link-color"
@@ -690,20 +976,22 @@ function Descricao() {
             >
                 {expanded ? "Recolher" : "Expandir"}
             </Button>
+            )}
+            <span aria-hidden="true" className="mt-2 h-0.5 w-16 rounded-full" style={{ backgroundImage: gradientCss(family, 90) }} />
         </section>
     );
 }
 
-function ComoChegar({ config }: { config: EventConfig }) {
+function ComoChegar({ config, family }: { config: EventConfig; family: GradientFamily }) {
     const query = encodeURIComponent(`${config.localNome} ${config.localEndereco}`);
     return (
         <section className="flex flex-col gap-4">
-            <h2 className="text-xl font-semibold text-primary">Como chegar</h2>
+            <h2 className="text-display-xs font-extrabold tracking-tight text-primary uppercase">Como chegar</h2>
             <div className="overflow-hidden rounded-lg border border-tertiary bg-secondary">
                 <iframe
                     title="Mapa do local"
                     src={`https://maps.google.com/maps?q=${query}&z=15&output=embed`}
-                    className="h-[160px] w-full border-0"
+                    className="h-[180px] w-full border-0"
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
                 />
@@ -724,6 +1012,7 @@ function ComoChegar({ config }: { config: EventConfig }) {
                     </Button>
                 </div>
             </div>
+            <span aria-hidden="true" className="mt-2 h-0.5 w-16 rounded-full" style={{ backgroundImage: gradientCss(family, 90) }} />
         </section>
     );
 }
@@ -739,73 +1028,109 @@ const PRODUTORES: { name: string; initials: string; img?: string; eventos?: numb
     { name: "Dume", initials: "D" },
 ];
 
-function ProduzidoPor() {
+function ProduzidoPor({ evento }: { evento?: EventoMock }) {
     const [expanded, setExpanded] = useState(false);
     const PREVIEW = 3;
+    // Evento real ainda sem dados de produtor → placeholder editável.
+    if (evento) {
+        return (
+            <section className="flex flex-col gap-4">
+                <h2 className="text-display-xs font-extrabold tracking-tight text-primary uppercase">Produzido por</h2>
+                <p className="rounded-xl border border-dashed border-secondary bg-secondary/40 p-4 text-sm text-tertiary">
+                    Organização em breve. Aqui entram o produtor e seus eventos.
+                </p>
+            </section>
+        );
+    }
     const preview = PRODUTORES.slice(0, PREVIEW);
     const hidden = PRODUTORES.length - PREVIEW;
 
+    const reduce = useReducedMotion();
+    const ease = [0.22, 1, 0.36, 1] as const;
+
     return (
         <section className="flex flex-col gap-4">
-            <h2 className="text-xl font-semibold text-primary">Produzido por</h2>
+            <h2 className="text-display-xs font-extrabold tracking-tight text-primary uppercase">Produzido por</h2>
 
-            {expanded ? (
-                <>
-                    <div className="flex flex-col gap-4">
-                        {PRODUTORES.map((p) => (
-                            <div key={p.name} className="flex items-center gap-3">
-                                <Avatar src={p.img} initials={p.initials} alt={p.name} size="md" />
-                                <div className="flex min-w-0 flex-col">
-                                    <span className="text-sm font-semibold text-primary">{p.name}</span>
-                                    {p.eventos != null && (
-                                        <span className="text-sm text-tertiary">
-                                            {p.eventos} {p.eventos === 1 ? "evento" : "eventos"}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <Button size="sm" color="link-color" iconTrailing={ChevronUp} onClick={() => setExpanded(false)} className="self-start">
-                        Resumir
-                    </Button>
-                </>
-            ) : (
-                <div className="flex items-center gap-3">
-                    <div className="flex -space-x-2">
-                        {preview.map((p) => (
-                            <Avatar key={p.name} src={p.img} initials={p.initials} alt={p.name} size="sm" className="ring-2 ring-[color:var(--color-bg-primary)]" />
-                        ))}
-                        {hidden > 0 && (
-                            <span className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary ring-2 ring-[color:var(--color-bg-primary)]">
-                                {hidden}
-                            </span>
-                        )}
-                    </div>
-                    <p className="min-w-0 flex-1 text-sm text-secondary">
-                        {preview.map((p) => p.name).join(", ")}
-                        {hidden > 0 && (
-                            <>
-                                {" e "}
-                                <button
-                                    type="button"
-                                    onClick={() => setExpanded(true)}
-                                    className="font-semibold text-brand-secondary transition hover:text-brand-secondary_hover hover:underline"
+            <AnimatePresence initial={false} mode="wait">
+                {expanded ? (
+                    <motion.div
+                        key="full"
+                        initial={reduce ? false : { opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={reduce ? undefined : { opacity: 0, height: 0 }}
+                        transition={{ duration: 0.35, ease }}
+                        className="flex flex-col gap-4 overflow-hidden"
+                    >
+                        <div className="flex flex-col gap-4">
+                            {PRODUTORES.map((p, i) => (
+                                <motion.div
+                                    key={p.name}
+                                    initial={reduce ? false : { opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3, ease, delay: 0.05 + i * 0.04 }}
+                                    className="flex items-center gap-3"
                                 >
-                                    {hidden} mais
-                                </button>
-                            </>
-                        )}
-                    </p>
-                </div>
-            )}
+                                    <Avatar src={p.img} initials={p.initials} alt={p.name} size="md" />
+                                    <div className="flex min-w-0 flex-col">
+                                        <span className="text-sm font-semibold text-primary">{p.name}</span>
+                                        {p.eventos != null && (
+                                            <span className="text-sm text-tertiary">
+                                                {p.eventos} {p.eventos === 1 ? "evento" : "eventos"}
+                                            </span>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                        <Button size="sm" color="link-color" iconTrailing={ChevronUp} onClick={() => setExpanded(false)} className="self-start">
+                            Resumir
+                        </Button>
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="preview"
+                        initial={reduce ? false : { opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={reduce ? undefined : { opacity: 0, height: 0 }}
+                        transition={{ duration: 0.35, ease }}
+                        className="flex items-center gap-3 overflow-hidden"
+                    >
+                        <div className="flex -space-x-2">
+                            {preview.map((p) => (
+                                <Avatar key={p.name} src={p.img} initials={p.initials} alt={p.name} size="sm" className="ring-2 ring-[color:var(--color-bg-primary)]" />
+                            ))}
+                            {hidden > 0 && (
+                                <span className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary ring-2 ring-[color:var(--color-bg-primary)]">
+                                    {hidden}
+                                </span>
+                            )}
+                        </div>
+                        <p className="min-w-0 flex-1 text-sm text-secondary">
+                            {preview.map((p) => p.name).join(", ")}
+                            {hidden > 0 && (
+                                <>
+                                    {" e "}
+                                    <button
+                                        type="button"
+                                        onClick={() => setExpanded(true)}
+                                        className="font-semibold text-brand-secondary transition hover:text-brand-secondary_hover hover:underline"
+                                    >
+                                        {hidden} mais
+                                    </button>
+                                </>
+                            )}
+                        </p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </section>
     );
 }
 
 function Faq() {
     return (
-        <section className="flex flex-col gap-4 pt-5">
+        <section className="flex flex-col gap-4">
             <SectionHeading title="Dúvidas frequentes" sub="Tudo que você precisa saber sobre esse evento." />
             <div className="flex flex-col">
                 {FAQ.map((item) => (
@@ -829,25 +1154,40 @@ function FaqItem({ q, a }: { q: string; a: string }) {
                 <span className="text-md font-semibold text-primary">{q}</span>
                 <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition-transform duration-200", open && "rotate-180")} />
             </button>
-            {open && <p className="pb-4 text-sm leading-5 text-secondary">{a}</p>}
+            <AnimatePresence initial={false}>
+                {open && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        className="overflow-hidden"
+                    >
+                        <p className="pb-4 text-sm leading-5 text-secondary">{a}</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
 
-function HelpCta() {
+function HelpCta({ family }: { family: GradientFamily }) {
     return (
-        <section className="flex flex-col items-center gap-4 rounded-2xl bg-secondary px-6 py-8 text-center">
-            <span className="grid size-14 place-items-center rounded-full bg-brand-solid">
-                <IngresseMark className="w-7 text-black" />
-            </span>
-            <p className="text-lg font-bold text-primary">
-                Se precisar de ajuda,
-                <br />a Ingresse tá por aqui.
-            </p>
-            <Button size="lg" color="primary">
-                Fale com a gente
-            </Button>
-        </section>
+        <GradientTexture family={family} angle={135} className="rounded-3xl">
+            <div className="absolute inset-0 -z-10 bg-black/35" />
+            <div className="flex flex-col items-center gap-4 px-6 py-12 text-center">
+                <span className="grid size-14 place-items-center rounded-full bg-white">
+                    <IngresseMark className="w-7 text-black" />
+                </span>
+                <p className="text-display-xs font-extrabold tracking-tight text-white uppercase">
+                    Se precisar de ajuda,
+                    <br />a Ingresse tá por aqui.
+                </p>
+                <Button size="lg" color="secondary">
+                    Fale com a gente
+                </Button>
+            </div>
+        </GradientTexture>
     );
 }
 
@@ -945,14 +1285,9 @@ function RegrasVenda() {
 
 function SectionHeading({ title, sub }: { title: string; sub: string }) {
     return (
-        <div className="flex flex-col gap-0.5">
-            <h2 className="text-xl font-semibold text-primary">{title}</h2>
+        <div className="flex flex-col gap-1">
+            <h2 className="text-display-xs font-extrabold tracking-tight text-primary uppercase">{title}</h2>
             <p className="text-sm text-tertiary">{sub}</p>
         </div>
     );
 }
-
-/* ------------------------------------------------------------------ */
-/*  Footer                                                            */
-/* ------------------------------------------------------------------ */
-

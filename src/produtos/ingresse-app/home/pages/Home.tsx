@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, Ticket01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import { AppShell } from "../../components/AppShell";
+import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 
 interface EventoCard {
@@ -27,10 +28,8 @@ export function Home() {
     return (
         <AppShell activeTab="inicio">
             {/* Hero / carrossel */}
-            <section
-                className="relative flex h-[440px] flex-col"
-                style={{ background: "linear-gradient(180deg,#1e3a8a 0%,#1d4ed8 38%,#15803d 100%)" }}
-            >
+            <section className="relative flex h-[440px] flex-col">
+                <GradientFill gradient="linear-gradient(180deg,#1e3a8a 0%,#1d4ed8 38%,#15803d 100%)" className="absolute inset-0 -z-10 size-full" />
                 <StatusBar tone="light" />
 
                 <div className="flex items-center justify-between px-5 pt-1 text-white">
@@ -80,7 +79,9 @@ const EventoRow = ({ title, eventos }: { title: string; eventos: EventoCard[] })
         <div className="mt-3 flex gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {eventos.map((evento) => (
                 <button key={evento.id} type="button" className="flex w-40 shrink-0 flex-col text-left">
-                    <div className="h-40 w-40 rounded-2xl ring-1 ring-border-secondary ring-inset" style={{ background: evento.gradient }} />
+                    <div className="h-40 w-40 overflow-hidden rounded-2xl ring-1 ring-border-secondary ring-inset">
+                        <GradientFill gradient={evento.gradient} />
+                    </div>
                     <p className="mt-2 line-clamp-2 text-sm font-semibold text-primary">{evento.title}</p>
                     <p className="mt-0.5 text-xs text-tertiary">{evento.date}</p>
                 </button>

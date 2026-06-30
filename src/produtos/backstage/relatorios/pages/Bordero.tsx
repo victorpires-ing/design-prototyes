@@ -1,30 +1,27 @@
-import { Fragment, useState, type ReactNode } from "react";
-import { ChevronDown, CurrencyDollarCircle, Receipt, Ticket01, UploadCloud02, XClose } from "@untitledui/icons";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { ChevronDown, CurrencyDollarCircle, Receipt, Ticket01, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
 import { AlertFloating } from "@/components/application/alerts/alerts";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { TabList, Tabs } from "@/components/application/tabs/tabs";
 import { Badge } from "@/components/base/badges/badges";
-import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
-
-/* ------------------------------------------------------------------ */
-/*  Formatters                                                        */
-/* ------------------------------------------------------------------ */
+import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
+import { RelatorioFiltersProvider, dateRangeFraction, useRelatorioFilters } from "../components/relatorio-filters";
+import { SortableHeader } from "../components/SortableHeader";
+import { useSortableTable } from "../utils/useSortableTable";
+import { EVENT, currencyFormatter, numberFormatter } from "../data/event";
 
 const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
-const currencyFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const numberFormatter = new Intl.NumberFormat("pt-BR");
 
 /* ------------------------------------------------------------------ */
 /*  Tree types + helpers                                              */
 /* ------------------------------------------------------------------ */
 
-type ColType = "int" | "currency";
+type ColType = "int" | "currency" | "text";
 interface ColDef {
     label: string;
     type: ColType;
@@ -32,14 +29,12 @@ interface ColDef {
 
 interface TreeNode {
     label: string;
-    /** Leaf metric values, aligned to the columns. */
     values?: number[];
     children?: TreeNode[];
-    /** Linha que mudou nos últimos 5 minutos. */
     changed?: boolean;
 }
 
-const fmt = (value: number, type: ColType) => (type === "currency" ? currencyFormatter.format(value) : numberFormatter.format(value));
+const fmt = (value: number, type: ColType) => (type === "text" ? "-" : type === "currency" ? currencyFormatter.format(value) : numberFormatter.format(value));
 
 const subtotalOf = (node: TreeNode): number[] => {
     if (node.values) return node.values;
@@ -59,39 +54,105 @@ const grandTotalOf = (nodes: TreeNode[]): number[] =>
 /*  Mock data — 3 visões                                              */
 /* ------------------------------------------------------------------ */
 
-// Ingressos · Validados · No-Show · Valor unitário · Faturado
 const MACRO_COLUMNS: ColDef[] = [
-    { label: "Ingressos", type: "int" },
-    { label: "Validados", type: "int" },
-    { label: "No-Show", type: "int" },
+    { label: "Bundle", type: "text" },
+    { label: "Produto", type: "text" },
+    { label: "Quantidade", type: "int" },
     { label: "Valor unitário", type: "currency" },
-    { label: "Faturado", type: "currency" },
+    { label: "Valor Total", type: "currency" },
 ];
 
 const macroData: TreeNode[] = [
     {
-        label: "IMPRESSO/BILHETERIA",
+        label: "BILHETERIA",
         children: [
             {
-                label: "Cadeira Norte",
+                label: "Tribuna",
                 children: [
-                    { label: "Inteira", values: [768, 0, 768, 85, 65280], changed: true },
-                    { label: "Meia-entrada", values: [434, 0, 434, 42.5, 18445] },
-                    { label: "Sócio 50%", values: [217, 0, 217, 42.5, 9222.5] },
+                    { label: "Família Jogadores", values: [0, 0, 54, 0, 0] },
+                    { label: "Estádio", values: [0, 0, 4, 0, 0] },
+                    { label: "Patrocinador", values: [0, 0, 1, 0, 0] },
                 ],
             },
             {
-                label: "Cadeira Leste",
+                label: "Sul (Visitante)",
                 children: [
-                    { label: "Inteira", values: [664, 0, 664, 90, 59760] },
-                    { label: "Meia-entrada", values: [227, 0, 227, 45, 10215] },
+                    { label: "Gratuidade - PCD", values: [0, 0, 8, 0, 0] },
+                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 37, 0, 0] },
+                    { label: "Acompanhante PCD", values: [0, 0, 2, 0, 0] },
+                    { label: "Reciprocidade", values: [0, 0, 35, 0, 0] },
                 ],
             },
             {
-                label: "Visitante Superior",
+                label: "Oeste Superior B",
                 children: [
-                    { label: "Inteira", values: [289, 0, 289, 130, 37570], changed: true },
-                    { label: "Meia-entrada", values: [137, 0, 137, 65, 8905] },
+                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 245, 0, 0] },
+                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 40, 0, 0] },
+                ],
+            },
+            {
+                label: "Oeste Inferior",
+                children: [
+                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 410, 0, 0] },
+                    { label: "Familia Jogadores", values: [0, 0, 139, 0, 0] },
+                    { label: "Acompanhante PCD", values: [0, 0, 20, 0, 0] },
+                    { label: "FERJ", values: [0, 0, 14, 0, 0] },
+                    { label: "Gratuidade - PCD", values: [0, 0, 40, 0, 0] },
+                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 80, 0, 0] },
+                    { label: "Patrocinador", values: [0, 0, 59, 0, 0] },
+                    { label: "Sócio Proprietário", values: [0, 0, 115, 0, 0] },
+                    { label: "Relacionamento", values: [0, 0, 78, 0, 0] },
+                    { label: "BEPE", values: [0, 0, 21, 0, 0] },
+                    { label: "Resgate OFF Rio", values: [0, 0, 9, 0, 0] },
+                    { label: "NIKE", values: [0, 0, 7, 0, 0] },
+                    { label: "CPE Estado Maior", values: [0, 0, 3, 0, 0] },
+                    { label: "Aquecimento", values: [0, 0, 8, 0, 0] },
+                    { label: "Bombeiro (DDP)", values: [0, 0, 9, 0, 0] },
+                    { label: "Acompanhante Backstage Tour", values: [0, 0, 3, 0, 0] },
+                    { label: "3º BATALHÃO", values: [0, 0, 10, 0, 0] },
+                    { label: "Intervalo", values: [0, 0, 2, 0, 0] },
+                    { label: "24 DP", values: [0, 0, 3, 0, 0] },
+                    { label: "Backstage Tour", values: [0, 0, 3, 0, 0] },
+                ],
+            },
+            {
+                label: "Leste Superior",
+                children: [
+                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 285, 0, 0] },
+                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 714, 0, 0] },
+                    { label: "Patrocinador", values: [0, 0, 7, 0, 0] },
+                    { label: "Bateria", values: [0, 0, 11, 0, 0] },
+                ],
+            },
+            {
+                label: "Leste Inferior",
+                children: [
+                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 355, 0, 0] },
+                    { label: "Patrocinador", values: [0, 0, 30, 0, 0] },
+                    { label: "Relacionamento", values: [0, 0, 40, 0, 0] },
+                    { label: "Sócio Proprietário", values: [0, 0, 45, 0, 0] },
+                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 100, 0, 0] },
+                    { label: "Gratuidade - PCD", values: [0, 0, 30, 0, 0] },
+                    { label: "Acompanhante PCD", values: [0, 0, 15, 0, 0] },
+                    { label: "Reciprocidade", values: [0, 0, 60, 0, 0] },
+                    { label: "Familia Jogadores", values: [0, 0, 80, 0, 0] },
+                    { label: "Bateria", values: [0, 0, 15, 0, 0] },
+                ],
+            },
+            {
+                label: "Camarote",
+                children: [
+                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 60, 0, 0] },
+                    { label: "Família Jogadores", values: [0, 0, 30, 0, 0] },
+                    { label: "Patrocinador", values: [0, 0, 30, 0, 0] },
+                ],
+            },
+            {
+                label: "3º Andar Leste",
+                children: [
+                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 150, 0, 0] },
+                    { label: "Família Jogadores", values: [0, 0, 50, 0, 0] },
+                    { label: "Reciprocidade", values: [0, 0, 54, 0, 0] },
                 ],
             },
         ],
@@ -100,69 +161,147 @@ const macroData: TreeNode[] = [
         label: "ONLINE",
         children: [
             {
-                label: "Sócio Esquadrão",
-                children: [{ label: "Sócio Esquadrão", values: [21094, 0, 21094, 19.5, 265897.5], changed: true }],
+                label: "Tribuna",
+                children: [
+                    { label: "Futebol", values: [0, 0, 10, 120, 1200] },
+                ],
             },
             {
-                label: "Lounge Premium",
+                label: "Sul (Visitante)",
                 children: [
-                    { label: "Inteira", values: [80, 0, 80, 240, 19200], changed: true },
-                    { label: "Lounge Criança", values: [15, 0, 15, 150, 2250] },
+                    { label: "Meia-Entrada", values: [0, 0, 6, 40, 240] },
+                    { label: "Inteira", values: [0, 0, 7, 80, 560] },
+                ],
+            },
+            {
+                label: "Oeste Superior B",
+                children: [
+                    { label: "Meia-Entrada", values: [0, 0, 1683, 30, 50490] },
+                    { label: "Inteira", values: [0, 0, 1051, 60, 63060] },
+                    { label: "Acompanhante Glorioso", values: [0, 0, 61, 24, 1464] },
+                    { label: "Branco", values: [0, 0, 71, 30, 2130] },
+                    { label: "Glorioso", values: [0, 0, 44, 0, 0] },
+                    { label: "Alvinegro OFF Rio", values: [0, 0, 11, 12, 132] },
+                    { label: "Preto", values: [0, 0, 65, 24, 1560] },
+                    { label: "Alvinegro", values: [0, 0, 93, 0, 0] },
+                ],
+            },
+            {
+                label: "Oeste Inferior",
+                children: [
+                    { label: "Meia-Entrada", values: [0, 0, 1337, 50, 66850] },
+                    { label: "Inteira", values: [0, 0, 508, 100, 50800] },
+                    { label: "Alvinegro", values: [0, 0, 1163, 0, 0] },
+                    { label: "Preto", values: [0, 0, 314, 20, 6280] },
+                    { label: "Acompanhante Glorioso", values: [0, 0, 351, 40, 14040] },
+                    { label: "Glorioso", values: [0, 0, 502, 0, 0] },
+                    { label: "Funcionário Glorioso", values: [0, 0, 30, 0, 0] },
+                    { label: "Branco", values: [0, 0, 262, 30, 7860] },
+                    { label: "Alvinegro OFF Rio", values: [0, 0, 48, 20, 960] },
+                ],
+            },
+            {
+                label: "Leste Superior",
+                children: [
+                    { label: "Meia-Entrada", values: [0, 0, 3877, 20, 77540] },
+                    { label: "Inteira", values: [0, 0, 2225, 40, 89000] },
+                    { label: "Acompanhante Glorioso", values: [0, 0, 423, 16, 6768] },
+                    { label: "Preto", values: [0, 0, 441, 15, 6615] },
+                    { label: "Branco", values: [0, 0, 364, 20, 7280] },
+                    { label: "Glorioso", values: [0, 0, 402, 0, 0] },
+                    { label: "Alvinegro", values: [0, 0, 1089, 0, 0] },
+                    { label: "Alvinegro OFF Rio", values: [0, 0, 110, 8, 880] },
+                    { label: "Sócio Torcida", values: [0, 0, 68, 0, 0] },
+                ],
+            },
+            {
+                label: "Leste Inferior",
+                children: [
+                    { label: "Meia-Entrada", values: [0, 0, 1491, 40, 59640] },
+                    { label: "Inteira", values: [0, 0, 700, 80, 56000] },
+                    { label: "Alvinegro", values: [0, 0, 900, 0, 0] },
+                    { label: "Glorioso", values: [0, 0, 400, 0, 0] },
+                    { label: "Acompanhante Glorioso", values: [0, 0, 200, 40, 8000] },
+                    { label: "Preto", values: [0, 0, 150, 20, 3000] },
+                    { label: "Branco", values: [0, 0, 120, 30, 3600] },
+                    { label: "Alvinegro OFF Rio", values: [0, 0, 65, 20, 1300] },
+                    { label: "Funcionário Glorioso", values: [0, 0, 50, 0, 0] },
+                    { label: "Sócio Torcida", values: [0, 0, 135, 0, 0] },
+                ],
+            },
+            {
+                label: "Camarote",
+                children: [
+                    { label: "Inteira", values: [0, 0, 40, 60, 2400] },
+                ],
+            },
+            {
+                label: "3º Andar Oeste",
+                children: [
+                    { label: "Inteira", values: [0, 0, 50, 60, 3000] },
+                    { label: "Alvinegro", values: [0, 0, 120, 0, 0] },
+                    { label: "Glorioso", values: [0, 0, 80, 0, 0] },
+                    { label: "Branco", values: [0, 0, 30, 30, 900] },
+                    { label: "Preto", values: [0, 0, 50, 0, 0] },
+                ],
+            },
+            {
+                label: "3º Andar Leste",
+                children: [
+                    { label: "Meia-Entrada", values: [0, 0, 175, 20, 3500] },
+                    { label: "Branco", values: [0, 0, 40, 30, 1200] },
+                    { label: "Alvinegro OFF Rio", values: [0, 0, 1, 24, 24] },
+                    { label: "Alvinegro", values: [0, 0, 800, 0, 0] },
+                    { label: "Glorioso", values: [0, 0, 350, 0, 0] },
                 ],
             },
         ],
     },
 ];
 
-// Ingressos · Valor unitário · Faturado
 const PDV_COLUMNS: ColDef[] = [
-    { label: "Ingressos", type: "int" },
+    { label: "Quantidade", type: "int" },
     { label: "Valor unitário", type: "currency" },
-    { label: "Faturado", type: "currency" },
+    { label: "Valor Total", type: "currency" },
 ];
 
 const pdvData: TreeNode[] = [
     {
-        label: "Loja Tricolor - Fonte Nova",
+        label: "Bilheteria Estádio Nilton Santos",
         children: [
             {
-                label: "Cadeira Norte",
-                children: [
-                    { label: "Inteira", values: [768, 85, 65280] },
-                    { label: "Meia-entrada", values: [434, 42.5, 18445] },
-                ],
+                label: "Tribuna",
+                children: [{ label: "Futebol", values: [10, 120, 1200] }],
             },
-            { label: "Sócio Esquadrão", children: [{ label: "Sócio Esquadrão", values: [21094, 19.5, 265897.5], changed: true }] },
-        ],
-    },
-    {
-        label: "Loja Tricolor - Shopping da Bahia",
-        children: [
             {
-                label: "Cadeira Leste",
+                label: "Sul (Visitante)",
                 children: [
-                    { label: "Inteira", values: [664, 90, 59760], changed: true },
-                    { label: "Inteira Promocional", values: [300, 50, 15000] },
-                    { label: "Meia-entrada", values: [227, 45, 10215] },
+                    { label: "Inteira", values: [7, 80, 560], changed: true },
+                    { label: "Meia-Entrada", values: [6, 40, 240] },
                 ],
             },
         ],
     },
     {
-        label: "Loja Tricolor - Salvador Norte Shopping",
+        label: "Loja Oficial Botafogo - Nilton Santos",
         children: [
             {
-                label: "Visitante Superior",
+                label: "Oeste Inferior",
                 children: [
-                    { label: "Inteira", values: [289, 130, 37570] },
-                    { label: "Meia-entrada", values: [137, 65, 8905] },
+                    { label: "Meia-Entrada", values: [1337, 50, 66850], changed: true },
+                    { label: "Inteira", values: [508, 100, 50800] },
                 ],
             },
+        ],
+    },
+    {
+        label: "Loja Oficial Botafogo - Shopping Rio Sul",
+        children: [
             {
-                label: "Lounge Premium",
+                label: "Leste Inferior",
                 children: [
-                    { label: "Inteira", values: [80, 240, 19200], changed: true },
-                    { label: "Lounge Criança", values: [15, 150, 2250] },
+                    { label: "Meia-Entrada", values: [1491, 40, 59640] },
+                    { label: "Inteira", values: [700, 80, 56000], changed: true },
                 ],
             },
         ],
@@ -171,26 +310,21 @@ const pdvData: TreeNode[] = [
 
 const meiosData: TreeNode[] = [
     {
-        label: "Loja Tricolor - Fonte Nova",
+        label: "Bilheteria Estádio Nilton Santos",
         children: [
-            { label: "Cartão de Crédito", values: [612, 120, 73440] },
-            { label: "Cartão de Débito", values: [438, 95, 41610] },
-            { label: "Dinheiro", values: [205, 60, 12300], changed: true },
-            { label: "PIX", values: [21258, 18, 382644] },
+            { label: "Dinheiro", values: [23, 150, 3450], changed: true },
+            { label: "Cartão de Débito", values: [10, 90, 900] },
         ],
     },
     {
-        label: "Loja Tricolor - Shopping da Bahia",
+        label: "Loja Oficial Botafogo - Shopping Rio Sul",
         children: [
-            { label: "Cartão de Crédito", values: [684, 78, 53352] },
-            { label: "Cartão de Débito", values: [312, 64, 19968] },
-            { label: "Dinheiro", values: [98, 55, 5390], changed: true },
-            { label: "PIX", values: [97, 47, 4559] },
+            { label: "Cartão de Crédito", values: [320, 95, 30400] },
+            { label: "PIX", values: [1800, 55, 99000], changed: true },
         ],
     },
 ];
 
-/* Transações que alteraram o borderô nos últimos 5 minutos. */
 type ChangeType = "venda" | "cancelamento" | "estorno";
 
 interface BorderoChange {
@@ -210,130 +344,134 @@ const CHANGE_META: Record<ChangeType, { label: string; color: "success" | "gray"
 };
 
 const changedTransacoes: BorderoChange[] = [
-    { id: "c1", hora: "há 1 min", tipo: "venda", canal: "Online", descricao: "Sócio Esquadrão · Sócio Esquadrão", ingressos: 12, valor: 234 },
-    { id: "c2", hora: "há 2 min", tipo: "venda", canal: "Impresso/Bilheteria", descricao: "Cadeira Norte · Inteira", ingressos: 5, valor: 425 },
-    { id: "c3", hora: "há 3 min", tipo: "cancelamento", canal: "Impresso/Bilheteria", descricao: "Visitante Superior · Inteira", ingressos: -1, valor: -130 },
-    { id: "c4", hora: "há 4 min", tipo: "estorno", canal: "Online", descricao: "Lounge Premium · Inteira", ingressos: -1, valor: -240 },
+    { id: "c1", hora: "há 1 min", tipo: "venda", canal: "Online", descricao: "Leste Superior · Meia-Entrada", ingressos: 4, valor: 80 },
+    { id: "c2", hora: "há 2 min", tipo: "venda", canal: "Impresso/Bilheteria", descricao: "Tribuna · Futebol", ingressos: 2, valor: 240 },
+    { id: "c3", hora: "há 3 min", tipo: "cancelamento", canal: "Online", descricao: "Oeste Inferior · Inteira", ingressos: -1, valor: -100 },
+    { id: "c4", hora: "há 4 min", tipo: "estorno", canal: "Online", descricao: "Oeste Superior B · Inteira", ingressos: -1, valor: -60 },
 ];
-
-const macroGrand = grandTotalOf(macroData);
-const totalIngressos = macroGrand[0] ?? 0;
-const totalFaturado = macroGrand[4] ?? 0;
-const ticketMedio = totalIngressos === 0 ? 0 : totalFaturado / totalIngressos;
 
 type BorderoView = "macro" | "pdv" | "meios";
 
 const VIEWS: Record<BorderoView, { nodes: TreeNode[]; columns: ColDef[]; firstCol: string }> = {
-    macro: { nodes: macroData, columns: MACRO_COLUMNS, firstCol: "Canal · Setor · Tipo" },
-    pdv: { nodes: pdvData, columns: PDV_COLUMNS, firstCol: "PDV · Setor · Tipo" },
+    macro: { nodes: macroData, columns: MACRO_COLUMNS, firstCol: "Canal · Setor · Tipo de Ingresso" },
+    pdv: { nodes: pdvData, columns: PDV_COLUMNS, firstCol: "PDV · Setor · Tipo de Ingresso" },
     meios: { nodes: meiosData, columns: PDV_COLUMNS, firstCol: "PDV · Meio de pagamento" },
 };
+
+/* ------------------------------------------------------------------ */
+/*  Scaling (sessão + intervalo de data afetam todas as visões)        */
+/* ------------------------------------------------------------------ */
+
+// Jogo único: a sessão da partida concentra 100% das vendas.
+const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 1 };
+
+// Escala valores de quantidade/faturado; mantém colunas de "valor unitário" intactas.
+const scaleNodes = (nodes: TreeNode[], columns: ColDef[], factor: number): TreeNode[] =>
+    nodes.map((n) => ({
+        ...n,
+        values: n.values?.map((v, i) => (columns[i]?.label === "Valor unitário" ? v : Math.round(v * factor * 100) / 100)),
+        children: n.children ? scaleNodes(n.children, columns, factor) : undefined,
+    }));
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                              */
 /* ------------------------------------------------------------------ */
 
 export function Bordero() {
+    return (
+        <BackstageLayout activeSection="relatorios" activeItem="bordero">
+            <RelatorioFiltersProvider sessoes={EVENT.sessoes}>
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                        <RelatorioPageHeader
+                            title="Borderô"
+                            actions={<ExportMenu onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "O borderô será exportado." })} />}
+                        />
+                        <BorderoBody />
+                    </main>
+                </div>
+            </RelatorioFiltersProvider>
+        </BackstageLayout>
+    );
+}
+
+const BorderoBody = () => {
+    const { dateRange, sessao } = useRelatorioFilters();
     const [view, setView] = useState<BorderoView>("macro");
     const [acknowledged, setAcknowledged] = useState(false);
     const [detailsOpen, setDetailsOpen] = useState(false);
 
-    const active = VIEWS[view];
+    const factor = (SESSAO_WEIGHT[sessao] ?? 1) * dateRangeFraction(dateRange);
+
+    const scaled = useMemo(
+        () => ({
+            macro: scaleNodes(macroData, MACRO_COLUMNS, factor),
+            pdv: scaleNodes(pdvData, PDV_COLUMNS, factor),
+            meios: scaleNodes(meiosData, PDV_COLUMNS, factor),
+        }),
+        [factor],
+    );
+
+    const activeNodes = view === "macro" ? scaled.macro : view === "pdv" ? scaled.pdv : scaled.meios;
+    const activeMeta = VIEWS[view];
+
+    const macroGrand = useMemo(() => grandTotalOf(scaled.macro), [scaled.macro]);
+    const totalIngressos = macroGrand[2] ?? 0;
+    const totalFaturado = macroGrand[4] ?? 0;
+    const ticketMedio = totalIngressos === 0 ? 0 : totalFaturado / totalIngressos;
+
     const changedCount = changedTransacoes.length;
     const showBanner = changedCount > 0 && !acknowledged;
 
-    const exportarExcel = () =>
-        toast.success("Exportando Excel", { description: "O borderô será salvo como planilha." });
-
     return (
-        <BackstageLayout activeSection="relatorios" activeItem="bordero">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
-                    <RelatorioPageHeader
-                        title="Borderô"
-                        actions={
-                            <Button size="md" color="secondary" iconLeading={UploadCloud02} onClick={exportarExcel}>
-                                Exportar em Excel
-                            </Button>
-                        }
-                    />
+        <>
+            {showBanner && (
+                <AlertFloating
+                    color="warning"
+                    title="Borderô atualizado"
+                    description={`${changedCount} ${changedCount === 1 ? "transação alterou" : "transações alteraram"} o borderô nos últimos 5 minutos.`}
+                    confirmLabel="Detalhes"
+                    onConfirm={() => setDetailsOpen(true)}
+                    dismissLabel="Marcar como visto"
+                    onClose={() => setAcknowledged(true)}
+                />
+            )}
 
-                    {/* Aviso de variação t → t+5min */}
-                    {showBanner && (
-                        <AlertFloating
-                            color="warning"
-                            title="Borderô atualizado"
-                            description={`${changedCount} ${changedCount === 1 ? "transação alterou" : "transações alteraram"} o borderô nos últimos 5 minutos.`}
-                            confirmLabel="Detalhes"
-                            onConfirm={() => setDetailsOpen(true)}
-                            dismissLabel="Marcar como visto"
-                            onClose={() => setAcknowledged(true)}
-                        />
-                    )}
-
-                    {/* Métricas */}
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                        <MetricsIcon03
-                            icon={CurrencyDollarCircle}
-                            subtitle="Total faturado"
-                            title={currencyFormatter.format(totalFaturado)}
-                            change={null}
-                            changeTrend="positive"
-                            actions={false}
-                            className={HIDE_TREND_AND_MENU}
-                        />
-                        <MetricsIcon03
-                            icon={Ticket01}
-                            subtitle="Total de ingressos"
-                            title={numberFormatter.format(totalIngressos)}
-                            change={null}
-                            changeTrend="positive"
-                            actions={false}
-                            className={HIDE_TREND_AND_MENU}
-                        />
-                        <MetricsIcon03
-                            icon={Receipt}
-                            subtitle="Ticket médio"
-                            title={currencyFormatter.format(ticketMedio)}
-                            change={null}
-                            changeTrend="positive"
-                            actions={false}
-                            className={HIDE_TREND_AND_MENU}
-                        />
-                    </div>
-
-                    {/* Tabs + tabela */}
-                    <section className="flex flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-                        <header className="flex flex-col gap-3 border-b border-secondary px-4 py-4 md:flex-row md:items-center md:justify-between">
-                            <h3 className="text-md font-semibold text-primary">Detalhamento do borderô</h3>
-                            <Tabs
-                                selectedKey={view}
-                                onSelectionChange={(value: React.Key) => {
-                                    setView(value as BorderoView);
-                                    setAcknowledged(false);
-                                }}
-                                className="w-auto shrink-0"
-                            >
-                                <TabList
-                                    type="button-minimal"
-                                    items={[
-                                        { id: "macro", label: "Visão macro" },
-                                        { id: "pdv", label: "Por PDV" },
-                                        { id: "meios", label: "Por meios de pagamento" },
-                                    ]}
-                                />
-                            </Tabs>
-                        </header>
-
-                        <TreeTable key={view} nodes={active.nodes} columns={active.columns} firstCol={active.firstCol} />
-                    </section>
-                </main>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <MetricsIcon03 icon={CurrencyDollarCircle} subtitle="Total faturado" title={currencyFormatter.format(totalFaturado)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
+                <MetricsIcon03 icon={Ticket01} subtitle="Total de ingressos" title={numberFormatter.format(totalIngressos)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
+                <MetricsIcon03 icon={Receipt} subtitle="Ticket médio" title={currencyFormatter.format(ticketMedio)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
             </div>
 
+            <section className="flex flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
+                <header className="flex flex-col gap-3 border-b border-secondary px-4 py-4 md:flex-row md:items-center md:justify-between">
+                    <h3 className="text-md font-semibold text-primary">Detalhamento do borderô</h3>
+                    <Tabs
+                        selectedKey={view}
+                        onSelectionChange={(value: React.Key) => {
+                            setView(value as BorderoView);
+                            setAcknowledged(false);
+                        }}
+                        className="w-auto shrink-0"
+                    >
+                        <TabList
+                            type="button-minimal"
+                            items={[
+                                { id: "macro", label: "Visão macro" },
+                                { id: "pdv", label: "Por PDV" },
+                                { id: "meios", label: "Por meios de pagamento" },
+                            ]}
+                        />
+                    </Tabs>
+                </header>
+
+                <TreeTable key={view} nodes={activeNodes} columns={activeMeta.columns} firstCol={activeMeta.firstCol} />
+            </section>
+
             <BorderoChangesSlideout isOpen={detailsOpen} onClose={() => setDetailsOpen(false)} changes={changedTransacoes} />
-        </BackstageLayout>
+        </>
     );
-}
+};
 
 /* ------------------------------------------------------------------ */
 /*  Slideout — detalhes das transações                                */
@@ -344,34 +482,14 @@ const signed = (value: number, currency: boolean) => {
     return `${value >= 0 ? "+" : "−"}${formatted}`;
 };
 
-interface BorderoChangesSlideoutProps {
-    isOpen: boolean;
-    onClose: () => void;
-    changes: BorderoChange[];
-}
-
-const BorderoChangesSlideout = ({ isOpen, onClose, changes }: BorderoChangesSlideoutProps) => (
+const BorderoChangesSlideout = ({ isOpen, onClose, changes }: { isOpen: boolean; onClose: () => void; changes: BorderoChange[] }) => (
     <AriaModalOverlay
         isOpen={isOpen}
         onOpenChange={(open) => !open && onClose()}
         isDismissable
-        className={({ isEntering, isExiting }) =>
-            cx(
-                "fixed inset-0 z-50 flex justify-end bg-overlay/70 outline-hidden backdrop-blur-[2px]",
-                isEntering && "duration-300 ease-out animate-in fade-in",
-                isExiting && "duration-200 ease-in animate-out fade-out",
-            )
-        }
+        className={({ isEntering, isExiting }) => cx("fixed inset-0 z-50 flex justify-end bg-overlay/70 outline-hidden backdrop-blur-[2px]", isEntering && "duration-300 ease-out animate-in fade-in", isExiting && "duration-200 ease-in animate-out fade-out")}
     >
-        <AriaModal
-            className={({ isEntering, isExiting }) =>
-                cx(
-                    "h-full w-full max-w-[440px] bg-primary shadow-xl outline-hidden",
-                    isEntering && "duration-300 ease-out animate-in slide-in-from-right",
-                    isExiting && "duration-200 ease-in animate-out slide-out-to-right",
-                )
-            }
-        >
+        <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[440px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
             <AriaDialog className="flex h-full flex-col outline-hidden">
                 <div className="flex shrink-0 items-start justify-between gap-4 border-b border-secondary px-5 py-4">
                     <div className="flex flex-col gap-0.5">
@@ -389,9 +507,7 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: BorderoChangesSlid
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="flex min-w-0 flex-col">
                                         <span className="text-sm font-medium text-primary">{change.descricao}</span>
-                                        <span className="text-xs text-tertiary">
-                                            {change.canal} · {change.hora}
-                                        </span>
+                                        <span className="text-xs text-tertiary">{change.canal} · {change.hora}</span>
                                     </div>
                                     <Badge size="sm" color={meta.color} type="pill-color">
                                         {meta.label}
@@ -399,16 +515,10 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: BorderoChangesSlid
                                 </div>
                                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-tertiary">
                                     <span>
-                                        Ingressos:{" "}
-                                        <b className={cx("tabular-nums", change.ingressos >= 0 ? "text-success-primary" : "text-error-primary")}>
-                                            {signed(change.ingressos, false)}
-                                        </b>
+                                        Ingressos: <b className={cx("tabular-nums", change.ingressos >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.ingressos, false)}</b>
                                     </span>
                                     <span>
-                                        Faturado:{" "}
-                                        <b className={cx("tabular-nums", change.valor >= 0 ? "text-success-primary" : "text-error-primary")}>
-                                            {signed(change.valor, true)}
-                                        </b>
+                                        Faturado: <b className={cx("tabular-nums", change.valor >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.valor, true)}</b>
                                     </span>
                                 </div>
                             </li>
@@ -421,21 +531,26 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: BorderoChangesSlid
 );
 
 /* ------------------------------------------------------------------ */
-/*  Tree table (mesmo visual de "Ocupação por setor")                 */
+/*  Tree table (com ordenação dos nós de topo)                        */
 /* ------------------------------------------------------------------ */
 
-interface TreeTableProps {
-    nodes: TreeNode[];
-    columns: ColDef[];
-    firstCol: string;
-}
-
-const TreeTable = ({ nodes, columns, firstCol }: TreeTableProps) => {
-    // Começa tudo fechado.
+const TreeTable = ({ nodes, columns, firstCol }: { nodes: TreeNode[]; columns: ColDef[]; firstCol: string }) => {
     const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-    const grand = grandTotalOf(nodes);
     const lastCol = columns.length - 1;
     const indent = (depth: number) => 16 + depth * 24;
+
+    const accessors = useMemo(() => {
+        const acc: Record<string, (n: TreeNode) => string | number> = { label: (n) => n.label };
+        columns.forEach((_, i) => {
+            acc[`c${i}`] = (n) => subtotalOf(n)[i] ?? 0;
+        });
+        return acc;
+    }, [columns]);
+
+    const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(nodes as unknown as Record<string, unknown>[], accessors as Partial<Record<string, (r: Record<string, unknown>) => string | number>>);
+    const sortedNodes = sorted as unknown as TreeNode[];
+
+    const grand = grandTotalOf(nodes);
 
     const toggle = (key: string) =>
         setExpanded((prev) => {
@@ -446,27 +561,20 @@ const TreeTable = ({ nodes, columns, firstCol }: TreeTableProps) => {
         });
 
     const metricCell = (value: number, colIdx: number, valueClass: string) => (
-        <td
-            key={colIdx}
-            className={cx("whitespace-nowrap px-4 py-3.5 text-right text-sm", colIdx < lastCol && "hidden md:table-cell", valueClass)}
-        >
+        <td key={colIdx} className={cx("whitespace-nowrap px-4 py-3.5 text-right text-sm", colIdx < lastCol && "hidden md:table-cell", valueClass)}>
             {fmt(value, columns[colIdx].type)}
         </td>
     );
 
     const renderNodes = (list: TreeNode[], depth: number, prefix: string): ReactNode[] => {
         const out: ReactNode[] = [];
-
         list.forEach((node, idx) => {
             const key = `${prefix}-${idx}`;
-
             if (node.children) {
                 const isExpanded = expanded.has(key);
                 const sub = subtotalOf(node);
-                // Nível 0 (canal/PDV) mais forte; níveis internos um pouco mais leves.
                 const labelClass = depth === 0 ? "font-bold text-primary" : "font-semibold text-secondary";
                 const valueClass = depth === 0 ? "font-semibold text-primary" : "font-medium text-secondary";
-
                 out.push(
                     <Fragment key={key}>
                         <tr
@@ -480,20 +588,11 @@ const TreeTable = ({ nodes, columns, firstCol }: TreeTableProps) => {
                                     toggle(key);
                                 }
                             }}
-                            className={cx(
-                                "cursor-pointer border-b border-secondary transition duration-100 ease-linear hover:bg-primary_hover",
-                                depth === 0 && "bg-primary",
-                            )}
+                            className={cx("cursor-pointer border-b border-secondary transition duration-100 ease-linear hover:bg-primary_hover", depth === 0 && "bg-primary")}
                         >
                             <td className="py-3.5 pr-4 text-sm" style={{ paddingLeft: indent(depth) }}>
                                 <span className="flex items-center gap-2">
-                                    <ChevronDown
-                                        aria-hidden="true"
-                                        className={cx(
-                                            "size-4 shrink-0 text-fg-quaternary transition-transform duration-150",
-                                            isExpanded && "rotate-180",
-                                        )}
-                                    />
+                                    <ChevronDown aria-hidden="true" className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", isExpanded && "rotate-180")} />
                                     <span className={cx("line-clamp-2", labelClass)}>{node.label}</span>
                                 </span>
                             </td>
@@ -504,7 +603,6 @@ const TreeTable = ({ nodes, columns, firstCol }: TreeTableProps) => {
                 );
                 return;
             }
-
             out.push(
                 <tr key={key} className="border-b border-secondary bg-secondary/60">
                     <td className="py-3 pr-4 text-sm text-tertiary" style={{ paddingLeft: indent(depth) }}>
@@ -514,7 +612,6 @@ const TreeTable = ({ nodes, columns, firstCol }: TreeTableProps) => {
                 </tr>,
             );
         });
-
         return out;
     };
 
@@ -529,32 +626,22 @@ const TreeTable = ({ nodes, columns, firstCol }: TreeTableProps) => {
                 </colgroup>
                 <thead className="bg-secondary">
                     <tr className="border-b border-secondary text-left">
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">{firstCol}</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">
+                            <SortableHeader label={firstCol} sortKey="label" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                        </th>
                         {columns.map((col, i) => (
-                            <th
-                                key={col.label}
-                                className={cx(
-                                    "whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary",
-                                    i < lastCol && "hidden md:table-cell",
-                                )}
-                            >
-                                {col.label}
+                            <th key={col.label} className={cx("whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary", i < lastCol && "hidden md:table-cell")}>
+                                <SortableHeader label={col.label} align="right" sortKey={`c${i}`} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                             </th>
                         ))}
                     </tr>
                 </thead>
                 <tbody>
-                    {renderNodes(nodes, 0, "n")}
+                    {renderNodes(sortedNodes, 0, "n")}
                     <tr className="border-t-2 border-secondary bg-secondary">
                         <td className="px-4 py-3.5 text-sm font-bold text-primary">Total geral</td>
                         {grand.map((v, i) => (
-                            <td
-                                key={i}
-                                className={cx(
-                                    "whitespace-nowrap px-4 py-3.5 text-right text-sm font-bold text-primary",
-                                    i < lastCol && "hidden md:table-cell",
-                                )}
-                            >
+                            <td key={i} className={cx("whitespace-nowrap px-4 py-3.5 text-right text-sm font-bold text-primary", i < lastCol && "hidden md:table-cell")}>
                                 {fmt(v, columns[i].type)}
                             </td>
                         ))}

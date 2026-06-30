@@ -22,6 +22,8 @@ import { Home as FutebolHome } from '../produtos/futebol/landing-pages/pages/hom
 import { PasswordGate } from '../produtos/novo-site/components/PasswordGate';
 import { EventDetails } from '../produtos/novo-site/home/pages/event-details';
 import { Categorias } from '../produtos/novo-site/home/pages/categorias';
+import { Home as NovoSiteHome } from '../produtos/novo-site/home/pages/home';
+import { Busca as NovoSiteBusca } from '../produtos/novo-site/home/pages/busca';
 import { Itens as CatalogoItens } from '../produtos/backstage/catalogo/pages/Itens';
 import { Ingressos as CatalogoIngressos } from '../produtos/backstage/ingressos/pages/Ingressos';
 import { Formulario as IngressosFormulario } from '../produtos/backstage/ingressos/pages/Formulario';
@@ -33,11 +35,13 @@ import { Pesquisas } from '../produtos/backstage/pesquisas/pages/Pesquisas';
 import { VinculosPergunta } from '../produtos/backstage/pesquisas/pages/VinculosPergunta';
 import { SelecaoEAtribuicao } from '../produtos/marketplace/selecao-e-atribuicao/pages/SelecaoEAtribuicao';
 import { Config as MarketplaceConfig } from '../produtos/marketplace/selecao-e-atribuicao/pages/Config';
+import { Sucesso as MarketplaceSucesso } from '../produtos/marketplace/selecao-e-atribuicao/pages/Sucesso';
 import { Home as IngresseAppHome } from '../produtos/ingresse-app/home/pages/Home';
 import { Carteira as IngresseAppCarteira } from '../produtos/ingresse-app/carteira/pages/Carteira';
 import { Ingressos as IngresseAppIngressos } from '../produtos/ingresse-app/ingressos/pages/Ingressos';
 import { IngressoDetalhe as IngresseAppIngressoDetalhe } from '../produtos/ingresse-app/ingressos/pages/IngressoDetalhe';
 import { ComboDetalhe as IngresseAppComboDetalhe } from '../produtos/ingresse-app/ingressos/pages/ComboDetalhe';
+import { ProdutoDetalhe as IngresseAppProdutoDetalhe } from '../produtos/ingresse-app/ingressos/pages/ProdutoDetalhe';
 import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingresse-app/ingressos/pages/TransferirIngresso';
 import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pages/Perfil';
 import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
@@ -90,6 +94,8 @@ import { Resultados as TesteResultados } from '../produtos/usabilidade/testes/pa
 import { EntradaTeste } from '../produtos/usabilidade/testes/pages/EntradaTeste';
 import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPagesMenu';
 import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
+import { SolicitacaoVagas } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoVagas';
+import { SolicitacaoBeneficioPcd } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoBeneficioPcd';
 import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
 import { TransferirInscricao as CarteiraWebTransferir } from '../produtos/carteira-web/pages/TransferirInscricao';
 
@@ -189,14 +195,18 @@ export default function App() {
         <Route path="/futebol/landing-pages" element={<FutebolHome />} />
         <Route path="/marketplace" element={<MarketplaceConfig />} />
         <Route path="/marketplace/event" element={<SelecaoEAtribuicao />} />
+        <Route path="/marketplace/sucesso" element={<MarketplaceSucesso />} />
+        <Route path="/novo-site/home" element={<NovoSiteHome />} />
+        <Route path="/novo-site/home/busca" element={<NovoSiteBusca />} />
         <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />
         <Route path="/novo-site/home/categorias" element={<Categorias />} />
         <Route path="/ingresse-app" element={<IngresseAppHome />} />
         <Route path="/ingresse-app/ingressos" element={<IngresseAppCarteira />} />
-        <Route path="/ingresse-app/ingressos/evento" element={<IngresseAppIngressos />} />
-        <Route path="/ingresse-app/ingressos/detalhe" element={<IngresseAppIngressoDetalhe />} />
-        <Route path="/ingresse-app/ingressos/combo" element={<IngresseAppComboDetalhe />} />
-        <Route path="/ingresse-app/ingressos/transferir" element={<IngresseAppTransferir />} />
+        <Route path="/ingresse-app/ingressos/evento/:eventId" element={<IngresseAppIngressos />} />
+        <Route path="/ingresse-app/ingressos/detalhe/:eventId/:itemId" element={<IngresseAppIngressoDetalhe />} />
+        <Route path="/ingresse-app/ingressos/combo/:eventId/:comboId" element={<IngresseAppComboDetalhe />} />
+        <Route path="/ingresse-app/ingressos/produto/:eventId/:itemId" element={<IngresseAppProdutoDetalhe />} />
+        <Route path="/ingresse-app/ingressos/transferir/:eventId/:id" element={<IngresseAppTransferir />} />
         <Route path="/ingresse-app/perfil" element={<IngresseAppPerfil />} />
         <Route path="/testes" element={<UsabilidadeGate><TestesPainel /></UsabilidadeGate>} />
         <Route path="/testes/novo" element={<UsabilidadeGate><EditorTeste /></UsabilidadeGate>} />
@@ -205,6 +215,8 @@ export default function App() {
         <Route path="/t/:id" element={<EntradaTeste />} />
         <Route path="/landing-pages" element={<LandingPagesMenu />} />
         <Route path="/landing-pages/sao-silvestre" element={<SaoSilvestre />} />
+        <Route path="/landing-pages/sao-silvestre/solicitar-vagas" element={<SolicitacaoVagas />} />
+        <Route path="/landing-pages/sao-silvestre/solicitar-beneficio-pcd" element={<SolicitacaoBeneficioPcd />} />
         <Route path="/carteira-web" element={<CarteiraWeb />} />
         <Route path="/carteira-web/transferir" element={<CarteiraWebTransferir />} />
       </Routes>

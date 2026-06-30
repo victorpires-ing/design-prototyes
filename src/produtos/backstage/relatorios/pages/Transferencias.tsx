@@ -1,27 +1,21 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowRight, ChevronDown, ChevronRight, FilterLines, Rows01, Grid01, SwitchHorizontal01, Ticket01, Users01, XClose } from "@untitledui/icons";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, ChevronRight, SwitchHorizontal01, Ticket01, Users01, XClose } from "@untitledui/icons";
 import {
     Dialog as AriaDialog,
     Modal as AriaModal,
     ModalOverlay as AriaModalOverlay,
 } from "react-aria-components";
-import {
-    CountBadge,
-    FilterDropdown,
-    type FilterRow,
-} from "@/components/application/filter-bar/filter-dropdown-menu";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Input } from "@/components/base/input/input";
-import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
+import { RelatorioFiltersProvider, matchRow, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
+import { numberFormatter } from "../data/event";
 
 /* ------------------------------------------------------------------ */
 /*  Mock data                                                         */
@@ -324,7 +318,6 @@ const transferencias: Transferencia[] = [
 /*  Big numbers                                                       */
 /* ------------------------------------------------------------------ */
 
-const numberFormatter = new Intl.NumberFormat("pt-BR");
 const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
 // Total de ingressos vendidos no evento (mock) — base para o % de transferidos.
@@ -372,25 +365,8 @@ const TransferenciasMetricsRow = () => (
 /*  Filter config                                                     */
 /* ------------------------------------------------------------------ */
 
-type FilterFieldId =
-    | "code"
-    | "nomeComprador"
-    | "emailComprador"
-    | "cpfComprador"
-    | "portadorAnteriorNome"
-    | "portadorAnteriorEmail"
-    | "portadorAnteriorCpf"
-    | "portadorAtualNome"
-    | "portadorAtualEmail"
-    | "portadorAtualCpf";
-
-interface FilterFieldDef {
-    id: FilterFieldId;
-    label: string;
-}
-
 const FILTER_FIELDS: FilterFieldDef[] = [
-    { id: "code", label: "code" },
+    { id: "code", label: "Código" },
     { id: "nomeComprador", label: "Nome Comprador" },
     { id: "emailComprador", label: "Email Comprador" },
     { id: "cpfComprador", label: "CPF Comprador" },
@@ -402,212 +378,46 @@ const FILTER_FIELDS: FilterFieldDef[] = [
     { id: "portadorAtualCpf", label: "Portador Atual CPF" },
 ];
 
-const OPERATOR_OPTIONS_TEXT = [
-    { id: "contains", label: "Contém" },
-    { id: "equals", label: "Igual a" },
-    { id: "does-not-contain", label: "Não contém" },
-    { id: "starts-with", label: "Começa com" },
-];
-
 function getFieldValue(t: Transferencia, field: string): string {
     return (t as unknown as Record<string, string>)[field] ?? "";
 }
-
-function matchFilterValue(haystack: string, needle: string, operator: string): boolean {
-    const h = haystack.toLowerCase();
-    const n = needle.toLowerCase();
-    switch (operator) {
-        case "equals":
-            return h === n;
-        case "starts-with":
-            return h.startsWith(n);
-        case "does-not-contain":
-            return !h.includes(n);
-        case "contains":
-        default:
-            return h.includes(n);
-    }
-}
-
-function matchTransferencia(t: Transferencia, rows: FilterRow[]): boolean {
-    for (const r of rows) {
-        if (!r.field || !r.value) continue;
-        const haystack = getFieldValue(t, r.field);
-        const negate = r.operator === "does-not-contain";
-        const matched = negate
-            ? !haystack.toLowerCase().includes(r.value.toLowerCase())
-            : matchFilterValue(haystack, r.value, r.operator);
-        if (!matched) return false;
-    }
-    return true;
-}
-
-let nextFilterId = 1;
-const createEmptyFilter = (): FilterRow => ({
-    id: `f${nextFilterId++}`,
-    field: "",
-    operator: "contains",
-    value: "",
-});
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                              */
 /* ------------------------------------------------------------------ */
 
-type ViewMode = "table" | "cards";
-
 export function Transferencias() {
-    const [filters, setFilters] = useState<FilterRow[]>([]);
-    const [appliedCount, setAppliedCount] = useState(0);
-    const [view, setView] = useState<ViewMode>("cards");
-
-    const handleAddFilter = useCallback(() => {
-        setFilters((prev) => [...prev, createEmptyFilter()]);
-    }, []);
-
-    const handleRemoveFilter = useCallback((id: string) => {
-        setFilters((prev) => prev.filter((f) => f.id !== id));
-    }, []);
-
-    const handleFilterChange = useCallback(
-        (id: string, patch: Partial<Omit<FilterRow, "id">>) => {
-            setFilters((prev) =>
-                prev.map((f) => (f.id === id ? { ...f, ...patch } : f)),
-            );
-        },
-        [],
-    );
-
-    const handleApply = useCallback((applied: FilterRow[]) => {
-        const valid = applied.filter((f) => f.field && f.value);
-        setAppliedCount(valid.length);
-    }, []);
-
-    const handleClearAll = useCallback(() => {
-        setFilters([]);
-        setAppliedCount(0);
-    }, []);
-
-    const filteredTransferencias = useMemo(() => {
-        const valid = filters.filter((f) => f.field && f.value);
-        return transferencias.filter((t) => matchTransferencia(t, valid));
-    }, [filters]);
-
     return (
         <BackstageLayout activeSection="relatorios" activeItem="transferencias">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
-                    <RelatorioPageHeader
-                        title="Transferências do Evento"
-                        actions={
-                            <>
-                                <FilterDropdown
-                                    filters={filters}
-                                    appliedCount={appliedCount}
-                                    placement="bottom end"
-                            onAddFilter={handleAddFilter}
-                            onRemoveFilter={handleRemoveFilter}
-                            onFilterChange={handleFilterChange}
-                            onApply={handleApply}
-                            onClearAll={handleClearAll}
-                            renderFilterRow={(
-                                filter: FilterRow,
-                                onChange: (patch: Partial<Omit<FilterRow, "id">>) => void,
-                            ) => (
-                                <>
-                                    <Select
-                                        className="max-w-40 flex-1"
-                                        size="sm"
-                                        aria-label="Campo"
-                                        placeholder="Selecione"
-                                        items={FILTER_FIELDS}
-                                        selectedKey={filter.field || null}
-                                        onSelectionChange={(key: React.Key | null) =>
-                                            onChange({
-                                                field: key ? String(key) : "",
-                                                value: "",
-                                            })
-                                        }
-                                    >
-                                        {(item: FilterFieldDef) => (
-                                            <Select.Item id={item.id}>
-                                                {item.label}
-                                            </Select.Item>
-                                        )}
-                                    </Select>
-                                    <Select
-                                        className="max-w-40 flex-1"
-                                        size="sm"
-                                        aria-label="Operador"
-                                        placeholder="Operador"
-                                        items={OPERATOR_OPTIONS_TEXT}
-                                        selectedKey={filter.operator || null}
-                                        onSelectionChange={(key: React.Key | null) =>
-                                            onChange({ operator: key ? String(key) : "" })
-                                        }
-                                    >
-                                        {(item: { id: string; label: string }) => (
-                                            <Select.Item id={item.id}>
-                                                {item.label}
-                                            </Select.Item>
-                                        )}
-                                    </Select>
-                                    <Input
-                                        className="min-w-0 flex-1"
-                                        size="sm"
-                                        aria-label="Valor"
-                                        placeholder="Digite um valor"
-                                        value={filter.value}
-                                        onChange={(value: string) => onChange({ value })}
-                                    />
-                                </>
-                            )}
-                        >
-                            <Button
-                                color="secondary"
-                                size="sm"
-                                iconLeading={FilterLines}
-                                iconTrailing={ChevronDown}
-                                className={cx(
-                                    "max-h-9",
-                                    appliedCount > 0 && "bg-primary_hover",
-                                )}
-                            >
-                                <span className="flex items-center gap-1.5">
-                                    Filtros
-                                    {appliedCount > 0 && <CountBadge count={appliedCount} />}
-                                </span>
-                            </Button>
-                        </FilterDropdown>
-
-                                <ButtonGroup
-                                    size="sm"
-                                    selectedKeys={[view]}
-                                    onSelectionChange={(keys: Set<React.Key> | "all") => {
-                                        if (keys === "all") return;
-                                        const next = [...keys][0] as ViewMode | undefined;
-                                        if (next) setView(next);
-                                    }}
-                                >
-                                    <ButtonGroupItem id="cards" iconLeading={Grid01} aria-label="Visualização em cards" />
-                                    <ButtonGroupItem id="table" iconLeading={Rows01} aria-label="Visualização em tabela" />
-                                </ButtonGroup>
-                            </>
-                        }
-                    />
-
-                    <TransferenciasMetricsRow />
-
-                    {view === "table" ? (
-                        <TransferenciasTable rows={filteredTransferencias} />
-                    ) : (
-                        <TransferenciasCards rows={filteredTransferencias} />
-                    )}
-                </main>
-            </div>
+            <RelatorioFiltersProvider fields={FILTER_FIELDS}>
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                        <TransferenciasBody />
+                    </main>
+                </div>
+            </RelatorioFiltersProvider>
         </BackstageLayout>
     );
 }
+
+const TransferenciasBody = () => {
+    const { filters } = useRelatorioFilters();
+
+    const filteredTransferencias = useMemo(() => {
+        const valid = filters.filter((f) => f.field && f.value);
+        return transferencias.filter((t) => matchRow(t, valid, getFieldValue));
+    }, [filters]);
+
+    return (
+        <>
+            <RelatorioPageHeader title="Transferências do Evento" />
+
+            <TransferenciasMetricsRow />
+
+            <TransferenciasCards rows={filteredTransferencias} />
+        </>
+    );
+};
 
 /* ------------------------------------------------------------------ */
 /*  Paginação: anima a troca e rola suave até o topo da lista          */
@@ -634,109 +444,6 @@ function useScrollToTopOnPageChange<T extends HTMLElement = HTMLElement>(page: n
 }
 
 const PAGE_TRANSITION = "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-200 motion-safe:ease-out";
-
-/* ------------------------------------------------------------------ */
-/*  Transferências table                                              */
-/* ------------------------------------------------------------------ */
-
-const COLUMNS: Array<{ key: keyof Transferencia; label: string }> = [
-    { key: "id", label: "ID" },
-    { key: "code", label: "Código" },
-    { key: "nomeComprador", label: "Nome do Comprador" },
-    { key: "emailComprador", label: "Email do Comprador" },
-    { key: "cpfComprador", label: "CPF do Comprador" },
-    { key: "portadorAnteriorNome", label: "Nome do Portador Anterior" },
-    { key: "portadorAnteriorEmail", label: "Email do Portador Anterior" },
-    { key: "portadorAnteriorCpf", label: "CPF do Portador Anterior" },
-    { key: "portadorAtualNome", label: "Nome do Portador Atual" },
-    { key: "portadorAtualEmail", label: "Email do Portador Atual" },
-    { key: "portadorAtualCpf", label: "CPF do Portador Atual" },
-];
-
-const TransferenciasTable = ({ rows }: { rows: Transferencia[] }) => {
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(PAGE_SIZE_INICIAL);
-
-    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
-    const safePage = Math.min(page, totalPages);
-    const visibleRows = useMemo(() => {
-        const start = (safePage - 1) * pageSize;
-        return rows.slice(start, start + pageSize);
-    }, [rows, safePage, pageSize]);
-
-    const topRef = useScrollToTopOnPageChange<HTMLDivElement>(safePage);
-    // Filtro mudou (nova referência de `rows`) → volta para a 1ª página.
-    useEffect(() => setPage(1), [rows]);
-
-    return (
-        <Card title="Relatório de transferência AWA">
-            <div ref={topRef} className="scroll-mt-6" />
-            <div key={safePage} className={cx("overflow-x-auto overflow-y-clip", PAGE_TRANSITION)}>
-                <table className="w-full border-collapse">
-                    <thead className="sticky top-0 z-10 bg-secondary">
-                        <tr className="border-b border-secondary bg-secondary text-left">
-                            {COLUMNS.map((col) => (
-                                <th
-                                    key={col.key}
-                                    className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary"
-                                >
-                                    <SortableHeader label={col.label} />
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {visibleRows.length === 0 && (
-                            <tr>
-                                <td
-                                    colSpan={COLUMNS.length}
-                                    className="px-4 py-12 text-center text-sm text-tertiary"
-                                >
-                                    Nenhuma transferência corresponde aos filtros aplicados.
-                                </td>
-                            </tr>
-                        )}
-                        {visibleRows.map((row, i) => (
-                            <tr
-                                key={`${row.id}-${row.code}`}
-                                className={cx(
-                                    "transition duration-100 ease-linear hover:bg-primary_hover",
-                                    i !== visibleRows.length - 1 && "border-b border-secondary",
-                                )}
-                            >
-                                {COLUMNS.map((col) => (
-                                    <td
-                                        key={col.key}
-                                        className={cx(
-                                            "whitespace-nowrap px-4 py-4 text-sm text-tertiary",
-                                            col.key === "id" && "font-mono text-xs text-secondary",
-                                            (col.key === "emailComprador" ||
-                                                col.key === "portadorAnteriorEmail" ||
-                                                col.key === "portadorAtualEmail") &&
-                                                "text-brand-secondary",
-                                        )}
-                                    >
-                                        {row[col.key]}
-                                    </td>
-                                ))}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            <PaginationCardAdvanced
-                page={safePage}
-                total={totalPages}
-                pageSize={pageSize}
-                onPageChange={(p: number) => setPage(p)}
-                onPageSizeChange={(size: number) => {
-                    setPageSize(size);
-                    setPage(1);
-                }}
-            />
-        </Card>
-    );
-};
 
 /* ------------------------------------------------------------------ */
 /*  Transferências cards (portador flow)                              */
@@ -861,9 +568,9 @@ const TransferenciaCard = ({
 
             {/* Fluxo De → Para, na horizontal */}
             <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
-                <HolderInline label="De" name={row.portadorAnteriorNome} />
+                <HolderInline label="Comprador" name={row.portadorAnteriorNome} />
                 <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
-                <HolderInline label="Para" name={row.portadorAtualNome} emphasis />
+                <HolderInline label="Portador" name={row.portadorAtualNome} emphasis />
             </div>
 
             <ChevronRight
@@ -920,10 +627,10 @@ function buildHistorico(row: Transferencia): HolderHistorico[] {
     }
     holders.push({ nome: row.portadorAtualNome, email: row.portadorAtualEmail, cpf: row.portadorAtualCpf, data: "" });
 
-    // Datas crescentes (mock) ao longo de dezembro.
+    // Datas crescentes (mock) dentro da janela de vendas (maio/2026).
     const base = (h % 8) + 1;
     holders.forEach((holder, i) => {
-        holder.data = `${pad2(base + i * 3)}/12/2025`;
+        holder.data = `${pad2(base + i * 3)}/05/2026`;
     });
     return holders;
 }
@@ -1068,30 +775,4 @@ const DetailRow = ({
             {value}
         </dd>
     </div>
-);
-
-/* ------------------------------------------------------------------ */
-/*  Shared primitives (consistency with VendasPorGrupo/Transacoes)    */
-/* ------------------------------------------------------------------ */
-
-interface CardProps {
-    title: string;
-    children: ReactNode;
-}
-
-const Card = ({ title, children }: CardProps) => (
-    <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-        <header className="border-b border-secondary px-4 py-4">
-            <h3 className="text-md font-semibold text-primary">{title}</h3>
-        </header>
-        {children}
-    </section>
-);
-
-interface SortableHeaderProps {
-    label: string;
-}
-
-const SortableHeader = ({ label }: SortableHeaderProps) => (
-    <span className="inline-flex items-center">{label}</span>
 );

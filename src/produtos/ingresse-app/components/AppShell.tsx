@@ -17,17 +17,19 @@ interface AppShellProps {
     showTabBar?: boolean;
     /** Barra de ações fixa no rodapé do frame (acompanha o scroll). */
     bottomBar?: ReactNode;
+    /** Classe extra para a área de scroll (ex.: "bg-secondary" para fundo cinza). */
+    scrollClassName?: string;
     children: ReactNode;
 }
 
 /** Shell mobile (frame de celular + tab bar inferior) reaproveitável entre as telas do app. */
-export function AppShell({ activeTab, showTabBar = true, bottomBar, children }: AppShellProps) {
+export function AppShell({ activeTab, showTabBar = true, bottomBar, scrollClassName, children }: AppShellProps) {
     const navigate = useNavigate();
 
     return (
         <div className="flex min-h-screen justify-center bg-secondary md:py-8">
             <div className="relative flex h-dvh w-full max-w-[420px] flex-col overflow-hidden bg-primary md:h-[calc(100dvh-4rem)] md:max-h-[860px] md:min-h-0 md:rounded-[2.5rem] md:shadow-2xl md:ring-1 md:ring-border-secondary">
-                <div className={cx("scrollbar-hide min-h-0 flex-1 overflow-y-auto", showTabBar && "pb-24", bottomBar && "bg-secondary pb-36")}>{children}</div>
+                <div className={cx("scrollbar-hide min-h-0 flex-1 overflow-y-auto", showTabBar && "pb-24", bottomBar && "bg-secondary pb-36", scrollClassName)}>{children}</div>
 
                 {bottomBar && <div className="pointer-events-none absolute inset-0 z-20">{bottomBar}</div>}
 

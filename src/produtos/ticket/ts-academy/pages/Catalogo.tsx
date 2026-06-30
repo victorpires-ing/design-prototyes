@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, InfoCircle, PlayCircle, SearchLg, XClose } from "@untitledui/icons";
+import { useNavigate } from "react-router";
 import { cx } from "@/utils/cx";
 import { Input } from "@/components/base/input/input";
 import { AcademyLayout } from "../../components/AcademyLayout";

@@ -6,7 +6,6 @@ import {
     Download01,
     File02,
     MarkerPin01,
-    MessageCircle01,
     PlayCircle,
     Star01,
     VideoRecorder,
@@ -14,6 +13,7 @@ import {
 import { useNavigate, useParams } from "react-router";
 import { cx } from "@/utils/cx";
 import { AcademyLayout } from "../../components/AcademyLayout";
+import { VideoPlayer } from "../components/VideoPlayer";
 import {
     type Aula,
     type Comentario,
@@ -40,6 +40,8 @@ export function CursoDetalhe() {
     const [aulas, setAulas] = useState<Aula[]>(() => gerarAulas(curso));
     const [comentarios, setComentarios] = useState<Comentario[]>(COMENTARIOS_INICIAIS);
     const [texto, setTexto] = useState("");
+    const [aulaPlayer, setAulaPlayer] = useState<Aula | null>(null);
+    const [aba, setAba] = useState<"aulas" | "sobre" | "materiais" | "comentarios">("aulas");
 
     const materiais = useMemo(() => gerarMateriais(curso), [curso]);
 
@@ -51,7 +53,18 @@ export function CursoDetalhe() {
     const toggleAula = (aulaId: string) =>
         setAulas((prev) => prev.map((a) => (a.id === aulaId ? { ...a, assistida: !a.assistida } : a)));
 
+    const marcarAssistida = (aulaId: string) =>
+        setAulas((prev) => prev.map((a) => (a.id === aulaId ? { ...a, assistida: true } : a)));
+
     const proximaAula = aulas.find((a) => !a.assistida) ?? aulas[0];
+
+    const abrirProxima = () => {
+        const i = aulas.findIndex((a) => a.id === aulaPlayer?.id);
+        const prox = aulas[i + 1];
+        if (prox) setAulaPlayer(prox);
+        else setAulaPlayer(null);
+    };
+    const temProxima = aulaPlayer ? aulas.findIndex((a) => a.id === aulaPlayer.id) < aulas.length - 1 : false;
 
     const enviarComentario = () => {
         const t = texto.trim();
@@ -97,6 +110,7 @@ export function CursoDetalhe() {
                             <div className="mt-1 flex flex-wrap items-center gap-3">
                                 <button
                                     type="button"
+                                    onClick={() => setAulaPlayer(proximaAula)}
                                     className="flex items-center gap-2 rounded-md bg-white px-6 py-2.5 text-sm font-bold text-black transition hover:bg-white/85"
                                 >
                                     <PlayCircle className="size-5" />
@@ -123,146 +137,196 @@ export function CursoDetalhe() {
                 </div>
             </section>
 
-            {/* ===== Corpo ===== */}
-            <div className="mx-auto grid max-w-[1600px] gap-8 px-4 pb-20 pt-8 md:grid-cols-[1fr_360px] md:px-10">
-                {/* Coluna principal: descrição + aulas */}
-                <div className="flex min-w-0 flex-col gap-8">
-                    {/* Aviso: gravação de evento presencial */}
-                    {(curso.categoria === "presencial" || curso.categoria === "sports-week") && curso.evento && (
-                        <div className="flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                            <VideoRecorder className="mt-0.5 size-5 shrink-0 text-emerald-300" />
-                            <p className="text-sm leading-relaxed text-white/85">
-                                <strong className="text-white">Gravação de evento presencial.</strong> {curso.evento.data}
-                                {curso.evento.cidade && (
-                                    <span className="ml-1 inline-flex items-center gap-1 text-white/70">
-                                        <MarkerPin01 className="size-4" /> {curso.evento.local} · {curso.evento.cidade}
-                                    </span>
-                                )}
-                            </p>
-                        </div>
-                    )}
+            {/* ===== Corpo com abas ===== */}
+            <div className="mx-auto max-w-[1400px] px-4 pb-20 md:px-10">
+                {/* Aviso: gravação de evento presencial */}
+                {(curso.categoria === "presencial" || curso.categoria === "sports-week") && curso.evento && (
+                    <div className="mt-6 flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                        <VideoRecorder className="mt-0.5 size-5 shrink-0 text-emerald-300" />
+                        <p className="text-sm leading-relaxed text-white/85">
+                            <strong className="text-white">Gravação de evento presencial.</strong> {curso.evento.data}
+                            {curso.evento.cidade && (
+                                <span className="ml-1 inline-flex items-center gap-1 text-white/70">
+                                    <MarkerPin01 className="size-4" /> {curso.evento.local} · {curso.evento.cidade}
+                                </span>
+                            )}
+                        </p>
+                    </div>
+                )}
 
-                    {/* Sobre */}
-                    <section className="flex flex-col gap-2">
-                        <h2 className="text-lg font-bold text-white">Sobre o curso</h2>
-                        <p className="text-sm leading-relaxed text-white/70">{descricaoCurso(curso)}</p>
-                    </section>
-
-                    {/* Aulas */}
-                    <section className="flex flex-col gap-3">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-white">{total === 1 ? "Aula" : `${total} aulas`}</h2>
-                            <span className="text-sm text-white/55">
-                                {assistidas}/{total} assistidas
-                            </span>
-                        </div>
-                        <ul className="flex flex-col gap-2">
-                            {aulas.map((a) => (
-                                <li
-                                    key={a.id}
-                                    className={cx(
-                                        "flex items-center gap-3 rounded-xl border p-3 transition duration-100",
-                                        a.assistida ? "border-white/10 bg-white/[0.03]" : "border-white/10 bg-white/[0.06] hover:bg-white/[0.1]",
-                                        a.id === proximaAula?.id && progresso < 100 && "ring-1 ring-[#E50914]",
-                                    )}
-                                >
-                                    <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white">
-                                        <PlayCircle className="size-5" />
-                                    </span>
-                                    <div className="flex min-w-0 flex-1 flex-col">
-                                        <span className={cx("truncate text-sm font-semibold", a.assistida ? "text-white/55" : "text-white")}>
-                                            {a.titulo}
-                                        </span>
-                                        <span className="flex items-center gap-1 text-xs text-white/45">
-                                            <Clock className="size-3.5" /> {formatarDuracao(a.duracaoMin)}
-                                        </span>
-                                    </div>
-                                    {/* Marcação de assistido */}
-                                    <button
-                                        type="button"
-                                        onClick={() => toggleAula(a.id)}
-                                        aria-label={a.assistida ? "Marcar como não assistida" : "Marcar como assistida"}
-                                        className={cx(
-                                            "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition duration-100",
-                                            a.assistida ? "bg-emerald-500/15 text-emerald-300" : "bg-white/10 text-white/60 hover:bg-white/20",
-                                        )}
-                                    >
-                                        <CheckCircle className="size-4" /> {a.assistida ? "Assistida" : "Marcar"}
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-
-                    {/* Comentários */}
-                    <section className="flex flex-col gap-3">
-                        <h2 className="flex items-center gap-2 text-lg font-bold text-white">
-                            <MessageCircle01 className="size-5" /> Comente sobre o curso
-                        </h2>
-                        <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                            <textarea
-                                value={texto}
-                                onChange={(e) => setTexto(e.target.value)}
-                                rows={3}
-                                placeholder="Conte o que você achou do curso, tire dúvidas ou compartilhe seu progresso…"
-                                className="w-full resize-none bg-transparent text-sm text-white placeholder:text-white/40 outline-none"
-                            />
-                            <div className="flex justify-end">
-                                <button
-                                    type="button"
-                                    onClick={enviarComentario}
-                                    disabled={!texto.trim()}
-                                    className="rounded-md bg-[#E50914] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#c40811] disabled:opacity-40"
-                                >
-                                    Publicar
-                                </button>
-                            </div>
-                        </div>
-                        <ul className="flex flex-col gap-3 pt-1">
-                            {comentarios.map((c) => (
-                                <li key={c.id} className="flex gap-3">
-                                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">
-                                        {c.iniciais}
-                                    </span>
-                                    <div className="flex min-w-0 flex-col">
-                                        <span className="text-sm font-semibold text-white">
-                                            {c.autor} <span className="ml-1 text-xs font-normal text-white/45">{c.tempo}</span>
-                                        </span>
-                                        <p className="text-sm text-white/70">{c.texto}</p>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
+                {/* Menu horizontal de abas */}
+                <div className="sticky top-[60px] z-20 -mx-4 mt-4 flex gap-6 overflow-x-auto border-b border-white/10 bg-[#0b0b0f]/90 px-4 backdrop-blur md:top-[64px] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">
+                    {[
+                        { id: "aulas" as const, label: total === 1 ? "Aula" : "Aulas", contador: total },
+                        { id: "sobre" as const, label: "Sobre o curso" },
+                        { id: "materiais" as const, label: "Materiais", contador: materiais.length },
+                        { id: "comentarios" as const, label: "Comentários", contador: comentarios.length },
+                    ].map((t) => (
+                        <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setAba(t.id)}
+                            className={cx(
+                                "relative shrink-0 whitespace-nowrap py-3 text-sm font-semibold transition duration-100",
+                                aba === t.id ? "text-white" : "text-white/55 hover:text-white/80",
+                            )}
+                        >
+                            {t.label}
+                            {typeof t.contador === "number" && (
+                                <span className="ml-1.5 text-xs text-white/40">{t.contador}</span>
+                            )}
+                            {aba === t.id && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-[#E50914]" />}
+                        </button>
+                    ))}
                 </div>
 
-                {/* Coluna lateral: materiais para download */}
-                <aside className="flex flex-col gap-3 md:sticky md:top-24 md:self-start">
-                    <h2 className="flex items-center gap-2 text-lg font-bold text-white">
-                        <Download01 className="size-5" /> Materiais do curso
-                    </h2>
-                    <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                        {materiais.map((m) => (
-                            <button
-                                key={m.id}
-                                type="button"
-                                className="flex items-center gap-3 rounded-lg p-2 text-left transition duration-100 hover:bg-white/[0.06]"
-                            >
-                                <span className={cx("flex size-10 shrink-0 items-center justify-center rounded-lg", TIPO_COR[m.tipo])}>
-                                    <File02 className="size-5" />
+                {/* Conteúdo da aba */}
+                <div className="pt-6">
+                    {aba === "aulas" && (
+                        <section className="flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-semibold text-white/80">
+                                    {total} {total === 1 ? "aula" : "aulas"} · {formatarDuracao(curso.duracaoMin)}
                                 </span>
-                                <div className="flex min-w-0 flex-1 flex-col">
-                                    <span className="truncate text-sm font-semibold text-white">{m.nome}</span>
-                                    <span className="text-xs text-white/45">
-                                        {m.tipo} · {m.tamanho}
+                                <span className="text-sm text-white/55">{assistidas}/{total} assistidas</span>
+                            </div>
+                            <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                                {aulas.map((a) => (
+                                    <li
+                                        key={a.id}
+                                        className={cx(
+                                            "flex items-center gap-3 rounded-xl border p-3 transition duration-100",
+                                            a.assistida ? "border-white/10 bg-white/[0.03]" : "border-white/10 bg-white/[0.06] hover:bg-white/[0.1]",
+                                            a.id === proximaAula?.id && progresso < 100 && "ring-1 ring-[#E50914]",
+                                        )}
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={() => setAulaPlayer(a)}
+                                            aria-label={`Assistir ${a.titulo}`}
+                                            className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white transition hover:bg-white/20"
+                                        >
+                                            <PlayCircle className="size-5" />
+                                        </button>
+                                        <div className="flex min-w-0 flex-1 flex-col">
+                                            <span className={cx("truncate text-sm font-semibold", a.assistida ? "text-white/55" : "text-white")}>
+                                                {a.titulo}
+                                            </span>
+                                            <span className="flex items-center gap-1 text-xs text-white/45">
+                                                <Clock className="size-3.5" /> {formatarDuracao(a.duracaoMin)}
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleAula(a.id)}
+                                            aria-label={a.assistida ? "Marcar como não assistida" : "Marcar como assistida"}
+                                            className={cx(
+                                                "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition duration-100",
+                                                a.assistida ? "bg-emerald-500/15 text-emerald-300" : "bg-white/10 text-white/60 hover:bg-white/20",
+                                            )}
+                                        >
+                                            <CheckCircle className="size-4" /> {a.assistida ? "Assistida" : "Marcar"}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    )}
+
+                    {aba === "sobre" && (
+                        <section className="flex flex-col gap-5">
+                            <p className="max-w-4xl text-md leading-relaxed text-white/75">{descricaoCurso(curso)}</p>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                <Info label="Instrutor" valor={curso.instrutor} />
+                                <Info label="Nível" valor={curso.nivel} />
+                                <Info label="Aulas" valor={String(total)} />
+                                <Info label="Duração" valor={formatarDuracao(curso.duracaoMin)} />
+                            </div>
+                        </section>
+                    )}
+
+                    {aba === "materiais" && (
+                        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            {materiais.map((m) => (
+                                <button
+                                    key={m.id}
+                                    type="button"
+                                    className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-left transition duration-100 hover:bg-white/[0.08]"
+                                >
+                                    <span className={cx("flex size-11 shrink-0 items-center justify-center rounded-lg", TIPO_COR[m.tipo])}>
+                                        <File02 className="size-5" />
                                     </span>
+                                    <div className="flex min-w-0 flex-1 flex-col">
+                                        <span className="truncate text-sm font-semibold text-white">{m.nome}</span>
+                                        <span className="text-xs text-white/45">{m.tipo} · {m.tamanho}</span>
+                                    </div>
+                                    <Download01 className="size-5 shrink-0 text-white/60" />
+                                </button>
+                            ))}
+                        </section>
+                    )}
+
+                    {aba === "comentarios" && (
+                        <section className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                                <textarea
+                                    value={texto}
+                                    onChange={(e) => setTexto(e.target.value)}
+                                    rows={2}
+                                    placeholder="Conte o que você achou do curso, tire dúvidas ou compartilhe seu progresso…"
+                                    className="w-full resize-none bg-transparent text-sm text-white placeholder:text-white/40 outline-none"
+                                />
+                                <div className="flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={enviarComentario}
+                                        disabled={!texto.trim()}
+                                        className="rounded-md bg-[#E50914] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#c40811] disabled:opacity-40"
+                                    >
+                                        Publicar
+                                    </button>
                                 </div>
-                                <Download01 className="size-5 shrink-0 text-white/60" />
-                            </button>
-                        ))}
-                    </div>
-                </aside>
+                            </div>
+                            <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                {comentarios.map((c) => (
+                                    <li key={c.id} className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">
+                                            {c.iniciais}
+                                        </span>
+                                        <div className="flex min-w-0 flex-col">
+                                            <span className="text-sm font-semibold text-white">
+                                                {c.autor} <span className="ml-1 text-xs font-normal text-white/45">{c.tempo}</span>
+                                            </span>
+                                            <p className="text-sm text-white/70">{c.texto}</p>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    )}
+                </div>
             </div>
+
+            {/* Player de vídeo simulado */}
+            {aulaPlayer && (
+                <VideoPlayer
+                    curso={curso}
+                    aula={aulaPlayer}
+                    temProxima={temProxima}
+                    onConcluir={marcarAssistida}
+                    onProxima={abrirProxima}
+                    onClose={() => setAulaPlayer(null)}
+                />
+            )}
         </AcademyLayout>
+    );
+}
+
+function Info({ label, valor }: { label: string; valor: string }) {
+    return (
+        <div className="flex flex-col gap-0.5 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+            <span className="text-xs text-white/45">{label}</span>
+            <span className="text-sm font-semibold text-white">{valor}</span>
+        </div>
     );
 }

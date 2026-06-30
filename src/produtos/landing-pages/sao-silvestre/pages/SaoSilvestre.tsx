@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { useTheme } from "@/providers/theme-provider";
-import { ArrowLeft, MarkerPin06, Monitor01, Phone01, MinusCircle, PlusCircle, XClose } from "@untitledui/icons";
+import { ArrowLeft, Award04, MarkerPin06, Monitor01, Phone01, MinusCircle, PlusCircle, XClose } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import logoTicketSports from "../assets/LOGO TICKET INGRESSE.svg";
 import heroCorredores from "../assets/imagem-corredores.png";
@@ -415,16 +415,21 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                             A São Silvestre não é só uma prova — é um marco na vida de quem corre. Seja você estreante ou veterano, cada passada nas ruas de São
                             Paulo conta uma história.
                         </p>
-                        <BlueButton className="mt-7 w-full px-7 py-4 text-base @3xl:w-auto">Inscreva-se agora</BlueButton>
+                        <div className="mt-7 flex flex-col gap-5 @3xl:flex-row @3xl:items-center @3xl:gap-6">
+                            <BlueButton className="w-full px-7 py-4 text-base @3xl:w-auto">Inscreva-se agora</BlueButton>
 
-                        {/* Já se inscreveu? */}
-                        <div className="mt-6">
-                            <p className="text-sm text-tertiary">
-                                <span className="font-semibold text-primary">Já se inscreveu?</span> Acompanhe sua inscrição e detalhes de compra pela sua conta.
-                            </p>
-                            <button type="button" className="mt-1.5 text-sm font-semibold transition hover:underline" style={{ color: BLUE }}>
-                                Acessar minha inscrição
-                            </button>
+                            {/* Já se inscreveu? */}
+                            <div className="flex items-center gap-2.5">
+                                <Award04 className="size-6 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                <p className="text-sm">
+                                    <span className="font-semibold text-primary">Já se inscreveu?</span>
+                                    <br />
+                                    <button type="button" className="text-sm font-semibold transition hover:underline" style={{ color: BLUE }}>
+                                        Clique aqui
+                                    </button>{" "}
+                                    <span className="text-sm text-tertiary">para acompanhar sua inscrição.</span>
+                                </p>
+                            </div>
                         </div>
                     </div>
 
@@ -437,8 +442,8 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
             <div className="border-t border-secondary" />
 
             {/* ===== SOBRE + INSCRIÇÃO ===== */}
-            <section className="px-6 pt-16 pb-16 @3xl:px-12">
-                <div className="mx-auto flex max-w-6xl flex-col gap-10 @3xl:flex-row @3xl:gap-12">
+            <section className="px-6 pt-10 pb-16 @3xl:px-12 @3xl:pt-16">
+                <div className="mx-auto flex max-w-6xl flex-col gap-10 @3xl:flex-row @3xl:gap-[200px]">
                     {/* Sobre o evento */}
                     <div className="min-w-0 flex-1">
                         <h2 className="text-2xl font-bold">Sobre o evento</h2>
@@ -503,7 +508,7 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                         </div>
 
                         <div data-info-block>
-                            <h3 className="text-sm font-bold text-primary">Reembolso e detalhes da sua inscrição</h3>
+                            <h3 className="text-sm font-bold text-primary">Reembolso e detalhes da compra</h3>
                             <div className="mt-2 space-y-2 text-sm text-tertiary">
                                 <p>
                                     Depois de concluir sua inscrição para a São Silvestre, você poderá consultar os detalhes da compra, acessar sua credencial e
@@ -511,8 +516,11 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                                 </p>
                                 <p>Use o mesmo e-mail informado no momento da inscrição para acessar seus dados.</p>
                             </div>
-                            <button type="button" className="mt-3 text-sm font-semibold transition hover:underline" style={{ color: BLUE }}>
-                                Acompanhar minha inscrição
+                            <button
+                                type="button"
+                                className="mt-4 w-full rounded-xl border border-secondary bg-primary px-5 py-3.5 text-sm font-semibold text-primary transition duration-100 ease-linear hover:bg-secondary @3xl:w-3/5"
+                            >
+                                Acessar detalhes da compra
                             </button>
                         </div>
                         </div>

@@ -190,7 +190,7 @@ export function Ingressos() {
                 <h2 className="mt-4 text-lg font-bold text-primary">Abrir mapa em</h2>
                 <p className="mt-1 text-sm text-tertiary">Escolha o aplicativo para ver a localização do evento.</p>
 
-                <div className="mt-4 flex flex-col gap-1">
+                <div className="mt-4 flex flex-col divide-y divide-border-secondary">
                     {mapas.map((m) => (
                         <button
                             key={m.nome}
@@ -199,7 +199,7 @@ export function Ingressos() {
                                 setMapaOpen(false);
                                 window.open(m.url, "_blank");
                             }}
-                            className="flex items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition duration-100 ease-linear active:bg-secondary"
+                            className="flex items-center gap-3 px-2 py-3 text-left transition duration-100 ease-linear active:bg-secondary"
                         >
                             <span className="size-10 shrink-0 overflow-hidden rounded-xl ring-1 ring-border-secondary">
                                 <img src={m.logo} alt="" className="size-full object-cover" />

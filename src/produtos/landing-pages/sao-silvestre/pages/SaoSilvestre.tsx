@@ -425,9 +425,8 @@ function SaoSilvestreLanding({ viewport = "desktop" }: { viewport?: "desktop" | 
                                     <span className="font-semibold text-primary">Já se inscreveu?</span>
                                     <br />
                                     <button type="button" className="text-sm font-semibold transition hover:underline" style={{ color: BLUE }}>
-                                        Clique aqui
-                                    </button>{" "}
-                                    <span className="text-sm text-tertiary">para acompanhar sua inscrição.</span>
+                                        Acompanhe sua inscrição
+                                    </button>
                                 </p>
                             </div>
                         </div>

@@ -300,7 +300,14 @@ export function SelecaoEAtribuicao() {
     const temProdutos = config.produtos.length > 0;
 
     const fixoTabAtiva = fixoTabs.find((t) => t.id === aba);
-    const dataAtiva = config.datas.find((d) => d.id === aba);
+    const dataAtiva = datasVenda.find((d) => d.id === aba);
+
+    // Se a aba ativa deixou de existir (ex: desmarcar "Datas" ou "Combo"),
+    // volta automaticamente para a primeira aba válida.
+    const abaValida = !!fixoTabAtiva || (aba === "combo" && temDinamicos) || !!dataAtiva;
+    useEffect(() => {
+        if (!abaValida) setAba(abaInicial);
+    }, [abaValida, abaInicial]);
 
     // Para o teste: todas as perguntas do evento aparecem em cada item comprado (combo conta como 1).
     const perguntasDoGrupo = (_key: string) => config.perguntas;

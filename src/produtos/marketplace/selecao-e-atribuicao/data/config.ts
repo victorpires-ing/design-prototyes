@@ -33,6 +33,8 @@ export interface EventConfig {
     corDestaque?: string;
     /** Exibe o botão de voltar (para as configurações) na tela de seleção. */
     exibirVoltar?: boolean;
+    /** Como o formulário de perguntas é exibido na atribuição: modal (padrão) ou accordion inline. */
+    modoAtribuicao?: "modal" | "accordion";
     exibir: Exibir;
     ingressos: Ingresso[];
     produtos: Produto[];
@@ -55,6 +57,7 @@ export const DEFAULT_CONFIG: EventConfig = {
     comboTabLabel: "Combo dinâmico",
     corDestaque: "",
     exibirVoltar: true,
+    modoAtribuicao: "modal",
     exibir: EXIBIR_PADRAO,
     ingressos: INGRESSOS,
     produtos: PRODUTOS,
@@ -100,6 +103,7 @@ export function decodeConfig(param: string): EventConfig | null {
             comboTabLabel: obj.comboTabLabel ?? "Combo dinâmico",
             corDestaque: obj.corDestaque ?? "",
             exibirVoltar: obj.exibirVoltar ?? true,
+            modoAtribuicao: obj.modoAtribuicao === "accordion" ? "accordion" : "modal",
             exibir: { datas: true, combosFixos: true, combosDinamicos: true, ...(obj.exibir ?? {}) },
             ingressos: Array.isArray(obj.ingressos) ? obj.ingressos : [],
             produtos: Array.isArray(obj.produtos) ? obj.produtos : [],

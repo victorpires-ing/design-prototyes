@@ -10,6 +10,7 @@ import {
     Eye,
     File03,
     Globe01,
+    ImageUser,
     InfoCircle,
     LogOut01,
     Menu02,
@@ -38,6 +39,7 @@ const BrandLogo = ({ className }: { className?: string }) => (
 import { ThemeToggle } from "./ThemeToggle";
 
 export type BackstageSection =
+    | "equipe-e-permissoes"
     | "informacoes-evento"
     | "itens"
     | "pesquisas"
@@ -60,7 +62,7 @@ export type BackstageItem =
     | "chave-de-acesso"
     | "formularios-compra";
 
-const DISABLED_KEYS: Key[] = ["informacoes-evento", "permissao-envio", "catalogo-combos", "catalogo-produtos"];
+const DISABLED_KEYS: Key[] = ["informacoes-evento", "catalogo-combos", "catalogo-produtos"];
 
 interface BackstageLayoutProps {
     activeSection?: BackstageSection;
@@ -159,6 +161,7 @@ const MobileEventCard = () => (
 );
 
 const SECTION_LABELS: Record<BackstageSection, string> = {
+    "equipe-e-permissoes": "Equipe e Permissões",
     "informacoes-evento": "Informações do evento",
     itens: "Itens",
     pesquisas: "Coleta de dados",
@@ -533,6 +536,15 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 <TreeView.ItemContent icon={InfoCircle}>Informações do evento</TreeView.ItemContent>
             </TreeView.Item>
 
+            <TreeView.Item id="equipe-e-permissoes" textValue="Equipe e Permissões" href="/backstage/equipe-e-permissoes">
+                <TreeView.ItemContent
+                    icon={ImageUser}
+                    className={activeSection === "equipe-e-permissoes" ? ACTIVE_CLASS : undefined}
+                >
+                    Equipe e Permissões
+                </TreeView.ItemContent>
+            </TreeView.Item>
+
             <TreeView.Item id="itens" textValue="Itens">
                 <TreeView.ItemContent icon={ShoppingCart01}>Itens</TreeView.ItemContent>
                 <TreeView.Item id="catalogo-ingressos" textValue="Ingressos" href="/backstage/catalogo/ingressos">
@@ -566,9 +578,6 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 >
                     Cortesias
                 </TreeView.ItemContent>
-                <TreeView.Item id="permissao-envio" textValue="Permissão de envio">
-                    <TreeView.ItemContent>Permissão de envio</TreeView.ItemContent>
-                </TreeView.Item>
                 <TreeView.Item id="emissao-cortesias" textValue="Emissão de cortesias" href="/backstage/cortesias">
                     <TreeView.ItemContent className={itemClass("emissao-cortesias")}>Emissão de cortesias</TreeView.ItemContent>
                 </TreeView.Item>

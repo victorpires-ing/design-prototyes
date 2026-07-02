@@ -589,35 +589,39 @@ export function SelecaoEAtribuicao() {
     const progresso = unidades.length > 0 ? Math.round((unidadesProntas / unidades.length) * 100) : 0;
     const atribuicaoLayout = (
         <div className="mx-auto flex w-full max-w-[1446px] flex-col gap-6 lg:flex-row lg:justify-center">
-            <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary md:p-5 lg:w-[1062px]">
-                <h2 className="text-lg font-bold text-primary">Quem usará estes itens?</h2>
+            <div className="flex w-full flex-col gap-8 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary md:p-5 lg:w-[1062px]">
+                <h2 className="text-lg font-bold text-primary">{unidades.length > 1 ? "Para quem são essas inscrições?" : "Para quem é essa inscrição?"}</h2>
 
-                {/* Progresso da atribuição */}
-                <div className="flex flex-col gap-2 rounded-xl bg-primary p-0">
-                    <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-semibold text-primary">
-                            {unidadesProntas} de {unidades.length} {unidades.length === 1 ? "item definido" : "itens definidos"}
-                        </span>
-                    </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-quaternary">
-                        <div className="h-full rounded-full bg-brand-solid transition-all duration-200 ease-linear" style={{ width: `${progresso}%` }} />
-                    </div>
-                </div>
 
-                {unidades.map((u) => (
-                    <AtribuicaoCard
-                        key={u.id}
-                        unidade={u}
-                        valor={atrib[u.id]}
-                        perguntas={perguntasDaUnidade(u)}
-                        getResposta={(pid) => respostas[`${u.id}:${pid}`] ?? ""}
-                        onAtrib={(v) => setAtrib((p) => ({ ...p, [u.id]: v }))}
-                        onAbrirPerguntas={() => setPerguntaModalUnidade(u.id)}
-                        onRemover={() => removerUnidade(u.key)}
-                        podeAplicarTodos={!u.isProduto && totalIngressosUnid > 1 && unidadeOk(u)}
-                        onAplicarTodos={() => aplicarATodos(u.id)}
-                    />
-                ))}
+                {unidades.map((u) =>
+                    config.modoAtribuicao === "accordion" ? (
+                        <AtribuicaoAccordionCard
+                            key={u.id}
+                            unidade={u}
+                            valor={atrib[u.id]}
+                            perguntas={perguntasDaUnidade(u)}
+                            getResposta={(pid) => respostas[`${u.id}:${pid}`] ?? ""}
+                            onResposta={(pid, val) => setRespostas((p) => ({ ...p, [`${u.id}:${pid}`]: val }))}
+                            onAtrib={(v) => setAtrib((p) => ({ ...p, [u.id]: v }))}
+                            onRemover={() => removerUnidade(u.key)}
+                            podeAplicarTodos={!u.isProduto && totalIngressosUnid > 1 && unidadeOk(u)}
+                            onAplicarTodos={() => aplicarATodos(u.id)}
+                        />
+                    ) : (
+                        <AtribuicaoCard
+                            key={u.id}
+                            unidade={u}
+                            valor={atrib[u.id]}
+                            perguntas={perguntasDaUnidade(u)}
+                            getResposta={(pid) => respostas[`${u.id}:${pid}`] ?? ""}
+                            onAtrib={(v) => setAtrib((p) => ({ ...p, [u.id]: v }))}
+                            onAbrirPerguntas={() => setPerguntaModalUnidade(u.id)}
+                            onRemover={() => removerUnidade(u.key)}
+                            podeAplicarTodos={!u.isProduto && totalIngressosUnid > 1 && unidadeOk(u)}
+                            onAplicarTodos={() => aplicarATodos(u.id)}
+                        />
+                    ),
+                )}
             </div>
             <div className="flex w-full flex-col gap-4 lg:w-[360px] lg:shrink-0">{grupos.length > 0 && resumoCard}</div>
         </div>
@@ -1016,6 +1020,192 @@ function AtribuicaoCard({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {podeAplicarTodos && onAplicarTodos && (
+                <Button size="sm" color="link-color" iconLeading={Copy01} className="self-start" onClick={onAplicarTodos}>
+                    Aplicar estes dados a todos os ingressos
+                </Button>
+            )}
+        </motion.div>
+    );
+}
+
+/** Badge compacto de status do formulário exibido no cabeçalho de cada linha do accordion. */
+function FormBadge({ ok }: { ok: boolean }) {
+    return (
+        <span
+            className={cx(
+                "shrink-0 rounded-md px-2 py-0.5 text-sm font-medium",
+                ok ? "bg-success-secondary text-success-primary" : "bg-warning-secondary text-warning-primary",
+            )}
+        >
+            {ok ? "Formulário completo" : "Responda o formulário"}
+        </span>
+    );
+}
+
+/**
+ * Variante da atribuição em accordion: cada opção é uma linha expansível e o
+ * questionário aparece inline (sem modal). Usada quando config.modoAtribuicao === "accordion".
+ */
+function AtribuicaoAccordionCard({
+    unidade,
+    valor,
+    perguntas,
+    getResposta,
+    onResposta,
+    onAtrib,
+    onRemover,
+    podeAplicarTodos = false,
+    onAplicarTodos,
+}: {
+    unidade: { id: string; key: string; nome: string; sub?: string; isProduto?: boolean; imagem?: string };
+    valor?: { tipo: "meu" | "outro"; email: string; confirmado?: boolean };
+    perguntas: PerguntaEvento[];
+    getResposta: (pid: string) => string;
+    onResposta: (pid: string, val: string) => void;
+    onAtrib: (v: { tipo: "meu" | "outro"; email: string; confirmado?: boolean }) => void;
+    onRemover: () => void;
+    podeAplicarTodos?: boolean;
+    onAplicarTodos?: () => void;
+}) {
+    const tipo = valor?.tipo;
+    const email = valor?.email ?? "";
+    const confirmado = !!valor?.confirmado;
+    const obrigatoriasOk = perguntas.filter((p) => p.obrigatoria).every((p) => getResposta(p.id).trim() !== "");
+    const emailInvalido = tipo === "outro" && email.trim() !== "" && !emailValido(email);
+    const [enviando, setEnviando] = useState(false);
+    const [aberta, setAberta] = useState<"meu" | "outro" | null>(tipo ?? null);
+
+    // Enviar convite: loading simulado, depois confirma o destinatário.
+    const enviar = () => {
+        if (!emailValido(email) || enviando) return;
+        setEnviando(true);
+        setTimeout(() => {
+            setEnviando(false);
+            onAtrib({ tipo: "outro", email, confirmado: true });
+        }, 900);
+    };
+
+    const opcoes: { id: "meu" | "outro"; label: string }[] = [
+        { id: "meu", label: unidade.isProduto ? "Meu produto" : "Meu ingresso" },
+        { id: "outro", label: "Atribuir a outro usuário" },
+    ];
+
+    // Clique no cabeçalho: seleciona a opção (se ainda não for a atual) e abre; se já for a atual, alterna aberto/fechado.
+    const aoClicarCabecalho = (id: "meu" | "outro") => {
+        if (tipo !== id) {
+            onAtrib(id === "meu" ? { tipo: "meu", email } : { tipo: "outro", email, confirmado });
+            setAberta(id);
+        } else {
+            setAberta((a) => (a === id ? null : id));
+        }
+    };
+
+    // Questionário inline + botão "Salvar respostas" (recolhe a linha ao salvar).
+    const questionario = perguntas.length > 0 && (
+        <div className="flex flex-col gap-4">
+            <span className="text-md font-bold text-primary">Formulário do atleta</span>
+            {perguntas.map((p) => (
+                <CampoPergunta key={p.id} pergunta={p} valor={getResposta(p.id)} onChange={(v) => onResposta(p.id, v)} />
+            ))}
+            <Button size="md" color="primary" className="w-full" onClick={() => setAberta(null)}>
+                Salvar respostas
+            </Button>
+        </div>
+    );
+
+    return (
+        <motion.div layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex flex-col gap-4 rounded-xl ring-border-secondary">
+            <div className="flex items-start gap-3">
+                {unidade.imagem ? (
+                    <img src={unidade.imagem} alt="" aria-hidden="true" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-border-secondary" />
+                ) : unidade.isProduto ? (
+                    <Package className="mt-0.5 size-5 shrink-0 text-fg-brand-primary" />
+                ) : (
+                    <QrCode01 className="mt-0.5 size-5 shrink-0 text-fg-brand-primary" />
+                )}
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-sm font-bold text-primary">{unidade.nome}</span>
+                    {unidade.sub && <span className="text-sm text-tertiary">{unidade.sub}</span>}
+                </div>
+                <button type="button" onClick={onRemover} aria-label="Remover" className="shrink-0 text-fg-error-primary transition hover:opacity-80">
+                    <Trash01 className="size-5" />
+                </button>
+            </div>
+
+            <div className="overflow-hidden rounded-xl ring-1 ring-border-secondary">
+                {opcoes.map((o, i) => {
+                    const selecionado = tipo === o.id;
+                    const expandida = aberta === o.id;
+                    const mostrarBadge = selecionado && perguntas.length > 0 && (o.id === "meu" || confirmado);
+                    return (
+                        <div key={o.id} className={cx(i > 0 && "border-t border-secondary")}>
+                            <button type="button" onClick={() => aoClicarCabecalho(o.id)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
+                                <span className={cx("flex size-5 shrink-0 items-center justify-center rounded-full ring-2", selecionado ? "ring-brand" : "ring-secondary")}>
+                                    {selecionado && <span className="size-2.5 rounded-full bg-brand-solid" />}
+                                </span>
+                                <span className={cx("min-w-0 flex-1 text-sm font-medium", selecionado ? "text-primary" : "text-tertiary")}>{o.label}</span>
+                                {mostrarBadge && <FormBadge ok={obrigatoriasOk} />}
+                                <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition duration-200", expandida && "rotate-180")} />
+                            </button>
+
+                            <AnimatePresence initial={false}>
+                                {expandida && (
+                                    <motion.div key="body" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">
+                                        <div className="flex flex-col gap-4 px-4 pb-4">
+                                            {o.id === "meu" && questionario}
+
+                                            {o.id === "outro" && !confirmado && (
+                                                <div className="flex flex-col gap-1.5">
+                                                    <div className={cx("flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 ring-1 transition focus-within:ring-2 focus-within:ring-brand", emailInvalido ? "ring-error" : "ring-border-primary")}>
+                                                        <input
+                                                            type="email"
+                                                            aria-label="E-mail"
+                                                            placeholder="Digite o e-mail"
+                                                            value={email}
+                                                            disabled={enviando}
+                                                            onChange={(e) => onAtrib({ tipo: "outro", email: e.target.value, confirmado: false })}
+                                                            onKeyDown={(e) => e.key === "Enter" && enviar()}
+                                                            className="min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-placeholder disabled:opacity-50"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={enviar}
+                                                            disabled={!emailValido(email) || enviando}
+                                                            aria-label="Enviar"
+                                                            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-brand-primary transition hover:bg-primary_hover disabled:cursor-not-allowed disabled:opacity-40"
+                                                        >
+                                                            {enviando ? <span className="size-5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Send01 className="size-5" />}
+                                                        </button>
+                                                    </div>
+                                                    {emailInvalido && <span className="text-sm text-error-primary">Informe um e-mail válido.</span>}
+                                                </div>
+                                            )}
+
+                                            {o.id === "outro" && confirmado && (
+                                                <>
+                                                    <div className="flex items-center gap-3 rounded-xl bg-secondary px-3.5 py-2.5">
+                                                        <Avatar size="sm" initials={(email.trim()[0] ?? "?").toUpperCase()} alt="" />
+                                                        <div className="flex min-w-0 flex-1 flex-col">
+                                                            <span className="truncate text-sm font-semibold text-primary">{email}</span>
+                                                            <span className="text-sm text-success-primary">Convite será enviado para este e-mail.</span>
+                                                        </div>
+                                                    </div>
+                                                    <Button size="md" color="secondary" className="w-full" onClick={() => onAtrib({ tipo: "outro", email, confirmado: false })}>
+                                                        Trocar titular
+                                                    </Button>
+                                                    {questionario}
+                                                </>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    );
+                })}
+            </div>
 
             {podeAplicarTodos && onAplicarTodos && (
                 <Button size="sm" color="link-color" iconLeading={Copy01} className="self-start" onClick={onAplicarTodos}>

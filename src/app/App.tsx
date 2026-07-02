@@ -7,6 +7,10 @@ import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
 import { ProductSelection } from '../app/components/ProductSelection';
 import { CortesiasProvider } from '../produtos/backstage/cortesias/data/cortesias-store';
 import { EmissaoCortesias } from '../produtos/backstage/cortesias/pages/EmissaoCortesias';
+import { PermissaoEnvio } from '../produtos/backstage/permissao-envio/pages/PermissaoEnvio';
+import { NovaPermissao } from '../produtos/backstage/permissao-envio/pages/NovaPermissao';
+import { EquipeEPermissoes } from '../produtos/backstage/equipe-e-permissoes/pages/EquipeEPermissoes';
+import { NovoMembro } from '../produtos/backstage/equipe-e-permissoes/pages/NovoMembro';
 import { RelatorioPedidos } from '../produtos/backstage/cortesias/pages/RelatorioPedidos';
 import { SelecaoItens } from '../produtos/backstage/cortesias/pages/SelecaoItens';
 import { VerificacaoFinal } from '../produtos/backstage/cortesias/pages/VerificacaoFinal';
@@ -130,6 +134,12 @@ export default function App() {
         <Route path="/" element={<ProductSelection />} />
         <Route path="/backstage" element={<RelatorioPedidos />} />
         <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
+        <Route path="/backstage/permissao-envio" element={<PermissaoEnvio />} />
+        <Route path="/backstage/permissao-envio/nova" element={<NovaPermissao />} />
+        <Route path="/backstage/permissao-envio/:id/editar" element={<NovaPermissao />} />
+        <Route path="/backstage/equipe-e-permissoes" element={<EquipeEPermissoes />} />
+        <Route path="/backstage/equipe-e-permissoes/novo" element={<NovoMembro />} />
+        <Route path="/backstage/equipe-e-permissoes/:id/editar" element={<NovoMembro />} />
         <Route path="/backstage/itens" element={<SelecaoItens />} />
         <Route path="/backstage/destinatarios" element={<EmissaoCortesias />} />
         <Route path="/backstage/verificacao" element={<VerificacaoFinal />} />

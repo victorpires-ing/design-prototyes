@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router";
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronLeft, Copy01, Minus, Package, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronLeft, Minus, Package, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
-import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -338,28 +337,6 @@ export function SelecaoEAtribuicao() {
     const unidadesProntas = unidades.filter(unidadeOk).length;
     const podeFinalizar = unidades.length > 0 && unidadesProntas === unidades.length;
 
-    // Replica a atribuição + respostas de uma unidade para os demais ingressos.
-    const aplicarATodos = (origemId: string) => {
-        const origem = unidades.find((u) => u.id === origemId);
-        const a = atrib[origemId];
-        if (!origem || !a) return;
-        const pergs = perguntasDaUnidade(origem);
-        setAtrib((prev) => {
-            const next = { ...prev };
-            for (const u of unidades) if (!u.isProduto) next[u.id] = { ...a };
-            return next;
-        });
-        setRespostas((prev) => {
-            const next = { ...prev };
-            for (const u of unidades) {
-                if (u.isProduto || u.id === origemId) continue;
-                for (const p of pergs) next[`${u.id}:${p.id}`] = prev[`${origemId}:${p.id}`] ?? "";
-            }
-            return next;
-        });
-        toast.success("Dados aplicados a todos os ingressos");
-    };
-
     // Etapas: seleção → produtos (se houver) → atribuição.
     const irProximo = () => {
         setTermosOpen(false);
@@ -592,11 +569,10 @@ export function SelecaoEAtribuicao() {
         </div>
     );
 
-    const totalIngressosUnid = unidades.filter((u) => !u.isProduto).length;
     const progresso = unidades.length > 0 ? Math.round((unidadesProntas / unidades.length) * 100) : 0;
     const atribuicaoLayout = (
-        <div className="mx-auto flex w-full max-w-[1446px] flex-col gap-6 lg:flex-row lg:justify-center">
-            <div className="flex w-full flex-col gap-8 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary md:p-5 lg:w-[1062px]">
+        <div className="-m-4 flex flex-col gap-6 md:m-0 md:mx-auto md:w-full md:max-w-[1446px] lg:flex-row lg:justify-center">
+            <div className="flex w-full flex-col gap-8 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary lg:w-[1062px]">
                 <h2 className="text-lg font-bold text-primary">{unidades.length > 1 ? "Para quem são essas inscrições?" : "Para quem é essa inscrição?"}</h2>
 
 
@@ -611,8 +587,6 @@ export function SelecaoEAtribuicao() {
                             onResposta={(pid, val) => setRespostas((p) => ({ ...p, [`${u.id}:${pid}`]: val }))}
                             onAtrib={(v) => setAtrib((p) => ({ ...p, [u.id]: v }))}
                             onRemover={() => removerUnidade(u.key)}
-                            podeAplicarTodos={!u.isProduto && totalIngressosUnid > 1 && unidadeOk(u)}
-                            onAplicarTodos={() => aplicarATodos(u.id)}
                         />
                     ) : (
                         <AtribuicaoCard
@@ -624,8 +598,6 @@ export function SelecaoEAtribuicao() {
                             onAtrib={(v) => setAtrib((p) => ({ ...p, [u.id]: v }))}
                             onAbrirPerguntas={() => setPerguntaModalUnidade(u.id)}
                             onRemover={() => removerUnidade(u.key)}
-                            podeAplicarTodos={!u.isProduto && totalIngressosUnid > 1 && unidadeOk(u)}
-                            onAplicarTodos={() => aplicarATodos(u.id)}
                         />
                     ),
                 )}
@@ -678,7 +650,7 @@ export function SelecaoEAtribuicao() {
                     <h2 className="text-xl font-bold text-primary">Leve mais do que o ingresso</h2>
                     <p className="text-sm text-tertiary">Compre online e retire no dia do evento.</p>
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
                     {config.produtos.map((p) => (
                         <ProdutoCard key={p.id} produto={p} qtd={prodQtd(p.id)} onAbrirVariacao={() => setVariacaoProduto(p)} onSetQtd={(n) => setProdQtd(p, null, n)} />
                     ))}
@@ -897,8 +869,6 @@ function AtribuicaoCard({
     onAtrib,
     onAbrirPerguntas,
     onRemover,
-    podeAplicarTodos = false,
-    onAplicarTodos,
 }: {
     unidade: { id: string; key: string; nome: string; sub?: string; isProduto?: boolean; imagem?: string };
     valor?: { tipo: "meu" | "outro"; email: string; confirmado?: boolean };
@@ -907,8 +877,6 @@ function AtribuicaoCard({
     onAtrib: (v: { tipo: "meu" | "outro"; email: string; confirmado?: boolean }) => void;
     onAbrirPerguntas: () => void;
     onRemover: () => void;
-    podeAplicarTodos?: boolean;
-    onAplicarTodos?: () => void;
 }) {
     const tipo = valor?.tipo;
     const selecionado = !!tipo;
@@ -1028,11 +996,6 @@ function AtribuicaoCard({
                 )}
             </AnimatePresence>
 
-            {podeAplicarTodos && onAplicarTodos && (
-                <Button size="sm" color="link-color" iconLeading={Copy01} className="self-start" onClick={onAplicarTodos}>
-                    Aplicar estes dados a todos os ingressos
-                </Button>
-            )}
         </motion.div>
     );
 }
@@ -1063,8 +1026,6 @@ function AtribuicaoAccordionCard({
     onResposta,
     onAtrib,
     onRemover,
-    podeAplicarTodos = false,
-    onAplicarTodos,
 }: {
     unidade: { id: string; key: string; nome: string; sub?: string; isProduto?: boolean; imagem?: string };
     valor?: { tipo: "meu" | "outro"; email: string; confirmado?: boolean };
@@ -1073,8 +1034,6 @@ function AtribuicaoAccordionCard({
     onResposta: (pid: string, val: string) => void;
     onAtrib: (v: { tipo: "meu" | "outro"; email: string; confirmado?: boolean }) => void;
     onRemover: () => void;
-    podeAplicarTodos?: boolean;
-    onAplicarTodos?: () => void;
 }) {
     const tipo = valor?.tipo;
     const email = valor?.email ?? "";
@@ -1123,7 +1082,7 @@ function AtribuicaoAccordionCard({
     );
 
     return (
-        <motion.div layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex flex-col gap-4 rounded-xl ring-border-secondary">
+        <motion.div layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex flex-col gap-4">
             <div className="flex items-start gap-3">
                 {unidade.imagem ? (
                     <img src={unidade.imagem} alt="" aria-hidden="true" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-border-secondary" />
@@ -1214,11 +1173,6 @@ function AtribuicaoAccordionCard({
                 })}
             </div>
 
-            {podeAplicarTodos && onAplicarTodos && (
-                <Button size="sm" color="link-color" iconLeading={Copy01} className="self-start" onClick={onAplicarTodos}>
-                    Aplicar estes dados a todos os ingressos
-                </Button>
-            )}
         </motion.div>
     );
 }

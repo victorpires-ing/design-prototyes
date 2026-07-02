@@ -1,18 +1,42 @@
 import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { ArrowLeft, HelpCircle, Share07 } from "@untitledui/icons";
+import { useTheme } from "@/providers/theme-provider";
 
-/**
- * Força o light mode enquanto o marketplace está montado, sem alterar a
- * preferência global de tema (não toca no localStorage). Restaura ao sair.
+/*
+ * Estado em nível de módulo para forçar light mode em TODAS as telas do
+ * marketplace, inclusive ao navegar entre elas (ex: Config → preview).
+ *
+ * Um contador de montagens evita que o unmount de uma tela restaure o tema
+ * antes da próxima assumir: a restauração é adiada (setTimeout 0) e cancelada
+ * se outra tela do marketplace montar em seguida. Só quando o contador zera de
+ * verdade (usuário saiu do marketplace) a preferência anterior é restaurada.
  */
+let mpCount = 0;
+let mpPrevTheme: "light" | "dark" | "system" | null = null;
+let mpRestoreTimer: ReturnType<typeof setTimeout> | null = null;
+
 function useForceLightMode() {
+    const { theme, setTheme } = useTheme();
     useEffect(() => {
-        const root = document.documentElement;
-        const tinhaDark = root.classList.contains("dark-mode");
-        root.classList.remove("dark-mode");
+        if (mpRestoreTimer !== null) {
+            clearTimeout(mpRestoreTimer);
+            mpRestoreTimer = null;
+        }
+        if (mpCount === 0) mpPrevTheme = theme;
+        mpCount++;
+        setTheme("light");
+
         return () => {
-            if (tinhaDark) root.classList.add("dark-mode");
+            mpCount--;
+            if (mpCount === 0) {
+                mpRestoreTimer = setTimeout(() => {
+                    if (mpCount === 0 && mpPrevTheme && mpPrevTheme !== "light") setTheme(mpPrevTheme);
+                    mpPrevTheme = null;
+                    mpRestoreTimer = null;
+                }, 0);
+            }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 }
 
@@ -105,7 +129,7 @@ export function MarketplaceLayout({ title, badge, logo, accent, onBack, usuario,
                                 <ArrowLeft className="size-5" />
                             </button>
                         )}
-                        <h1 className="truncate text-lg font-semibold text-primary">{title}</h1>
+                        <h1 className="line-clamp-2 text-lg font-semibold leading-tight text-primary">{title}</h1>
                         {badge && <span className="shrink-0 rounded-md bg-secondary px-2 py-0.5 text-sm font-medium text-tertiary">{badge}</span>}
                     </div>
                     <div className="flex shrink-0 items-center gap-5">

@@ -7,6 +7,10 @@ import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
 import { ProductSelection } from '../app/components/ProductSelection';
 import { CortesiasProvider } from '../produtos/backstage/cortesias/data/cortesias-store';
 import { EmissaoCortesias } from '../produtos/backstage/cortesias/pages/EmissaoCortesias';
+import { PermissaoEnvio } from '../produtos/backstage/permissao-envio/pages/PermissaoEnvio';
+import { NovaPermissao } from '../produtos/backstage/permissao-envio/pages/NovaPermissao';
+import { EquipeEPermissoes } from '../produtos/backstage/equipe-e-permissoes/pages/EquipeEPermissoes';
+import { NovoMembro } from '../produtos/backstage/equipe-e-permissoes/pages/NovoMembro';
 import { RelatorioPedidos } from '../produtos/backstage/cortesias/pages/RelatorioPedidos';
 import { SelecaoItens } from '../produtos/backstage/cortesias/pages/SelecaoItens';
 import { VerificacaoFinal } from '../produtos/backstage/cortesias/pages/VerificacaoFinal';
@@ -84,6 +88,10 @@ import { DivulgarGrupo } from '../produtos/ticket-sports/hub/pages/DivulgarGrupo
 import { DetalhesGrupo } from '../produtos/ticket-sports/hub/pages/DetalhesGrupo';
 import { Comunidades } from '../produtos/ticket-sports/hub/pages/Comunidades';
 import { ComunidadeDetalhe } from '../produtos/ticket-sports/hub/pages/ComunidadeDetalhe';
+import { Catalogo as TsAcademyCatalogo } from '../produtos/ticket/ts-academy/pages/Catalogo';
+import { CursoDetalhe as TsAcademyCursoDetalhe } from '../produtos/ticket/ts-academy/pages/CursoDetalhe';
+import { EventoInscricao as TsAcademyEventoInscricao } from '../produtos/ticket/ts-academy/pages/EventoInscricao';
+import { Secao as TsAcademySecao } from '../produtos/ticket/ts-academy/pages/Secao';
 import { PasswordGate as UsabilidadeGate } from '../produtos/usabilidade/components/PasswordGate';
 import { Painel as TestesPainel } from '../produtos/usabilidade/testes/pages/Painel';
 import { EditorTeste } from '../produtos/usabilidade/testes/pages/EditorTeste';
@@ -127,6 +135,12 @@ export default function App() {
         <Route path="/" element={<ProductSelection />} />
         <Route path="/backstage" element={<RelatorioPedidos />} />
         <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
+        <Route path="/backstage/permissao-envio" element={<PermissaoEnvio />} />
+        <Route path="/backstage/permissao-envio/nova" element={<NovaPermissao />} />
+        <Route path="/backstage/permissao-envio/:id/editar" element={<NovaPermissao />} />
+        <Route path="/backstage/equipe-e-permissoes" element={<EquipeEPermissoes />} />
+        <Route path="/backstage/equipe-e-permissoes/novo" element={<NovoMembro />} />
+        <Route path="/backstage/equipe-e-permissoes/:id/editar" element={<NovoMembro />} />
         <Route path="/backstage/itens" element={<SelecaoItens />} />
         <Route path="/backstage/destinatarios" element={<EmissaoCortesias />} />
         <Route path="/backstage/verificacao" element={<VerificacaoFinal />} />
@@ -186,6 +200,11 @@ export default function App() {
         <Route path="/ticket-sports/hub/grupos/:id" element={<DetalhesGrupo />} />
         <Route path="/ticket-sports/hub/comunidades" element={<Comunidades />} />
         <Route path="/ticket-sports/hub/comunidades/:id" element={<ComunidadeDetalhe />} />
+        <Route path="/ticket/ts-academy" element={<TsAcademyCatalogo />} />
+        <Route path="/ticket/ts-academy/presencial" element={<TsAcademySecao categoria="presencial" />} />
+        <Route path="/ticket/ts-academy/sports-week" element={<TsAcademySecao categoria="sports-week" />} />
+        <Route path="/ticket/ts-academy/evento/:id" element={<TsAcademyEventoInscricao />} />
+        <Route path="/ticket/ts-academy/curso/:id" element={<TsAcademyCursoDetalhe />} />
         <Route path="/futebol/landing-pages" element={<FutebolHome />} />
         <Route path="/marketplace" element={<MarketplaceConfig />} />
         <Route path="/marketplace/event" element={<SelecaoEAtribuicao />} />

@@ -91,7 +91,7 @@ export function MarketplaceLayout({ title, badge, logo, accent, onBack, usuario,
     useForceLightMode();
 
     return (
-        <div className="flex h-[100dvh] flex-col overflow-hidden bg-secondary text-primary" style={accentVars(accent)}>
+        <div className="flex h-[100dvh] flex-col overflow-hidden bg-primary text-primary md:bg-secondary" style={accentVars(accent)}>
             {/* Barra INGRESSE (escura) */}
             <header className="bg-primary-solid h-[56px] shrink-0">
                 <div className="mx-auto flex h-[56px] w-full items-center justify-between px-4 md:px-6">
@@ -145,7 +145,7 @@ export function MarketplaceLayout({ title, badge, logo, accent, onBack, usuario,
                 </div>
             </div>
 
-            <main className="mx-auto w-full min-h-0 flex-1 overflow-y-auto p-4">{children}</main>
+            <main className="mx-auto w-full min-h-0 flex-1 overflow-y-auto p-0 md:p-4">{children}</main>
         </div>
     );
 }

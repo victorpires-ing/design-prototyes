@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router";
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronLeft, Minus, Package, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
+import { AlertTriangle, CheckCircle, ChevronDown, Minus, Package, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Badge } from "@/components/base/badges/badges";
@@ -571,7 +571,7 @@ export function SelecaoEAtribuicao() {
 
     const progresso = unidades.length > 0 ? Math.round((unidadesProntas / unidades.length) * 100) : 0;
     const atribuicaoLayout = (
-        <div className="-m-4 flex flex-col gap-6 md:m-0 md:mx-auto md:w-full md:max-w-[1446px] lg:flex-row lg:justify-center">
+        <div className="mx-auto flex w-full max-w-[1446px] flex-col gap-6 lg:flex-row lg:justify-center">
             <div className="flex w-full flex-col gap-8 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary lg:w-[1062px]">
                 <h2 className="text-lg font-bold text-primary">{unidades.length > 1 ? "Para quem são essas inscrições?" : "Para quem é essa inscrição?"}</h2>
 
@@ -619,7 +619,7 @@ export function SelecaoEAtribuicao() {
     ) : null;
     const umaDataLayout = (
         <div className="grid w-full grid-cols-1 gap-6 lg:h-full lg:grid-cols-[1fr_640px] lg:overflow-hidden">
-            <div className="-mx-4 -mt-4 h-[260px] overflow-clip bg-secondary lg:mx-0 lg:mt-0 lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary">
+            <div className="h-[260px] overflow-clip bg-secondary lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary">
                 {config.mapa ? (
                     <img src={config.mapa} alt="Mapa do local" className="h-full w-full object-cover" />
                 ) : (
@@ -628,7 +628,7 @@ export function SelecaoEAtribuicao() {
             </div>
             <div className="flex w-full flex-col gap-4 lg:h-full lg:min-h-0 lg:max-w-[640px]">
                 {cupomBlock}
-                <div className="flex flex-col overflow-clip rounded-2xl bg-primary ring-1 ring-border-secondary lg:min-h-0 lg:flex-1">
+                <div className="flex flex-col overflow-clip bg-primary md:rounded-2xl md:ring-1 md:ring-border-secondary lg:min-h-0 lg:flex-1">
                     <div className="flex flex-col px-4 pt-4 pb-4 md:px-5 md:pt-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
                         {dataHeader}
                         {conteudo}
@@ -641,11 +641,7 @@ export function SelecaoEAtribuicao() {
 
     const produtosLayout = (
         <div className="mx-auto flex w-full max-w-[1446px] flex-col gap-6 lg:flex-row lg:justify-center">
-            <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary md:p-5 lg:w-[1062px]">
-                <button type="button" onClick={voltarEtapa} className="flex w-fit items-center gap-1.5 text-sm font-semibold text-brand-secondary transition hover:text-brand-secondary_hover">
-                    <ChevronLeft className="size-4" />
-                    Voltar para seleção de ingressos
-                </button>
+            <div className="flex w-full flex-col gap-4 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary lg:w-[1062px]">
                 <div className="flex flex-col gap-0.5">
                     <h2 className="text-xl font-bold text-primary">Leve mais do que o ingresso</h2>
                     <p className="text-sm text-tertiary">Compre online e retire no dia do evento.</p>
@@ -689,13 +685,13 @@ export function SelecaoEAtribuicao() {
             ) : config.mapa ? (
                 /* Layout com mapa: container em altura total; mapa ocupa o resto, seleção fixa em 640px com scroll interno */
                 <div className="grid w-full grid-cols-1 gap-6 lg:h-full lg:grid-cols-[1fr_640px] lg:overflow-hidden">
-                    <div className="-mx-4 -mt-4 h-[320px] overflow-clip bg-secondary lg:mx-0 lg:mt-0 lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary">
+                    <div className="h-[320px] overflow-clip bg-secondary lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary">
                         <img src={config.mapa} alt="Mapa do local" className="h-full w-full object-cover" />
                     </div>
 
                     <div className="flex w-full flex-col gap-4 lg:h-full lg:min-h-0 lg:max-w-[640px]">
                         {cupomBlock}
-                        <div className="flex flex-col overflow-clip rounded-2xl bg-primary ring-1 ring-border-secondary lg:min-h-0 lg:flex-1">
+                        <div className="flex flex-col overflow-clip bg-primary md:rounded-2xl md:ring-1 md:ring-border-secondary lg:min-h-0 lg:flex-1">
                             <div className="flex flex-col p-4 md:p-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
                                 {abas}
                                 {conteudo}
@@ -707,7 +703,7 @@ export function SelecaoEAtribuicao() {
             ) : (
                 /* Layout sem mapa: seleção à esquerda, capa + cupom + resumo à direita */
                 <div className="flex w-full flex-col gap-6 lg:flex-row lg:justify-center">
-                    <div className="flex w-full flex-col rounded-2xl bg-primary p-4 ring-1 ring-border-secondary md:p-5 lg:w-[640px]">
+                    <div className="flex w-full flex-col bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary lg:w-[640px]">
                         {abas}
                         {conteudo}
                     </div>

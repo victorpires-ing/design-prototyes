@@ -1,5 +1,20 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { ArrowLeft, HelpCircle, Share07 } from "@untitledui/icons";
+
+/**
+ * Força o light mode enquanto o marketplace está montado, sem alterar a
+ * preferência global de tema (não toca no localStorage). Restaura ao sair.
+ */
+function useForceLightMode() {
+    useEffect(() => {
+        const root = document.documentElement;
+        const tinhaDark = root.classList.contains("dark-mode");
+        root.classList.remove("dark-mode");
+        return () => {
+            if (tinhaDark) root.classList.add("dark-mode");
+        };
+    }, []);
+}
 
 interface MarketplaceLayoutProps {
     /** Título exibido no subheader (nome do evento/teste). */
@@ -49,6 +64,8 @@ const INGRESSE_LOGO = "https://auth.prod.ingresse.com/resources/2ibrw/login/cust
  * Reaproveitado por todas as telas do produto Marketplace.
  */
 export function MarketplaceLayout({ title, badge, logo, accent, onBack, usuario, onAcessar, children }: MarketplaceLayoutProps) {
+    useForceLightMode();
+
     return (
         <div className="flex h-[100dvh] flex-col overflow-hidden bg-secondary text-primary" style={accentVars(accent)}>
             {/* Barra INGRESSE (escura) */}

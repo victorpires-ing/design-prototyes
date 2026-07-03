@@ -60,6 +60,7 @@ export type BackstageItem =
     | "bordero"
     | "transferencias"
     | "comparativos"
+    | "relatorio-questionarios"
     | "chave-de-acesso"
     | "formularios-compra";
 
@@ -184,6 +185,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     bordero: "Borderô",
     transferencias: "Transferências",
     comparativos: "Comparativos",
+    "relatorio-questionarios": "Questionários",
     "chave-de-acesso": "Chave de acesso",
     "formularios-compra": "Perguntas por ingresso",
 };
@@ -613,6 +615,9 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                     >
                         Comparativos
                     </TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="relatorio-questionarios" textValue="Questionários" href="/backstage/relatorios/questionarios">
+                    <TreeView.ItemContent className={itemClass("relatorio-questionarios")}>Questionários</TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>
 

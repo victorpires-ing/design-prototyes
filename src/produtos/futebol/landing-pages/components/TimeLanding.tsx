@@ -243,7 +243,17 @@ const DependentsNotice = ({ time }: { time: TimeConfig }) => (
         }}
     >
         <div className="flex items-start gap-4">
-            <FeaturedIcon icon={Users} size="lg" color={time.featuredIconColor ?? "brand"} theme="gradient" />
+            {time.featuredIconColor === "gray" ? (
+                <FeaturedIcon icon={Users} size="lg" color="gray" theme="gradient" />
+            ) : (
+                <span
+                    aria-hidden="true"
+                    className="flex size-12 shrink-0 items-center justify-center rounded-full text-white"
+                    style={{ backgroundColor: time.palette.accent, boxShadow: `0 0 0 4px ${time.palette.accentSoft}` }}
+                >
+                    <Users className="size-6" data-icon />
+                </span>
+            )}
             <div className="flex flex-col gap-1">
                 <h2 className="text-base font-bold text-white md:text-lg">
                     Vai ao jogo acompanhado?

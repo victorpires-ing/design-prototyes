@@ -23,7 +23,9 @@ import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionar
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
-import { Home as FutebolHome } from '../produtos/futebol/landing-pages/pages/home';
+import { SeletorTimes } from '../produtos/futebol/landing-pages/pages/SeletorTimes';
+import { Gremio } from '../produtos/futebol/landing-pages/pages/Gremio';
+import { Botafogo } from '../produtos/futebol/landing-pages/pages/Botafogo';
 import { PasswordGate } from '../produtos/novo-site/components/PasswordGate';
 import { EventDetails } from '../produtos/novo-site/home/pages/event-details';
 import { Categorias } from '../produtos/novo-site/home/pages/categorias';
@@ -205,7 +207,9 @@ export default function App() {
         <Route path="/ticket/ts-academy/sports-week" element={<TsAcademySecao categoria="sports-week" />} />
         <Route path="/ticket/ts-academy/evento/:id" element={<TsAcademyEventoInscricao />} />
         <Route path="/ticket/ts-academy/curso/:id" element={<TsAcademyCursoDetalhe />} />
-        <Route path="/futebol/landing-pages" element={<FutebolHome />} />
+        <Route path="/futebol/landing-pages" element={<SeletorTimes />} />
+        <Route path="/futebol/landing-pages/gremio" element={<Gremio />} />
+        <Route path="/futebol/landing-pages/botafogo" element={<Botafogo />} />
         <Route path="/marketplace" element={<MarketplaceConfig />} />
         <Route path="/marketplace/event" element={<SelecaoEAtribuicao />} />
         <Route path="/marketplace/sucesso" element={<MarketplaceSucesso />} />

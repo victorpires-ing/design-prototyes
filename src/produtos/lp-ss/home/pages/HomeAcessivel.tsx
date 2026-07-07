@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Calendar, Check, ChevronDown, ClockStopwatch, MarkerPin01, Menu01, XClose } from "@untitledui/icons";
+import { Calendar, Check, ClockStopwatch, MarkerPin01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import { VersaoSwitch } from "../../components/VersaoSwitch";
 import { BABY, EVENTO, FAQ, INCLUSAO, KITS, LARGADAS_INTRO, LOTES_DATAS, LOTES_OBS, ONDAS, SOBRE } from "../data/evento";
@@ -17,9 +17,7 @@ import { BABY, EVENTO, FAQ, INCLUSAO, KITS, LARGADAS_INTRO, LOTES_DATAS, LOTES_O
  * - Imagens com alt e em tons de cinza (foco no conteúdo)
  */
 export function HomeAcessivel() {
-    const [faqAberto, setFaqAberto] = useState<number | null>(null);
     const [scrolled, setScrolled] = useState(false);
-    const [menuAberto, setMenuAberto] = useState(false);
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 40);
         onScroll();
@@ -28,12 +26,12 @@ export function HomeAcessivel() {
     }, []);
 
     const nav = [
-        { label: "Sobre", href: "#sobre" },
+        { label: "Inscreva-se", href: "#topo" },
         { label: "Kits", href: "#kits" },
         { label: "Programação", href: "#programacao" },
         { label: "Grupos e Benefícios", href: "#grupos-beneficios" },
         { label: "Dúvidas", href: "#faq" },
-        { label: "Minhas compras", href: "#minhas-compras" },
+        { label: "Minhas inscrições", href: "#minhas-compras" },
     ];
 
     return (
@@ -55,52 +53,30 @@ export function HomeAcessivel() {
 
             {/* ===== Cabeçalho ===== */}
             <header className={cx("sticky z-50 border-b-2 border-black bg-white transition-all duration-300", scrolled ? "top-0" : "top-9")}>
-                <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 md:px-8">
-                    <a href="#topo" className="flex items-center gap-2.5 text-lg font-black tracking-tight" aria-label="Ticket Sports e São Silvestre — início">
-                        TICKET SPORTS
-                        <span className="h-5 w-px bg-black" aria-hidden="true" />
-                        SÃO SILVESTRE
-                    </a>
-                    <nav aria-label="Navegação principal" className="hidden flex-wrap items-center gap-x-5 gap-y-1 lg:flex">
-                        {nav.map((n) => (
-                            <a
-                                key={n.href}
-                                href={n.href}
-                                className="rounded px-1 py-1 text-sm font-semibold text-black underline decoration-transparent underline-offset-4 transition hover:decoration-black focus-visible:decoration-black"
-                            >
-                                {n.label}
-                            </a>
-                        ))}
-                    </nav>
+                <div className="mx-auto max-w-5xl px-5 py-4 text-center md:px-8">
+                    {/* Parte 1: frase de contexto */}
+                    <p className="text-sm font-semibold leading-relaxed md:text-base">
+                        Você está no site da <strong className="font-black">Ticket Sports</strong>, vendedora oficial da{" "}
+                        <strong className="font-black">São Silvestre 2026 — 101ª edição</strong>.
+                    </p>
 
-                    {/* Botão do menu (mobile) */}
-                    <button
-                        type="button"
-                        onClick={() => setMenuAberto((v) => !v)}
-                        aria-expanded={menuAberto}
-                        aria-controls="menu-mobile"
-                        aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}
-                        className="flex size-11 items-center justify-center rounded-lg border-2 border-black text-black lg:hidden"
-                    >
-                        {menuAberto ? <XClose className="size-6" /> : <Menu01 className="size-6" />}
-                    </button>
+                    {/* Parte 2: menu */}
+                    <nav aria-label="Navegação principal" className="mt-3 border-t-2 border-black pt-3">
+                        <p className="text-sm font-bold">O que você deseja ver:</p>
+                        <ul className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                            {nav.map((n) => (
+                                <li key={n.label}>
+                                    <a
+                                        href={n.href}
+                                        className="inline-block rounded-md border-2 border-black px-3.5 py-2 text-sm font-bold text-black transition hover:bg-black hover:text-white focus-visible:bg-black focus-visible:text-white"
+                                    >
+                                        {n.label}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    </nav>
                 </div>
-
-                {/* Menu mobile */}
-                {menuAberto && (
-                    <nav id="menu-mobile" aria-label="Navegação" className="flex flex-col border-t-2 border-black lg:hidden">
-                        {nav.map((n) => (
-                            <a
-                                key={n.href}
-                                href={n.href}
-                                onClick={() => setMenuAberto(false)}
-                                className="border-b border-neutral-300 px-5 py-4 text-base font-bold text-black last:border-b-0 hover:bg-neutral-100"
-                            >
-                                {n.label}
-                            </a>
-                        ))}
-                    </nav>
-                )}
             </header>
 
             <main id="conteudo">
@@ -145,7 +121,7 @@ export function HomeAcessivel() {
                 </section>
 
                 {/* ===== Sobre ===== */}
-                <Secao id="sobre" chapeu="Uma tradição de fim de ano" titulo="Sobre a prova">
+                <Secao id="sobre" titulo="Sobre a prova" proximo="#kits">
                     <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
                         <div>
                             <p className="text-xl font-black">{SOBRE.lead}</p>
@@ -166,7 +142,7 @@ export function HomeAcessivel() {
                 </Secao>
 
                 {/* ===== Kits ===== */}
-                <Secao id="kits" chapeu="Escolha sua experiência" titulo="Kits de participação">
+                <Secao id="kits" titulo="Kits de participação" proximo="#programacao">
                     <p className="mb-6 text-base md:text-lg">Você pode escolher entre diferentes kits de participação:</p>
                     <ul className="grid gap-6 md:grid-cols-3">
                         {KITS.map((k) => (
@@ -190,7 +166,7 @@ export function HomeAcessivel() {
                 </Secao>
 
                 {/* ===== Programação ===== */}
-                <Secao id="programacao" chapeu="Datas, lotes e largadas" titulo="Programação">
+                <Secao id="programacao" titulo="Programação" proximo="#grupos-beneficios">
                     <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
                         {/* Datas e lotes */}
                         <div className="flex flex-col gap-6">
@@ -254,7 +230,7 @@ export function HomeAcessivel() {
                 </Secao>
 
                 {/* ===== Grupos e Benefícios ===== */}
-                <Secao id="grupos-beneficios" chapeu="Vagas especiais" titulo="Grupos e Benefícios">
+                <Secao id="grupos-beneficios" titulo="Grupos e Benefícios" proximo="#faq">
                     <div className="grid gap-6 md:grid-cols-2">
                         <div className="flex flex-col rounded-xl border-2 border-black p-6">
                             <h3 className="text-xl font-black">Grupos Esportivos</h3>
@@ -274,33 +250,14 @@ export function HomeAcessivel() {
                 </Secao>
 
                 {/* ===== FAQ ===== */}
-                <Secao id="faq" chapeu="Antes de correr" titulo="Dúvidas frequentes">
-                    <ul className="flex flex-col gap-3">
-                        {FAQ.map((f, i) => {
-                            const aberto = faqAberto === i;
-                            return (
-                                <li key={i} className="rounded-xl border-2 border-black">
-                                    <h3>
-                                        <button
-                                            type="button"
-                                            aria-expanded={aberto}
-                                            aria-controls={`faq-resposta-${i}`}
-                                            id={`faq-pergunta-${i}`}
-                                            onClick={() => setFaqAberto(aberto ? null : i)}
-                                            className="flex w-full items-center justify-between gap-4 p-5 text-left text-base font-bold"
-                                        >
-                                            {f.q}
-                                            <ChevronDown aria-hidden="true" className={cx("size-5 shrink-0 transition", aberto && "rotate-180")} />
-                                        </button>
-                                    </h3>
-                                    {aberto && (
-                                        <p id={`faq-resposta-${i}`} role="region" aria-labelledby={`faq-pergunta-${i}`} className="border-t-2 border-black p-5 text-sm leading-relaxed text-neutral-800">
-                                            {f.a}
-                                        </p>
-                                    )}
-                                </li>
-                            );
-                        })}
+                <Secao id="faq" titulo="Dúvidas frequentes">
+                    <ul className="flex flex-col gap-4">
+                        {FAQ.map((f, i) => (
+                            <li key={i} className="rounded-xl border-2 border-black p-5">
+                                <h3 className="text-base font-bold">{f.q}</h3>
+                                <p className="mt-2 border-t border-neutral-300 pt-3 text-sm leading-relaxed text-neutral-800">{f.a}</p>
+                            </li>
+                        ))}
                     </ul>
                 </Secao>
             </main>
@@ -313,15 +270,32 @@ export function HomeAcessivel() {
     );
 }
 
-function Secao({ id, chapeu, titulo, children }: { id: string; chapeu: string; titulo: string; children: React.ReactNode }) {
+function Secao({ id, titulo, proximo, children }: { id: string; titulo: string; proximo?: string; children: React.ReactNode }) {
     return (
         <section id={id} aria-labelledby={`${id}-titulo`} className="scroll-mt-20 border-b-2 border-black">
             <div className="mx-auto max-w-6xl px-5 py-14 md:px-8 md:py-20">
-                <p className="text-sm font-bold uppercase tracking-widest">{chapeu}</p>
-                <h2 id={`${id}-titulo`} className="mt-1 mb-8 text-3xl font-black md:text-4xl">
+                <h2 id={`${id}-titulo`} className="mb-8 text-3xl font-black md:text-4xl">
                     {titulo}
                 </h2>
                 {children}
+
+                {/* Navegação entre blocos */}
+                <nav aria-label="Navegação entre blocos" className="mt-10 flex flex-wrap items-center gap-3 border-t-2 border-black pt-6">
+                    {proximo && (
+                        <a
+                            href={proximo}
+                            className="inline-flex items-center gap-2 rounded-md bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-neutral-800"
+                        >
+                            Ir para o próximo bloco →
+                        </a>
+                    )}
+                    <a
+                        href="#topo"
+                        className="inline-flex items-center gap-2 rounded-md border-2 border-black px-5 py-3 text-sm font-bold text-black transition hover:bg-black hover:text-white"
+                    >
+                        ↑ Voltar ao início
+                    </a>
+                </nav>
             </div>
         </section>
     );

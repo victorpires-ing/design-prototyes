@@ -41,7 +41,7 @@ export function HomeClaro() {
         { label: "Programação", href: "#programacao" },
         { label: "Grupos e Benefícios", href: "#grupos-beneficios" },
         { label: "Dúvidas", href: "#faq" },
-        { label: "Minhas compras", href: "#minhas-compras" },
+        { label: "Minha inscrição", href: "#minhas-compras" },
     ];
 
     return (

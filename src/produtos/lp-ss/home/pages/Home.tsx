@@ -52,7 +52,7 @@ export function Home() {
         { label: "Programação", href: "#programacao" },
         { label: "Grupos e Benefícios", href: "#grupos-beneficios" },
         { label: "Dúvidas", href: "#faq" },
-        { label: "Minhas compras", href: "#inscricao" },
+        { label: "Minha inscrição", href: "#inscricao" },
     ];
 
     return (
@@ -76,7 +76,7 @@ export function Home() {
                     <nav className="hidden items-center gap-5 lg:flex">
                         {nav.map((n) => (
                             <Fragment key={n.href}>
-                                {n.label === "Minhas compras" && <span className="h-5 w-px bg-white/15" aria-hidden="true" />}
+                                {n.label === "Minha inscrição" && <span className="h-5 w-px bg-white/15" aria-hidden="true" />}
                                 <a
                                     href={n.href}
                                     onClick={(e) => scrollSuave(e, n.href)}
@@ -105,7 +105,7 @@ export function Home() {
                                 onClick={(e) => scrollSuave(e, n.href)}
                                 className={cx(
                                     "rounded-lg px-2 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/5",
-                                    n.label === "Minhas compras" && "mt-1 border-t border-white/10 pt-3.5",
+                                    n.label === "Minha inscrição" && "mt-1 border-t border-white/10 pt-3.5",
                                 )}
                             >
                                 {n.label}

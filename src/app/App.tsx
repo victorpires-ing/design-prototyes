@@ -7,6 +7,10 @@ import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
 import { ProductSelection } from '../app/components/ProductSelection';
 import { CortesiasProvider } from '../produtos/backstage/cortesias/data/cortesias-store';
 import { EmissaoCortesias } from '../produtos/backstage/cortesias/pages/EmissaoCortesias';
+import { PermissaoEnvio } from '../produtos/backstage/permissao-envio/pages/PermissaoEnvio';
+import { NovaPermissao } from '../produtos/backstage/permissao-envio/pages/NovaPermissao';
+import { EquipeEPermissoes } from '../produtos/backstage/equipe-e-permissoes/pages/EquipeEPermissoes';
+import { NovoMembro } from '../produtos/backstage/equipe-e-permissoes/pages/NovoMembro';
 import { RelatorioPedidos } from '../produtos/backstage/cortesias/pages/RelatorioPedidos';
 import { SelecaoItens } from '../produtos/backstage/cortesias/pages/SelecaoItens';
 import { VerificacaoFinal } from '../produtos/backstage/cortesias/pages/VerificacaoFinal';
@@ -15,10 +19,13 @@ import { Bordero } from '../produtos/backstage/relatorios/pages/Bordero';
 import { Transacoes } from '../produtos/backstage/relatorios/pages/Transacoes';
 import { Transferencias } from '../produtos/backstage/relatorios/pages/Transferencias';
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
+import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
-import { Home as FutebolHome } from '../produtos/futebol/landing-pages/pages/home';
+import { SeletorTimes } from '../produtos/futebol/landing-pages/pages/SeletorTimes';
+import { Gremio } from '../produtos/futebol/landing-pages/pages/Gremio';
+import { Botafogo } from '../produtos/futebol/landing-pages/pages/Botafogo';
 import { PasswordGate } from '../produtos/novo-site/components/PasswordGate';
 import { EventDetails } from '../produtos/novo-site/home/pages/event-details';
 import { Categorias } from '../produtos/novo-site/home/pages/categorias';
@@ -101,6 +108,7 @@ import { SolicitacaoVagas } from '../produtos/landing-pages/sao-silvestre/pages/
 import { SolicitacaoBeneficioPcd } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoBeneficioPcd';
 import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
 import { TransferirInscricao as CarteiraWebTransferir } from '../produtos/carteira-web/pages/TransferirInscricao';
+import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/SolicitacoesInbox';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -132,6 +140,12 @@ export default function App() {
         <Route path="/" element={<ProductSelection />} />
         <Route path="/backstage" element={<RelatorioPedidos />} />
         <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
+        <Route path="/backstage/permissao-envio" element={<PermissaoEnvio />} />
+        <Route path="/backstage/permissao-envio/nova" element={<NovaPermissao />} />
+        <Route path="/backstage/permissao-envio/:id/editar" element={<NovaPermissao />} />
+        <Route path="/backstage/equipe-e-permissoes" element={<EquipeEPermissoes />} />
+        <Route path="/backstage/equipe-e-permissoes/novo" element={<NovoMembro />} />
+        <Route path="/backstage/equipe-e-permissoes/:id/editar" element={<NovoMembro />} />
         <Route path="/backstage/itens" element={<SelecaoItens />} />
         <Route path="/backstage/destinatarios" element={<EmissaoCortesias />} />
         <Route path="/backstage/verificacao" element={<VerificacaoFinal />} />
@@ -140,6 +154,7 @@ export default function App() {
         <Route path="/backstage/relatorios/acesso" element={<Acesso />} />
         <Route path="/backstage/relatorios/bordero" element={<Bordero />} />
         <Route path="/backstage/relatorios/transferencias" element={<Transferencias />} />
+        <Route path="/backstage/relatorios/questionarios" element={<Questionarios />} />
         <Route path="/backstage/marketing/chave-de-acesso" element={<ChaveDeAcesso />} />
         <Route path="/backstage/marketing/chave-de-acesso/vincular-itens" element={<VincularItens />} />
         <Route path="/backstage/marketing/chave-de-acesso/lista" element={<ListaChaves />} />
@@ -198,7 +213,9 @@ export default function App() {
         <Route path="/lp-ss/home" element={<LpSsHome />} />
         <Route path="/lp-ss/home/acessivel" element={<LpSsHomeAcessivel />} />
         <Route path="/lp-ss/home/claro" element={<LpSsHomeClaro />} />
-        <Route path="/futebol/landing-pages" element={<FutebolHome />} />
+        <Route path="/futebol/landing-pages" element={<SeletorTimes />} />
+        <Route path="/futebol/landing-pages/gremio" element={<Gremio />} />
+        <Route path="/futebol/landing-pages/botafogo" element={<Botafogo />} />
         <Route path="/marketplace" element={<MarketplaceConfig />} />
         <Route path="/marketplace/event" element={<SelecaoEAtribuicao />} />
         <Route path="/marketplace/sucesso" element={<MarketplaceSucesso />} />
@@ -225,6 +242,7 @@ export default function App() {
         <Route path="/landing-pages/sao-silvestre/solicitar-beneficio-pcd" element={<SolicitacaoBeneficioPcd />} />
         <Route path="/carteira-web" element={<CarteiraWeb />} />
         <Route path="/carteira-web/transferir" element={<CarteiraWebTransferir />} />
+        <Route path="/aprovacoes/solicitacoes" element={<SolicitacoesInbox />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </PesquisasProvider>

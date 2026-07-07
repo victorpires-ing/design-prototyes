@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router";
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronLeft, Copy01, Minus, Package, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
+import { AlertTriangle, CheckCircle, ChevronDown, Minus, Package, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
-import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -300,7 +299,14 @@ export function SelecaoEAtribuicao() {
     const temProdutos = config.produtos.length > 0;
 
     const fixoTabAtiva = fixoTabs.find((t) => t.id === aba);
-    const dataAtiva = config.datas.find((d) => d.id === aba);
+    const dataAtiva = datasVenda.find((d) => d.id === aba);
+
+    // Se a aba ativa deixou de existir (ex: desmarcar "Datas" ou "Combo"),
+    // volta automaticamente para a primeira aba válida.
+    const abaValida = !!fixoTabAtiva || (aba === "combo" && temDinamicos) || !!dataAtiva;
+    useEffect(() => {
+        if (!abaValida) setAba(abaInicial);
+    }, [abaValida, abaInicial]);
 
     // Para o teste: todas as perguntas do evento aparecem em cada item comprado (combo conta como 1).
     const perguntasDoGrupo = (_key: string) => config.perguntas;
@@ -330,28 +336,6 @@ export function SelecaoEAtribuicao() {
     };
     const unidadesProntas = unidades.filter(unidadeOk).length;
     const podeFinalizar = unidades.length > 0 && unidadesProntas === unidades.length;
-
-    // Replica a atribuição + respostas de uma unidade para os demais ingressos.
-    const aplicarATodos = (origemId: string) => {
-        const origem = unidades.find((u) => u.id === origemId);
-        const a = atrib[origemId];
-        if (!origem || !a) return;
-        const pergs = perguntasDaUnidade(origem);
-        setAtrib((prev) => {
-            const next = { ...prev };
-            for (const u of unidades) if (!u.isProduto) next[u.id] = { ...a };
-            return next;
-        });
-        setRespostas((prev) => {
-            const next = { ...prev };
-            for (const u of unidades) {
-                if (u.isProduto || u.id === origemId) continue;
-                for (const p of pergs) next[`${u.id}:${p.id}`] = prev[`${origemId}:${p.id}`] ?? "";
-            }
-            return next;
-        });
-        toast.success("Dados aplicados a todos os ingressos");
-    };
 
     // Etapas: seleção → produtos (se houver) → atribuição.
     const irProximo = () => {
@@ -585,39 +569,38 @@ export function SelecaoEAtribuicao() {
         </div>
     );
 
-    const totalIngressosUnid = unidades.filter((u) => !u.isProduto).length;
     const progresso = unidades.length > 0 ? Math.round((unidadesProntas / unidades.length) * 100) : 0;
     const atribuicaoLayout = (
         <div className="mx-auto flex w-full max-w-[1446px] flex-col gap-6 lg:flex-row lg:justify-center">
-            <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary md:p-5 lg:w-[1062px]">
-                <h2 className="text-lg font-bold text-primary">Quem usará estes itens?</h2>
+            <div className="flex w-full flex-col gap-8 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary lg:w-[1062px]">
+                <h2 className="text-lg font-bold text-primary">{unidades.length > 1 ? "Para quem são essas inscrições?" : "Para quem é essa inscrição?"}</h2>
 
-                {/* Progresso da atribuição */}
-                <div className="flex flex-col gap-2 rounded-xl bg-primary p-0">
-                    <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-semibold text-primary">
-                            {unidadesProntas} de {unidades.length} {unidades.length === 1 ? "item definido" : "itens definidos"}
-                        </span>
-                    </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-quaternary">
-                        <div className="h-full rounded-full bg-brand-solid transition-all duration-200 ease-linear" style={{ width: `${progresso}%` }} />
-                    </div>
-                </div>
 
-                {unidades.map((u) => (
-                    <AtribuicaoCard
-                        key={u.id}
-                        unidade={u}
-                        valor={atrib[u.id]}
-                        perguntas={perguntasDaUnidade(u)}
-                        getResposta={(pid) => respostas[`${u.id}:${pid}`] ?? ""}
-                        onAtrib={(v) => setAtrib((p) => ({ ...p, [u.id]: v }))}
-                        onAbrirPerguntas={() => setPerguntaModalUnidade(u.id)}
-                        onRemover={() => removerUnidade(u.key)}
-                        podeAplicarTodos={!u.isProduto && totalIngressosUnid > 1 && unidadeOk(u)}
-                        onAplicarTodos={() => aplicarATodos(u.id)}
-                    />
-                ))}
+                {unidades.map((u) =>
+                    config.modoAtribuicao === "accordion" ? (
+                        <AtribuicaoAccordionCard
+                            key={u.id}
+                            unidade={u}
+                            valor={atrib[u.id]}
+                            perguntas={perguntasDaUnidade(u)}
+                            getResposta={(pid) => respostas[`${u.id}:${pid}`] ?? ""}
+                            onResposta={(pid, val) => setRespostas((p) => ({ ...p, [`${u.id}:${pid}`]: val }))}
+                            onAtrib={(v) => setAtrib((p) => ({ ...p, [u.id]: v }))}
+                            onRemover={() => removerUnidade(u.key)}
+                        />
+                    ) : (
+                        <AtribuicaoCard
+                            key={u.id}
+                            unidade={u}
+                            valor={atrib[u.id]}
+                            perguntas={perguntasDaUnidade(u)}
+                            getResposta={(pid) => respostas[`${u.id}:${pid}`] ?? ""}
+                            onAtrib={(v) => setAtrib((p) => ({ ...p, [u.id]: v }))}
+                            onAbrirPerguntas={() => setPerguntaModalUnidade(u.id)}
+                            onRemover={() => removerUnidade(u.key)}
+                        />
+                    ),
+                )}
             </div>
             <div className="flex w-full flex-col gap-4 lg:w-[360px] lg:shrink-0">{grupos.length > 0 && resumoCard}</div>
         </div>
@@ -636,7 +619,7 @@ export function SelecaoEAtribuicao() {
     ) : null;
     const umaDataLayout = (
         <div className="grid w-full grid-cols-1 gap-6 lg:h-full lg:grid-cols-[1fr_640px] lg:overflow-hidden">
-            <div className="-mx-4 -mt-4 h-[260px] overflow-clip bg-secondary lg:mx-0 lg:mt-0 lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary">
+            <div className="h-[260px] overflow-clip bg-secondary lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary">
                 {config.mapa ? (
                     <img src={config.mapa} alt="Mapa do local" className="h-full w-full object-cover" />
                 ) : (
@@ -645,7 +628,7 @@ export function SelecaoEAtribuicao() {
             </div>
             <div className="flex w-full flex-col gap-4 lg:h-full lg:min-h-0 lg:max-w-[640px]">
                 {cupomBlock}
-                <div className="flex flex-col overflow-clip rounded-2xl bg-primary ring-1 ring-border-secondary lg:min-h-0 lg:flex-1">
+                <div className="flex flex-col overflow-clip bg-primary md:rounded-2xl md:ring-1 md:ring-border-secondary lg:min-h-0 lg:flex-1">
                     <div className="flex flex-col px-4 pt-4 pb-4 md:px-5 md:pt-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
                         {dataHeader}
                         {conteudo}
@@ -658,16 +641,12 @@ export function SelecaoEAtribuicao() {
 
     const produtosLayout = (
         <div className="mx-auto flex w-full max-w-[1446px] flex-col gap-6 lg:flex-row lg:justify-center">
-            <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary md:p-5 lg:w-[1062px]">
-                <button type="button" onClick={voltarEtapa} className="flex w-fit items-center gap-1.5 text-sm font-semibold text-brand-secondary transition hover:text-brand-secondary_hover">
-                    <ChevronLeft className="size-4" />
-                    Voltar para seleção de ingressos
-                </button>
+            <div className="flex w-full flex-col gap-4 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary lg:w-[1062px]">
                 <div className="flex flex-col gap-0.5">
                     <h2 className="text-xl font-bold text-primary">Leve mais do que o ingresso</h2>
                     <p className="text-sm text-tertiary">Compre online e retire no dia do evento.</p>
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
                     {config.produtos.map((p) => (
                         <ProdutoCard key={p.id} produto={p} qtd={prodQtd(p.id)} onAbrirVariacao={() => setVariacaoProduto(p)} onSetQtd={(n) => setProdQtd(p, null, n)} />
                     ))}
@@ -706,13 +685,13 @@ export function SelecaoEAtribuicao() {
             ) : config.mapa ? (
                 /* Layout com mapa: container em altura total; mapa ocupa o resto, seleção fixa em 640px com scroll interno */
                 <div className="grid w-full grid-cols-1 gap-6 lg:h-full lg:grid-cols-[1fr_640px] lg:overflow-hidden">
-                    <div className="-mx-4 -mt-4 h-[320px] overflow-clip bg-secondary lg:mx-0 lg:mt-0 lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary">
+                    <div className="h-[320px] overflow-clip bg-secondary lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary">
                         <img src={config.mapa} alt="Mapa do local" className="h-full w-full object-cover" />
                     </div>
 
                     <div className="flex w-full flex-col gap-4 lg:h-full lg:min-h-0 lg:max-w-[640px]">
                         {cupomBlock}
-                        <div className="flex flex-col overflow-clip rounded-2xl bg-primary ring-1 ring-border-secondary lg:min-h-0 lg:flex-1">
+                        <div className="flex flex-col overflow-clip bg-primary md:rounded-2xl md:ring-1 md:ring-border-secondary lg:min-h-0 lg:flex-1">
                             <div className="flex flex-col p-4 md:p-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
                                 {abas}
                                 {conteudo}
@@ -724,7 +703,7 @@ export function SelecaoEAtribuicao() {
             ) : (
                 /* Layout sem mapa: seleção à esquerda, capa + cupom + resumo à direita */
                 <div className="flex w-full flex-col gap-6 lg:flex-row lg:justify-center">
-                    <div className="flex w-full flex-col rounded-2xl bg-primary p-4 ring-1 ring-border-secondary md:p-5 lg:w-[640px]">
+                    <div className="flex w-full flex-col bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary lg:w-[640px]">
                         {abas}
                         {conteudo}
                     </div>
@@ -886,8 +865,6 @@ function AtribuicaoCard({
     onAtrib,
     onAbrirPerguntas,
     onRemover,
-    podeAplicarTodos = false,
-    onAplicarTodos,
 }: {
     unidade: { id: string; key: string; nome: string; sub?: string; isProduto?: boolean; imagem?: string };
     valor?: { tipo: "meu" | "outro"; email: string; confirmado?: boolean };
@@ -896,8 +873,6 @@ function AtribuicaoCard({
     onAtrib: (v: { tipo: "meu" | "outro"; email: string; confirmado?: boolean }) => void;
     onAbrirPerguntas: () => void;
     onRemover: () => void;
-    podeAplicarTodos?: boolean;
-    onAplicarTodos?: () => void;
 }) {
     const tipo = valor?.tipo;
     const selecionado = !!tipo;
@@ -1017,11 +992,183 @@ function AtribuicaoCard({
                 )}
             </AnimatePresence>
 
-            {podeAplicarTodos && onAplicarTodos && (
-                <Button size="sm" color="link-color" iconLeading={Copy01} className="self-start" onClick={onAplicarTodos}>
-                    Aplicar estes dados a todos os ingressos
-                </Button>
+        </motion.div>
+    );
+}
+
+/** Badge compacto de status do formulário exibido no cabeçalho de cada linha do accordion. */
+function FormBadge({ ok }: { ok: boolean }) {
+    return (
+        <span
+            className={cx(
+                "shrink-0 rounded-md px-2 py-0.5 text-sm font-medium",
+                ok ? "bg-success-secondary text-success-primary" : "bg-warning-secondary text-warning-primary",
             )}
+        >
+            {ok ? "Formulário completo" : "Responda o formulário"}
+        </span>
+    );
+}
+
+/**
+ * Variante da atribuição em accordion: cada opção é uma linha expansível e o
+ * questionário aparece inline (sem modal). Usada quando config.modoAtribuicao === "accordion".
+ */
+function AtribuicaoAccordionCard({
+    unidade,
+    valor,
+    perguntas,
+    getResposta,
+    onResposta,
+    onAtrib,
+    onRemover,
+}: {
+    unidade: { id: string; key: string; nome: string; sub?: string; isProduto?: boolean; imagem?: string };
+    valor?: { tipo: "meu" | "outro"; email: string; confirmado?: boolean };
+    perguntas: PerguntaEvento[];
+    getResposta: (pid: string) => string;
+    onResposta: (pid: string, val: string) => void;
+    onAtrib: (v: { tipo: "meu" | "outro"; email: string; confirmado?: boolean }) => void;
+    onRemover: () => void;
+}) {
+    const tipo = valor?.tipo;
+    const email = valor?.email ?? "";
+    const confirmado = !!valor?.confirmado;
+    const obrigatoriasOk = perguntas.filter((p) => p.obrigatoria).every((p) => getResposta(p.id).trim() !== "");
+    const emailInvalido = tipo === "outro" && email.trim() !== "" && !emailValido(email);
+    const [enviando, setEnviando] = useState(false);
+    const [aberta, setAberta] = useState<"meu" | "outro" | null>(tipo ?? null);
+
+    // Enviar convite: loading simulado, depois confirma o destinatário.
+    const enviar = () => {
+        if (!emailValido(email) || enviando) return;
+        setEnviando(true);
+        setTimeout(() => {
+            setEnviando(false);
+            onAtrib({ tipo: "outro", email, confirmado: true });
+        }, 900);
+    };
+
+    const opcoes: { id: "meu" | "outro"; label: string }[] = [
+        { id: "meu", label: unidade.isProduto ? "Meu produto" : "Meu ingresso" },
+        { id: "outro", label: "Atribuir a outro usuário" },
+    ];
+
+    // Clique no cabeçalho: seleciona a opção (se ainda não for a atual) e abre; se já for a atual, alterna aberto/fechado.
+    const aoClicarCabecalho = (id: "meu" | "outro") => {
+        if (tipo !== id) {
+            onAtrib(id === "meu" ? { tipo: "meu", email } : { tipo: "outro", email, confirmado });
+            setAberta(id);
+        } else {
+            setAberta((a) => (a === id ? null : id));
+        }
+    };
+
+    // Questionário inline + botão "Salvar respostas" (recolhe a linha ao salvar).
+    const questionario = perguntas.length > 0 && (
+        <div className="flex flex-col gap-4">
+            <span className="text-md font-bold text-primary">Formulário do atleta</span>
+            {perguntas.map((p) => (
+                <CampoPergunta key={p.id} pergunta={p} valor={getResposta(p.id)} onChange={(v) => onResposta(p.id, v)} />
+            ))}
+            <Button size="md" color="primary" className="w-full" onClick={() => setAberta(null)}>
+                Salvar respostas
+            </Button>
+        </div>
+    );
+
+    return (
+        <motion.div layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex flex-col gap-4">
+            <div className="flex items-start gap-3">
+                {unidade.imagem ? (
+                    <img src={unidade.imagem} alt="" aria-hidden="true" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-border-secondary" />
+                ) : unidade.isProduto ? (
+                    <Package className="mt-0.5 size-5 shrink-0 text-fg-brand-primary" />
+                ) : (
+                    <QrCode01 className="mt-0.5 size-5 shrink-0 text-fg-brand-primary" />
+                )}
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-sm font-bold text-primary">{unidade.nome}</span>
+                    {unidade.sub && <span className="text-sm text-tertiary">{unidade.sub}</span>}
+                </div>
+                <button type="button" onClick={onRemover} aria-label="Remover" className="shrink-0 text-fg-error-primary transition hover:opacity-80">
+                    <Trash01 className="size-5" />
+                </button>
+            </div>
+
+            <div className="overflow-hidden rounded-xl ring-1 ring-border-secondary">
+                {opcoes.map((o, i) => {
+                    const selecionado = tipo === o.id;
+                    const expandida = aberta === o.id;
+                    const mostrarBadge = selecionado && perguntas.length > 0 && (o.id === "meu" || confirmado);
+                    return (
+                        <div key={o.id} className={cx(i > 0 && "border-t border-secondary")}>
+                            <button type="button" onClick={() => aoClicarCabecalho(o.id)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
+                                <span className={cx("flex size-5 shrink-0 items-center justify-center rounded-full ring-2", selecionado ? "ring-brand" : "ring-secondary")}>
+                                    {selecionado && <span className="size-2.5 rounded-full bg-brand-solid" />}
+                                </span>
+                                <span className={cx("min-w-0 flex-1 text-sm font-medium", selecionado ? "text-primary" : "text-tertiary")}>{o.label}</span>
+                                {mostrarBadge && <FormBadge ok={obrigatoriasOk} />}
+                                <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition duration-200", expandida && "rotate-180")} />
+                            </button>
+
+                            <AnimatePresence initial={false}>
+                                {expandida && (
+                                    <motion.div key="body" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">
+                                        <div className="flex flex-col gap-4 px-4 pb-4">
+                                            {o.id === "meu" && questionario}
+
+                                            {o.id === "outro" && !confirmado && (
+                                                <div className="flex flex-col gap-1.5">
+                                                    <div className={cx("flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 ring-1 transition focus-within:ring-2 focus-within:ring-brand", emailInvalido ? "ring-error" : "ring-border-primary")}>
+                                                        <input
+                                                            type="email"
+                                                            aria-label="E-mail"
+                                                            placeholder="Digite o e-mail"
+                                                            value={email}
+                                                            disabled={enviando}
+                                                            onChange={(e) => onAtrib({ tipo: "outro", email: e.target.value, confirmado: false })}
+                                                            onKeyDown={(e) => e.key === "Enter" && enviar()}
+                                                            className="min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-placeholder disabled:opacity-50"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={enviar}
+                                                            disabled={!emailValido(email) || enviando}
+                                                            aria-label="Enviar"
+                                                            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-brand-primary transition hover:bg-primary_hover disabled:cursor-not-allowed disabled:opacity-40"
+                                                        >
+                                                            {enviando ? <span className="size-5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Send01 className="size-5" />}
+                                                        </button>
+                                                    </div>
+                                                    {emailInvalido && <span className="text-sm text-error-primary">Informe um e-mail válido.</span>}
+                                                </div>
+                                            )}
+
+                                            {o.id === "outro" && confirmado && (
+                                                <>
+                                                    <div className="flex items-center gap-3 rounded-xl bg-secondary px-3.5 py-2.5">
+                                                        <Avatar size="sm" initials={(email.trim()[0] ?? "?").toUpperCase()} alt="" />
+                                                        <div className="flex min-w-0 flex-1 flex-col">
+                                                            <span className="truncate text-sm font-semibold text-primary">{email}</span>
+                                                            <span className="text-sm text-success-primary">Convite será enviado para este e-mail.</span>
+                                                        </div>
+                                                    </div>
+                                                    <Button size="md" color="secondary" className="w-full" onClick={() => onAtrib({ tipo: "outro", email, confirmado: false })}>
+                                                        Trocar titular
+                                                    </Button>
+                                                    {questionario}
+                                                </>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    );
+                })}
+            </div>
+
         </motion.div>
     );
 }

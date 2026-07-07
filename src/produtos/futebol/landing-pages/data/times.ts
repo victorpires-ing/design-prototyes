@@ -68,6 +68,8 @@ export interface TimeConfig {
     palette: TimePalette;
     /** Cor do FeaturedIcon no card de aviso. Default: "brand". */
     featuredIconColor?: "brand" | "gray";
+    /** Oculta o escudo/logo no topo do hero. */
+    ocultarEscudoTopo?: boolean;
     eventos: PosterEvento[];
     footer: TimeFooter;
 }
@@ -159,6 +161,7 @@ const botafogo: TimeConfig = {
     logo: BOTAFOGO_LOGO,
     hero: BotafogoHeader,
     featuredIconColor: "gray",
+    ocultarEscudoTopo: true,
     palette: {
         accent: "#111111",
         pageBg: "#0a0a0a",

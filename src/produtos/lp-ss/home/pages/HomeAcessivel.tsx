@@ -83,8 +83,7 @@ export function HomeAcessivel() {
                 {/* ===== Hero ===== */}
                 <section id="topo" aria-labelledby="hero-titulo" className="border-b-2 border-black">
                     <div className="mx-auto flex max-w-5xl flex-col items-center px-5 py-16 text-center md:px-8 md:py-24">
-                        <p className="text-sm font-bold uppercase tracking-widest">{EVENTO.edicao}</p>
-                        <h1 id="hero-titulo" className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:whitespace-nowrap lg:text-5xl">
+                        <h1 id="hero-titulo" className="text-3xl font-black leading-tight sm:text-4xl lg:whitespace-nowrap lg:text-5xl">
                             Corrida Internacional de São Silvestre
                         </h1>
                         <p className="mt-5 max-w-3xl text-xl font-bold md:text-2xl">{EVENTO.tagline}</p>

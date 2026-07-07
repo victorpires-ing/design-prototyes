@@ -103,7 +103,7 @@ const Hero = ({ time }: { time: TimeConfig }) => (
         />
 
         <div className="relative z-10 flex flex-1 flex-col items-center">
-            <Emblem time={time} />
+            {!time.ocultarEscudoTopo && <Emblem time={time} />}
             <h1 className="mt-6 max-w-lg text-center text-[40px] font-medium leading-tight tracking-tight text-white md:text-6xl">
                 {time.heroTitulo}
             </h1>
@@ -189,13 +189,15 @@ const HeroV2 = ({ time }: { time: TimeConfig }) => (
         />
 
         <div className="relative z-10 mx-auto flex min-h-[520px] w-full max-w-[1280px] flex-col px-4 py-8 md:min-h-[640px] md:px-6 md:py-12">
-            <div className="flex items-center justify-center w-full">
-                <img
-                    src={time.logo}
-                    alt={time.nomeCompleto}
-                    className="h-20 w-auto self-start md:h-24"
-                />
-            </div>
+            {!time.ocultarEscudoTopo && (
+                <div className="flex items-center justify-center w-full">
+                    <img
+                        src={time.logo}
+                        alt={time.nomeCompleto}
+                        className="h-20 w-auto self-start md:h-24"
+                    />
+                </div>
+            )}
 
             <div className="mt-auto flex max-w-xl flex-col items-start gap-5">
                 <span

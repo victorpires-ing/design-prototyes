@@ -7,11 +7,15 @@ import { ProgressBarHalfCircle } from "@/components/base/progress-indicators/pro
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { DemografiaMetrics, GeografiaSecoes } from "../components/demografia-geo";
+import { MetaVendasCard, VendasPorGeneroCard } from "../components/vendas-graficos";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
-import { RelatorioFiltersProvider, dateRangeFraction, useRelatorioFilters } from "../components/relatorio-filters";
+import { RelatorioFiltersProvider, dateRangeFraction, inDateRange, useRelatorioFilters } from "../components/relatorio-filters";
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
-import { EVENT, currencyFormatter, numberFormatter } from "../data/event";
+import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
+import { COMBOS, TOTAL_GMV, TOTAL_UNIDADES } from "../data/produtos";
+import { VENDAS_DIARIAS, metaTotal } from "../data/vendas-diarias";
 
 /* ------------------------------------------------------------------ */
 /*  Tipos                                                             */
@@ -84,144 +88,40 @@ interface CupomRow {
 /* ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------ */
-/*  Quantidade de ingresso por setor — espelha o relatório real de      */
-/*  futebol (Botafogo x Chapecoense - Copa do Brasil). Cada linha =      */
-/*  tipo de ingresso × setor. "Estoque" por linha é como no relatório    */
-/*  (pool compartilhado repetido, ou sub-limite p/ Meia/Gratuidade).     */
-/*  A capacidade do setor (p/ ocupação) está em SETOR_CAP. Nenhum item   */
-/*  tem combo → itemCombo sempre "-".                                    */
-/*                                                                       */
-/*  Linhas ocultas por scroll (Leste Inferior) e setores sem print de    */
-/*  tabela (Camarote, 3º Andar Oeste/Leste) foram simulados p/ casar     */
-/*  com o gráfico de ocupação e o total geral de 26.183 itens.           */
+/*  Réveillon Carneiros — vende só combos. "Setor" = festa × área       */
+/*  (Mouton 16h / Night 20–22h). Cada combo dá acesso às festas que      */
+/*  inclui: NIGHT PASS → festas noturnas; FULL PASS → todas.             */
+/*  Dados de teste, propositalmente discrepantes da produção.           */
 /* ------------------------------------------------------------------ */
 
-// Capacidade física de cada setor (denominador da ocupação).
-const SETOR_CAP: Record<string, number> = {
-    "Tribuna": 126,
-    "Sul (Visitante)": 2000,
-    "Oeste Superior B": 4300,
-    "Oeste Inferior": 6659,
-    "Leste Superior": 11005,
-    "Leste Inferior": 5189,
-    "Camarote": 400,
-    "3º Andar Oeste": 3000,
-    "3º Andar Leste": 3000,
-};
+const ddmm = (data: string) => data.slice(0, 5);
+const areaOf = (label: string) => (label.includes("16h") ? "Mouton" : "Night");
+const setorNome = (s: { data: string; label: string }) => `${ddmm(s.data)} | ${areaOf(s.label)}`;
+const combosNaSessao = (sid: string) => COMBOS.filter((c) => c.sessoes.includes(sid));
 
-const ingressosPorSetor: IngressoPorSetorRow[] = [
-    // Tribuna
-    { id: "ips1", setor: "Tribuna", tipoIngresso: "Família Jogadores", lote: "Cortesia", itemCombo: "-", vendidos: 54, estoque: 72 },
-    { id: "ips2", setor: "Tribuna", tipoIngresso: "Futebol", lote: "Lote único", itemCombo: "-", vendidos: 10, estoque: 40 },
-    { id: "ips3", setor: "Tribuna", tipoIngresso: "Estádio", lote: "Cortesia", itemCombo: "-", vendidos: 4, estoque: 10 },
-    { id: "ips4", setor: "Tribuna", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 1, estoque: 4 },
-    // Sul (Visitante)
-    { id: "ips5", setor: "Sul (Visitante)", tipoIngresso: "Gratuidade - PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 8, estoque: 20 },
-    { id: "ips6", setor: "Sul (Visitante)", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 37, estoque: 40 },
-    { id: "ips7", setor: "Sul (Visitante)", tipoIngresso: "Acompanhante PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 2, estoque: 15 },
-    { id: "ips8", setor: "Sul (Visitante)", tipoIngresso: "Reciprocidade", lote: "Cortesia", itemCombo: "-", vendidos: 35, estoque: 130 },
-    { id: "ips9", setor: "Sul (Visitante)", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 6, estoque: 700 },
-    { id: "ips10", setor: "Sul (Visitante)", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 7, estoque: 2000 },
-    // Oeste Superior B
-    { id: "ips11", setor: "Oeste Superior B", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 1683, estoque: 1714 },
-    { id: "ips12", setor: "Oeste Superior B", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 1051, estoque: 4300 },
-    { id: "ips13", setor: "Oeste Superior B", tipoIngresso: "Acompanhante Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 61, estoque: 4300 },
-    { id: "ips14", setor: "Oeste Superior B", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 245, estoque: 300 },
-    { id: "ips15", setor: "Oeste Superior B", tipoIngresso: "Branco", lote: "Sócio torcedor", itemCombo: "-", vendidos: 71, estoque: 4300 },
-    { id: "ips16", setor: "Oeste Superior B", tipoIngresso: "Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 44, estoque: 4300 },
-    { id: "ips17", setor: "Oeste Superior B", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 40, estoque: 100 },
-    { id: "ips18", setor: "Oeste Superior B", tipoIngresso: "Alvinegro OFF Rio", lote: "Sócio torcedor", itemCombo: "-", vendidos: 11, estoque: 4300 },
-    { id: "ips19", setor: "Oeste Superior B", tipoIngresso: "Preto", lote: "Sócio torcedor", itemCombo: "-", vendidos: 65, estoque: 4300 },
-    { id: "ips20", setor: "Oeste Superior B", tipoIngresso: "Alvinegro", lote: "Sócio torcedor", itemCombo: "-", vendidos: 93, estoque: 4300 },
-    // Oeste Inferior
-    { id: "ips21", setor: "Oeste Inferior", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 1337, estoque: 2406 },
-    { id: "ips22", setor: "Oeste Inferior", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 508, estoque: 6659 },
-    { id: "ips23", setor: "Oeste Inferior", tipoIngresso: "Alvinegro", lote: "Sócio torcedor", itemCombo: "-", vendidos: 1163, estoque: 6659 },
-    { id: "ips24", setor: "Oeste Inferior", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 410, estoque: 410 },
-    { id: "ips25", setor: "Oeste Inferior", tipoIngresso: "Preto", lote: "Sócio torcedor", itemCombo: "-", vendidos: 314, estoque: 6659 },
-    { id: "ips26", setor: "Oeste Inferior", tipoIngresso: "Acompanhante Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 351, estoque: 6659 },
-    { id: "ips27", setor: "Oeste Inferior", tipoIngresso: "Familia Jogadores", lote: "Cortesia", itemCombo: "-", vendidos: 139, estoque: 240 },
-    { id: "ips28", setor: "Oeste Inferior", tipoIngresso: "Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 502, estoque: 6659 },
-    { id: "ips29", setor: "Oeste Inferior", tipoIngresso: "Acompanhante PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 20, estoque: 20 },
-    { id: "ips30", setor: "Oeste Inferior", tipoIngresso: "Funcionário Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 30, estoque: 6659 },
-    { id: "ips31", setor: "Oeste Inferior", tipoIngresso: "Branco", lote: "Sócio torcedor", itemCombo: "-", vendidos: 262, estoque: 6659 },
-    { id: "ips32", setor: "Oeste Inferior", tipoIngresso: "FERJ", lote: "Cortesia", itemCombo: "-", vendidos: 14, estoque: 50 },
-    { id: "ips33", setor: "Oeste Inferior", tipoIngresso: "Gratuidade - PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 40, estoque: 40 },
-    { id: "ips34", setor: "Oeste Inferior", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 80, estoque: 80 },
-    { id: "ips35", setor: "Oeste Inferior", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 59, estoque: 158 },
-    { id: "ips36", setor: "Oeste Inferior", tipoIngresso: "Sócio Proprietário", lote: "Cortesia", itemCombo: "-", vendidos: 115, estoque: 150 },
-    { id: "ips37", setor: "Oeste Inferior", tipoIngresso: "Relacionamento", lote: "Cortesia", itemCombo: "-", vendidos: 78, estoque: 134 },
-    { id: "ips38", setor: "Oeste Inferior", tipoIngresso: "BEPE", lote: "Cortesia", itemCombo: "-", vendidos: 21, estoque: 30 },
-    { id: "ips39", setor: "Oeste Inferior", tipoIngresso: "Resgate OFF Rio", lote: "Cortesia", itemCombo: "-", vendidos: 9, estoque: 16 },
-    { id: "ips40", setor: "Oeste Inferior", tipoIngresso: "NIKE", lote: "Cortesia", itemCombo: "-", vendidos: 7, estoque: 26 },
-    { id: "ips41", setor: "Oeste Inferior", tipoIngresso: "CPE Estado Maior", lote: "Cortesia", itemCombo: "-", vendidos: 3, estoque: 5 },
-    { id: "ips42", setor: "Oeste Inferior", tipoIngresso: "Alvinegro OFF Rio", lote: "Sócio torcedor", itemCombo: "-", vendidos: 48, estoque: 6659 },
-    { id: "ips43", setor: "Oeste Inferior", tipoIngresso: "Aquecimento", lote: "Cortesia", itemCombo: "-", vendidos: 8, estoque: 17 },
-    { id: "ips44", setor: "Oeste Inferior", tipoIngresso: "Bombeiro (DDP)", lote: "Cortesia", itemCombo: "-", vendidos: 9, estoque: 10 },
-    { id: "ips45", setor: "Oeste Inferior", tipoIngresso: "Acompanhante Backstage Tour", lote: "Cortesia", itemCombo: "-", vendidos: 3, estoque: 7 },
-    { id: "ips46", setor: "Oeste Inferior", tipoIngresso: "3º BATALHÃO", lote: "Cortesia", itemCombo: "-", vendidos: 10, estoque: 10 },
-    { id: "ips47", setor: "Oeste Inferior", tipoIngresso: "Intervalo", lote: "Cortesia", itemCombo: "-", vendidos: 2, estoque: 5 },
-    { id: "ips48", setor: "Oeste Inferior", tipoIngresso: "24 DP", lote: "Cortesia", itemCombo: "-", vendidos: 3, estoque: 10 },
-    { id: "ips49", setor: "Oeste Inferior", tipoIngresso: "Backstage Tour", lote: "Cortesia", itemCombo: "-", vendidos: 3, estoque: 7 },
-    // Leste Superior
-    { id: "ips50", setor: "Leste Superior", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 3877, estoque: 4114 },
-    { id: "ips51", setor: "Leste Superior", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 2225, estoque: 11005 },
-    { id: "ips52", setor: "Leste Superior", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 285, estoque: 285 },
-    { id: "ips53", setor: "Leste Superior", tipoIngresso: "Acompanhante Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 423, estoque: 11005 },
-    { id: "ips54", setor: "Leste Superior", tipoIngresso: "Preto", lote: "Sócio torcedor", itemCombo: "-", vendidos: 441, estoque: 11005 },
-    { id: "ips55", setor: "Leste Superior", tipoIngresso: "Branco", lote: "Sócio torcedor", itemCombo: "-", vendidos: 364, estoque: 11005 },
-    { id: "ips56", setor: "Leste Superior", tipoIngresso: "Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 402, estoque: 11005 },
-    { id: "ips57", setor: "Leste Superior", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 714, estoque: 715 },
-    { id: "ips58", setor: "Leste Superior", tipoIngresso: "Alvinegro", lote: "Sócio torcedor", itemCombo: "-", vendidos: 1089, estoque: 11005 },
-    { id: "ips59", setor: "Leste Superior", tipoIngresso: "Alvinegro OFF Rio", lote: "Sócio torcedor", itemCombo: "-", vendidos: 110, estoque: 11005 },
-    { id: "ips60", setor: "Leste Superior", tipoIngresso: "Sócio Torcida", lote: "Sócio torcedor", itemCombo: "-", vendidos: 68, estoque: 11005 },
-    { id: "ips61", setor: "Leste Superior", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 7, estoque: 15 },
-    { id: "ips62", setor: "Leste Superior", tipoIngresso: "Bateria", lote: "Cortesia", itemCombo: "-", vendidos: 11, estoque: 15 },
-    // Leste Inferior (Meia/Gratuidade do print; demais linhas simuladas)
-    { id: "ips63", setor: "Leste Inferior", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 1491, estoque: 2329 },
-    { id: "ips64", setor: "Leste Inferior", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 355, estoque: 356 },
-    { id: "ips65", setor: "Leste Inferior", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 700, estoque: 5189 },
-    { id: "ips66", setor: "Leste Inferior", tipoIngresso: "Alvinegro", lote: "Sócio torcedor", itemCombo: "-", vendidos: 900, estoque: 5189 },
-    { id: "ips67", setor: "Leste Inferior", tipoIngresso: "Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 400, estoque: 5189 },
-    { id: "ips68", setor: "Leste Inferior", tipoIngresso: "Acompanhante Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 200, estoque: 5189 },
-    { id: "ips69", setor: "Leste Inferior", tipoIngresso: "Preto", lote: "Sócio torcedor", itemCombo: "-", vendidos: 150, estoque: 5189 },
-    { id: "ips70", setor: "Leste Inferior", tipoIngresso: "Branco", lote: "Sócio torcedor", itemCombo: "-", vendidos: 120, estoque: 5189 },
-    { id: "ips71", setor: "Leste Inferior", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 30, estoque: 60 },
-    { id: "ips72", setor: "Leste Inferior", tipoIngresso: "Relacionamento", lote: "Cortesia", itemCombo: "-", vendidos: 40, estoque: 80 },
-    { id: "ips73", setor: "Leste Inferior", tipoIngresso: "Sócio Proprietário", lote: "Cortesia", itemCombo: "-", vendidos: 45, estoque: 80 },
-    { id: "ips74", setor: "Leste Inferior", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 100, estoque: 100 },
-    { id: "ips75", setor: "Leste Inferior", tipoIngresso: "Gratuidade - PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 30, estoque: 30 },
-    { id: "ips76", setor: "Leste Inferior", tipoIngresso: "Acompanhante PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 15, estoque: 15 },
-    { id: "ips77", setor: "Leste Inferior", tipoIngresso: "Reciprocidade", lote: "Cortesia", itemCombo: "-", vendidos: 60, estoque: 130 },
-    { id: "ips78", setor: "Leste Inferior", tipoIngresso: "Familia Jogadores", lote: "Cortesia", itemCombo: "-", vendidos: 80, estoque: 120 },
-    { id: "ips79", setor: "Leste Inferior", tipoIngresso: "Alvinegro OFF Rio", lote: "Sócio torcedor", itemCombo: "-", vendidos: 65, estoque: 5189 },
-    { id: "ips80", setor: "Leste Inferior", tipoIngresso: "Funcionário Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 50, estoque: 5189 },
-    { id: "ips81", setor: "Leste Inferior", tipoIngresso: "Bateria", lote: "Cortesia", itemCombo: "-", vendidos: 15, estoque: 20 },
-    { id: "ips82", setor: "Leste Inferior", tipoIngresso: "Sócio Torcida", lote: "Sócio torcedor", itemCombo: "-", vendidos: 135, estoque: 5189 },
-    // Camarote (simulado — sem print de tabela)
-    { id: "ips83", setor: "Camarote", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 40, estoque: 400 },
-    { id: "ips84", setor: "Camarote", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 60, estoque: 80 },
-    { id: "ips85", setor: "Camarote", tipoIngresso: "Família Jogadores", lote: "Cortesia", itemCombo: "-", vendidos: 30, estoque: 60 },
-    { id: "ips86", setor: "Camarote", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 30, estoque: 60 },
-    // 3º Andar Oeste (simulado — sem print de tabela)
-    { id: "ips87", setor: "3º Andar Oeste", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 50, estoque: 3000 },
-    { id: "ips88", setor: "3º Andar Oeste", tipoIngresso: "Alvinegro", lote: "Sócio torcedor", itemCombo: "-", vendidos: 120, estoque: 3000 },
-    { id: "ips89", setor: "3º Andar Oeste", tipoIngresso: "Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 80, estoque: 3000 },
-    { id: "ips90", setor: "3º Andar Oeste", tipoIngresso: "Branco", lote: "Sócio torcedor", itemCombo: "-", vendidos: 30, estoque: 3000 },
-    { id: "ips91", setor: "3º Andar Oeste", tipoIngresso: "Preto", lote: "Sócio torcedor", itemCombo: "-", vendidos: 50, estoque: 3000 },
-    // 3º Andar Leste (simulado — sem print de tabela)
-    { id: "ips92", setor: "3º Andar Leste", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 175, estoque: 1500 },
-    { id: "ips93", setor: "3º Andar Leste", tipoIngresso: "Branco", lote: "Sócio torcedor", itemCombo: "-", vendidos: 40, estoque: 3000 },
-    { id: "ips94", setor: "3º Andar Leste", tipoIngresso: "Alvinegro OFF Rio", lote: "Sócio torcedor", itemCombo: "-", vendidos: 1, estoque: 3000 },
-    { id: "ips95", setor: "3º Andar Leste", tipoIngresso: "Alvinegro", lote: "Sócio torcedor", itemCombo: "-", vendidos: 800, estoque: 3000 },
-    { id: "ips96", setor: "3º Andar Leste", tipoIngresso: "Glorioso", lote: "Sócio torcedor", itemCombo: "-", vendidos: 350, estoque: 3000 },
-    { id: "ips97", setor: "3º Andar Leste", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 150, estoque: 200 },
-    { id: "ips98", setor: "3º Andar Leste", tipoIngresso: "Família Jogadores", lote: "Cortesia", itemCombo: "-", vendidos: 50, estoque: 80 },
-    { id: "ips99", setor: "3º Andar Leste", tipoIngresso: "Reciprocidade", lote: "Cortesia", itemCombo: "-", vendidos: 54, estoque: 130 },
-];
+// Capacidade por festa×área (denominador da ocupação).
+const CAP_AREA: Record<string, number> = { Night: 6500, Mouton: 4200 };
+const SETOR_CAP: Record<string, number> = Object.fromEntries(EVENT.sessoes.map((s) => [setorNome(s), CAP_AREA[areaOf(s.label)]]));
 
-/* Setores derivados das linhas: vendido = soma das linhas; estoque = capacidade
-   física do setor (SETOR_CAP), pois o estoque por linha é pool compartilhado. */
+// Alocação (estoque) por combo em cada festa.
+const ALOC_COMBO: Record<string, number> = { "NIGHT PASS": 1600, "FULL PASS": 1200 };
+
+// Cada linha = combo × festa. vendidos = unidades do combo (o portador vai a
+// todas as festas que o combo inclui). itemCombo = grupo do combo.
+const ingressosPorSetor: IngressoPorSetorRow[] = EVENT.sessoes.flatMap((s) =>
+    combosNaSessao(s.id).map((c) => ({
+        id: `ips-${s.id}-${c.id}`,
+        setor: setorNome(s),
+        tipoIngresso: c.nome,
+        lote: "Lote único",
+        itemCombo: c.grupo,
+        vendidos: c.quantidade,
+        estoque: ALOC_COMBO[c.grupo],
+    })),
+);
+
+/* Setores derivados das linhas: vendido = soma das linhas (frequência na festa);
+   estoque = capacidade física da festa×área (SETOR_CAP). */
 const setores: SetorRow[] = (() => {
     const slug = (s: string) =>
         s
@@ -240,80 +140,51 @@ const setores: SetorRow[] = (() => {
             order.push(r.setor);
         }
         s.vendido += r.vendidos;
-        if (!(r.setor in SETOR_CAP)) s.estoque = Math.max(s.estoque, r.estoque);
         s.ingressos!.push({ id: r.id, nome: r.tipoIngresso, estoque: r.estoque, vendido: r.vendidos });
     }
     return order.map((n) => map.get(n)!);
 })();
 
-const combos: ComboRow[] = [
-    { id: "c1", nome: "Combo Camarote + Open Bar", quantidade: 1480, valorUnitario: 379, gmv: 560440, gmvComDesconto: 560440 },
-    { id: "c2", nome: "Combo VIP + Welcome Drink", quantidade: 442, valorUnitario: 680, gmv: 300608, gmvComDesconto: 300608 },
-    { id: "c3", nome: "Combo Família (4 ingressos)", quantidade: 112, valorUnitario: 681, gmv: 76188, gmvComDesconto: 76188 },
-    { id: "c4", nome: "Combo Premium + Estacionamento", quantidade: 22, valorUnitario: 2159, gmv: 47498, gmvComDesconto: 47498 },
-    { id: "c5", nome: "Combo Casal Camarote", quantidade: 49, valorUnitario: 758, gmv: 37124, gmvComDesconto: 37124 },
-    { id: "c6", nome: "Combo VIP Solo + Brinde", quantidade: 14, valorUnitario: 1368, gmv: 19152, gmvComDesconto: 19152 },
-    { id: "c7", nome: "Combo Business Pista Premium", quantidade: 2, valorUnitario: 1358, gmv: 2716, gmvComDesconto: 2716 },
-];
+// Combos vendidos (tabela). Faturamento bruto = preço × unidades; líquido ≈ −3,4%.
+const combos: ComboRow[] = COMBOS.map((c) => {
+    const gmv = c.preco * c.quantidade;
+    return { id: c.id, nome: c.nome, quantidade: c.quantidade, valorUnitario: c.preco, gmv, gmvComDesconto: Math.round(gmv * 0.966) };
+});
 
-const produtos: ProdutoRow[] = [
-    { id: "pr1", nome: "Kit Oficial #BahxVit", quantidade: 123, valorUnitario: 199.9, gmv: 24587.7, gmvComDesconto: 24587.7 },
-    { id: "pr2", nome: "Boneco Mascote - Fandom Box", quantidade: 47, valorUnitario: 107.35, gmv: 5045.3, gmvComDesconto: 5045.3 },
-    { id: "pr3", nome: "Sacochila Oficial", quantidade: 126, valorUnitario: 29.9, gmv: 3767.4, gmvComDesconto: 3767.4 },
-    { id: "pr4", nome: "Camisa Oficial - M", quantidade: 36, valorUnitario: 99.9, gmv: 3596.4, gmvComDesconto: 3596.4 },
-    { id: "pr5", nome: "Camisa Oficial - G", quantidade: 29, valorUnitario: 99.9, gmv: 2897.1, gmvComDesconto: 2897.1 },
-    { id: "pr6", nome: "Camisa Oficial - P", quantidade: 23, valorUnitario: 99.9, gmv: 2297.7, gmvComDesconto: 2297.7 },
-    { id: "pr7", nome: "Copo Oficial", quantidade: 100, valorUnitario: 19.89, gmv: 1989, gmvComDesconto: 1989 },
-    { id: "pr8", nome: "Camisa Oficial - GG", quantidade: 14, valorUnitario: 99.9, gmv: 1398.6, gmvComDesconto: 1398.6 },
-];
+// O evento vende apenas combos — sem produtos avulsos.
+const produtos: ProdutoRow[] = [];
 
-// Cupons agora detalhados por lote (abrem expandindo a linha).
+// Cupons do Réveillon (abrem expandindo a linha, detalhados por grupo).
 const cupons: CupomRow[] = [
     {
         id: "cu1",
-        cupom: "FAN15",
-        quantidade: 142,
-        valor: 19738.0,
-        valorDesconto: 2960.7,
-        valorTotal: 16777.3,
+        cupom: "CARNEIROS10",
+        quantidade: 42,
+        valor: 234600,
+        valorDesconto: 23460,
+        valorTotal: 211140,
         lotes: [
-            { id: "cu1-l1", lote: "1º Lote", quantidade: 78, valor: 10842.0, valorDesconto: 1626.3, valorTotal: 9215.7 },
-            { id: "cu1-l2", lote: "2º Lote", quantidade: 44, valor: 6116.0, valorDesconto: 917.4, valorTotal: 5198.6 },
-            { id: "cu1-l3", lote: "3º Lote", quantidade: 20, valor: 2780.0, valorDesconto: 417.0, valorTotal: 2363.0 },
+            { id: "cu1-l1", lote: "NIGHT PASS", quantidade: 30, valor: 117000, valorDesconto: 11700, valorTotal: 105300 },
+            { id: "cu1-l2", lote: "FULL PASS", quantidade: 12, valor: 117600, valorDesconto: 11760, valorTotal: 105840 },
         ],
     },
     {
         id: "cu2",
-        cupom: "VIPACCESS",
-        quantidade: 38,
-        valor: 13680.0,
-        valorDesconto: 1368.0,
-        valorTotal: 12312.0,
-        lotes: [
-            { id: "cu2-l1", lote: "1º Lote", quantidade: 26, valor: 9360.0, valorDesconto: 936.0, valorTotal: 8424.0 },
-            { id: "cu2-l2", lote: "2º Lote", quantidade: 12, valor: 4320.0, valorDesconto: 432.0, valorTotal: 3888.0 },
-        ],
+        cupom: "NIGHT2027",
+        quantidade: 26,
+        valor: 101400,
+        valorDesconto: 15210,
+        valorTotal: 86190,
+        lotes: [{ id: "cu2-l1", lote: "NIGHT PASS", quantidade: 26, valor: 101400, valorDesconto: 15210, valorTotal: 86190 }],
     },
     {
         id: "cu3",
-        cupom: "PREMIERE10",
-        quantidade: 24,
-        valor: 7332.0,
-        valorDesconto: 733.2,
-        valorTotal: 6598.8,
-        lotes: [
-            { id: "cu3-l1", lote: "1º Lote", quantidade: 15, valor: 4582.5, valorDesconto: 458.3, valorTotal: 4124.2 },
-            { id: "cu3-l2", lote: "2º Lote", quantidade: 9, valor: 2749.5, valorDesconto: 274.9, valorTotal: 2474.6 },
-        ],
-    },
-    {
-        id: "cu4",
-        cupom: "TESTE2",
-        quantidade: 1,
-        valor: 139.0,
-        valorDesconto: 137.61,
-        valorTotal: 1.39,
-        lotes: [{ id: "cu4-l1", lote: "1º Lote", quantidade: 1, valor: 139.0, valorDesconto: 137.61, valorTotal: 1.39 }],
+        cupom: "FULLVIP",
+        quantidade: 9,
+        valor: 88200,
+        valorDesconto: 7056,
+        valorTotal: 81144,
+        lotes: [{ id: "cu3-l1", lote: "FULL PASS", quantidade: 9, valor: 88200, valorDesconto: 7056, valorTotal: 81144 }],
     },
 ];
 
@@ -326,16 +197,16 @@ interface MixReceitaItem {
     fill: string;
 }
 
-// Futebol vende apenas ingressos avulsos (sem combos nem produtos).
+// Réveillon: 100% da receita vem de combos.
 const mixReceita: MixReceitaItem[] = [
-    { id: "ingressos", nome: "Ingresso Avulso", quantidade: 26183, gmv: 598273.0, gmvComDesconto: 598273.0, fill: "var(--color-utility-brand-700)" },
+    { id: "combos", nome: "Combos", quantidade: TOTAL_UNIDADES, gmv: TOTAL_GMV, gmvComDesconto: Math.round(TOTAL_GMV * 0.966), fill: "var(--color-utility-brand-700)" },
 ];
 
-const VALOR_TOTAL_BASE = 598273.0;
-const TOTAL_ITENS_BASE = 26183;
+const VALOR_TOTAL_BASE = TOTAL_GMV;
+const TOTAL_ITENS_BASE = TOTAL_UNIDADES;
 
 /* ------------------------------------------------------------------ */
-/*  Drill-down tree (Data = sessão → Tipo → Setor → Ingresso → Lote)  */
+/*  Drill-down (Festa → Grupo do combo → Gênero)                       */
 /* ------------------------------------------------------------------ */
 
 interface TreeNode {
@@ -348,65 +219,33 @@ interface TreeNode {
     children?: TreeNode[];
 }
 
-const buildDrillTree = (): TreeNode[] => {
-    const lotes = (base: number, idPrefix: string): TreeNode[] => [
-        { id: `${idPrefix}-int`, key: "int", label: "Inteira", value: Math.round(base * 0.5) },
-        { id: `${idPrefix}-mei`, key: "mei", label: "Meia-Entrada", value: Math.round(base * 0.42) },
-        { id: `${idPrefix}-out`, key: "out", label: "Outros", value: Math.round(base * 0.08) },
-    ];
-    const ingressosPorSetorNodes = (setorValue: number, setorId: string): TreeNode[] => {
-        const seeds = [
-            { key: "mei", label: "Meia-Entrada", w: 0.42 },
-            { key: "int", label: "Inteira", w: 0.26 },
-            { key: "alv", label: "Alvinegro", w: 0.14 },
-            { key: "glo", label: "Glorioso", w: 0.08 },
-            { key: "gra", label: "Gratuidade", w: 0.06 },
-            { key: "cor", label: "Cortesia", w: 0.04 },
-        ];
-        return seeds.map((s) => ({
-            id: `${setorId}-${s.key}`,
-            key: s.key,
-            label: s.label,
-            value: Math.round(setorValue * s.w),
-            childrenLabel: "Tipo de público",
-            children: lotes(setorValue * s.w, `${setorId}-${s.key}`),
-        }));
-    };
-    const setoresFor = (dateId: string, base: number): TreeNode[] => {
-        const seeds = [
-            { key: "leste-sup", label: "Leste Superior", w: 0.382 },
-            { key: "oeste-inf", label: "Oeste Inferior", w: 0.212 },
-            { key: "leste-inf", label: "Leste Inferior", w: 0.19 },
-            { key: "oeste-sup-b", label: "Oeste Superior B", w: 0.128 },
-            { key: "andar3-leste", label: "3º Andar Leste", w: 0.062 },
-            { key: "andar3-oeste", label: "3º Andar Oeste", w: 0.013 },
-            { key: "camarote", label: "Camarote", w: 0.006 },
-            { key: "sul-visit", label: "Sul (Visitante)", w: 0.004 },
-            { key: "tribuna", label: "Tribuna", w: 0.003 },
-        ];
-        return seeds.map((s) => {
-            const setorId = `${dateId}-${s.key}`;
-            const setorValue = Math.round(base * s.w);
-            return { id: setorId, key: s.key, label: s.label, value: setorValue, childrenLabel: "Tipo de ingresso", children: ingressosPorSetorNodes(setorValue, setorId) };
-        });
-    };
-    // Jogo único: uma só "data" (a sessão da partida). Futebol vende apenas ingressos.
-    const dates: { id: string; label: string; estoque: number; ocupacao: number }[] = [
-        { id: EVENT.sessoes[0].id, label: EVENT.sessoes[0].label, estoque: 35679, ocupacao: 0.7339 },
-    ];
-    return dates.map((d) => {
-        const ingressosVendidos = Math.round(d.estoque * d.ocupacao);
-        const tiposDeItem: TreeNode[] = [
-            { id: `${d.id}-ingressos`, key: "ingressos", label: "Ingressos", value: ingressosVendidos, childrenLabel: "Setor", children: setoresFor(d.id, ingressosVendidos) },
-        ];
-        const total = tiposDeItem.reduce((s, x) => s + x.value, 0);
-        return { id: d.id, key: d.id, label: d.label, value: total, estoque: d.estoque, childrenLabel: "Tipo do item", children: tiposDeItem };
+const generoLabel = (g: string) => (g === "MASCULINO" ? "Masculino" : "Feminino");
+const grupoSlug = (g: string) => (g === "NIGHT PASS" ? "night" : "full");
+
+const buildDrillTree = (): TreeNode[] =>
+    EVENT.sessoes.map((s) => {
+        const combosS = combosNaSessao(s.id);
+        const grupos: TreeNode[] = (["NIGHT PASS", "FULL PASS"] as const)
+            .filter((g) => combosS.some((c) => c.grupo === g))
+            .map((g) => {
+                const cg = combosS.filter((c) => c.grupo === g);
+                const value = cg.reduce((a, c) => a + c.quantidade, 0);
+                return {
+                    id: `${s.id}-${grupoSlug(g)}`,
+                    key: grupoSlug(g),
+                    label: g,
+                    value,
+                    childrenLabel: "Gênero",
+                    children: cg.map((c) => ({ id: `${s.id}-${c.id}`, key: c.genero, label: generoLabel(c.genero), value: c.quantidade })),
+                };
+            });
+        const total = grupos.reduce((a, x) => a + x.value, 0);
+        return { id: s.id, key: s.id, label: s.descricao, value: total, estoque: CAP_AREA[areaOf(s.label)], childrenLabel: "Grupo do combo", children: grupos };
     });
-};
 
 const drillTree = buildDrillTree();
 
-// Sem produtos no futebol — root vazio mantém o componente, mas o botão "Produtos" não renderiza.
+// Sem produtos avulsos — root vazio mantém o componente sem renderizar o botão "Produtos".
 const aggregatedProdutos: TreeNode[] = [];
 
 const PRODUTOS_ROOT_ID = "produtos-all";
@@ -414,17 +253,18 @@ const produtosRootNode: TreeNode = {
     id: PRODUTOS_ROOT_ID,
     key: PRODUTOS_ROOT_ID,
     label: "Produtos",
-    value: aggregatedProdutos.reduce((s, c) => s + c.value, 0),
+    value: 0,
     childrenLabel: "Produto",
     children: aggregatedProdutos,
 };
 
 /* ------------------------------------------------------------------ */
-/*  Scaling helpers (sessão + intervalo de data afetam tudo)          */
+/*  Scaling helpers                                                    */
 /* ------------------------------------------------------------------ */
 
-// Jogo único: a sessão da partida concentra 100% das vendas.
-const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 1 };
+// Combos são vendidos para o evento todo (não por festa) → sessão não escala a
+// venda; apenas filtra as colunas do drill. Sessões desconhecidas caem em 1.
+const SESSAO_WEIGHT: Record<string, number> = { all: 1 };
 
 const scaleTree = (nodes: TreeNode[], f: number): TreeNode[] =>
     nodes.map((n) => ({ ...n, value: Math.round(n.value * f), children: n.children ? scaleTree(n.children, f) : undefined }));
@@ -439,7 +279,7 @@ export function VendasPorGrupo() {
             <RelatorioFiltersProvider sessoes={EVENT.sessoes}>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6 py-6 md:px-6 pb-10">
-                        <RelatorioPageHeader title="Vendas" />
+                        <RelatorioPageHeader title="Vendas" filtroVariante="dropdown" />
                         <VendasBody />
                     </main>
                 </div>
@@ -499,10 +339,19 @@ const VendasBody = () => {
         return { setoresView, ingressosPorSetorView, mixView, combosView, produtosView, cuponsView, drillView, produtosRootView, valorTotal, totalItens };
     }, [dateRange, sessao]);
 
+    // Série diária recortada pelo mesmo período do filtro (todos os gráficos olham o mesmo intervalo).
+    const dias = useMemo(() => VENDAS_DIARIAS.filter((d) => inDateRange(parseEventDate(d.dataISO), dateRange)), [dateRange]);
+    // Meta = soma das metas das sessões em escopo (todas, ou a sessão filtrada).
+    const metaSel = useMemo(() => metaTotal(sessao === "all" ? undefined : [sessao]), [sessao]);
+
     return (
         <>
             <MetricsRow valorTotal={view.valorTotal} totalItens={view.totalItens} setores={view.setoresView} />
+            <DemografiaMetrics />
+            <MetaVendasCard dias={dias} meta={metaSel} />
             <MixReceitaCard items={view.mixView} />
+            <VendasPorGeneroCard dias={dias} />
+            <GeografiaSecoes />
             <DrillDownGmvCard tree={view.drillView} produtosRoot={view.produtosRootView} />
             <OcupacaoPorSetorCard setores={view.setoresView} />
             <QuantidadeIngressosPorSetorCard rows={view.ingressosPorSetorView} />
@@ -532,7 +381,7 @@ const OcupacaoMetric = ({ totalEstoque, totalVendido }: { totalEstoque: number; 
     <div className="rounded-xl bg-primary shadow-xs ring-1 ring-secondary ring-inset">
         <div className="flex h-full items-center gap-8 px-4 py-5 md:px-5">
             <div className="relative flex flex-col gap-2 shrink-0 items-center justify-center">
-                <ProgressBarHalfCircle size="xs" min={0} label="Lotação" max={totalEstoque || 1} value={totalVendido} valueFormatter={(_value: number, pct: number) => `${pct}%`} />
+                <ProgressBarHalfCircle size="xs" min={0} label="Ocupação" max={totalEstoque || 1} value={totalVendido} valueFormatter={(_value: number, pct: number) => `${pct}%`} />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <p className="text-lg font-semibold text-primary leading-tight">
@@ -912,7 +761,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
 /* ------------------------------------------------------------------ */
 
 const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] }) => {
-    const [expanded, setExpanded] = useState<Set<string>>(new Set(["leste-superior"]));
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
     const toggleExpanded = (id: string) =>
         setExpanded((prev) => {
@@ -993,15 +842,6 @@ const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] })
                                 {isExpanded &&
                                     setor.ingressos?.map((ingresso, j, arr) => {
                                         const isLastIngresso = j === arr.length - 1;
-                                        const previousSum = arr.slice(0, j).reduce((sum, prev) => sum + prev.vendido, 0);
-                                        const offsetPct = setor.estoque === 0 ? 0 : (previousSum / setor.estoque) * 100;
-                                        const widthPct = setor.estoque === 0 ? 0 : (ingresso.vendido / setor.estoque) * 100;
-                                        const filledPct = setor.estoque === 0 ? 0 : (setor.vendido / setor.estoque) * 100;
-                                        const labelPct = setor.vendido === 0 ? 0 : (ingresso.vendido / setor.vendido) * 100;
-                                        const boundaries = arr.slice(0, -1).map((_, idx) => {
-                                            const sum = arr.slice(0, idx + 1).reduce((s, x) => s + x.vendido, 0);
-                                            return setor.estoque === 0 ? 0 : (sum / setor.estoque) * 100;
-                                        });
                                         return (
                                             <tr key={ingresso.id} className={cx("bg-secondary", isLastIngresso && !isLast && "border-b border-secondary")}>
                                                 <td className="px-2 py-3 md:px-4" />
@@ -1011,7 +851,7 @@ const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] })
                                                 <td className="hidden px-4 py-3 md:table-cell" />
                                                 <td className="hidden px-4 py-3 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(ingresso.vendido)}</td>
                                                 <td className="px-4 py-3">
-                                                    <SegmentedOccupancyBar offsetPct={offsetPct} widthPct={widthPct} filledPct={filledPct} labelPct={labelPct} boundaries={boundaries} />
+                                                    <OccupancyBar value={ingresso.vendido} total={setor.vendido} />
                                                 </td>
                                             </tr>
                                         );
@@ -1034,23 +874,6 @@ const OccupancyBar = ({ value, total }: { value: number; total: number }) => {
                 <div className="h-full rounded-full bg-brand-solid transition-all" style={{ width: `${clamped}%` }} />
             </div>
             <span className="w-10 shrink-0 text-right text-sm text-tertiary">{clamped}%</span>
-        </div>
-    );
-};
-
-const SegmentedOccupancyBar = ({ offsetPct, widthPct, filledPct, labelPct, boundaries = [] }: { offsetPct: number; widthPct: number; filledPct: number; labelPct?: number; boundaries?: number[] }) => {
-    const clampedOffset = Math.min(100, Math.max(0, offsetPct));
-    const clampedWidth = Math.min(100 - clampedOffset, Math.max(0, widthPct));
-    const clampedFilled = Math.min(100, Math.max(0, filledPct));
-    const display = Math.round(labelPct ?? widthPct);
-    void boundaries;
-    return (
-        <div className="flex min-w-0 items-center gap-2 md:gap-3">
-            <div className="relative h-2 min-w-0 flex-1 overflow-visible rounded-full bg-tertiary/90">
-                <div className="absolute h-full rounded-full bg-quaternary transition-all" style={{ left: 0, width: `${clampedFilled}%` }} />
-                <div className="absolute h-full rounded-full bg-brand-solid transition-all" style={{ left: `${clampedOffset}%`, width: `${clampedWidth}%` }} />
-            </div>
-            <span className="w-10 shrink-0 text-right text-sm text-tertiary">{display}%</span>
         </div>
     );
 };
@@ -1173,7 +996,7 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
                                             <td className="px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(row.vendidos)}</td>
                                             <td className="px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(row.estoque)}</td>
                                             <td className="hidden px-4 py-3 lg:table-cell">
-                                                <OccupancyBar value={row.vendidos} total={row.estoque} />
+                                                <OccupancyBar value={row.vendidos} total={grupo.vendidos} />
                                             </td>
                                         </tr>
                                     ))}

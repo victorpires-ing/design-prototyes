@@ -27,7 +27,7 @@ import { TreeView } from "@/components/application/tree-view/tree-view";
 import { cx } from "@/utils/cx";
 import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
-const eventCover = "https://ticket-backend-prod.imgix.net/media/event/144936dc-d79d-4f62-b418-007c9772141a/8124ebd8-e5c9-4424-a686-9b5d5344bd8f.jpeg?h=440&w=330&fit=crop";
+const eventCover = "https://ticket-backend-prod.imgix.net/media/event/a871f5c2-ebfb-4fc4-a98c-8adfee4bfcc0/ac61f9f8-02f4-4422-94a4-ad67a56f925d.jpeg?h=440&w=330&fit=crop";
 
 const BrandLogo = ({ className }: { className?: string }) => (
     <>

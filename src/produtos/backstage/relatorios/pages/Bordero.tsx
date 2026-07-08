@@ -14,6 +14,7 @@ import { RelatorioFiltersProvider, dateRangeFraction, useRelatorioFilters } from
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter } from "../data/event";
+import { COMBOS, TOTAL_GMV } from "../data/produtos";
 
 const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
@@ -51,280 +52,64 @@ const grandTotalOf = (nodes: TreeNode[]): number[] =>
     }, []);
 
 /* ------------------------------------------------------------------ */
-/*  Mock data — 3 visões                                              */
+/*  Mock — borderô por combo (bruto → taxa → líquido). O Réveillon      */
+/*  vende 100% online (sem PDV/bilheteria); visões por combo, grupo e   */
+/*  meio de pagamento.                                                  */
 /* ------------------------------------------------------------------ */
 
-const MACRO_COLUMNS: ColDef[] = [
-    { label: "Bundle", type: "text" },
-    { label: "Produto", type: "text" },
+const TAXA_PCT = 0.1; // taxa de serviço retida (bruto → líquido)
+const generoLabel = (g: string) => (g === "MASCULINO" ? "Masculino" : "Feminino");
+
+// Colunas financeiras — mesmas em todas as visões.
+const FIN_COLUMNS: ColDef[] = [
     { label: "Quantidade", type: "int" },
-    { label: "Valor unitário", type: "currency" },
-    { label: "Valor Total", type: "currency" },
+    { label: "Valor bruto", type: "currency" },
+    { label: "Taxa", type: "currency" },
+    { label: "Valor líquido", type: "currency" },
 ];
 
+const leaf = (label: string, qtd: number, bruto: number): TreeNode => {
+    const taxa = Math.round(bruto * TAXA_PCT);
+    return { label, values: [qtd, bruto, taxa, bruto - taxa] };
+};
+const comboLeaf = (c: (typeof COMBOS)[number]): TreeNode => leaf(generoLabel(c.genero), c.quantidade, c.preco * c.quantidade);
+const combosDoGrupo = (grupo: string) => COMBOS.filter((c) => c.grupo === grupo);
+
+// Por combo: Canal (Online) → Grupo → Combo.
 const macroData: TreeNode[] = [
     {
-        label: "BILHETERIA",
+        label: "Online",
         children: [
-            {
-                label: "Tribuna",
-                children: [
-                    { label: "Família Jogadores", values: [0, 0, 54, 0, 0] },
-                    { label: "Estádio", values: [0, 0, 4, 0, 0] },
-                    { label: "Patrocinador", values: [0, 0, 1, 0, 0] },
-                ],
-            },
-            {
-                label: "Sul (Visitante)",
-                children: [
-                    { label: "Gratuidade - PCD", values: [0, 0, 8, 0, 0] },
-                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 37, 0, 0] },
-                    { label: "Acompanhante PCD", values: [0, 0, 2, 0, 0] },
-                    { label: "Reciprocidade", values: [0, 0, 35, 0, 0] },
-                ],
-            },
-            {
-                label: "Oeste Superior B",
-                children: [
-                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 245, 0, 0] },
-                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 40, 0, 0] },
-                ],
-            },
-            {
-                label: "Oeste Inferior",
-                children: [
-                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 410, 0, 0] },
-                    { label: "Familia Jogadores", values: [0, 0, 139, 0, 0] },
-                    { label: "Acompanhante PCD", values: [0, 0, 20, 0, 0] },
-                    { label: "FERJ", values: [0, 0, 14, 0, 0] },
-                    { label: "Gratuidade - PCD", values: [0, 0, 40, 0, 0] },
-                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 80, 0, 0] },
-                    { label: "Patrocinador", values: [0, 0, 59, 0, 0] },
-                    { label: "Sócio Proprietário", values: [0, 0, 115, 0, 0] },
-                    { label: "Relacionamento", values: [0, 0, 78, 0, 0] },
-                    { label: "BEPE", values: [0, 0, 21, 0, 0] },
-                    { label: "Resgate OFF Rio", values: [0, 0, 9, 0, 0] },
-                    { label: "NIKE", values: [0, 0, 7, 0, 0] },
-                    { label: "CPE Estado Maior", values: [0, 0, 3, 0, 0] },
-                    { label: "Aquecimento", values: [0, 0, 8, 0, 0] },
-                    { label: "Bombeiro (DDP)", values: [0, 0, 9, 0, 0] },
-                    { label: "Acompanhante Backstage Tour", values: [0, 0, 3, 0, 0] },
-                    { label: "3º BATALHÃO", values: [0, 0, 10, 0, 0] },
-                    { label: "Intervalo", values: [0, 0, 2, 0, 0] },
-                    { label: "24 DP", values: [0, 0, 3, 0, 0] },
-                    { label: "Backstage Tour", values: [0, 0, 3, 0, 0] },
-                ],
-            },
-            {
-                label: "Leste Superior",
-                children: [
-                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 285, 0, 0] },
-                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 714, 0, 0] },
-                    { label: "Patrocinador", values: [0, 0, 7, 0, 0] },
-                    { label: "Bateria", values: [0, 0, 11, 0, 0] },
-                ],
-            },
-            {
-                label: "Leste Inferior",
-                children: [
-                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 355, 0, 0] },
-                    { label: "Patrocinador", values: [0, 0, 30, 0, 0] },
-                    { label: "Relacionamento", values: [0, 0, 40, 0, 0] },
-                    { label: "Sócio Proprietário", values: [0, 0, 45, 0, 0] },
-                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 100, 0, 0] },
-                    { label: "Gratuidade - PCD", values: [0, 0, 30, 0, 0] },
-                    { label: "Acompanhante PCD", values: [0, 0, 15, 0, 0] },
-                    { label: "Reciprocidade", values: [0, 0, 60, 0, 0] },
-                    { label: "Familia Jogadores", values: [0, 0, 80, 0, 0] },
-                    { label: "Bateria", values: [0, 0, 15, 0, 0] },
-                ],
-            },
-            {
-                label: "Camarote",
-                children: [
-                    { label: "Gratuidade - Menor de 12 Anos", values: [0, 0, 60, 0, 0] },
-                    { label: "Família Jogadores", values: [0, 0, 30, 0, 0] },
-                    { label: "Patrocinador", values: [0, 0, 30, 0, 0] },
-                ],
-            },
-            {
-                label: "3º Andar Leste",
-                children: [
-                    { label: "Gratuidade - Maior de 60 Anos", values: [0, 0, 150, 0, 0] },
-                    { label: "Família Jogadores", values: [0, 0, 50, 0, 0] },
-                    { label: "Reciprocidade", values: [0, 0, 54, 0, 0] },
-                ],
-            },
-        ],
-    },
-    {
-        label: "ONLINE",
-        children: [
-            {
-                label: "Tribuna",
-                children: [
-                    { label: "Futebol", values: [0, 0, 10, 120, 1200] },
-                ],
-            },
-            {
-                label: "Sul (Visitante)",
-                children: [
-                    { label: "Meia-Entrada", values: [0, 0, 6, 40, 240] },
-                    { label: "Inteira", values: [0, 0, 7, 80, 560] },
-                ],
-            },
-            {
-                label: "Oeste Superior B",
-                children: [
-                    { label: "Meia-Entrada", values: [0, 0, 1683, 30, 50490] },
-                    { label: "Inteira", values: [0, 0, 1051, 60, 63060] },
-                    { label: "Acompanhante Glorioso", values: [0, 0, 61, 24, 1464] },
-                    { label: "Branco", values: [0, 0, 71, 30, 2130] },
-                    { label: "Glorioso", values: [0, 0, 44, 0, 0] },
-                    { label: "Alvinegro OFF Rio", values: [0, 0, 11, 12, 132] },
-                    { label: "Preto", values: [0, 0, 65, 24, 1560] },
-                    { label: "Alvinegro", values: [0, 0, 93, 0, 0] },
-                ],
-            },
-            {
-                label: "Oeste Inferior",
-                children: [
-                    { label: "Meia-Entrada", values: [0, 0, 1337, 50, 66850] },
-                    { label: "Inteira", values: [0, 0, 508, 100, 50800] },
-                    { label: "Alvinegro", values: [0, 0, 1163, 0, 0] },
-                    { label: "Preto", values: [0, 0, 314, 20, 6280] },
-                    { label: "Acompanhante Glorioso", values: [0, 0, 351, 40, 14040] },
-                    { label: "Glorioso", values: [0, 0, 502, 0, 0] },
-                    { label: "Funcionário Glorioso", values: [0, 0, 30, 0, 0] },
-                    { label: "Branco", values: [0, 0, 262, 30, 7860] },
-                    { label: "Alvinegro OFF Rio", values: [0, 0, 48, 20, 960] },
-                ],
-            },
-            {
-                label: "Leste Superior",
-                children: [
-                    { label: "Meia-Entrada", values: [0, 0, 3877, 20, 77540] },
-                    { label: "Inteira", values: [0, 0, 2225, 40, 89000] },
-                    { label: "Acompanhante Glorioso", values: [0, 0, 423, 16, 6768] },
-                    { label: "Preto", values: [0, 0, 441, 15, 6615] },
-                    { label: "Branco", values: [0, 0, 364, 20, 7280] },
-                    { label: "Glorioso", values: [0, 0, 402, 0, 0] },
-                    { label: "Alvinegro", values: [0, 0, 1089, 0, 0] },
-                    { label: "Alvinegro OFF Rio", values: [0, 0, 110, 8, 880] },
-                    { label: "Sócio Torcida", values: [0, 0, 68, 0, 0] },
-                ],
-            },
-            {
-                label: "Leste Inferior",
-                children: [
-                    { label: "Meia-Entrada", values: [0, 0, 1491, 40, 59640] },
-                    { label: "Inteira", values: [0, 0, 700, 80, 56000] },
-                    { label: "Alvinegro", values: [0, 0, 900, 0, 0] },
-                    { label: "Glorioso", values: [0, 0, 400, 0, 0] },
-                    { label: "Acompanhante Glorioso", values: [0, 0, 200, 40, 8000] },
-                    { label: "Preto", values: [0, 0, 150, 20, 3000] },
-                    { label: "Branco", values: [0, 0, 120, 30, 3600] },
-                    { label: "Alvinegro OFF Rio", values: [0, 0, 65, 20, 1300] },
-                    { label: "Funcionário Glorioso", values: [0, 0, 50, 0, 0] },
-                    { label: "Sócio Torcida", values: [0, 0, 135, 0, 0] },
-                ],
-            },
-            {
-                label: "Camarote",
-                children: [
-                    { label: "Inteira", values: [0, 0, 40, 60, 2400] },
-                ],
-            },
-            {
-                label: "3º Andar Oeste",
-                children: [
-                    { label: "Inteira", values: [0, 0, 50, 60, 3000] },
-                    { label: "Alvinegro", values: [0, 0, 120, 0, 0] },
-                    { label: "Glorioso", values: [0, 0, 80, 0, 0] },
-                    { label: "Branco", values: [0, 0, 30, 30, 900] },
-                    { label: "Preto", values: [0, 0, 50, 0, 0] },
-                ],
-            },
-            {
-                label: "3º Andar Leste",
-                children: [
-                    { label: "Meia-Entrada", values: [0, 0, 175, 20, 3500] },
-                    { label: "Branco", values: [0, 0, 40, 30, 1200] },
-                    { label: "Alvinegro OFF Rio", values: [0, 0, 1, 24, 24] },
-                    { label: "Alvinegro", values: [0, 0, 800, 0, 0] },
-                    { label: "Glorioso", values: [0, 0, 350, 0, 0] },
-                ],
-            },
+            { label: "NIGHT PASS", children: combosDoGrupo("NIGHT PASS").map(comboLeaf) },
+            { label: "FULL PASS", children: combosDoGrupo("FULL PASS").map(comboLeaf) },
         ],
     },
 ];
 
-const PDV_COLUMNS: ColDef[] = [
-    { label: "Quantidade", type: "int" },
-    { label: "Valor unitário", type: "currency" },
-    { label: "Valor Total", type: "currency" },
+// Por grupo: Grupo → Combo.
+const grupoData: TreeNode[] = [
+    { label: "NIGHT PASS", children: combosDoGrupo("NIGHT PASS").map(comboLeaf) },
+    { label: "FULL PASS", children: combosDoGrupo("FULL PASS").map(comboLeaf) },
 ];
 
-const pdvData: TreeNode[] = [
-    {
-        label: "Bilheteria Estádio Nilton Santos",
-        children: [
-            {
-                label: "Tribuna",
-                children: [{ label: "Futebol", values: [10, 120, 1200] }],
-            },
-            {
-                label: "Sul (Visitante)",
-                children: [
-                    { label: "Inteira", values: [7, 80, 560], changed: true },
-                    { label: "Meia-Entrada", values: [6, 40, 240] },
-                ],
-            },
-        ],
-    },
-    {
-        label: "Loja Oficial Botafogo - Nilton Santos",
-        children: [
-            {
-                label: "Oeste Inferior",
-                children: [
-                    { label: "Meia-Entrada", values: [1337, 50, 66850], changed: true },
-                    { label: "Inteira", values: [508, 100, 50800] },
-                ],
-            },
-        ],
-    },
-    {
-        label: "Loja Oficial Botafogo - Shopping Rio Sul",
-        children: [
-            {
-                label: "Leste Inferior",
-                children: [
-                    { label: "Meia-Entrada", values: [1491, 40, 59640] },
-                    { label: "Inteira", values: [700, 80, 56000], changed: true },
-                ],
-            },
-        ],
-    },
+// Por meio de pagamento: distribui o total por pesos plausíveis (100% online).
+const MEIOS: { nome: string; peso: number }[] = [
+    { nome: "Pix", peso: 0.548 },
+    { nome: "Cartão de Crédito", peso: 0.312 },
+    { nome: "NuPay", peso: 0.058 },
+    { nome: "Apple Pay", peso: 0.042 },
+    { nome: "Google Pay", peso: 0.026 },
+    { nome: "Cartão de Débito", peso: 0.014 },
 ];
-
+const TOTAL_QTD = COMBOS.reduce((s, c) => s + c.quantidade, 0);
 const meiosData: TreeNode[] = [
     {
-        label: "Bilheteria Estádio Nilton Santos",
-        children: [
-            { label: "Dinheiro", values: [23, 150, 3450], changed: true },
-            { label: "Cartão de Débito", values: [10, 90, 900] },
-        ],
-    },
-    {
-        label: "Loja Oficial Botafogo - Shopping Rio Sul",
-        children: [
-            { label: "Cartão de Crédito", values: [320, 95, 30400] },
-            { label: "PIX", values: [1800, 55, 99000], changed: true },
-        ],
+        label: "Online",
+        children: MEIOS.map((m) => leaf(m.nome, Math.round(TOTAL_QTD * m.peso), Math.round(TOTAL_GMV * m.peso))),
     },
 ];
 
+/* ---- Alterações recentes (banner + slideout) ---- */
 type ChangeType = "venda" | "cancelamento" | "estorno";
 
 interface BorderoChange {
@@ -344,33 +129,31 @@ const CHANGE_META: Record<ChangeType, { label: string; color: "success" | "gray"
 };
 
 const changedTransacoes: BorderoChange[] = [
-    { id: "c1", hora: "há 1 min", tipo: "venda", canal: "Online", descricao: "Leste Superior · Meia-Entrada", ingressos: 4, valor: 80 },
-    { id: "c2", hora: "há 2 min", tipo: "venda", canal: "Impresso/Bilheteria", descricao: "Tribuna · Futebol", ingressos: 2, valor: 240 },
-    { id: "c3", hora: "há 3 min", tipo: "cancelamento", canal: "Online", descricao: "Oeste Inferior · Inteira", ingressos: -1, valor: -100 },
-    { id: "c4", hora: "há 4 min", tipo: "estorno", canal: "Online", descricao: "Oeste Superior B · Inteira", ingressos: -1, valor: -60 },
+    { id: "c1", hora: "há 1 min", tipo: "venda", canal: "Online", descricao: "FULL PASS | Feminino", ingressos: 1, valor: 9800 },
+    { id: "c2", hora: "há 2 min", tipo: "venda", canal: "Online", descricao: "NIGHT PASS | Masculino", ingressos: 2, valor: 7800 },
+    { id: "c3", hora: "há 4 min", tipo: "cancelamento", canal: "Online", descricao: "NIGHT PASS | Feminino", ingressos: -1, valor: -3900 },
+    { id: "c4", hora: "há 6 min", tipo: "estorno", canal: "Online", descricao: "FULL PASS | Masculino", ingressos: -1, valor: -9800 },
 ];
 
-type BorderoView = "macro" | "pdv" | "meios";
+type BorderoView = "combo" | "grupo" | "meios";
 
 const VIEWS: Record<BorderoView, { nodes: TreeNode[]; columns: ColDef[]; firstCol: string }> = {
-    macro: { nodes: macroData, columns: MACRO_COLUMNS, firstCol: "Canal · Setor · Tipo de Ingresso" },
-    pdv: { nodes: pdvData, columns: PDV_COLUMNS, firstCol: "PDV · Setor · Tipo de Ingresso" },
-    meios: { nodes: meiosData, columns: PDV_COLUMNS, firstCol: "PDV · Meio de pagamento" },
+    combo: { nodes: macroData, columns: FIN_COLUMNS, firstCol: "Canal · Grupo · Combo" },
+    grupo: { nodes: grupoData, columns: FIN_COLUMNS, firstCol: "Grupo · Combo" },
+    meios: { nodes: meiosData, columns: FIN_COLUMNS, firstCol: "Canal · Meio de pagamento" },
 };
 
 /* ------------------------------------------------------------------ */
-/*  Scaling (sessão + intervalo de data afetam todas as visões)        */
+/*  Escala (sessão + intervalo de data)                                */
 /* ------------------------------------------------------------------ */
 
-// Jogo único: a sessão da partida concentra 100% das vendas.
-const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 1 };
+const SESSAO_WEIGHT: Record<string, number> = { all: 1 };
 
-// Escala valores de quantidade/faturado; mantém colunas de "valor unitário" intactas.
-const scaleNodes = (nodes: TreeNode[], columns: ColDef[], factor: number): TreeNode[] =>
+const scaleNodes = (nodes: TreeNode[], _columns: ColDef[], factor: number): TreeNode[] =>
     nodes.map((n) => ({
         ...n,
-        values: n.values?.map((v, i) => (columns[i]?.label === "Valor unitário" ? v : Math.round(v * factor * 100) / 100)),
-        children: n.children ? scaleNodes(n.children, columns, factor) : undefined,
+        values: n.values?.map((v) => Math.round(v * factor)),
+        children: n.children ? scaleNodes(n.children, _columns, factor) : undefined,
     }));
 
 /* ------------------------------------------------------------------ */
@@ -385,6 +168,8 @@ export function Bordero() {
                     <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
                         <RelatorioPageHeader
                             title="Borderô"
+                            filtroVariante="dropdown"
+                            mostrarPeriodo={false}
                             actions={<ExportMenu onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "O borderô será exportado." })} />}
                         />
                         <BorderoBody />
@@ -397,7 +182,7 @@ export function Bordero() {
 
 const BorderoBody = () => {
     const { dateRange, sessao } = useRelatorioFilters();
-    const [view, setView] = useState<BorderoView>("macro");
+    const [view, setView] = useState<BorderoView>("combo");
     const [acknowledged, setAcknowledged] = useState(false);
     const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -405,20 +190,20 @@ const BorderoBody = () => {
 
     const scaled = useMemo(
         () => ({
-            macro: scaleNodes(macroData, MACRO_COLUMNS, factor),
-            pdv: scaleNodes(pdvData, PDV_COLUMNS, factor),
-            meios: scaleNodes(meiosData, PDV_COLUMNS, factor),
+            combo: scaleNodes(macroData, FIN_COLUMNS, factor),
+            grupo: scaleNodes(grupoData, FIN_COLUMNS, factor),
+            meios: scaleNodes(meiosData, FIN_COLUMNS, factor),
         }),
         [factor],
     );
 
-    const activeNodes = view === "macro" ? scaled.macro : view === "pdv" ? scaled.pdv : scaled.meios;
+    const activeNodes = scaled[view];
     const activeMeta = VIEWS[view];
 
-    const macroGrand = useMemo(() => grandTotalOf(scaled.macro), [scaled.macro]);
-    const totalIngressos = macroGrand[2] ?? 0;
-    const totalFaturado = macroGrand[4] ?? 0;
-    const ticketMedio = totalIngressos === 0 ? 0 : totalFaturado / totalIngressos;
+    const grand = useMemo(() => grandTotalOf(scaled.combo), [scaled.combo]);
+    const totalIngressos = grand[0] ?? 0;
+    const totalFaturado = grand[1] ?? 0;
+    const totalLiquido = grand[3] ?? 0;
 
     const changedCount = changedTransacoes.length;
     const showBanner = changedCount > 0 && !acknowledged;
@@ -438,9 +223,9 @@ const BorderoBody = () => {
             )}
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <MetricsIcon03 icon={CurrencyDollarCircle} subtitle="Total faturado" title={currencyFormatter.format(totalFaturado)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
-                <MetricsIcon03 icon={Ticket01} subtitle="Total de ingressos" title={numberFormatter.format(totalIngressos)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
-                <MetricsIcon03 icon={Receipt} subtitle="Ticket médio" title={currencyFormatter.format(ticketMedio)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
+                <MetricsIcon03 icon={CurrencyDollarCircle} subtitle="Valor bruto" title={currencyFormatter.format(totalFaturado)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
+                <MetricsIcon03 icon={Receipt} subtitle="Valor líquido" title={currencyFormatter.format(totalLiquido)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
+                <MetricsIcon03 icon={Ticket01} subtitle="Combos vendidos" title={numberFormatter.format(totalIngressos)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
             </div>
 
             <section className="flex flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
@@ -457,9 +242,9 @@ const BorderoBody = () => {
                         <TabList
                             type="button-minimal"
                             items={[
-                                { id: "macro", label: "Visão macro" },
-                                { id: "pdv", label: "Por PDV" },
-                                { id: "meios", label: "Por meios de pagamento" },
+                                { id: "combo", label: "Por combo" },
+                                { id: "grupo", label: "Por grupo" },
+                                { id: "meios", label: "Por meio de pagamento" },
                             ]}
                         />
                     </Tabs>

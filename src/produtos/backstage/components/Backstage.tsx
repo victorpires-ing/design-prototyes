@@ -145,7 +145,7 @@ const MobileEventCard = () => (
     <div className="flex items-start gap-3 rounded-xl bg-secondary p-3">
         <img
             src={eventCover}
-            alt="Réveillon Carneiros 2027"
+            alt="Visão completa"
             className="size-16 shrink-0 rounded-lg object-cover"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -156,7 +156,7 @@ const MobileEventCard = () => (
                 </Badge>
             </div>
             <p className="text-sm font-semibold leading-snug text-primary line-clamp-2">
-                Réveillon Carneiros 2027
+                Visão completa
             </p>
         </div>
     </div>
@@ -477,7 +477,7 @@ const EventDetailsCard = () => (
         <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-secondary">
             <img
                 src={eventCover}
-                alt="Réveillon Carneiros 2027"
+                alt="Visão completa"
                 className="size-full object-cover"
             />
             <span className="absolute top-3 left-3 rounded-xl bg-white/50 px-3 py-1 text-[12px] font-medium tracking-wide text-primary uppercase backdrop-blur-md">
@@ -491,8 +491,8 @@ const EventDetailsCard = () => (
         </div>
         <div className="flex flex-col gap-0.5 px-1">
             <span className="text-xs text-tertiary">ID: 1234</span>
-            <h3 className="text-md font-bold text-primary">Réveillon Carneiros 2027</h3>
-            <p className="text-sm text-tertiary">Estádio Nilton Santos</p>
+            <h3 className="text-md font-bold text-primary">Visão completa</h3>
+            <p className="text-sm text-tertiary">Ingresse</p>
         </div>
         <div className="flex items-center gap-2 px-1">
             <button

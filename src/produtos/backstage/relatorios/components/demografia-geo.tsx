@@ -21,7 +21,7 @@ const IDADE_CORES = [
 /** Métricas demográficas (gênero + faixa etária) — vão no topo do relatório. */
 export function DemografiaMetrics() {
     return (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-start">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <GeneroCard />
             <div className="lg:col-span-2">
                 <IdadeCard />
@@ -58,9 +58,9 @@ interface DonutDatum {
 }
 
 /** Donut de distribuição por valor (padrão do gráfico de status). */
-const DonutDistribuicao = ({ dados }: { dados: DonutDatum[] }) => (
+const DonutDistribuicao = ({ dados, size = "size-44" }: { dados: DonutDatum[]; size?: string }) => (
     <div className="flex shrink-0 flex-col items-center gap-2">
-        <div className="size-44">
+        <div className={size}>
             <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                     <Pie data={dados} dataKey="valor" nameKey="nome" innerRadius="65%" outerRadius="100%" paddingAngle={2} startAngle={90} endAngle={-270} stroke="none" isAnimationActive={false}>
@@ -103,8 +103,8 @@ const GeneroCard = () => {
     return (
         <div className="flex flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
             <span className="text-sm text-tertiary">Gênero dos compradores</span>
-            <div className="flex flex-col items-center gap-6">
-                <DonutDistribuicao dados={dados} />
+            <div className="flex flex-1 flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-5">
+                <DonutDistribuicao dados={dados} size="size-32" />
                 <DonutLista dados={dados} total={total} />
             </div>
         </div>
@@ -114,18 +114,24 @@ const GeneroCard = () => {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /** Célula do treemap: retângulo colorido com faixa + % (quando cabe). */
 const TreemapCelula = ({ x, y, width, height, nome, valor, cor, total }: any) => {
-    const cabe = width > 56 && height > 38;
     const p = pct(valor / total);
+    const cabeNome = width > 60 && height > 44; // nome + %
+    const soPct = !cabeNome && width > 26 && height > 16; // só a % (blocos pequenos)
     return (
         <g>
             <rect x={x} y={y} width={width} height={height} rx={4} fill={cor} stroke="var(--color-bg-primary)" strokeWidth={2}>
                 <title>{`${nome}: ${num(valor)} · ${p}`}</title>
             </rect>
-            {cabe && (
+            {cabeNome && (
                 <>
                     <text x={x + 10} y={y + 21} fill="#fff" fontSize={13} fontWeight={600}>{nome}</text>
-                    <text x={x + 10} y={y + 38} fill="rgba(255,255,255,0.85)" fontSize={12}>{p}</text>
+                    <text x={x + 10} y={y + 38} fill="rgba(255,255,255,0.9)" fontSize={12}>{p}</text>
                 </>
+            )}
+            {soPct && (
+                <text x={x + width / 2} y={y + height / 2} textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize={11} fontWeight={600}>
+                    {p}
+                </text>
             )}
         </g>
     );
@@ -149,6 +155,15 @@ const IdadeCard = () => {
                         content={<TreemapCelula total={total} />}
                     />
                 </ResponsiveContainer>
+            </div>
+            {/* Legenda: garante a leitura das faixas menores */}
+            <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-secondary pt-3">
+                {faixas.map((f) => (
+                    <span key={f.nome} className="flex items-center gap-1.5 text-sm text-tertiary">
+                        <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: f.cor }} />
+                        {f.nome} <span className="font-semibold text-primary">{pct(f.valor / total)}</span>
+                    </span>
+                ))}
             </div>
         </div>
     );

@@ -14,7 +14,7 @@ import { RelatorioFiltersProvider, dateRangeFraction, inDateRange, useRelatorioF
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
-import { COMBOS, TOTAL_GMV, TOTAL_UNIDADES } from "../data/produtos";
+import { COMBOS, GRUPOS, INGRESSOS, PRODUTOS, TOTAL_GMV, TOTAL_GMV_PRODUTOS, TOTAL_PRODUTOS, TOTAL_UNIDADES } from "../data/produtos";
 import { VENDAS_DIARIAS, metaTotal } from "../data/vendas-diarias";
 
 /* ------------------------------------------------------------------ */
@@ -46,13 +46,25 @@ interface IngressoPorSetorRow {
     estoque: number;
 }
 
+interface ComboLoteDetalhe {
+    id: string;
+    lote: string;
+    quantidade: number;
+    valorUnitario: number;
+    gmv: number;
+    desconto: number;
+    gmvComDesconto: number;
+}
+
 interface ComboRow {
     id: string;
     nome: string;
     quantidade: number;
     valorUnitario: number;
     gmv: number;
+    desconto: number;
     gmvComDesconto: number;
+    lotes: ComboLoteDetalhe[];
 }
 
 interface ProdutoRow {
@@ -103,22 +115,26 @@ const combosNaSessao = (sid: string) => COMBOS.filter((c) => c.sessoes.includes(
 const CAP_AREA: Record<string, number> = { Night: 6500, Mouton: 4200 };
 const SETOR_CAP: Record<string, number> = Object.fromEntries(EVENT.sessoes.map((s) => [setorNome(s), CAP_AREA[areaOf(s.label)]]));
 
-// Alocação (estoque) por combo em cada festa.
-const ALOC_COMBO: Record<string, number> = { "NIGHT PASS": 1600, "FULL PASS": 1200 };
-
-// Cada linha = combo × festa. vendidos = unidades do combo (o portador vai a
-// todas as festas que o combo inclui). itemCombo = grupo do combo.
-const ingressosPorSetor: IngressoPorSetorRow[] = EVENT.sessoes.flatMap((s) =>
-    combosNaSessao(s.id).map((c) => ({
-        id: `ips-${s.id}-${c.id}`,
-        setor: setorNome(s),
-        tipoIngresso: c.nome,
-        lote: "Lote único",
-        itemCombo: c.grupo,
-        vendidos: c.quantidade,
-        estoque: ALOC_COMBO[c.grupo],
-    })),
-);
+// Cada linha = um INGRESSO real (grupo > ingresso > lote) na festa. O combo é
+// uma dimensão à parte; aqui contamos os ingressos entregues por festa.
+// itemCombo = combos (passes) que dão acesso àquele ingresso.
+const ingressosPorSetor: IngressoPorSetorRow[] = EVENT.sessoes.flatMap((s) => {
+    const grupo = GRUPOS.find((g) => g.sessaoId === s.id);
+    const ings = INGRESSOS.filter((i) => i.grupoId === grupo?.id);
+    const area = areaOf(s.label);
+    return ings.map((ing) => {
+        const passes = Array.from(new Set(COMBOS.filter((c) => c.itens.includes(ing.id)).map((c) => c.passe)));
+        return {
+            id: `ips-${s.id}-${ing.id}`,
+            setor: setorNome(s),
+            tipoIngresso: ing.nome,
+            lote: ing.lotes[0]?.nome ?? "1º lote",
+            itemCombo: passes.join(" · "),
+            vendidos: ing.quantidade,
+            estoque: Math.round(CAP_AREA[area] / 2),
+        };
+    });
+});
 
 /* Setores derivados das linhas: vendido = soma das linhas (frequência na festa);
    estoque = capacidade física da festa×área (SETOR_CAP). */
@@ -145,14 +161,24 @@ const setores: SetorRow[] = (() => {
     return order.map((n) => map.get(n)!);
 })();
 
-// Combos vendidos (tabela). Faturamento bruto = preço × unidades; líquido ≈ −3,4%.
+// Combos vendidos (tabela): nome do combo + seus lotes (padrão de produção).
 const combos: ComboRow[] = COMBOS.map((c) => {
-    const gmv = c.preco * c.quantidade;
-    return { id: c.id, nome: c.nome, quantidade: c.quantidade, valorUnitario: c.preco, gmv, gmvComDesconto: Math.round(gmv * 0.966) };
+    const lotes: ComboLoteDetalhe[] = c.lotes.map((l) => {
+        const gmv = l.preco * l.quantidade;
+        const desconto = Math.round(gmv * 0.006);
+        return { id: l.id, lote: l.nome, quantidade: l.quantidade, valorUnitario: l.preco, gmv, desconto, gmvComDesconto: gmv - desconto };
+    });
+    const gmv = lotes.reduce((s, l) => s + l.gmv, 0);
+    const desconto = lotes.reduce((s, l) => s + l.desconto, 0);
+    const quantidade = lotes.reduce((s, l) => s + l.quantidade, 0);
+    return { id: c.id, nome: c.nome, quantidade, valorUnitario: Math.round(gmv / quantidade), gmv, desconto, gmvComDesconto: gmv - desconto, lotes };
 });
 
-// O evento vende apenas combos — sem produtos avulsos.
-const produtos: ProdutoRow[] = [];
+// Produtos avulsos (dimensão distinta de ingresso e combo).
+const produtos: ProdutoRow[] = PRODUTOS.map((p) => {
+    const gmv = p.preco * p.quantidade;
+    return { id: p.id, nome: p.nome, quantidade: p.quantidade, valorUnitario: p.preco, gmv, gmvComDesconto: Math.round(gmv * 0.966) };
+});
 
 // Cupons do Réveillon (abrem expandindo a linha, detalhados por grupo).
 const cupons: CupomRow[] = [
@@ -200,6 +226,7 @@ interface MixReceitaItem {
 // Réveillon: 100% da receita vem de combos.
 const mixReceita: MixReceitaItem[] = [
     { id: "combos", nome: "Combos", quantidade: TOTAL_UNIDADES, gmv: TOTAL_GMV, gmvComDesconto: Math.round(TOTAL_GMV * 0.966), fill: "var(--color-utility-brand-700)" },
+    { id: "produtos", nome: "Produtos", quantidade: TOTAL_PRODUTOS, gmv: TOTAL_GMV_PRODUTOS, gmvComDesconto: Math.round(TOTAL_GMV_PRODUTOS * 0.966), fill: "var(--color-utility-blue-500)" },
 ];
 
 const VALOR_TOTAL_BASE = TOTAL_GMV;
@@ -222,38 +249,87 @@ interface TreeNode {
 const generoLabel = (g: string) => (g === "MASCULINO" ? "Masculino" : "Feminino");
 const grupoSlug = (g: string) => (g === "NIGHT PASS" ? "night" : "full");
 
+// Detalhamento das vendas: Sessão → Tipo de produto → (Combos) Setor → Ingresso → Lote.
 const buildDrillTree = (): TreeNode[] =>
     EVENT.sessoes.map((s) => {
         const combosS = combosNaSessao(s.id);
-        const grupos: TreeNode[] = (["NIGHT PASS", "FULL PASS"] as const)
-            .filter((g) => combosS.some((c) => c.grupo === g))
+        // Setor = passe (NIGHT/FULL) que cobre a sessão.
+        const setores: TreeNode[] = (["NIGHT PASS", "FULL PASS"] as const)
+            .filter((g) => combosS.some((c) => c.passe === g))
             .map((g) => {
-                const cg = combosS.filter((c) => c.grupo === g);
-                const value = cg.reduce((a, c) => a + c.quantidade, 0);
+                const cg = combosS.filter((c) => c.passe === g);
+                // Ingresso = variante (gênero) dentro do passe; abaixo, os lotes do combo.
+                const ingressos: TreeNode[] = cg.map((c) => ({
+                    id: `${s.id}-${c.id}`,
+                    key: c.genero,
+                    label: generoLabel(c.genero),
+                    value: c.quantidade,
+                    childrenLabel: "Lote",
+                    children: c.lotes.map((l) => ({ id: `${s.id}-${c.id}-${l.id}`, key: l.id, label: l.nome, value: l.quantidade })),
+                }));
                 return {
                     id: `${s.id}-${grupoSlug(g)}`,
                     key: grupoSlug(g),
                     label: g,
-                    value,
-                    childrenLabel: "Gênero",
-                    children: cg.map((c) => ({ id: `${s.id}-${c.id}`, key: c.genero, label: generoLabel(c.genero), value: c.quantidade })),
+                    value: cg.reduce((a, c) => a + c.quantidade, 0),
+                    childrenLabel: "Ingresso",
+                    children: ingressos,
                 };
             });
-        const total = grupos.reduce((a, x) => a + x.value, 0);
-        return { id: s.id, key: s.id, label: s.descricao, value: total, estoque: CAP_AREA[areaOf(s.label)], childrenLabel: "Grupo do combo", children: grupos };
+        const combosNode: TreeNode = {
+            id: `${s.id}-combos`,
+            key: "combos",
+            label: "Combos",
+            value: setores.reduce((a, x) => a + x.value, 0),
+            childrenLabel: "Setor",
+            children: setores,
+        };
+
+        // Ingressos (vendas diretas): Setor (grupo da festa) → Ingresso → Lote.
+        const gruposS = GRUPOS.filter((g) => g.sessaoId === s.id);
+        const setoresIng: TreeNode[] = gruposS.map((g) => {
+            const ings = INGRESSOS.filter((i) => i.grupoId === g.id);
+            const ingressos: TreeNode[] = ings.map((ing) => ({
+                id: `${s.id}-ing-${ing.id}`,
+                key: ing.id,
+                label: ing.nome,
+                value: ing.vendaDireta,
+                childrenLabel: "Lote",
+                children: ing.lotes.map((l) => ({ id: `${s.id}-ing-${l.id}`, key: l.id, label: l.nome, value: l.quantidade })),
+            }));
+            return {
+                id: `${s.id}-grupo-${g.id}`,
+                key: g.id,
+                label: g.nome,
+                value: ings.reduce((a, i) => a + i.vendaDireta, 0),
+                childrenLabel: "Ingresso",
+                children: ingressos,
+            };
+        });
+        const ingressosNode: TreeNode = {
+            id: `${s.id}-ingressos`,
+            key: "ingressos",
+            label: "Ingressos",
+            value: setoresIng.reduce((a, x) => a + x.value, 0),
+            childrenLabel: "Setor",
+            children: setoresIng,
+        };
+
+        const total = combosNode.value + ingressosNode.value;
+        return { id: s.id, key: s.id, label: s.descricao, value: total, estoque: CAP_AREA[areaOf(s.label)], childrenLabel: "Tipo de produto", children: [combosNode, ingressosNode] };
     });
 
 const drillTree = buildDrillTree();
 
-// Sem produtos avulsos — root vazio mantém o componente sem renderizar o botão "Produtos".
-const aggregatedProdutos: TreeNode[] = [];
+// Produtos avulsos (dimensão distinta) — alimenta o drill-down "Produtos".
+const aggregatedProdutos: TreeNode[] = PRODUTOS.map((p) => ({ id: `prod-${p.id}`, key: p.id, label: p.nome, value: p.quantidade }));
 
 const PRODUTOS_ROOT_ID = "produtos-all";
 const produtosRootNode: TreeNode = {
     id: PRODUTOS_ROOT_ID,
     key: PRODUTOS_ROOT_ID,
     label: "Produtos",
-    value: 0,
+    value: TOTAL_PRODUTOS,
     childrenLabel: "Produto",
     children: aggregatedProdutos,
 };
@@ -317,7 +393,14 @@ const VendasBody = () => {
             gmvComDesconto: m.gmvComDesconto * vendaFactor,
         }));
 
-        const combosView: ComboRow[] = combos.map((c) => ({ ...c, quantidade: Math.round(c.quantidade * vendaFactor), gmv: c.gmv * vendaFactor, gmvComDesconto: c.gmvComDesconto * vendaFactor }));
+        const combosView: ComboRow[] = combos.map((c) => ({
+            ...c,
+            quantidade: Math.round(c.quantidade * vendaFactor),
+            gmv: c.gmv * vendaFactor,
+            desconto: c.desconto * vendaFactor,
+            gmvComDesconto: c.gmvComDesconto * vendaFactor,
+            lotes: c.lotes.map((l) => ({ ...l, quantidade: Math.round(l.quantidade * vendaFactor), gmv: l.gmv * vendaFactor, desconto: l.desconto * vendaFactor, gmvComDesconto: l.gmvComDesconto * vendaFactor })),
+        }));
         const produtosView: ProdutoRow[] = produtos.map((p) => ({ ...p, quantidade: Math.round(p.quantidade * dateFraction), gmv: p.gmv * dateFraction, gmvComDesconto: p.gmvComDesconto * dateFraction }));
         const cuponsView: CupomRow[] = cupons.map((c) => ({
             ...c,
@@ -628,7 +711,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
                                     if (path[pi] === PRODUTOS_ROOT_ID && pi === 0) return produtosRoot;
                                     return columns[pi].find((n) => n.id === path[pi]);
                                 };
-                                const headerLabel = colIndex === 0 ? "Sessão" : resolveParent(colIndex - 1)?.childrenLabel ?? "Detalhe";
+                                const headerLabel = colIndex === 0 ? "Data da sessão" : resolveParent(colIndex - 1)?.childrenLabel ?? "Detalhe";
                                 const parentLabel = colIndex > 0 && path[colIndex - 1] ? resolveParent(colIndex - 1)?.label : null;
                                 return (
                                     <motion.div
@@ -1025,31 +1108,75 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
 /* ------------------------------------------------------------------ */
 
 const ComboCard = ({ rows }: { rows: ComboRow[] }) => {
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(rows as unknown as Record<string, unknown>[], undefined, { key: "gmv", dir: "desc" });
     const sortedRows = sorted as unknown as ComboRow[];
+    const toggle = (id: string) =>
+        setExpanded((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
     return (
-        <Card title="Combo">
+        <Card title="Combos">
             <div className="overflow-x-auto overflow-y-clip">
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
-                            <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Item Combo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="w-10 px-2 py-3 md:px-4" aria-hidden="true" />
+                            <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Combo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Quantidade" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor Unitário" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor unitário médio" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor total bruto" align="right" sortKey="gmv" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Desconto" align="right" sortKey="desconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor total c/ desconto" align="right" sortKey="gmvComDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                         </tr>
                     </thead>
                     <tbody>
-                        {sortedRows.map((row, i) => (
-                            <tr key={row.id} className={cx("transition duration-100 ease-linear hover:bg-primary_hover", i !== sortedRows.length - 1 && "border-b border-secondary")}>
-                                <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-primary">{row.nome}</td>
-                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{numberFormatter.format(row.quantidade)}</td>
-                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valorUnitario)}</td>
-                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmv)}</td>
-                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmvComDesconto)}</td>
-                            </tr>
-                        ))}
+                        {sortedRows.map((row, i) => {
+                            const isExpanded = expanded.has(row.id);
+                            const isLast = i === sortedRows.length - 1;
+                            return (
+                                <Fragment key={row.id}>
+                                    <tr
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-expanded={isExpanded}
+                                        onClick={() => toggle(row.id)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                toggle(row.id);
+                                            }
+                                        }}
+                                        className={cx("cursor-pointer transition duration-100 ease-linear hover:bg-primary_hover", (!isLast || isExpanded) && "border-b border-secondary")}
+                                    >
+                                        <td className="px-2 py-4 md:px-4">
+                                            <ChevronDown aria-hidden="true" className={cx("size-4 text-fg-quaternary transition-transform duration-150", isExpanded && "rotate-180")} />
+                                        </td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-primary">{row.nome}</td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{numberFormatter.format(row.quantidade)}</td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valorUnitario)}</td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmv)}</td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.desconto)}</td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmvComDesconto)}</td>
+                                    </tr>
+                                    {isExpanded &&
+                                        row.lotes.map((lote) => (
+                                            <tr key={lote.id} className="border-b border-secondary bg-secondary">
+                                                <td className="px-2 py-3 md:px-4" />
+                                                <td className="whitespace-nowrap px-4 py-3 pl-10 text-sm text-secondary">{lote.lote}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(lote.quantidade)}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.valorUnitario)}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.gmv)}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.desconto)}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.gmvComDesconto)}</td>
+                                            </tr>
+                                        ))}
+                                </Fragment>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

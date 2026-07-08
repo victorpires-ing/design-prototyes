@@ -1,39 +1,62 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Download01, Paperclip, SearchLg, Users01, XClose } from "@untitledui/icons";
-import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
+import { ChevronDown, ChevronRight, Download01, Paperclip, SearchLg, XClose } from "@untitledui/icons";
+import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay, type Selection } from "react-aria-components";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
-import { MetricsIcon03 } from "@/components/application/metrics/metrics";
+import { Select } from "@/components/base/select/select";
+import { MultiSelect } from "@/components/base/select/multi-select";
+import { Tabs } from "@/components/application/tabs/tabs";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { RelatorioFiltersProvider } from "../components/relatorio-filters";
-import { EVENT, numberFormatter } from "../data/event";
-import { COMBOS } from "../data/produtos";
-import { PARTICIPANTES, QUESTIONARIO, TIPO_RESPOSTA, TOTAL_PERGUNTAS, type ParticipanteRespostas, type RespostaDoParticipante } from "../data/questionarios";
+import { EVENT, numberFormatter, percentFormatter } from "../data/event";
+import { COMBOS, comboIngressos, grupoById, type Combo, type Ingresso } from "../data/produtos";
+import { PARTICIPANTES, QUESTIONARIO, TIPO_RESPOSTA, type ParticipanteRespostas, type QuestionarioPergunta, type RespostaDoParticipante } from "../data/questionarios";
 
 const num = (n: number) => numberFormatter.format(n);
 const PAGE_SIZE_INICIAL = 10;
 
-/** Combo do participante (derivado de forma estável do documento). */
+/** Deriva de forma estável a partir do documento. */
 const hashStr = (s: string) => {
     let h = 0;
     for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
     return Math.abs(h);
 };
+
+/** Combo (bundle) comprado pelo participante. */
+const comboDoParticipante = (p: ParticipanteRespostas): Combo => COMBOS[hashStr(p.respondente.documento) % COMBOS.length];
+
 interface IngressoParticipante {
-    combo: (typeof COMBOS)[number];
+    ingresso: Ingresso;
+    grupoNome: string;
+    loteNome: string;
     respostas: RespostaDoParticipante[];
 }
 
-/** Ingressos do participante (1..N). ~1/3 dos participantes têm mais de um. */
-const ingressosDoParticipante = (p: ParticipanteRespostas): IngressoParticipante[] => {
-    const h = hashStr(p.respondente.documento);
-    const qtd = h % 3 === 0 ? 2 : 1;
-    return Array.from({ length: qtd }, (_, i) => ({ combo: COMBOS[(h + i) % COMBOS.length], respostas: p.respostas }));
+/**
+ * Ingressos que o participante recebeu — os ingressos reais do combo (bundle).
+ * O questionário é respondido por ingresso, então cada um carrega as respostas.
+ */
+const ingressosDoParticipante = (p: ParticipanteRespostas): IngressoParticipante[] =>
+    comboIngressos(comboDoParticipante(p)).map((ingresso) => ({
+        ingresso,
+        grupoNome: grupoById(ingresso.grupoId)?.nome ?? "",
+        loteNome: ingresso.lotes[0]?.nome ?? "Lote único",
+        respostas: p.respostas,
+    }));
+
+/** Perguntas de opção fechada (têm distribuição por opção). */
+const PERGUNTAS_FECHADAS = QUESTIONARIO.filter((q) => (q.tipo === "selecao-unica" || q.tipo === "multipla-selecao") && (q.opcoes?.length ?? 0) > 0);
+
+/** Um participante respondeu `opcao` na pergunta `perguntaId`? */
+const respostaInclui = (p: ParticipanteRespostas, perguntaId: string, opcao: string) => {
+    const r = p.respostas.find((x) => x.perguntaId === perguntaId);
+    if (!r) return false;
+    return r.linha.opcao === opcao || (r.linha.opcoesMultiplas?.includes(opcao) ?? false);
 };
 
 const getInitials = (nome: string) =>
@@ -65,85 +88,283 @@ const QuestionariosBody = () => {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(PAGE_SIZE_INICIAL);
     const [selecionado, setSelecionado] = useState<ParticipanteRespostas | null>(null);
+    const [abrirIngresso, setAbrirIngresso] = useState<number | undefined>(undefined);
+    const [aba, setAba] = useState<"participantes" | "resumo">("resumo");
+    const [filtroPergunta, setFiltroPergunta] = useState<string | null>(null);
+    const [filtroOpcao, setFiltroOpcao] = useState<string | null>(null);
     const topRef = useRef<HTMLDivElement>(null);
-
-    const resumo = useMemo(
-        () => ({
-            perguntas: TOTAL_PERGUNTAS,
-            participantes: PARTICIPANTES.length,
-            respostas: PARTICIPANTES.reduce((acc, p) => acc + p.respostas.length, 0),
-        }),
-        [],
-    );
 
     const filtrados = useMemo(() => {
         const termo = busca.trim().toLowerCase();
-        if (!termo) return PARTICIPANTES;
         return PARTICIPANTES.filter((p) => {
             const r = p.respondente;
-            return r.nome.toLowerCase().includes(termo) || r.email.toLowerCase().includes(termo) || r.documento.toLowerCase().includes(termo);
+            const okTexto = !termo || r.nome.toLowerCase().includes(termo) || r.email.toLowerCase().includes(termo) || r.documento.toLowerCase().includes(termo);
+            const okResposta = !filtroPergunta || !filtroOpcao || respostaInclui(p, filtroPergunta, filtroOpcao);
+            return okTexto && okResposta;
         });
-    }, [busca]);
+    }, [busca, filtroPergunta, filtroOpcao]);
 
     const totalPages = Math.max(1, Math.ceil(filtrados.length / pageSize));
     const safePage = Math.min(page, totalPages);
     const visiveis = useMemo(() => filtrados.slice((safePage - 1) * pageSize, safePage * pageSize), [filtrados, safePage, pageSize]);
 
-    useEffect(() => setPage(1), [busca]);
+    useEffect(() => setPage(1), [busca, filtroPergunta, filtroOpcao]);
 
     const irParaTopo = () => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
+    const perguntaFiltro = PERGUNTAS_FECHADAS.find((q) => q.id === filtroPergunta);
+
     return (
         <div ref={topRef} className="flex scroll-mt-6 flex-col gap-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <MetricsIcon03 icon={Users01} title={num(resumo.participantes)} subtitle="Participantes" change={null} changeTrend="positive" actions={false} className="[&_p+div]:hidden" />
-            </div>
+            <Tabs selectedKey={aba} onSelectionChange={(k) => setAba(k as "participantes" | "resumo")}>
+                <Tabs.List type="underline" items={[{ id: "resumo", label: "Resumo das respostas" }, { id: "participantes", label: "Participantes" }]}>
+                    {(tab) => <Tabs.Item {...tab} />}
+                </Tabs.List>
 
-            <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <h3 className="text-md font-semibold text-primary">Participantes</h3>
-                    <div className="w-full sm:w-80">
-                        <Input icon={SearchLg} size="sm" aria-label="Buscar participante" placeholder="Buscar por nome, e-mail ou documento" value={busca} onChange={setBusca} />
+                <Tabs.Panel id="participantes" className="flex flex-col gap-4 pt-5">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:max-w-xl">
+                            <Select
+                                label="Filtrar por pergunta"
+                                selectedKey={filtroPergunta ?? "__all__"}
+                                onSelectionChange={(k) => {
+                                    const v = String(k);
+                                    setFiltroPergunta(v === "__all__" ? null : v);
+                                    setFiltroOpcao(null);
+                                }}
+                                items={[{ id: "__all__", label: "Todas as perguntas" }, ...PERGUNTAS_FECHADAS.map((q) => ({ id: q.id, label: q.titulo }))]}
+                            >
+                                {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                            </Select>
+                            <Select
+                                label="Resposta"
+                                placeholder={perguntaFiltro ? undefined : "Escolha a pergunta"}
+                                isDisabled={!perguntaFiltro}
+                                selectedKey={filtroOpcao ?? "__all__"}
+                                onSelectionChange={(k) => {
+                                    const v = String(k);
+                                    setFiltroOpcao(v === "__all__" ? null : v);
+                                }}
+                                items={[{ id: "__all__", label: "Todas as respostas", qtd: "" }, ...(perguntaFiltro?.opcoes ?? []).map((o) => ({ id: o.label, label: o.label, qtd: `${num(o.respostas)}` }))]}
+                            >
+                                {(item) => (
+                                    <Select.Item id={item.id} supportingText={item.qtd || undefined}>
+                                        {item.label}
+                                    </Select.Item>
+                                )}
+                            </Select>
+                        </div>
+                        <div className="w-full lg:w-80">
+                            <Input icon={SearchLg} size="sm" aria-label="Buscar participante" placeholder="Buscar por nome, e-mail ou documento" value={busca} onChange={setBusca} />
+                        </div>
                     </div>
-                </div>
 
-                {visiveis.length === 0 ? (
-                    <div className="rounded-xl bg-primary px-4 py-12 text-center text-sm text-tertiary ring-1 ring-border-secondary">Nenhum participante encontrado.</div>
-                ) : (
-                    <div className="flex flex-col gap-3">
-                        {visiveis.map((p) => (
-                            <ParticipanteCard
-                                key={p.respondente.id}
-                                participante={p}
-                                isSelected={selecionado?.respondente.id === p.respondente.id}
-                                onClick={() => setSelecionado(p)}
-                            />
-                        ))}
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm text-tertiary">
+                            <span className="font-semibold text-primary">{num(filtrados.length)}</span> {filtrados.length === 1 ? "participante" : "participantes"}
+                            {filtroPergunta && filtroOpcao ? " no filtro" : ""}
+                        </span>
+                        {(filtroPergunta || busca) && (
+                            <Button
+                                size="sm"
+                                color="link-gray"
+                                onClick={() => {
+                                    setFiltroPergunta(null);
+                                    setFiltroOpcao(null);
+                                    setBusca("");
+                                }}
+                            >
+                                Limpar filtros
+                            </Button>
+                        )}
                     </div>
-                )}
 
-                <div className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-                    <PaginationCardAdvanced
-                        className="[&]:border-t-0"
-                        page={safePage}
-                        total={totalPages}
-                        pageSize={pageSize}
-                        onPageChange={(p: number) => {
-                            setPage(p);
-                            irParaTopo();
-                        }}
-                        onPageSizeChange={(s: number) => {
-                            setPageSize(s);
-                            setPage(1);
+                    {visiveis.length === 0 ? (
+                        <div className="rounded-xl bg-primary px-4 py-12 text-center text-sm text-tertiary ring-1 ring-border-secondary">Nenhum participante encontrado.</div>
+                    ) : (
+                        <div className="flex flex-col gap-3">
+                            {visiveis.map((p) => (
+                                <ParticipanteCard
+                                    key={p.respondente.id}
+                                    participante={p}
+                                    isSelected={selecionado?.respondente.id === p.respondente.id}
+                                    onClick={() => {
+                                        setAbrirIngresso(undefined);
+                                        setSelecionado(p);
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
+                        <PaginationCardAdvanced
+                            className="[&]:border-t-0"
+                            page={safePage}
+                            total={totalPages}
+                            pageSize={pageSize}
+                            onPageChange={(p: number) => {
+                                setPage(p);
+                                irParaTopo();
+                            }}
+                            onPageSizeChange={(s: number) => {
+                                setPageSize(s);
+                                setPage(1);
+                            }}
+                        />
+                    </div>
+                </Tabs.Panel>
+
+                <Tabs.Panel id="resumo" className="pt-5">
+                    <ResumoRespostasView
+                        onSelect={(p) => {
+                            setAbrirIngresso(0);
+                            setSelecionado(p);
                         }}
                     />
-                </div>
-            </div>
+                </Tabs.Panel>
+            </Tabs>
 
-            <RespostasSlideOut isOpen={selecionado !== null} participante={selecionado} onClose={() => setSelecionado(null)} />
+            <RespostasSlideOut isOpen={selecionado !== null} participante={selecionado} abrirIngresso={abrirIngresso} onClose={() => setSelecionado(null)} />
         </div>
     );
 };
+
+/* ------------------------------------------------------------------ */
+/*  Visão "Respostas por opção" (distribuição de perguntas fechadas)   */
+/* ------------------------------------------------------------------ */
+
+const RESUMIVEIS = QUESTIONARIO.filter((q) => q.tipo !== "anexar-arquivo");
+const TODAS_IDS = RESUMIVEIS.map((q) => q.id);
+const PARTICIPANTE_POR_ID = new Map(PARTICIPANTES.map((p) => [p.respondente.id, p]));
+
+function ResumoRespostasView({ onSelect }: { onSelect: (p: ParticipanteRespostas) => void }) {
+    const [busca, setBusca] = useState("");
+    const [visiveis, setVisiveis] = useState<Selection>(new Set(TODAS_IDS));
+
+    const idsVisiveis = visiveis === "all" ? new Set(TODAS_IDS) : visiveis;
+    const termo = busca.trim().toLowerCase();
+    const perguntas = RESUMIVEIS.filter((q) => idsVisiveis.has(q.id));
+
+    return (
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="w-full sm:max-w-xs">
+                    <MultiSelect
+                        label="Perguntas exibidas"
+                        placeholder="Escolha as perguntas"
+                        showSearch={false}
+                        selectedKeys={visiveis}
+                        onSelectionChange={setVisiveis}
+                        onReset={() => setVisiveis(new Set())}
+                        onSelectAll={() => setVisiveis(new Set(TODAS_IDS))}
+                        selectedCountFormatter={(n) => (n === TODAS_IDS.length ? "Todas as perguntas" : `${n} de ${TODAS_IDS.length} perguntas`)}
+                        items={RESUMIVEIS.map((q) => ({ id: q.id, label: q.titulo }))}
+                    >
+                        {(item) => (
+                            <MultiSelect.Item id={item.id} selectionIndicator="checkbox" selectionIndicatorAlign="left">
+                                {item.label}
+                            </MultiSelect.Item>
+                        )}
+                    </MultiSelect>
+                </div>
+                <div className="w-full sm:w-72">
+                    <Input icon={SearchLg} size="sm" aria-label="Buscar nas respostas" placeholder="Buscar nas respostas" value={busca} onChange={setBusca} />
+                </div>
+            </div>
+
+            {perguntas.length === 0 ? (
+                <div className="rounded-xl bg-primary px-4 py-12 text-center text-sm text-tertiary ring-1 ring-border-secondary">Selecione ao menos uma pergunta para exibir.</div>
+            ) : (
+                perguntas.map((pergunta) =>
+                    pergunta.tipo === "texto-aberto" ? (
+                        <ResumoTextoCard key={pergunta.id} pergunta={pergunta} termo={termo} onSelect={onSelect} />
+                    ) : (
+                        <ResumoPerguntaCard key={pergunta.id} pergunta={pergunta} termo={termo} />
+                    ),
+                )
+            )}
+        </div>
+    );
+}
+
+/** Cabeçalho comum dos cards do resumo. */
+function ResumoHeader({ pergunta, extra }: { pergunta: QuestionarioPergunta; extra?: string }) {
+    return (
+        <div className="flex flex-col gap-1 border-b border-secondary px-5 py-3.5">
+            <h4 className="text-sm font-semibold text-primary">{pergunta.titulo}</h4>
+            <span className="text-sm text-tertiary">
+                {TIPO_RESPOSTA[pergunta.tipo].label}
+                {extra ? ` · ${extra}` : ""} · <span className="font-medium text-secondary">{num(pergunta.respondidas)}</span> de {num(pergunta.total)} responderam
+            </span>
+        </div>
+    );
+}
+
+/** Card de pergunta de texto aberto (estilo Typeform): lista rolável de respostas. */
+function ResumoTextoCard({ pergunta, termo, onSelect }: { pergunta: QuestionarioPergunta; termo: string; onSelect: (p: ParticipanteRespostas) => void }) {
+    const respostas = pergunta.respostas.filter((r) => {
+        if (!termo) return true;
+        return (r.texto ?? "").toLowerCase().includes(termo) || r.respondente.nome.toLowerCase().includes(termo);
+    });
+
+    if (termo && respostas.length === 0) return null;
+
+    return (
+        <div className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
+            <ResumoHeader pergunta={pergunta} extra={`${num(respostas.length)} respostas`} />
+            <div className="max-h-80 divide-y divide-secondary overflow-y-auto">
+                {respostas.map((r, i) => {
+                    const participante = PARTICIPANTE_POR_ID.get(r.respondente.id);
+                    return (
+                        <button
+                            key={i}
+                            type="button"
+                            disabled={!participante}
+                            onClick={() => participante && onSelect(participante)}
+                            className="flex w-full items-start justify-between gap-3 px-5 py-3.5 text-left transition duration-100 ease-linear hover:bg-primary_hover"
+                        >
+                            <span className="flex min-w-0 flex-col gap-1.5">
+                                <span className="text-sm text-secondary">“{r.texto}”</span>
+                                <span className="text-sm font-medium text-brand-secondary">{r.respondente.nome}</span>
+                            </span>
+                            <ChevronRight aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-fg-quaternary" />
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function ResumoPerguntaCard({ pergunta, termo }: { pergunta: QuestionarioPergunta; termo: string }) {
+    const base = pergunta.respondidas || 1;
+    const maxResp = Math.max(...(pergunta.opcoes ?? []).map((o) => o.respostas), 1);
+    const opcoes = (pergunta.opcoes ?? []).filter((o) => !termo || o.label.toLowerCase().includes(termo)).sort((a, b) => b.respostas - a.respostas);
+
+    if (termo && opcoes.length === 0) return null;
+
+    return (
+        <div className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
+            <ResumoHeader pergunta={pergunta} extra={`${num(pergunta.opcoes?.length ?? 0)} opções`} />
+            <ul className="flex flex-col divide-y divide-secondary">
+                {opcoes.map((o) => (
+                    <li key={o.label} className="flex flex-col gap-2 px-5 py-3.5">
+                        <div className="flex items-center justify-between gap-4">
+                            <span className="min-w-0 truncate text-sm font-medium text-secondary">{o.label}</span>
+                            <span className="shrink-0 text-sm text-tertiary">
+                                <span className="font-semibold text-primary">{num(o.respostas)}</span> · {percentFormatter.format(o.respostas / base)}
+                            </span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-quaternary">
+                            <div className="h-full rounded-full bg-brand-solid transition-all duration-300 ease-linear" style={{ width: `${(o.respostas / maxResp) * 100}%` }} />
+                        </div>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Card do participante                                               */
@@ -179,7 +400,7 @@ function ParticipanteCard({ participante, isSelected, onClick }: { participante:
 /*  Slideout — respostas do participante                               */
 /* ------------------------------------------------------------------ */
 
-function RespostasSlideOut({ isOpen, participante, onClose }: { isOpen: boolean; participante: ParticipanteRespostas | null; onClose: () => void }) {
+function RespostasSlideOut({ isOpen, participante, abrirIngresso, onClose }: { isOpen: boolean; participante: ParticipanteRespostas | null; abrirIngresso?: number; onClose: () => void }) {
     const r = participante?.respondente;
     return (
         <AriaModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable className="fixed inset-0 z-50 flex justify-end outline-hidden">
@@ -222,6 +443,7 @@ function RespostasSlideOut({ isOpen, participante, onClose }: { isOpen: boolean;
                                 <div className="mx-6 border-t border-secondary" />
 
                                 {(() => {
+                                    const combo = comboDoParticipante(participante);
                                     const ingressos = ingressosDoParticipante(participante);
                                     if (ingressos.length === 1) {
                                         const ing = ingressos[0];
@@ -229,7 +451,7 @@ function RespostasSlideOut({ isOpen, participante, onClose }: { isOpen: boolean;
                                             <>
                                                 <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
                                                     <h3 className="text-md font-semibold text-primary">Ingresso</h3>
-                                                    <IngressoCombo combo={ing.combo} />
+                                                    <IngressoDetalhe ing={ing} />
                                                 </div>
                                                 <div className="mx-6 border-t border-secondary" />
                                                 <div className="flex flex-col gap-4 px-6 pt-5 pb-6">
@@ -240,12 +462,22 @@ function RespostasSlideOut({ isOpen, participante, onClose }: { isOpen: boolean;
                                         );
                                     }
                                     return (
-                                        <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
-                                            <h3 className="text-md font-semibold text-primary">Ingressos ({num(ingressos.length)})</h3>
-                                            {ingressos.map((ing, i) => (
-                                                <IngressoAccordion key={i} combo={ing.combo} respostas={ing.respostas} />
-                                            ))}
-                                        </div>
+                                        <>
+                                            <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
+                                                <h3 className="text-md font-semibold text-primary">Combo</h3>
+                                                <dl className="flex flex-col gap-3">
+                                                    <DetailStacked label="Nome do combo" value={combo.nome} />
+                                                    <DetailStacked label="Tipo" value={combo.tipo === "fixo" ? "Fixo" : "Dinâmico"} />
+                                                </dl>
+                                            </div>
+                                            <div className="mx-6 border-t border-secondary" />
+                                            <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
+                                                <h3 className="text-md font-semibold text-primary">Ingressos ({num(ingressos.length)})</h3>
+                                                {ingressos.map((ing, i) => (
+                                                    <IngressoAccordion key={`${r.id}-${i}`} ing={ing} defaultOpen={i === abrirIngresso} />
+                                                ))}
+                                            </div>
+                                        </>
                                     );
                                 })()}
                             </>
@@ -263,13 +495,13 @@ function RespostasSlideOut({ isOpen, participante, onClose }: { isOpen: boolean;
     );
 }
 
-/** Dados do combo (grupo/nome/lote) empilhados. */
-function IngressoCombo({ combo }: { combo: (typeof COMBOS)[number] }) {
+/** Dados do ingresso (grupo > ingresso > lote) empilhados. */
+function IngressoDetalhe({ ing }: { ing: IngressoParticipante }) {
     return (
         <dl className="flex flex-col gap-3">
-            <DetailStacked label="Grupo do ingresso" value={combo.grupo} />
-            <DetailStacked label="Nome do ingresso" value={combo.nome} />
-            <DetailStacked label="Lote" value="Lote único" />
+            <DetailStacked label="Grupo do ingresso" value={ing.grupoNome} />
+            <DetailStacked label="Nome do ingresso" value={ing.ingresso.nome} />
+            <DetailStacked label="Lote" value={ing.loteNome} />
         </dl>
     );
 }
@@ -295,8 +527,8 @@ function RespostasLista({ respostas }: { respostas: RespostaDoParticipante[] }) 
     );
 }
 
-/** Ingresso como accordion: cabeçalho com o combo, corpo com as respostas. */
-function IngressoAccordion({ combo, respostas, defaultOpen }: { combo: (typeof COMBOS)[number]; respostas: RespostaDoParticipante[]; defaultOpen?: boolean }) {
+/** Ingresso como accordion: cabeçalho com grupo/ingresso/lote, corpo com as respostas. */
+function IngressoAccordion({ ing, defaultOpen }: { ing: IngressoParticipante; defaultOpen?: boolean }) {
     const [open, setOpen] = useState(!!defaultOpen);
     return (
         <div className="overflow-hidden rounded-xl ring-1 ring-border-secondary">
@@ -307,15 +539,15 @@ function IngressoAccordion({ combo, respostas, defaultOpen }: { combo: (typeof C
                 className={cx("flex w-full items-center gap-3 px-4 py-3 text-left transition duration-100 ease-linear hover:bg-primary_hover", open && "border-b border-secondary")}
             >
                 <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-semibold text-primary">{combo.nome}</span>
-                    <span className="truncate text-sm text-tertiary">{combo.grupo} · Lote único</span>
+                    <span className="truncate text-sm font-semibold text-primary">{ing.grupoNome}</span>
+                    <span className="truncate text-sm text-tertiary">{ing.ingresso.nome} · {ing.loteNome}</span>
                 </span>
                 <ChevronDown className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", open && "rotate-180")} aria-hidden="true" />
             </button>
             {open && (
                 <div className="flex flex-col gap-4 p-4">
-                    <IngressoCombo combo={combo} />
-                    <RespostasLista respostas={respostas} />
+                    <IngressoDetalhe ing={ing} />
+                    <RespostasLista respostas={ing.respostas} />
                 </div>
             )}
         </div>

@@ -73,7 +73,7 @@ const leaf = (label: string, qtd: number, bruto: number): TreeNode => {
     return { label, values: [qtd, bruto, taxa, bruto - taxa] };
 };
 const comboLeaf = (c: (typeof COMBOS)[number]): TreeNode => leaf(generoLabel(c.genero), c.quantidade, c.preco * c.quantidade);
-const combosDoGrupo = (grupo: string) => COMBOS.filter((c) => c.grupo === grupo);
+const combosDoGrupo = (grupo: string) => COMBOS.filter((c) => c.passe === grupo);
 
 // Por combo: Canal (Online) → Grupo → Combo.
 const macroData: TreeNode[] = [

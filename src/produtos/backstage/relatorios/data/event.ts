@@ -16,7 +16,7 @@ export interface Sessao {
 }
 
 export const EVENT = {
-    nome: "Réveillon Carneiros 2027",
+    nome: "Visão completa",
     locale: "pt-BR",
     currency: "BRL",
     /** Código exibido em alguns lugares como prefixo de moeda. */

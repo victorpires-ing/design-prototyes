@@ -326,7 +326,7 @@ const _pad = (n: number) => String(n).padStart(2, "0");
 const transferencias: Transferencia[] = TRANSFERENCIAS_RAW.map((t, i) => {
     const c = COMBOS[i % COMBOS.length];
     const dt = new Date(_START.getTime() + ((i * 37) % (_DIAS + 1)) * 86_400_000);
-    return { ...t, combo: c.nome, grupo: c.grupo, data: `${_pad(dt.getDate())}/${_pad(dt.getMonth() + 1)}/${dt.getFullYear()}` };
+    return { ...t, combo: c.nome, grupo: c.passe, data: `${_pad(dt.getDate())}/${_pad(dt.getMonth() + 1)}/${dt.getFullYear()}` };
 });
 
 /* ------------------------------------------------------------------ */

@@ -216,7 +216,7 @@ const transacoes: Transacao[] = (() => {
             ultimaAtualizacao: fmtDateTime(updated),
             status,
             combo: combo.nome,
-            grupo: combo.grupo,
+            grupo: combo.passe,
             genero: generoLabel(combo.genero),
             comprador: nome,
             cpf,

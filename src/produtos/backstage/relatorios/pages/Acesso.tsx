@@ -51,7 +51,7 @@ const FESTAS: FestaMeta[] = EVENT.sessoes.map((s) => {
 const festaById = new Map(FESTAS.map((f) => [f.id, f]));
 
 // Combos elegíveis por festa: NIGHT PASS só acessa festas Night; FULL PASS, todas.
-const FULL_COMBOS = COMBOS.filter((c) => c.grupo === "FULL PASS");
+const FULL_COMBOS = COMBOS.filter((c) => c.passe === "FULL PASS");
 const combosDaFesta = (area: "Mouton" | "Night") => (area === "Night" ? COMBOS : FULL_COMBOS);
 
 const BAR_COLOR = "var(--color-brand-600)";
@@ -156,7 +156,7 @@ const portadores: PortadorAcesso[] = Array.from({ length: 480 }, (_, idx) => {
         canal: pick(CANAIS, idx + (idx % 3)),
         comboId: combo.id,
         combo: combo.nome,
-        grupo: combo.grupo,
+        grupo: combo.passe,
         status: validado ? "validado" : "pendente",
         horario: validado ? fmtMin(horarioMin) : undefined,
     };

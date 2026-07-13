@@ -1,13 +1,28 @@
 import { useRef, useState } from "react";
 import type { FC } from "react";
-import { Calendar, ChevronDown, ChevronRight, DotsGrid, Edit01, Key01, Plus, QrCode01, Trash01, Zap } from "@untitledui/icons";
+import { Calendar, ChevronDown, ChevronRight, Edit01, Key01, Plus, QrCode01, SwitchVertical01, Trash01, XClose, Zap } from "@untitledui/icons";
 import { AnimatePresence, Reorder, motion, useDragControls } from "motion/react";
 import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Toggle } from "@/components/base/toggle/toggle";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { SESSOES, type Grupo, type Ingresso, type Sessao } from "../data/ingressos";
+
+/** Handle de arraste com 2 colunas de pontos (padrão Jira/Gmail). */
+function GripVertical({ className }: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+            <circle cx="9" cy="6" r="1.6" />
+            <circle cx="9" cy="12" r="1.6" />
+            <circle cx="9" cy="18" r="1.6" />
+            <circle cx="15" cy="6" r="1.6" />
+            <circle cx="15" cy="12" r="1.6" />
+            <circle cx="15" cy="18" r="1.6" />
+        </svg>
+    );
+}
 
 const COL = {
     virada: "w-40",
@@ -30,7 +45,35 @@ function ActionIcon({ icon: Icon, label }: { icon: FC<{ className?: string }>; l
 }
 
 /** Contexto do que está sendo reordenado (para o modal de confirmação). */
-type Pending = { kind: "grupo" | "tipo"; nome: string; contexto: string };
+type Pending = { kind: "grupo" | "tipo"; nome: string; contexto: string; id: string };
+
+type DropSide = "top" | "bottom" | null;
+
+/** Onde desenhar a linha de inserção: no topo do slot arrastado (borda inferior do item de cima). */
+function dropLineFor<T extends { id: string }>(arr: T[], idx: number, draggingId: string | null): DropSide {
+    if (!draggingId) return null;
+    const d = arr.findIndex((x) => x.id === draggingId);
+    if (d === -1 || idx === d) return null;
+    if (idx === d - 1) return "bottom";
+    if (d === 0 && idx === d + 1) return "top";
+    return null;
+}
+
+/** Linha vermelha (cor da marca) indicando onde o item vai entrar — padrão Jira/Spotify. */
+function DropLine({ position }: { position: Exclude<DropSide, null> }) {
+    return (
+        <div
+            aria-hidden="true"
+            className={cx(
+                "pointer-events-none absolute inset-x-0 z-30 flex items-center gap-1",
+                position === "top" ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2",
+            )}
+        >
+            <span className="size-2.5 shrink-0 rounded-full border-2 border-brand-solid bg-primary" />
+            <span className="h-0.5 flex-1 rounded-full bg-brand-solid" />
+        </div>
+    );
+}
 
 /** Assinatura da ordem atual (sessões › grupos › ingressos) para detectar mudança. */
 const orderSig = (ss: Sessao[]) =>
@@ -46,6 +89,7 @@ export function Ingressos() {
         () => new Set(SESSOES.flatMap((s) => s.grupos.flatMap((g) => g.ingressos.filter((i) => i.active).map((i) => i.id)))),
     );
     const [pending, setPending] = useState<Pending | null>(null);
+    const [draggingId, setDraggingId] = useState<string | null>(null);
 
     const sessoesRef = useRef(sessoes);
     sessoesRef.current = sessoes;
@@ -67,9 +111,11 @@ export function Ingressos() {
     const handleDragStart = (ctx: Pending) => {
         snapshotRef.current = clone(sessoesRef.current);
         dragCtxRef.current = ctx;
+        setDraggingId(ctx.id);
     };
     // Ao soltar: se a ordem mudou, abre o modal de confirmação.
     const handleDragEnd = () => {
+        setDraggingId(null);
         const snap = snapshotRef.current;
         if (!snap) return;
         if (dragCtxRef.current && orderSig(sessoesRef.current) !== orderSig(snap)) {
@@ -119,7 +165,7 @@ export function Ingressos() {
                             </h2>
 
                             <Reorder.Group as="div" axis="y" values={sessao.grupos} onReorder={(next) => reorderGrupos(sessao.id, next)} className="mt-4 flex flex-col gap-4">
-                                {sessao.grupos.map((grupo) => (
+                                {sessao.grupos.map((grupo, idx) => (
                                     <GrupoCard
                                         key={grupo.id}
                                         grupo={grupo}
@@ -133,6 +179,8 @@ export function Ingressos() {
                                         onReorderIngressos={(next) => reorderIngressos(sessao.id, grupo.id, next)}
                                         onDragStart={handleDragStart}
                                         onDragEnd={handleDragEnd}
+                                        draggingId={draggingId}
+                                        dropLine={dropLineFor(sessao.grupos, idx, draggingId)}
                                     />
                                 ))}
                             </Reorder.Group>
@@ -145,8 +193,21 @@ export function Ingressos() {
             {pending && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/60 p-4" role="dialog" aria-modal="true">
                     <div className="w-full max-w-md rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
-                        <h2 className="text-lg font-bold text-primary">Confirmar alteração de ordem</h2>
-                        <p className="mt-2 text-sm text-tertiary">
+                        <div className="flex items-start justify-between">
+                            <FeaturedIcon icon={SwitchVertical01} color="gray" theme="modern" size="md" />
+                            <button
+                                type="button"
+                                onClick={cancelar}
+                                aria-label="Fechar"
+                                className="flex size-8 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-secondary"
+                            >
+                                <XClose className="size-5" aria-hidden="true" />
+                            </button>
+                        </div>
+                        <h2 className="mt-4 text-lg font-bold text-primary">
+                            {pending.kind === "grupo" ? "Confirmar alteração da ordem dos grupos?" : "Confirmar alteração da ordem dos ingressos?"}
+                        </h2>
+                        <p className="mt-2 text-sm leading-relaxed text-tertiary">
                             {pending.kind === "grupo" ? (
                                 <>
                                     A ordem do grupo <span className="font-semibold text-secondary">{pending.nome}</span> dentro da sessão{" "}
@@ -159,12 +220,12 @@ export function Ingressos() {
                                 </>
                             )}
                         </p>
-                        <div className="mt-6 flex justify-end gap-3">
-                            <Button size="md" color="secondary" onClick={cancelar}>
+                        <div className="mt-6 grid grid-cols-2 gap-3">
+                            <Button size="md" color="secondary" onClick={cancelar} className="w-full">
                                 Cancelar
                             </Button>
-                            <Button size="md" color="primary" onClick={confirmar}>
-                                Confirmar alteração
+                            <Button size="md" color="primary" onClick={confirmar} className="w-full">
+                                Confirmar
                             </Button>
                         </div>
                     </div>
@@ -186,9 +247,11 @@ interface GrupoCardProps {
     onReorderIngressos: (next: Ingresso[]) => void;
     onDragStart: (ctx: Pending) => void;
     onDragEnd: () => void;
+    draggingId: string | null;
+    dropLine: DropSide;
 }
 
-function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggleExpand, active, onToggleActive, onReorderIngressos, onDragStart, onDragEnd }: GrupoCardProps) {
+function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggleExpand, active, onToggleActive, onReorderIngressos, onDragStart, onDragEnd, draggingId, dropLine }: GrupoCardProps) {
     const controls = useDragControls();
     // overflow-hidden só durante a animação de abrir/fechar; quando aberto, "visible"
     // para não cortar o handle de arraste (que fica meio pra fora) nem a linha em drag.
@@ -200,11 +263,13 @@ function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggl
             value={grupo}
             dragListener={false}
             dragControls={controls}
-            onDragStart={() => onDragStart({ kind: "grupo", nome: grupo.name, contexto: sessaoLabel })}
+            onDragStart={() => onDragStart({ kind: "grupo", nome: grupo.name, contexto: sessaoLabel, id: grupo.id })}
             onDragEnd={onDragEnd}
             whileDrag={{ boxShadow: "0 12px 32px rgba(16,24,40,0.14)", zIndex: 20 }}
-            className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary"
+            className="relative flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary select-none"
         >
+            {dropLine && <DropLine position={dropLine} />}
+
             {/* Cabeçalho do grupo */}
             <button type="button" onClick={onToggleOpen} className="group/header relative flex items-center justify-between gap-3 px-4 py-4 text-left">
                 {/* Handle de arraste — aparece no hover, colado na borda esquerda */}
@@ -216,10 +281,10 @@ function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggl
                     onClick={(e) => e.stopPropagation()}
                     className="pointer-events-none absolute top-1/2 -left-3 flex -translate-y-1/2 items-center justify-center rounded-md bg-tertiary p-1 text-fg-secondary opacity-0 shadow-sm ring-1 ring-border-secondary transition-opacity duration-100 group-hover/header:pointer-events-auto group-hover/header:cursor-grab group-hover/header:opacity-100"
                 >
-                    <DotsGrid className="size-4" aria-hidden="true" />
+                    <GripVertical className="size-4" />
                 </span>
                 <div className="flex min-w-0 items-center gap-3">
-                    <QrCode01 className="size-5 shrink-0 text-fg-secondary transition-opacity duration-100 group-hover/header:opacity-0" />
+                    <QrCode01 className="size-5 shrink-0 text-fg-secondary" />
                     <div className="flex min-w-0 flex-col gap-0.5">
                         <span className="text-md font-semibold text-primary">{grupo.name}</span>
                         <span className="flex flex-wrap gap-x-5 gap-y-0.5 text-sm text-tertiary">
@@ -263,7 +328,7 @@ function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggl
 
                         {/* Linhas dos ingressos (reordenáveis dentro do grupo) */}
                         <Reorder.Group as="div" axis="y" values={grupo.ingressos} onReorder={onReorderIngressos}>
-                            {grupo.ingressos.map((ingresso) => (
+                            {grupo.ingressos.map((ingresso, idx) => (
                                 <IngressoRow
                                     key={ingresso.id}
                                     ingresso={ingresso}
@@ -274,6 +339,7 @@ function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggl
                                     onToggleActive={onToggleActive}
                                     onDragStart={onDragStart}
                                     onDragEnd={onDragEnd}
+                                    dropLine={dropLineFor(grupo.ingressos, idx, draggingId)}
                                 />
                             ))}
                         </Reorder.Group>
@@ -302,9 +368,10 @@ interface IngressoRowProps {
     onToggleActive: (id: string) => void;
     onDragStart: (ctx: Pending) => void;
     onDragEnd: () => void;
+    dropLine: DropSide;
 }
 
-function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, onToggleActive, onDragStart, onDragEnd }: IngressoRowProps) {
+function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, onToggleActive, onDragStart, onDragEnd, dropLine }: IngressoRowProps) {
     const controls = useDragControls();
 
     return (
@@ -313,10 +380,13 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
             value={ingresso}
             dragListener={false}
             dragControls={controls}
-            onDragStart={() => onDragStart({ kind: "tipo", nome: ingresso.name, contexto: grupoNome })}
+            onDragStart={() => onDragStart({ kind: "tipo", nome: ingresso.name, contexto: grupoNome, id: ingresso.id })}
             onDragEnd={onDragEnd}
             whileDrag={{ backgroundColor: "var(--color-bg-primary)", boxShadow: "0 8px 24px rgba(16,24,40,0.12)", zIndex: 20 }}
+            className="relative select-none"
         >
+            {dropLine && <DropLine position={dropLine} />}
+
             {/* Linha do ingresso */}
             <div className="group/row relative flex items-center gap-3 border-b border-secondary px-4 py-3.5">
                 {/* Handle de arraste — aparece no hover, colado na borda esquerda */}
@@ -324,7 +394,7 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
                     onPointerDown={(e) => controls.start(e)}
                     className="pointer-events-none absolute top-1/2 -left-3 flex -translate-y-1/2 items-center justify-center rounded-md bg-tertiary p-1 text-fg-secondary opacity-0 shadow-sm ring-1 ring-border-secondary transition-opacity duration-100 group-hover/row:pointer-events-auto group-hover/row:cursor-grab group-hover/row:opacity-100"
                 >
-                    <DotsGrid className="size-4" aria-hidden="true" />
+                    <GripVertical className="size-4" />
                 </span>
 
                 <button
@@ -374,7 +444,7 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
                         className="overflow-hidden"
                     >
                         {ingresso.lotes.map((lote) => (
-                            <div key={lote.id} className="flex items-center gap-3 border-b border-secondary py-3 pr-4 pl-14">
+                            <div key={lote.id} className="flex items-center gap-3 border-b border-secondary py-3 pr-4 pl-24">
                                 <div className="flex min-w-0 flex-1 items-center gap-3">
                                     <Toggle size="sm" isSelected={active.has(lote.id)} onChange={() => onToggleActive(lote.id)} />
                                     <span className="truncate text-sm text-primary">{lote.name}</span>

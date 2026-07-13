@@ -1,11 +1,10 @@
 import { useRef, useState } from "react";
 import type { FC } from "react";
-import { Calendar, ChevronDown, ChevronRight, Edit01, Key01, Plus, QrCode01, SwitchVertical01, Trash01, XClose, Zap } from "@untitledui/icons";
+import { Calendar, ChevronDown, ChevronRight, Edit01, Key01, Plus, QrCode01, Trash01, XClose, Zap } from "@untitledui/icons";
 import { AnimatePresence, Reorder, motion, useDragControls } from "motion/react";
 import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Toggle } from "@/components/base/toggle/toggle";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { SESSOES, type Grupo, type Ingresso, type Sessao } from "../data/ingressos";
@@ -193,8 +192,7 @@ export function Ingressos() {
             {pending && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/60 p-4" role="dialog" aria-modal="true">
                     <div className="w-full max-w-md rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
-                        <div className="flex items-start justify-between">
-                            <FeaturedIcon icon={SwitchVertical01} color="gray" theme="modern" size="md" />
+                        <div className="flex items-start justify-end">
                             <button
                                 type="button"
                                 onClick={cancelar}
@@ -204,7 +202,7 @@ export function Ingressos() {
                                 <XClose className="size-5" aria-hidden="true" />
                             </button>
                         </div>
-                        <h2 className="mt-4 text-lg font-bold text-primary">
+                        <h2 className="mt-2 text-lg font-bold text-primary">
                             {pending.kind === "grupo" ? "Confirmar alteração da ordem dos grupos?" : "Confirmar alteração da ordem dos ingressos?"}
                         </h2>
                         <p className="mt-2 text-sm leading-relaxed text-tertiary">

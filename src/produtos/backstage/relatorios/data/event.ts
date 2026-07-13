@@ -16,19 +16,32 @@ export interface Sessao {
 }
 
 export const EVENT = {
-    nome: "Botafogo x Chapecoense - Copa do Brasil",
+    nome: "Visão completa",
     locale: "pt-BR",
     currency: "BRL",
     /** Código exibido em alguns lugares como prefixo de moeda. */
     currencyLabel: "R$",
     timeZone: "America/Sao_Paulo",
     tzLabel: "Horário de Brasília (GMT-3)",
-    /** Janela de vendas (dd/mm/aaaa). Futebol: vendas abrem 7 dias antes do jogo.
-     *  Abertura 14/06/2026; partida 21/06/2026. */
-    salesStart: "14/06/2026",
-    salesEnd: "21/06/2026",
+    /** Janela de vendas (dd/mm/aaaa). Réveillon: vendas abrem meses antes;
+     *  festa de 26/12/2026 a 02/01/2027. */
+    salesStart: "22/06/2026",
+    salesEnd: "08/07/2026",
+    /** O evento vende apenas combos (ver data/produtos.ts). As sessões abaixo
+     *  são as FESTAS (dimensão operacional) que os combos dão acesso — não são
+     *  a unidade de venda, mas alimentam recortes por dia/festa nos relatórios. */
     sessoes: [
-        { id: "s-21-06", label: "21/06", descricao: "Domingo · 21/06 · 16h00", data: "21/06/2026" },
+        { id: "s-2612-16", label: "26/12 16h", descricao: "Sáb · 26/12 · 16h00 · Mouton", data: "26/12/2026" },
+        { id: "s-2712-16", label: "27/12 16h", descricao: "Dom · 27/12 · 16h00 · Mouton", data: "27/12/2026" },
+        { id: "s-2712-22", label: "27/12 22h", descricao: "Dom · 27/12 · 22h00 · Night", data: "27/12/2026" },
+        { id: "s-2812-16", label: "28/12 16h", descricao: "Seg · 28/12 · 16h00 · Mouton", data: "28/12/2026" },
+        { id: "s-2812-22", label: "28/12 22h", descricao: "Seg · 28/12 · 22h00 · Night", data: "28/12/2026" },
+        { id: "s-2912-16", label: "29/12 16h", descricao: "Ter · 29/12 · 16h00 · Mouton", data: "29/12/2026" },
+        { id: "s-2912-22", label: "29/12 22h", descricao: "Ter · 29/12 · 22h00 · Night", data: "29/12/2026" },
+        { id: "s-3012-16", label: "30/12 16h", descricao: "Qua · 30/12 · 16h00 · Mouton", data: "30/12/2026" },
+        { id: "s-3112-20", label: "31/12 20h", descricao: "Qui · 31/12 · 20h00 · Réveillon (Night)", data: "31/12/2026" },
+        { id: "s-0201-16", label: "02/01 16h", descricao: "Sáb · 02/01 · 16h00 · Mouton", data: "02/01/2027" },
+        { id: "s-0201-22", label: "02/01 22h", descricao: "Sáb · 02/01 · 22h00 · Night", data: "02/01/2027" },
     ] as Sessao[],
 } as const;
 

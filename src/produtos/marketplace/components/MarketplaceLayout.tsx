@@ -1,5 +1,44 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { ArrowLeft, HelpCircle, Share07 } from "@untitledui/icons";
+import { useTheme } from "@/providers/theme-provider";
+
+/*
+ * Estado em nível de módulo para forçar light mode em TODAS as telas do
+ * marketplace, inclusive ao navegar entre elas (ex: Config → preview).
+ *
+ * Um contador de montagens evita que o unmount de uma tela restaure o tema
+ * antes da próxima assumir: a restauração é adiada (setTimeout 0) e cancelada
+ * se outra tela do marketplace montar em seguida. Só quando o contador zera de
+ * verdade (usuário saiu do marketplace) a preferência anterior é restaurada.
+ */
+let mpCount = 0;
+let mpPrevTheme: "light" | "dark" | "system" | null = null;
+let mpRestoreTimer: ReturnType<typeof setTimeout> | null = null;
+
+function useForceLightMode() {
+    const { theme, setTheme } = useTheme();
+    useEffect(() => {
+        if (mpRestoreTimer !== null) {
+            clearTimeout(mpRestoreTimer);
+            mpRestoreTimer = null;
+        }
+        if (mpCount === 0) mpPrevTheme = theme;
+        mpCount++;
+        setTheme("light");
+
+        return () => {
+            mpCount--;
+            if (mpCount === 0) {
+                mpRestoreTimer = setTimeout(() => {
+                    if (mpCount === 0 && mpPrevTheme && mpPrevTheme !== "light") setTheme(mpPrevTheme);
+                    mpPrevTheme = null;
+                    mpRestoreTimer = null;
+                }, 0);
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+}
 
 interface MarketplaceLayoutProps {
     /** Título exibido no subheader (nome do evento/teste). */
@@ -49,8 +88,10 @@ const INGRESSE_LOGO = "https://auth.prod.ingresse.com/resources/2ibrw/login/cust
  * Reaproveitado por todas as telas do produto Marketplace.
  */
 export function MarketplaceLayout({ title, badge, logo, accent, onBack, usuario, onAcessar, children }: MarketplaceLayoutProps) {
+    useForceLightMode();
+
     return (
-        <div className="flex h-[100dvh] flex-col overflow-hidden bg-secondary text-primary" style={accentVars(accent)}>
+        <div className="flex h-[100dvh] flex-col overflow-hidden bg-primary text-primary md:bg-secondary" style={accentVars(accent)}>
             {/* Barra INGRESSE (escura) */}
             <header className="bg-primary-solid h-[56px] shrink-0">
                 <div className="mx-auto flex h-[56px] w-full items-center justify-between px-4 md:px-6">
@@ -88,7 +129,7 @@ export function MarketplaceLayout({ title, badge, logo, accent, onBack, usuario,
                                 <ArrowLeft className="size-5" />
                             </button>
                         )}
-                        <h1 className="truncate text-lg font-semibold text-primary">{title}</h1>
+                        <h1 className="line-clamp-2 text-lg font-semibold leading-tight text-primary">{title}</h1>
                         {badge && <span className="shrink-0 rounded-md bg-secondary px-2 py-0.5 text-sm font-medium text-tertiary">{badge}</span>}
                     </div>
                     <div className="flex shrink-0 items-center gap-5">
@@ -104,7 +145,7 @@ export function MarketplaceLayout({ title, badge, logo, accent, onBack, usuario,
                 </div>
             </div>
 
-            <main className="mx-auto w-full min-h-0 flex-1 overflow-y-auto p-4">{children}</main>
+            <main className="mx-auto w-full min-h-0 flex-1 overflow-y-auto p-0 md:p-4">{children}</main>
         </div>
     );
 }

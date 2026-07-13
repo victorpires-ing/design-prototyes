@@ -21,6 +21,7 @@ import { Transacoes } from '../produtos/backstage/relatorios/pages/Transacoes';
 import { Transferencias } from '../produtos/backstage/relatorios/pages/Transferencias';
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
+import { Comparativos } from '../produtos/backstage/relatorios/pages/Comparativos';
 import { Comissarios } from '../produtos/backstage/relatorios/pages/Comissarios';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
@@ -96,6 +97,9 @@ import { Catalogo as TsAcademyCatalogo } from '../produtos/ticket/ts-academy/pag
 import { CursoDetalhe as TsAcademyCursoDetalhe } from '../produtos/ticket/ts-academy/pages/CursoDetalhe';
 import { EventoInscricao as TsAcademyEventoInscricao } from '../produtos/ticket/ts-academy/pages/EventoInscricao';
 import { Secao as TsAcademySecao } from '../produtos/ticket/ts-academy/pages/Secao';
+import { Home as LpSsHome } from '../produtos/lp-ss/home/pages/Home';
+import { HomeAcessivel as LpSsHomeAcessivel } from '../produtos/lp-ss/home/pages/HomeAcessivel';
+import { HomeClaro as LpSsHomeClaro } from '../produtos/lp-ss/home/pages/HomeClaro';
 import { PasswordGate as UsabilidadeGate } from '../produtos/usabilidade/components/PasswordGate';
 import { Painel as TestesPainel } from '../produtos/usabilidade/testes/pages/Painel';
 import { EditorTeste } from '../produtos/usabilidade/testes/pages/EditorTeste';
@@ -211,6 +215,9 @@ export default function App() {
         <Route path="/ticket/ts-academy/sports-week" element={<TsAcademySecao categoria="sports-week" />} />
         <Route path="/ticket/ts-academy/evento/:id" element={<TsAcademyEventoInscricao />} />
         <Route path="/ticket/ts-academy/curso/:id" element={<TsAcademyCursoDetalhe />} />
+        <Route path="/lp-ss/home" element={<LpSsHome />} />
+        <Route path="/lp-ss/home/acessivel" element={<LpSsHomeAcessivel />} />
+        <Route path="/lp-ss/home/claro" element={<LpSsHomeClaro />} />
         <Route path="/futebol/landing-pages" element={<SeletorTimes />} />
         <Route path="/futebol/landing-pages/gremio" element={<Gremio />} />
         <Route path="/futebol/landing-pages/botafogo" element={<Botafogo />} />

@@ -499,7 +499,8 @@ function RespostasArea({ cohort }: { cohort: Set<string> | null }) {
 }
 
 const ParticipanteCard = ({ participante, isSelected, onClick }: { participante: Participante; isSelected: boolean; onClick: () => void }) => {
-    const { respondente: r, respostas } = participante;
+    const { respondente: r } = participante;
+    const ingressos = numIngressos(r.id);
     return (
         <button
             type="button"
@@ -516,7 +517,7 @@ const ParticipanteCard = ({ participante, isSelected, onClick }: { participante:
                 <span className="truncate text-sm text-tertiary">{r.email}</span>
             </div>
             <span className="hidden shrink-0 text-sm text-tertiary sm:block">
-                {num(respostas)} {respostas === 1 ? "resposta" : "respostas"}
+                {num(ingressos)} {ingressos === 1 ? "ingresso" : "ingressos"}
             </span>
             <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-hover:translate-x-0.5" />
         </button>
@@ -556,6 +557,8 @@ const GRUPOS_INGRESSOS = [
     { grupo: "Front Stage", ingresso: "Inteira" },
 ];
 const hashStr = (s: string): number => Array.from(s).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+/** Nº de ingressos do portador (mesma regra usada no slideout). */
+const numIngressos = (id: string): number => 1 + (hashStr(id) % 2);
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const pad11 = (n: number) => String(n).padStart(11, "0");
 const formatCpf = (cpf: string): string => cpf.replace(/\D/g, "").padStart(11, "0").slice(0, 11).replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
@@ -601,7 +604,7 @@ function contatoDoPortador(respondente: Respondente): Contato {
 function buildIngressos(participante: Participante): IngressoDoPortador[] {
     const { respondente } = participante;
     const h = hashStr(respondente.id);
-    const n = 1 + (h % 2); // 1 ou 2 ingressos
+    const n = numIngressos(respondente.id); // 1 ou 2 ingressos
     const ingressos: IngressoDoPortador[] = [];
     for (let i = 0; i < n; i++) {
         const gi = GRUPOS_INGRESSOS[(h + i) % GRUPOS_INGRESSOS.length];

@@ -14,6 +14,7 @@ import { RelatorioFiltersProvider, dateRangeFraction, useRelatorioFilters } from
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter } from "../data/event";
+import { COMBOS, TOTAL_GMV } from "../data/produtos";
 
 const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
@@ -21,7 +22,7 @@ const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&
 /*  Tree types + helpers                                              */
 /* ------------------------------------------------------------------ */
 
-type ColType = "int" | "currency";
+type ColType = "int" | "currency" | "text";
 interface ColDef {
     label: string;
     type: ColType;
@@ -34,7 +35,7 @@ interface TreeNode {
     changed?: boolean;
 }
 
-const fmt = (value: number, type: ColType) => (type === "currency" ? currencyFormatter.format(value) : numberFormatter.format(value));
+const fmt = (value: number, type: ColType) => (type === "text" ? "-" : type === "currency" ? currencyFormatter.format(value) : numberFormatter.format(value));
 
 const subtotalOf = (node: TreeNode): number[] => {
     if (node.values) return node.values;
@@ -51,138 +52,64 @@ const grandTotalOf = (nodes: TreeNode[]): number[] =>
     }, []);
 
 /* ------------------------------------------------------------------ */
-/*  Mock data — 3 visões                                              */
+/*  Mock — borderô por combo (bruto → taxa → líquido). O Réveillon      */
+/*  vende 100% online (sem PDV/bilheteria); visões por combo, grupo e   */
+/*  meio de pagamento.                                                  */
 /* ------------------------------------------------------------------ */
 
-const MACRO_COLUMNS: ColDef[] = [
-    { label: "Ingressos", type: "int" },
-    { label: "Validados", type: "int" },
-    { label: "No-Show", type: "int" },
-    { label: "Valor unitário", type: "currency" },
-    { label: "Faturado", type: "currency" },
+const TAXA_PCT = 0.1; // taxa de serviço retida (bruto → líquido)
+const generoLabel = (g: string) => (g === "MASCULINO" ? "Masculino" : "Feminino");
+
+// Colunas financeiras — mesmas em todas as visões.
+const FIN_COLUMNS: ColDef[] = [
+    { label: "Quantidade", type: "int" },
+    { label: "Valor bruto", type: "currency" },
+    { label: "Taxa", type: "currency" },
+    { label: "Valor líquido", type: "currency" },
 ];
 
+const leaf = (label: string, qtd: number, bruto: number): TreeNode => {
+    const taxa = Math.round(bruto * TAXA_PCT);
+    return { label, values: [qtd, bruto, taxa, bruto - taxa] };
+};
+const comboLeaf = (c: (typeof COMBOS)[number]): TreeNode => leaf(generoLabel(c.genero), c.quantidade, c.preco * c.quantidade);
+const combosDoGrupo = (grupo: string) => COMBOS.filter((c) => c.passe === grupo);
+
+// Por combo: Canal (Online) → Grupo → Combo.
 const macroData: TreeNode[] = [
     {
-        label: "IMPRESSO/BILHETERIA",
+        label: "Online",
         children: [
-            {
-                label: "Cadeira Norte",
-                children: [
-                    { label: "Inteira", values: [768, 0, 768, 85, 65280], changed: true },
-                    { label: "Meia-entrada", values: [434, 0, 434, 42.5, 18445] },
-                    { label: "Sócio 50%", values: [217, 0, 217, 42.5, 9222.5] },
-                ],
-            },
-            {
-                label: "Cadeira Leste",
-                children: [
-                    { label: "Inteira", values: [664, 0, 664, 90, 59760] },
-                    { label: "Meia-entrada", values: [227, 0, 227, 45, 10215] },
-                ],
-            },
-            {
-                label: "Visitante Superior",
-                children: [
-                    { label: "Inteira", values: [289, 0, 289, 130, 37570], changed: true },
-                    { label: "Meia-entrada", values: [137, 0, 137, 65, 8905] },
-                ],
-            },
-        ],
-    },
-    {
-        label: "ONLINE",
-        children: [
-            {
-                label: "Sócio Esquadrão",
-                children: [{ label: "Sócio Esquadrão", values: [21094, 0, 21094, 19.5, 265897.5], changed: true }],
-            },
-            {
-                label: "Lounge Premium",
-                children: [
-                    { label: "Inteira", values: [80, 0, 80, 240, 19200], changed: true },
-                    { label: "Lounge Criança", values: [15, 0, 15, 150, 2250] },
-                ],
-            },
+            { label: "NIGHT PASS", children: combosDoGrupo("NIGHT PASS").map(comboLeaf) },
+            { label: "FULL PASS", children: combosDoGrupo("FULL PASS").map(comboLeaf) },
         ],
     },
 ];
 
-const PDV_COLUMNS: ColDef[] = [
-    { label: "Ingressos", type: "int" },
-    { label: "Valor unitário", type: "currency" },
-    { label: "Faturado", type: "currency" },
+// Por grupo: Grupo → Combo.
+const grupoData: TreeNode[] = [
+    { label: "NIGHT PASS", children: combosDoGrupo("NIGHT PASS").map(comboLeaf) },
+    { label: "FULL PASS", children: combosDoGrupo("FULL PASS").map(comboLeaf) },
 ];
 
-const pdvData: TreeNode[] = [
-    {
-        label: "Loja Tricolor - Fonte Nova",
-        children: [
-            {
-                label: "Cadeira Norte",
-                children: [
-                    { label: "Inteira", values: [768, 85, 65280] },
-                    { label: "Meia-entrada", values: [434, 42.5, 18445] },
-                ],
-            },
-            { label: "Sócio Esquadrão", children: [{ label: "Sócio Esquadrão", values: [21094, 19.5, 265897.5], changed: true }] },
-        ],
-    },
-    {
-        label: "Loja Tricolor - Shopping da Bahia",
-        children: [
-            {
-                label: "Cadeira Leste",
-                children: [
-                    { label: "Inteira", values: [664, 90, 59760], changed: true },
-                    { label: "Inteira Promocional", values: [300, 50, 15000] },
-                    { label: "Meia-entrada", values: [227, 45, 10215] },
-                ],
-            },
-        ],
-    },
-    {
-        label: "Loja Tricolor - Salvador Norte Shopping",
-        children: [
-            {
-                label: "Visitante Superior",
-                children: [
-                    { label: "Inteira", values: [289, 130, 37570] },
-                    { label: "Meia-entrada", values: [137, 65, 8905] },
-                ],
-            },
-            {
-                label: "Lounge Premium",
-                children: [
-                    { label: "Inteira", values: [80, 240, 19200], changed: true },
-                    { label: "Lounge Criança", values: [15, 150, 2250] },
-                ],
-            },
-        ],
-    },
+// Por meio de pagamento: distribui o total por pesos plausíveis (100% online).
+const MEIOS: { nome: string; peso: number }[] = [
+    { nome: "Pix", peso: 0.548 },
+    { nome: "Cartão de Crédito", peso: 0.312 },
+    { nome: "NuPay", peso: 0.058 },
+    { nome: "Apple Pay", peso: 0.042 },
+    { nome: "Google Pay", peso: 0.026 },
+    { nome: "Cartão de Débito", peso: 0.014 },
 ];
-
+const TOTAL_QTD = COMBOS.reduce((s, c) => s + c.quantidade, 0);
 const meiosData: TreeNode[] = [
     {
-        label: "Loja Tricolor - Fonte Nova",
-        children: [
-            { label: "Cartão de Crédito", values: [612, 120, 73440] },
-            { label: "Cartão de Débito", values: [438, 95, 41610] },
-            { label: "Dinheiro", values: [205, 60, 12300], changed: true },
-            { label: "PIX", values: [21258, 18, 382644] },
-        ],
-    },
-    {
-        label: "Loja Tricolor - Shopping da Bahia",
-        children: [
-            { label: "Cartão de Crédito", values: [684, 78, 53352] },
-            { label: "Cartão de Débito", values: [312, 64, 19968] },
-            { label: "Dinheiro", values: [98, 55, 5390], changed: true },
-            { label: "PIX", values: [97, 47, 4559] },
-        ],
+        label: "Online",
+        children: MEIOS.map((m) => leaf(m.nome, Math.round(TOTAL_QTD * m.peso), Math.round(TOTAL_GMV * m.peso))),
     },
 ];
 
+/* ---- Alterações recentes (banner + slideout) ---- */
 type ChangeType = "venda" | "cancelamento" | "estorno";
 
 interface BorderoChange {
@@ -202,32 +129,31 @@ const CHANGE_META: Record<ChangeType, { label: string; color: "success" | "gray"
 };
 
 const changedTransacoes: BorderoChange[] = [
-    { id: "c1", hora: "há 1 min", tipo: "venda", canal: "Online", descricao: "Sócio Esquadrão · Sócio Esquadrão", ingressos: 12, valor: 234 },
-    { id: "c2", hora: "há 2 min", tipo: "venda", canal: "Impresso/Bilheteria", descricao: "Cadeira Norte · Inteira", ingressos: 5, valor: 425 },
-    { id: "c3", hora: "há 3 min", tipo: "cancelamento", canal: "Impresso/Bilheteria", descricao: "Visitante Superior · Inteira", ingressos: -1, valor: -130 },
-    { id: "c4", hora: "há 4 min", tipo: "estorno", canal: "Online", descricao: "Lounge Premium · Inteira", ingressos: -1, valor: -240 },
+    { id: "c1", hora: "há 1 min", tipo: "venda", canal: "Online", descricao: "FULL PASS | Feminino", ingressos: 1, valor: 9800 },
+    { id: "c2", hora: "há 2 min", tipo: "venda", canal: "Online", descricao: "NIGHT PASS | Masculino", ingressos: 2, valor: 7800 },
+    { id: "c3", hora: "há 4 min", tipo: "cancelamento", canal: "Online", descricao: "NIGHT PASS | Feminino", ingressos: -1, valor: -3900 },
+    { id: "c4", hora: "há 6 min", tipo: "estorno", canal: "Online", descricao: "FULL PASS | Masculino", ingressos: -1, valor: -9800 },
 ];
 
-type BorderoView = "macro" | "pdv" | "meios";
+type BorderoView = "combo" | "grupo" | "meios";
 
 const VIEWS: Record<BorderoView, { nodes: TreeNode[]; columns: ColDef[]; firstCol: string }> = {
-    macro: { nodes: macroData, columns: MACRO_COLUMNS, firstCol: "Canal · Setor · Tipo" },
-    pdv: { nodes: pdvData, columns: PDV_COLUMNS, firstCol: "PDV · Setor · Tipo" },
-    meios: { nodes: meiosData, columns: PDV_COLUMNS, firstCol: "PDV · Meio de pagamento" },
+    combo: { nodes: macroData, columns: FIN_COLUMNS, firstCol: "Canal · Grupo · Combo" },
+    grupo: { nodes: grupoData, columns: FIN_COLUMNS, firstCol: "Grupo · Combo" },
+    meios: { nodes: meiosData, columns: FIN_COLUMNS, firstCol: "Canal · Meio de pagamento" },
 };
 
 /* ------------------------------------------------------------------ */
-/*  Scaling (sessão + intervalo de data afetam todas as visões)        */
+/*  Escala (sessão + intervalo de data)                                */
 /* ------------------------------------------------------------------ */
 
-const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 0.46, [EVENT.sessoes[1].id]: 0.54 };
+const SESSAO_WEIGHT: Record<string, number> = { all: 1 };
 
-// Escala valores de quantidade/faturado; mantém colunas de "valor unitário" intactas.
-const scaleNodes = (nodes: TreeNode[], columns: ColDef[], factor: number): TreeNode[] =>
+const scaleNodes = (nodes: TreeNode[], _columns: ColDef[], factor: number): TreeNode[] =>
     nodes.map((n) => ({
         ...n,
-        values: n.values?.map((v, i) => (columns[i]?.label === "Valor unitário" ? v : Math.round(v * factor * 100) / 100)),
-        children: n.children ? scaleNodes(n.children, columns, factor) : undefined,
+        values: n.values?.map((v) => Math.round(v * factor)),
+        children: n.children ? scaleNodes(n.children, _columns, factor) : undefined,
     }));
 
 /* ------------------------------------------------------------------ */
@@ -242,6 +168,8 @@ export function Bordero() {
                     <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
                         <RelatorioPageHeader
                             title="Borderô"
+                            filtroVariante="dropdown"
+                            mostrarPeriodo={false}
                             actions={<ExportMenu onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "O borderô será exportado." })} />}
                         />
                         <BorderoBody />
@@ -254,7 +182,7 @@ export function Bordero() {
 
 const BorderoBody = () => {
     const { dateRange, sessao } = useRelatorioFilters();
-    const [view, setView] = useState<BorderoView>("macro");
+    const [view, setView] = useState<BorderoView>("combo");
     const [acknowledged, setAcknowledged] = useState(false);
     const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -262,20 +190,20 @@ const BorderoBody = () => {
 
     const scaled = useMemo(
         () => ({
-            macro: scaleNodes(macroData, MACRO_COLUMNS, factor),
-            pdv: scaleNodes(pdvData, PDV_COLUMNS, factor),
-            meios: scaleNodes(meiosData, PDV_COLUMNS, factor),
+            combo: scaleNodes(macroData, FIN_COLUMNS, factor),
+            grupo: scaleNodes(grupoData, FIN_COLUMNS, factor),
+            meios: scaleNodes(meiosData, FIN_COLUMNS, factor),
         }),
         [factor],
     );
 
-    const activeNodes = view === "macro" ? scaled.macro : view === "pdv" ? scaled.pdv : scaled.meios;
+    const activeNodes = scaled[view];
     const activeMeta = VIEWS[view];
 
-    const macroGrand = useMemo(() => grandTotalOf(scaled.macro), [scaled.macro]);
-    const totalIngressos = macroGrand[0] ?? 0;
-    const totalFaturado = macroGrand[4] ?? 0;
-    const ticketMedio = totalIngressos === 0 ? 0 : totalFaturado / totalIngressos;
+    const grand = useMemo(() => grandTotalOf(scaled.combo), [scaled.combo]);
+    const totalIngressos = grand[0] ?? 0;
+    const totalFaturado = grand[1] ?? 0;
+    const totalLiquido = grand[3] ?? 0;
 
     const changedCount = changedTransacoes.length;
     const showBanner = changedCount > 0 && !acknowledged;
@@ -295,9 +223,9 @@ const BorderoBody = () => {
             )}
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <MetricsIcon03 icon={CurrencyDollarCircle} subtitle="Total faturado" title={currencyFormatter.format(totalFaturado)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
-                <MetricsIcon03 icon={Ticket01} subtitle="Total de ingressos" title={numberFormatter.format(totalIngressos)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
-                <MetricsIcon03 icon={Receipt} subtitle="Ticket médio" title={currencyFormatter.format(ticketMedio)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
+                <MetricsIcon03 icon={CurrencyDollarCircle} subtitle="Valor bruto" title={currencyFormatter.format(totalFaturado)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
+                <MetricsIcon03 icon={Receipt} subtitle="Valor líquido" title={currencyFormatter.format(totalLiquido)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
+                <MetricsIcon03 icon={Ticket01} subtitle="Combos vendidos" title={numberFormatter.format(totalIngressos)} change={null} changeTrend="positive" actions={false} className={HIDE_TREND_AND_MENU} />
             </div>
 
             <section className="flex flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
@@ -314,9 +242,9 @@ const BorderoBody = () => {
                         <TabList
                             type="button-minimal"
                             items={[
-                                { id: "macro", label: "Visão macro" },
-                                { id: "pdv", label: "Por PDV" },
-                                { id: "meios", label: "Por meios de pagamento" },
+                                { id: "combo", label: "Por combo" },
+                                { id: "grupo", label: "Por grupo" },
+                                { id: "meios", label: "Por meio de pagamento" },
                             ]}
                         />
                     </Tabs>

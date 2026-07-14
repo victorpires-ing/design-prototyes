@@ -7,11 +7,15 @@ import { ProgressBarHalfCircle } from "@/components/base/progress-indicators/pro
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { DemografiaMetrics, GeografiaSecoes } from "../components/demografia-geo";
+import { MetaVendasCard, VendasPorGeneroCard } from "../components/vendas-graficos";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
-import { RelatorioFiltersProvider, dateRangeFraction, useRelatorioFilters } from "../components/relatorio-filters";
+import { RelatorioFiltersProvider, dateRangeFraction, inDateRange, useRelatorioFilters } from "../components/relatorio-filters";
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
-import { EVENT, currencyFormatter, numberFormatter } from "../data/event";
+import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
+import { COMBOS, GRUPOS, INGRESSOS, PRODUTOS, TOTAL_GMV, TOTAL_GMV_PRODUTOS, TOTAL_PRODUTOS, TOTAL_UNIDADES } from "../data/produtos";
+import { VENDAS_DIARIAS, metaTotal } from "../data/vendas-diarias";
 
 /* ------------------------------------------------------------------ */
 /*  Tipos                                                             */
@@ -42,13 +46,25 @@ interface IngressoPorSetorRow {
     estoque: number;
 }
 
+interface ComboLoteDetalhe {
+    id: string;
+    lote: string;
+    quantidade: number;
+    valorUnitario: number;
+    gmv: number;
+    desconto: number;
+    gmvComDesconto: number;
+}
+
 interface ComboRow {
     id: string;
     nome: string;
     quantidade: number;
     valorUnitario: number;
     gmv: number;
+    desconto: number;
     gmvComDesconto: number;
+    lotes: ComboLoteDetalhe[];
 }
 
 interface ProdutoRow {
@@ -83,154 +99,118 @@ interface CupomRow {
 /*  Mock data (base = todas as sessões)                               */
 /* ------------------------------------------------------------------ */
 
-const setores: SetorRow[] = [
-    {
-        id: "vip",
-        nome: "VIP",
-        estoque: 2000,
-        vendido: 1800,
-        ingressos: [
-            { id: "vip-1l-int", nome: "VIP - 1º Lote (Inteira)", estoque: 800, vendido: 800 },
-            { id: "vip-1l-mei", nome: "VIP - 1º Lote (Meia)", estoque: 400, vendido: 400 },
-            { id: "vip-2l-int", nome: "VIP - 2º Lote (Inteira)", estoque: 500, vendido: 380 },
-            { id: "vip-2l-mei", nome: "VIP - 2º Lote (Meia)", estoque: 300, vendido: 220 },
-        ],
-    },
-    {
-        id: "camarote",
-        nome: "Camarote Premium",
-        estoque: 1500,
-        vendido: 1200,
-        ingressos: [
-            { id: "cam-1l-int", nome: "Camarote - 1º Lote (Inteira)", estoque: 500, vendido: 500 },
-            { id: "cam-1l-mei", nome: "Camarote - 1º Lote (Meia)", estoque: 300, vendido: 300 },
-            { id: "cam-2l-int", nome: "Camarote - 2º Lote (Inteira)", estoque: 400, vendido: 250 },
-            { id: "cam-2l-mei", nome: "Camarote - 2º Lote (Meia)", estoque: 300, vendido: 150 },
-        ],
-    },
-    {
-        id: "pista-premium",
-        nome: "Pista Premium",
-        estoque: 8000,
-        vendido: 6400,
-        ingressos: [
-            { id: "pp-1l-int", nome: "Pista Premium - 1º Lote (Inteira)", estoque: 3000, vendido: 3000 },
-            { id: "pp-1l-mei", nome: "Pista Premium - 1º Lote (Meia)", estoque: 1500, vendido: 1500 },
-            { id: "pp-2l-int", nome: "Pista Premium - 2º Lote (Inteira)", estoque: 2500, vendido: 1400 },
-            { id: "pp-2l-mei", nome: "Pista Premium - 2º Lote (Meia)", estoque: 1000, vendido: 500 },
-        ],
-    },
-    {
-        id: "pista",
-        nome: "Pista",
-        estoque: 20000,
-        vendido: 18000,
-        ingressos: [
-            { id: "p-1l-int", nome: "Pista - 1º Lote (Inteira)", estoque: 5000, vendido: 5000 },
-            { id: "p-1l-mei", nome: "Pista - 1º Lote (Meia)", estoque: 4000, vendido: 4000 },
-            { id: "p-2l-int", nome: "Pista - 2º Lote (Inteira)", estoque: 6000, vendido: 5500 },
-            { id: "p-2l-mei", nome: "Pista - 2º Lote (Meia)", estoque: 3000, vendido: 2500 },
-            { id: "p-3l-int", nome: "Pista - 3º Lote (Inteira)", estoque: 2000, vendido: 1000 },
-        ],
-    },
-    {
-        id: "mezanino",
-        nome: "Mezanino",
-        estoque: 5807,
-        vendido: 2400,
-        ingressos: [
-            { id: "mez-1l-int", nome: "Mezanino - 1º Lote (Inteira)", estoque: 2000, vendido: 1500 },
-            { id: "mez-1l-mei", nome: "Mezanino - 1º Lote (Meia)", estoque: 1500, vendido: 600 },
-            { id: "mez-2l-int", nome: "Mezanino - 2º Lote (Inteira)", estoque: 1500, vendido: 200 },
-            { id: "mez-2l-mei", nome: "Mezanino - 2º Lote (Meia)", estoque: 807, vendido: 100 },
-        ],
-    },
-];
+/* ------------------------------------------------------------------ */
+/*  Réveillon Carneiros — vende só combos. "Setor" = festa × área       */
+/*  (Mouton 16h / Night 20–22h). Cada combo dá acesso às festas que      */
+/*  inclui: NIGHT PASS → festas noturnas; FULL PASS → todas.             */
+/*  Dados de teste, propositalmente discrepantes da produção.           */
+/* ------------------------------------------------------------------ */
 
-const ingressosPorSetor: IngressoPorSetorRow[] = [
-    { id: "ips1", setor: "VIP", tipoIngresso: "Inteira", lote: "1º Lote", itemCombo: "Combo Camarote + Open Bar", vendidos: 800, estoque: 800 },
-    { id: "ips2", setor: "VIP", tipoIngresso: "Meia", lote: "1º Lote", itemCombo: "—", vendidos: 400, estoque: 400 },
-    { id: "ips3", setor: "VIP", tipoIngresso: "Inteira", lote: "2º Lote", itemCombo: "—", vendidos: 380, estoque: 500 },
-    { id: "ips4", setor: "VIP", tipoIngresso: "Meia", lote: "2º Lote", itemCombo: "—", vendidos: 220, estoque: 300 },
-    { id: "ips5", setor: "Camarote Premium", tipoIngresso: "Inteira", lote: "1º Lote", itemCombo: "Combo Camarote + Open Bar", vendidos: 500, estoque: 500 },
-    { id: "ips6", setor: "Camarote Premium", tipoIngresso: "Meia", lote: "1º Lote", itemCombo: "—", vendidos: 300, estoque: 300 },
-    { id: "ips7", setor: "Camarote Premium", tipoIngresso: "Inteira", lote: "2º Lote", itemCombo: "—", vendidos: 250, estoque: 400 },
-    { id: "ips8", setor: "Pista Premium", tipoIngresso: "Inteira", lote: "1º Lote", itemCombo: "—", vendidos: 3000, estoque: 3000 },
-    { id: "ips9", setor: "Pista Premium", tipoIngresso: "Meia", lote: "1º Lote", itemCombo: "—", vendidos: 1500, estoque: 1500 },
-    { id: "ips10", setor: "Pista Premium", tipoIngresso: "Inteira", lote: "2º Lote", itemCombo: "—", vendidos: 1400, estoque: 2500 },
-    { id: "ips11", setor: "Pista", tipoIngresso: "Inteira", lote: "1º Lote", itemCombo: "—", vendidos: 5000, estoque: 5000 },
-    { id: "ips12", setor: "Pista", tipoIngresso: "Meia | Caravanas", lote: "2º Lote", itemCombo: "—", vendidos: 2500, estoque: 3000 },
-    { id: "ips13", setor: "Mezanino", tipoIngresso: "Inteira", lote: "1º Lote", itemCombo: "—", vendidos: 1500, estoque: 2000 },
-];
+const ddmm = (data: string) => data.slice(0, 5);
+const areaOf = (label: string) => (label.includes("16h") ? "Mouton" : "Night");
+const setorNome = (s: { data: string; label: string }) => `${ddmm(s.data)} | ${areaOf(s.label)}`;
+const combosNaSessao = (sid: string) => COMBOS.filter((c) => c.sessoes.includes(sid));
 
-const combos: ComboRow[] = [
-    { id: "c1", nome: "Combo Camarote + Open Bar", quantidade: 1480, valorUnitario: 379, gmv: 560440, gmvComDesconto: 560440 },
-    { id: "c2", nome: "Combo VIP + Welcome Drink", quantidade: 442, valorUnitario: 680, gmv: 300608, gmvComDesconto: 300608 },
-    { id: "c3", nome: "Combo Família (4 ingressos)", quantidade: 112, valorUnitario: 681, gmv: 76188, gmvComDesconto: 76188 },
-    { id: "c4", nome: "Combo Premium + Estacionamento", quantidade: 22, valorUnitario: 2159, gmv: 47498, gmvComDesconto: 47498 },
-    { id: "c5", nome: "Combo Casal Camarote", quantidade: 49, valorUnitario: 758, gmv: 37124, gmvComDesconto: 37124 },
-    { id: "c6", nome: "Combo VIP Solo + Brinde", quantidade: 14, valorUnitario: 1368, gmv: 19152, gmvComDesconto: 19152 },
-    { id: "c7", nome: "Combo Business Pista Premium", quantidade: 2, valorUnitario: 1358, gmv: 2716, gmvComDesconto: 2716 },
-];
+// Capacidade por festa×área (denominador da ocupação).
+const CAP_AREA: Record<string, number> = { Night: 6500, Mouton: 4200 };
+const SETOR_CAP: Record<string, number> = Object.fromEntries(EVENT.sessoes.map((s) => [setorNome(s), CAP_AREA[areaOf(s.label)]]));
 
-const produtos: ProdutoRow[] = [
-    { id: "pr1", nome: "Kit Oficial #BahxVit", quantidade: 123, valorUnitario: 199.9, gmv: 24587.7, gmvComDesconto: 24587.7 },
-    { id: "pr2", nome: "Boneco Mascote - Fandom Box", quantidade: 47, valorUnitario: 107.35, gmv: 5045.3, gmvComDesconto: 5045.3 },
-    { id: "pr3", nome: "Sacochila Oficial", quantidade: 126, valorUnitario: 29.9, gmv: 3767.4, gmvComDesconto: 3767.4 },
-    { id: "pr4", nome: "Camisa Oficial - M", quantidade: 36, valorUnitario: 99.9, gmv: 3596.4, gmvComDesconto: 3596.4 },
-    { id: "pr5", nome: "Camisa Oficial - G", quantidade: 29, valorUnitario: 99.9, gmv: 2897.1, gmvComDesconto: 2897.1 },
-    { id: "pr6", nome: "Camisa Oficial - P", quantidade: 23, valorUnitario: 99.9, gmv: 2297.7, gmvComDesconto: 2297.7 },
-    { id: "pr7", nome: "Copo Oficial", quantidade: 100, valorUnitario: 19.89, gmv: 1989, gmvComDesconto: 1989 },
-    { id: "pr8", nome: "Camisa Oficial - GG", quantidade: 14, valorUnitario: 99.9, gmv: 1398.6, gmvComDesconto: 1398.6 },
-];
+// Cada linha = um INGRESSO real (grupo > ingresso > lote) na festa. O combo é
+// uma dimensão à parte; aqui contamos os ingressos entregues por festa.
+// itemCombo = combos (passes) que dão acesso àquele ingresso.
+const ingressosPorSetor: IngressoPorSetorRow[] = EVENT.sessoes.flatMap((s) => {
+    const grupo = GRUPOS.find((g) => g.sessaoId === s.id);
+    const ings = INGRESSOS.filter((i) => i.grupoId === grupo?.id);
+    const area = areaOf(s.label);
+    return ings.map((ing) => {
+        const passes = Array.from(new Set(COMBOS.filter((c) => c.itens.includes(ing.id)).map((c) => c.passe)));
+        return {
+            id: `ips-${s.id}-${ing.id}`,
+            setor: setorNome(s),
+            tipoIngresso: ing.nome,
+            lote: ing.lotes[0]?.nome ?? "1º lote",
+            itemCombo: passes.join(" · "),
+            vendidos: ing.quantidade,
+            estoque: Math.round(CAP_AREA[area] / 2),
+        };
+    });
+});
 
-// Cupons agora detalhados por lote (abrem expandindo a linha).
+/* Setores derivados das linhas: vendido = soma das linhas (frequência na festa);
+   estoque = capacidade física da festa×área (SETOR_CAP). */
+const setores: SetorRow[] = (() => {
+    const slug = (s: string) =>
+        s
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/\p{Diacritic}/gu, "")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "");
+    const order: string[] = [];
+    const map = new Map<string, SetorRow>();
+    for (const r of ingressosPorSetor) {
+        let s = map.get(r.setor);
+        if (!s) {
+            s = { id: slug(r.setor), nome: r.setor, estoque: SETOR_CAP[r.setor] ?? 0, vendido: 0, ingressos: [] };
+            map.set(r.setor, s);
+            order.push(r.setor);
+        }
+        s.vendido += r.vendidos;
+        s.ingressos!.push({ id: r.id, nome: r.tipoIngresso, estoque: r.estoque, vendido: r.vendidos });
+    }
+    return order.map((n) => map.get(n)!);
+})();
+
+// Combos vendidos (tabela): nome do combo + seus lotes (padrão de produção).
+const combos: ComboRow[] = COMBOS.map((c) => {
+    const lotes: ComboLoteDetalhe[] = c.lotes.map((l) => {
+        const gmv = l.preco * l.quantidade;
+        const desconto = Math.round(gmv * 0.006);
+        return { id: l.id, lote: l.nome, quantidade: l.quantidade, valorUnitario: l.preco, gmv, desconto, gmvComDesconto: gmv - desconto };
+    });
+    const gmv = lotes.reduce((s, l) => s + l.gmv, 0);
+    const desconto = lotes.reduce((s, l) => s + l.desconto, 0);
+    const quantidade = lotes.reduce((s, l) => s + l.quantidade, 0);
+    return { id: c.id, nome: c.nome, quantidade, valorUnitario: Math.round(gmv / quantidade), gmv, desconto, gmvComDesconto: gmv - desconto, lotes };
+});
+
+// Produtos avulsos (dimensão distinta de ingresso e combo).
+const produtos: ProdutoRow[] = PRODUTOS.map((p) => {
+    const gmv = p.preco * p.quantidade;
+    return { id: p.id, nome: p.nome, quantidade: p.quantidade, valorUnitario: p.preco, gmv, gmvComDesconto: Math.round(gmv * 0.966) };
+});
+
+// Cupons do Réveillon (abrem expandindo a linha, detalhados por grupo).
 const cupons: CupomRow[] = [
     {
         id: "cu1",
-        cupom: "FAN15",
-        quantidade: 142,
-        valor: 19738.0,
-        valorDesconto: 2960.7,
-        valorTotal: 16777.3,
+        cupom: "CARNEIROS10",
+        quantidade: 42,
+        valor: 234600,
+        valorDesconto: 23460,
+        valorTotal: 211140,
         lotes: [
-            { id: "cu1-l1", lote: "1º Lote", quantidade: 78, valor: 10842.0, valorDesconto: 1626.3, valorTotal: 9215.7 },
-            { id: "cu1-l2", lote: "2º Lote", quantidade: 44, valor: 6116.0, valorDesconto: 917.4, valorTotal: 5198.6 },
-            { id: "cu1-l3", lote: "3º Lote", quantidade: 20, valor: 2780.0, valorDesconto: 417.0, valorTotal: 2363.0 },
+            { id: "cu1-l1", lote: "NIGHT PASS", quantidade: 30, valor: 117000, valorDesconto: 11700, valorTotal: 105300 },
+            { id: "cu1-l2", lote: "FULL PASS", quantidade: 12, valor: 117600, valorDesconto: 11760, valorTotal: 105840 },
         ],
     },
     {
         id: "cu2",
-        cupom: "VIPACCESS",
-        quantidade: 38,
-        valor: 13680.0,
-        valorDesconto: 1368.0,
-        valorTotal: 12312.0,
-        lotes: [
-            { id: "cu2-l1", lote: "1º Lote", quantidade: 26, valor: 9360.0, valorDesconto: 936.0, valorTotal: 8424.0 },
-            { id: "cu2-l2", lote: "2º Lote", quantidade: 12, valor: 4320.0, valorDesconto: 432.0, valorTotal: 3888.0 },
-        ],
+        cupom: "NIGHT2027",
+        quantidade: 26,
+        valor: 101400,
+        valorDesconto: 15210,
+        valorTotal: 86190,
+        lotes: [{ id: "cu2-l1", lote: "NIGHT PASS", quantidade: 26, valor: 101400, valorDesconto: 15210, valorTotal: 86190 }],
     },
     {
         id: "cu3",
-        cupom: "PREMIERE10",
-        quantidade: 24,
-        valor: 7332.0,
-        valorDesconto: 733.2,
-        valorTotal: 6598.8,
-        lotes: [
-            { id: "cu3-l1", lote: "1º Lote", quantidade: 15, valor: 4582.5, valorDesconto: 458.3, valorTotal: 4124.2 },
-            { id: "cu3-l2", lote: "2º Lote", quantidade: 9, valor: 2749.5, valorDesconto: 274.9, valorTotal: 2474.6 },
-        ],
-    },
-    {
-        id: "cu4",
-        cupom: "TESTE2",
-        quantidade: 1,
-        valor: 139.0,
-        valorDesconto: 137.61,
-        valorTotal: 1.39,
-        lotes: [{ id: "cu4-l1", lote: "1º Lote", quantidade: 1, valor: 139.0, valorDesconto: 137.61, valorTotal: 1.39 }],
+        cupom: "FULLVIP",
+        quantidade: 9,
+        valor: 88200,
+        valorDesconto: 7056,
+        valorTotal: 81144,
+        lotes: [{ id: "cu3-l1", lote: "FULL PASS", quantidade: 9, valor: 88200, valorDesconto: 7056, valorTotal: 81144 }],
     },
 ];
 
@@ -243,17 +223,17 @@ interface MixReceitaItem {
     fill: string;
 }
 
+// Réveillon: 100% da receita vem de combos.
 const mixReceita: MixReceitaItem[] = [
-    { id: "ingressos", nome: "Ingressos", quantidade: 33500, gmv: 2612500.0, gmvComDesconto: 2479350.0, fill: "var(--color-utility-brand-700)" },
-    { id: "combos", nome: "Combos", quantidade: 3807, gmv: 1100000.0, gmvComDesconto: 1043726.0, fill: "var(--color-utility-brand-500)" },
-    { id: "produtos", nome: "Produtos", quantidade: 498, gmv: 48578.9, gmvComDesconto: 45579.2, fill: "var(--color-utility-brand-300)" },
+    { id: "combos", nome: "Combos", quantidade: TOTAL_UNIDADES, gmv: TOTAL_GMV, gmvComDesconto: Math.round(TOTAL_GMV * 0.966), fill: "var(--color-utility-brand-700)" },
+    { id: "produtos", nome: "Produtos", quantidade: TOTAL_PRODUTOS, gmv: TOTAL_GMV_PRODUTOS, gmvComDesconto: Math.round(TOTAL_GMV_PRODUTOS * 0.966), fill: "var(--color-utility-blue-500)" },
 ];
 
-const VALOR_TOTAL_BASE = 2888877.13;
-const TOTAL_ITENS_BASE = 37307;
+const VALOR_TOTAL_BASE = TOTAL_GMV;
+const TOTAL_ITENS_BASE = TOTAL_UNIDADES;
 
 /* ------------------------------------------------------------------ */
-/*  Drill-down tree (Data = sessão → Tipo → Setor → Ingresso → Lote)  */
+/*  Drill-down (Festa → Grupo do combo → Gênero)                       */
 /* ------------------------------------------------------------------ */
 
 interface TreeNode {
@@ -266,106 +246,101 @@ interface TreeNode {
     children?: TreeNode[];
 }
 
-const buildDrillTree = (): TreeNode[] => {
-    const tipos = (base: number, idPrefix: string): TreeNode[] => [
-        { id: `${idPrefix}-int`, key: "int", label: "Inteira", value: Math.round(base * 0.62) },
-        { id: `${idPrefix}-mei`, key: "mei", label: "Meia", value: Math.round(base * 0.3) },
-        { id: `${idPrefix}-pro`, key: "pro", label: "Promo", value: Math.round(base * 0.08) },
-    ];
-    const lotes = (base: number, idPrefix: string): TreeNode[] => [
-        { id: `${idPrefix}-1l`, key: "1l", label: "1º Lote", value: Math.round(base * 0.5), childrenLabel: "Tipo", children: tipos(base * 0.5, `${idPrefix}-1l`) },
-        { id: `${idPrefix}-2l`, key: "2l", label: "2º Lote", value: Math.round(base * 0.35), childrenLabel: "Tipo", children: tipos(base * 0.35, `${idPrefix}-2l`) },
-        { id: `${idPrefix}-3l`, key: "3l", label: "3º Lote", value: Math.round(base * 0.15), childrenLabel: "Tipo", children: tipos(base * 0.15, `${idPrefix}-3l`) },
-    ];
-    const ingressosPorSetorNodes = (setorValue: number, setorId: string, setorLabel: string): TreeNode[] => {
-        const seeds = [
-            { key: "1l-int", label: `${setorLabel} 1º Lote (Inteira)`, w: 0.4 },
-            { key: "1l-mei", label: `${setorLabel} 1º Lote (Meia)`, w: 0.25 },
-            { key: "2l-int", label: `${setorLabel} 2º Lote (Inteira)`, w: 0.2 },
-            { key: "2l-mei", label: `${setorLabel} 2º Lote (Meia)`, w: 0.15 },
-        ];
-        return seeds.map((s) => ({
-            id: `${setorId}-${s.key}`,
-            key: s.key,
-            label: s.label,
-            value: Math.round(setorValue * s.w),
-            childrenLabel: "Lote",
-            children: lotes(setorValue * s.w, `${setorId}-${s.key}`),
-        }));
-    };
-    const setoresFor = (dateId: string, base: number): TreeNode[] => {
-        const seeds = [
-            { key: "vip", label: "VIP", w: 0.28 },
-            { key: "cam", label: "Camarote Premium", w: 0.24 },
-            { key: "pp", label: "Pista Premium", w: 0.22 },
-            { key: "p", label: "Pista", w: 0.2 },
-            { key: "mez", label: "Mezanino", w: 0.06 },
-        ];
-        return seeds.map((s) => {
-            const setorId = `${dateId}-${s.key}`;
-            const setorValue = Math.round(base * s.w);
-            return { id: setorId, key: s.key, label: s.label, value: setorValue, childrenLabel: "Ingresso", children: ingressosPorSetorNodes(setorValue, setorId, s.label) };
+const generoLabel = (g: string) => (g === "MASCULINO" ? "Masculino" : "Feminino");
+const grupoSlug = (g: string) => (g === "NIGHT PASS" ? "night" : "full");
+
+// Detalhamento das vendas: Sessão → Tipo de produto → (Combos) Setor → Ingresso → Lote.
+const buildDrillTree = (): TreeNode[] =>
+    EVENT.sessoes.map((s) => {
+        const combosS = combosNaSessao(s.id);
+        // Setor = passe (NIGHT/FULL) que cobre a sessão.
+        const setores: TreeNode[] = (["NIGHT PASS", "FULL PASS"] as const)
+            .filter((g) => combosS.some((c) => c.passe === g))
+            .map((g) => {
+                const cg = combosS.filter((c) => c.passe === g);
+                // Ingresso = variante (gênero) dentro do passe; abaixo, os lotes do combo.
+                const ingressos: TreeNode[] = cg.map((c) => ({
+                    id: `${s.id}-${c.id}`,
+                    key: c.genero,
+                    label: generoLabel(c.genero),
+                    value: c.quantidade,
+                    childrenLabel: "Lote",
+                    children: c.lotes.map((l) => ({ id: `${s.id}-${c.id}-${l.id}`, key: l.id, label: l.nome, value: l.quantidade })),
+                }));
+                return {
+                    id: `${s.id}-${grupoSlug(g)}`,
+                    key: grupoSlug(g),
+                    label: g,
+                    value: cg.reduce((a, c) => a + c.quantidade, 0),
+                    childrenLabel: "Ingresso",
+                    children: ingressos,
+                };
+            });
+        const combosNode: TreeNode = {
+            id: `${s.id}-combos`,
+            key: "combos",
+            label: "Combos",
+            value: setores.reduce((a, x) => a + x.value, 0),
+            childrenLabel: "Setor",
+            children: setores,
+        };
+
+        // Ingressos (vendas diretas): Setor (grupo da festa) → Ingresso → Lote.
+        const gruposS = GRUPOS.filter((g) => g.sessaoId === s.id);
+        const setoresIng: TreeNode[] = gruposS.map((g) => {
+            const ings = INGRESSOS.filter((i) => i.grupoId === g.id);
+            const ingressos: TreeNode[] = ings.map((ing) => ({
+                id: `${s.id}-ing-${ing.id}`,
+                key: ing.id,
+                label: ing.nome,
+                value: ing.vendaDireta,
+                childrenLabel: "Lote",
+                children: ing.lotes.map((l) => ({ id: `${s.id}-ing-${l.id}`, key: l.id, label: l.nome, value: l.quantidade })),
+            }));
+            return {
+                id: `${s.id}-grupo-${g.id}`,
+                key: g.id,
+                label: g.nome,
+                value: ings.reduce((a, i) => a + i.vendaDireta, 0),
+                childrenLabel: "Ingresso",
+                children: ingressos,
+            };
         });
-    };
-    const combosFor = (dateId: string, base: number): TreeNode[] => {
-        const seeds = [
-            { key: "c1", label: "Combo Camarote + Open Bar", w: 0.5 },
-            { key: "c2", label: "Combo VIP + Welcome Drink", w: 0.27 },
-            { key: "c3", label: "Combo Família (4 ingressos)", w: 0.1 },
-            { key: "c4", label: "Combo Premium + Estacionamento", w: 0.07 },
-            { key: "c5", label: "Combo Casal Camarote", w: 0.04 },
-            { key: "c6", label: "Combo VIP Solo + Brinde", w: 0.02 },
-        ];
-        return seeds.map((s) => ({ id: `${dateId}-${s.key}`, key: s.key, label: s.label, value: Math.round(base * s.w) }));
-    };
-    // Cada "data" é uma sessão do evento.
-    const dates: { id: string; label: string; estoque: number; ocupacao: number; comboRatio: number }[] = [
-        { id: EVENT.sessoes[0].id, label: EVENT.sessoes[0].label, estoque: 17000, ocupacao: 0.79, comboRatio: 0.1 },
-        { id: EVENT.sessoes[1].id, label: EVENT.sessoes[1].label, estoque: 20307, ocupacao: 0.86, comboRatio: 0.12 },
-    ];
-    return dates.map((d) => {
-        const ingressosVendidos = Math.round(d.estoque * d.ocupacao);
-        const comboQty = Math.round(ingressosVendidos * d.comboRatio);
-        const tiposDeItem: TreeNode[] = [
-            { id: `${d.id}-ingressos`, key: "ingressos", label: "Ingressos", value: ingressosVendidos, childrenLabel: "Setor", children: setoresFor(d.id, ingressosVendidos) },
-            { id: `${d.id}-combos`, key: "combos", label: "Combos", value: comboQty, childrenLabel: "Combo", children: combosFor(d.id, comboQty) },
-        ];
-        const total = tiposDeItem.reduce((s, x) => s + x.value, 0);
-        return { id: d.id, key: d.id, label: d.label, value: total, estoque: d.estoque, childrenLabel: "Tipo do item", children: tiposDeItem };
+        const ingressosNode: TreeNode = {
+            id: `${s.id}-ingressos`,
+            key: "ingressos",
+            label: "Ingressos",
+            value: setoresIng.reduce((a, x) => a + x.value, 0),
+            childrenLabel: "Setor",
+            children: setoresIng,
+        };
+
+        const total = combosNode.value + ingressosNode.value;
+        return { id: s.id, key: s.id, label: s.descricao, value: total, estoque: CAP_AREA[areaOf(s.label)], childrenLabel: "Tipo de produto", children: [combosNode, ingressosNode] };
     });
-};
 
 const drillTree = buildDrillTree();
 
-const aggregatedProdutos: TreeNode[] = (() => {
-    const seeds = [
-        { key: "pr1", label: "Kit Oficial #BahxVit", w: 0.45 },
-        { key: "pr2", label: "Camisa Oficial - M", w: 0.18 },
-        { key: "pr3", label: "Sacochila Oficial", w: 0.12 },
-        { key: "pr4", label: "Boneco Mascote - Fandom Box", w: 0.1 },
-        { key: "pr5", label: "Camisa Oficial - G", w: 0.08 },
-        { key: "pr6", label: "Camisa Oficial - P", w: 0.04 },
-        { key: "pr7", label: "Copo Oficial", w: 0.03 },
-    ];
-    const totalQty = 1200;
-    return seeds.map((s) => ({ id: s.key, key: s.key, label: s.label, value: Math.round(totalQty * s.w) }));
-})();
+// Produtos avulsos (dimensão distinta) — alimenta o drill-down "Produtos".
+const aggregatedProdutos: TreeNode[] = PRODUTOS.map((p) => ({ id: `prod-${p.id}`, key: p.id, label: p.nome, value: p.quantidade }));
 
 const PRODUTOS_ROOT_ID = "produtos-all";
 const produtosRootNode: TreeNode = {
     id: PRODUTOS_ROOT_ID,
     key: PRODUTOS_ROOT_ID,
     label: "Produtos",
-    value: aggregatedProdutos.reduce((s, c) => s + c.value, 0),
+    value: TOTAL_PRODUTOS,
     childrenLabel: "Produto",
     children: aggregatedProdutos,
 };
 
 /* ------------------------------------------------------------------ */
-/*  Scaling helpers (sessão + intervalo de data afetam tudo)          */
+/*  Scaling helpers                                                    */
 /* ------------------------------------------------------------------ */
 
-const SESSAO_WEIGHT: Record<string, number> = { all: 1, [EVENT.sessoes[0].id]: 0.46, [EVENT.sessoes[1].id]: 0.54 };
+// Combos são vendidos para o evento todo (não por festa) → sessão não escala a
+// venda; apenas filtra as colunas do drill. Sessões desconhecidas caem em 1.
+const SESSAO_WEIGHT: Record<string, number> = { all: 1 };
 
 const scaleTree = (nodes: TreeNode[], f: number): TreeNode[] =>
     nodes.map((n) => ({ ...n, value: Math.round(n.value * f), children: n.children ? scaleTree(n.children, f) : undefined }));
@@ -380,7 +355,7 @@ export function VendasPorGrupo() {
             <RelatorioFiltersProvider sessoes={EVENT.sessoes}>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6 py-6 md:px-6 pb-10">
-                        <RelatorioPageHeader title="Vendas" />
+                        <RelatorioPageHeader title="Vendas" filtroVariante="dropdown" />
                         <VendasBody />
                     </main>
                 </div>
@@ -418,7 +393,14 @@ const VendasBody = () => {
             gmvComDesconto: m.gmvComDesconto * vendaFactor,
         }));
 
-        const combosView: ComboRow[] = combos.map((c) => ({ ...c, quantidade: Math.round(c.quantidade * vendaFactor), gmv: c.gmv * vendaFactor, gmvComDesconto: c.gmvComDesconto * vendaFactor }));
+        const combosView: ComboRow[] = combos.map((c) => ({
+            ...c,
+            quantidade: Math.round(c.quantidade * vendaFactor),
+            gmv: c.gmv * vendaFactor,
+            desconto: c.desconto * vendaFactor,
+            gmvComDesconto: c.gmvComDesconto * vendaFactor,
+            lotes: c.lotes.map((l) => ({ ...l, quantidade: Math.round(l.quantidade * vendaFactor), gmv: l.gmv * vendaFactor, desconto: l.desconto * vendaFactor, gmvComDesconto: l.gmvComDesconto * vendaFactor })),
+        }));
         const produtosView: ProdutoRow[] = produtos.map((p) => ({ ...p, quantidade: Math.round(p.quantidade * dateFraction), gmv: p.gmv * dateFraction, gmvComDesconto: p.gmvComDesconto * dateFraction }));
         const cuponsView: CupomRow[] = cupons.map((c) => ({
             ...c,
@@ -440,15 +422,22 @@ const VendasBody = () => {
         return { setoresView, ingressosPorSetorView, mixView, combosView, produtosView, cuponsView, drillView, produtosRootView, valorTotal, totalItens };
     }, [dateRange, sessao]);
 
+    // Série diária recortada pelo mesmo período do filtro (todos os gráficos olham o mesmo intervalo).
+    const dias = useMemo(() => VENDAS_DIARIAS.filter((d) => inDateRange(parseEventDate(d.dataISO), dateRange)), [dateRange]);
+    // Meta = soma das metas das sessões em escopo (todas, ou a sessão filtrada).
+    const metaSel = useMemo(() => metaTotal(sessao === "all" ? undefined : [sessao]), [sessao]);
+
     return (
         <>
             <MetricsRow valorTotal={view.valorTotal} totalItens={view.totalItens} setores={view.setoresView} />
+            <DemografiaMetrics />
+            <MetaVendasCard dias={dias} meta={metaSel} />
             <MixReceitaCard items={view.mixView} />
+            <VendasPorGeneroCard dias={dias} />
+            <GeografiaSecoes />
             <DrillDownGmvCard tree={view.drillView} produtosRoot={view.produtosRootView} />
             <OcupacaoPorSetorCard setores={view.setoresView} />
             <QuantidadeIngressosPorSetorCard rows={view.ingressosPorSetorView} />
-            <ComboCard rows={view.combosView} />
-            <ProdutosCard rows={view.produtosView} />
             <IngressosComCupomCard cupons={view.cuponsView} />
         </>
     );
@@ -475,7 +464,7 @@ const OcupacaoMetric = ({ totalEstoque, totalVendido }: { totalEstoque: number; 
     <div className="rounded-xl bg-primary shadow-xs ring-1 ring-secondary ring-inset">
         <div className="flex h-full items-center gap-8 px-4 py-5 md:px-5">
             <div className="relative flex flex-col gap-2 shrink-0 items-center justify-center">
-                <ProgressBarHalfCircle size="xs" min={0} label="Lotação" max={totalEstoque || 1} value={totalVendido} valueFormatter={(_value: number, pct: number) => `${pct}%`} />
+                <ProgressBarHalfCircle size="xs" min={0} label="Ocupação" max={totalEstoque || 1} value={totalVendido} valueFormatter={(_value: number, pct: number) => `${pct}%`} />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <p className="text-lg font-semibold text-primary leading-tight">
@@ -722,7 +711,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
                                     if (path[pi] === PRODUTOS_ROOT_ID && pi === 0) return produtosRoot;
                                     return columns[pi].find((n) => n.id === path[pi]);
                                 };
-                                const headerLabel = colIndex === 0 ? "Sessão" : resolveParent(colIndex - 1)?.childrenLabel ?? "Detalhe";
+                                const headerLabel = colIndex === 0 ? "Data da sessão" : resolveParent(colIndex - 1)?.childrenLabel ?? "Detalhe";
                                 const parentLabel = colIndex > 0 && path[colIndex - 1] ? resolveParent(colIndex - 1)?.label : null;
                                 return (
                                     <motion.div
@@ -783,7 +772,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
                                             </ul>
                                         </div>
 
-                                        {colIndex === 0 && (
+                                        {colIndex === 0 && (produtosRoot.children?.length ?? 0) > 0 && (
                                             <div className="flex flex-col gap-2">
                                                 <span className="pb-2 text-xs font-semibold text-tertiary uppercase tracking-wide">Produto</span>
                                                 {(() => {
@@ -855,7 +844,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
 /* ------------------------------------------------------------------ */
 
 const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] }) => {
-    const [expanded, setExpanded] = useState<Set<string>>(new Set(["pista-premium"]));
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
     const toggleExpanded = (id: string) =>
         setExpanded((prev) => {
@@ -936,15 +925,6 @@ const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] })
                                 {isExpanded &&
                                     setor.ingressos?.map((ingresso, j, arr) => {
                                         const isLastIngresso = j === arr.length - 1;
-                                        const previousSum = arr.slice(0, j).reduce((sum, prev) => sum + prev.vendido, 0);
-                                        const offsetPct = setor.estoque === 0 ? 0 : (previousSum / setor.estoque) * 100;
-                                        const widthPct = setor.estoque === 0 ? 0 : (ingresso.vendido / setor.estoque) * 100;
-                                        const filledPct = setor.estoque === 0 ? 0 : (setor.vendido / setor.estoque) * 100;
-                                        const labelPct = setor.vendido === 0 ? 0 : (ingresso.vendido / setor.vendido) * 100;
-                                        const boundaries = arr.slice(0, -1).map((_, idx) => {
-                                            const sum = arr.slice(0, idx + 1).reduce((s, x) => s + x.vendido, 0);
-                                            return setor.estoque === 0 ? 0 : (sum / setor.estoque) * 100;
-                                        });
                                         return (
                                             <tr key={ingresso.id} className={cx("bg-secondary", isLastIngresso && !isLast && "border-b border-secondary")}>
                                                 <td className="px-2 py-3 md:px-4" />
@@ -954,7 +934,7 @@ const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] })
                                                 <td className="hidden px-4 py-3 md:table-cell" />
                                                 <td className="hidden px-4 py-3 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(ingresso.vendido)}</td>
                                                 <td className="px-4 py-3">
-                                                    <SegmentedOccupancyBar offsetPct={offsetPct} widthPct={widthPct} filledPct={filledPct} labelPct={labelPct} boundaries={boundaries} />
+                                                    <OccupancyBar value={ingresso.vendido} total={setor.vendido} />
                                                 </td>
                                             </tr>
                                         );
@@ -981,23 +961,6 @@ const OccupancyBar = ({ value, total }: { value: number; total: number }) => {
     );
 };
 
-const SegmentedOccupancyBar = ({ offsetPct, widthPct, filledPct, labelPct, boundaries = [] }: { offsetPct: number; widthPct: number; filledPct: number; labelPct?: number; boundaries?: number[] }) => {
-    const clampedOffset = Math.min(100, Math.max(0, offsetPct));
-    const clampedWidth = Math.min(100 - clampedOffset, Math.max(0, widthPct));
-    const clampedFilled = Math.min(100, Math.max(0, filledPct));
-    const display = Math.round(labelPct ?? widthPct);
-    void boundaries;
-    return (
-        <div className="flex min-w-0 items-center gap-2 md:gap-3">
-            <div className="relative h-2 min-w-0 flex-1 overflow-visible rounded-full bg-tertiary/90">
-                <div className="absolute h-full rounded-full bg-quaternary transition-all" style={{ left: 0, width: `${clampedFilled}%` }} />
-                <div className="absolute h-full rounded-full bg-brand-solid transition-all" style={{ left: `${clampedOffset}%`, width: `${clampedWidth}%` }} />
-            </div>
-            <span className="w-10 shrink-0 text-right text-sm text-tertiary">{display}%</span>
-        </div>
-    );
-};
-
 /* ------------------------------------------------------------------ */
 /*  Quantidade de ingressos por setor (tickets avulsos)               */
 /* ------------------------------------------------------------------ */
@@ -1018,7 +981,8 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
             const g = map.get(row.setor) ?? { setor: row.setor, rows: [], vendidos: 0, estoque: 0 };
             g.rows.push(row);
             g.vendidos += row.vendidos;
-            g.estoque += row.estoque;
+            // Estoque do setor = capacidade física (SETOR_CAP); fallback p/ máximo das linhas.
+            g.estoque = SETOR_CAP[row.setor] ?? Math.max(g.estoque, row.estoque);
             map.set(row.setor, g);
         });
         return Array.from(map.values());
@@ -1115,7 +1079,7 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
                                             <td className="px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(row.vendidos)}</td>
                                             <td className="px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(row.estoque)}</td>
                                             <td className="hidden px-4 py-3 lg:table-cell">
-                                                <OccupancyBar value={row.vendidos} total={row.estoque} />
+                                                <OccupancyBar value={row.vendidos} total={grupo.vendidos} />
                                             </td>
                                         </tr>
                                     ))}
@@ -1144,31 +1108,75 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
 /* ------------------------------------------------------------------ */
 
 const ComboCard = ({ rows }: { rows: ComboRow[] }) => {
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(rows as unknown as Record<string, unknown>[], undefined, { key: "gmv", dir: "desc" });
     const sortedRows = sorted as unknown as ComboRow[];
+    const toggle = (id: string) =>
+        setExpanded((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
     return (
-        <Card title="Combo">
+        <Card title="Combos">
             <div className="overflow-x-auto overflow-y-clip">
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
-                            <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Item Combo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="w-10 px-2 py-3 md:px-4" aria-hidden="true" />
+                            <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Combo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Quantidade" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor Unitário" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor unitário médio" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor total bruto" align="right" sortKey="gmv" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Desconto" align="right" sortKey="desconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor total c/ desconto" align="right" sortKey="gmvComDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                         </tr>
                     </thead>
                     <tbody>
-                        {sortedRows.map((row, i) => (
-                            <tr key={row.id} className={cx("transition duration-100 ease-linear hover:bg-primary_hover", i !== sortedRows.length - 1 && "border-b border-secondary")}>
-                                <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-primary">{row.nome}</td>
-                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{numberFormatter.format(row.quantidade)}</td>
-                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valorUnitario)}</td>
-                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmv)}</td>
-                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmvComDesconto)}</td>
-                            </tr>
-                        ))}
+                        {sortedRows.map((row, i) => {
+                            const isExpanded = expanded.has(row.id);
+                            const isLast = i === sortedRows.length - 1;
+                            return (
+                                <Fragment key={row.id}>
+                                    <tr
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-expanded={isExpanded}
+                                        onClick={() => toggle(row.id)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                toggle(row.id);
+                                            }
+                                        }}
+                                        className={cx("cursor-pointer transition duration-100 ease-linear hover:bg-primary_hover", (!isLast || isExpanded) && "border-b border-secondary")}
+                                    >
+                                        <td className="px-2 py-4 md:px-4">
+                                            <ChevronDown aria-hidden="true" className={cx("size-4 text-fg-quaternary transition-transform duration-150", isExpanded && "rotate-180")} />
+                                        </td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-primary">{row.nome}</td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{numberFormatter.format(row.quantidade)}</td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valorUnitario)}</td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmv)}</td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.desconto)}</td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmvComDesconto)}</td>
+                                    </tr>
+                                    {isExpanded &&
+                                        row.lotes.map((lote) => (
+                                            <tr key={lote.id} className="border-b border-secondary bg-secondary">
+                                                <td className="px-2 py-3 md:px-4" />
+                                                <td className="whitespace-nowrap px-4 py-3 pl-10 text-sm text-secondary">{lote.lote}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(lote.quantidade)}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.valorUnitario)}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.gmv)}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.desconto)}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.gmvComDesconto)}</td>
+                                            </tr>
+                                        ))}
+                                </Fragment>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

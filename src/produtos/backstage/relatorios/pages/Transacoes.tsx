@@ -10,25 +10,11 @@ import {
     ShoppingCart01,
     SlashCircle01,
 } from "@untitledui/icons";
-import {
-    Area,
-    Bar,
-    CartesianGrid,
-    Cell,
-    ComposedChart,
-    LabelList,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
-import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
@@ -38,22 +24,7 @@ import { RelatorioFiltersProvider, matchRow, inDateRange, useRelatorioFilters, t
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter, percentFormatter, parseEventDate } from "../data/event";
-
-/* ------------------------------------------------------------------ */
-/*  Hooks                                                             */
-/* ------------------------------------------------------------------ */
-
-function useIsMobile(): boolean {
-    const [isMobile, setIsMobile] = useState(false);
-    useEffect(() => {
-        const mq = window.matchMedia("(max-width: 768px)");
-        setIsMobile(mq.matches);
-        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-        mq.addEventListener("change", handler);
-        return () => mq.removeEventListener("change", handler);
-    }, []);
-    return isMobile;
-}
+import { COMBOS } from "../data/produtos";
 
 /* ------------------------------------------------------------------ */
 /*  Status + meios                                                    */
@@ -97,11 +68,6 @@ interface MeioPagamentoRow {
     pctValor: number;
 }
 
-interface ChartPoint {
-    data: string;
-    quantidade: number;
-    total: number;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Mock data — gerador determinístico de transações                  */
@@ -111,13 +77,13 @@ interface ChartPoint {
 
 interface Transacao {
     id: string;
-    sessaoId: string;
+    comboId: string;
     dataCriacao: string;
     ultimaAtualizacao: string;
     status: StatusTransacao;
-    nomeIngresso: string;
-    setor: string;
-    lote: string;
+    combo: string;
+    grupo: string;
+    genero: string;
     comprador: string;
     cpf: string;
     telefone: string;
@@ -126,28 +92,24 @@ interface Transacao {
     tipoPagamento: string;
     estado: string;
     cidade: string;
-    operadorVendas: string;
     valor: number;
     cupom: string;
     valorDesconto: number;
     valorFinal: number;
     qtdItem: number;
     passkey: string;
-    pdv: boolean;
     bundle: boolean;
     bundleDinamico: boolean;
 }
 
-const CATALOGO = [
-    { setor: "VIP", peso: 0.1, tipos: [{ nome: "VIP (Inteira)", valor: 1368, lote: "Lote 2" }, { nome: "VIP (Meia)", valor: 684, lote: "Lote 2" }] },
-    { setor: "Camarote Premium", peso: 0.12, tipos: [{ nome: "Camarote (Inteira)", valor: 980, lote: "Lote 2" }, { nome: "Camarote (Meia)", valor: 490, lote: "Lote 2" }] },
-    { setor: "Pista Premium", peso: 0.22, tipos: [{ nome: "Pista Premium (Inteira)", valor: 520, lote: "Lote 1" }, { nome: "Pista Premium (Meia)", valor: 260, lote: "Lote 1" }] },
-    { setor: "Pista", peso: 0.46, tipos: [{ nome: "Pista (Inteira)", valor: 240, lote: "Lote 3" }, { nome: "Pista (Meia)", valor: 120, lote: "Lote 3" }] },
-    { setor: "Mezanino", peso: 0.1, tipos: [{ nome: "Mezanino (Inteira)", valor: 300, lote: "Lote 1" }, { nome: "Mezanino (Meia)", valor: 150, lote: "Lote 1" }] },
-];
+// Réveillon Carneiros vende APENAS combos. Cada transação = 1 combo.
+// Peso da escolha proporcional às unidades vendidas de cada combo.
+const CATALOGO = COMBOS.map((c) => ({ combo: c, peso: c.quantidade }));
 
-const PRIMEIROS = ["Adriano", "Mariana", "Pedro", "Camila", "Roberto", "Larissa", "Vinicius", "Davi", "Beatriz", "Gustavo", "Fernanda", "Rafael", "Juliana", "Bruno", "Aline", "Thiago", "Patrícia", "Lucas", "Carolina", "Felipe"];
-const SOBRENOMES = ["Albuquerque", "Lopes Ferreira", "Henrique Costa", "Rodrigues", "Santos Júnior", "Almeida", "Cayres", "Marinho da Silva", "Oliveira", "Souza", "Pereira", "Carvalho", "Ribeiro", "Gomes", "Martins", "Araújo", "Barbosa", "Nunes"];
+const generoLabel = (g: string) => (g === "MASCULINO" ? "Masculino" : "Feminino");
+
+const PRIMEIROS = ["Adriano", "Mariana", "Pedro", "Camila", "Roberto", "Larissa", "Vinicius", "Davi", "Beatriz", "Gustavo", "Fernanda", "Rafael", "Juliana", "Bruno", "Aline", "Thiago", "Patrícia", "Lucas", "Carolina", "Felipe", "Marcelo", "Isabela", "Renata", "Eduardo", "Tatiana"];
+const SOBRENOMES = ["Albuquerque", "Lopes Ferreira", "Henrique Costa", "Rodrigues", "Santos Júnior", "Almeida", "Marinho da Silva", "Oliveira", "Souza", "Pereira", "Carvalho", "Ribeiro", "Gomes", "Martins", "Araújo", "Barbosa", "Nunes", "Mendes", "Cavalcanti", "Teixeira"];
 const LOCAIS = [
     { estado: "SP", cidade: "São Paulo", ddd: "11" },
     { estado: "SP", cidade: "Campinas", ddd: "19" },
@@ -156,12 +118,25 @@ const LOCAIS = [
     { estado: "BA", cidade: "Salvador", ddd: "71" },
     { estado: "PR", cidade: "Curitiba", ddd: "41" },
     { estado: "RS", cidade: "Porto Alegre", ddd: "51" },
+    { estado: "PE", cidade: "Recife", ddd: "81" },
+    { estado: "CE", cidade: "Fortaleza", ddd: "85" },
+    { estado: "DF", cidade: "Brasília", ddd: "61" },
+    { estado: "SC", cidade: "Florianópolis", ddd: "48" },
+    { estado: "GO", cidade: "Goiânia", ddd: "62" },
 ];
-const OPERADORES = ["Operadora Estação Central", "Bilheteria Arena", "PDV Shopping Norte"];
 const CUPONS = [
-    { cupom: "FAN15", pct: 0.15 },
-    { cupom: "VIPACCESS", pct: 0.1 },
-    { cupom: "PREMIERE10", pct: 0.1 },
+    { cupom: "CARNEIROS10", pct: 0.1 },
+    { cupom: "NIGHT2027", pct: 0.15 },
+    { cupom: "FULLVIP", pct: 0.08 },
+];
+// Meios de pagamento reais do Réveillon (100% online), com pesos plausíveis.
+const MEIOS_PAGAMENTO: { nome: string; peso: number }[] = [
+    { nome: "Pix", peso: 0.548 },
+    { nome: "Cartão de Crédito", peso: 0.312 },
+    { nome: "NuPay", peso: 0.058 },
+    { nome: "Apple Pay", peso: 0.042 },
+    { nome: "Google Pay", peso: 0.026 },
+    { nome: "Cartão de Débito", peso: 0.014 },
 ];
 
 /** dd/mm/aaaa a partir de um offset (em dias) sobre a data de início de vendas. */
@@ -196,7 +171,8 @@ const transacoes: Transacao[] = (() => {
         return arr[arr.length - 1];
     };
     const rows: Transacao[] = [];
-    const COUNT = 2400;
+    // ~820 transações → ~840 itens / ~R$5,2M brutos, coerente com o catálogo.
+    const COUNT = 820;
     for (let i = 0; i < COUNT; i++) {
         // Data enviesada para o fim da janela (rampa em direção ao evento), com pico no anúncio.
         let dayOffset: number;
@@ -214,54 +190,50 @@ const transacoes: Transacao[] = (() => {
         const status: StatusTransacao =
             statusRoll < 0.86 ? "aprovado" : statusRoll < 0.91 ? "pendente" : statusRoll < 0.96 ? "cancelado" : statusRoll < 0.98 ? "estornado" : "reembolso";
 
-        const cat = pickWeighted(CATALOGO);
-        const tipo = pick(cat.tipos);
-        const qtdItem = rng() < 0.82 ? 1 : rng() < 0.7 ? 2 : rng() < 0.7 ? 3 : 4;
-        const valor = tipo.valor * qtdItem;
+        const combo = pickWeighted(CATALOGO).combo;
+        // Combos são caros → esmagadora maioria compra 1 unidade.
+        const qtdItem = rng() < 0.9 ? 1 : 2;
 
-        const temCupom = rng() < 0.12;
+        const meio = pickWeighted(MEIOS_PAGAMENTO);
+        const tipoPagamento = meio.nome;
+
+        const valor = combo.preco * qtdItem;
+        const temCupom = rng() < 0.11;
         const cupomDef = temCupom ? pick(CUPONS) : null;
         const valorDesconto = cupomDef ? Math.round(valor * cupomDef.pct * 100) / 100 : 0;
         const valorFinal = Math.round((valor - valorDesconto) * 100) / 100;
-
-        const isPdv = rng() < 0.1;
-        const canal = isPdv ? "PDV" : "Online";
-        const tipoPagamento = rng() < 0.42 ? "Pix" : "Cartão de Crédito";
         const local = pick(LOCAIS);
         const nome = `${pick(PRIMEIROS)} ${pick(SOBRENOMES)}`;
         const emailUser = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z]+/g, ".");
         const email = `${emailUser}${Math.floor(rng() * 90 + 10)}@${pick(["gmail.com", "outlook.com", "hotmail.com", "yahoo.com"])}`;
         const cpf = String(Math.floor(rng() * 9e10 + 1e10));
         const telefone = `+55${local.ddd}9${String(Math.floor(rng() * 9e7 + 1e7))}`;
-        const sessao = pick(EVENT.sessoes);
 
         rows.push({
             id: `${pad(Math.floor(rng() * 9e7), 8)}-${pad(Math.floor(rng() * 9000), 4)}-4${pad(Math.floor(rng() * 900), 3)}-${pad(Math.floor(rng() * 9000), 4)}`,
-            sessaoId: sessao.id,
+            comboId: combo.id,
             dataCriacao: fmtDateTime(created),
             ultimaAtualizacao: fmtDateTime(updated),
             status,
-            nomeIngresso: tipo.nome,
-            setor: cat.setor,
-            lote: tipo.lote,
+            combo: combo.nome,
+            grupo: combo.passe,
+            genero: generoLabel(combo.genero),
             comprador: nome,
             cpf,
             telefone,
             email,
-            canal,
+            canal: "Online",
             tipoPagamento,
             estado: local.estado,
             cidade: local.cidade,
-            operadorVendas: isPdv ? pick(OPERADORES) : "—",
             valor,
             cupom: cupomDef?.cupom ?? "—",
             valorDesconto,
             valorFinal,
             qtdItem,
-            passkey: cat.setor === "VIP" && rng() < 0.4 ? "VIP2026" : "—",
-            pdv: isPdv,
-            bundle: rng() < 0.08,
-            bundleDinamico: rng() < 0.04,
+            passkey: "—",
+            bundle: false,
+            bundleDinamico: false,
         });
     }
     // Ordena do mais recente para o mais antigo (como uma lista de transações real).
@@ -276,11 +248,17 @@ const transacoes: Transacao[] = (() => {
 const STATUS_OPTIONS = Object.entries(STATUS_META).map(([, m]) => ({ id: m.label, label: m.label }));
 const CANAL_OPTIONS = [
     { id: "Online", label: "Online" },
-    { id: "PDV", label: "PDV" },
+    { id: "Offline", label: "Offline" },
 ];
 const MEIO_PAGAMENTO_OPTIONS = [
     { id: "Pix", label: "Pix" },
     { id: "Cartão de Crédito", label: "Cartão de Crédito" },
+    { id: "Cartão de Débito", label: "Cartão de Débito" },
+    { id: "Apple Pay", label: "Apple Pay" },
+    { id: "Google Pay", label: "Google Pay" },
+    { id: "Dinheiro", label: "Dinheiro" },
+    { id: "Isento", label: "Isento" },
+    { id: "Grátis", label: "Grátis" },
 ];
 const SETOR_OPTIONS = CATALOGO.map((c) => ({ id: c.setor, label: c.setor }));
 
@@ -342,6 +320,7 @@ export function Transacoes() {
                     <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
                         <RelatorioPageHeader
                             title="Transações"
+                            filtroVariante="dropdown"
                             actions={<ExportMenu onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "As transações serão exportadas." })} />}
                         />
                         <TransacoesBody />
@@ -415,29 +394,12 @@ const TransacoesBody = () => {
             .filter(Boolean) as MeioPagamentoRow[];
     }, [filtered]);
 
-    const chartData = useMemo<ChartPoint[]>(() => {
-        const byDay = new Map<number, { d: Date; quantidade: number; total: number }>();
-        for (const t of filtered) {
-            const d = parseEventDate(t.dataCriacao);
-            if (!d) continue;
-            const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-            const acc = byDay.get(key) ?? { d: new Date(key), quantidade: 0, total: 0 };
-            acc.quantidade += t.qtdItem;
-            acc.total += t.valorFinal;
-            byDay.set(key, acc);
-        }
-        return [...byDay.values()]
-            .sort((a, b) => a.d.getTime() - b.d.getTime())
-            .map((x) => ({ data: `${x.d.getDate()}/${x.d.getMonth() + 1}`, quantidade: x.quantidade, total: Math.round(x.total) }));
-    }, [filtered]);
-
     return (
         <>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <TotalTransacionadoCard total={totalFinal} />
             </div>
             <IngressosValorPorStatusCard rows={statusRows} />
-            <TransacionadoChartCard data={chartData} />
             <MeioPagamentosCard rows={meiosRows} />
             <ListaTransacoesCard rows={filtered} />
         </>
@@ -517,126 +479,6 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
     );
 };
 
-/* ------------------------------------------------------------------ */
-/*  Chart                                                             */
-/* ------------------------------------------------------------------ */
-
-interface ChartTooltipPayloadEntry {
-    dataKey: string;
-    name: string;
-    value: number | string;
-    color: string;
-}
-
-const ChartTooltip = ({ active, label, payload }: { active?: boolean; label?: string; payload?: ChartTooltipPayloadEntry[] }) => {
-    if (!active || !payload || payload.length === 0) return null;
-    const ordered = [...payload].sort((a, b) => (a.dataKey === "total" ? -1 : b.dataKey === "total" ? 1 : 0));
-    return (
-        <div className="rounded-lg bg-primary-solid px-3 py-2.5 shadow-xl ring-1 ring-secondary_alt">
-            <p className="mb-1.5 text-sm font-semibold text-white">{label}</p>
-            <ul className="flex flex-col gap-1">
-                {ordered.map((entry) => {
-                    const isMonetary = entry.dataKey === "total";
-                    const formatted = isMonetary ? currencyFormatter.format(Number(entry.value)) : numberFormatter.format(Number(entry.value));
-                    return (
-                        <li key={entry.dataKey} className="flex items-center gap-2 text-xs">
-                            <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: entry.color }} />
-                            <span className="text-white/70">{entry.name}:</span>
-                            <span className="font-semibold text-white">{formatted}</span>
-                        </li>
-                    );
-                })}
-            </ul>
-        </div>
-    );
-};
-
-const ChartCursor = ({ points, top = 0, height = 0 }: { points?: { x: number; y: number }[]; top?: number; height?: number }) => {
-    if (!points || points.length === 0) return null;
-    const x = points[0].x;
-    return <line x1={x} x2={x} y1={top} y2={top + height} stroke="var(--color-border-primary)" strokeWidth={1} />;
-};
-
-const QTD_COLOR = "var(--color-utility-blue-400)";
-const TOTAL_COLOR = "var(--color-brand-600)";
-
-const TransacionadoChartCard = ({ data }: { data: ChartPoint[] }) => {
-    const isMobile = useIsMobile();
-    const fontSize = isMobile ? 10 : 11;
-    const [metric, setMetric] = useState<"total" | "quantidade">("total");
-
-    return (
-        <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-            <header className="flex flex-col gap-3 border-b border-secondary px-5 pt-4 pb-4 md:flex-row md:items-start md:justify-between">
-                <div className="flex flex-col gap-1">
-                    <h3 className="text-md font-semibold text-primary">Total transacionado e número de ingressos</h3>
-                    <p className="text-sm text-tertiary">Distribuição diária de transações e ingressos vendidos</p>
-                </div>
-                <ButtonGroup
-                    size="sm"
-                    selectedKeys={[metric]}
-                    onSelectionChange={(keys: Set<React.Key> | "all") => {
-                        if (keys === "all") return;
-                        const next = [...keys][0] as "total" | "quantidade" | undefined;
-                        if (next) setMetric(next);
-                    }}
-                >
-                    <ButtonGroupItem id="total">Total</ButtonGroupItem>
-                    <ButtonGroupItem id="quantidade">Quantidade</ButtonGroupItem>
-                </ButtonGroup>
-            </header>
-
-            <div className="h-[280px] w-full px-2 pt-5 pb-2 md:h-[380px] md:px-4">
-                <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={data} margin={{ top: isMobile ? 16 : 28, right: isMobile ? 8 : 16, bottom: isMobile ? 0 : 4, left: isMobile ? 0 : 4 }}>
-                        <defs>
-                            <linearGradient id="qtdAreaFill" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={QTD_COLOR} stopOpacity={0.28} />
-                                <stop offset="80%" stopColor={QTD_COLOR} stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid stroke="var(--color-border-secondary)" strokeDasharray="2 4" strokeOpacity={0.6} vertical={false} />
-                        <XAxis
-                            dataKey="data"
-                            tick={{ fill: "var(--color-text-tertiary)", fontSize }}
-                            tickLine={false}
-                            axisLine={false}
-                            tickMargin={10}
-                            interval={isMobile ? "preserveStartEnd" : "preserveStart"}
-                            minTickGap={isMobile ? 24 : 16}
-                        />
-                        <YAxis yAxisId="total" orientation="left" tickFormatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`} tick={{ fill: "var(--color-text-tertiary)", fontSize }} tickLine={false} axisLine={false} tickMargin={8} width={isMobile ? 44 : 56} />
-                        <YAxis yAxisId="qtd" orientation="right" tickFormatter={(v) => numberFormatter.format(Number(v))} tick={{ fill: "var(--color-text-tertiary)", fontSize }} tickLine={false} axisLine={false} tickMargin={8} width={isMobile ? 36 : 44} />
-                        <Tooltip content={<ChartTooltip />} cursor={<ChartCursor />} />
-                        <Bar yAxisId="total" dataKey="total" name="Total Transacionado" fill={TOTAL_COLOR} radius={[3, 3, 0, 0]} maxBarSize={isMobile ? 10 : 18}>
-                            {metric === "total" && data.length <= 20 && (
-                                <LabelList dataKey="total" position="top" fill="var(--color-text-primary)" fontSize={isMobile ? 9 : 11} fontWeight={600} offset={isMobile ? 6 : 8} formatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`} />
-                            )}
-                        </Bar>
-                        <Area yAxisId="qtd" type="monotone" dataKey="quantidade" name="Quantidade de Ingressos" stroke={QTD_COLOR} strokeWidth={2.5} fill="url(#qtdAreaFill)" dot={false} activeDot={{ r: 6, fill: QTD_COLOR, stroke: "var(--color-bg-primary)", strokeWidth: 2 }}>
-                            {metric === "quantidade" && data.length <= 20 && (
-                                <LabelList dataKey="quantidade" position="top" fill="var(--color-text-primary)" fontSize={isMobile ? 9 : 11} fontWeight={600} offset={isMobile ? 16 : 30} formatter={(v) => numberFormatter.format(Number(v))} />
-                            )}
-                        </Area>
-                    </ComposedChart>
-                </ResponsiveContainer>
-            </div>
-
-            <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary px-5 py-3">
-                <div className="flex flex-wrap items-center gap-4 text-xs text-tertiary">
-                    <span className="flex items-center gap-1.5">
-                        <span aria-hidden="true" className="size-2.5 rounded-sm" style={{ background: TOTAL_COLOR }} />
-                        Total Transacionado
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                        <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: QTD_COLOR }} />
-                        Quantidade de Ingressos
-                    </span>
-                </div>
-            </footer>
-        </section>
-    );
-};
 
 /* ------------------------------------------------------------------ */
 /*  Meio de Pagamentos                                                */

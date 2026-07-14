@@ -27,7 +27,7 @@ import { TreeView } from "@/components/application/tree-view/tree-view";
 import { cx } from "@/utils/cx";
 import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
-import eventCover from "../../../assets/event-cover.png";
+const eventCover = "https://ticket-backend-prod.imgix.net/media/event/a871f5c2-ebfb-4fc4-a98c-8adfee4bfcc0/ac61f9f8-02f4-4422-94a4-ad67a56f925d.jpeg?h=440&w=330&fit=crop";
 
 const BrandLogo = ({ className }: { className?: string }) => (
     <>
@@ -38,6 +38,7 @@ const BrandLogo = ({ className }: { className?: string }) => (
 import { ThemeToggle } from "./ThemeToggle";
 
 export type BackstageSection =
+    | "equipe-e-permissoes"
     | "informacoes-evento"
     | "itens"
     | "pesquisas"
@@ -58,10 +59,12 @@ export type BackstageItem =
     | "bordero"
     | "transferencias"
     | "comparativos"
+    | "comissarios"
+    | "relatorio-questionarios"
     | "chave-de-acesso"
     | "formularios-compra";
 
-const DISABLED_KEYS: Key[] = ["informacoes-evento", "permissao-envio", "catalogo-combos", "catalogo-produtos"];
+const DISABLED_KEYS: Key[] = ["informacoes-evento", "catalogo-combos", "catalogo-produtos"];
 
 interface BackstageLayoutProps {
     activeSection?: BackstageSection;
@@ -142,7 +145,7 @@ const MobileEventCard = () => (
     <div className="flex items-start gap-3 rounded-xl bg-secondary p-3">
         <img
             src={eventCover}
-            alt="Bahia x Vitória"
+            alt="Visão completa"
             className="size-16 shrink-0 rounded-lg object-cover"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -153,13 +156,14 @@ const MobileEventCard = () => (
                 </Badge>
             </div>
             <p className="text-sm font-semibold leading-snug text-primary line-clamp-2">
-                Bahia x Vitória
+                Visão completa
             </p>
         </div>
     </div>
 );
 
 const SECTION_LABELS: Record<BackstageSection, string> = {
+    "equipe-e-permissoes": "Equipe e Permissões",
     "informacoes-evento": "Informações do evento",
     itens: "Itens",
     pesquisas: "Coleta de dados",
@@ -181,6 +185,8 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     bordero: "Borderô",
     transferencias: "Transferências",
     comparativos: "Comparativos",
+    comissarios: "Comissários",
+    "relatorio-questionarios": "Questionários",
     "chave-de-acesso": "Chave de acesso",
     "formularios-compra": "Perguntas por ingresso",
 };
@@ -443,7 +449,8 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
             </div>
             <nav className="flex flex-col items-center gap-1">
                 <ProducerRailItem icon={Calendar} label="Eventos" href="/backstage/" isActive={activeProducer === "eventos" || !activeProducer} />
-                <ProducerRailItem icon={UsersPlus} label="Equipe" />
+                <ProducerRailItem icon={UsersPlus} label="Membros" href="/backstage/membros" isActive={activeProducer === "membros"} />
+                <ProducerRailItem icon={UsersPlus} label={"Membros\nv2"} href="/backstage/membros-v2" isActive={activeProducer === "membros-v2"} />
                 <ProducerRailItem icon={Bank} label="Finanças" />
                 <ProducerRailItem icon={Users01} label="Público" href="/backstage/publico" isActive={activeProducer === "publico"} />
                 <ProducerRailItem icon={Settings01} label="Ajustes" />
@@ -470,22 +477,22 @@ const EventDetailsCard = () => (
         <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-secondary">
             <img
                 src={eventCover}
-                alt="Bahia x Vitória"
+                alt="Visão completa"
                 className="size-full object-cover"
             />
             <span className="absolute top-3 left-3 rounded-xl bg-white/50 px-3 py-1 text-[12px] font-medium tracking-wide text-primary uppercase backdrop-blur-md">
                 Rascunho
             </span>
             <div className="absolute bottom-3 right-3 flex w-12 flex-col items-center rounded-xl bg-white/50 px-2 py-3 text-primary backdrop-blur-md">
-                <span className="text-[10px] font-medium tracking-wide uppercase">Sex</span>
-                <span className="text-base font-bold leading-tight">27</span>
-                <span className="text-[10px] font-medium tracking-wide uppercase">Dez</span>
+                <span className="text-[10px] font-medium tracking-wide uppercase">Dom</span>
+                <span className="text-base font-bold leading-tight">21</span>
+                <span className="text-[10px] font-medium tracking-wide uppercase">Jun</span>
             </div>
         </div>
         <div className="flex flex-col gap-0.5 px-1">
             <span className="text-xs text-tertiary">ID: 1234</span>
-            <h3 className="text-md font-bold text-primary">Bahia x Vitória</h3>
-            <p className="text-sm text-tertiary">Arena Fonte Nova - Salvador, BA</p>
+            <h3 className="text-md font-bold text-primary">Visão completa</h3>
+            <p className="text-sm text-tertiary">Ingresse</p>
         </div>
         <div className="flex items-center gap-2 px-1">
             <button
@@ -568,9 +575,6 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 >
                     Cortesias
                 </TreeView.ItemContent>
-                <TreeView.Item id="permissao-envio" textValue="Permissão de envio">
-                    <TreeView.ItemContent>Permissão de envio</TreeView.ItemContent>
-                </TreeView.Item>
                 <TreeView.Item id="emissao-cortesias" textValue="Emissão de cortesias" href="/backstage/cortesias">
                     <TreeView.ItemContent className={itemClass("emissao-cortesias")}>Emissão de cortesias</TreeView.ItemContent>
                 </TreeView.Item>
@@ -604,6 +608,21 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                     >
                         Comparativos
                     </TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="comissarios" textValue="Comissários" href="/backstage/relatorios/comissarios">
+                    <TreeView.ItemContent
+                        className={itemClass("comissarios")}
+                        action={
+                            <Badge size="sm" type="pill-color" color="error">
+                                Novo
+                            </Badge>
+                        }
+                    >
+                        Comissários
+                    </TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="relatorio-questionarios" textValue="Questionários" href="/backstage/relatorios/questionarios">
+                    <TreeView.ItemContent className={itemClass("relatorio-questionarios")}>Questionários</TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>
 

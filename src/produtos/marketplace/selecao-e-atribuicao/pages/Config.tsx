@@ -228,6 +228,19 @@ export function Config() {
                         {cfg.exibir.combosDinamicos && (
                             <Input size="sm" label="Nome da aba de combos dinâmicos" value={cfg.comboTabLabel} onChange={(v) => patch({ comboTabLabel: v })} placeholder="Ex.: Combo dinâmico" />
                         )}
+                        <div className="flex items-start justify-between gap-3 border-t border-secondary pt-3">
+                            <div className="flex min-w-0 flex-col">
+                                <span className="text-sm font-medium text-secondary">Formulário de perguntas em accordion</span>
+                                <span className="text-sm text-tertiary">Ligado: as opções de atribuição viram accordion e o formulário abre inline. Desligado: abre em modal.</span>
+                            </div>
+                            <Toggle
+                                size="sm"
+                                className="mt-0.5 shrink-0"
+                                isSelected={cfg.modoAtribuicao === "accordion"}
+                                onChange={(on) => patch({ modoAtribuicao: on ? "accordion" : "modal" })}
+                                aria-label="Formulário de perguntas em accordion"
+                            />
+                        </div>
                     </Secao>
 
                     {/* Ingressos */}

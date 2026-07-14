@@ -275,7 +275,7 @@ const EventPicker = ({ selectedIds, onToggle }: { selectedIds: string[]; onToggl
     <section className="flex flex-col gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-sm font-semibold text-secondary">Eventos para comparar</span>
-            <span className="text-xs text-tertiary">
+            <span className="text-sm text-tertiary">
                 {selectedIds.length} selecionado{selectedIds.length === 1 ? "" : "s"}
             </span>
         </div>
@@ -301,9 +301,9 @@ const EventPicker = ({ selectedIds, onToggle }: { selectedIds: string[]; onToggl
                             {/* nome */}
                             <span className="flex min-w-0 flex-1 flex-col">
                                 <span className="truncate text-sm font-medium text-primary">{ev.nome}</span>
-                                <span className="text-xs text-tertiary">Evento em {ev.dataEvento}</span>
+                                <span className="text-sm text-tertiary">Evento em {ev.dataEvento}</span>
                             </span>
-                            <span className="hidden shrink-0 text-right text-xs text-tertiary tabular-nums sm:block">
+                            <span className="hidden shrink-0 text-right text-sm text-tertiary tabular-nums sm:block">
                                 {numberFormatter.format(t.ingressos)} ing. · {currencyFormatter.format(t.liquido)}
                             </span>
                         </button>
@@ -382,26 +382,30 @@ const ComparativoControls = (props: ControlsProps) => {
                 isOpen={open}
                 onOpenChange={setOpen}
                 isDismissable
-                className={({ isEntering, isExiting }) => cx("fixed inset-0 z-50 flex items-end justify-center bg-overlay/70 backdrop-blur-[2px]", isEntering && "duration-200 ease-out animate-in fade-in", isExiting && "duration-150 ease-in animate-out fade-out")}
+                className="fixed inset-0 z-50 flex justify-end outline-hidden"
             >
-                <AriaModal className={({ isEntering, isExiting }) => cx("w-full max-w-xl rounded-t-2xl bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-bottom", isExiting && "duration-200 ease-in animate-out slide-out-to-bottom")}>
-                    <AriaDialog className="flex flex-col gap-5 p-5 outline-hidden">
-                        <div className="flex items-center justify-between gap-4">
+                <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
+                    <AriaDialog className="flex h-full flex-col outline-hidden">
+                        <div className="flex items-center justify-between gap-4 border-b border-secondary px-6 py-5">
                             <h2 className="text-lg font-semibold text-primary">Ajustar comparação</h2>
                             <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar" onClick={() => setOpen(false)} />
                         </div>
-                        <SheetField label="Métrica">
-                            <MetricField metric={props.metric} onChange={props.onChangeMetric} className="w-full" />
-                        </SheetField>
-                        <SheetField label="Alinhar por">
-                            <AlignmentField alignment={props.alignment} onChange={props.onChangeAlignment} className="w-full" />
-                        </SheetField>
-                        <SheetField label="Intervalo de dias">
-                            <WindowField windowDays={props.windowDays} onChange={props.onChangeWindow} className="w-full" />
-                        </SheetField>
-                        <Button size="lg" color="primary" onClick={() => setOpen(false)}>
-                            Ver comparação
-                        </Button>
+                        <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-6">
+                            <SheetField label="Métrica">
+                                <MetricField metric={props.metric} onChange={props.onChangeMetric} className="w-full" />
+                            </SheetField>
+                            <SheetField label="Alinhar por">
+                                <AlignmentField alignment={props.alignment} onChange={props.onChangeAlignment} className="w-full" />
+                            </SheetField>
+                            <SheetField label="Intervalo de dias">
+                                <WindowField windowDays={props.windowDays} onChange={props.onChangeWindow} className="w-full" />
+                            </SheetField>
+                        </div>
+                        <div className="flex items-center justify-end gap-2 border-t border-secondary px-6 py-4">
+                            <Button size="sm" color="primary" onClick={() => setOpen(false)}>
+                                Ver comparação
+                            </Button>
+                        </div>
                     </AriaDialog>
                 </AriaModal>
             </AriaModalOverlay>
@@ -463,7 +467,7 @@ const InsightCards = ({ events }: { events: EventoComparativo[] }) => {
                 <div key={c.eyebrow} className="flex items-start gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
                     <FeaturedIcon icon={c.icon} color={c.color} theme="light" size="md" className="shrink-0" />
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="text-xs font-medium text-tertiary">{c.eyebrow}</span>
+                        <span className="text-sm font-medium text-tertiary">{c.eyebrow}</span>
                         <span className="flex items-center gap-1.5">
                             <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: c.ev.cor }} />
                             <span className="truncate text-md font-semibold text-primary">{c.ev.nome}</span>
@@ -490,12 +494,12 @@ const ResumoCards = ({ events, metric, alignment, windowDays }: { events: Evento
                         <span className="mt-1 size-3 shrink-0 rounded-full" style={{ backgroundColor: ev.cor }} />
                         <div className="flex min-w-0 flex-1 flex-col">
                             <span className="truncate text-sm font-semibold text-primary">{ev.nome}</span>
-                            <span className="text-xs text-tertiary">Evento em {ev.dataEvento}</span>
+                            <span className="text-sm text-tertiary">Evento em {ev.dataEvento}</span>
                         </div>
                     </div>
                     <div>
                         <p className="text-2xl font-semibold text-primary tabular-nums">{metricDestaque(t, metric)}</p>
-                        <p className="text-xs text-tertiary">
+                        <p className="text-sm text-tertiary">
                             {METRIC_LABEL[metric]} {janelaLabel(alignment, windowDays)}
                         </p>
                     </div>
@@ -513,7 +517,7 @@ const ResumoCards = ({ events, metric, alignment, windowDays }: { events: Evento
 
 const Stat = ({ label, value }: { label: string; value: string }) => (
     <div className="flex flex-col gap-0.5">
-        <dt className="text-xs text-tertiary">{label}</dt>
+        <dt className="text-sm text-tertiary">{label}</dt>
         <dd className="text-sm font-medium text-primary tabular-nums">{value}</dd>
     </div>
 );
@@ -571,10 +575,10 @@ const ComparativoChart = ({ events, metric, alignment, windowDays }: { events: E
         const ordered = [...payload].sort((a, b) => Number(b.value) - Number(a.value));
         return (
             <div className="flex flex-col gap-1.5 rounded-lg bg-primary-solid px-3 py-2.5 shadow-lg">
-                <p className="text-xs font-semibold text-white">{tooltipLabel(Number(label))}</p>
+                <p className="text-sm font-semibold text-white">{tooltipLabel(Number(label))}</p>
                 <ul className="flex flex-col gap-1">
                     {ordered.map((entry) => (
-                        <li key={entry.dataKey} className="flex items-center gap-2 text-xs">
+                        <li key={entry.dataKey} className="flex items-center gap-2 text-sm">
                             <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: entry.color }} />
                             <span className="text-tooltip-supporting-text">{entry.name}</span>
                             <span className="ml-auto pl-3 font-semibold text-white tabular-nums">{tooltipValue(entry.value)}</span>
@@ -600,7 +604,7 @@ const ComparativoChart = ({ events, metric, alignment, windowDays }: { events: E
 
             <div className="h-[320px] w-full px-2 pt-5 pb-2 text-tertiary md:h-[420px] md:px-4">
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={rows} className="[&_.recharts-text]:text-xs" margin={{ top: 16, right: 84, bottom: 4, left: 8 }}>
+                    <AreaChart data={rows} className="[&_.recharts-text]:text-sm" margin={{ top: 16, right: 84, bottom: 4, left: 8 }}>
                         <defs>
                             {events.map((ev) => (
                                 <Fragment key={ev.id}>
@@ -689,10 +693,10 @@ const AnoContraAnoChart = ({ events }: { events: EventoComparativo[] }) => {
         if (ordered.length === 0) return null;
         return (
             <div className="flex flex-col gap-1.5 rounded-lg bg-primary-solid px-3 py-2.5 shadow-lg">
-                <p className="text-xs font-semibold text-white capitalize">{label}</p>
+                <p className="text-sm font-semibold text-white capitalize">{label}</p>
                 <ul className="flex flex-col gap-1">
                     {ordered.map((entry) => (
-                        <li key={entry.dataKey} className="flex items-center gap-2 text-xs">
+                        <li key={entry.dataKey} className="flex items-center gap-2 text-sm">
                             <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: entry.color }} />
                             <span className="text-tooltip-supporting-text">{EVENTOS_POR_ID.get(entry.dataKey)?.curto ?? entry.dataKey}</span>
                             <span className="ml-auto pl-3 font-semibold text-white tabular-nums">{currencyFormatter.format(Number(entry.value))}</span>
@@ -711,7 +715,7 @@ const AnoContraAnoChart = ({ events }: { events: EventoComparativo[] }) => {
             </header>
             <div className="h-[300px] w-full px-2 pt-5 pb-2 text-tertiary md:h-[360px] md:px-4">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={rows} className="[&_.recharts-text]:text-xs" margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+                    <BarChart data={rows} className="[&_.recharts-text]:text-sm" margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
                         <CartesianGrid vertical={false} stroke="currentColor" className="text-utility-neutral-100" />
                         <XAxis dataKey="mes" fill="currentColor" tickLine={false} axisLine={false} tickMargin={10} />
                         <YAxis tickFormatter={(v) => `R$${(Number(v) / 1_000_000).toFixed(0)}mi`} fill="currentColor" tickLine={false} axisLine={false} tickMargin={8} width={56} />
@@ -724,7 +728,7 @@ const AnoContraAnoChart = ({ events }: { events: EventoComparativo[] }) => {
             </div>
             <footer className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-secondary px-5 py-3">
                 {events.map((ev) => (
-                    <span key={ev.id} className="flex items-center gap-1.5 text-xs text-tertiary">
+                    <span key={ev.id} className="flex items-center gap-1.5 text-sm text-tertiary">
                         <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: ev.cor }} />
                         {ev.curto}
                     </span>
@@ -832,15 +836,15 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
                 <table className="w-full border-collapse">
                     <thead className="bg-secondary">
                         <tr className="border-b border-secondary text-left">
-                            <th className="sticky left-0 z-10 whitespace-nowrap bg-secondary px-4 py-3 text-xs font-semibold text-tertiary">
+                            <th className="sticky left-0 z-10 whitespace-nowrap bg-secondary px-4 py-3 text-sm font-semibold text-tertiary">
                                 <SortableHeader label="Evento" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                             </th>
                             {buckets.map((b) => (
-                                <th key={b.id} className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
+                                <th key={b.id} className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary">
                                     <SortableHeader label={b.label} align="right" sortKey={b.id} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                                 </th>
                             ))}
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary">
                                 <SortableHeader label="Total" align="right" sortKey="total" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                             </th>
                         </tr>
@@ -899,7 +903,7 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
                                 );
                             })}
                         </div>
-                        <span className="text-xs text-tertiary">
+                        <span className="text-sm text-tertiary">
                             {row.pico ? (
                                 <>
                                     Pico: <span className="font-medium text-secondary">{row.pico.label}</span> {alignment === "abertura" ? "após a abertura" : "antes do evento"} ({Math.round(((row.values[row.pico.id] ?? 0) / (row.total || 1)) * 100)}% das vendas)
@@ -940,9 +944,9 @@ const ComparativoTable = ({ events, alignment, windowDays }: { events: EventoCom
                 <table className="w-full border-collapse">
                     <thead className="bg-secondary">
                         <tr className="border-b border-secondary text-left">
-                            <th className="sticky left-0 z-10 bg-secondary px-4 py-3 text-xs font-semibold text-tertiary">Métrica</th>
+                            <th className="sticky left-0 z-10 bg-secondary px-4 py-3 text-sm font-semibold text-tertiary">Métrica</th>
                             {totais.map(({ ev }) => (
-                                <th key={ev.id} className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
+                                <th key={ev.id} className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary">
                                     <span className="inline-flex items-center gap-1.5">
                                         <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: ev.cor }} />
                                         {ev.curto}

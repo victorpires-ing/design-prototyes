@@ -32,7 +32,7 @@ export const ExportMenu = ({ onExport }: { onExport?: (format: "excel" | "csv" |
 /* ------------------------------------------------------------------ */
 
 const FilterChip = ({ label, onRemove }: { label: string; onRemove: () => void }) => (
-    <span className="inline-flex items-center gap-1 rounded-full bg-secondary py-1 pl-2.5 pr-1 text-xs font-medium text-secondary ring-1 ring-border-secondary">
+    <span className="inline-flex items-center gap-1 rounded-full bg-secondary py-1 pl-2.5 pr-1 text-sm font-medium text-secondary ring-1 ring-border-secondary">
         {label}
         <button
             type="button"
@@ -46,7 +46,7 @@ const FilterChip = ({ label, onRemove }: { label: string; onRemove: () => void }
 );
 
 const InfoChip = ({ icon: Icon, label }: { icon: typeof Clock; label: string }) => (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-tertiary">
+    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-tertiary">
         <Icon className="size-3.5 text-fg-quaternary" aria-hidden="true" />
         {label}
     </span>

@@ -506,7 +506,7 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
                     {rows.map((row) => (
                         <div key={row.id} className="flex min-w-[52px] flex-col gap-1.5" style={{ flexGrow: row.total, flexBasis: 0 }}>
                             <div className="h-10 rounded-md" style={{ backgroundColor: STATUS_FILL[row.status] }} />
-                            <span className="text-xs font-semibold text-secondary tabular-nums">{pctOf(row.total)}%</span>
+                            <span className="text-sm font-semibold text-secondary tabular-nums">{pctOf(row.total)}%</span>
                         </div>
                     ))}
                 </div>
@@ -515,9 +515,9 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="border-b border-secondary">
-                            <th className="py-2 pr-4 text-left text-xs font-semibold text-tertiary" />
-                            <th className="px-4 py-2 text-right text-xs font-semibold text-tertiary">Total ingressos</th>
-                            <th className="py-2 pl-4 text-right text-xs font-semibold text-tertiary">Total</th>
+                            <th className="py-2 pr-4 text-left text-sm font-semibold text-tertiary" />
+                            <th className="px-4 py-2 text-right text-sm font-semibold text-tertiary">Total ingressos</th>
+                            <th className="py-2 pl-4 text-right text-sm font-semibold text-tertiary">Total</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-secondary">
@@ -563,7 +563,7 @@ const ChartTooltip = ({ active, label, payload }: { active?: boolean; label?: st
                     const isMonetary = entry.dataKey === "total";
                     const formatted = isMonetary ? currencyFormatter.format(Number(entry.value)) : numberFormatter.format(Number(entry.value));
                     return (
-                        <li key={entry.dataKey} className="flex items-center gap-2 text-xs">
+                        <li key={entry.dataKey} className="flex items-center gap-2 text-sm">
                             <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: entry.color }} />
                             <span className="text-white/70">{entry.name}:</span>
                             <span className="font-semibold text-white">{formatted}</span>
@@ -647,7 +647,7 @@ const TransacionadoChartCard = ({ data }: { data: ChartPoint[] }) => {
             </div>
 
             <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary px-5 py-3">
-                <div className="flex flex-wrap items-center gap-4 text-xs text-tertiary">
+                <div className="flex flex-wrap items-center gap-4 text-sm text-tertiary">
                     <span className="flex items-center gap-1.5">
                         <span aria-hidden="true" className="size-2.5 rounded-sm" style={{ background: TOTAL_COLOR }} />
                         Total Transacionado
@@ -690,7 +690,7 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
                     {rows.map((row) => (
                         <div key={row.id} className="flex min-w-[52px] flex-col gap-1.5" style={{ flexGrow: row.valor, flexBasis: 0 }}>
                             <div className="h-10 rounded-md" style={{ backgroundColor: fillFor(row.id) }} />
-                            <span className="text-xs font-semibold text-secondary tabular-nums">{pctOf(row.valor)}%</span>
+                            <span className="text-sm font-semibold text-secondary tabular-nums">{pctOf(row.valor)}%</span>
                         </div>
                     ))}
                 </div>
@@ -699,9 +699,9 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="border-b border-secondary">
-                            <th className="py-2 pr-4 text-left text-xs font-semibold text-tertiary" />
-                            <th className="px-4 py-2 text-right text-xs font-semibold text-tertiary">Total ingressos</th>
-                            <th className="py-2 pl-4 text-right text-xs font-semibold text-tertiary">Total</th>
+                            <th className="py-2 pr-4 text-left text-sm font-semibold text-tertiary" />
+                            <th className="px-4 py-2 text-right text-sm font-semibold text-tertiary">Total ingressos</th>
+                            <th className="py-2 pl-4 text-right text-sm font-semibold text-tertiary">Total</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-secondary">
@@ -832,7 +832,7 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
                             {TRANSACAO_COLUMNS.map((col) => (
-                                <th key={String(col.key)} className={cx("whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary", col.align === "right" && "text-right")}>
+                                <th key={String(col.key)} className={cx("whitespace-nowrap px-4 py-3 text-sm font-semibold text-tertiary", col.align === "right" && "text-right")}>
                                     <SortableHeader label={col.label} align={col.align} sortKey={String(col.key)} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                                 </th>
                             ))}
@@ -849,7 +849,7 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
                         {visibleRows.map((row, i) => (
                             <tr key={row.id} className={cx("transition duration-100 ease-linear hover:bg-primary_hover", i !== visibleRows.length - 1 && "border-b border-secondary")}>
                                 {TRANSACAO_COLUMNS.map((col) => (
-                                    <td key={String(col.key)} className={cx("whitespace-nowrap px-4 py-4 text-sm text-tertiary", col.align === "right" && "text-right", col.key === "id" && "font-mono text-xs text-secondary")}>
+                                    <td key={String(col.key)} className={cx("whitespace-nowrap px-4 py-4 text-sm text-tertiary", col.align === "right" && "text-right", col.key === "id" && "font-mono text-sm text-secondary")}>
                                         {renderTransacaoCell(row, col.key)}
                                     </td>
                                 ))}

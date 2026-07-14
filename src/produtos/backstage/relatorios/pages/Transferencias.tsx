@@ -533,7 +533,7 @@ const HolderInline = ({ label, name, emphasis = false }: { label: string; name: 
     <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <Avatar size="sm" initials={getInitials(name)} />
         <div className="flex min-w-0 flex-col">
-            <span className="text-xs text-tertiary">{label}</span>
+            <span className="text-sm text-tertiary">{label}</span>
             <span className={cx("truncate text-sm", emphasis ? "font-semibold text-primary" : "font-medium text-secondary")}>{name}</span>
         </div>
     </div>
@@ -562,7 +562,7 @@ const TransferenciaCard = ({
         >
             {/* Código + selo de quantas vezes foi transferido */}
             <div className="flex w-32 shrink-0 flex-col gap-1.5 sm:w-44">
-                <span className="truncate font-mono text-xs font-medium text-tertiary">{row.code}</span>
+                <span className="truncate font-mono text-sm font-medium text-tertiary">{row.code}</span>
                 <TransferCountBadge count={count} />
             </div>
 
@@ -639,10 +639,10 @@ const HistoricoHolder = ({ holder, emphasis = false }: { holder: HolderHistorico
     <div className={cx("flex items-start gap-3 rounded-lg bg-secondary p-3 ring-1 ring-border-secondary", emphasis && "ring-2 ring-brand")}>
         <Avatar size="md" initials={getInitials(holder.nome)} />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="text-xs text-tertiary tabular-nums">{holder.data}</span>
+            <span className="text-sm text-tertiary tabular-nums">{holder.data}</span>
             <span className={cx("truncate text-sm text-primary", emphasis ? "font-semibold" : "font-medium")}>{holder.nome}</span>
-            <span className="truncate text-xs text-brand-secondary">{holder.email}</span>
-            <span className="text-xs text-tertiary tabular-nums">{formatCpf(holder.cpf)}</span>
+            <span className="truncate text-sm text-brand-secondary">{holder.email}</span>
+            <span className="text-sm text-tertiary tabular-nums">{formatCpf(holder.cpf)}</span>
         </div>
     </div>
 );
@@ -671,7 +671,7 @@ const TransferenciaDetailsSlideOut = ({
         <AriaModal
             className={({ isEntering, isExiting }) =>
                 cx(
-                    "h-full w-full max-w-[480px] bg-primary shadow-xl outline-hidden",
+                    "h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden",
                     isEntering && "duration-300 ease-out animate-in slide-in-from-right",
                     isExiting && "duration-200 ease-in animate-out slide-out-to-right",
                 )
@@ -691,48 +691,35 @@ const TransferenciaDetailsSlideOut = ({
                     />
                 </div>
 
-                <div className="flex flex-1 flex-col overflow-y-auto">
+                <div className="flex min-h-0 flex-1 flex-col divide-y divide-secondary overflow-y-auto px-6">
                     {row && (
                         <>
-                            <div className="flex flex-col gap-3 px-6 pt-6 pb-5">
+                            <div className="flex flex-col gap-3 py-6">
                                 <div className="flex items-start justify-between gap-3">
                                     <h3 className="text-md font-semibold text-primary">Identificação</h3>
                                     <TransferCountBadge count={vezesDe(row.code)} />
                                 </div>
-                                <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="Código do ingresso" value={row.code} isMono />
-                                    <DetailRow label="ID da transação" value={row.id} isMono />
-                                </dl>
+                                <DetailRow label="Código do ingresso" value={row.code} isMono />
+                                <DetailRow label="ID da transação" value={row.id} isMono />
                             </div>
 
-                            <div className="mx-6 border-t border-secondary" />
-
-                            {/* Comprador original vem antes do histórico */}
-                            <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
-                                <h3 className="text-md font-semibold text-primary">
-                                    Comprador original
-                                </h3>
-                                <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="Nome" value={row.nomeComprador} />
-                                    <DetailRow label="E-mail" value={row.emailComprador} isEmail />
-                                    <DetailRow label="CPF" value={formatCpf(row.cpfComprador)} />
-                                </dl>
+                            <div className="flex flex-col gap-3 py-6">
+                                <h3 className="text-md font-semibold text-primary">Comprador original</h3>
+                                <DetailRow label="Nome" value={row.nomeComprador} />
+                                <DetailRow label="E-mail" value={row.emailComprador} isEmail />
+                                <DetailRow label="CPF" value={formatCpf(row.cpfComprador)} />
                             </div>
-
-                            <div className="mx-6 border-t border-secondary" />
 
                             {/* Histórico completo: todas as transferências, em ordem */}
-                            <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
-                                <h3 className="text-md font-semibold text-primary">
-                                    Histórico de transferência
-                                </h3>
+                            <div className="flex flex-col gap-3 py-6">
+                                <h3 className="text-md font-semibold text-primary">Histórico de transferência</h3>
                                 {buildHistorico(row).map((holder, i, arr) => (
                                     <Fragment key={i}>
                                         <HistoricoHolder holder={holder} emphasis={i === arr.length - 1} />
                                         {i < arr.length - 1 && (
                                             <div className="flex items-center gap-2 pl-1.5 text-tertiary">
                                                 <ArrowRight aria-hidden="true" className="size-4 rotate-90 text-fg-quaternary" />
-                                                <span className="text-xs">transferido para</span>
+                                                <span className="text-sm">transferido para</span>
                                             </div>
                                         )}
                                     </Fragment>
@@ -764,12 +751,12 @@ const DetailRow = ({
     isMono?: boolean;
 }) => (
     <div className="flex flex-col gap-0.5">
-        <dt className="text-xs text-tertiary">{label}</dt>
+        <dt className="text-sm text-tertiary">{label}</dt>
         <dd
             className={cx(
                 "text-sm break-words",
                 isEmail ? "text-brand-secondary" : "text-secondary",
-                isMono && "font-mono text-xs text-primary",
+                isMono && "font-mono text-sm text-primary",
             )}
         >
             {value}

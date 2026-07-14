@@ -6,6 +6,7 @@ import { AlertFloating } from "@/components/application/alerts/alerts";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { TabList, Tabs } from "@/components/application/tabs/tabs";
 import { Badge } from "@/components/base/badges/badges";
+import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
@@ -487,19 +488,19 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: { isOpen: boolean;
         isOpen={isOpen}
         onOpenChange={(open) => !open && onClose()}
         isDismissable
-        className={({ isEntering, isExiting }) => cx("fixed inset-0 z-50 flex justify-end bg-overlay/70 outline-hidden backdrop-blur-[2px]", isEntering && "duration-300 ease-out animate-in fade-in", isExiting && "duration-200 ease-in animate-out fade-out")}
+        className="fixed inset-0 z-50 flex justify-end outline-hidden"
     >
-        <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[440px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
+        <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
             <AriaDialog className="flex h-full flex-col outline-hidden">
-                <div className="flex shrink-0 items-start justify-between gap-4 border-b border-secondary px-5 py-4">
+                <div className="flex shrink-0 items-start justify-between gap-4 border-b border-secondary px-6 py-5">
                     <div className="flex flex-col gap-0.5">
-                        <h2 className="text-md font-semibold text-primary">Transações desde o fim do evento</h2>
+                        <h2 className="text-lg font-semibold text-primary">Transações desde o fim do evento</h2>
                         <p className="text-sm text-tertiary">Alterações que impactaram o borderô.</p>
                     </div>
                     <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
                 </div>
 
-                <ul className="flex min-h-0 flex-1 flex-col divide-y divide-secondary overflow-y-auto px-5">
+                <ul className="flex min-h-0 flex-1 flex-col divide-y divide-secondary overflow-y-auto px-6">
                     {changes.map((change) => {
                         const meta = CHANGE_META[change.tipo];
                         return (
@@ -507,13 +508,13 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: { isOpen: boolean;
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="flex min-w-0 flex-col">
                                         <span className="text-sm font-medium text-primary">{change.descricao}</span>
-                                        <span className="text-xs text-tertiary">{change.canal} · {change.hora}</span>
+                                        <span className="text-sm text-tertiary">{change.canal} · {change.hora}</span>
                                     </div>
                                     <Badge size="sm" color={meta.color} type="pill-color">
                                         {meta.label}
                                     </Badge>
                                 </div>
-                                <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-tertiary">
+                                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-tertiary">
                                     <span>
                                         Ingressos: <b className={cx("tabular-nums", change.ingressos >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.ingressos, false)}</b>
                                     </span>
@@ -525,6 +526,12 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: { isOpen: boolean;
                         );
                     })}
                 </ul>
+
+                <div className="flex items-center justify-end gap-2 border-t border-secondary px-6 py-4">
+                    <Button size="sm" color="secondary" onClick={onClose}>
+                        Fechar
+                    </Button>
+                </div>
             </AriaDialog>
         </AriaModal>
     </AriaModalOverlay>
@@ -626,11 +633,11 @@ const TreeTable = ({ nodes, columns, firstCol }: { nodes: TreeNode[]; columns: C
                 </colgroup>
                 <thead className="bg-secondary">
                     <tr className="border-b border-secondary text-left">
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">
+                        <th className="px-4 py-3 text-sm font-semibold text-tertiary">
                             <SortableHeader label={firstCol} sortKey="label" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         </th>
                         {columns.map((col, i) => (
-                            <th key={col.label} className={cx("whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary", i < lastCol && "hidden md:table-cell")}>
+                            <th key={col.label} className={cx("whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary", i < lastCol && "hidden md:table-cell")}>
                                 <SortableHeader label={col.label} align="right" sortKey={`c${i}`} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                             </th>
                         ))}

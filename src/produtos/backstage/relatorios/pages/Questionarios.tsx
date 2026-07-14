@@ -373,7 +373,7 @@ function ResumoPerguntaCard({ pergunta, onFiltrar }: { pergunta: QuestionarioPer
             <div className="flex items-end justify-between gap-4">
                 <div className="flex min-w-0 flex-col gap-0.5">
                     <h2 className="line-clamp-2 text-md font-semibold text-primary">{pergunta.titulo}</h2>
-                    <span className="text-xs text-tertiary">{TIPO_RESPOSTA[pergunta.tipo].label}</span>
+                    <span className="text-sm text-tertiary">{TIPO_RESPOSTA[pergunta.tipo].label}</span>
                 </div>
                 <span className="shrink-0 text-sm text-tertiary">{num(pergunta.respondidas)} responderam</span>
             </div>
@@ -674,20 +674,22 @@ function SlideoutConteudo({ participante }: { participante: Participante }) {
 
     return (
         <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-6 py-6">
-            {/* Portador */}
-            <div className="flex shrink-0 items-center gap-3">
-                <Avatar size="lg" initials={getInitials(r.nome)} />
-                <div className="flex min-w-0 flex-col">
-                    <span className="line-clamp-2 text-md font-semibold text-primary">{r.nome}</span>
-                    <span className="text-xs text-tertiary">Portador</span>
+            {/* Portador — primeiro nível: separador, sem caixa */}
+            <div className="flex shrink-0 flex-col gap-4 border-b border-secondary pb-5">
+                <div className="flex items-center gap-3">
+                    <Avatar size="lg" initials={getInitials(r.nome)} />
+                    <div className="flex min-w-0 flex-col">
+                        <span className="line-clamp-2 text-md font-semibold text-primary">{r.nome}</span>
+                        <span className="text-sm text-tertiary">Portador</span>
+                    </div>
                 </div>
-            </div>
-            <div className="flex shrink-0 flex-col gap-2 rounded-lg bg-secondary p-3">
-                <DetailRow label="Nome" value={portador.nome} />
-                <DetailRow label="E-mail" value={portador.email} isEmail />
-                <DetailRow label="Telefone" value={portador.telefone} />
-                <DetailRow label="Documento" value={formatCpf(portador.documento)} />
-                <DetailRow label="Data de nascimento" value={portador.nascimento} />
+                <div className="flex flex-col gap-2">
+                    <DetailRow label="Nome" value={portador.nome} />
+                    <DetailRow label="E-mail" value={portador.email} isEmail />
+                    <DetailRow label="Telefone" value={portador.telefone} />
+                    <DetailRow label="Documento" value={formatCpf(portador.documento)} />
+                    <DetailRow label="Data de nascimento" value={portador.nascimento} />
+                </div>
             </div>
 
             <span className="shrink-0 text-sm font-semibold text-secondary">Ingressos ({num(ingressos.length)})</span>
@@ -709,7 +711,7 @@ function SlideoutConteudo({ participante }: { participante: Participante }) {
                                 <span className="line-clamp-2 text-sm font-semibold text-primary">
                                     {ing.grupo} · {ing.ingresso}
                                 </span>
-                                <span className="line-clamp-2 text-xs text-tertiary">
+                                <span className="line-clamp-2 text-sm text-tertiary">
                                     {ing.ehComprador ? "Comprado pelo próprio portador" : `Comprado por ${ing.comprador.nome}`}
                                 </span>
                             </div>
@@ -720,7 +722,7 @@ function SlideoutConteudo({ participante }: { participante: Participante }) {
                             <div className="flex flex-col gap-4 border-t border-secondary p-4">
                                 {/* Comprador */}
                                 <div className="flex flex-col gap-2 rounded-lg bg-secondary p-3">
-                                    <span className="text-xs font-semibold text-secondary">Comprador</span>
+                                    <span className="text-sm font-semibold text-secondary">Comprador</span>
                                     <DetailRow label="Nome" value={ing.comprador.nome} />
                                     <DetailRow label="E-mail" value={ing.comprador.email} isEmail />
                                     <DetailRow label="Telefone" value={ing.comprador.telefone} />
@@ -730,7 +732,7 @@ function SlideoutConteudo({ participante }: { participante: Participante }) {
 
                                 {/* Respostas do ingresso */}
                                 <div className="flex flex-col gap-3">
-                                    <span className="text-xs font-semibold text-secondary">Respostas do ingresso</span>
+                                    <span className="text-sm font-semibold text-secondary">Respostas do ingresso</span>
                                     {ing.respostas.map((rr) => (
                                         <RespostaEditavel
                                             key={rr.pergunta.id}
@@ -751,7 +753,7 @@ function SlideoutConteudo({ participante }: { participante: Participante }) {
 
 const DetailRow = ({ label, value, isEmail = false }: { label: string; value: string; isEmail?: boolean }) => (
     <div className="flex min-w-0 flex-col gap-0.5">
-        <dt className="text-xs text-tertiary">{label}</dt>
+        <dt className="text-sm text-tertiary">{label}</dt>
         <dd className={cx("line-clamp-2 text-sm break-words", isEmail ? "text-brand-secondary" : "text-secondary")}>{value}</dd>
     </div>
 );
@@ -788,7 +790,7 @@ function RespostaEditavel({ pergunta, linha, onSave }: { pergunta: QuestionarioP
     return (
         <div className="flex flex-col gap-2 rounded-lg bg-secondary p-3">
             <div className="flex items-start justify-between gap-2">
-                <span className="line-clamp-2 min-w-0 text-xs font-medium text-tertiary">{pergunta.titulo}</span>
+                <span className="line-clamp-2 min-w-0 text-sm font-medium text-tertiary">{pergunta.titulo}</span>
                 {pergunta.tipo === "anexar-arquivo" && linha?.anexo ? (
                     <Button size="sm" color="link-color" iconLeading={Download01} onClick={() => toast.success(`Baixando ${linha.anexo?.arquivo}`)}>
                         Baixar
@@ -832,7 +834,7 @@ function RespostaEditavel({ pergunta, linha, onSave }: { pergunta: QuestionarioP
             {modo === "confirm" && (
                 <div className="flex flex-col gap-2 rounded-lg bg-primary p-3 ring-1 ring-border-secondary">
                     <p className="text-sm font-medium text-primary">Confirmar alteração desta resposta?</p>
-                    <p className="text-xs text-tertiary">A resposta original do participante será substituída.</p>
+                    <p className="text-sm text-tertiary">A resposta original do participante será substituída.</p>
                     <div className="flex items-center justify-end gap-2">
                         <Button size="sm" color="link-gray" onClick={() => setModo("edit")}>
                             Cancelar

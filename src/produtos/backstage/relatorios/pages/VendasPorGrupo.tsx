@@ -599,7 +599,7 @@ const MixReceitaCard = ({ items }: { items: MixReceitaItem[] }) => {
                                 <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: item.fill }} />
                                 <div className="flex min-w-0 flex-1 flex-col">
                                     <span className="text-sm font-semibold text-primary">{item.nome}</span>
-                                    <span className="text-xs text-tertiary">{item.value}% do total</span>
+                                    <span className="text-sm text-tertiary">{item.value}% do total</span>
                                 </div>
                             </div>
                             <div className="flex flex-wrap gap-4 md:flex-nowrap md:gap-8">
@@ -618,7 +618,7 @@ const MixReceitaCard = ({ items }: { items: MixReceitaItem[] }) => {
 
 const MixStat = ({ label, value, className }: { label: string; value: string; className?: string }) => (
     <div className={cx("flex flex-col gap-0.5", className)}>
-        <span className="text-xs text-tertiary">{label}</span>
+        <span className="text-sm text-tertiary">{label}</span>
         <span className="text-sm font-medium text-primary tabular-nums">{value}</span>
     </div>
 );
@@ -805,8 +805,8 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
                                     >
                                         <div className="flex flex-col gap-2">
                                             <div className="flex flex-col gap-0.5 pb-2">
-                                                <span className="text-xs font-semibold text-tertiary uppercase tracking-wide">{headerLabel}</span>
-                                                {parentLabel && <span className="truncate text-xs text-tertiary">{parentLabel}</span>}
+                                                <span className="text-sm font-semibold text-tertiary uppercase tracking-wide">{headerLabel}</span>
+                                                {parentLabel && <span className="truncate text-sm text-tertiary">{parentLabel}</span>}
                                             </div>
                                             <ul className="flex flex-col gap-2">
                                                 {nodes.map((node) => {
@@ -833,14 +833,14 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
                                                                     dimmed && "opacity-50",
                                                                 )}
                                                             >
-                                                                <span className={cx("truncate text-xs text-primary", isSelected ? "font-semibold" : "font-medium")}>{node.label}</span>
+                                                                <span className={cx("truncate text-sm text-primary", isSelected ? "font-semibold" : "font-medium")}>{node.label}</span>
                                                                 <div className="flex items-center gap-2">
                                                                     <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-quaternary">
                                                                         <div className={cx("h-full rounded-full", isSelected ? "bg-fg-brand-primary" : "bg-utility-brand-400")} style={{ width: `${pct}%` }} />
                                                                     </div>
-                                                                    <span className="shrink-0 text-xs font-medium text-primary tabular-nums">{pct.toFixed(1)}%</span>
+                                                                    <span className="shrink-0 text-sm font-medium text-primary tabular-nums">{pct.toFixed(1)}%</span>
                                                                 </div>
-                                                                <span className="text-xs text-tertiary tabular-nums">
+                                                                <span className="text-sm text-tertiary tabular-nums">
                                                                     {isDateNode ? `${numberFormatter.format(node.value)} / ${numberFormatter.format(node.estoque ?? 0)}` : numberFormatter.format(node.value)}
                                                                 </span>
                                                             </button>
@@ -852,7 +852,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
 
                                         {colIndex === 0 && (produtosRoot.children?.length ?? 0) > 0 && (
                                             <div className="flex flex-col gap-2">
-                                                <span className="pb-2 text-xs font-semibold text-tertiary uppercase tracking-wide">Produto</span>
+                                                <span className="pb-2 text-sm font-semibold text-tertiary uppercase tracking-wide">Produto</span>
                                                 {(() => {
                                                     const isSelected = path[0] === PRODUTOS_ROOT_ID;
                                                     const dimmed = hasSelection && !isSelected;
@@ -869,9 +869,9 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
                                                                 dimmed && "opacity-50",
                                                             )}
                                                         >
-                                                            <span className={cx("truncate text-xs text-primary", isSelected ? "font-semibold" : "font-medium")}>Produtos</span>
-                                                            <span className="text-xs text-tertiary">{produtosRoot.children?.length ?? 0} itens</span>
-                                                            <span className="text-xs text-tertiary tabular-nums">{numberFormatter.format(produtosRoot.value)} unidades</span>
+                                                            <span className={cx("truncate text-sm text-primary", isSelected ? "font-semibold" : "font-medium")}>Produtos</span>
+                                                            <span className="text-sm text-tertiary">{produtosRoot.children?.length ?? 0} itens</span>
+                                                            <span className="text-sm text-tertiary tabular-nums">{numberFormatter.format(produtosRoot.value)} unidades</span>
                                                         </button>
                                                     );
                                                 })()}
@@ -890,7 +890,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
                                 >
                                     <FeaturedIcon icon={CursorClick02} color="gray" theme="modern" size="md" />
                                     <p className="text-sm font-semibold text-primary">Selecione uma sessão</p>
-                                    <p className="text-xs text-tertiary">Escolha uma sessão para ver o detalhamento por tipo, grupo, ingresso, lote e tipo.</p>
+                                    <p className="text-sm text-tertiary">Escolha uma sessão para ver o detalhamento por tipo, grupo, ingresso, lote e tipo.</p>
                                 </motion.div>
                             )}
                         </div>
@@ -908,7 +908,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
                         >
                             <FeaturedIcon icon={CursorClick02} color="gray" theme="modern" size="md" />
                             <p className="text-sm font-semibold text-primary">Selecione uma sessão</p>
-                            <p className="max-w-[260px] text-xs text-tertiary">Escolha uma sessão para ver o detalhamento por tipo, grupo, ingresso, lote e tipo.</p>
+                            <p className="max-w-[260px] text-sm text-tertiary">Escolha uma sessão para ver o detalhamento por tipo, grupo, ingresso, lote e tipo.</p>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -952,16 +952,16 @@ const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] })
                 <thead className="sticky top-0 z-10 bg-secondary">
                     <tr className="border-b border-secondary bg-secondary text-left">
                         <th className="px-2 py-3 md:px-4" aria-hidden="true" />
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">
+                        <th className="px-4 py-3 text-sm font-semibold text-tertiary">
                             <SortableHeader label="Grupo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         </th>
-                        <th className="hidden px-4 py-3 text-right text-xs font-semibold text-tertiary md:table-cell">
+                        <th className="hidden px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">
                             <SortableHeader label="Estoque" align="right" sortKey="estoque" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         </th>
-                        <th className="hidden px-4 py-3 text-right text-xs font-semibold text-tertiary md:table-cell">
+                        <th className="hidden px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">
                             <SortableHeader label="Vendido" align="right" sortKey="vendido" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         </th>
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">
+                        <th className="px-4 py-3 text-sm font-semibold text-tertiary">
                             <SortableHeader label="Taxa de ocupação" sortKey="ocupacao" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         </th>
                     </tr>
@@ -1099,18 +1099,18 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
                 <thead className="sticky top-0 z-10 bg-secondary">
                     <tr className="border-b border-secondary bg-secondary text-left">
                         <th className="px-2 py-3 md:px-4" aria-hidden="true" />
-                        <th className="px-4 py-3 text-xs font-semibold text-tertiary">
+                        <th className="px-4 py-3 text-sm font-semibold text-tertiary">
                             <SortableHeader label="Grupo" sortKey="setor" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         </th>
-                        <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell">Lote</th>
-                        <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell">Item Combo</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-tertiary">
+                        <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary md:table-cell">Lote</th>
+                        <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary md:table-cell">Item Combo</th>
+                        <th className="px-4 py-3 text-right text-sm font-semibold text-tertiary">
                             <SortableHeader label="Vendidos" align="right" sortKey="vendidos" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-tertiary">
+                        <th className="px-4 py-3 text-right text-sm font-semibold text-tertiary">
                             <SortableHeader label="Estoque" align="right" sortKey="estoque" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         </th>
-                        <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary lg:table-cell">Ocupação</th>
+                        <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary lg:table-cell">Ocupação</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1194,11 +1194,11 @@ const ComboCard = ({ rows }: { rows: ComboRow[] }) => {
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
-                            <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Item Combo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Quantidade" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor Unitário" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor total bruto" align="right" sortKey="gmv" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor total c/ desconto" align="right" sortKey="gmvComDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-tertiary"><SortableHeader label="Item Combo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Quantidade" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor Unitário" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor total bruto" align="right" sortKey="gmv" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor total c/ desconto" align="right" sortKey="gmvComDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1231,11 +1231,11 @@ const ProdutosCard = ({ rows }: { rows: ProdutoRow[] }) => {
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
-                            <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Produto" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Qtd" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor Unitário" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor total bruto" align="right" sortKey="gmv" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor total c/ desconto" align="right" sortKey="gmvComDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-tertiary"><SortableHeader label="Produto" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Qtd" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor Unitário" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor total bruto" align="right" sortKey="gmv" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor total c/ desconto" align="right" sortKey="gmvComDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1284,11 +1284,11 @@ const IngressosComCupomCard = ({ cupons: cuponsView }: { cupons: CupomRow[] }) =
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
                             <th className="w-10 px-2 py-3 md:px-4" aria-hidden="true" />
-                            <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Cupom" sortKey="cupom" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Quantidade" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor" align="right" sortKey="valor" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor do Desconto" align="right" sortKey="valorDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor Total" align="right" sortKey="valorTotal" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-tertiary"><SortableHeader label="Cupom" sortKey="cupom" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Quantidade" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor" align="right" sortKey="valor" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor do Desconto" align="right" sortKey="valorDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor Total" align="right" sortKey="valorTotal" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                         </tr>
                     </thead>
                     <tbody>

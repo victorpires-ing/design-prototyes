@@ -329,7 +329,7 @@ const ChartTooltip = ({ active, label, payload }: { active?: boolean; label?: st
     return (
         <div className="rounded-lg bg-primary-solid px-3 py-2.5 shadow-xl ring-1 ring-secondary_alt">
             <p className="mb-1 text-sm font-semibold text-white">{label}</p>
-            <p className="text-xs text-white/70">
+            <p className="text-sm text-white/70">
                 <span className="font-semibold text-white">{numberFormatter.format(Number(payload[0].value))}</span> check-ins
             </p>
         </div>
@@ -455,10 +455,10 @@ const ValidacaoPorSetorCard = ({ setores: setoresView }: { setores: AcessoNode[]
                     </colgroup>
                     <thead className="bg-secondary">
                         <tr className="border-b border-secondary text-left">
-                            <th className="px-4 py-3 text-xs font-semibold text-tertiary">Grupo · Ingresso · Tipo</th>
-                            <th className="hidden px-4 py-3 text-right text-xs font-semibold text-tertiary md:table-cell">Vendidos</th>
-                            <th className="hidden px-4 py-3 text-right text-xs font-semibold text-tertiary md:table-cell">Validados</th>
-                            <th className="px-4 py-3 text-xs font-semibold text-tertiary">Taxa de validação</th>
+                            <th className="px-4 py-3 text-sm font-semibold text-tertiary">Grupo · Ingresso · Tipo</th>
+                            <th className="hidden px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Vendidos</th>
+                            <th className="hidden px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Validados</th>
+                            <th className="px-4 py-3 text-sm font-semibold text-tertiary">Taxa de validação</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -583,13 +583,13 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                 <table className="w-full border-collapse">
                     <thead className="bg-secondary">
                         <tr className="border-b border-secondary text-left">
-                            <th className="px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Portador" sortKey="portador" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell"><SortableHeader label="Code" sortKey="qrCode" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary lg:table-cell"><SortableHeader label="Grupo" sortKey="grupo" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary xl:table-cell"><SortableHeader label="Tipo" sortKey="tipoIngresso" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary xl:table-cell"><SortableHeader label="Canal" sortKey="canal" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary sm:table-cell"><SortableHeader label="Horário de entrada" sortKey="horario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Status" sortKey="status" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="px-4 py-3 text-sm font-semibold text-tertiary"><SortableHeader label="Portador" sortKey="portador" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary md:table-cell"><SortableHeader label="Code" sortKey="qrCode" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary lg:table-cell"><SortableHeader label="Grupo" sortKey="grupo" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary xl:table-cell"><SortableHeader label="Tipo" sortKey="tipoIngresso" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary xl:table-cell"><SortableHeader label="Canal" sortKey="canal" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary sm:table-cell"><SortableHeader label="Horário de entrada" sortKey="horario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="px-4 py-3 text-sm font-semibold text-tertiary"><SortableHeader label="Status" sortKey="status" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="px-4 py-3" aria-hidden="true" />
                         </tr>
                     </thead>
@@ -621,7 +621,7 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                                             <Avatar size="sm" initials={getInitials(p.portador)} status={p.status === "validado" ? "online" : undefined} />
                                             <div className="flex min-w-0 flex-col">
                                                 <span className="truncate text-sm font-medium text-primary">{p.portador}</span>
-                                                <span className="truncate text-xs text-tertiary tabular-nums">{formatCPF(p.cpf)}</span>
+                                                <span className="truncate text-sm text-tertiary tabular-nums">{formatCPF(p.cpf)}</span>
                                             </div>
                                         </div>
                                     </td>
@@ -678,19 +678,19 @@ const AcessoDetailsSlideOut = ({ isOpen, row, onClose }: { isOpen: boolean; row:
             if (!open) onClose();
         }}
         isDismissable
-        className={({ isEntering, isExiting }) => cx("fixed inset-0 z-50 flex justify-end bg-overlay/70 outline-hidden backdrop-blur-[2px]", isEntering && "duration-300 ease-out animate-in fade-in", isExiting && "duration-200 ease-in animate-out fade-out")}
+        className="fixed inset-0 z-50 flex justify-end outline-hidden"
     >
-        <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[480px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
+        <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
             <AriaDialog className="flex h-full flex-col outline-hidden">
                 <div className="flex items-center justify-between gap-4 border-b border-secondary px-6 py-5">
                     <h2 className="text-lg font-semibold text-primary">Detalhes da entrada</h2>
                     <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
                 </div>
 
-                <div className="flex flex-1 flex-col overflow-y-auto">
+                <div className="flex min-h-0 flex-1 flex-col divide-y divide-secondary overflow-y-auto px-6">
                     {row && (
                         <>
-                            <div className="flex items-center gap-4 px-6 pt-6 pb-5">
+                            <div className="flex items-center gap-4 py-6">
                                 <Avatar size="lg" initials={getInitials(row.portador)} status={row.status === "validado" ? "online" : undefined} />
                                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                                     <span className="truncate text-md font-semibold text-primary">{row.portador}</span>
@@ -701,41 +701,29 @@ const AcessoDetailsSlideOut = ({ isOpen, row, onClose }: { isOpen: boolean; row:
                                 </div>
                             </div>
 
-                            <div className="mx-6 border-t border-secondary" />
-
-                            <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
+                            <div className="flex flex-col gap-3 py-6">
                                 <h3 className="text-md font-semibold text-primary">Portador</h3>
-                                <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="Nome" value={row.portador} />
-                                    <DetailRow label="E-mail" value={row.emailPortador} isEmail />
-                                    <DetailRow label="CPF" value={formatCPF(row.cpf)} />
-                                </dl>
+                                <DetailRow label="Nome" value={row.portador} />
+                                <DetailRow label="E-mail" value={row.emailPortador} isEmail />
+                                <DetailRow label="CPF" value={formatCPF(row.cpf)} />
                             </div>
 
-                            <div className="mx-6 border-t border-secondary" />
-
-                            <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
+                            <div className="flex flex-col gap-3 py-6">
                                 <h3 className="text-md font-semibold text-primary">Ingresso</h3>
-                                <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="Code" value={row.qrCode} isMono />
-                                    <DetailRow label="ID do ingresso" value={row.idIngresso} isMono />
-                                    <DetailRow label="ID da transação" value={row.idTransacao} isMono />
-                                    <DetailRow label="Sessão" value={row.sessao} />
-                                    <DetailRow label="Canal" value={row.canal} />
-                                    <DetailRow label="Grupo de ingressos" value={row.grupo} />
-                                    <DetailRow label="Tipo de ingresso" value={row.tipoIngresso} />
-                                    <DetailRow label="Portão de entrada" value={row.portao ?? "—"} />
-                                </dl>
+                                <DetailRow label="Code" value={row.qrCode} isMono />
+                                <DetailRow label="ID do ingresso" value={row.idIngresso} isMono />
+                                <DetailRow label="ID da transação" value={row.idTransacao} isMono />
+                                <DetailRow label="Sessão" value={row.sessao} />
+                                <DetailRow label="Canal" value={row.canal} />
+                                <DetailRow label="Grupo de ingressos" value={row.grupo} />
+                                <DetailRow label="Tipo de ingresso" value={row.tipoIngresso} />
+                                <DetailRow label="Portão de entrada" value={row.portao ?? "—"} />
                             </div>
 
-                            <div className="mx-6 border-t border-secondary" />
-
-                            <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
+                            <div className="flex flex-col gap-3 py-6">
                                 <h3 className="text-md font-semibold text-primary">Comprador</h3>
-                                <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="Nome" value={row.comprador} />
-                                    <DetailRow label="E-mail" value={row.emailComprador} isEmail />
-                                </dl>
+                                <DetailRow label="Nome" value={row.comprador} />
+                                <DetailRow label="E-mail" value={row.emailComprador} isEmail />
                             </div>
                         </>
                     )}
@@ -753,8 +741,8 @@ const AcessoDetailsSlideOut = ({ isOpen, row, onClose }: { isOpen: boolean; row:
 
 const DetailRow = ({ label, value, isEmail = false, isMono = false }: { label: string; value: string; isEmail?: boolean; isMono?: boolean }) => (
     <div className="flex flex-col gap-0.5">
-        <dt className="text-xs text-tertiary">{label}</dt>
-        <dd className={cx("text-sm break-words", isEmail ? "text-brand-secondary" : "text-secondary", isMono && "font-mono text-xs text-primary")}>{value}</dd>
+        <dt className="text-sm text-tertiary">{label}</dt>
+        <dd className={cx("text-sm break-words", isEmail ? "text-brand-secondary" : "text-secondary", isMono && "font-mono text-sm text-primary")}>{value}</dd>
     </div>
 );
 

@@ -296,39 +296,3 @@ export const QUESTIONARIO: QuestionarioPergunta[] = [
     buildTexto("q-mensagem", "Deixe uma mensagem de incentivo para o time", false, 84, 105),
     buildAnexo("q-documento", "Anexe um documento com foto para retirada", true, 92, 106),
 ];
-
-/* ------------------------------------------------------------------ */
-/*  Visão por participante (pivô das respostas por pessoa)             */
-/* ------------------------------------------------------------------ */
-
-export interface RespostaDoParticipante {
-    perguntaId: string;
-    titulo: string;
-    tipo: TipoResposta;
-    linha: RespostaLinha;
-}
-
-export interface ParticipanteRespostas {
-    respondente: Respondente;
-    respostas: RespostaDoParticipante[];
-}
-
-/** Total de perguntas do questionário. */
-export const TOTAL_PERGUNTAS = QUESTIONARIO.length;
-
-/** Pivota as respostas por pessoa: cada participante com o que respondeu em cada pergunta. */
-export const PARTICIPANTES: ParticipanteRespostas[] = (() => {
-    const map = new Map<string, ParticipanteRespostas>();
-    for (const q of QUESTIONARIO) {
-        for (const linha of q.respostas) {
-            const r = linha.respondente;
-            let p = map.get(r.id);
-            if (!p) {
-                p = { respondente: r, respostas: [] };
-                map.set(r.id, p);
-            }
-            p.respostas.push({ perguntaId: q.id, titulo: q.titulo, tipo: q.tipo, linha });
-        }
-    }
-    return [...map.values()].sort((a, b) => a.respondente.nome.localeCompare(b.respondente.nome));
-})();

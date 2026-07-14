@@ -14,7 +14,12 @@ import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
 import { currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
-const COVER_REVEILLON = "https://ticket-backend-prod.imgix.net/media/event/144936dc-d79d-4f62-b418-007c9772141a/8124ebd8-e5c9-4424-a686-9b5d5344bd8f.jpeg?h=440&w=330&fit=crop";
+import bStbSp26 from "@/assets/event-cover.png";
+import bStbSp25 from "@/assets/gremio-poster-pacotes.jpeg";
+import bTwb26 from "@/assets/gremio-poster-tour.jpeg";
+import bTwb25 from "@/assets/gremio-poster-taca.jpeg";
+import bCena from "@/assets/gremio-poster-book.jpeg";
+import bSolomun from "@/assets/gremio-hero.webp";
 
 /* ------------------------------------------------------------------ */
 /*  Mock — edições de eventos (vários anos por evento)                */
@@ -109,10 +114,12 @@ interface EdicaoSpec {
 }
 
 const SPECS: EdicaoSpec[] = [
-    { id: "rev-2026", nome: "Réveillon Carneiros 2026", curto: "REV 26", ano: 2026, banner: COVER_REVEILLON, abertura: "15/09/2026", evento: "31/12/2026", capacidade: 16000, ingressos: 447, ticket: 7600, taxaPct: 0.0001, seed: 26, peaks: [{ center: 0.85, width: 0.05, height: 10 }] },
-    { id: "rev-2025", nome: "Réveillon Carneiros 2025", curto: "REV 25", ano: 2025, banner: COVER_REVEILLON, abertura: "15/09/2025", evento: "31/12/2025", capacidade: 16000, ingressos: 15375, ticket: 3190, taxaPct: 0.02, seed: 25, peaks: [{ center: 0.6, width: 0.05, height: 9 }, { center: 0.9, width: 0.04, height: 8 }] },
-    { id: "rev-2024", nome: "Réveillon Carneiros 2024", curto: "REV 24", ano: 2024, banner: COVER_REVEILLON, abertura: "15/09/2024", evento: "31/12/2024", capacidade: 14000, ingressos: 12375, ticket: 2192, taxaPct: 0.02, seed: 24, peaks: [{ center: 0.62, width: 0.05, height: 8 }, { center: 0.9, width: 0.04, height: 7 }] },
-    { id: "rev-2023", nome: "Réveillon Carneiros 2023", curto: "REV 23", ano: 2023, banner: COVER_REVEILLON, abertura: "15/09/2023", evento: "31/12/2023", capacidade: 15000, ingressos: 14555, ticket: 1410, taxaPct: 0.02, seed: 23, peaks: [{ center: 0.6, width: 0.06, height: 8 }, { center: 0.9, width: 0.04, height: 7 }] },
+    { id: "stb-sp-2026", nome: "Só Track Boa Festival 2026 :: São Paulo", curto: "STB SP 26", ano: 2026, banner: bStbSp26, abertura: "15/12/2025", evento: "18/04/2026", capacidade: 55000, ingressos: 50284, ticket: 396, taxaPct: 0.0001, seed: 14, peaks: [{ center: 0.4, width: 0.04, height: 12 }, { center: 0.8, width: 0.05, height: 7 }] },
+    { id: "stb-sp-2025", nome: "Só Track Boa Festival São Paulo 2025", curto: "STB SP 25", ano: 2025, banner: bStbSp25, abertura: "18/12/2024", evento: "19/04/2025", capacidade: 62000, ingressos: 56809, ticket: 320, taxaPct: 0.004, seed: 13, peaks: [{ center: 0.42, width: 0.045, height: 11 }, { center: 0.82, width: 0.05, height: 7 }] },
+    { id: "twb-2026", nome: "TIME WARP BRASIL 2026", curto: "TWB 26", ano: 2026, banner: bTwb26, abertura: "12/06/2026", evento: "10/10/2026", capacidade: 18000, ingressos: 15654, ticket: 405, taxaPct: 0.0005, seed: 34, peaks: [{ center: 0.5, width: 0.04, height: 11 }, { center: 0.85, width: 0.05, height: 6 }] },
+    { id: "twb-2025", nome: "TIME WARP BRASIL 2025", curto: "TWB 25", ano: 2025, banner: bTwb25, abertura: "09/06/2025", evento: "11/10/2025", capacidade: 22000, ingressos: 18867, ticket: 314, taxaPct: 0.027, seed: 33, peaks: [{ center: 0.52, width: 0.045, height: 10 }, { center: 0.84, width: 0.05, height: 6 }] },
+    { id: "cena-2022", nome: "Festival CENA 2K22", curto: "CENA 22", ano: 2022, banner: bCena, abertura: "01/03/2022", evento: "09/07/2022", capacidade: 14000, ingressos: 9800, ticket: 150, taxaPct: 0, seed: 41, peaks: [{ center: 0.5, width: 0.06, height: 8 }] },
+    { id: "solomun-2024", nome: "SOLOMUN :: CWB 31/10", curto: "SOLOMUN 24", ano: 2024, banner: bSolomun, abertura: "01/08/2024", evento: "31/10/2024", capacidade: 13000, ingressos: 11543, ticket: 410, taxaPct: 0, seed: 51, peaks: [{ center: 0.55, width: 0.05, height: 9 }, { center: 0.88, width: 0.04, height: 6 }] },
 ];
 
 const EVENTOS: EventoComparativo[] = SPECS.map((s, i) => {
@@ -222,7 +229,7 @@ const metricDestaque = (t: EventoTotais, metric: Metric) =>
 /* ------------------------------------------------------------------ */
 
 export function Comparativos() {
-    const [selectedIds, setSelectedIds] = useState<string[]>(["rev-2025", "rev-2026"]);
+    const [selectedIds, setSelectedIds] = useState<string[]>(["stb-sp-2025", "stb-sp-2026"]);
     const [metric, setMetric] = useState<Metric>("faturamento");
     const [alignment, setAlignment] = useState<Alignment>("evento");
     const [windowDays, setWindowDays] = useState<WindowDays>("all");
@@ -644,14 +651,6 @@ const ComparativoChart = ({ events, metric, alignment, windowDays }: { events: E
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
-            <footer className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-secondary px-5 py-3 text-sm text-tertiary">
-                {events.map((ev) => (
-                    <span key={ev.id} className="flex items-center gap-1.5">
-                        <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: ev.cor }} />
-                        {ev.curto}
-                    </span>
-                ))}
-            </footer>
         </section>
     );
 };

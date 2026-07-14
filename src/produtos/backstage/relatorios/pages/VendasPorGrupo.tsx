@@ -7,15 +7,11 @@ import { ProgressBarHalfCircle } from "@/components/base/progress-indicators/pro
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { DemografiaMetrics, GeografiaSecoes } from "../components/demografia-geo";
-import { MetaVendasCard, VendasPorGeneroCard } from "../components/vendas-graficos";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
-import { RelatorioFiltersProvider, dateRangeFraction, inDateRange, useRelatorioFilters } from "../components/relatorio-filters";
+import { RelatorioFiltersProvider, dateRangeFraction, useRelatorioFilters } from "../components/relatorio-filters";
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
-import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
-import { COMBOS, GRUPOS, INGRESSOS, PRODUTOS, TOTAL_GMV, TOTAL_GMV_PRODUTOS, TOTAL_PRODUTOS, TOTAL_UNIDADES } from "../data/produtos";
-import { VENDAS_DIARIAS, metaTotal } from "../data/vendas-diarias";
+import { EVENT, currencyFormatter, numberFormatter } from "../data/event";
 
 /* ------------------------------------------------------------------ */
 /*  Tipos                                                             */
@@ -46,25 +42,13 @@ interface IngressoPorSetorRow {
     estoque: number;
 }
 
-interface ComboLoteDetalhe {
-    id: string;
-    lote: string;
-    quantidade: number;
-    valorUnitario: number;
-    gmv: number;
-    desconto: number;
-    gmvComDesconto: number;
-}
-
 interface ComboRow {
     id: string;
     nome: string;
     quantidade: number;
     valorUnitario: number;
     gmv: number;
-    desconto: number;
     gmvComDesconto: number;
-    lotes: ComboLoteDetalhe[];
 }
 
 interface ProdutoRow {
@@ -100,44 +84,143 @@ interface CupomRow {
 /* ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------ */
-/*  Réveillon Carneiros — vende só combos. "Setor" = festa × área       */
-/*  (Mouton 16h / Night 20–22h). Cada combo dá acesso às festas que      */
-/*  inclui: NIGHT PASS → festas noturnas; FULL PASS → todas.             */
-/*  Dados de teste, propositalmente discrepantes da produção.           */
+/*  Quantidade de ingresso por grupo — mock de um show/festival. Cada     */
+/*  linha = tipo de ingresso × grupo. "Estoque" por linha é o pool        */
+/*  compartilhado repetido, ou sub-limite p/ Meia/Gratuidade.             */
+/*  A capacidade do grupo (p/ ocupação) está em SETOR_CAP. Nenhum item    */
+/*  tem combo → itemCombo sempre "-".                                     */
+/*                                                                       */
+/*  Linhas ocultas por scroll (Cadeira Inferior) e grupos sem dados de    */
+/*  tabela (Camarote, Lounge Oeste/Leste) foram simulados p/ casar        */
+/*  com o gráfico de ocupação e o total geral de 26.183 itens.           */
 /* ------------------------------------------------------------------ */
 
-const ddmm = (data: string) => data.slice(0, 5);
-const areaOf = (label: string) => (label.includes("16h") ? "Mouton" : "Night");
-const setorNome = (s: { data: string; label: string }) => `${ddmm(s.data)} | ${areaOf(s.label)}`;
-const combosNaSessao = (sid: string) => COMBOS.filter((c) => c.sessoes.includes(sid));
+// Capacidade física de cada setor (denominador da ocupação).
+const SETOR_CAP: Record<string, number> = {
+    "Camarote Premium": 126,
+    "Pista": 2000,
+    "Arquibancada": 4300,
+    "Pista Premium": 6659,
+    "Cadeira Superior": 11005,
+    "Cadeira Inferior": 5189,
+    "Camarote": 400,
+    "Lounge Oeste": 3000,
+    "Lounge Leste": 3000,
+};
 
-// Capacidade por festa×área (denominador da ocupação).
-const CAP_AREA: Record<string, number> = { Night: 6500, Mouton: 4200 };
-const SETOR_CAP: Record<string, number> = Object.fromEntries(EVENT.sessoes.map((s) => [setorNome(s), CAP_AREA[areaOf(s.label)]]));
+const ingressosPorSetor: IngressoPorSetorRow[] = [
+    // Camarote Premium
+    { id: "ips1", setor: "Camarote Premium", tipoIngresso: "Convidado Artista", lote: "Cortesia", itemCombo: "-", vendidos: 54, estoque: 72 },
+    { id: "ips2", setor: "Camarote Premium", tipoIngresso: "Open Bar", lote: "Lote único", itemCombo: "-", vendidos: 10, estoque: 40 },
+    { id: "ips3", setor: "Camarote Premium", tipoIngresso: "Camarote Open", lote: "Cortesia", itemCombo: "-", vendidos: 4, estoque: 10 },
+    { id: "ips4", setor: "Camarote Premium", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 1, estoque: 4 },
+    // Pista
+    { id: "ips5", setor: "Pista", tipoIngresso: "Gratuidade - PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 8, estoque: 20 },
+    { id: "ips6", setor: "Pista", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 37, estoque: 40 },
+    { id: "ips7", setor: "Pista", tipoIngresso: "Acompanhante PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 2, estoque: 15 },
+    { id: "ips8", setor: "Pista", tipoIngresso: "Parceria", lote: "Cortesia", itemCombo: "-", vendidos: 35, estoque: 130 },
+    { id: "ips9", setor: "Pista", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 6, estoque: 700 },
+    { id: "ips10", setor: "Pista", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 7, estoque: 2000 },
+    // Arquibancada
+    { id: "ips11", setor: "Arquibancada", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 1683, estoque: 1714 },
+    { id: "ips12", setor: "Arquibancada", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 1051, estoque: 4300 },
+    { id: "ips13", setor: "Arquibancada", tipoIngresso: "Acompanhante VIP", lote: "Clube", itemCombo: "-", vendidos: 61, estoque: 4300 },
+    { id: "ips14", setor: "Arquibancada", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 245, estoque: 300 },
+    { id: "ips15", setor: "Arquibancada", tipoIngresso: "Lote Promocional", lote: "Clube", itemCombo: "-", vendidos: 71, estoque: 4300 },
+    { id: "ips16", setor: "Arquibancada", tipoIngresso: "VIP", lote: "Clube", itemCombo: "-", vendidos: 44, estoque: 4300 },
+    { id: "ips17", setor: "Arquibancada", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 40, estoque: 100 },
+    { id: "ips18", setor: "Arquibancada", tipoIngresso: "Pré-venda Clube", lote: "Clube", itemCombo: "-", vendidos: 11, estoque: 4300 },
+    { id: "ips19", setor: "Arquibancada", tipoIngresso: "Último Lote", lote: "Clube", itemCombo: "-", vendidos: 65, estoque: 4300 },
+    { id: "ips20", setor: "Arquibancada", tipoIngresso: "Pré-venda", lote: "Clube", itemCombo: "-", vendidos: 93, estoque: 4300 },
+    // Pista Premium
+    { id: "ips21", setor: "Pista Premium", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 1337, estoque: 2406 },
+    { id: "ips22", setor: "Pista Premium", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 508, estoque: 6659 },
+    { id: "ips23", setor: "Pista Premium", tipoIngresso: "Pré-venda", lote: "Clube", itemCombo: "-", vendidos: 1163, estoque: 6659 },
+    { id: "ips24", setor: "Pista Premium", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 410, estoque: 410 },
+    { id: "ips25", setor: "Pista Premium", tipoIngresso: "Último Lote", lote: "Clube", itemCombo: "-", vendidos: 314, estoque: 6659 },
+    { id: "ips26", setor: "Pista Premium", tipoIngresso: "Acompanhante VIP", lote: "Clube", itemCombo: "-", vendidos: 351, estoque: 6659 },
+    { id: "ips27", setor: "Pista Premium", tipoIngresso: "Convidado Artista", lote: "Cortesia", itemCombo: "-", vendidos: 139, estoque: 240 },
+    { id: "ips28", setor: "Pista Premium", tipoIngresso: "VIP", lote: "Clube", itemCombo: "-", vendidos: 502, estoque: 6659 },
+    { id: "ips29", setor: "Pista Premium", tipoIngresso: "Acompanhante PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 20, estoque: 20 },
+    { id: "ips30", setor: "Pista Premium", tipoIngresso: "Staff", lote: "Clube", itemCombo: "-", vendidos: 30, estoque: 6659 },
+    { id: "ips31", setor: "Pista Premium", tipoIngresso: "Lote Promocional", lote: "Clube", itemCombo: "-", vendidos: 262, estoque: 6659 },
+    { id: "ips32", setor: "Pista Premium", tipoIngresso: "Órgão Público", lote: "Cortesia", itemCombo: "-", vendidos: 14, estoque: 50 },
+    { id: "ips33", setor: "Pista Premium", tipoIngresso: "Gratuidade - PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 40, estoque: 40 },
+    { id: "ips34", setor: "Pista Premium", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 80, estoque: 80 },
+    { id: "ips35", setor: "Pista Premium", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 59, estoque: 158 },
+    { id: "ips36", setor: "Pista Premium", tipoIngresso: "Membro Clube", lote: "Cortesia", itemCombo: "-", vendidos: 115, estoque: 150 },
+    { id: "ips37", setor: "Pista Premium", tipoIngresso: "Relacionamento", lote: "Cortesia", itemCombo: "-", vendidos: 78, estoque: 134 },
+    { id: "ips38", setor: "Pista Premium", tipoIngresso: "Brigada", lote: "Cortesia", itemCombo: "-", vendidos: 21, estoque: 30 },
+    { id: "ips39", setor: "Pista Premium", tipoIngresso: "Resgate Clube", lote: "Cortesia", itemCombo: "-", vendidos: 9, estoque: 16 },
+    { id: "ips40", setor: "Pista Premium", tipoIngresso: "Marca Parceira", lote: "Cortesia", itemCombo: "-", vendidos: 7, estoque: 26 },
+    { id: "ips41", setor: "Pista Premium", tipoIngresso: "Coordenação", lote: "Cortesia", itemCombo: "-", vendidos: 3, estoque: 5 },
+    { id: "ips42", setor: "Pista Premium", tipoIngresso: "Pré-venda Clube", lote: "Clube", itemCombo: "-", vendidos: 48, estoque: 6659 },
+    { id: "ips43", setor: "Pista Premium", tipoIngresso: "Produção", lote: "Cortesia", itemCombo: "-", vendidos: 8, estoque: 17 },
+    { id: "ips44", setor: "Pista Premium", tipoIngresso: "Bombeiro", lote: "Cortesia", itemCombo: "-", vendidos: 9, estoque: 10 },
+    { id: "ips45", setor: "Pista Premium", tipoIngresso: "Acompanhante Backstage Tour", lote: "Cortesia", itemCombo: "-", vendidos: 3, estoque: 7 },
+    { id: "ips46", setor: "Pista Premium", tipoIngresso: "Apoio", lote: "Cortesia", itemCombo: "-", vendidos: 10, estoque: 10 },
+    { id: "ips47", setor: "Pista Premium", tipoIngresso: "Convidado", lote: "Cortesia", itemCombo: "-", vendidos: 2, estoque: 5 },
+    { id: "ips48", setor: "Pista Premium", tipoIngresso: "Segurança", lote: "Cortesia", itemCombo: "-", vendidos: 3, estoque: 10 },
+    { id: "ips49", setor: "Pista Premium", tipoIngresso: "Backstage Tour", lote: "Cortesia", itemCombo: "-", vendidos: 3, estoque: 7 },
+    // Cadeira Superior
+    { id: "ips50", setor: "Cadeira Superior", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 3877, estoque: 4114 },
+    { id: "ips51", setor: "Cadeira Superior", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 2225, estoque: 11005 },
+    { id: "ips52", setor: "Cadeira Superior", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 285, estoque: 285 },
+    { id: "ips53", setor: "Cadeira Superior", tipoIngresso: "Acompanhante VIP", lote: "Clube", itemCombo: "-", vendidos: 423, estoque: 11005 },
+    { id: "ips54", setor: "Cadeira Superior", tipoIngresso: "Último Lote", lote: "Clube", itemCombo: "-", vendidos: 441, estoque: 11005 },
+    { id: "ips55", setor: "Cadeira Superior", tipoIngresso: "Lote Promocional", lote: "Clube", itemCombo: "-", vendidos: 364, estoque: 11005 },
+    { id: "ips56", setor: "Cadeira Superior", tipoIngresso: "VIP", lote: "Clube", itemCombo: "-", vendidos: 402, estoque: 11005 },
+    { id: "ips57", setor: "Cadeira Superior", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 714, estoque: 715 },
+    { id: "ips58", setor: "Cadeira Superior", tipoIngresso: "Pré-venda", lote: "Clube", itemCombo: "-", vendidos: 1089, estoque: 11005 },
+    { id: "ips59", setor: "Cadeira Superior", tipoIngresso: "Pré-venda Clube", lote: "Clube", itemCombo: "-", vendidos: 110, estoque: 11005 },
+    { id: "ips60", setor: "Cadeira Superior", tipoIngresso: "Membro", lote: "Clube", itemCombo: "-", vendidos: 68, estoque: 11005 },
+    { id: "ips61", setor: "Cadeira Superior", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 7, estoque: 15 },
+    { id: "ips62", setor: "Cadeira Superior", tipoIngresso: "Camarim", lote: "Cortesia", itemCombo: "-", vendidos: 11, estoque: 15 },
+    // Cadeira Inferior (Meia/Gratuidade; demais linhas simuladas)
+    { id: "ips63", setor: "Cadeira Inferior", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 1491, estoque: 2329 },
+    { id: "ips64", setor: "Cadeira Inferior", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 355, estoque: 356 },
+    { id: "ips65", setor: "Cadeira Inferior", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 700, estoque: 5189 },
+    { id: "ips66", setor: "Cadeira Inferior", tipoIngresso: "Pré-venda", lote: "Clube", itemCombo: "-", vendidos: 900, estoque: 5189 },
+    { id: "ips67", setor: "Cadeira Inferior", tipoIngresso: "VIP", lote: "Clube", itemCombo: "-", vendidos: 400, estoque: 5189 },
+    { id: "ips68", setor: "Cadeira Inferior", tipoIngresso: "Acompanhante VIP", lote: "Clube", itemCombo: "-", vendidos: 200, estoque: 5189 },
+    { id: "ips69", setor: "Cadeira Inferior", tipoIngresso: "Último Lote", lote: "Clube", itemCombo: "-", vendidos: 150, estoque: 5189 },
+    { id: "ips70", setor: "Cadeira Inferior", tipoIngresso: "Lote Promocional", lote: "Clube", itemCombo: "-", vendidos: 120, estoque: 5189 },
+    { id: "ips71", setor: "Cadeira Inferior", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 30, estoque: 60 },
+    { id: "ips72", setor: "Cadeira Inferior", tipoIngresso: "Relacionamento", lote: "Cortesia", itemCombo: "-", vendidos: 40, estoque: 80 },
+    { id: "ips73", setor: "Cadeira Inferior", tipoIngresso: "Membro Clube", lote: "Cortesia", itemCombo: "-", vendidos: 45, estoque: 80 },
+    { id: "ips74", setor: "Cadeira Inferior", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 100, estoque: 100 },
+    { id: "ips75", setor: "Cadeira Inferior", tipoIngresso: "Gratuidade - PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 30, estoque: 30 },
+    { id: "ips76", setor: "Cadeira Inferior", tipoIngresso: "Acompanhante PCD", lote: "Gratuidade", itemCombo: "-", vendidos: 15, estoque: 15 },
+    { id: "ips77", setor: "Cadeira Inferior", tipoIngresso: "Parceria", lote: "Cortesia", itemCombo: "-", vendidos: 60, estoque: 130 },
+    { id: "ips78", setor: "Cadeira Inferior", tipoIngresso: "Convidado Artista", lote: "Cortesia", itemCombo: "-", vendidos: 80, estoque: 120 },
+    { id: "ips79", setor: "Cadeira Inferior", tipoIngresso: "Pré-venda Clube", lote: "Clube", itemCombo: "-", vendidos: 65, estoque: 5189 },
+    { id: "ips80", setor: "Cadeira Inferior", tipoIngresso: "Staff", lote: "Clube", itemCombo: "-", vendidos: 50, estoque: 5189 },
+    { id: "ips81", setor: "Cadeira Inferior", tipoIngresso: "Camarim", lote: "Cortesia", itemCombo: "-", vendidos: 15, estoque: 20 },
+    { id: "ips82", setor: "Cadeira Inferior", tipoIngresso: "Membro", lote: "Clube", itemCombo: "-", vendidos: 135, estoque: 5189 },
+    // Camarote (simulado)
+    { id: "ips83", setor: "Camarote", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 40, estoque: 400 },
+    { id: "ips84", setor: "Camarote", tipoIngresso: "Gratuidade - Menor de 12 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 60, estoque: 80 },
+    { id: "ips85", setor: "Camarote", tipoIngresso: "Convidado Artista", lote: "Cortesia", itemCombo: "-", vendidos: 30, estoque: 60 },
+    { id: "ips86", setor: "Camarote", tipoIngresso: "Patrocinador", lote: "Cortesia", itemCombo: "-", vendidos: 30, estoque: 60 },
+    // Lounge Oeste (simulado)
+    { id: "ips87", setor: "Lounge Oeste", tipoIngresso: "Inteira", lote: "Lote único", itemCombo: "-", vendidos: 50, estoque: 3000 },
+    { id: "ips88", setor: "Lounge Oeste", tipoIngresso: "Pré-venda", lote: "Clube", itemCombo: "-", vendidos: 120, estoque: 3000 },
+    { id: "ips89", setor: "Lounge Oeste", tipoIngresso: "VIP", lote: "Clube", itemCombo: "-", vendidos: 80, estoque: 3000 },
+    { id: "ips90", setor: "Lounge Oeste", tipoIngresso: "Lote Promocional", lote: "Clube", itemCombo: "-", vendidos: 30, estoque: 3000 },
+    { id: "ips91", setor: "Lounge Oeste", tipoIngresso: "Último Lote", lote: "Clube", itemCombo: "-", vendidos: 50, estoque: 3000 },
+    // Lounge Leste (simulado)
+    { id: "ips92", setor: "Lounge Leste", tipoIngresso: "Meia-Entrada", lote: "Lote único", itemCombo: "-", vendidos: 175, estoque: 1500 },
+    { id: "ips93", setor: "Lounge Leste", tipoIngresso: "Lote Promocional", lote: "Clube", itemCombo: "-", vendidos: 40, estoque: 3000 },
+    { id: "ips94", setor: "Lounge Leste", tipoIngresso: "Pré-venda Clube", lote: "Clube", itemCombo: "-", vendidos: 1, estoque: 3000 },
+    { id: "ips95", setor: "Lounge Leste", tipoIngresso: "Pré-venda", lote: "Clube", itemCombo: "-", vendidos: 800, estoque: 3000 },
+    { id: "ips96", setor: "Lounge Leste", tipoIngresso: "VIP", lote: "Clube", itemCombo: "-", vendidos: 350, estoque: 3000 },
+    { id: "ips97", setor: "Lounge Leste", tipoIngresso: "Gratuidade - Maior de 60 Anos", lote: "Gratuidade", itemCombo: "-", vendidos: 150, estoque: 200 },
+    { id: "ips98", setor: "Lounge Leste", tipoIngresso: "Convidado Artista", lote: "Cortesia", itemCombo: "-", vendidos: 50, estoque: 80 },
+    { id: "ips99", setor: "Lounge Leste", tipoIngresso: "Parceria", lote: "Cortesia", itemCombo: "-", vendidos: 54, estoque: 130 },
+];
 
-// Cada linha = um INGRESSO real (grupo > ingresso > lote) na festa. O combo é
-// uma dimensão à parte; aqui contamos os ingressos entregues por festa.
-// itemCombo = combos (passes) que dão acesso àquele ingresso.
-const ingressosPorSetor: IngressoPorSetorRow[] = EVENT.sessoes.flatMap((s) => {
-    const grupo = GRUPOS.find((g) => g.sessaoId === s.id);
-    const ings = INGRESSOS.filter((i) => i.grupoId === grupo?.id);
-    const area = areaOf(s.label);
-    return ings.map((ing) => {
-        const passes = Array.from(new Set(COMBOS.filter((c) => c.itens.includes(ing.id)).map((c) => c.passe)));
-        return {
-            id: `ips-${s.id}-${ing.id}`,
-            setor: setorNome(s),
-            tipoIngresso: ing.nome,
-            lote: ing.lotes[0]?.nome ?? "1º lote",
-            itemCombo: passes.join(" · "),
-            vendidos: ing.quantidade,
-            estoque: Math.round(CAP_AREA[area] / 2),
-        };
-    });
-});
-
-/* Setores derivados das linhas: vendido = soma das linhas (frequência na festa);
-   estoque = capacidade física da festa×área (SETOR_CAP). */
+/* Setores derivados das linhas: vendido = soma das linhas; estoque = capacidade
+   física do setor (SETOR_CAP), pois o estoque por linha é pool compartilhado. */
 const setores: SetorRow[] = (() => {
     const slug = (s: string) =>
         s
@@ -156,61 +239,80 @@ const setores: SetorRow[] = (() => {
             order.push(r.setor);
         }
         s.vendido += r.vendidos;
+        if (!(r.setor in SETOR_CAP)) s.estoque = Math.max(s.estoque, r.estoque);
         s.ingressos!.push({ id: r.id, nome: r.tipoIngresso, estoque: r.estoque, vendido: r.vendidos });
     }
     return order.map((n) => map.get(n)!);
 })();
 
-// Combos vendidos (tabela): nome do combo + seus lotes (padrão de produção).
-const combos: ComboRow[] = COMBOS.map((c) => {
-    const lotes: ComboLoteDetalhe[] = c.lotes.map((l) => {
-        const gmv = l.preco * l.quantidade;
-        const desconto = Math.round(gmv * 0.006);
-        return { id: l.id, lote: l.nome, quantidade: l.quantidade, valorUnitario: l.preco, gmv, desconto, gmvComDesconto: gmv - desconto };
-    });
-    const gmv = lotes.reduce((s, l) => s + l.gmv, 0);
-    const desconto = lotes.reduce((s, l) => s + l.desconto, 0);
-    const quantidade = lotes.reduce((s, l) => s + l.quantidade, 0);
-    return { id: c.id, nome: c.nome, quantidade, valorUnitario: Math.round(gmv / quantidade), gmv, desconto, gmvComDesconto: gmv - desconto, lotes };
-});
+const combos: ComboRow[] = [
+    { id: "c1", nome: "Combo Camarote + Open Bar", quantidade: 1480, valorUnitario: 379, gmv: 560440, gmvComDesconto: 560440 },
+    { id: "c2", nome: "Combo VIP + Welcome Drink", quantidade: 442, valorUnitario: 680, gmv: 300608, gmvComDesconto: 300608 },
+    { id: "c3", nome: "Combo Família (4 ingressos)", quantidade: 112, valorUnitario: 681, gmv: 76188, gmvComDesconto: 76188 },
+    { id: "c4", nome: "Combo Premium + Estacionamento", quantidade: 22, valorUnitario: 2159, gmv: 47498, gmvComDesconto: 47498 },
+    { id: "c5", nome: "Combo Casal Camarote", quantidade: 49, valorUnitario: 758, gmv: 37124, gmvComDesconto: 37124 },
+    { id: "c6", nome: "Combo VIP Solo + Brinde", quantidade: 14, valorUnitario: 1368, gmv: 19152, gmvComDesconto: 19152 },
+    { id: "c7", nome: "Combo Business Pista Premium", quantidade: 2, valorUnitario: 1358, gmv: 2716, gmvComDesconto: 2716 },
+];
 
-// Produtos avulsos (dimensão distinta de ingresso e combo).
-const produtos: ProdutoRow[] = PRODUTOS.map((p) => {
-    const gmv = p.preco * p.quantidade;
-    return { id: p.id, nome: p.nome, quantidade: p.quantidade, valorUnitario: p.preco, gmv, gmvComDesconto: Math.round(gmv * 0.966) };
-});
+const produtos: ProdutoRow[] = [
+    { id: "pr1", nome: "Kit Oficial do Festival", quantidade: 123, valorUnitario: 199.9, gmv: 24587.7, gmvComDesconto: 24587.7 },
+    { id: "pr2", nome: "Boneco Colecionável - Fandom Box", quantidade: 47, valorUnitario: 107.35, gmv: 5045.3, gmvComDesconto: 5045.3 },
+    { id: "pr3", nome: "Sacochila Oficial", quantidade: 126, valorUnitario: 29.9, gmv: 3767.4, gmvComDesconto: 3767.4 },
+    { id: "pr4", nome: "Camisa Oficial - M", quantidade: 36, valorUnitario: 99.9, gmv: 3596.4, gmvComDesconto: 3596.4 },
+    { id: "pr5", nome: "Camisa Oficial - G", quantidade: 29, valorUnitario: 99.9, gmv: 2897.1, gmvComDesconto: 2897.1 },
+    { id: "pr6", nome: "Camisa Oficial - P", quantidade: 23, valorUnitario: 99.9, gmv: 2297.7, gmvComDesconto: 2297.7 },
+    { id: "pr7", nome: "Copo Oficial", quantidade: 100, valorUnitario: 19.89, gmv: 1989, gmvComDesconto: 1989 },
+    { id: "pr8", nome: "Camisa Oficial - GG", quantidade: 14, valorUnitario: 99.9, gmv: 1398.6, gmvComDesconto: 1398.6 },
+];
 
-// Cupons do Réveillon (abrem expandindo a linha, detalhados por grupo).
+// Cupons agora detalhados por lote (abrem expandindo a linha).
 const cupons: CupomRow[] = [
     {
         id: "cu1",
-        cupom: "CARNEIROS10",
-        quantidade: 42,
-        valor: 234600,
-        valorDesconto: 23460,
-        valorTotal: 211140,
+        cupom: "FAN15",
+        quantidade: 142,
+        valor: 19738.0,
+        valorDesconto: 2960.7,
+        valorTotal: 16777.3,
         lotes: [
-            { id: "cu1-l1", lote: "NIGHT PASS", quantidade: 30, valor: 117000, valorDesconto: 11700, valorTotal: 105300 },
-            { id: "cu1-l2", lote: "FULL PASS", quantidade: 12, valor: 117600, valorDesconto: 11760, valorTotal: 105840 },
+            { id: "cu1-l1", lote: "1º Lote", quantidade: 78, valor: 10842.0, valorDesconto: 1626.3, valorTotal: 9215.7 },
+            { id: "cu1-l2", lote: "2º Lote", quantidade: 44, valor: 6116.0, valorDesconto: 917.4, valorTotal: 5198.6 },
+            { id: "cu1-l3", lote: "3º Lote", quantidade: 20, valor: 2780.0, valorDesconto: 417.0, valorTotal: 2363.0 },
         ],
     },
     {
         id: "cu2",
-        cupom: "NIGHT2027",
-        quantidade: 26,
-        valor: 101400,
-        valorDesconto: 15210,
-        valorTotal: 86190,
-        lotes: [{ id: "cu2-l1", lote: "NIGHT PASS", quantidade: 26, valor: 101400, valorDesconto: 15210, valorTotal: 86190 }],
+        cupom: "VIPACCESS",
+        quantidade: 38,
+        valor: 13680.0,
+        valorDesconto: 1368.0,
+        valorTotal: 12312.0,
+        lotes: [
+            { id: "cu2-l1", lote: "1º Lote", quantidade: 26, valor: 9360.0, valorDesconto: 936.0, valorTotal: 8424.0 },
+            { id: "cu2-l2", lote: "2º Lote", quantidade: 12, valor: 4320.0, valorDesconto: 432.0, valorTotal: 3888.0 },
+        ],
     },
     {
         id: "cu3",
-        cupom: "FULLVIP",
-        quantidade: 9,
-        valor: 88200,
-        valorDesconto: 7056,
-        valorTotal: 81144,
-        lotes: [{ id: "cu3-l1", lote: "FULL PASS", quantidade: 9, valor: 88200, valorDesconto: 7056, valorTotal: 81144 }],
+        cupom: "PREMIERE10",
+        quantidade: 24,
+        valor: 7332.0,
+        valorDesconto: 733.2,
+        valorTotal: 6598.8,
+        lotes: [
+            { id: "cu3-l1", lote: "1º Lote", quantidade: 15, valor: 4582.5, valorDesconto: 458.3, valorTotal: 4124.2 },
+            { id: "cu3-l2", lote: "2º Lote", quantidade: 9, valor: 2749.5, valorDesconto: 274.9, valorTotal: 2474.6 },
+        ],
+    },
+    {
+        id: "cu4",
+        cupom: "TESTE2",
+        quantidade: 1,
+        valor: 139.0,
+        valorDesconto: 137.61,
+        valorTotal: 1.39,
+        lotes: [{ id: "cu4-l1", lote: "1º Lote", quantidade: 1, valor: 139.0, valorDesconto: 137.61, valorTotal: 1.39 }],
     },
 ];
 
@@ -223,17 +325,18 @@ interface MixReceitaItem {
     fill: string;
 }
 
-// Réveillon: 100% da receita vem de combos.
+// Mix de receita: ingressos, combos e produtos.
 const mixReceita: MixReceitaItem[] = [
-    { id: "combos", nome: "Combos", quantidade: TOTAL_UNIDADES, gmv: TOTAL_GMV, gmvComDesconto: Math.round(TOTAL_GMV * 0.966), fill: "var(--color-utility-brand-700)" },
-    { id: "produtos", nome: "Produtos", quantidade: TOTAL_PRODUTOS, gmv: TOTAL_GMV_PRODUTOS, gmvComDesconto: Math.round(TOTAL_GMV_PRODUTOS * 0.966), fill: "var(--color-utility-blue-500)" },
+    { id: "ingressos", nome: "Ingressos", quantidade: 12276, gmv: 2532994.0, gmvComDesconto: 2523733.99, fill: "var(--color-utility-brand-700)" },
+    { id: "combos", nome: "Combos", quantidade: 2836, gmv: 1415534.0, gmvComDesconto: 1412183.4, fill: "var(--color-utility-blue-500)" },
+    { id: "produtos", nome: "Produtos", quantidade: 498, gmv: 80120.0, gmvComDesconto: 79540.0, fill: "var(--color-utility-orange-400)" },
 ];
 
-const VALOR_TOTAL_BASE = TOTAL_GMV;
-const TOTAL_ITENS_BASE = TOTAL_UNIDADES;
+const VALOR_TOTAL_BASE = 2523733.99 + 1412183.4 + 79540.0;
+const TOTAL_ITENS_BASE = 12276 + 2836 + 498;
 
 /* ------------------------------------------------------------------ */
-/*  Drill-down (Festa → Grupo do combo → Gênero)                       */
+/*  Drill-down tree (Data = sessão → Tipo → Setor → Ingresso → Lote)  */
 /* ------------------------------------------------------------------ */
 
 interface TreeNode {
@@ -246,101 +349,91 @@ interface TreeNode {
     children?: TreeNode[];
 }
 
-const generoLabel = (g: string) => (g === "MASCULINO" ? "Masculino" : "Feminino");
-const grupoSlug = (g: string) => (g === "NIGHT PASS" ? "night" : "full");
-
-// Detalhamento das vendas: Sessão → Tipo de produto → (Combos) Setor → Ingresso → Lote.
-const buildDrillTree = (): TreeNode[] =>
-    EVENT.sessoes.map((s) => {
-        const combosS = combosNaSessao(s.id);
-        // Setor = passe (NIGHT/FULL) que cobre a sessão.
-        const setores: TreeNode[] = (["NIGHT PASS", "FULL PASS"] as const)
-            .filter((g) => combosS.some((c) => c.passe === g))
-            .map((g) => {
-                const cg = combosS.filter((c) => c.passe === g);
-                // Ingresso = variante (gênero) dentro do passe; abaixo, os lotes do combo.
-                const ingressos: TreeNode[] = cg.map((c) => ({
-                    id: `${s.id}-${c.id}`,
-                    key: c.genero,
-                    label: generoLabel(c.genero),
-                    value: c.quantidade,
-                    childrenLabel: "Lote",
-                    children: c.lotes.map((l) => ({ id: `${s.id}-${c.id}-${l.id}`, key: l.id, label: l.nome, value: l.quantidade })),
-                }));
-                return {
-                    id: `${s.id}-${grupoSlug(g)}`,
-                    key: grupoSlug(g),
-                    label: g,
-                    value: cg.reduce((a, c) => a + c.quantidade, 0),
-                    childrenLabel: "Ingresso",
-                    children: ingressos,
-                };
-            });
-        const combosNode: TreeNode = {
-            id: `${s.id}-combos`,
-            key: "combos",
-            label: "Combos",
-            value: setores.reduce((a, x) => a + x.value, 0),
-            childrenLabel: "Setor",
-            children: setores,
-        };
-
-        // Ingressos (vendas diretas): Setor (grupo da festa) → Ingresso → Lote.
-        const gruposS = GRUPOS.filter((g) => g.sessaoId === s.id);
-        const setoresIng: TreeNode[] = gruposS.map((g) => {
-            const ings = INGRESSOS.filter((i) => i.grupoId === g.id);
-            const ingressos: TreeNode[] = ings.map((ing) => ({
-                id: `${s.id}-ing-${ing.id}`,
-                key: ing.id,
-                label: ing.nome,
-                value: ing.vendaDireta,
-                childrenLabel: "Lote",
-                children: ing.lotes.map((l) => ({ id: `${s.id}-ing-${l.id}`, key: l.id, label: l.nome, value: l.quantidade })),
-            }));
-            return {
-                id: `${s.id}-grupo-${g.id}`,
-                key: g.id,
-                label: g.nome,
-                value: ings.reduce((a, i) => a + i.vendaDireta, 0),
-                childrenLabel: "Ingresso",
-                children: ingressos,
-            };
+const buildDrillTree = (): TreeNode[] => {
+    const lotes = (base: number, idPrefix: string): TreeNode[] => [
+        { id: `${idPrefix}-int`, key: "int", label: "Inteira", value: Math.round(base * 0.5) },
+        { id: `${idPrefix}-mei`, key: "mei", label: "Meia-Entrada", value: Math.round(base * 0.42) },
+        { id: `${idPrefix}-out`, key: "out", label: "Outros", value: Math.round(base * 0.08) },
+    ];
+    const ingressosPorSetorNodes = (setorValue: number, setorId: string): TreeNode[] => {
+        const seeds = [
+            { key: "mei", label: "Meia-Entrada", w: 0.42 },
+            { key: "int", label: "Inteira", w: 0.26 },
+            { key: "alv", label: "Pré-venda", w: 0.14 },
+            { key: "glo", label: "VIP", w: 0.08 },
+            { key: "gra", label: "Gratuidade", w: 0.06 },
+            { key: "cor", label: "Cortesia", w: 0.04 },
+        ];
+        return seeds.map((s) => ({
+            id: `${setorId}-${s.key}`,
+            key: s.key,
+            label: s.label,
+            value: Math.round(setorValue * s.w),
+            childrenLabel: "Tipo de público",
+            children: lotes(setorValue * s.w, `${setorId}-${s.key}`),
+        }));
+    };
+    const setoresFor = (dateId: string, base: number): TreeNode[] => {
+        const seeds = [
+            { key: "leste-sup", label: "Cadeira Superior", w: 0.382 },
+            { key: "oeste-inf", label: "Pista Premium", w: 0.212 },
+            { key: "leste-inf", label: "Cadeira Inferior", w: 0.19 },
+            { key: "oeste-sup-b", label: "Arquibancada", w: 0.128 },
+            { key: "andar3-leste", label: "Lounge Leste", w: 0.062 },
+            { key: "andar3-oeste", label: "Lounge Oeste", w: 0.013 },
+            { key: "camarote", label: "Camarote", w: 0.006 },
+            { key: "sul-visit", label: "Pista", w: 0.004 },
+            { key: "tribuna", label: "Camarote Premium", w: 0.003 },
+        ];
+        return seeds.map((s) => {
+            const setorId = `${dateId}-${s.key}`;
+            const setorValue = Math.round(base * s.w);
+            return { id: setorId, key: s.key, label: s.label, value: setorValue, childrenLabel: "Tipo de ingresso", children: ingressosPorSetorNodes(setorValue, setorId) };
         });
-        const ingressosNode: TreeNode = {
-            id: `${s.id}-ingressos`,
-            key: "ingressos",
-            label: "Ingressos",
-            value: setoresIng.reduce((a, x) => a + x.value, 0),
-            childrenLabel: "Setor",
-            children: setoresIng,
-        };
-
-        const total = combosNode.value + ingressosNode.value;
-        return { id: s.id, key: s.id, label: s.descricao, value: total, estoque: CAP_AREA[areaOf(s.label)], childrenLabel: "Tipo de produto", children: [combosNode, ingressosNode] };
+    };
+    // Uma "data" por sessão do evento.
+    const OCUP = [0.7339, 0.61, 0.52, 0.44];
+    const dates: { id: string; label: string; estoque: number; ocupacao: number }[] = EVENT.sessoes.map((s, i) => ({
+        id: s.id,
+        label: s.label,
+        estoque: 35679,
+        ocupacao: OCUP[i] ?? 0.5,
+    }));
+    return dates.map((d) => {
+        const ingressosVendidos = Math.round(d.estoque * d.ocupacao);
+        const tiposDeItem: TreeNode[] = [
+            { id: `${d.id}-ingressos`, key: "ingressos", label: "Ingressos", value: ingressosVendidos, childrenLabel: "Grupo", children: setoresFor(d.id, ingressosVendidos) },
+        ];
+        const total = tiposDeItem.reduce((s, x) => s + x.value, 0);
+        return { id: d.id, key: d.id, label: d.label, value: total, estoque: d.estoque, childrenLabel: "Tipo do item", children: tiposDeItem };
     });
+};
 
 const drillTree = buildDrillTree();
 
-// Produtos avulsos (dimensão distinta) — alimenta o drill-down "Produtos".
-const aggregatedProdutos: TreeNode[] = PRODUTOS.map((p) => ({ id: `prod-${p.id}`, key: p.id, label: p.nome, value: p.quantidade }));
+// Sem produtos avulsos — root vazio mantém o componente, mas o botão "Produtos" não renderiza.
+const aggregatedProdutos: TreeNode[] = [];
 
 const PRODUTOS_ROOT_ID = "produtos-all";
 const produtosRootNode: TreeNode = {
     id: PRODUTOS_ROOT_ID,
     key: PRODUTOS_ROOT_ID,
     label: "Produtos",
-    value: TOTAL_PRODUTOS,
+    value: aggregatedProdutos.reduce((s, c) => s + c.value, 0),
     childrenLabel: "Produto",
     children: aggregatedProdutos,
 };
 
 /* ------------------------------------------------------------------ */
-/*  Scaling helpers                                                    */
+/*  Scaling helpers (sessão + intervalo de data afetam tudo)          */
 /* ------------------------------------------------------------------ */
 
-// Combos são vendidos para o evento todo (não por festa) → sessão não escala a
-// venda; apenas filtra as colunas do drill. Sessões desconhecidas caem em 1.
+// Peso de cada sessão nas vendas (soma ≈ 1).
+const SESSAO_PESOS = [0.34, 0.28, 0.22, 0.16];
 const SESSAO_WEIGHT: Record<string, number> = { all: 1 };
+EVENT.sessoes.forEach((s, i) => {
+    SESSAO_WEIGHT[s.id] = SESSAO_PESOS[i] ?? 1 / EVENT.sessoes.length;
+});
 
 const scaleTree = (nodes: TreeNode[], f: number): TreeNode[] =>
     nodes.map((n) => ({ ...n, value: Math.round(n.value * f), children: n.children ? scaleTree(n.children, f) : undefined }));
@@ -355,7 +448,7 @@ export function VendasPorGrupo() {
             <RelatorioFiltersProvider sessoes={EVENT.sessoes}>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6 py-6 md:px-6 pb-10">
-                        <RelatorioPageHeader title="Vendas" filtroVariante="dropdown" />
+                        <RelatorioPageHeader title="Vendas" />
                         <VendasBody />
                     </main>
                 </div>
@@ -393,14 +486,7 @@ const VendasBody = () => {
             gmvComDesconto: m.gmvComDesconto * vendaFactor,
         }));
 
-        const combosView: ComboRow[] = combos.map((c) => ({
-            ...c,
-            quantidade: Math.round(c.quantidade * vendaFactor),
-            gmv: c.gmv * vendaFactor,
-            desconto: c.desconto * vendaFactor,
-            gmvComDesconto: c.gmvComDesconto * vendaFactor,
-            lotes: c.lotes.map((l) => ({ ...l, quantidade: Math.round(l.quantidade * vendaFactor), gmv: l.gmv * vendaFactor, desconto: l.desconto * vendaFactor, gmvComDesconto: l.gmvComDesconto * vendaFactor })),
-        }));
+        const combosView: ComboRow[] = combos.map((c) => ({ ...c, quantidade: Math.round(c.quantidade * vendaFactor), gmv: c.gmv * vendaFactor, gmvComDesconto: c.gmvComDesconto * vendaFactor }));
         const produtosView: ProdutoRow[] = produtos.map((p) => ({ ...p, quantidade: Math.round(p.quantidade * dateFraction), gmv: p.gmv * dateFraction, gmvComDesconto: p.gmvComDesconto * dateFraction }));
         const cuponsView: CupomRow[] = cupons.map((c) => ({
             ...c,
@@ -422,19 +508,10 @@ const VendasBody = () => {
         return { setoresView, ingressosPorSetorView, mixView, combosView, produtosView, cuponsView, drillView, produtosRootView, valorTotal, totalItens };
     }, [dateRange, sessao]);
 
-    // Série diária recortada pelo mesmo período do filtro (todos os gráficos olham o mesmo intervalo).
-    const dias = useMemo(() => VENDAS_DIARIAS.filter((d) => inDateRange(parseEventDate(d.dataISO), dateRange)), [dateRange]);
-    // Meta = soma das metas das sessões em escopo (todas, ou a sessão filtrada).
-    const metaSel = useMemo(() => metaTotal(sessao === "all" ? undefined : [sessao]), [sessao]);
-
     return (
         <>
             <MetricsRow valorTotal={view.valorTotal} totalItens={view.totalItens} setores={view.setoresView} />
-            <DemografiaMetrics />
-            <MetaVendasCard dias={dias} meta={metaSel} />
             <MixReceitaCard items={view.mixView} />
-            <VendasPorGeneroCard dias={dias} />
-            <GeografiaSecoes />
             <DrillDownGmvCard tree={view.drillView} produtosRoot={view.produtosRootView} />
             <OcupacaoPorSetorCard setores={view.setoresView} />
             <QuantidadeIngressosPorSetorCard rows={view.ingressosPorSetorView} />
@@ -525,9 +602,10 @@ const MixReceitaCard = ({ items }: { items: MixReceitaItem[] }) => {
                                     <span className="text-xs text-tertiary">{item.value}% do total</span>
                                 </div>
                             </div>
-                            <div className="flex grid-cols-3 gap-4 md:flex md:gap-8">
+                            <div className="flex flex-wrap gap-4 md:flex-nowrap md:gap-8">
                                 <MixStat className="md:w-20" label="Quantidade" value={numberFormatter.format(item.quantidade)} />
                                 <MixStat className="md:w-36" label="Valor total bruto" value={currencyFormatter.format(item.gmv)} />
+                                <MixStat className="md:w-28" label="Desconto" value={currencyFormatter.format(item.gmv - item.gmvComDesconto)} />
                                 <MixStat className="md:w-36" label="Valor total c/ desconto" value={currencyFormatter.format(item.gmvComDesconto)} />
                             </div>
                         </li>
@@ -711,7 +789,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
                                     if (path[pi] === PRODUTOS_ROOT_ID && pi === 0) return produtosRoot;
                                     return columns[pi].find((n) => n.id === path[pi]);
                                 };
-                                const headerLabel = colIndex === 0 ? "Data da sessão" : resolveParent(colIndex - 1)?.childrenLabel ?? "Detalhe";
+                                const headerLabel = colIndex === 0 ? "Sessão" : resolveParent(colIndex - 1)?.childrenLabel ?? "Detalhe";
                                 const parentLabel = colIndex > 0 && path[colIndex - 1] ? resolveParent(colIndex - 1)?.label : null;
                                 return (
                                     <motion.div
@@ -812,7 +890,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
                                 >
                                     <FeaturedIcon icon={CursorClick02} color="gray" theme="modern" size="md" />
                                     <p className="text-sm font-semibold text-primary">Selecione uma sessão</p>
-                                    <p className="text-xs text-tertiary">Escolha uma sessão para ver o detalhamento por tipo, setor, ingresso, lote e tipo.</p>
+                                    <p className="text-xs text-tertiary">Escolha uma sessão para ver o detalhamento por tipo, grupo, ingresso, lote e tipo.</p>
                                 </motion.div>
                             )}
                         </div>
@@ -830,7 +908,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
                         >
                             <FeaturedIcon icon={CursorClick02} color="gray" theme="modern" size="md" />
                             <p className="text-sm font-semibold text-primary">Selecione uma sessão</p>
-                            <p className="max-w-[260px] text-xs text-tertiary">Escolha uma sessão para ver o detalhamento por tipo, setor, ingresso, lote e tipo.</p>
+                            <p className="max-w-[260px] text-xs text-tertiary">Escolha uma sessão para ver o detalhamento por tipo, grupo, ingresso, lote e tipo.</p>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -844,7 +922,7 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
 /* ------------------------------------------------------------------ */
 
 const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] }) => {
-    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    const [expanded, setExpanded] = useState<Set<string>>(new Set(["leste-superior"]));
 
     const toggleExpanded = (id: string) =>
         setExpanded((prev) => {
@@ -862,7 +940,7 @@ const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] })
     const sortedSetores = sorted as unknown as SetorRow[];
 
     return (
-        <Card title="Ocupação por setor">
+        <Card title="Ocupação por grupo">
             <table className="w-full table-fixed border-collapse">
                 <colgroup>
                     <col className="w-10 md:w-12" />
@@ -875,7 +953,7 @@ const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] })
                     <tr className="border-b border-secondary bg-secondary text-left">
                         <th className="px-2 py-3 md:px-4" aria-hidden="true" />
                         <th className="px-4 py-3 text-xs font-semibold text-tertiary">
-                            <SortableHeader label="Setor" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                            <SortableHeader label="Grupo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         </th>
                         <th className="hidden px-4 py-3 text-right text-xs font-semibold text-tertiary md:table-cell">
                             <SortableHeader label="Estoque" align="right" sortKey="estoque" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
@@ -934,7 +1012,7 @@ const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] })
                                                 <td className="hidden px-4 py-3 md:table-cell" />
                                                 <td className="hidden px-4 py-3 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(ingresso.vendido)}</td>
                                                 <td className="px-4 py-3">
-                                                    <OccupancyBar value={ingresso.vendido} total={setor.vendido} />
+                                                    <OccupancyBar value={ingresso.vendido} total={setor.estoque} />
                                                 </td>
                                             </tr>
                                         );
@@ -1007,7 +1085,7 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
         });
 
     return (
-        <Card title="Quantidade de Ingresso por Setor">
+        <Card title="Quantidade de Ingresso por Grupo">
             <table className="w-full table-fixed border-collapse">
                 <colgroup>
                     <col className="w-10 md:w-12" />
@@ -1022,7 +1100,7 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
                     <tr className="border-b border-secondary bg-secondary text-left">
                         <th className="px-2 py-3 md:px-4" aria-hidden="true" />
                         <th className="px-4 py-3 text-xs font-semibold text-tertiary">
-                            <SortableHeader label="Setor" sortKey="setor" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                            <SortableHeader label="Grupo" sortKey="setor" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                         </th>
                         <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell">Lote</th>
                         <th className="hidden px-4 py-3 text-xs font-semibold text-tertiary md:table-cell">Item Combo</th>
@@ -1079,7 +1157,7 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
                                             <td className="px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(row.vendidos)}</td>
                                             <td className="px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(row.estoque)}</td>
                                             <td className="hidden px-4 py-3 lg:table-cell">
-                                                <OccupancyBar value={row.vendidos} total={grupo.vendidos} />
+                                                <OccupancyBar value={row.vendidos} total={row.estoque} />
                                             </td>
                                         </tr>
                                     ))}
@@ -1108,75 +1186,31 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
 /* ------------------------------------------------------------------ */
 
 const ComboCard = ({ rows }: { rows: ComboRow[] }) => {
-    const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(rows as unknown as Record<string, unknown>[], undefined, { key: "gmv", dir: "desc" });
     const sortedRows = sorted as unknown as ComboRow[];
-    const toggle = (id: string) =>
-        setExpanded((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
     return (
-        <Card title="Combos">
+        <Card title="Combo">
             <div className="overflow-x-auto overflow-y-clip">
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
-                            <th className="w-10 px-2 py-3 md:px-4" aria-hidden="true" />
-                            <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Combo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-tertiary"><SortableHeader label="Item Combo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Quantidade" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor unitário médio" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor Unitário" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor total bruto" align="right" sortKey="gmv" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Desconto" align="right" sortKey="desconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary"><SortableHeader label="Valor total c/ desconto" align="right" sortKey="gmvComDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                         </tr>
                     </thead>
                     <tbody>
-                        {sortedRows.map((row, i) => {
-                            const isExpanded = expanded.has(row.id);
-                            const isLast = i === sortedRows.length - 1;
-                            return (
-                                <Fragment key={row.id}>
-                                    <tr
-                                        role="button"
-                                        tabIndex={0}
-                                        aria-expanded={isExpanded}
-                                        onClick={() => toggle(row.id)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter" || e.key === " ") {
-                                                e.preventDefault();
-                                                toggle(row.id);
-                                            }
-                                        }}
-                                        className={cx("cursor-pointer transition duration-100 ease-linear hover:bg-primary_hover", (!isLast || isExpanded) && "border-b border-secondary")}
-                                    >
-                                        <td className="px-2 py-4 md:px-4">
-                                            <ChevronDown aria-hidden="true" className={cx("size-4 text-fg-quaternary transition-transform duration-150", isExpanded && "rotate-180")} />
-                                        </td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-primary">{row.nome}</td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{numberFormatter.format(row.quantidade)}</td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valorUnitario)}</td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmv)}</td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.desconto)}</td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmvComDesconto)}</td>
-                                    </tr>
-                                    {isExpanded &&
-                                        row.lotes.map((lote) => (
-                                            <tr key={lote.id} className="border-b border-secondary bg-secondary">
-                                                <td className="px-2 py-3 md:px-4" />
-                                                <td className="whitespace-nowrap px-4 py-3 pl-10 text-sm text-secondary">{lote.lote}</td>
-                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(lote.quantidade)}</td>
-                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.valorUnitario)}</td>
-                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.gmv)}</td>
-                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.desconto)}</td>
-                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.gmvComDesconto)}</td>
-                                            </tr>
-                                        ))}
-                                </Fragment>
-                            );
-                        })}
+                        {sortedRows.map((row, i) => (
+                            <tr key={row.id} className={cx("transition duration-100 ease-linear hover:bg-primary_hover", i !== sortedRows.length - 1 && "border-b border-secondary")}>
+                                <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-primary">{row.nome}</td>
+                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{numberFormatter.format(row.quantidade)}</td>
+                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valorUnitario)}</td>
+                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmv)}</td>
+                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmvComDesconto)}</td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
             </div>

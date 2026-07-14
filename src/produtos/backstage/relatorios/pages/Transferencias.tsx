@@ -14,9 +14,8 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
-import { RelatorioFiltersProvider, inDateRange, matchRow, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
-import { EVENT, numberFormatter, parseEventDate } from "../data/event";
-import { COMBOS } from "../data/produtos";
+import { RelatorioFiltersProvider, matchRow, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
+import { numberFormatter } from "../data/event";
 
 /* ------------------------------------------------------------------ */
 /*  Mock data                                                         */
@@ -25,9 +24,6 @@ import { COMBOS } from "../data/produtos";
 interface Transferencia {
     id: string;
     code: string;
-    combo: string;
-    grupo: string;
-    data: string; // dd/mm/aaaa
     nomeComprador: string;
     emailComprador: string;
     cpfComprador: string;
@@ -55,7 +51,7 @@ const VEZES_TRANSFERIDO: Record<string, number> = {
 };
 const vezesDe = (code: string): number => VEZES_TRANSFERIDO[code] ?? 1;
 
-const TRANSFERENCIAS_RAW = [
+const transferencias: Transferencia[] = [
     {
         id: "8131c921-794f-4b3b-9b41-d13ac8587225",
         code: "26BK5XGKXN6JHL",
@@ -318,17 +314,6 @@ const TRANSFERENCIAS_RAW = [
     },
 ];
 
-// Decora cada transferência com o combo e a data (dados de teste): distribui os
-// combos ciclicamente e espalha as datas ao longo da janela de vendas.
-const _START = parseEventDate(EVENT.salesStart)!;
-const _DIAS = Math.max(1, Math.round((parseEventDate(EVENT.salesEnd)!.getTime() - _START.getTime()) / 86_400_000));
-const _pad = (n: number) => String(n).padStart(2, "0");
-const transferencias: Transferencia[] = TRANSFERENCIAS_RAW.map((t, i) => {
-    const c = COMBOS[i % COMBOS.length];
-    const dt = new Date(_START.getTime() + ((i * 37) % (_DIAS + 1)) * 86_400_000);
-    return { ...t, combo: c.nome, grupo: c.passe, data: `${_pad(dt.getDate())}/${_pad(dt.getMonth() + 1)}/${dt.getFullYear()}` };
-});
-
 /* ------------------------------------------------------------------ */
 /*  Big numbers                                                       */
 /* ------------------------------------------------------------------ */
@@ -357,7 +342,7 @@ const TransferenciasMetricsRow = () => (
         />
         <MetricsIcon03
             icon={Ticket01}
-            subtitle="Combos transferidos"
+            subtitle="Ingressos transferidos"
             title={`${pctFormatter.format(PCT_TRANSFERIDOS)}%`}
             change={null}
             changeTrend="positive"
@@ -381,7 +366,6 @@ const TransferenciasMetricsRow = () => (
 /* ------------------------------------------------------------------ */
 
 const FILTER_FIELDS: FilterFieldDef[] = [
-    { id: "combo", label: "Combo", multi: { options: COMBOS.map((c) => ({ id: c.nome, label: c.nome })) } },
     { id: "code", label: "Código" },
     { id: "nomeComprador", label: "Nome Comprador" },
     { id: "emailComprador", label: "Email Comprador" },
@@ -417,16 +401,16 @@ export function Transferencias() {
 }
 
 const TransferenciasBody = () => {
-    const { filters, dateRange } = useRelatorioFilters();
+    const { filters } = useRelatorioFilters();
 
     const filteredTransferencias = useMemo(() => {
         const valid = filters.filter((f) => f.field && f.value);
-        return transferencias.filter((t) => inDateRange(parseEventDate(t.data), dateRange) && matchRow(t, valid, getFieldValue));
-    }, [filters, dateRange]);
+        return transferencias.filter((t) => matchRow(t, valid, getFieldValue));
+    }, [filters]);
 
     return (
         <>
-            <RelatorioPageHeader title="Transferências do Evento" filtroVariante="dropdown" />
+            <RelatorioPageHeader title="Transferências do Evento" />
 
             <TransferenciasMetricsRow />
 
@@ -576,9 +560,8 @@ const TransferenciaCard = ({
                 isSelected ? "bg-primary_hover ring-2 ring-brand" : "bg-primary ring-1 ring-border-secondary",
             )}
         >
-            {/* Combo + código + selo de quantas vezes foi transferido */}
-            <div className="flex w-40 shrink-0 flex-col gap-1.5 sm:w-52">
-                <span className="truncate text-sm font-semibold text-primary">{row.combo}</span>
+            {/* Código + selo de quantas vezes foi transferido */}
+            <div className="flex w-32 shrink-0 flex-col gap-1.5 sm:w-44">
                 <span className="truncate font-mono text-xs font-medium text-tertiary">{row.code}</span>
                 <TransferCountBadge count={count} />
             </div>
@@ -717,8 +700,6 @@ const TransferenciaDetailsSlideOut = ({
                                     <TransferCountBadge count={vezesDe(row.code)} />
                                 </div>
                                 <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="Combo" value={row.combo} />
-                                    <DetailRow label="Data da transferência" value={row.data} />
                                     <DetailRow label="Código do ingresso" value={row.code} isMono />
                                     <DetailRow label="ID da transação" value={row.id} isMono />
                                 </dl>

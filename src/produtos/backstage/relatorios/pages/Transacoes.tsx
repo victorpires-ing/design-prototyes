@@ -10,11 +10,22 @@ import {
     ShoppingCart01,
     SlashCircle01,
 } from "@untitledui/icons";
-import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import {
+    Area,
+    Bar,
+    CartesianGrid,
+    ComposedChart,
+    LabelList,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
@@ -23,8 +34,23 @@ import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHead
 import { RelatorioFiltersProvider, matchRow, inDateRange, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
-import { EVENT, currencyFormatter, numberFormatter, percentFormatter, parseEventDate } from "../data/event";
-import { COMBOS } from "../data/produtos";
+import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
+
+/* ------------------------------------------------------------------ */
+/*  Hooks                                                             */
+/* ------------------------------------------------------------------ */
+
+function useIsMobile(): boolean {
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const mq = window.matchMedia("(max-width: 768px)");
+        setIsMobile(mq.matches);
+        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+        mq.addEventListener("change", handler);
+        return () => mq.removeEventListener("change", handler);
+    }, []);
+    return isMobile;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Status + meios                                                    */
@@ -68,6 +94,11 @@ interface MeioPagamentoRow {
     pctValor: number;
 }
 
+interface ChartPoint {
+    data: string;
+    quantidade: number;
+    total: number;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Mock data — gerador determinístico de transações                  */
@@ -77,13 +108,13 @@ interface MeioPagamentoRow {
 
 interface Transacao {
     id: string;
-    comboId: string;
+    sessaoId: string;
     dataCriacao: string;
     ultimaAtualizacao: string;
     status: StatusTransacao;
-    combo: string;
-    grupo: string;
-    genero: string;
+    nomeIngresso: string;
+    setor: string;
+    lote: string;
     comprador: string;
     cpf: string;
     telefone: string;
@@ -92,24 +123,34 @@ interface Transacao {
     tipoPagamento: string;
     estado: string;
     cidade: string;
+    operadorVendas: string;
     valor: number;
     cupom: string;
     valorDesconto: number;
     valorFinal: number;
     qtdItem: number;
     passkey: string;
+    pdv: boolean;
     bundle: boolean;
     bundleDinamico: boolean;
 }
 
-// Réveillon Carneiros vende APENAS combos. Cada transação = 1 combo.
-// Peso da escolha proporcional às unidades vendidas de cada combo.
-const CATALOGO = COMBOS.map((c) => ({ combo: c, peso: c.quantidade }));
+// Setores e tipos de ingresso do jogo (Botafogo x Chapecoense). Nome do ingresso = lote = tipo.
+const t = (nome: string, valor: number) => ({ nome, valor, lote: nome });
+const CATALOGO = [
+    { setor: "Leste Superior", peso: 0.382, tipos: [t("Meia-Entrada", 20), t("Inteira", 40), t("Alvinegro", 0)] },
+    { setor: "Oeste Inferior", peso: 0.212, tipos: [t("Meia-Entrada", 50), t("Inteira", 100), t("Acompanhante Glorioso", 40)] },
+    { setor: "Leste Inferior", peso: 0.19, tipos: [t("Meia-Entrada", 40), t("Inteira", 80), t("Alvinegro", 0)] },
+    { setor: "Oeste Superior B", peso: 0.128, tipos: [t("Meia-Entrada", 30), t("Inteira", 60), t("Preto", 24)] },
+    { setor: "3º Andar Leste", peso: 0.062, tipos: [t("Meia-Entrada", 20), t("Inteira", 40)] },
+    { setor: "3º Andar Oeste", peso: 0.013, tipos: [t("Inteira", 40), t("Alvinegro", 0)] },
+    { setor: "Camarote", peso: 0.006, tipos: [t("Inteira", 60)] },
+    { setor: "Sul (Visitante)", peso: 0.004, tipos: [t("Meia-Entrada", 40), t("Inteira", 80)] },
+    { setor: "Tribuna", peso: 0.003, tipos: [t("Futebol", 120)] },
+];
 
-const generoLabel = (g: string) => (g === "MASCULINO" ? "Masculino" : "Feminino");
-
-const PRIMEIROS = ["Adriano", "Mariana", "Pedro", "Camila", "Roberto", "Larissa", "Vinicius", "Davi", "Beatriz", "Gustavo", "Fernanda", "Rafael", "Juliana", "Bruno", "Aline", "Thiago", "Patrícia", "Lucas", "Carolina", "Felipe", "Marcelo", "Isabela", "Renata", "Eduardo", "Tatiana"];
-const SOBRENOMES = ["Albuquerque", "Lopes Ferreira", "Henrique Costa", "Rodrigues", "Santos Júnior", "Almeida", "Marinho da Silva", "Oliveira", "Souza", "Pereira", "Carvalho", "Ribeiro", "Gomes", "Martins", "Araújo", "Barbosa", "Nunes", "Mendes", "Cavalcanti", "Teixeira"];
+const PRIMEIROS = ["Adriano", "Mariana", "Pedro", "Camila", "Roberto", "Larissa", "Vinicius", "Davi", "Beatriz", "Gustavo", "Fernanda", "Rafael", "Juliana", "Bruno", "Aline", "Thiago", "Patrícia", "Lucas", "Carolina", "Felipe"];
+const SOBRENOMES = ["Albuquerque", "Lopes Ferreira", "Henrique Costa", "Rodrigues", "Santos Júnior", "Almeida", "Cayres", "Marinho da Silva", "Oliveira", "Souza", "Pereira", "Carvalho", "Ribeiro", "Gomes", "Martins", "Araújo", "Barbosa", "Nunes"];
 const LOCAIS = [
     { estado: "SP", cidade: "São Paulo", ddd: "11" },
     { estado: "SP", cidade: "Campinas", ddd: "19" },
@@ -118,25 +159,22 @@ const LOCAIS = [
     { estado: "BA", cidade: "Salvador", ddd: "71" },
     { estado: "PR", cidade: "Curitiba", ddd: "41" },
     { estado: "RS", cidade: "Porto Alegre", ddd: "51" },
-    { estado: "PE", cidade: "Recife", ddd: "81" },
-    { estado: "CE", cidade: "Fortaleza", ddd: "85" },
-    { estado: "DF", cidade: "Brasília", ddd: "61" },
-    { estado: "SC", cidade: "Florianópolis", ddd: "48" },
-    { estado: "GO", cidade: "Goiânia", ddd: "62" },
 ];
+const OPERADORES = ["Bilheteria Estádio Nilton Santos", "Loja Oficial Botafogo - Nilton Santos", "Loja Oficial Botafogo - Shopping Rio Sul"];
 const CUPONS = [
-    { cupom: "CARNEIROS10", pct: 0.1 },
-    { cupom: "NIGHT2027", pct: 0.15 },
-    { cupom: "FULLVIP", pct: 0.08 },
+    { cupom: "FOGAO15", pct: 0.15 },
+    { cupom: "GLORIOSO10", pct: 0.1 },
+    { cupom: "ALVINEGRO10", pct: 0.1 },
 ];
-// Meios de pagamento reais do Réveillon (100% online), com pesos plausíveis.
-const MEIOS_PAGAMENTO: { nome: string; peso: number }[] = [
-    { nome: "Pix", peso: 0.548 },
-    { nome: "Cartão de Crédito", peso: 0.312 },
-    { nome: "NuPay", peso: 0.058 },
-    { nome: "Apple Pay", peso: 0.042 },
-    { nome: "Google Pay", peso: 0.026 },
-    { nome: "Cartão de Débito", peso: 0.014 },
+// Meios de pagamento (online) com pesos aproximados do relatório real.
+const MEIOS_PAGAMENTO: { nome: string; peso: number; isento?: boolean }[] = [
+    { nome: "Pix", peso: 0.637 },
+    { nome: "Cartão de Crédito", peso: 0.234 },
+    { nome: "Isento", peso: 0.103, isento: true },
+    { nome: "Apple Pay", peso: 0.014 },
+    { nome: "Google Pay", peso: 0.007 },
+    { nome: "Cartão de Débito", peso: 0.004 },
+    { nome: "Grátis", peso: 0.001, isento: true },
 ];
 
 /** dd/mm/aaaa a partir de um offset (em dias) sobre a data de início de vendas. */
@@ -171,8 +209,7 @@ const transacoes: Transacao[] = (() => {
         return arr[arr.length - 1];
     };
     const rows: Transacao[] = [];
-    // ~820 transações → ~840 itens / ~R$5,2M brutos, coerente com o catálogo.
-    const COUNT = 820;
+    const COUNT = 2400;
     for (let i = 0; i < COUNT; i++) {
         // Data enviesada para o fim da janela (rampa em direção ao evento), com pico no anúncio.
         let dayOffset: number;
@@ -190,15 +227,19 @@ const transacoes: Transacao[] = (() => {
         const status: StatusTransacao =
             statusRoll < 0.86 ? "aprovado" : statusRoll < 0.91 ? "pendente" : statusRoll < 0.96 ? "cancelado" : statusRoll < 0.98 ? "estornado" : "reembolso";
 
-        const combo = pickWeighted(CATALOGO).combo;
-        // Combos são caros → esmagadora maioria compra 1 unidade.
-        const qtdItem = rng() < 0.9 ? 1 : 2;
+        const cat = pickWeighted(CATALOGO);
+        const tipo = pick(cat.tipos);
+        const qtdItem = rng() < 0.82 ? 1 : rng() < 0.7 ? 2 : rng() < 0.7 ? 3 : 4;
 
-        const meio = pickWeighted(MEIOS_PAGAMENTO);
+        // Jogo único; vendas majoritariamente online. Offline (bilheteria) usa dinheiro.
+        const isPdv = rng() < 0.01;
+        const canal = isPdv ? "Offline" : "Online";
+        const meio = isPdv ? { nome: "Dinheiro", peso: 1 } : pickWeighted(MEIOS_PAGAMENTO);
         const tipoPagamento = meio.nome;
+        const isento = "isento" in meio && meio.isento === true;
 
-        const valor = combo.preco * qtdItem;
-        const temCupom = rng() < 0.11;
+        const valor = isento ? 0 : tipo.valor * qtdItem;
+        const temCupom = !isento && rng() < 0.12;
         const cupomDef = temCupom ? pick(CUPONS) : null;
         const valorDesconto = cupomDef ? Math.round(valor * cupomDef.pct * 100) / 100 : 0;
         const valorFinal = Math.round((valor - valorDesconto) * 100) / 100;
@@ -208,30 +249,33 @@ const transacoes: Transacao[] = (() => {
         const email = `${emailUser}${Math.floor(rng() * 90 + 10)}@${pick(["gmail.com", "outlook.com", "hotmail.com", "yahoo.com"])}`;
         const cpf = String(Math.floor(rng() * 9e10 + 1e10));
         const telefone = `+55${local.ddd}9${String(Math.floor(rng() * 9e7 + 1e7))}`;
+        const sessao = pick(EVENT.sessoes);
 
         rows.push({
             id: `${pad(Math.floor(rng() * 9e7), 8)}-${pad(Math.floor(rng() * 9000), 4)}-4${pad(Math.floor(rng() * 900), 3)}-${pad(Math.floor(rng() * 9000), 4)}`,
-            comboId: combo.id,
+            sessaoId: sessao.id,
             dataCriacao: fmtDateTime(created),
             ultimaAtualizacao: fmtDateTime(updated),
             status,
-            combo: combo.nome,
-            grupo: combo.passe,
-            genero: generoLabel(combo.genero),
+            nomeIngresso: tipo.nome,
+            setor: cat.setor,
+            lote: tipo.lote,
             comprador: nome,
             cpf,
             telefone,
             email,
-            canal: "Online",
+            canal,
             tipoPagamento,
             estado: local.estado,
             cidade: local.cidade,
+            operadorVendas: isPdv ? pick(OPERADORES) : "—",
             valor,
             cupom: cupomDef?.cupom ?? "—",
             valorDesconto,
             valorFinal,
             qtdItem,
             passkey: "—",
+            pdv: isPdv,
             bundle: false,
             bundleDinamico: false,
         });
@@ -320,7 +364,6 @@ export function Transacoes() {
                     <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
                         <RelatorioPageHeader
                             title="Transações"
-                            filtroVariante="dropdown"
                             actions={<ExportMenu onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "As transações serão exportadas." })} />}
                         />
                         <TransacoesBody />
@@ -394,13 +437,32 @@ const TransacoesBody = () => {
             .filter(Boolean) as MeioPagamentoRow[];
     }, [filtered]);
 
+    const chartData = useMemo<ChartPoint[]>(() => {
+        const byDay = new Map<number, { d: Date; quantidade: number; total: number }>();
+        for (const t of filtered) {
+            const d = parseEventDate(t.dataCriacao);
+            if (!d) continue;
+            const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+            const acc = byDay.get(key) ?? { d: new Date(key), quantidade: 0, total: 0 };
+            acc.quantidade += t.qtdItem;
+            acc.total += t.valorFinal;
+            byDay.set(key, acc);
+        }
+        return [...byDay.values()]
+            .sort((a, b) => a.d.getTime() - b.d.getTime())
+            .map((x) => ({ data: `${x.d.getDate()}/${x.d.getMonth() + 1}`, quantidade: x.quantidade, total: Math.round(x.total) }));
+    }, [filtered]);
+
     return (
         <>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <TotalTransacionadoCard total={totalFinal} />
             </div>
-            <IngressosValorPorStatusCard rows={statusRows} />
-            <MeioPagamentosCard rows={meiosRows} />
+            <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+                <IngressosValorPorStatusCard rows={statusRows} />
+                <MeioPagamentosCard rows={meiosRows} />
+            </div>
+            <TransacionadoChartCard data={chartData} />
             <ListaTransacoesCard rows={filtered} />
         </>
     );
@@ -435,50 +497,170 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
         );
     }
     const totalValor = rows.reduce((s, r) => s + r.total, 0);
+    const pctOf = (v: number) => (totalValor === 0 ? 0 : Math.round((v / totalValor) * 100));
     return (
         <Card title="Quantidade de Ingressos e Valor por status">
-            <div className="flex flex-col gap-6 px-4 py-5 md:flex-row md:items-center md:gap-8 md:px-5">
-                <div className="flex shrink-0 flex-col items-center gap-2">
-                    <div className="size-44">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie data={rows} dataKey="total" innerRadius="65%" outerRadius="100%" paddingAngle={2} startAngle={90} endAngle={-270} stroke="none" isAnimationActive={false}>
-                                    {rows.map((r) => (
-                                        <Cell key={r.id} fill={STATUS_FILL[r.status]} />
-                                    ))}
-                                </Pie>
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <span className="text-xs font-medium text-tertiary">Distribuição por valor</span>
+            <div className="flex flex-col gap-6 px-4 py-5 md:px-5">
+                {/* Barra horizontal segmentada por status (largura ∝ valor) */}
+                <div className="flex w-full items-start gap-1">
+                    {rows.map((row) => (
+                        <div key={row.id} className="flex min-w-[52px] flex-col gap-1.5" style={{ flexGrow: row.total, flexBasis: 0 }}>
+                            <div className="h-10 rounded-md" style={{ backgroundColor: STATUS_FILL[row.status] }} />
+                            <span className="text-xs font-semibold text-secondary tabular-nums">{pctOf(row.total)}%</span>
+                        </div>
+                    ))}
                 </div>
 
-                <ul className="flex w-full flex-1 flex-col divide-y divide-secondary">
-                    {rows.map((row) => {
-                        const meta = STATUS_META[row.status];
-                        const pct = totalValor === 0 ? 0 : Math.round((row.total / totalValor) * 100);
-                        return (
-                            <li key={row.id} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:gap-4">
-                                <div className="flex min-w-0 items-center gap-3 md:flex-1">
-                                    <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: STATUS_FILL[row.status] }} />
-                                    <div className="flex min-w-0 flex-1 flex-col">
-                                        <span className="text-sm font-semibold text-primary">{meta.label}</span>
-                                        <span className="text-xs text-tertiary">{pct}% · {row.canal}</span>
+                {/* Tabela de itens */}
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr className="border-b border-secondary">
+                            <th className="py-2 pr-4 text-left text-xs font-semibold text-tertiary" />
+                            <th className="px-4 py-2 text-right text-xs font-semibold text-tertiary">Total ingressos</th>
+                            <th className="py-2 pl-4 text-right text-xs font-semibold text-tertiary">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-secondary">
+                        {rows.map((row) => (
+                            <tr key={row.id}>
+                                <td className="py-3 pr-4">
+                                    <div className="flex min-w-0 items-center gap-2.5">
+                                        <span aria-hidden="true" className="size-3 shrink-0 rounded-full" style={{ backgroundColor: STATUS_FILL[row.status] }} />
+                                        <span className="shrink-0 text-sm font-semibold text-primary tabular-nums">{pctOf(row.total)}%</span>
+                                        <span className="truncate text-sm text-secondary">{STATUS_META[row.status].label}</span>
                                     </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 md:flex md:gap-8">
-                                    <StatBlock className="md:w-32" label="Total ingressos" value={numberFormatter.format(row.totalIngressos)} />
-                                    <StatBlock className="md:w-36" label="Total" value={currencyFormatter.format(row.total)} />
-                                </div>
-                            </li>
-                        );
-                    })}
-                </ul>
+                                </td>
+                                <td className="px-4 py-3 text-right text-sm font-medium text-primary tabular-nums">{numberFormatter.format(row.totalIngressos)}</td>
+                                <td className="py-3 pl-4 text-right text-sm font-semibold text-primary tabular-nums">{currencyFormatter.format(row.total)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </Card>
     );
 };
 
+/* ------------------------------------------------------------------ */
+/*  Chart                                                             */
+/* ------------------------------------------------------------------ */
+
+interface ChartTooltipPayloadEntry {
+    dataKey: string;
+    name: string;
+    value: number | string;
+    color: string;
+}
+
+const ChartTooltip = ({ active, label, payload }: { active?: boolean; label?: string; payload?: ChartTooltipPayloadEntry[] }) => {
+    if (!active || !payload || payload.length === 0) return null;
+    const ordered = [...payload].sort((a, b) => (a.dataKey === "total" ? -1 : b.dataKey === "total" ? 1 : 0));
+    return (
+        <div className="rounded-lg bg-primary-solid px-3 py-2.5 shadow-xl ring-1 ring-secondary_alt">
+            <p className="mb-1.5 text-sm font-semibold text-white">{label}</p>
+            <ul className="flex flex-col gap-1">
+                {ordered.map((entry) => {
+                    const isMonetary = entry.dataKey === "total";
+                    const formatted = isMonetary ? currencyFormatter.format(Number(entry.value)) : numberFormatter.format(Number(entry.value));
+                    return (
+                        <li key={entry.dataKey} className="flex items-center gap-2 text-xs">
+                            <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: entry.color }} />
+                            <span className="text-white/70">{entry.name}:</span>
+                            <span className="font-semibold text-white">{formatted}</span>
+                        </li>
+                    );
+                })}
+            </ul>
+        </div>
+    );
+};
+
+const ChartCursor = ({ points, top = 0, height = 0 }: { points?: { x: number; y: number }[]; top?: number; height?: number }) => {
+    if (!points || points.length === 0) return null;
+    const x = points[0].x;
+    return <line x1={x} x2={x} y1={top} y2={top + height} stroke="var(--color-border-primary)" strokeWidth={1} />;
+};
+
+const QTD_COLOR = "var(--color-utility-blue-400)";
+const TOTAL_COLOR = "var(--color-bg-quaternary)";
+
+const TransacionadoChartCard = ({ data }: { data: ChartPoint[] }) => {
+    const isMobile = useIsMobile();
+    const fontSize = isMobile ? 10 : 11;
+    const [metric, setMetric] = useState<"total" | "quantidade">("total");
+
+    return (
+        <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
+            <header className="flex flex-col gap-3 border-b border-secondary px-5 pt-4 pb-4 md:flex-row md:items-start md:justify-between">
+                <div className="flex flex-col gap-1">
+                    <h3 className="text-md font-semibold text-primary">Total transacionado e número de ingressos</h3>
+                    <p className="text-sm text-tertiary">Distribuição diária de transações e ingressos vendidos</p>
+                </div>
+                <ButtonGroup
+                    size="sm"
+                    selectedKeys={[metric]}
+                    onSelectionChange={(keys: Set<React.Key> | "all") => {
+                        if (keys === "all") return;
+                        const next = [...keys][0] as "total" | "quantidade" | undefined;
+                        if (next) setMetric(next);
+                    }}
+                >
+                    <ButtonGroupItem id="total">Total</ButtonGroupItem>
+                    <ButtonGroupItem id="quantidade">Quantidade</ButtonGroupItem>
+                </ButtonGroup>
+            </header>
+
+            <div className="h-[280px] w-full px-2 pt-5 pb-2 md:h-[380px] md:px-4">
+                <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={data} margin={{ top: isMobile ? 16 : 28, right: isMobile ? 8 : 16, bottom: isMobile ? 0 : 4, left: isMobile ? 0 : 4 }}>
+                        <defs>
+                            <linearGradient id="qtdAreaFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor={QTD_COLOR} stopOpacity={0.28} />
+                                <stop offset="80%" stopColor={QTD_COLOR} stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid stroke="var(--color-border-secondary)" strokeDasharray="2 4" strokeOpacity={0.6} vertical={false} />
+                        <XAxis
+                            dataKey="data"
+                            tick={{ fill: "var(--color-text-tertiary)", fontSize }}
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={10}
+                            interval={isMobile ? "preserveStartEnd" : "preserveStart"}
+                            minTickGap={isMobile ? 24 : 16}
+                        />
+                        <YAxis yAxisId="total" orientation="left" tickFormatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`} tick={{ fill: "var(--color-text-tertiary)", fontSize }} tickLine={false} axisLine={false} tickMargin={8} width={isMobile ? 44 : 56} />
+                        <YAxis yAxisId="qtd" orientation="right" tickFormatter={(v) => numberFormatter.format(Number(v))} tick={{ fill: "var(--color-text-tertiary)", fontSize }} tickLine={false} axisLine={false} tickMargin={8} width={isMobile ? 36 : 44} />
+                        <Tooltip content={<ChartTooltip />} cursor={<ChartCursor />} />
+                        <Bar yAxisId="total" dataKey="total" name="Total Transacionado" fill={TOTAL_COLOR} fillOpacity={0.7} radius={[3, 3, 0, 0]} maxBarSize={isMobile ? 10 : 18}>
+                            {metric === "total" && data.length <= 20 && (
+                                <LabelList dataKey="total" position="top" fill="var(--color-text-primary)" fontSize={isMobile ? 9 : 11} fontWeight={600} offset={isMobile ? 6 : 8} formatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`} />
+                            )}
+                        </Bar>
+                        <Area yAxisId="qtd" type="monotone" dataKey="quantidade" name="Quantidade de Ingressos" stroke={QTD_COLOR} strokeWidth={3} fill="url(#qtdAreaFill)" dot={false} activeDot={{ r: 6, fill: QTD_COLOR, stroke: "var(--color-bg-primary)", strokeWidth: 2 }}>
+                            {metric === "quantidade" && data.length <= 20 && (
+                                <LabelList dataKey="quantidade" position="top" fill="var(--color-text-primary)" fontSize={isMobile ? 9 : 11} fontWeight={600} offset={isMobile ? 16 : 30} formatter={(v) => numberFormatter.format(Number(v))} />
+                            )}
+                        </Area>
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </div>
+
+            <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary px-5 py-3">
+                <div className="flex flex-wrap items-center gap-4 text-xs text-tertiary">
+                    <span className="flex items-center gap-1.5">
+                        <span aria-hidden="true" className="size-2.5 rounded-sm" style={{ background: TOTAL_COLOR }} />
+                        Total Transacionado
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                        <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: QTD_COLOR }} />
+                        Quantidade de Ingressos
+                    </span>
+                </div>
+            </footer>
+        </section>
+    );
+};
 
 /* ------------------------------------------------------------------ */
 /*  Meio de Pagamentos                                                */
@@ -498,43 +680,46 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
         );
     }
     const fillFor = (id: string) => MEIO_FILL[id] ?? "var(--color-utility-gray-400)";
+    const totalValor = rows.reduce((s, r) => s + r.valor, 0);
+    const pctOf = (v: number) => (totalValor === 0 ? 0 : Math.round((v / totalValor) * 100));
     return (
         <Card title="Meio de Pagamentos">
-            <div className="flex flex-col gap-6 px-4 py-5 md:flex-row md:items-center md:gap-8 md:px-5">
-                <div className="flex shrink-0 flex-col items-center gap-2">
-                    <div className="size-44">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie data={rows} dataKey="valor" innerRadius="65%" outerRadius="100%" paddingAngle={2} startAngle={90} endAngle={-270} stroke="none" isAnimationActive={false}>
-                                    {rows.map((r) => (
-                                        <Cell key={r.id} fill={fillFor(r.id)} />
-                                    ))}
-                                </Pie>
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <span className="text-xs font-medium text-tertiary">Distribuição por valor</span>
+            <div className="flex flex-col gap-6 px-4 py-5 md:px-5">
+                {/* Barra horizontal segmentada por meio (largura ∝ valor) */}
+                <div className="flex w-full items-start gap-1">
+                    {rows.map((row) => (
+                        <div key={row.id} className="flex min-w-[52px] flex-col gap-1.5" style={{ flexGrow: row.valor, flexBasis: 0 }}>
+                            <div className="h-10 rounded-md" style={{ backgroundColor: fillFor(row.id) }} />
+                            <span className="text-xs font-semibold text-secondary tabular-nums">{pctOf(row.valor)}%</span>
+                        </div>
+                    ))}
                 </div>
 
-                <ul className="flex w-full flex-1 flex-col divide-y divide-secondary">
-                    {rows.map((row) => (
-                        <li key={row.id} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:gap-4">
-                            <div className="flex min-w-0 items-center gap-3 md:flex-1">
-                                <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: fillFor(row.id) }} />
-                                <row.icon aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
-                                <div className="flex min-w-0 flex-1 flex-col">
-                                    <span className="text-sm font-semibold text-primary">{row.nome}</span>
-                                    <span className="text-xs text-tertiary">{percentFormatter.format(row.pctValor)} do valor</span>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-4 md:flex md:gap-8">
-                                <StatBlock className="md:w-28" label="Transações" value={`${numberFormatter.format(row.quantidadeTransacoes)} · ${percentFormatter.format(row.pctQtdTransacoes)}`} />
-                                <StatBlock className="md:w-28" label="Ingressos" value={`${numberFormatter.format(row.quantidadeIngressos)} · ${percentFormatter.format(row.pctQtdIngressos)}`} />
-                                <StatBlock className="md:w-36" label="Valor" value={currencyFormatter.format(row.valor)} />
-                            </div>
-                        </li>
-                    ))}
-                </ul>
+                {/* Tabela de itens */}
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr className="border-b border-secondary">
+                            <th className="py-2 pr-4 text-left text-xs font-semibold text-tertiary" />
+                            <th className="px-4 py-2 text-right text-xs font-semibold text-tertiary">Total ingressos</th>
+                            <th className="py-2 pl-4 text-right text-xs font-semibold text-tertiary">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-secondary">
+                        {rows.map((row) => (
+                            <tr key={row.id}>
+                                <td className="py-3 pr-4">
+                                    <div className="flex min-w-0 items-center gap-2.5">
+                                        <span aria-hidden="true" className="size-3 shrink-0 rounded-full" style={{ backgroundColor: fillFor(row.id) }} />
+                                        <span className="shrink-0 text-sm font-semibold text-primary tabular-nums">{pctOf(row.valor)}%</span>
+                                        <span className="truncate text-sm text-secondary">{row.nome}</span>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3 text-right text-sm font-medium text-primary tabular-nums">{numberFormatter.format(row.quantidadeIngressos)}</td>
+                                <td className="py-3 pl-4 text-right text-sm font-semibold text-primary tabular-nums">{currencyFormatter.format(row.valor)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </Card>
     );
@@ -699,11 +884,4 @@ const Card = ({ title, children, headerRight }: { title: ReactNode; children: Re
         </header>
         {children}
     </section>
-);
-
-const StatBlock = ({ label, value, className }: { label: string; value: string; className?: string }) => (
-    <div className={cx("flex flex-col gap-0.5", className)}>
-        <span className="text-xs text-tertiary">{label}</span>
-        <span className="text-sm font-medium text-primary tabular-nums">{value}</span>
-    </div>
 );

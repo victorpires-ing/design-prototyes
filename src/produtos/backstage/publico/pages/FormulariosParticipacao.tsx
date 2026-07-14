@@ -71,7 +71,7 @@ export function FormulariosParticipacao() {
     };
 
     return (
-        <BackstageLayout showEventContext={false} activeProducer="publico">
+        <BackstageLayout showEventContext={false} showLayoutSwitcher={false} activeProducer="publico">
             <div className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-6">
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">

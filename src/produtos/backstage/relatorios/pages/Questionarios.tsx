@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay, type Key, type Selection } from "react-aria-components";
-import { ChevronDown, ChevronRight, Download01, Edit01, FilterLines, Paperclip, Plus, SearchLg, Ticket01, XClose } from "@untitledui/icons";
+import { ChevronDown, ChevronRight, Download01, FilterLines, Paperclip, Plus, SearchLg, Ticket01, XClose } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -796,7 +796,11 @@ function RespostaEditavel({ pergunta, linha, onSave }: { pergunta: QuestionarioP
                         Baixar
                     </Button>
                 ) : (
-                    podeEditar && modo === "view" && <ButtonUtility size="xs" color="tertiary" icon={Edit01} tooltip="Editar resposta" onClick={iniciarEdicao} />
+                    podeEditar && modo === "view" && (
+                        <Button size="sm" color="link-gray" onClick={iniciarEdicao}>
+                            Editar
+                        </Button>
+                    )
                 )}
             </div>
 

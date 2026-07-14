@@ -96,6 +96,9 @@ import { SolicitacaoBeneficioPcd } from '../produtos/landing-pages/sao-silvestre
 import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
 import { TransferirInscricao as CarteiraWebTransferir } from '../produtos/carteira-web/pages/TransferirInscricao';
 import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/SolicitacoesInbox';
+import { Publico } from '../produtos/backstage/publico/pages/Publico';
+import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
+import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -214,6 +217,9 @@ export default function App() {
         <Route path="/carteira-web" element={<CarteiraWeb />} />
         <Route path="/carteira-web/transferir" element={<CarteiraWebTransferir />} />
         <Route path="/aprovacoes/solicitacoes" element={<SolicitacoesInbox />} />
+        <Route path="/backstage/publico" element={<Publico />} />
+        <Route path="/backstage/publico/formularios" element={<FormulariosParticipacao />} />
+        <Route path="/backstage/publico/solicitacoes" element={<SolicitacoesParticipacao />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </PesquisasProvider>

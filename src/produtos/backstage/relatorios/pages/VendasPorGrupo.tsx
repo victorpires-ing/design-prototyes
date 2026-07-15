@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, CurrencyDollarCircle, CursorClick02, Receipt } from "@untitledui/icons";
+import { ChevronDown, CoinsStacked01, CurrencyDollarCircle, CursorClick02, Package, Receipt, Tag01 } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -8,10 +8,11 @@ import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
-import { RelatorioFiltersProvider, dateRangeFraction, useRelatorioFilters } from "../components/relatorio-filters";
+import { RelatorioFiltersProvider, dateRangeFraction, inDateRange, useRelatorioFilters } from "../components/relatorio-filters";
 import { SortableHeader } from "../components/SortableHeader";
+import { TransacionadoChartCard, type ChartPoint } from "../components/TransacionadoChart";
 import { useSortableTable } from "../utils/useSortableTable";
-import { EVENT, currencyFormatter, numberFormatter } from "../data/event";
+import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
 
 /* ------------------------------------------------------------------ */
 /*  Tipos                                                             */
@@ -42,6 +43,15 @@ interface IngressoPorSetorRow {
     estoque: number;
 }
 
+interface ComboLoteRow {
+    id: string;
+    lote: string;
+    quantidade: number;
+    valorUnitario: number;
+    gmv: number;
+    gmvComDesconto: number;
+}
+
 interface ComboRow {
     id: string;
     nome: string;
@@ -49,6 +59,7 @@ interface ComboRow {
     valorUnitario: number;
     gmv: number;
     gmvComDesconto: number;
+    lotes?: ComboLoteRow[];
 }
 
 interface ProdutoRow {
@@ -332,8 +343,21 @@ const mixReceita: MixReceitaItem[] = [
     { id: "produtos", nome: "Produtos", quantidade: 498, gmv: 80120.0, gmvComDesconto: 79540.0, fill: "var(--color-utility-orange-400)" },
 ];
 
-const VALOR_TOTAL_BASE = 2523733.99 + 1412183.4 + 79540.0;
+const VALOR_TOTAL_BASE = 2523733.99 + 1412183.4 + 79540.0; // líquido (c/ desconto)
+const VALOR_BRUTO_BASE = 2532994.0 + 1415534.0 + 80120.0; // bruto (s/ desconto)
 const TOTAL_ITENS_BASE = 12276 + 2836 + 498;
+
+// Distribuição diária das vendas na janela do evento (14–21/06/2026). Pesos somam ~1.
+const DIA_BASE = [
+    { dia: "14/06/2026", label: "14/6", w: 0.05 },
+    { dia: "15/06/2026", label: "15/6", w: 0.07 },
+    { dia: "16/06/2026", label: "16/6", w: 0.09 },
+    { dia: "17/06/2026", label: "17/6", w: 0.11 },
+    { dia: "18/06/2026", label: "18/6", w: 0.14 },
+    { dia: "19/06/2026", label: "19/6", w: 0.19 },
+    { dia: "20/06/2026", label: "20/6", w: 0.17 },
+    { dia: "21/06/2026", label: "21/6", w: 0.18 },
+];
 
 /* ------------------------------------------------------------------ */
 /*  Drill-down tree (Data = sessão → Tipo → Setor → Ingresso → Lote)  */
@@ -486,7 +510,22 @@ const VendasBody = () => {
             gmvComDesconto: m.gmvComDesconto * vendaFactor,
         }));
 
-        const combosView: ComboRow[] = combos.map((c) => ({ ...c, quantidade: Math.round(c.quantidade * vendaFactor), gmv: c.gmv * vendaFactor, gmvComDesconto: c.gmvComDesconto * vendaFactor }));
+        const combosView: ComboRow[] = combos.map((c) => {
+            const quantidade = Math.round(c.quantidade * vendaFactor);
+            const gmv = c.gmv * vendaFactor;
+            // Divide em 2 lotes (60/40); 1º lote com pequeno desconto para ilustrar a coluna Desconto.
+            const q1 = Math.round(quantidade * 0.6);
+            const q2 = quantidade - q1;
+            const gmv1 = gmv * 0.6;
+            const gmv2 = gmv * 0.4;
+            const liq1 = gmv1 * 0.92; // 8% de desconto no 1º lote
+            const liq2 = gmv2;
+            const lotes: ComboLoteRow[] = [
+                { id: `${c.id}-l1`, lote: "1º Lote", quantidade: q1, valorUnitario: q1 ? gmv1 / q1 : 0, gmv: gmv1, gmvComDesconto: liq1 },
+                { id: `${c.id}-l2`, lote: "2º Lote", quantidade: q2, valorUnitario: q2 ? gmv2 / q2 : 0, gmv: gmv2, gmvComDesconto: liq2 },
+            ].filter((l) => l.quantidade > 0);
+            return { ...c, quantidade, gmv, gmvComDesconto: liq1 + liq2, valorUnitario: quantidade ? gmv / quantidade : 0, lotes };
+        });
         const produtosView: ProdutoRow[] = produtos.map((p) => ({ ...p, quantidade: Math.round(p.quantidade * dateFraction), gmv: p.gmv * dateFraction, gmvComDesconto: p.gmvComDesconto * dateFraction }));
         const cuponsView: CupomRow[] = cupons.map((c) => ({
             ...c,
@@ -502,19 +541,33 @@ const VendasBody = () => {
         const drillView = scaleTree(drillFiltered, dateFraction);
         const produtosRootView: TreeNode = { ...produtosRootNode, ...scaleTree([produtosRootNode], dateFraction)[0] };
 
-        const valorTotal = VALOR_TOTAL_BASE * vendaFactor;
+        const valorTotal = VALOR_BRUTO_BASE * vendaFactor;
+        const valorTotalDesconto = VALOR_TOTAL_BASE * vendaFactor;
         const totalItens = Math.round(TOTAL_ITENS_BASE * vendaFactor);
 
-        return { setoresView, ingressosPorSetorView, mixView, combosView, produtosView, cuponsView, drillView, produtosRootView, valorTotal, totalItens };
+        const chartData: ChartPoint[] = DIA_BASE.filter((d) => inDateRange(parseEventDate(d.dia), dateRange)).map((d) => ({
+            data: d.label,
+            total: Math.round(VALOR_BRUTO_BASE * sessionWeight * d.w),
+            quantidade: Math.round(TOTAL_ITENS_BASE * sessionWeight * d.w),
+        }));
+
+        return { setoresView, ingressosPorSetorView, mixView, combosView, produtosView, cuponsView, drillView, produtosRootView, valorTotal, valorTotalDesconto, totalItens, chartData };
     }, [dateRange, sessao]);
 
     return (
         <>
-            <MetricsRow valorTotal={view.valorTotal} totalItens={view.totalItens} setores={view.setoresView} />
+            <MetricsRow valorTotal={view.valorTotal} valorTotalDesconto={view.valorTotalDesconto} totalItens={view.totalItens} setores={view.setoresView} />
+            <TransacionadoChartCard
+                data={view.chartData}
+                title="Total transacionado e número de ingressos"
+                subtitle="Distribuição diária de transações e ingressos vendidos"
+            />
             <MixReceitaCard items={view.mixView} />
             <DrillDownGmvCard tree={view.drillView} produtosRoot={view.produtosRootView} />
-            <OcupacaoPorSetorCard setores={view.setoresView} />
-            <QuantidadeIngressosPorSetorCard rows={view.ingressosPorSetorView} />
+            <OcupacaoPorSetorCard rows={view.ingressosPorSetorView} />
+            <ComboCard rows={view.combosView} />
+            <ProdutosCard rows={view.produtosView} />
+            <TicketsAvulsoCard rows={view.ingressosPorSetorView} />
             <IngressosComCupomCard cupons={view.cuponsView} />
         </>
     );
@@ -524,14 +577,29 @@ const VendasBody = () => {
 /*  Metrics row                                                       */
 /* ------------------------------------------------------------------ */
 
-const MetricsRow = ({ valorTotal, totalItens, setores: setoresView }: { valorTotal: number; totalItens: number; setores: SetorRow[] }) => {
+const MetricsRow = ({
+    valorTotal,
+    valorTotalDesconto,
+    totalItens,
+    setores: setoresView,
+}: {
+    valorTotal: number;
+    valorTotalDesconto: number;
+    totalItens: number;
+    setores: SetorRow[];
+}) => {
+    const desconto = Math.max(0, valorTotal - valorTotalDesconto);
     const ticketMedio = totalItens === 0 ? 0 : valorTotal / totalItens;
     const totalEstoque = setoresView.reduce((s, x) => s + x.estoque, 0);
     const totalVendido = setoresView.reduce((s, x) => s + x.vendido, 0);
+    const cardClass = "flex-1 md:min-w-[320px] [&_p+div]:hidden";
     return (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <MetricsIcon03 icon={CurrencyDollarCircle} title={currencyFormatter.format(valorTotal)} subtitle="Valor total" change={null} changeTrend="positive" actions={false} className="flex-1 md:min-w-[320px] [&_p+div]:hidden" />
-            <MetricsIcon03 icon={Receipt} title={currencyFormatter.format(ticketMedio)} subtitle="Ticket médio" change={null} changeTrend="positive" actions={false} className="flex-1 md:min-w-[320px] [&_p+div]:hidden" />
+            <MetricsIcon03 icon={CurrencyDollarCircle} title={currencyFormatter.format(valorTotal)} subtitle="Valor total" change={null} changeTrend="positive" actions={false} className={cardClass} />
+            <MetricsIcon03 icon={CoinsStacked01} title={currencyFormatter.format(valorTotalDesconto)} subtitle="Valor total c/ desconto" change={null} changeTrend="positive" actions={false} className={cardClass} />
+            <MetricsIcon03 icon={Tag01} title={currencyFormatter.format(desconto)} subtitle="Desconto" change={null} changeTrend="positive" actions={false} className={cardClass} />
+            <MetricsIcon03 icon={Receipt} title={currencyFormatter.format(ticketMedio)} subtitle="Ticket médio" change={null} changeTrend="positive" actions={false} className={cardClass} />
+            <MetricsIcon03 icon={Package} title={numberFormatter.format(totalItens)} subtitle="Quantidade de itens" change={null} changeTrend="positive" actions={false} className={cardClass} />
             <OcupacaoMetric totalEstoque={totalEstoque} totalVendido={totalVendido} />
         </div>
     );
@@ -921,10 +989,60 @@ const DrillDownGmvCard = ({ tree, produtosRoot }: { tree: TreeNode[]; produtosRo
 /*  Ocupação por setor                                                */
 /* ------------------------------------------------------------------ */
 
-const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] }) => {
-    const [expanded, setExpanded] = useState<Set<string>>(new Set(["leste-superior"]));
+interface OcuLote {
+    id: string;
+    lote: string;
+    estoque: number;
+    ingressos: number;
+}
+interface OcuItem {
+    id: string;
+    item: string;
+    estoque: number;
+    ingressos: number;
+    lotes: OcuLote[];
+}
+interface OcuGrupo {
+    id: string;
+    grupo: string;
+    estoque: number;
+    ingressos: number;
+    itens: OcuItem[];
+}
 
-    const toggleExpanded = (id: string) =>
+const OcupacaoPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[] }) => {
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+    const grupos = useMemo<OcuGrupo[]>(() => {
+        const gMap = new Map<string, { grupo: string; itens: Map<string, OcuLote[]> }>();
+        rows.forEach((row) => {
+            const lote: OcuLote = { id: row.id, lote: row.lote, estoque: row.estoque, ingressos: row.vendidos };
+            const g = gMap.get(row.setor) ?? { grupo: row.setor, itens: new Map<string, OcuLote[]>() };
+            const arr = g.itens.get(row.tipoIngresso) ?? [];
+            arr.push(lote);
+            g.itens.set(row.tipoIngresso, arr);
+            gMap.set(row.setor, g);
+        });
+        return Array.from(gMap.values())
+            .map((g) => {
+                const itens: OcuItem[] = Array.from(g.itens.entries())
+                    .map(([item, lotes]) => ({
+                        id: `${g.grupo}|${item}`,
+                        item,
+                        estoque: lotes.reduce((s, x) => s + x.estoque, 0),
+                        ingressos: lotes.reduce((s, x) => s + x.ingressos, 0),
+                        lotes: [...lotes].sort((a, b) => b.ingressos - a.ingressos),
+                    }))
+                    .sort((a, b) => b.ingressos - a.ingressos);
+                const ingressos = itens.reduce((s, x) => s + x.ingressos, 0);
+                // Estoque do grupo = capacidade física (SETOR_CAP); fallback p/ soma dos itens.
+                const estoque = SETOR_CAP[g.grupo] ?? itens.reduce((s, x) => s + x.estoque, 0);
+                return { id: g.grupo, grupo: g.grupo, estoque, ingressos, itens };
+            })
+            .sort((a, b) => b.ingressos - a.ingressos);
+    }, [rows]);
+
+    const toggle = (id: string) =>
         setExpanded((prev) => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
@@ -932,96 +1050,106 @@ const OcupacaoPorSetorCard = ({ setores: setoresView }: { setores: SetorRow[] })
             return next;
         });
 
-    const accessors = useMemo(
-        () => ({ nome: (s: SetorRow) => s.nome, estoque: (s: SetorRow) => s.estoque, vendido: (s: SetorRow) => s.vendido, ocupacao: (s: SetorRow) => (s.estoque === 0 ? 0 : s.vendido / s.estoque) }),
-        [],
-    );
-    const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(setoresView as unknown as Record<string, unknown>[], accessors as Partial<Record<string, (r: Record<string, unknown>) => string | number>>, { key: "vendido", dir: "desc" });
-    const sortedSetores = sorted as unknown as SetorRow[];
-
     return (
         <Card title="Ocupação por grupo">
-            <table className="w-full table-fixed border-collapse">
-                <colgroup>
-                    <col className="w-10 md:w-12" />
-                    <col className="w-[38%] md:w-auto" />
-                    <col className="hidden md:table-column" />
-                    <col className="hidden md:table-column" />
-                    <col />
-                </colgroup>
-                <thead className="sticky top-0 z-10 bg-secondary">
-                    <tr className="border-b border-secondary bg-secondary text-left">
-                        <th className="px-2 py-3 md:px-4" aria-hidden="true" />
-                        <th className="px-4 py-3 text-sm font-semibold text-tertiary">
-                            <SortableHeader label="Grupo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        </th>
-                        <th className="hidden px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">
-                            <SortableHeader label="Estoque" align="right" sortKey="estoque" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        </th>
-                        <th className="hidden px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">
-                            <SortableHeader label="Vendido" align="right" sortKey="vendido" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        </th>
-                        <th className="px-4 py-3 text-sm font-semibold text-tertiary">
-                            <SortableHeader label="Taxa de ocupação" sortKey="ocupacao" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {sortedSetores.map((setor, i) => {
-                        const isExpanded = expanded.has(setor.id);
-                        const hasIngressos = !!setor.ingressos?.length;
-                        const isLast = i === sortedSetores.length - 1;
-                        return (
-                            <Fragment key={setor.id}>
-                                <tr
-                                    role={hasIngressos ? "button" : undefined}
-                                    tabIndex={hasIngressos ? 0 : undefined}
-                                    aria-expanded={hasIngressos ? isExpanded : undefined}
-                                    onClick={hasIngressos ? () => toggleExpanded(setor.id) : undefined}
-                                    onKeyDown={
-                                        hasIngressos
-                                            ? (e) => {
-                                                  if (e.key === "Enter" || e.key === " ") {
-                                                      e.preventDefault();
-                                                      toggleExpanded(setor.id);
-                                                  }
-                                              }
-                                            : undefined
-                                    }
-                                    className={cx("transition duration-100 ease-linear", hasIngressos && "cursor-pointer hover:bg-primary_hover", !isLast && !isExpanded && "border-b border-secondary", isExpanded && "border-b border-secondary")}
-                                >
-                                    <td className="px-2 py-4 md:px-4">{hasIngressos && <ChevronDown aria-hidden="true" className={cx("size-4 text-fg-quaternary transition-transform duration-150", isExpanded && "rotate-180")} />}</td>
-                                    <td className="px-4 py-4 text-sm text-primary">
-                                        <span className="line-clamp-2">{setor.nome}</span>
-                                    </td>
-                                    <td className="hidden px-4 py-4 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(setor.estoque)}</td>
-                                    <td className="hidden px-4 py-4 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(setor.vendido)}</td>
-                                    <td className="px-4 py-4">
-                                        <OccupancyBar value={setor.vendido} total={setor.estoque} />
-                                    </td>
-                                </tr>
-                                {isExpanded &&
-                                    setor.ingressos?.map((ingresso, j, arr) => {
-                                        const isLastIngresso = j === arr.length - 1;
-                                        return (
-                                            <tr key={ingresso.id} className={cx("bg-secondary", isLastIngresso && !isLast && "border-b border-secondary")}>
-                                                <td className="px-2 py-3 md:px-4" />
-                                                <td className="px-4 py-3 pl-10 text-sm text-secondary">
-                                                    <span className="line-clamp-2">{ingresso.nome}</span>
-                                                </td>
-                                                <td className="hidden px-4 py-3 md:table-cell" />
-                                                <td className="hidden px-4 py-3 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(ingresso.vendido)}</td>
-                                                <td className="px-4 py-3">
-                                                    <OccupancyBar value={ingresso.vendido} total={setor.estoque} />
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                            </Fragment>
-                        );
-                    })}
-                </tbody>
-            </table>
+            <div className="overflow-x-auto overflow-y-clip">
+                <table className="w-full table-fixed border-collapse">
+                    <colgroup>
+                        <col className="w-[46%] md:w-auto" />
+                        <col className="hidden md:table-column" />
+                        <col className="hidden md:table-column" />
+                        <col />
+                    </colgroup>
+                    <thead className="bg-secondary">
+                        <tr className="border-b border-secondary text-left">
+                            <th className="px-4 py-3 text-sm font-semibold text-tertiary">Grupo • Ingresso • Lote</th>
+                            <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Estoque</th>
+                            <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Ingressos</th>
+                            <th className="px-4 py-3 text-sm font-semibold text-tertiary">Ocupação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {grupos.map((grupo) => {
+                            const gExp = expanded.has(grupo.id);
+                            return (
+                                <Fragment key={grupo.id}>
+                                    <tr
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-expanded={gExp}
+                                        onClick={() => toggle(grupo.id)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                toggle(grupo.id);
+                                            }
+                                        }}
+                                        className="cursor-pointer border-b border-secondary bg-primary transition duration-100 ease-linear hover:bg-primary_hover"
+                                    >
+                                        <td className="py-3.5 pr-4 text-sm" style={{ paddingLeft: 16 }}>
+                                            <span className="flex items-center gap-2">
+                                                <ChevronDown aria-hidden="true" className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", gExp && "rotate-180")} />
+                                                <span className="line-clamp-2 font-bold text-primary">{grupo.grupo}</span>
+                                            </span>
+                                        </td>
+                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-secondary md:table-cell">{numberFormatter.format(grupo.estoque)}</td>
+                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-semibold text-primary md:table-cell">{numberFormatter.format(grupo.ingressos)}</td>
+                                        <td className="px-4 py-3.5">
+                                            <OccupancyBar value={grupo.ingressos} total={grupo.estoque} />
+                                        </td>
+                                    </tr>
+                                    {gExp &&
+                                        grupo.itens.map((item) => {
+                                            const iExp = expanded.has(item.id);
+                                            return (
+                                                <Fragment key={item.id}>
+                                                    <tr
+                                                        role="button"
+                                                        tabIndex={0}
+                                                        aria-expanded={iExp}
+                                                        onClick={() => toggle(item.id)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter" || e.key === " ") {
+                                                                e.preventDefault();
+                                                                toggle(item.id);
+                                                            }
+                                                        }}
+                                                        className="cursor-pointer border-b border-secondary transition duration-100 ease-linear hover:bg-primary_hover"
+                                                    >
+                                                        <td className="py-3.5 pr-4 text-sm" style={{ paddingLeft: 40 }}>
+                                                            <span className="flex items-center gap-2">
+                                                                <ChevronDown aria-hidden="true" className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", iExp && "rotate-180")} />
+                                                                <span className="line-clamp-2 font-semibold text-secondary">{item.item}</span>
+                                                            </span>
+                                                        </td>
+                                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(item.estoque)}</td>
+                                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-secondary md:table-cell">{numberFormatter.format(item.ingressos)}</td>
+                                                        <td className="px-4 py-3.5">
+                                                            <OccupancyBar value={item.ingressos} total={item.estoque} />
+                                                        </td>
+                                                    </tr>
+                                                    {iExp &&
+                                                        item.lotes.map((lote) => (
+                                                            <tr key={lote.id} className="border-b border-secondary bg-secondary/60">
+                                                                <td className="py-3 pr-4 text-sm text-tertiary" style={{ paddingLeft: 64 }}>
+                                                                    <span className="line-clamp-2">{lote.lote}</span>
+                                                                </td>
+                                                                <td className="hidden whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(lote.estoque)}</td>
+                                                                <td className="hidden whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(lote.ingressos)}</td>
+                                                                <td className="px-4 py-3">
+                                                                    <OccupancyBar value={lote.ingressos} total={lote.estoque} />
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                </Fragment>
+                                            );
+                                        })}
+                                </Fragment>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
         </Card>
     );
 };
@@ -1043,140 +1171,223 @@ const OccupancyBar = ({ value, total }: { value: number; total: number }) => {
 /*  Quantidade de ingressos por setor (tickets avulsos)               */
 /* ------------------------------------------------------------------ */
 
-interface GrupoSetor {
-    setor: string;
-    rows: IngressoPorSetorRow[];
-    vendidos: number;
-    estoque: number;
+/* Preço-base por grupo (setor) para estimar o valor dos tickets avulsos. */
+const PRECO_SETOR: Record<string, number> = {
+    "Camarote Premium": 620,
+    "Pista": 180,
+    "Arquibancada": 120,
+    "Pista Premium": 260,
+    "Cadeira Superior": 100,
+    "Cadeira Inferior": 150,
+    "Camarote": 480,
+    "Lounge Oeste": 320,
+    "Lounge Leste": 320,
+};
+
+const precoRow = (row: IngressoPorSetorRow): number => {
+    const l = row.lote.toLowerCase();
+    const t = row.tipoIngresso.toLowerCase();
+    if (l.includes("gratuidade") || l.includes("cortesia") || t.includes("gratuidade") || t.includes("cortesia") || t.includes("staff") || t.includes("convidado") || t.includes("órgão")) return 0;
+    let base = PRECO_SETOR[row.setor] ?? 150;
+    if (t.includes("meia")) base = base / 2;
+    return base;
+};
+
+interface TALote {
+    id: string;
+    lote: string;
+    quantidade: number;
+    valorUnitario: number;
+    gmv: number;
+    gmvComDesconto: number;
+}
+interface TAItem {
+    id: string;
+    item: string;
+    quantidade: number;
+    valorUnitario: number;
+    gmv: number;
+    gmvComDesconto: number;
+    lotes: TALote[];
+}
+interface TAGrupo {
+    id: string;
+    grupo: string;
+    quantidade: number;
+    valorUnitario: number;
+    gmv: number;
+    gmvComDesconto: number;
+    itens: TAItem[];
 }
 
-const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[] }) => {
+const TicketsAvulsoCard = ({ rows }: { rows: IngressoPorSetorRow[] }) => {
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-    const grupos = useMemo(() => {
-        const map = new Map<string, GrupoSetor>();
+    const grupos = useMemo<TAGrupo[]>(() => {
+        const gMap = new Map<string, { grupo: string; itens: Map<string, TALote[]> }>();
         rows.forEach((row) => {
-            const g = map.get(row.setor) ?? { setor: row.setor, rows: [], vendidos: 0, estoque: 0 };
-            g.rows.push(row);
-            g.vendidos += row.vendidos;
-            // Estoque do setor = capacidade física (SETOR_CAP); fallback p/ máximo das linhas.
-            g.estoque = SETOR_CAP[row.setor] ?? Math.max(g.estoque, row.estoque);
-            map.set(row.setor, g);
+            const preco = precoRow(row);
+            const gmv = row.vendidos * preco;
+            const l = row.lote.toLowerCase();
+            const descPct = /promo|pré-venda|pre-venda|último|ultimo|clube/.test(l) ? 0.1 : 0;
+            const lote: TALote = { id: row.id, lote: row.lote, quantidade: row.vendidos, valorUnitario: preco, gmv, gmvComDesconto: gmv * (1 - descPct) };
+            const g = gMap.get(row.setor) ?? { grupo: row.setor, itens: new Map<string, TALote[]>() };
+            const arr = g.itens.get(row.tipoIngresso) ?? [];
+            arr.push(lote);
+            g.itens.set(row.tipoIngresso, arr);
+            gMap.set(row.setor, g);
         });
-        return Array.from(map.values());
+        const roll = (lotes: TALote[]) => ({
+            quantidade: lotes.reduce((s, x) => s + x.quantidade, 0),
+            gmv: lotes.reduce((s, x) => s + x.gmv, 0),
+            gmvComDesconto: lotes.reduce((s, x) => s + x.gmvComDesconto, 0),
+        });
+        const avg = (gmv: number, q: number) => (q ? gmv / q : 0);
+        return Array.from(gMap.values())
+            .map((g) => {
+                const itens: TAItem[] = Array.from(g.itens.entries())
+                    .map(([item, lotes]) => {
+                        const t = roll(lotes);
+                        return { id: `${g.grupo}|${item}`, item, ...t, valorUnitario: avg(t.gmv, t.quantidade), lotes: [...lotes].sort((a, b) => b.gmv - a.gmv) };
+                    })
+                    .sort((a, b) => b.gmv - a.gmv);
+                const t = roll(itens as unknown as TALote[]);
+                return { id: g.grupo, grupo: g.grupo, ...t, valorUnitario: avg(t.gmv, t.quantidade), itens };
+            })
+            .sort((a, b) => b.gmv - a.gmv);
     }, [rows]);
 
-    const accessors = useMemo(
-        () => ({ setor: (g: GrupoSetor) => g.setor, vendidos: (g: GrupoSetor) => g.vendidos, estoque: (g: GrupoSetor) => g.estoque }),
-        [],
+    const totais = useMemo(
+        () => ({
+            quantidade: grupos.reduce((s, g) => s + g.quantidade, 0),
+            gmv: grupos.reduce((s, g) => s + g.gmv, 0),
+            gmvComDesconto: grupos.reduce((s, g) => s + g.gmvComDesconto, 0),
+        }),
+        [grupos],
     );
-    const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(grupos as unknown as Record<string, unknown>[], accessors as Partial<Record<string, (r: Record<string, unknown>) => string | number>>, { key: "vendidos", dir: "desc" });
-    const sortedGrupos = sorted as unknown as GrupoSetor[];
 
-    const totalVendidos = grupos.reduce((s, g) => s + g.vendidos, 0);
-    const totalEstoque = grupos.reduce((s, g) => s + g.estoque, 0);
-
-    const toggle = (setor: string) =>
+    const toggle = (id: string) =>
         setExpanded((prev) => {
             const next = new Set(prev);
-            if (next.has(setor)) next.delete(setor);
-            else next.add(setor);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
             return next;
         });
 
+    const money = (v: number) => currencyFormatter.format(v);
+
     return (
-        <Card title="Quantidade de Ingresso por Grupo">
-            <table className="w-full table-fixed border-collapse">
-                <colgroup>
-                    <col className="w-10 md:w-12" />
-                    <col className="w-[42%] md:w-auto" />
-                    <col className="hidden md:table-column" />
-                    <col className="hidden md:table-column" />
-                    <col />
-                    <col />
-                    <col className="hidden lg:table-column" />
-                </colgroup>
-                <thead className="sticky top-0 z-10 bg-secondary">
-                    <tr className="border-b border-secondary bg-secondary text-left">
-                        <th className="px-2 py-3 md:px-4" aria-hidden="true" />
-                        <th className="px-4 py-3 text-sm font-semibold text-tertiary">
-                            <SortableHeader label="Grupo" sortKey="setor" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        </th>
-                        <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary md:table-cell">Lote</th>
-                        <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary md:table-cell">Item Combo</th>
-                        <th className="px-4 py-3 text-right text-sm font-semibold text-tertiary">
-                            <SortableHeader label="Vendidos" align="right" sortKey="vendidos" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        </th>
-                        <th className="px-4 py-3 text-right text-sm font-semibold text-tertiary">
-                            <SortableHeader label="Estoque" align="right" sortKey="estoque" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-                        </th>
-                        <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary lg:table-cell">Ocupação</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {sortedGrupos.map((grupo) => {
-                        const isExpanded = expanded.has(grupo.setor);
-                        return (
-                            <Fragment key={grupo.setor}>
-                                <tr
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-expanded={isExpanded}
-                                    onClick={() => toggle(grupo.setor)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                            e.preventDefault();
-                                            toggle(grupo.setor);
-                                        }
-                                    }}
-                                    className="cursor-pointer border-b border-secondary transition duration-100 ease-linear hover:bg-primary_hover"
-                                >
-                                    <td className="px-2 py-4 md:px-4">
-                                        <ChevronDown aria-hidden="true" className={cx("size-4 text-fg-quaternary transition-transform duration-150", isExpanded && "rotate-180")} />
-                                    </td>
-                                    <td className="px-4 py-4 text-sm font-medium text-primary">
-                                        <span className="line-clamp-2">{grupo.setor}</span>
-                                    </td>
-                                    <td className="hidden px-4 py-4 md:table-cell" />
-                                    <td className="hidden px-4 py-4 md:table-cell" />
-                                    <td className="px-4 py-4 text-right text-sm font-medium text-primary">{numberFormatter.format(grupo.vendidos)}</td>
-                                    <td className="px-4 py-4 text-right text-sm text-tertiary">{numberFormatter.format(grupo.estoque)}</td>
-                                    <td className="hidden px-4 py-4 lg:table-cell">
-                                        <OccupancyBar value={grupo.vendidos} total={grupo.estoque} />
-                                    </td>
-                                </tr>
-                                {isExpanded &&
-                                    grupo.rows.map((row) => (
-                                        <tr key={row.id} className="border-b border-secondary bg-secondary">
-                                            <td className="px-2 py-3 md:px-4" />
-                                            <td className="px-4 py-3 pl-10 text-sm text-secondary">
-                                                <span className="line-clamp-2">{row.tipoIngresso}</span>
-                                            </td>
-                                            <td className="hidden px-4 py-3 text-sm text-tertiary md:table-cell">{row.lote}</td>
-                                            <td className="hidden px-4 py-3 text-sm text-tertiary md:table-cell">{row.itemCombo}</td>
-                                            <td className="px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(row.vendidos)}</td>
-                                            <td className="px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(row.estoque)}</td>
-                                            <td className="hidden px-4 py-3 lg:table-cell">
-                                                <OccupancyBar value={row.vendidos} total={row.estoque} />
-                                            </td>
-                                        </tr>
-                                    ))}
-                            </Fragment>
-                        );
-                    })}
-                    <tr className="bg-secondary font-semibold">
-                        <td className="px-2 py-3 md:px-4" />
-                        <td className="px-4 py-3 text-sm text-primary">Total</td>
-                        <td className="hidden px-4 py-3 md:table-cell" />
-                        <td className="hidden px-4 py-3 md:table-cell" />
-                        <td className="px-4 py-3 text-right text-sm text-primary">{numberFormatter.format(totalVendidos)}</td>
-                        <td className="px-4 py-3 text-right text-sm text-primary">{numberFormatter.format(totalEstoque)}</td>
-                        <td className="hidden px-4 py-3 lg:table-cell">
-                            <OccupancyBar value={totalVendidos} total={totalEstoque} />
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <Card title="Tickets Avulso">
+            <div className="overflow-x-auto overflow-y-clip">
+                <table className="w-full table-fixed border-collapse">
+                    <colgroup>
+                        <col className="w-[46%] md:w-auto" />
+                        <col className="hidden md:table-column" />
+                        <col className="hidden md:table-column" />
+                        <col className="hidden md:table-column" />
+                        <col className="hidden md:table-column" />
+                        <col />
+                    </colgroup>
+                    <thead className="bg-secondary">
+                        <tr className="border-b border-secondary text-left">
+                            <th className="px-4 py-3 text-sm font-semibold text-tertiary">Grupo • Item • Lote</th>
+                            <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Quantidade</th>
+                            <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Valor unitário médio</th>
+                            <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Valor total bruto</th>
+                            <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Desconto</th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary">Valor total c/ desconto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {grupos.map((grupo) => {
+                            const gExp = expanded.has(grupo.id);
+                            return (
+                                <Fragment key={grupo.id}>
+                                    <tr
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-expanded={gExp}
+                                        onClick={() => toggle(grupo.id)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                toggle(grupo.id);
+                                            }
+                                        }}
+                                        className="cursor-pointer border-b border-secondary bg-primary transition duration-100 ease-linear hover:bg-primary_hover"
+                                    >
+                                        <td className="py-3.5 pr-4 text-sm" style={{ paddingLeft: 16 }}>
+                                            <span className="flex items-center gap-2">
+                                                <ChevronDown aria-hidden="true" className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", gExp && "rotate-180")} />
+                                                <span className="line-clamp-2 font-bold text-primary">{grupo.grupo}</span>
+                                            </span>
+                                        </td>
+                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-semibold text-primary md:table-cell">{numberFormatter.format(grupo.quantidade)}</td>
+                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-secondary md:table-cell">{money(grupo.valorUnitario)}</td>
+                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-secondary md:table-cell">{money(grupo.gmv)}</td>
+                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-secondary md:table-cell">{money(grupo.gmv - grupo.gmvComDesconto)}</td>
+                                        <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm font-semibold text-primary">{money(grupo.gmvComDesconto)}</td>
+                                    </tr>
+                                    {gExp &&
+                                        grupo.itens.map((item) => {
+                                            const iExp = expanded.has(item.id);
+                                            return (
+                                                <Fragment key={item.id}>
+                                                    <tr
+                                                        role="button"
+                                                        tabIndex={0}
+                                                        aria-expanded={iExp}
+                                                        onClick={() => toggle(item.id)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter" || e.key === " ") {
+                                                                e.preventDefault();
+                                                                toggle(item.id);
+                                                            }
+                                                        }}
+                                                        className="cursor-pointer border-b border-secondary transition duration-100 ease-linear hover:bg-primary_hover"
+                                                    >
+                                                        <td className="py-3.5 pr-4 text-sm" style={{ paddingLeft: 40 }}>
+                                                            <span className="flex items-center gap-2">
+                                                                <ChevronDown aria-hidden="true" className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", iExp && "rotate-180")} />
+                                                                <span className="line-clamp-2 font-semibold text-secondary">{item.item}</span>
+                                                            </span>
+                                                        </td>
+                                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-secondary md:table-cell">{numberFormatter.format(item.quantidade)}</td>
+                                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm text-tertiary md:table-cell">{money(item.valorUnitario)}</td>
+                                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm text-tertiary md:table-cell">{money(item.gmv)}</td>
+                                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm text-tertiary md:table-cell">{money(item.gmv - item.gmvComDesconto)}</td>
+                                                        <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-secondary">{money(item.gmvComDesconto)}</td>
+                                                    </tr>
+                                                    {iExp &&
+                                                        item.lotes.map((lote) => (
+                                                            <tr key={lote.id} className="border-b border-secondary bg-secondary/60">
+                                                                <td className="py-3 pr-4 text-sm text-tertiary" style={{ paddingLeft: 64 }}>
+                                                                    <span className="line-clamp-2">{lote.lote}</span>
+                                                                </td>
+                                                                <td className="hidden whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(lote.quantidade)}</td>
+                                                                <td className="hidden whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary md:table-cell">{money(lote.valorUnitario)}</td>
+                                                                <td className="hidden whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary md:table-cell">{money(lote.gmv)}</td>
+                                                                <td className="hidden whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary md:table-cell">{money(lote.gmv - lote.gmvComDesconto)}</td>
+                                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-primary">{money(lote.gmvComDesconto)}</td>
+                                                            </tr>
+                                                        ))}
+                                                </Fragment>
+                                            );
+                                        })}
+                                </Fragment>
+                            );
+                        })}
+                        <tr className="border-t-2 border-secondary bg-secondary">
+                            <td className="px-4 py-3.5 text-sm font-bold text-primary">Total geral</td>
+                            <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-bold text-primary md:table-cell">{numberFormatter.format(totais.quantidade)}</td>
+                            <td className="hidden md:table-cell" />
+                            <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-bold text-primary md:table-cell">{money(totais.gmv)}</td>
+                            <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-bold text-primary md:table-cell">{money(totais.gmv - totais.gmvComDesconto)}</td>
+                            <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm font-bold text-primary">{money(totais.gmvComDesconto)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </Card>
     );
 };
@@ -1186,31 +1397,92 @@ const QuantidadeIngressosPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[]
 /* ------------------------------------------------------------------ */
 
 const ComboCard = ({ rows }: { rows: ComboRow[] }) => {
-    const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(rows as unknown as Record<string, unknown>[], undefined, { key: "gmv", dir: "desc" });
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    const accessors = useMemo(() => ({ desconto: (r: ComboRow) => r.gmv - r.gmvComDesconto }), []);
+    const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(
+        rows as unknown as Record<string, unknown>[],
+        accessors as Partial<Record<string, (r: Record<string, unknown>) => string | number>>,
+        { key: "gmv", dir: "desc" },
+    );
     const sortedRows = sorted as unknown as ComboRow[];
+
+    const toggle = (id: string) =>
+        setExpanded((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+
     return (
         <Card title="Combo">
             <div className="overflow-x-auto overflow-y-clip">
-                <table className="w-full border-collapse">
-                    <thead className="sticky top-0 z-10 bg-secondary">
-                        <tr className="border-b border-secondary bg-secondary text-left">
-                            <th className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-tertiary"><SortableHeader label="Item Combo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Quantidade" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor Unitário" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor total bruto" align="right" sortKey="gmv" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                <table className="w-full table-fixed border-collapse">
+                    <colgroup>
+                        <col className="w-[46%] md:w-auto" />
+                        <col className="hidden md:table-column" />
+                        <col className="hidden md:table-column" />
+                        <col className="hidden md:table-column" />
+                        <col className="hidden md:table-column" />
+                        <col />
+                    </colgroup>
+                    <thead className="bg-secondary">
+                        <tr className="border-b border-secondary text-left">
+                            <th className="px-4 py-3 text-sm font-semibold text-tertiary"><SortableHeader label="Combo" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell"><SortableHeader label="Quantidade" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell"><SortableHeader label="Valor unitário médio" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell"><SortableHeader label="Valor total bruto" align="right" sortKey="gmv" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell"><SortableHeader label="Desconto" align="right" sortKey="desconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor total c/ desconto" align="right" sortKey="gmvComDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                         </tr>
                     </thead>
                     <tbody>
-                        {sortedRows.map((row, i) => (
-                            <tr key={row.id} className={cx("transition duration-100 ease-linear hover:bg-primary_hover", i !== sortedRows.length - 1 && "border-b border-secondary")}>
-                                <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-primary">{row.nome}</td>
-                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{numberFormatter.format(row.quantidade)}</td>
-                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valorUnitario)}</td>
-                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmv)}</td>
-                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmvComDesconto)}</td>
-                            </tr>
-                        ))}
+                        {sortedRows.map((row) => {
+                            const isExpanded = expanded.has(row.id);
+                            const lotes = row.lotes ?? [];
+                            return (
+                                <Fragment key={row.id}>
+                                    <tr
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-expanded={isExpanded}
+                                        onClick={() => toggle(row.id)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                toggle(row.id);
+                                            }
+                                        }}
+                                        className="cursor-pointer border-b border-secondary bg-primary transition duration-100 ease-linear hover:bg-primary_hover"
+                                    >
+                                        <td className="py-3.5 pr-4 text-sm" style={{ paddingLeft: 16 }}>
+                                            <span className="flex items-center gap-2">
+                                                <ChevronDown aria-hidden="true" className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", isExpanded && "rotate-180")} />
+                                                <span className="line-clamp-2 font-bold text-primary">{row.nome}</span>
+                                            </span>
+                                        </td>
+                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-semibold text-primary md:table-cell">{numberFormatter.format(row.quantidade)}</td>
+                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-secondary md:table-cell">{currencyFormatter.format(row.valorUnitario)}</td>
+                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-secondary md:table-cell">{currencyFormatter.format(row.gmv)}</td>
+                                        <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-secondary md:table-cell">{currencyFormatter.format(row.gmv - row.gmvComDesconto)}</td>
+                                        <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm font-semibold text-primary">{currencyFormatter.format(row.gmvComDesconto)}</td>
+                                    </tr>
+                                    {isExpanded &&
+                                        lotes.map((lote) => (
+                                            <tr key={lote.id} className="border-b border-secondary bg-secondary/60">
+                                                <td className="py-3 pr-4 text-sm text-tertiary" style={{ paddingLeft: 40 }}>
+                                                    <span className="line-clamp-2">{lote.lote}</span>
+                                                </td>
+                                                <td className="hidden whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(lote.quantidade)}</td>
+                                                <td className="hidden whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary md:table-cell">{currencyFormatter.format(lote.valorUnitario)}</td>
+                                                <td className="hidden whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary md:table-cell">{currencyFormatter.format(lote.gmv)}</td>
+                                                <td className="hidden whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary md:table-cell">{currencyFormatter.format(lote.gmv - lote.gmvComDesconto)}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-primary">{currencyFormatter.format(lote.gmvComDesconto)}</td>
+                                            </tr>
+                                        ))}
+                                </Fragment>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -1223,7 +1495,12 @@ const ComboCard = ({ rows }: { rows: ComboRow[] }) => {
 /* ------------------------------------------------------------------ */
 
 const ProdutosCard = ({ rows }: { rows: ProdutoRow[] }) => {
-    const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(rows as unknown as Record<string, unknown>[], undefined, { key: "gmv", dir: "desc" });
+    const accessors = useMemo(() => ({ desconto: (r: ProdutoRow) => r.gmv - r.gmvComDesconto }), []);
+    const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(
+        rows as unknown as Record<string, unknown>[],
+        accessors as Partial<Record<string, (r: Record<string, unknown>) => string | number>>,
+        { key: "gmv", dir: "desc" },
+    );
     const sortedRows = sorted as unknown as ProdutoRow[];
     return (
         <Card title="Produtos">
@@ -1232,9 +1509,10 @@ const ProdutosCard = ({ rows }: { rows: ProdutoRow[] }) => {
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
                             <th className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-tertiary"><SortableHeader label="Produto" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Qtd" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor Unitário" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Quantidade" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor unitário médio" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor total bruto" align="right" sortKey="gmv" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Desconto" align="right" sortKey="desconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor total c/ desconto" align="right" sortKey="gmvComDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                         </tr>
                     </thead>
@@ -1245,6 +1523,7 @@ const ProdutosCard = ({ rows }: { rows: ProdutoRow[] }) => {
                                 <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{numberFormatter.format(row.quantidade)}</td>
                                 <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valorUnitario)}</td>
                                 <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmv)}</td>
+                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmv - row.gmvComDesconto)}</td>
                                 <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.gmvComDesconto)}</td>
                             </tr>
                         ))}
@@ -1260,8 +1539,6 @@ const ProdutosCard = ({ rows }: { rows: ProdutoRow[] }) => {
 /* ------------------------------------------------------------------ */
 
 const IngressosComCupomCard = ({ cupons: cuponsView }: { cupons: CupomRow[] }) => {
-    const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
     const accessors = useMemo(
         () => ({ cupom: (c: CupomRow) => c.cupom, quantidade: (c: CupomRow) => c.quantidade, valor: (c: CupomRow) => c.valor, valorDesconto: (c: CupomRow) => c.valorDesconto, valorTotal: (c: CupomRow) => c.valorTotal }),
         [],
@@ -1269,21 +1546,12 @@ const IngressosComCupomCard = ({ cupons: cuponsView }: { cupons: CupomRow[] }) =
     const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(cuponsView as unknown as Record<string, unknown>[], accessors as Partial<Record<string, (r: Record<string, unknown>) => string | number>>, { key: "quantidade", dir: "desc" });
     const sortedCupons = sorted as unknown as CupomRow[];
 
-    const toggle = (id: string) =>
-        setExpanded((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-
     return (
         <Card title="Quantidade de ingressos com cupom">
             <div className="overflow-x-auto overflow-y-clip">
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
-                            <th className="w-10 px-2 py-3 md:px-4" aria-hidden="true" />
                             <th className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-tertiary"><SortableHeader label="Cupom" sortKey="cupom" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Quantidade" align="right" sortKey="quantidade" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor" align="right" sortKey="valor" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
@@ -1292,47 +1560,15 @@ const IngressosComCupomCard = ({ cupons: cuponsView }: { cupons: CupomRow[] }) =
                         </tr>
                     </thead>
                     <tbody>
-                        {sortedCupons.map((row, i) => {
-                            const isExpanded = expanded.has(row.id);
-                            const isLast = i === sortedCupons.length - 1;
-                            return (
-                                <Fragment key={row.id}>
-                                    <tr
-                                        role="button"
-                                        tabIndex={0}
-                                        aria-expanded={isExpanded}
-                                        onClick={() => toggle(row.id)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter" || e.key === " ") {
-                                                e.preventDefault();
-                                                toggle(row.id);
-                                            }
-                                        }}
-                                        className={cx("cursor-pointer transition duration-100 ease-linear hover:bg-primary_hover", (!isLast || isExpanded) && "border-b border-secondary")}
-                                    >
-                                        <td className="px-2 py-4 md:px-4">
-                                            <ChevronDown aria-hidden="true" className={cx("size-4 text-fg-quaternary transition-transform duration-150", isExpanded && "rotate-180")} />
-                                        </td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-primary">{row.cupom}</td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{numberFormatter.format(row.quantidade)}</td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valor)}</td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valorDesconto)}</td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valorTotal)}</td>
-                                    </tr>
-                                    {isExpanded &&
-                                        row.lotes.map((lote, j) => (
-                                            <tr key={lote.id} className={cx("bg-secondary", (!isLast || j !== row.lotes.length - 1) && "border-b border-secondary")}>
-                                                <td className="px-2 py-3 md:px-4" />
-                                                <td className="whitespace-nowrap px-4 py-3 pl-10 text-sm text-secondary">{lote.lote}</td>
-                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{numberFormatter.format(lote.quantidade)}</td>
-                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.valor)}</td>
-                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.valorDesconto)}</td>
-                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-tertiary">{currencyFormatter.format(lote.valorTotal)}</td>
-                                            </tr>
-                                        ))}
-                                </Fragment>
-                            );
-                        })}
+                        {sortedCupons.map((row, i) => (
+                            <tr key={row.id} className={cx("transition duration-100 ease-linear hover:bg-primary_hover", i !== sortedCupons.length - 1 && "border-b border-secondary")}>
+                                <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-primary">{row.cupom}</td>
+                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{numberFormatter.format(row.quantidade)}</td>
+                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valor)}</td>
+                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valorDesconto)}</td>
+                                <td className="whitespace-nowrap px-4 py-4 text-right text-sm text-tertiary">{currencyFormatter.format(row.valorTotal)}</td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
             </div>

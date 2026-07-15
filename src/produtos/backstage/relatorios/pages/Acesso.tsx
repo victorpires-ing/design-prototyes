@@ -81,7 +81,7 @@ const CHECKINS_FAIXAS: { hora: string; checkins: number }[] = [
 
 // Totais reais do jogo (apenas os 4 setores com entrada por facial).
 const TOTAL_VALIDADOS = CHECKINS_FAIXAS.reduce((s, f) => s + f.checkins, 0); // 23.181
-const TOTAL_VENDIDOS = 23909; // ingressos vendidos nos setores Leste/Oeste (Sup/Inf)
+const TOTAL_VENDIDOS = 24660; // ajustado p/ taxa de validação de 94%
 
 const sumVendidos = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumVendidos(c), 0) : node.vendidos ?? 0);
 const sumValidados = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumValidados(c), 0) : node.validados ?? 0);
@@ -221,6 +221,7 @@ export function Acesso() {
                     <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
                         <RelatorioPageHeader
                             title="Acesso"
+                            splitControls
                             actions={<ExportMenu onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "A lista de entradas será exportada." })} />}
                         />
                         <AcessoBody />
@@ -280,10 +281,7 @@ const MetricsRow = ({ validados, pendentes, total }: { validados: number; penden
 
 const ValidacaoMetric = ({ validados, total }: { validados: number; total: number }) => {
     const pct = total === 0 ? 0 : Math.round((validados / total) * 100);
-    const legendas = [
-        { label: "Validado", pct, className: "bg-fg-brand-primary" },
-        { label: "Não validado", pct: 100 - pct, className: "bg-quaternary" },
-    ];
+    const legendas = [{ label: "Validado", pct, className: "bg-fg-brand-primary" }];
     return (
         <div className="rounded-xl bg-primary shadow-xs ring-1 ring-secondary ring-inset">
             <div className="flex h-full items-center gap-6 px-4 py-5 md:px-5">

@@ -10,22 +10,10 @@ import {
     ShoppingCart01,
     SlashCircle01,
 } from "@untitledui/icons";
-import {
-    Area,
-    Bar,
-    CartesianGrid,
-    ComposedChart,
-    LabelList,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from "recharts";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
-import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
@@ -33,24 +21,9 @@ import { BackstageLayout } from "../../components/Backstage";
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { RelatorioFiltersProvider, matchRow, inDateRange, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
 import { SortableHeader } from "../components/SortableHeader";
+import { TransacionadoChartCard, type ChartPoint } from "../components/TransacionadoChart";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
-
-/* ------------------------------------------------------------------ */
-/*  Hooks                                                             */
-/* ------------------------------------------------------------------ */
-
-function useIsMobile(): boolean {
-    const [isMobile, setIsMobile] = useState(false);
-    useEffect(() => {
-        const mq = window.matchMedia("(max-width: 768px)");
-        setIsMobile(mq.matches);
-        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-        mq.addEventListener("change", handler);
-        return () => mq.removeEventListener("change", handler);
-    }, []);
-    return isMobile;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Status + meios                                                    */
@@ -94,11 +67,6 @@ interface MeioPagamentoRow {
     pctValor: number;
 }
 
-interface ChartPoint {
-    data: string;
-    quantidade: number;
-    total: number;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Mock data — gerador determinístico de transações                  */
@@ -209,7 +177,7 @@ const transacoes: Transacao[] = (() => {
         return arr[arr.length - 1];
     };
     const rows: Transacao[] = [];
-    const COUNT = 2400;
+    const COUNT = 12500;
     for (let i = 0; i < COUNT; i++) {
         // Data enviesada para o fim da janela (rampa em direção ao evento), com pico no anúncio.
         let dayOffset: number;
@@ -362,10 +330,7 @@ export function Transacoes() {
             <RelatorioFiltersProvider fields={FILTER_FIELDS} sessoes={EVENT.sessoes}>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
-                        <RelatorioPageHeader
-                            title="Transações"
-                            actions={<ExportMenu onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "As transações serão exportadas." })} />}
-                        />
+                        <RelatorioPageHeader title="Transações" />
                         <TransacoesBody />
                     </main>
                 </div>
@@ -462,7 +427,17 @@ const TransacoesBody = () => {
                 <IngressosValorPorStatusCard rows={statusRows} />
                 <MeioPagamentosCard rows={meiosRows} />
             </div>
-            <TransacionadoChartCard data={chartData} />
+            <TransacionadoChartCard
+                data={chartData}
+                title="Total transacionado e número de ingressos"
+                subtitle="Distribuição diária de transações e ingressos vendidos"
+            />
+            <TransacionadoChartCard
+                data={chartData}
+                acumulado
+                title="Total transacionado e número de ingressos acumulados"
+                subtitle="Evolução acumulada de transações e ingressos vendidos"
+            />
             <ListaTransacoesCard rows={filtered} />
         </>
     );
@@ -541,126 +516,6 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
     );
 };
 
-/* ------------------------------------------------------------------ */
-/*  Chart                                                             */
-/* ------------------------------------------------------------------ */
-
-interface ChartTooltipPayloadEntry {
-    dataKey: string;
-    name: string;
-    value: number | string;
-    color: string;
-}
-
-const ChartTooltip = ({ active, label, payload }: { active?: boolean; label?: string; payload?: ChartTooltipPayloadEntry[] }) => {
-    if (!active || !payload || payload.length === 0) return null;
-    const ordered = [...payload].sort((a, b) => (a.dataKey === "total" ? -1 : b.dataKey === "total" ? 1 : 0));
-    return (
-        <div className="rounded-lg bg-primary-solid px-3 py-2.5 shadow-xl ring-1 ring-secondary_alt">
-            <p className="mb-1.5 text-sm font-semibold text-white">{label}</p>
-            <ul className="flex flex-col gap-1">
-                {ordered.map((entry) => {
-                    const isMonetary = entry.dataKey === "total";
-                    const formatted = isMonetary ? currencyFormatter.format(Number(entry.value)) : numberFormatter.format(Number(entry.value));
-                    return (
-                        <li key={entry.dataKey} className="flex items-center gap-2 text-sm">
-                            <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: entry.color }} />
-                            <span className="text-white/70">{entry.name}:</span>
-                            <span className="font-semibold text-white">{formatted}</span>
-                        </li>
-                    );
-                })}
-            </ul>
-        </div>
-    );
-};
-
-const ChartCursor = ({ points, top = 0, height = 0 }: { points?: { x: number; y: number }[]; top?: number; height?: number }) => {
-    if (!points || points.length === 0) return null;
-    const x = points[0].x;
-    return <line x1={x} x2={x} y1={top} y2={top + height} stroke="var(--color-border-primary)" strokeWidth={1} />;
-};
-
-const QTD_COLOR = "var(--color-utility-blue-400)";
-const TOTAL_COLOR = "var(--color-bg-quaternary)";
-
-const TransacionadoChartCard = ({ data }: { data: ChartPoint[] }) => {
-    const isMobile = useIsMobile();
-    const fontSize = isMobile ? 10 : 11;
-    const [metric, setMetric] = useState<"total" | "quantidade">("total");
-
-    return (
-        <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-            <header className="flex flex-col gap-3 border-b border-secondary px-5 pt-4 pb-4 md:flex-row md:items-start md:justify-between">
-                <div className="flex flex-col gap-1">
-                    <h3 className="text-md font-semibold text-primary">Total transacionado e número de ingressos</h3>
-                    <p className="text-sm text-tertiary">Distribuição diária de transações e ingressos vendidos</p>
-                </div>
-                <ButtonGroup
-                    size="sm"
-                    selectedKeys={[metric]}
-                    onSelectionChange={(keys: Set<React.Key> | "all") => {
-                        if (keys === "all") return;
-                        const next = [...keys][0] as "total" | "quantidade" | undefined;
-                        if (next) setMetric(next);
-                    }}
-                >
-                    <ButtonGroupItem id="total">Total</ButtonGroupItem>
-                    <ButtonGroupItem id="quantidade">Quantidade</ButtonGroupItem>
-                </ButtonGroup>
-            </header>
-
-            <div className="h-[280px] w-full px-2 pt-5 pb-2 md:h-[380px] md:px-4">
-                <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={data} margin={{ top: isMobile ? 16 : 28, right: isMobile ? 8 : 16, bottom: isMobile ? 0 : 4, left: isMobile ? 0 : 4 }}>
-                        <defs>
-                            <linearGradient id="qtdAreaFill" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={QTD_COLOR} stopOpacity={0.28} />
-                                <stop offset="80%" stopColor={QTD_COLOR} stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid stroke="var(--color-border-secondary)" strokeDasharray="2 4" strokeOpacity={0.6} vertical={false} />
-                        <XAxis
-                            dataKey="data"
-                            tick={{ fill: "var(--color-text-tertiary)", fontSize }}
-                            tickLine={false}
-                            axisLine={false}
-                            tickMargin={10}
-                            interval={isMobile ? "preserveStartEnd" : "preserveStart"}
-                            minTickGap={isMobile ? 24 : 16}
-                        />
-                        <YAxis yAxisId="total" orientation="left" tickFormatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`} tick={{ fill: "var(--color-text-tertiary)", fontSize }} tickLine={false} axisLine={false} tickMargin={8} width={isMobile ? 44 : 56} />
-                        <YAxis yAxisId="qtd" orientation="right" tickFormatter={(v) => numberFormatter.format(Number(v))} tick={{ fill: "var(--color-text-tertiary)", fontSize }} tickLine={false} axisLine={false} tickMargin={8} width={isMobile ? 36 : 44} />
-                        <Tooltip content={<ChartTooltip />} cursor={<ChartCursor />} />
-                        <Bar yAxisId="total" dataKey="total" name="Total Transacionado" fill={TOTAL_COLOR} fillOpacity={0.7} radius={[3, 3, 0, 0]} maxBarSize={isMobile ? 10 : 18}>
-                            {metric === "total" && data.length <= 20 && (
-                                <LabelList dataKey="total" position="top" fill="var(--color-text-primary)" fontSize={isMobile ? 9 : 11} fontWeight={600} offset={isMobile ? 6 : 8} formatter={(v) => `R$${(Number(v) / 1000).toFixed(0)}k`} />
-                            )}
-                        </Bar>
-                        <Area yAxisId="qtd" type="monotone" dataKey="quantidade" name="Quantidade de Ingressos" stroke={QTD_COLOR} strokeWidth={3} fill="url(#qtdAreaFill)" dot={false} activeDot={{ r: 6, fill: QTD_COLOR, stroke: "var(--color-bg-primary)", strokeWidth: 2 }}>
-                            {metric === "quantidade" && data.length <= 20 && (
-                                <LabelList dataKey="quantidade" position="top" fill="var(--color-text-primary)" fontSize={isMobile ? 9 : 11} fontWeight={600} offset={isMobile ? 16 : 30} formatter={(v) => numberFormatter.format(Number(v))} />
-                            )}
-                        </Area>
-                    </ComposedChart>
-                </ResponsiveContainer>
-            </div>
-
-            <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary px-5 py-3">
-                <div className="flex flex-wrap items-center gap-4 text-sm text-tertiary">
-                    <span className="flex items-center gap-1.5">
-                        <span aria-hidden="true" className="size-2.5 rounded-sm" style={{ background: TOTAL_COLOR }} />
-                        Total Transacionado
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                        <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: QTD_COLOR }} />
-                        Quantidade de Ingressos
-                    </span>
-                </div>
-            </footer>
-        </section>
-    );
-};
 
 /* ------------------------------------------------------------------ */
 /*  Meio de Pagamentos                                                */
@@ -815,7 +670,7 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
                 </>
             }
         >
-            <div className="flex flex-col gap-3 border-b border-secondary px-4 py-3 lg:flex-row lg:items-center">
+            <div className="flex flex-col gap-3 border-b border-secondary px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
                 <Input
                     size="sm"
                     icon={SearchLg}
@@ -824,6 +679,11 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
                     value={search}
                     onChange={setSearch}
                     className="lg:max-w-xs lg:flex-1"
+                />
+                <ExportMenu
+                    size="sm"
+                    formats={["excel", "csv"]}
+                    onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "As transações serão exportadas." })}
                 />
             </div>
 

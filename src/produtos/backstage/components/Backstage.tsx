@@ -31,7 +31,7 @@ import { TreeView } from "@/components/application/tree-view/tree-view";
 import { cx } from "@/utils/cx";
 import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
-const eventCover = "https://ticket-backend-prod.imgix.net/media/event/a871f5c2-ebfb-4fc4-a98c-8adfee4bfcc0/ac61f9f8-02f4-4422-94a4-ad67a56f925d.jpeg?h=440&w=330&fit=crop";
+const eventCover = "https://casadeapostasarenadasdunas.com.br/wp-content/uploads/2026/05/AMERICAXLAGUNA.png";
 
 const BrandLogo = ({ className }: { className?: string }) => (
     <>
@@ -232,7 +232,7 @@ const MobileEventCard = () => (
     <div className="flex items-start gap-3 rounded-xl bg-secondary p-3">
         <img
             src={eventCover}
-            alt="Visão completa"
+            alt="América x Laguna (5 a 0)"
             className="size-16 shrink-0 rounded-lg object-cover"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -243,7 +243,7 @@ const MobileEventCard = () => (
                 </Badge>
             </div>
             <p className="text-sm font-semibold leading-snug text-primary line-clamp-2">
-                Visão completa
+                América x Laguna (5 a 0)
             </p>
         </div>
     </div>
@@ -634,7 +634,7 @@ const EventDetailsCard = () => (
         <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-secondary">
             <img
                 src={eventCover}
-                alt="Visão completa"
+                alt="América x Laguna (5 a 0)"
                 className="size-full object-cover"
             />
             <span className="absolute top-3 left-3 rounded-xl bg-white/50 px-3 py-1 text-[12px] font-medium tracking-wide text-primary uppercase backdrop-blur-md">
@@ -648,7 +648,7 @@ const EventDetailsCard = () => (
         </div>
         <div className="flex flex-col gap-0.5 px-1">
             <span className="text-xs text-tertiary">ID: 1234</span>
-            <h3 className="text-md font-bold text-primary">Visão completa</h3>
+            <h3 className="text-md font-bold text-primary">América x Laguna (5 a 0)</h3>
             <p className="text-sm text-tertiary">Ingresse</p>
         </div>
         <div className="flex items-center gap-2 px-1">

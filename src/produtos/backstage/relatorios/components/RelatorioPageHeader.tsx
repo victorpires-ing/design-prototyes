@@ -12,20 +12,35 @@ import { useRelatorioFilters } from "./relatorio-filters";
 /*  Export menu (Excel / CSV / PDF) — usado no slot de ações.          */
 /* ------------------------------------------------------------------ */
 
-export const ExportMenu = ({ onExport }: { onExport?: (format: "excel" | "csv" | "pdf") => void }) => (
-    <Dropdown.Root>
-        <Button color="secondary" size="md" iconLeading={UploadCloud02} iconTrailing={ChevronDown}>
-            Exportar
-        </Button>
-        <Dropdown.Popover>
-            <Dropdown.Menu>
-                <Dropdown.Item label="Arquivo Excel" onAction={() => onExport?.("excel")} />
-                <Dropdown.Item label="Arquivo .CSV" onAction={() => onExport?.("csv")} />
-                <Dropdown.Item label="Arquivo PDF" onAction={() => onExport?.("pdf")} />
-            </Dropdown.Menu>
-        </Dropdown.Popover>
-    </Dropdown.Root>
-);
+export const ExportMenu = ({
+    onExport,
+    formats = ["excel", "csv", "pdf"],
+    size = "md",
+}: {
+    onExport?: (format: "excel" | "csv" | "pdf") => void;
+    formats?: Array<"excel" | "csv" | "pdf">;
+    size?: "sm" | "md";
+}) => {
+    const LABELS: Record<"excel" | "csv" | "pdf", string> = {
+        excel: "Arquivo Excel",
+        csv: "Arquivo .CSV",
+        pdf: "Arquivo PDF",
+    };
+    return (
+        <Dropdown.Root>
+            <Button color="secondary" size={size} iconLeading={UploadCloud02} iconTrailing={ChevronDown}>
+                Exportar
+            </Button>
+            <Dropdown.Popover>
+                <Dropdown.Menu>
+                    {formats.map((f) => (
+                        <Dropdown.Item key={f} label={LABELS[f]} onAction={() => onExport?.(f)} />
+                    ))}
+                </Dropdown.Menu>
+            </Dropdown.Popover>
+        </Dropdown.Root>
+    );
+};
 
 /* ------------------------------------------------------------------ */
 /*  Chip de filtro ativo                                              */
@@ -117,17 +132,28 @@ interface RelatorioPageHeaderProps {
     withFilters?: boolean;
     /** Controles fixos exibidos numa linha dentro do header (ex.: toggles de métrica). */
     toolbar?: ReactNode;
+    /** Filtros à esquerda e ações (ex.: Exportar) à direita, em linha própria abaixo do título. */
+    splitControls?: boolean;
 }
 
-export const RelatorioPageHeader = ({ title, actions, withFilters = true, toolbar }: RelatorioPageHeaderProps) => {
+export const RelatorioPageHeader = ({ title, actions, withFilters = true, toolbar, splitControls = false }: RelatorioPageHeaderProps) => {
     return (
         <div className={cx("sticky top-[var(--bs-header-offset,0px)] z-40 -mt-6 flex flex-col gap-3 border-x-8 border-[var(--color-bg-secondary)] bg-secondary pb-3 pt-6 shadow-[-8px_0_0_0_var(--color-bg-secondary),8px_0_0_0_var(--color-bg-secondary)] dark:border-[#0a0a0a] dark:bg-[#0a0a0a] dark:shadow-[-8px_0_0_0_#0a0a0a,8px_0_0_0_#0a0a0a]")}>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <p className="text-display-sm font-semibold text-primary">{title}</p>
                 {(actions || withFilters) && (
                     <div className="flex flex-wrap items-center gap-3">
-                        {actions}
-                        {withFilters && <RelatorioFilterSlideout />}
+                        {splitControls ? (
+                            <>
+                                {withFilters && <RelatorioFilterSlideout />}
+                                {actions}
+                            </>
+                        ) : (
+                            <>
+                                {actions}
+                                {withFilters && <RelatorioFilterSlideout />}
+                            </>
+                        )}
                     </div>
                 )}
             </div>

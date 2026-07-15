@@ -113,6 +113,7 @@ import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/Sol
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
 import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
 import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
+import { PreVenda } from '../produtos/backstage/marketing/pages/PreVenda';
 import { DistribuicaoCortesias } from '../produtos/freepass/distribuicao-cortesias/pages/distribuicao-cortesias';
 import { CortesiasDoEvento } from '../produtos/freepass/distribuicao-cortesias/pages/cortesias-do-evento';
 import { DetalhesCortesia } from '../produtos/freepass/distribuicao-cortesias/pages/detalhes-cortesia';
@@ -256,6 +257,7 @@ export default function App() {
         <Route path="/backstage/publico" element={<Publico />} />
         <Route path="/backstage/publico/formularios" element={<FormulariosParticipacao />} />
         <Route path="/backstage/publico/solicitacoes" element={<SolicitacoesParticipacao />} />
+        <Route path="/backstage/marketing/pre-venda" element={<PreVenda />} />
         <Route path="/freepass/distribuicao-cortesias" element={<DistribuicaoCortesias />} />
         <Route path="/freepass/distribuicao-cortesias/:eventoId" element={<CortesiasDoEvento />} />
         <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />

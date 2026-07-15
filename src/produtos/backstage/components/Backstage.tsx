@@ -75,6 +75,8 @@ interface BackstageLayoutProps {
     activeProducer?: string;
     /** Mostra o contexto do evento (card + funcionalidades). Default: true. */
     showEventContext?: boolean;
+    /** Mostra o switch flutuante de variante de layout (clássico/topbar). Default: true. */
+    showLayoutSwitcher?: boolean;
     children: ReactNode;
 }
 
@@ -108,6 +110,7 @@ export function BackstageLayout({
     activeItem,
     activeProducer,
     showEventContext = true,
+    showLayoutSwitcher = true,
     children,
 }: BackstageLayoutProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -156,7 +159,7 @@ export function BackstageLayout({
                         <div className="mx-auto flex w-full max-w-[1088px] flex-1 flex-col">{children}</div>
                     </main>
                 </div>
-                <LayoutSwitcher variant={variant} onChange={setVariant} />
+                {showLayoutSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
             </div>
         );
     }
@@ -170,7 +173,7 @@ export function BackstageLayout({
                 {showEventContext && <EventRail activeSection={activeSection} activeItem={activeItem} />}
                 {children}
             </div>
-            <LayoutSwitcher variant={variant} onChange={setVariant} />
+            {showLayoutSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
         </div>
     );
 }
@@ -534,7 +537,7 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
                 <ProducerRailItem icon={Calendar} label="Eventos" href="/backstage/" isActive={activeProducer === "eventos" || !activeProducer} />
                 <ProducerRailItem icon={UsersPlus} label="Equipe" />
                 <ProducerRailItem icon={Bank} label="Finanças" />
-                <ProducerRailItem icon={Users01} label="Público" />
+                <ProducerRailItem icon={Users01} label="Público" href="/backstage/publico" isActive={activeProducer === "publico"} />
                 <ProducerRailItem icon={Settings01} label="Ajustes" />
             </nav>
         </div>

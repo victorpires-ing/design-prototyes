@@ -36,6 +36,28 @@
 }
 
 
+/* Scrollbar fina, arredondada e visível só no hover (usada em áreas de leitura, ex.: preview de anexos). */
+.scroll-suave::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-suave::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+.scroll-suave::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+  border: none;
+  transition: background-color 0.15s linear;
+}
+.scroll-suave:hover::-webkit-scrollbar-thumb,
+.scroll-suave.is-scrolling::-webkit-scrollbar-thumb {
+  background-color: var(--color-neutral-500);
+}
+.scroll-suave::-webkit-scrollbar-corner {
+  background-color: transparent;
+}
+
 button {
   cursor: pointer;
 }

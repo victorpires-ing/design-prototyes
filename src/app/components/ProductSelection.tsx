@@ -7,7 +7,7 @@ import { cx } from "@/utils/cx";
 /*  Products                                                          */
 /* ------------------------------------------------------------------ */
 
-type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes" | "marketplace" | "carteira-web";
+type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes" | "marketplace" | "carteira-web" | "freepass";
 
 interface ProductCardData {
     id: string;
@@ -74,6 +74,13 @@ const PRODUCTS: ProductCardData[] = [
         to: "/carteira-web",
         illustration: "carteira-web",
     },
+    {
+        id: "freepass",
+        name: "Freepass",
+        description: "Receba um pack de cortesias, reenvie ou resgate",
+        to: "/freepass/distribuicao-cortesias",
+        illustration: "freepass",
+    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
@@ -85,6 +92,7 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     testes: TestesIllustration,
     marketplace: MarketplaceIllustration,
     "carteira-web": CarteiraWebIllustration,
+    freepass: FreepassIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -494,6 +502,59 @@ function BackstageIllustration() {
                     <rect x="208" y="74" width="26" height="5" rx="2.5" />
                     <rect x="208" y="86" width="18" height="5" rx="2.5" />
                 </g>
+            </g>
+        </svg>
+    );
+}
+
+function FreepassIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <defs>
+                <linearGradient id="fp-bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="160">
+                    <stop offset="0%" stopColor={N100} />
+                    <stop offset="100%" stopColor={N200} />
+                </linearGradient>
+            </defs>
+            <rect width="320" height="160" fill="url(#fp-bg)" />
+
+            {/* Pack de cortesias (leque de tickets) à esquerda */}
+            <g transform="rotate(-10 96 80)">
+                <rect x="44" y="52" width="96" height="60" rx="10" fill={N200} />
+            </g>
+            <g transform="rotate(-3 96 80)">
+                <rect x="48" y="48" width="96" height="60" rx="10" fill={N50} stroke={BORDER} />
+                <circle cx="118" cy="48" r="7" fill={N100} />
+                <circle cx="118" cy="108" r="7" fill={N100} />
+                <line x1="118" y1="58" x2="118" y2="98" stroke={N300} strokeWidth="2" strokeDasharray="4 5" />
+                <polygon points="72,66 74.3,72.4 81.1,72.6 75.7,76.8 77.6,83.3 72,79.4 66.4,83.3 68.3,76.8 62.9,72.6 69.7,72.4" fill={BRAND} />
+                <rect x="92" y="70" width="20" height="4" rx="2" fill={N400} />
+                <rect x="92" y="80" width="14" height="3" rx="1.5" fill={N300} />
+            </g>
+
+            {/* Setas de distribuição para destinatários (reenvio) */}
+            <g stroke={BRAND} strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M168 78 L214 50" />
+                <polyline points="206,46 214,50 210,58" />
+                <path d="M168 96 L214 122" />
+                <polyline points="210,114 214,122 206,124" />
+            </g>
+
+            {/* Destinatários */}
+            <g>
+                <circle cx="236" cy="46" r="16" fill={BRAND_SOFT} />
+                <circle cx="236" cy="41" r="5" fill={BRAND} />
+                <path d="M228 55 a8 7 0 0 1 16 0 Z" fill={BRAND} />
+            </g>
+            <g>
+                <circle cx="236" cy="122" r="16" fill={N50} stroke={BORDER} />
+                <circle cx="236" cy="117" r="5" fill={N400} />
+                <path d="M228 131 a8 7 0 0 1 16 0 Z" fill={N400} />
+            </g>
+            {/* Resgate para si (check) */}
+            <g>
+                <circle cx="284" cy="84" r="15" fill={BRAND} />
+                <polyline points="277,84 282,89 291,79" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
             </g>
         </svg>
     );

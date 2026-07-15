@@ -113,6 +113,11 @@ import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/Sol
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
 import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
 import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
+import { DistribuicaoCortesias } from '../produtos/freepass/distribuicao-cortesias/pages/distribuicao-cortesias';
+import { CortesiasDoEvento } from '../produtos/freepass/distribuicao-cortesias/pages/cortesias-do-evento';
+import { DetalhesCortesia } from '../produtos/freepass/distribuicao-cortesias/pages/detalhes-cortesia';
+import { ReenviarCortesia } from '../produtos/freepass/distribuicao-cortesias/pages/reenviar-cortesia';
+import { ResgatarCortesia } from '../produtos/freepass/distribuicao-cortesias/pages/resgatar-cortesia';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -251,6 +256,11 @@ export default function App() {
         <Route path="/backstage/publico" element={<Publico />} />
         <Route path="/backstage/publico/formularios" element={<FormulariosParticipacao />} />
         <Route path="/backstage/publico/solicitacoes" element={<SolicitacoesParticipacao />} />
+        <Route path="/freepass/distribuicao-cortesias" element={<DistribuicaoCortesias />} />
+        <Route path="/freepass/distribuicao-cortesias/:eventoId" element={<CortesiasDoEvento />} />
+        <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />
+        <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId/enviar" element={<ReenviarCortesia />} />
+        <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId/resgatar" element={<ResgatarCortesia />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </PesquisasProvider>

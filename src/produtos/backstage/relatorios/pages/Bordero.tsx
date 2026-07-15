@@ -335,6 +335,7 @@ interface BorderoChange {
     canal: string;
     descricao: string;
     ingressos: number;
+    produtos: number;
     valor: number;
 }
 
@@ -345,10 +346,11 @@ const CHANGE_META: Record<ChangeType, { label: string; color: "success" | "gray"
 };
 
 const changedTransacoes: BorderoChange[] = [
-    { id: "c1", hora: "21/06 19h20", tipo: "venda", canal: "Impresso/Bilheteria", descricao: "Tribuna · Futebol", ingressos: 2, valor: 240 },
-    { id: "c2", hora: "21/06 21h48", tipo: "cancelamento", canal: "Online", descricao: "Oeste Inferior · Inteira", ingressos: -1, valor: -100 },
-    { id: "c3", hora: "22/06 10h12", tipo: "estorno", canal: "Online", descricao: "Oeste Superior B · Inteira", ingressos: -1, valor: -60 },
-    { id: "c4", hora: "27/06 15h32", tipo: "estorno", canal: "Online", descricao: "Leste Superior · Meia-Entrada", ingressos: -2, valor: -80 },
+    { id: "c1", hora: "22/06 10h12", tipo: "cancelamento", canal: "Online", descricao: "Pista · Inteira + Camiseta oficial", ingressos: -1, produtos: -1, valor: -239.9 },
+    { id: "c2", hora: "22/06 14h30", tipo: "estorno", canal: "Online", descricao: "Camarote · VIP + Copo colecionável + Kit do festival", ingressos: -2, produtos: -2, valor: -958.8 },
+    { id: "c3", hora: "23/06 09h05", tipo: "estorno", canal: "Online", descricao: "Arquibancada · Meia-entrada", ingressos: -1, produtos: 0, valor: -90 },
+    { id: "c4", hora: "28/06 23h50", tipo: "cancelamento", canal: "Impresso/Bilheteria", descricao: "Pista Premium · Inteira + Kit do festival", ingressos: -1, produtos: -1, valor: -318.9 },
+    { id: "c5", hora: "30/06 11h20", tipo: "estorno", canal: "Online", descricao: "Front Stage · VIP + 2 produtos", ingressos: -3, produtos: -2, valor: -1179.7 },
 ];
 
 type BorderoView = "macro" | "pdv" | "meios";
@@ -504,7 +506,7 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: { isOpen: boolean;
                     {changes.map((change) => {
                         const meta = CHANGE_META[change.tipo];
                         return (
-                            <li key={change.id} className="flex flex-col gap-2 py-4">
+                            <li key={change.id} className="flex flex-col gap-2 py-4 first:pt-6 last:pb-6">
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="flex min-w-0 flex-col">
                                         <span className="text-sm font-medium text-primary">{change.descricao}</span>
@@ -518,6 +520,11 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: { isOpen: boolean;
                                     <span>
                                         Ingressos: <b className={cx("tabular-nums", change.ingressos >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.ingressos, false)}</b>
                                     </span>
+                                    {change.produtos !== 0 && (
+                                        <span>
+                                            Produtos: <b className={cx("tabular-nums", change.produtos >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.produtos, false)}</b>
+                                        </span>
+                                    )}
                                     <span>
                                         Faturado: <b className={cx("tabular-nums", change.valor >= 0 ? "text-success-primary" : "text-error-primary")}>{signed(change.valor, true)}</b>
                                     </span>

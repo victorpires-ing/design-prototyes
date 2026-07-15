@@ -579,16 +579,7 @@ const OrgTopBar = ({ activeProducer }: { activeProducer?: string }) => {
     return (
         <header className="sticky top-0 z-30 hidden border-b border-secondary bg-primary md:block">
             <div className="flex h-16 items-center gap-3 px-4 md:px-6">
-                <button
-                    type="button"
-                    className="flex shrink-0 items-center gap-2 rounded-full bg-secondary py-1.5 pr-2.5 pl-1.5 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary_hover"
-                >
-                    <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-secondary-solid text-[10px] font-bold text-white">
-                        eng
-                    </span>
-                    <span className="text-sm font-semibold text-primary">Ingresse</span>
-                    <ChevronDown className="size-4 text-fg-quaternary" />
-                </button>
+                <BrandLogo className="h-6 shrink-0" />
                 <span className="h-6 w-px shrink-0 bg-border-secondary" aria-hidden="true" />
                 <nav className="flex items-center gap-0.5">
                     {ORG_NAV.map((item) => {
@@ -614,7 +605,16 @@ const OrgTopBar = ({ activeProducer }: { activeProducer?: string }) => {
                 <div className="ml-auto flex items-center gap-3">
                     <ThemeToggle />
                     <span className="h-6 w-px shrink-0 bg-border-secondary" aria-hidden="true" />
-                    <BrandLogo className="h-6 shrink-0" />
+                    <button
+                        type="button"
+                        className="flex shrink-0 items-center gap-2 rounded-full bg-secondary py-1.5 pr-2.5 pl-1.5 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary_hover"
+                    >
+                        <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-secondary-solid text-[10px] font-bold text-white">
+                            eng
+                        </span>
+                        <span className="text-sm font-semibold text-primary">Ingresse</span>
+                        <ChevronDown className="size-4 text-fg-quaternary" />
+                    </button>
                 </div>
             </div>
         </header>

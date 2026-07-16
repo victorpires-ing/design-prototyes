@@ -130,8 +130,7 @@ export function DetalhesCortesia() {
                                             className="relative flex flex-col gap-2 border-b border-secondary px-4 py-3 last:border-b-0 md:grid md:grid-cols-[minmax(0,1.6fr)_100px_140px_140px] md:items-center md:gap-4"
                                         >
                                             <div className="flex min-w-0 flex-col pr-24 md:pr-0">
-                                                <span className="truncate text-sm font-medium text-primary">{envio.destinatario}</span>
-                                                <span className="truncate text-sm text-tertiary">{envio.email}</span>
+                                                <span className="truncate text-sm font-medium text-primary">{envio.email}</span>
                                             </div>
                                             <div className="text-sm text-secondary">
                                                 <span className="text-tertiary md:hidden">Quantidade: </span>

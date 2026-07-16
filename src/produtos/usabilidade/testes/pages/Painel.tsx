@@ -40,7 +40,7 @@ export function Painel() {
     };
 
     return (
-        <div className="min-h-screen bg-quaternary text-primary">
+        <div className="min-h-screen bg-primary text-primary">
             <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-10 sm:px-6">
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex flex-col gap-1">

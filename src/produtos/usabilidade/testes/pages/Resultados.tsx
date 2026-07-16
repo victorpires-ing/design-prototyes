@@ -32,15 +32,15 @@ export function Resultados() {
     const participantes = sessoes.length;
     const concluidas = sessoes.filter((s) => s.concluida).length;
 
-    if (carregando) return <div className="min-h-screen bg-quaternary py-20 text-center text-sm text-tertiary">Carregando…</div>;
-    if (!teste) return <div className="min-h-screen bg-quaternary py-20 text-center text-sm text-tertiary">Teste não encontrado.</div>;
+    if (carregando) return <div className="min-h-screen bg-primary py-20 text-center text-sm text-tertiary">Carregando…</div>;
+    if (!teste) return <div className="min-h-screen bg-primary py-20 text-center text-sm text-tertiary">Teste não encontrado.</div>;
 
     const atividades = teste.blocos.filter((b): b is BlocoAtividade => b.tipo === "atividade");
     const perguntas = teste.blocos.filter((b): b is BlocoPergunta => b.tipo === "pergunta");
     const susBlocos = teste.blocos.filter((b): b is BlocoSus => b.tipo === "sus");
 
     return (
-        <div className="min-h-screen bg-quaternary text-primary">
+        <div className="min-h-screen bg-primary text-primary">
             <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
                 <div className="flex flex-col gap-4">
                     <Button size="sm" color="link-gray" iconLeading={ArrowLeft} onClick={() => navigate("/testes")} className="self-start">

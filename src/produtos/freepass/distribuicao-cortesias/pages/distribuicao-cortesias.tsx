@@ -83,9 +83,19 @@ const EventoCortesiaCard = ({ evento }: { evento: EventoCortesia }) => {
                     <Ticket01 className="size-3.5" aria-hidden="true" />
                     {label}
                 </span>
+                {evento.novo && (
+                    <span className="absolute top-3 left-3 hidden items-center rounded-full bg-brand-solid px-2.5 py-1 text-sm font-semibold text-white sm:inline-flex">
+                        Novo
+                    </span>
+                )}
             </div>
 
             <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-4">
+                {evento.novo && (
+                    <span className="inline-flex w-fit items-center rounded-full bg-brand-solid px-2.5 py-0.5 text-sm font-semibold text-white sm:hidden">
+                        Novo
+                    </span>
+                )}
                 <span className="line-clamp-2 text-md font-semibold text-primary">{evento.nome}</span>
                 <span className="flex items-center gap-1.5 text-sm text-tertiary">
                     <Calendar className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />

@@ -38,6 +38,8 @@ export interface EventoCortesia {
     gradiente: string;
     /** Evento que já aconteceu (aba "Já passou"). */
     passado?: boolean;
+    /** Cortesia recém-recebida — exibe selo "Novo" na carteira. */
+    novo?: boolean;
     itens: ItemCortesia[];
 }
 
@@ -111,6 +113,7 @@ export const EVENTOS_CORTESIA: EventoCortesia[] = [
         cortesias: 72,
         capa: "https://kraken.ingresse.com/event/posters/93992/large/1783627115.0283313.jpg",
         gradiente: "from-[#f7971e] to-[#ffd200]",
+        novo: true,
         itens: [
             { id: "ing-pista", tipo: "ingresso", nome: "Pista", data: "Dom, 09 ago • 18:00", disponivel: 30, total: 40 },
             { id: "ing-camarote", tipo: "ingresso", nome: "Camarote", data: "Dom, 09 ago • 18:00", disponivel: 14, total: 20 },

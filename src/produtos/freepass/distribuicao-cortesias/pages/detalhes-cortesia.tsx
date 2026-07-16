@@ -43,7 +43,7 @@ export function DetalhesCortesia() {
                 </div>
             </div>
 
-            <main className="mx-auto flex w-full max-w-[768px] flex-1 flex-col gap-6 p-6">
+            <main className="mx-auto flex w-full max-w-[768px] flex-1 flex-col gap-6 px-4 py-6 md:px-6">
                 {!item || !evento ? (
                     <div className="rounded-2xl bg-primary px-6 py-16 text-center text-sm text-tertiary ring-1 ring-border-secondary">
                         Cortesia não encontrada.
@@ -71,14 +71,14 @@ export function DetalhesCortesia() {
                                         {item.data}
                                     </span>
                                 )}
-                                <span className="text-sm text-tertiary">
+                                <span className="text-sm font-medium text-brand-secondary">
                                     {disponivel} {disponivel === 1 ? "disponível" : "disponíveis"}
                                 </span>
                             </div>
                         </div>
 
-                        {/* Ações: reenviar para outras ou resgatar para si — indisponível em eventos passados */}
-                        {!evento.passado && (
+                        {/* Ações: reenviar para outras ou resgatar para si — indisponível em eventos passados ou sem saldo */}
+                        {!evento.passado && disponivel > 0 && (
                         <div className="flex flex-col gap-3 sm:flex-row">
                             <Button
                                 size="md"

@@ -35,7 +35,7 @@ export function CortesiasDoEvento() {
                 </div>
             </div>
 
-            <main className="mx-auto flex w-full max-w-[768px] flex-1 flex-col gap-8 p-6">
+            <main className="mx-auto flex w-full max-w-[768px] flex-1 flex-col gap-8 px-4 py-6 md:px-6">
                 {!evento ? (
                     <div className="rounded-2xl bg-primary px-6 py-16 text-center text-sm text-tertiary ring-1 ring-border-secondary">
                         Evento não encontrado.
@@ -110,7 +110,7 @@ const ItemCortesiaCard = ({ eventoId, item, onClick }: { eventoId: string; item:
                         {item.data}
                     </span>
                 )}
-                <span className="text-sm text-tertiary">
+                <span className="text-sm font-medium text-brand-secondary">
                     {disponivel} {disponivel === 1 ? "disponível" : "disponíveis"}
                 </span>
             </div>

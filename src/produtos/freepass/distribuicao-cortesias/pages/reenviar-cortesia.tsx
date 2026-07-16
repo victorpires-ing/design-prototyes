@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { ArrowDown, ArrowLeft, CheckCircle, ChevronDown, Minus, Plus, Trash01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
@@ -11,7 +11,7 @@ import { FreepassHeader } from "../components/FreepassHeader";
 import { getEvento, type EventoCortesia, type ItemCortesia } from "../data/eventos";
 import { addEnvios, nomeDoEmail, useEnvios } from "../data/envios-store";
 
-type Etapa = "destinatarios" | "confirmar" | "sucesso";
+type Etapa = "destinatarios" | "confirmar";
 
 interface Destinatario {
     id: string;
@@ -25,6 +25,7 @@ const OBJETIVOS = [
 ];
 
 const MAX_VISIVEIS = 4;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 let nid = 1;
 
 /** Slide horizontal direcional entre as etapas (avançar → esquerda, voltar → direita). */
@@ -46,7 +47,7 @@ export function ReenviarCortesia() {
     const [objetivo, setObjetivo] = useState("");
     const [mostrarTodos, setMostrarTodos] = useState(false);
     const [direction, setDirection] = useState(1);
-    const [focado, setFocado] = useState(false);
+    const [erroEmail, setErroEmail] = useState<string | null>(null);
 
     const goTo = (next: Etapa, dir: number) => {
         setDirection(dir);
@@ -69,55 +70,78 @@ export function ReenviarCortesia() {
             itemId,
             dests.map((d) => ({ destinatario: nomeDoEmail(d.email), email: d.email, quantidade: d.qtd, status: "enviado" as const })),
         );
-        goTo("sucesso", 1);
+        navigate(`/freepass/distribuicao-cortesias/${eventoId}/${itemId}/enviar/sucesso`, { state: { dests } });
     };
 
     const adicionar = () => {
         if (!item) return;
+        // Sem saldo: sinaliza que todas as cortesias já foram encaminhadas.
+        if (semSaldo) {
+            setErroEmail("Você já encaminhou todas as cortesias");
+            return;
+        }
         // Aceita colar uma lista separada por espaço, vírgula, ponto-e-vírgula ou quebra de linha.
-        const emails = emailInput
+        const tokens = emailInput
             .split(/[\s,;]+/)
             .map((e) => e.trim())
-            .filter((e) => e.includes("@"));
-        if (!emails.length) return;
+            .filter(Boolean);
+        if (!tokens.length) return;
 
-        const next = dests.map((d) => ({ ...d }));
-        let usado = next.reduce((s, d) => s + d.qtd, 0);
-        for (const email of emails) {
-            if (usado >= disponivel) break; // sem saldo — para de adicionar
-            const idx = next.findIndex((d) => d.email.toLowerCase() === email.toLowerCase());
-            if (idx >= 0) next[idx].qtd += 1; // duplicado → soma quantidade, sem duplicar linha
-            else next.push({ id: `d${nid++}`, email, qtd: 1 });
-            usado += 1;
+        const validos = tokens.filter((e) => EMAIL_RE.test(e));
+        const invalidos = tokens.filter((e) => !EMAIL_RE.test(e));
+
+        if (validos.length > 0) {
+            const next = dests.map((d) => ({ ...d }));
+            let usado = next.reduce((s, d) => s + d.qtd, 0);
+            for (const email of validos) {
+                if (usado >= disponivel) break; // sem saldo — para de adicionar
+                const idx = next.findIndex((d) => d.email.toLowerCase() === email.toLowerCase());
+                if (idx >= 0) next[idx].qtd += 1; // duplicado → soma quantidade, sem duplicar linha
+                else next.push({ id: `d${nid++}`, email, qtd: 1 });
+                usado += 1;
+            }
+            setDests(next);
         }
-        setDests(next);
-        setEmailInput("");
+
+        // Mantém no campo apenas os inválidos e sinaliza o erro; se tudo era válido, limpa.
+        if (invalidos.length > 0) {
+            setEmailInput(invalidos.join(" "));
+            setErroEmail(invalidos.length === 1 ? "Digite um e-mail válido." : "Alguns e-mails são inválidos. Revise e tente de novo.");
+        } else {
+            setEmailInput("");
+            setErroEmail(null);
+        }
     };
 
-    const setDest = (id: string, patch: Partial<Destinatario>) => setDests((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
-    const removeDest = (id: string) => setDests((prev) => prev.filter((d) => d.id !== id));
+    // Remover/alterar destinatários libera saldo → limpa o aviso de "todas encaminhadas".
+    const setDest = (id: string, patch: Partial<Destinatario>) => {
+        setErroEmail(null);
+        setDests((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
+    };
+    const removeDest = (id: string) => {
+        setErroEmail(null);
+        setDests((prev) => prev.filter((d) => d.id !== id));
+    };
 
     return (
         <div className="flex min-h-screen flex-col bg-secondary">
             <FreepassHeader />
 
-            {etapa !== "sucesso" && (
-                <div className="border-b border-secondary bg-primary">
-                    <div className="mx-auto flex h-14 w-full max-w-[1440px] items-center gap-2 px-4 md:px-8">
-                        <button
-                            type="button"
-                            onClick={() => (etapa === "confirmar" ? goTo("destinatarios", -1) : voltarDetalhe())}
-                            aria-label="Voltar"
-                            className="flex size-9 items-center justify-center rounded-md text-fg-secondary transition duration-100 ease-linear hover:bg-secondary"
-                        >
-                            <ArrowLeft className="size-5" aria-hidden="true" />
-                        </button>
-                        <h1 className="text-md font-semibold text-primary">Enviar para alguém</h1>
-                    </div>
+            <div className="border-b border-secondary bg-primary">
+                <div className="mx-auto flex h-14 w-full max-w-[1440px] items-center gap-2 px-4 md:px-8">
+                    <button
+                        type="button"
+                        onClick={() => (etapa === "confirmar" ? goTo("destinatarios", -1) : voltarDetalhe())}
+                        aria-label="Voltar"
+                        className="flex size-9 items-center justify-center rounded-md text-fg-secondary transition duration-100 ease-linear hover:bg-secondary"
+                    >
+                        <ArrowLeft className="size-5" aria-hidden="true" />
+                    </button>
+                    <h1 className="text-md font-semibold text-primary">Enviar para alguém</h1>
                 </div>
-            )}
+            </div>
 
-            <main className="mx-auto flex w-full max-w-[768px] flex-1 flex-col gap-5 overflow-x-hidden p-6">
+            <main className="mx-auto flex w-full max-w-[768px] flex-1 flex-col gap-5 overflow-x-hidden px-4 py-6 md:px-6">
                 {!item || !evento ? (
                     <div className="rounded-2xl bg-primary px-6 py-16 text-center text-sm text-tertiary ring-1 ring-border-secondary">Cortesia não encontrada.</div>
                 ) : evento.passado ? (
@@ -139,45 +163,55 @@ export function ReenviarCortesia() {
                             transition={{ duration: 0.25, ease: "easeInOut" }}
                             className="flex flex-1 flex-col gap-5"
                         >
-                            {etapa === "sucesso" ? (
-                                <Sucesso dests={dests} onIr={voltarDetalhe} />
-                            ) : etapa === "destinatarios" ? (
+                            {etapa === "destinatarios" ? (
                                 <>
-                        <ItemResumo evento={evento} item={item} disponivel={restante} connector />
+                        <ItemResumoSticky evento={evento} item={item} connector hideDisponivel />
 
                         <div className="flex flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary md:p-6">
-                            <h2 className="text-lg font-semibold text-primary">E-mail de quem vai receber</h2>
+                            <h2 className="text-lg font-semibold text-primary">Quem vai receber?</h2>
 
-                            <div
-                                className="flex flex-col gap-1.5"
-                                onFocus={() => setFocado(true)}
-                                onBlur={(e) => {
-                                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setFocado(false);
-                                }}
-                            >
+                            <div className="flex flex-col gap-1.5">
                                 <InputGroup
                                     size="md"
-                                    aria-label="E-mail de quem vai receber"
+                                    aria-label="E-mail do convidado"
                                     value={emailInput}
-                                    onChange={setEmailInput}
+                                    onChange={(v) => {
+                                        setEmailInput(v);
+                                        if (erroEmail) setErroEmail(null);
+                                    }}
+                                    isInvalid={!!erroEmail}
                                     trailingAddon={
-                                        <Button color="secondary" iconLeading={Plus} onClick={adicionar} isDisabled={semSaldo}>
-                                            Adicionar
-                                        </Button>
+                                        <Button color="secondary" size="md" iconLeading={Plus} onClick={adicionar} aria-label="Adicionar" />
                                     }
                                 >
-                                    <InputBase placeholder="E-mail de quem vai receber" />
+                                    <InputBase placeholder="digite o e-mail do convidado" />
                                 </InputGroup>
-                                <AnimatePresence initial={false}>
-                                    {semSaldo && focado && (
+                                <AnimatePresence initial={false} mode="wait">
+                                    {erroEmail ? (
                                         <motion.p
+                                            key="email-invalido"
                                             initial={{ opacity: 0, height: 0 }}
                                             animate={{ opacity: 1, height: "auto" }}
                                             exit={{ opacity: 0, height: 0 }}
                                             transition={{ duration: 0.2, ease: "easeOut" }}
                                             className="overflow-hidden text-sm text-error-primary"
                                         >
-                                            Você já endereçou todas as cortesias disponíveis. Remova ou diminua a quantidade de alguém para adicionar outro e-mail.
+                                            {erroEmail}
+                                        </motion.p>
+                                    ) : (
+                                        <motion.p
+                                            key="resta"
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: "auto" }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            transition={{ duration: 0.2, ease: "easeOut" }}
+                                            className="overflow-hidden text-sm text-tertiary"
+                                        >
+                                            {semSaldo
+                                                ? disponivel === 1
+                                                    ? "Toda a cortesia foi distribuída"
+                                                    : `Todas as ${disponivel} cortesias foram distribuídas`
+                                                : `${restante === 1 ? "Resta" : "Restam"} ${restante} de ${disponivel} ${disponivel === 1 ? "cortesia disponível" : "cortesias disponíveis"}`}
                                         </motion.p>
                                     )}
                                 </AnimatePresence>
@@ -194,18 +228,18 @@ export function ReenviarCortesia() {
                                                 animate={{ opacity: 1, height: "auto" }}
                                                 exit={{ opacity: 0, height: 0 }}
                                                 transition={{ duration: 0.2, ease: "easeOut" }}
-                                                className="overflow-hidden"
+                                                className="overflow-hidden border-b border-secondary last:border-b-0"
                                             >
-                                                <div className="flex items-center gap-3 py-3">
+                                                <div className="flex items-center py-3">
                                                     <button
                                                         type="button"
                                                         onClick={() => removeDest(d.id)}
                                                         aria-label={`Remover ${d.email}`}
-                                                        className="flex size-9 shrink-0 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-error-secondary"
+                                                        className="-ml-2 flex size-9 shrink-0 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-error-secondary"
                                                     >
                                                         <Trash01 className="size-4" aria-hidden="true" />
                                                     </button>
-                                                    <span className="min-w-0 flex-1 truncate text-sm text-secondary">{d.email}</span>
+                                                    <span className="min-w-0 flex-1 truncate pr-3 text-sm text-secondary">{d.email}</span>
                                                     <Stepper value={d.qtd} onChange={(q) => (q < 1 ? removeDest(d.id) : setDest(d.id, { qtd: q }))} min={0} max={d.qtd + restante} />
                                                 </div>
                                             </motion.div>
@@ -222,13 +256,13 @@ export function ReenviarCortesia() {
                             onClick={() => goTo("confirmar", 1)}
                             className="w-full sm:w-auto sm:self-start"
                         >
-                            {dests.length > 1 ? `Enviar para ${dests.length} pessoas` : "Enviar cortesia"}
+                            {totalQtd > 0 ? `Enviar ${totalQtd} ${totalQtd === 1 ? "Cortesia" : "Cortesias"}` : "Enviar cortesia"}
                         </Button>
                     </>
                 ) : (
                     /* ------- Confirmar transferência ------- */
                     <>
-                        <ItemResumo evento={evento} item={item} hideDisponivel />
+                        <ItemResumoSticky evento={evento} item={item} hideDisponivel />
 
                         <div className="flex flex-col gap-5 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary md:p-6">
                             <div className="flex flex-col gap-1">
@@ -341,7 +375,7 @@ const ItemResumo = ({
                     <span className={cx("font-bold text-primary", nested ? "text-lg" : "text-display-xs")}>{item.nome}</span>
                     <span className="text-sm text-tertiary">Data do evento: {evento.data}</span>
                     {!hideDisponivel && (
-                        <span className="text-sm text-tertiary">
+                        <span className="text-sm font-medium text-brand-secondary">
                             {disp} {disp === 1 ? "disponível" : "disponíveis"}
                         </span>
                     )}
@@ -358,29 +392,92 @@ const ItemResumo = ({
     );
 };
 
+/**
+ * ItemResumo + card compacto fixo no topo que aparece quando o resumo sai da tela.
+ */
+const ItemResumoSticky = (props: { evento: EventoCortesia; item: ItemCortesia; disponivel?: number; connector?: boolean; hideDisponivel?: boolean }) => {
+    const ref = useRef<HTMLDivElement>(null);
+    const [stuck, setStuck] = useState(false);
+
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        // Dispara quando o resumo passa por baixo do header fixo (~80px).
+        const io = new IntersectionObserver(([entry]) => setStuck(!entry.isIntersecting), { rootMargin: "-80px 0px 0px 0px", threshold: 0 });
+        io.observe(el);
+        return () => io.disconnect();
+    }, []);
+
+    return (
+        <>
+            <AnimatePresence>
+                {stuck && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className="fixed inset-x-0 top-16 z-20 border-b border-secondary bg-primary shadow-xs md:top-18"
+                    >
+                        <div className="mx-auto flex w-full max-w-[768px] flex-col gap-0.5 px-4 py-2.5 md:px-6">
+                            <span className="truncate text-sm font-bold text-primary">{props.item.nome}</span>
+                            <span className="truncate text-sm text-tertiary">Data do evento: {props.evento.data}</span>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            <div ref={ref} className="flex flex-col gap-5">
+                <ItemResumo {...props} />
+            </div>
+        </>
+    );
+};
+
 const Sucesso = ({ dests, onIr }: { dests: Destinatario[]; onIr: () => void }) => (
-    <div className="flex flex-col items-center gap-6 pt-6 text-center">
-        <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
-        <div className="flex flex-col gap-1">
-            <h1 className="text-display-xs font-semibold text-primary">Cortesias enviadas</h1>
-            <p className="max-w-md text-sm text-tertiary">As cortesias foram enviadas. Os destinatários receberão um e-mail para resgatar.</p>
-        </div>
-        <div className="w-full max-w-md rounded-2xl bg-primary p-5 text-left ring-1 ring-border-secondary">
-            <span className="text-sm font-semibold text-secondary">Enviado para</span>
-            <div className="mt-2 flex flex-col divide-y divide-secondary">
-                {dests.map((d) => (
-                    <div key={d.id} className="flex items-center justify-between gap-3 py-3 first:pt-1">
-                        <span className="min-w-0 truncate text-sm text-secondary">{d.email}</span>
-                        <span className="shrink-0 text-sm text-tertiary tabular-nums">{d.qtd}x</span>
-                    </div>
-                ))}
+    <div className="flex flex-col gap-4 pt-6">
+        <div className="flex flex-col items-center gap-6 rounded-2xl bg-primary p-6 text-center ring-1 ring-border-secondary md:p-8">
+            <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
+            <div className="flex flex-col gap-1">
+                <h1 className="text-display-xs font-semibold text-primary">Cortesias enviadas</h1>
+                <p className="max-w-md text-sm text-tertiary">As cortesias foram enviadas. Os destinatários receberão um e-mail para resgatar.</p>
             </div>
         </div>
-        <Button size="lg" color="primary" onClick={onIr} className="w-full max-w-md">
-            Ver detalhes da cortesia
+        {dests.length > 0 && (
+            <div className="w-full rounded-2xl bg-primary p-5 text-left ring-1 ring-border-secondary">
+                <span className="text-sm font-semibold text-secondary">Enviado para</span>
+                <div className="mt-2 flex flex-col divide-y divide-secondary">
+                    {dests.map((d) => (
+                        <div key={d.id} className="flex items-center justify-between gap-3 py-3 first:pt-1">
+                            <span className="min-w-0 truncate text-sm text-secondary">{d.email}</span>
+                            <span className="shrink-0 text-sm text-tertiary tabular-nums">{d.qtd}x</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
+        <Button size="lg" color="primary" onClick={onIr} className="w-full">
+            Ver status do envio
         </Button>
     </div>
 );
+
+/* Tela de sucesso do envio — rota própria (`.../enviar/sucesso`) para o teste de usabilidade. */
+export function ReenviarSucesso() {
+    const { eventoId = "", itemId = "" } = useParams();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const dests = (location.state as { dests?: Destinatario[] } | null)?.dests ?? [];
+    const voltarDetalhe = () => navigate(`/freepass/distribuicao-cortesias/${eventoId}/${itemId}`);
+
+    return (
+        <div className="flex min-h-screen flex-col bg-secondary">
+            <FreepassHeader />
+            <main className="mx-auto flex w-full max-w-[768px] flex-1 flex-col gap-5 px-4 py-6 md:px-6">
+                <Sucesso dests={dests} onIr={voltarDetalhe} />
+            </main>
+        </div>
+    );
+}
 
 const Stepper = ({ value, onChange, min = 0, max = 99 }: { value: number; onChange: (v: number) => void; min?: number; max?: number }) => (
     <div className="flex shrink-0 items-center gap-1 rounded-lg ring-1 ring-border-primary">
@@ -406,4 +503,4 @@ const Stepper = ({ value, onChange, min = 0, max = 99 }: { value: number; onChan
     </div>
 );
 
-export { Stepper, ItemResumo, stepVariants };
+export { Stepper, ItemResumo, ItemResumoSticky, stepVariants };

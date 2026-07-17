@@ -48,6 +48,7 @@ export function ReenviarCortesia() {
     const [mostrarTodos, setMostrarTodos] = useState(false);
     const [direction, setDirection] = useState(1);
     const [erroEmail, setErroEmail] = useState<string | null>(null);
+    const campoRef = useRef<HTMLDivElement>(null);
 
     const goTo = (next: Etapa, dir: number) => {
         setDirection(dir);
@@ -101,6 +102,8 @@ export function ReenviarCortesia() {
                 usado += 1;
             }
             setDests(next);
+            // Rola até o campo (fim da lista) para o usuário ver o e-mail aparecendo.
+            requestAnimationFrame(() => campoRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }));
         }
 
         // Mantém no campo apenas os inválidos e sinaliza o erro; se tudo era válido, limpa.
@@ -170,7 +173,38 @@ export function ReenviarCortesia() {
                         <div className="flex flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary md:p-6">
                             <h2 className="text-lg font-semibold text-primary">Quem vai receber?</h2>
 
-                            <div className="flex flex-col gap-1.5">
+                            {dests.length > 0 && (
+                                <div className="flex flex-col">
+                                    <AnimatePresence initial={false}>
+                                        {dests.map((d) => (
+                                            <motion.div
+                                                key={d.id}
+                                                layout
+                                                initial={{ opacity: 0, height: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, height: "auto", scale: 1 }}
+                                                exit={{ opacity: 0, height: 0, scale: 0.8 }}
+                                                transition={{ duration: 0.22, ease: "easeOut" }}
+                                                className="overflow-hidden border-b border-secondary"
+                                            >
+                                                <div className="flex items-center py-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeDest(d.id)}
+                                                        aria-label={`Remover ${d.email}`}
+                                                        className="-ml-2 flex size-9 shrink-0 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-error-secondary"
+                                                    >
+                                                        <Trash01 className="size-4" aria-hidden="true" />
+                                                    </button>
+                                                    <span className="min-w-0 flex-1 truncate pr-3 text-sm text-secondary">{d.email}</span>
+                                                    <Stepper value={d.qtd} onChange={(q) => (q < 1 ? removeDest(d.id) : setDest(d.id, { qtd: q }))} min={0} max={d.qtd + restante} />
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
+                                </div>
+                            )}
+
+                            <div ref={campoRef} className="flex flex-col gap-1.5">
                                 <InputGroup
                                     size="md"
                                     aria-label="E-mail do convidado"
@@ -181,10 +215,12 @@ export function ReenviarCortesia() {
                                     }}
                                     isInvalid={!!erroEmail}
                                     trailingAddon={
-                                        <Button color="secondary" size="md" iconLeading={Plus} onClick={adicionar} aria-label="Adicionar" />
+                                        <Button color="secondary" size="md" onClick={adicionar}>
+                                            Convidar
+                                        </Button>
                                     }
                                 >
-                                    <InputBase placeholder="digite o e-mail do convidado" />
+                                    <InputBase placeholder="E-mail do convidado" />
                                 </InputGroup>
                                 <AnimatePresence initial={false} mode="wait">
                                     {erroEmail ? (
@@ -216,37 +252,6 @@ export function ReenviarCortesia() {
                                     )}
                                 </AnimatePresence>
                             </div>
-
-                            {dests.length > 0 && (
-                                <div className="border-t border-secondary">
-                                    <AnimatePresence initial={false}>
-                                        {dests.map((d) => (
-                                            <motion.div
-                                                key={d.id}
-                                                layout
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: "auto" }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                                transition={{ duration: 0.2, ease: "easeOut" }}
-                                                className="overflow-hidden border-b border-secondary last:border-b-0"
-                                            >
-                                                <div className="flex items-center py-3">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeDest(d.id)}
-                                                        aria-label={`Remover ${d.email}`}
-                                                        className="-ml-2 flex size-9 shrink-0 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-error-secondary"
-                                                    >
-                                                        <Trash01 className="size-4" aria-hidden="true" />
-                                                    </button>
-                                                    <span className="min-w-0 flex-1 truncate pr-3 text-sm text-secondary">{d.email}</span>
-                                                    <Stepper value={d.qtd} onChange={(q) => (q < 1 ? removeDest(d.id) : setDest(d.id, { qtd: q }))} min={0} max={d.qtd + restante} />
-                                                </div>
-                                            </motion.div>
-                                        ))}
-                                    </AnimatePresence>
-                                </div>
-                            )}
                         </div>
 
                         <Button

@@ -102,8 +102,10 @@ export function ReenviarCortesia() {
                 usado += 1;
             }
             setDests(next);
-            // Rola até o campo (fim da lista) para o usuário ver o e-mail aparecendo.
-            requestAnimationFrame(() => campoRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }));
+            // No mobile os e-mails entram acima do input → rola até o campo para ver o novo e-mail.
+            if (window.matchMedia("(max-width: 767px)").matches) {
+                requestAnimationFrame(() => campoRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }));
+            }
         }
 
         // Mantém no campo apenas os inválidos e sinaliza o erro; se tudo era válido, limpa.
@@ -174,8 +176,8 @@ export function ReenviarCortesia() {
                             <h2 className="text-lg font-semibold text-primary">Quem vai receber?</h2>
 
                             {dests.length > 0 && (
-                                <div className="flex flex-col">
-                                    <AnimatePresence initial={false}>
+                                <div className="order-1 flex flex-col md:order-2">
+                                    <AnimatePresence>
                                         {dests.map((d) => (
                                             <motion.div
                                                 key={d.id}
@@ -184,9 +186,9 @@ export function ReenviarCortesia() {
                                                 animate={{ opacity: 1, height: "auto", scale: 1 }}
                                                 exit={{ opacity: 0, height: 0, scale: 0.8 }}
                                                 transition={{ duration: 0.22, ease: "easeOut" }}
-                                                className="overflow-hidden border-b border-secondary"
+                                                className="overflow-hidden border-b border-secondary md:border-t md:border-b-0"
                                             >
-                                                <div className="flex items-center py-3">
+                                                <div className="flex items-center py-3 pr-px">
                                                     <button
                                                         type="button"
                                                         onClick={() => removeDest(d.id)}
@@ -204,7 +206,7 @@ export function ReenviarCortesia() {
                                 </div>
                             )}
 
-                            <div ref={campoRef} className="flex flex-col gap-1.5">
+                            <div ref={campoRef} className="order-2 flex flex-col gap-1.5 md:order-1">
                                 <InputGroup
                                     size="md"
                                     aria-label="E-mail do convidado"
@@ -259,7 +261,7 @@ export function ReenviarCortesia() {
                             color="primary"
                             isDisabled={dests.length === 0}
                             onClick={() => goTo("confirmar", 1)}
-                            className="w-full sm:w-auto sm:self-start"
+                            className="w-full sm:w-auto sm:self-end"
                         >
                             {totalQtd > 0 ? `Enviar ${totalQtd} ${totalQtd === 1 ? "Cortesia" : "Cortesias"}` : "Enviar cortesia"}
                         </Button>
@@ -337,12 +339,12 @@ export function ReenviarCortesia() {
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-3 sm:flex-row sm:justify-start">
-                            <Button size="lg" color="primary" isDisabled={!objetivo} onClick={confirmarEnvio}>
-                                Confirmar e enviar
-                            </Button>
+                        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                             <Button size="lg" color="secondary" onClick={() => goTo("destinatarios", -1)}>
                                 Voltar e editar
+                            </Button>
+                            <Button size="lg" color="primary" isDisabled={!objetivo} onClick={confirmarEnvio}>
+                                Confirmar e enviar
                             </Button>
                         </div>
                                 </>
@@ -461,7 +463,7 @@ const Sucesso = ({ dests, onIr }: { dests: Destinatario[]; onIr: () => void }) =
             </div>
         )}
         <Button size="lg" color="primary" onClick={onIr} className="w-full">
-            Ver status do envio
+            Conferir status do envio
         </Button>
     </div>
 );

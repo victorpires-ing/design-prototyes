@@ -2,7 +2,6 @@ import { useNavigate, useParams } from "react-router";
 import { ArrowLeft, Calendar, Package, Send01, Ticket01, User01 } from "@untitledui/icons";
 import { Badge, type BadgeColors } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { FreepassHeader } from "../components/FreepassHeader";
 import { getEvento } from "../data/eventos";
 import { type StatusEnvio, useEnvios } from "../data/envios-store";
@@ -101,20 +100,10 @@ export function DetalhesCortesia() {
                         </div>
                         )}
 
-                        {/* Envios e resgates */}
+                        {/* Envios e resgates — só aparece quando houve envio/resgate */}
+                        {envios.length > 0 && (
                         <section className="flex flex-col gap-3">
                             <h2 className="text-lg font-semibold text-primary">Envios e resgates</h2>
-                            {envios.length === 0 ? (
-                                <div className="flex flex-col items-center gap-3 rounded-xl bg-primary px-6 py-12 text-center ring-1 ring-border-secondary">
-                                    <FeaturedIcon icon={Send01} color="gray" theme="modern" size="lg" />
-                                    <div className="flex flex-col gap-1">
-                                        <p className="text-sm font-medium text-primary">Nenhum envio ou resgate ainda</p>
-                                        <p className="max-w-xs text-sm text-tertiary">
-                                            Quando você reenviar ou resgatar esta cortesia, o histórico aparece aqui.
-                                        </p>
-                                    </div>
-                                </div>
-                            ) : (
                             <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
                                 <div className="hidden grid-cols-[minmax(0,1.6fr)_100px_140px_140px] gap-4 border-b border-secondary bg-secondary px-4 py-2.5 md:grid">
                                     <ColHead>Destinatário</ColHead>
@@ -149,8 +138,8 @@ export function DetalhesCortesia() {
                                     );
                                 })}
                             </div>
-                            )}
                         </section>
+                        )}
                     </>
                 )}
             </main>

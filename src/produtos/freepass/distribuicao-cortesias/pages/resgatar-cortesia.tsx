@@ -90,7 +90,7 @@ export function ResgatarCortesia() {
                             </div>
                         </div>
 
-                        <Button size="lg" color="primary" onClick={confirmarResgate} className="w-full sm:w-auto sm:self-start">
+                        <Button size="lg" color="primary" onClick={confirmarResgate} className="w-full sm:w-auto sm:self-end">
                             Confirmar resgate
                         </Button>
                     </>
@@ -118,9 +118,14 @@ export function ResgatarSucesso() {
                             <p className="max-w-sm text-sm text-tertiary">Os itens ficarão disponíveis na aba "Ingressos" no app Ingresse.</p>
                         </div>
                     </div>
-                    <Button size="lg" color="primary" onClick={voltarDetalhe} className="w-full">
-                        Ver status do envio
-                    </Button>
+                    <div className="flex flex-col gap-3">
+                        <Button size="lg" color="primary" onClick={voltarDetalhe} className="w-full">
+                            Conferir status do envio
+                        </Button>
+                        <Button size="lg" color="secondary" onClick={() => navigate("/freepass/distribuicao-cortesias")} className="w-full">
+                            Acessar minha carteira de ingressos
+                        </Button>
+                    </div>
                 </div>
             </main>
         </div>

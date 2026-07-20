@@ -120,8 +120,7 @@ import { PreVenda } from '../produtos/backstage/marketing/pages/PreVenda';
 import { DistribuicaoCortesias } from '../produtos/freepass/distribuicao-cortesias/pages/distribuicao-cortesias';
 import { CortesiasDoEvento } from '../produtos/freepass/distribuicao-cortesias/pages/cortesias-do-evento';
 import { DetalhesCortesia } from '../produtos/freepass/distribuicao-cortesias/pages/detalhes-cortesia';
-import { ReenviarCortesia, ReenviarSucesso } from '../produtos/freepass/distribuicao-cortesias/pages/reenviar-cortesia';
-import { ResgatarCortesia, ResgatarSucesso } from '../produtos/freepass/distribuicao-cortesias/pages/resgatar-cortesia';
+import { EnviarCortesiasFlow, ResgatarCortesiasFlow } from '../produtos/freepass/distribuicao-cortesias/pages/distribuir-cortesias';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -266,11 +265,9 @@ export default function App() {
         <Route path="/backstage/marketing/pre-venda" element={<PreVenda />} />
         <Route path="/freepass/distribuicao-cortesias" element={<DistribuicaoCortesias />} />
         <Route path="/freepass/distribuicao-cortesias/:eventoId" element={<CortesiasDoEvento />} />
+        <Route path="/freepass/distribuicao-cortesias/:eventoId/enviar" element={<EnviarCortesiasFlow />} />
+        <Route path="/freepass/distribuicao-cortesias/:eventoId/resgatar" element={<ResgatarCortesiasFlow />} />
         <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />
-        <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId/enviar" element={<ReenviarCortesia />} />
-        <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId/enviar/sucesso" element={<ReenviarSucesso />} />
-        <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId/resgatar" element={<ResgatarCortesia />} />
-        <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId/resgatar/sucesso" element={<ResgatarSucesso />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </PesquisasProvider>

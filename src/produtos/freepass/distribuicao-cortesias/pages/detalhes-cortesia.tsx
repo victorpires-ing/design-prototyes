@@ -1,7 +1,6 @@
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Calendar, Package, Send01, Ticket01, User01 } from "@untitledui/icons";
+import { ArrowLeft, Calendar, Package, Ticket01 } from "@untitledui/icons";
 import { Badge, type BadgeColors } from "@/components/base/badges/badges";
-import { Button } from "@/components/base/buttons/button";
 import { FreepassHeader } from "../components/FreepassHeader";
 import { getEvento } from "../data/eventos";
 import { type StatusEnvio, useEnvios } from "../data/envios-store";
@@ -75,30 +74,6 @@ export function DetalhesCortesia() {
                                 </span>
                             </div>
                         </div>
-
-                        {/* Ações: reenviar para outras ou resgatar para si — indisponível em eventos passados ou sem saldo */}
-                        {!evento.passado && disponivel > 0 && (
-                        <div className="flex flex-col gap-3 sm:flex-row">
-                            <Button
-                                size="md"
-                                color="primary"
-                                iconLeading={User01}
-                                className="sm:w-auto"
-                                onClick={() => navigate(`/freepass/distribuicao-cortesias/${eventoId}/${itemId}/resgatar`)}
-                            >
-                                Resgatar para mim
-                            </Button>
-                            <Button
-                                size="md"
-                                color="secondary"
-                                iconLeading={Send01}
-                                className="sm:w-auto"
-                                onClick={() => navigate(`/freepass/distribuicao-cortesias/${eventoId}/${itemId}/enviar`)}
-                            >
-                                Enviar cortesia
-                            </Button>
-                        </div>
-                        )}
 
                         {/* Envios e resgates — só aparece quando houve envio/resgate */}
                         {envios.length > 0 && (

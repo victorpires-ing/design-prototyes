@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Calendar, ChevronRight, Package, Ticket01 } from "@untitledui/icons";
+import { ArrowLeft, Calendar, ChevronRight, Download01, Package, Send01, Ticket01 } from "@untitledui/icons";
+import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import { FreepassHeader } from "../components/FreepassHeader";
 import { getEvento, type ItemCortesia, type TipoItem } from "../data/eventos";
@@ -55,6 +56,30 @@ export function CortesiasDoEvento() {
                                 <span className="text-sm text-tertiary">{evento.local}</span>
                             </div>
                         </div>
+
+                        {/* Ações principais — desktop: topo, em linha; mobile: fim da tela, empilhados */}
+                        {!evento.passado && (
+                            <div className="order-last flex flex-col gap-3 sm:order-none sm:flex-row sm:justify-start">
+                                <Button
+                                    size="lg"
+                                    color="primary"
+                                    iconLeading={Send01}
+                                    onClick={() => navigate(`/freepass/distribuicao-cortesias/${evento.id}/enviar`)}
+                                    className="w-full sm:w-auto"
+                                >
+                                    Enviar para alguém
+                                </Button>
+                                <Button
+                                    size="lg"
+                                    color="secondary"
+                                    iconLeading={Download01}
+                                    onClick={() => navigate(`/freepass/distribuicao-cortesias/${evento.id}/resgatar`)}
+                                    className="w-full sm:w-auto"
+                                >
+                                    Resgatar para mim
+                                </Button>
+                            </div>
+                        )}
 
                         {/* Grupos */}
                         {GRUPOS.map(({ tipo, titulo }) => {

@@ -22,7 +22,7 @@ export function DistribuicaoCortesias() {
             <FreepassHeader />
 
             <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 px-4 py-8 md:px-8 md:py-10">
-                <h1 className="text-display-sm font-semibold text-primary">Suas cortesias</h1>
+                <h1 className="text-display-sm font-semibold text-primary">Minhas cortesias</h1>
 
                 {/* Abas */}
                 <div className="flex border-b border-secondary">

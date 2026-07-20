@@ -59,6 +59,18 @@ const CampoFiltro = ({
     );
 };
 
+/** Seletor de Período — o próprio botão de datas (aplica direto). Usado no Relatório personalizado. */
+export const RelatorioPeriodoButton = () => {
+    const { dateRange, sessao, filters, apply } = useRelatorioFilters();
+    return (
+        <DateRangePicker
+            size="md"
+            value={dateRange}
+            onChange={(r) => apply({ dateRange: (r as DateRange) ?? null, sessao, filters })}
+        />
+    );
+};
+
 export const RelatorioFilterSlideout = ({ triggerClassName }: { triggerClassName?: string }) => {
     const { fields, sessoes, dateRange, sessao, filters, appliedCount, apply, clear } = useRelatorioFilters();
 

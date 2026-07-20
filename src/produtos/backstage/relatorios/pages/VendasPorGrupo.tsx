@@ -13,6 +13,7 @@ import { SortableHeader } from "../components/SortableHeader";
 import { TransacionadoChartCard, type ChartPoint } from "../components/TransacionadoChart";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
+import { consultarPeriodo, GRUPOS, PERIODO_PADRAO } from "@/reports/event-dataset";
 
 /* ------------------------------------------------------------------ */
 /*  Tipos                                                             */
@@ -469,10 +470,10 @@ const scaleTree = (nodes: TreeNode[], f: number): TreeNode[] =>
 export function VendasPorGrupo() {
     return (
         <BackstageLayout activeSection="relatorios" activeItem="vendas-por-grupo">
-            <RelatorioFiltersProvider sessoes={EVENT.sessoes}>
+            <RelatorioFiltersProvider initialDateRange={PERIODO_PADRAO}>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6 py-6 md:px-6 pb-10">
-                        <RelatorioPageHeader title="Vendas" />
+                        <RelatorioPageHeader title="Vendas" filter="period" />
                         <VendasBody />
                     </main>
                 </div>
@@ -482,43 +483,52 @@ export function VendasPorGrupo() {
 }
 
 const VendasBody = () => {
-    const { dateRange, sessao } = useRelatorioFilters();
+    const { dateRange } = useRelatorioFilters();
 
     const view = useMemo(() => {
-        const sessionWeight = SESSAO_WEIGHT[sessao] ?? 1;
-        const dateFraction = dateRangeFraction(dateRange);
-        const vendaFactor = sessionWeight * dateFraction;
-        const capFactor = sessionWeight;
+        // Fonte única: dataset do evento (src/reports) agregado pelo período.
+        const ds = consultarPeriodo(dateRange);
+        const f = ds.evento.fracaoPeriodoSelecionado || 0;
+        const slug = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const capOf = (nome: string) => GRUPOS.find((g) => g.nome === nome)?.capacidade ?? 0;
 
-        const setoresView: SetorRow[] = setores.map((s) => ({
-            ...s,
-            estoque: Math.round(s.estoque * capFactor),
-            vendido: Math.round(s.vendido * vendaFactor),
-            ingressos: s.ingressos?.map((i) => ({ ...i, estoque: Math.round(i.estoque * capFactor), vendido: Math.round(i.vendido * vendaFactor) })),
+        // Setores = grupos de ingresso do evento (Pista, Camarote, VIP…).
+        const setoresView: SetorRow[] = ds.ingressosPorGrupo.map((g) => ({
+            id: slug(g.grupo),
+            nome: g.grupo,
+            estoque: capOf(g.grupo),
+            vendido: g.vendido,
+            ingressos: [{ id: `${slug(g.grupo)}-i`, nome: "Inteira", estoque: capOf(g.grupo), vendido: g.vendido }],
+        }));
+        const ingressosPorSetorView: IngressoPorSetorRow[] = ds.ingressosPorGrupo.map((g, i) => ({
+            id: `ips${i}`,
+            setor: g.grupo,
+            tipoIngresso: "Inteira",
+            lote: "Lote único",
+            itemCombo: "-",
+            vendidos: g.vendido,
+            estoque: capOf(g.grupo),
         }));
 
-        const ingressosPorSetorView: IngressoPorSetorRow[] = ingressosPorSetor.map((r) => ({
-            ...r,
-            vendidos: Math.round(r.vendidos * vendaFactor),
-            estoque: Math.round(r.estoque * capFactor),
+        const MIX_CORES = ["var(--color-utility-brand-700)", "var(--color-utility-blue-500)", "var(--color-utility-orange-400)"];
+        const mixView: MixReceitaItem[] = ds.mixDeReceita.map((m, i) => ({
+            id: `mix${i}`,
+            nome: m.grupo,
+            quantidade: m.quantidade,
+            gmv: m.valor,
+            gmvComDesconto: Math.round(m.valor * 0.97),
+            fill: MIX_CORES[i % MIX_CORES.length],
         }));
 
-        const mixView: MixReceitaItem[] = mixReceita.map((m) => ({
-            ...m,
-            quantidade: Math.round(m.quantidade * vendaFactor),
-            gmv: m.gmv * vendaFactor,
-            gmvComDesconto: m.gmvComDesconto * vendaFactor,
-        }));
-
+        // Combos/produtos/cupons/drill: re-baseados pela fração real do período.
         const combosView: ComboRow[] = combos.map((c) => {
-            const quantidade = Math.round(c.quantidade * vendaFactor);
-            const gmv = c.gmv * vendaFactor;
-            // Divide em 2 lotes (60/40); 1º lote com pequeno desconto para ilustrar a coluna Desconto.
+            const quantidade = Math.round(c.quantidade * f);
+            const gmv = c.gmv * f;
             const q1 = Math.round(quantidade * 0.6);
             const q2 = quantidade - q1;
             const gmv1 = gmv * 0.6;
             const gmv2 = gmv * 0.4;
-            const liq1 = gmv1 * 0.92; // 8% de desconto no 1º lote
+            const liq1 = gmv1 * 0.92;
             const liq2 = gmv2;
             const lotes: ComboLoteRow[] = [
                 { id: `${c.id}-l1`, lote: "1º Lote", quantidade: q1, valorUnitario: q1 ? gmv1 / q1 : 0, gmv: gmv1, gmvComDesconto: liq1 },
@@ -526,33 +536,35 @@ const VendasBody = () => {
             ].filter((l) => l.quantidade > 0);
             return { ...c, quantidade, gmv, gmvComDesconto: liq1 + liq2, valorUnitario: quantidade ? gmv / quantidade : 0, lotes };
         });
-        const produtosView: ProdutoRow[] = produtos.map((p) => ({ ...p, quantidade: Math.round(p.quantidade * dateFraction), gmv: p.gmv * dateFraction, gmvComDesconto: p.gmvComDesconto * dateFraction }));
+        const produtosView: ProdutoRow[] = produtos.map((p) => ({ ...p, quantidade: Math.round(p.quantidade * f), gmv: p.gmv * f, gmvComDesconto: p.gmvComDesconto * f }));
         const cuponsView: CupomRow[] = cupons.map((c) => ({
             ...c,
-            quantidade: Math.round(c.quantidade * vendaFactor),
-            valor: c.valor * vendaFactor,
-            valorDesconto: c.valorDesconto * vendaFactor,
-            valorTotal: c.valorTotal * vendaFactor,
-            lotes: c.lotes.map((l) => ({ ...l, quantidade: Math.round(l.quantidade * vendaFactor), valor: l.valor * vendaFactor, valorDesconto: l.valorDesconto * vendaFactor, valorTotal: l.valorTotal * vendaFactor })),
+            quantidade: Math.round(c.quantidade * f),
+            valor: c.valor * f,
+            valorDesconto: c.valorDesconto * f,
+            valorTotal: c.valorTotal * f,
+            lotes: c.lotes.map((l) => ({ ...l, quantidade: Math.round(l.quantidade * f), valor: l.valor * f, valorDesconto: l.valorDesconto * f, valorTotal: l.valorTotal * f })),
         }));
+        const drillView = scaleTree(drillTree, f);
+        const produtosRootView: TreeNode = { ...produtosRootNode, ...scaleTree([produtosRootNode], f)[0] };
 
-        // Drill: filtra colunas pela sessão e escala os valores pelo intervalo de data.
-        const drillFiltered = sessao === "all" ? drillTree : drillTree.filter((n) => n.id === sessao);
-        const drillView = scaleTree(drillFiltered, dateFraction);
-        const produtosRootView: TreeNode = { ...produtosRootNode, ...scaleTree([produtosRootNode], dateFraction)[0] };
+        const chartData: ChartPoint[] = ds.vendasDiarias.map((d) => ({ data: d.dia, total: d.valor, quantidade: d.itens }));
 
-        const valorTotal = VALOR_BRUTO_BASE * vendaFactor;
-        const valorTotalDesconto = VALOR_TOTAL_BASE * vendaFactor;
-        const totalItens = Math.round(TOTAL_ITENS_BASE * vendaFactor);
-
-        const chartData: ChartPoint[] = DIA_BASE.filter((d) => inDateRange(parseEventDate(d.dia), dateRange)).map((d) => ({
-            data: d.label,
-            total: Math.round(VALOR_BRUTO_BASE * sessionWeight * d.w),
-            quantidade: Math.round(TOTAL_ITENS_BASE * sessionWeight * d.w),
-        }));
-
-        return { setoresView, ingressosPorSetorView, mixView, combosView, produtosView, cuponsView, drillView, produtosRootView, valorTotal, valorTotalDesconto, totalItens, chartData };
-    }, [dateRange, sessao]);
+        return {
+            setoresView,
+            ingressosPorSetorView,
+            mixView,
+            combosView,
+            produtosView,
+            cuponsView,
+            drillView,
+            produtosRootView,
+            valorTotal: ds.totais.valorTotalBruto,
+            valorTotalDesconto: ds.totais.valorTotalComDesconto,
+            totalItens: ds.totais.itensVendidos,
+            chartData,
+        };
+    }, [dateRange]);
 
     return (
         <>

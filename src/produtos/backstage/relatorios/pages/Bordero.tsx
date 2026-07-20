@@ -15,6 +15,7 @@ import { RelatorioFiltersProvider, dateRangeFraction, useRelatorioFilters } from
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter } from "../data/event";
+import { consultarPeriodo, PERIODO_PADRAO } from "@/reports/event-dataset";
 
 const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
@@ -346,19 +347,70 @@ const CHANGE_META: Record<ChangeType, { label: string; color: "success" | "gray"
 };
 
 const changedTransacoes: BorderoChange[] = [
-    { id: "c1", hora: "22/06 10h12", tipo: "cancelamento", canal: "Online", descricao: "Pista · Inteira + Camiseta oficial", ingressos: -1, produtos: -1, valor: -239.9 },
-    { id: "c2", hora: "22/06 14h30", tipo: "estorno", canal: "Online", descricao: "Camarote · VIP + Copo colecionável + Kit do festival", ingressos: -2, produtos: -2, valor: -958.8 },
-    { id: "c3", hora: "23/06 09h05", tipo: "estorno", canal: "Online", descricao: "Arquibancada · Meia-entrada", ingressos: -1, produtos: 0, valor: -90 },
-    { id: "c4", hora: "28/06 23h50", tipo: "cancelamento", canal: "Impresso/Bilheteria", descricao: "Pista Premium · Inteira + Kit do festival", ingressos: -1, produtos: -1, valor: -318.9 },
-    { id: "c5", hora: "30/06 11h20", tipo: "estorno", canal: "Online", descricao: "Front Stage · VIP + 2 produtos", ingressos: -3, produtos: -2, valor: -1179.7 },
+    { id: "c1", hora: "28/12 10h12", tipo: "cancelamento", canal: "Online", descricao: "Pista · Inteira + Camiseta oficial", ingressos: -1, produtos: -1, valor: -239.9 },
+    { id: "c2", hora: "29/12 14h30", tipo: "estorno", canal: "Online", descricao: "Camarote · VIP + Copo colecionável + Kit do festival", ingressos: -2, produtos: -2, valor: -958.8 },
+    { id: "c3", hora: "30/12 09h05", tipo: "estorno", canal: "Online", descricao: "Pista · Meia-entrada", ingressos: -1, produtos: 0, valor: -90 },
+    { id: "c4", hora: "30/12 23h50", tipo: "cancelamento", canal: "Impresso/Bilheteria", descricao: "Pista Premium · Inteira + Kit do festival", ingressos: -1, produtos: -1, valor: -318.9 },
+    { id: "c5", hora: "31/12 11h20", tipo: "estorno", canal: "Online", descricao: "Front Stage · VIP + 2 produtos", ingressos: -3, produtos: -2, valor: -1179.7 },
 ];
 
 type BorderoView = "macro" | "pdv" | "meios";
 
-const VIEWS: Record<BorderoView, { nodes: TreeNode[]; columns: ColDef[]; firstCol: string }> = {
-    macro: { nodes: macroData, columns: MACRO_COLUMNS, firstCol: "Canal · Grupo · Ingresso" },
-    pdv: { nodes: pdvData, columns: PDV_COLUMNS, firstCol: "PDV · Grupo · Ingresso" },
-    meios: { nodes: meiosData, columns: PDV_COLUMNS, firstCol: "PDV · Meio de pagamento" },
+/* ------------------------------------------------------------------ */
+/*  Visões geradas a partir do dataset do evento (src/reports).        */
+/* ------------------------------------------------------------------ */
+
+type DsBordero = ReturnType<typeof consultarPeriodo>;
+const _u = (valor: number, qtd: number) => (qtd ? Math.round(valor / qtd) : 0);
+// Nó de grupo dividido em Inteira/Meia. `pad` alinha o tamanho do array de valores às colunas.
+const _grupoNode = (grupo: string, qtd: number, valor: number, pad: boolean): TreeNode => {
+    const int = Math.round(qtd * 0.6);
+    const mei = qtd - int;
+    const vint = Math.round(valor * 0.6);
+    const vmei = valor - vint;
+    const row = (q: number, v: number) => (pad ? [0, 0, q, _u(v, q), v] : [q, _u(v, q), v]);
+    return {
+        label: grupo,
+        children: [
+            { label: "Inteira", values: row(int, vint) },
+            { label: "Meia-entrada", values: row(mei, vmei) },
+        ],
+    };
+};
+const _canal = (ds: DsBordero, label: string, frac: number): TreeNode => ({
+    label,
+    children: [
+        ...ds.ingressosPorGrupo.map((g) => _grupoNode(g.grupo, Math.round(g.vendido * frac), Math.round(g.valor * frac), true)),
+        ...ds.mixDeReceita
+            .filter((m) => m.grupo !== "Ingressos")
+            .map((m) => ({ label: m.grupo, values: [0, 0, Math.round(m.quantidade * frac), _u(m.valor, m.quantidade), Math.round(m.valor * frac)] })),
+    ],
+});
+
+/** Gera as três visões do borderô a partir do dataset do período selecionado. */
+function gerarVisoes(ds: DsBordero): Record<BorderoView, TreeNode[]> {
+    return {
+        macro: [_canal(ds, "ONLINE", 0.96), _canal(ds, "BILHETERIA", 0.04)],
+        pdv: [
+            { label: "Loja Oficial Réveillon Carneiros", children: ds.ingressosPorGrupo.map((g) => _grupoNode(g.grupo, Math.round(g.vendido * 0.96), Math.round(g.valor * 0.96), false)) },
+            { label: "Bilheteria Praia de Carneiros", children: ds.ingressosPorGrupo.map((g) => _grupoNode(g.grupo, Math.round(g.vendido * 0.04), Math.round(g.valor * 0.04), false)) },
+        ],
+        meios: [
+            {
+                label: "Todos os canais",
+                children: ds.meiosDePagamento.map((m) => ({
+                    label: m.meio,
+                    values: [Math.round((ds.totais.itensVendidos * m.pct) / 100), 0, Math.round((ds.totais.valorTotalBruto * m.pct) / 100)],
+                })),
+            },
+        ],
+    };
+}
+
+const VIEWS: Record<BorderoView, { columns: ColDef[]; firstCol: string }> = {
+    macro: { columns: MACRO_COLUMNS, firstCol: "Canal · Grupo · Ingresso" },
+    pdv: { columns: PDV_COLUMNS, firstCol: "PDV · Grupo · Ingresso" },
+    meios: { columns: PDV_COLUMNS, firstCol: "Canal · Meio de pagamento" },
 };
 
 /* ------------------------------------------------------------------ */
@@ -383,7 +435,7 @@ const scaleNodes = (nodes: TreeNode[], columns: ColDef[], factor: number): TreeN
 export function Bordero() {
     return (
         <BackstageLayout activeSection="relatorios" activeItem="bordero">
-            <RelatorioFiltersProvider sessoes={EVENT.sessoes}>
+            <RelatorioFiltersProvider initialDateRange={PERIODO_PADRAO}>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
                         <RelatorioPageHeader
@@ -405,16 +457,7 @@ const BorderoBody = () => {
     const [acknowledged, setAcknowledged] = useState(false);
     const [detailsOpen, setDetailsOpen] = useState(false);
 
-    const factor = (SESSAO_WEIGHT[sessao] ?? 1) * dateRangeFraction(dateRange);
-
-    const scaled = useMemo(
-        () => ({
-            macro: scaleNodes(macroData, MACRO_COLUMNS, factor),
-            pdv: scaleNodes(pdvData, PDV_COLUMNS, factor),
-            meios: scaleNodes(meiosData, PDV_COLUMNS, factor),
-        }),
-        [factor],
-    );
+    const scaled = useMemo(() => gerarVisoes(consultarPeriodo(dateRange)), [dateRange]);
 
     const activeNodes = view === "macro" ? scaled.macro : view === "pdv" ? scaled.pdv : scaled.meios;
     const activeMeta = VIEWS[view];

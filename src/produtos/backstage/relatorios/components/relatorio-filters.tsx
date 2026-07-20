@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import { getLocalTimeZone } from "@internationalized/date";
+import { CalendarDate, getLocalTimeZone } from "@internationalized/date";
 import type { DateValue } from "react-aria-components";
 import type { FilterRow } from "@/components/application/filter-bar/filter-dropdown-menu";
 import { EVENT, parseEventDate, type Sessao } from "../data/event";
@@ -7,6 +7,19 @@ import { EVENT, parseEventDate, type Sessao } from "../data/event";
 export type { FilterRow };
 
 export type DateRange = { start: DateValue; end: DateValue } | null;
+
+/** Converte "dd/mm/aaaa" em CalendarDate. */
+const parseBR = (s: string): CalendarDate | null => {
+    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    return m ? new CalendarDate(Number(m[3]), Number(m[2]), Number(m[1])) : null;
+};
+
+/** Intervalo cobrindo toda a janela de vendas do evento. */
+export const periodoCompleto = (): DateRange => {
+    const start = parseBR(EVENT.salesStart);
+    const end = parseBR(EVENT.salesEnd);
+    return start && end ? { start, end } : null;
+};
 
 /** Definição de um campo filtrável. `multi` torna o valor um multiselect. */
 export interface FilterFieldDef {
@@ -41,6 +54,8 @@ export const useRelatorioFilters = (): RelatorioFiltersContextValue => {
 interface ProviderProps {
     fields?: FilterFieldDef[];
     sessoes?: Sessao[];
+    /** Período inicial aplicado (ex.: período completo do evento). Default null. */
+    initialDateRange?: DateRange;
     children: ReactNode;
 }
 
@@ -49,11 +64,11 @@ export const countApplied = (a: AppliedFilters): number =>
     (a.dateRange ? 1 : 0) +
     (a.sessao && a.sessao !== "all" ? 1 : 0);
 
-export const RelatorioFiltersProvider = ({ fields = [], sessoes = [], children }: ProviderProps) => {
-    const [applied, setApplied] = useState<AppliedFilters>({ dateRange: null, sessao: "all", filters: [] });
+export const RelatorioFiltersProvider = ({ fields = [], sessoes = [], initialDateRange = null, children }: ProviderProps) => {
+    const [applied, setApplied] = useState<AppliedFilters>({ dateRange: initialDateRange, sessao: "all", filters: [] });
 
     const apply = useCallback((next: AppliedFilters) => setApplied(next), []);
-    const clear = useCallback(() => setApplied({ dateRange: null, sessao: "all", filters: [] }), []);
+    const clear = useCallback(() => setApplied({ dateRange: initialDateRange, sessao: "all", filters: [] }), [initialDateRange]);
 
     const value = useMemo<RelatorioFiltersContextValue>(
         () => ({

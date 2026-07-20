@@ -16,6 +16,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // statistics.js é CommonJS: força o pré-bundle determinístico pelo Vite
+  // (evita o 504 "Outdated Optimize Dep" quando a dep é descoberta em runtime).
+  optimizeDeps: {
+    include: ['statistics.js'],
+  },
   // O export para Figma (src/lib/figma-export) detecta os componentes do design
   // system lendo o `.name` da função na fiber do React. Em produção o esbuild
   // mangla esses nomes (Button → "e"), quebrando a detecção. keepNames preserva

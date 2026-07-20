@@ -19,11 +19,6 @@ interface Destinatario {
     qtd: number;
 }
 
-const OBJETIVOS = [
-    { id: "repasse", label: "Liberar para repasse", desc: "Para promoters e parceiros" },
-    { id: "uso-proprio", label: "Bloquear para uso próprio", desc: "Para convidados e clientes." },
-];
-
 const MAX_VISIVEIS = 4;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 let nid = 1;
@@ -44,7 +39,6 @@ export function ReenviarCortesia() {
     const [etapa, setEtapa] = useState<Etapa>("destinatarios");
     const [emailInput, setEmailInput] = useState("");
     const [dests, setDests] = useState<Destinatario[]>([]);
-    const [objetivo, setObjetivo] = useState("");
     const [mostrarTodos, setMostrarTodos] = useState(false);
     const [direction, setDirection] = useState(1);
     const [erroEmail, setErroEmail] = useState<string | null>(null);
@@ -317,33 +311,13 @@ export function ReenviarCortesia() {
                                     )}
                                 </div>
                             </div>
-
-                            <div className="flex flex-col gap-3">
-                                <h3 className="text-sm font-semibold text-primary">Qual é o objetivo deste envio?</h3>
-                                <div className="flex flex-col gap-3">
-                                    {OBJETIVOS.map((o) => {
-                                        const ativo = objetivo === o.id;
-                                        return (
-                                            <button key={o.id} type="button" onClick={() => setObjetivo(o.id)} aria-pressed={ativo} className="flex items-start gap-3 text-left">
-                                                <span className={cx("mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border transition duration-100 ease-linear", ativo ? "border-brand" : "border-border-primary")}>
-                                                    {ativo && <span className="size-2 rounded-full bg-brand-solid" />}
-                                                </span>
-                                                <span className="flex min-w-0 flex-col">
-                                                    <span className="text-sm font-medium text-primary">{o.label}</span>
-                                                    <span className="text-sm text-tertiary">{o.desc}</span>
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
                         </div>
 
                         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                             <Button size="lg" color="secondary" onClick={() => goTo("destinatarios", -1)}>
                                 Voltar e editar
                             </Button>
-                            <Button size="lg" color="primary" isDisabled={!objetivo} onClick={confirmarEnvio}>
+                            <Button size="lg" color="primary" onClick={confirmarEnvio}>
                                 Confirmar e enviar
                             </Button>
                         </div>

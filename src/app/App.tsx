@@ -5,6 +5,7 @@ import { useTheme } from '../providers/theme-provider';
 import { ScenarioControls } from '../app/components/ui/ScenarioControls';
 import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
 import { ProductSelection } from '../app/components/ProductSelection';
+import { CymaticsShowcase } from '../app/components/CymaticsShowcase';
 import { CortesiasProvider } from '../produtos/backstage/cortesias/data/cortesias-store';
 import { EmissaoCortesias } from '../produtos/backstage/cortesias/pages/EmissaoCortesias';
 import { PermissaoEnvio } from '../produtos/backstage/permissao-envio/pages/PermissaoEnvio';
@@ -21,6 +22,8 @@ import { Transferencias } from '../produtos/backstage/relatorios/pages/Transfere
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
 import { Comparativos } from '../produtos/backstage/relatorios/pages/Comparativos';
+import { RelatorioPersonalizado } from '../produtos/backstage/relatorios/pages/RelatorioPersonalizado';
+import { Home as BackstageHome } from '../produtos/backstage/home/pages/Home';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
@@ -148,7 +151,9 @@ export default function App() {
       <PesquisasProvider>
       <Routes>
         <Route path="/" element={<ProductSelection />} />
+        <Route path="/loading" element={<CymaticsShowcase />} />
         <Route path="/backstage" element={<RelatorioPedidos />} />
+        <Route path="/backstage/home" element={<BackstageHome />} />
         <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
         <Route path="/backstage/permissao-envio" element={<PermissaoEnvio />} />
         <Route path="/backstage/permissao-envio/nova" element={<NovaPermissao />} />
@@ -166,6 +171,7 @@ export default function App() {
         <Route path="/backstage/relatorios/transferencias" element={<Transferencias />} />
         <Route path="/backstage/relatorios/questionarios" element={<Questionarios />} />
         <Route path="/backstage/relatorios/comparativos" element={<Comparativos />} />
+        <Route path="/backstage/relatorios/relatorio-personalizado" element={<RelatorioPersonalizado />} />
         <Route path="/backstage/marketing/chave-de-acesso" element={<ChaveDeAcesso />} />
         <Route path="/backstage/marketing/chave-de-acesso/vincular-itens" element={<VincularItens />} />
         <Route path="/backstage/marketing/chave-de-acesso/lista" element={<ListaChaves />} />

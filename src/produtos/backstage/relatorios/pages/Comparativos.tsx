@@ -14,6 +14,8 @@ import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
 import { currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
+import { consultarPeriodo } from "@/reports/event-dataset";
+import bReveillon from "@/assets/event-cover.png";
 import bStbSp26 from "@/assets/event-cover.png";
 import bStbSp25 from "@/assets/gremio-poster-pacotes.jpeg";
 import bTwb26 from "@/assets/gremio-poster-tour.jpeg";
@@ -113,7 +115,13 @@ interface EdicaoSpec {
     peaks: Peak[];
 }
 
+// Edição atual (Réveillon Carneiros 2027) com números da fonte única (src/reports).
+const _dsCmp = consultarPeriodo(null);
+const _revIng = _dsCmp.ocupacao.vendido;
+const _revTicket = _revIng ? Math.round((_dsCmp.mixDeReceita.find((m) => m.grupo === "Ingressos")?.valor ?? 0) / _revIng) : 0;
+
 const SPECS: EdicaoSpec[] = [
+    { id: "reveillon-carneiros-2027", nome: "Réveillon Carneiros 2027", curto: "Carneiros 27", ano: 2027, banner: bReveillon, abertura: "01/10/2026", evento: "31/12/2026", capacidade: _dsCmp.ocupacao.capacidade, ingressos: _revIng, ticket: _revTicket, taxaPct: 0.1, seed: 27, peaks: [{ center: 0.5, width: 0.05, height: 6 }, { center: 0.95, width: 0.04, height: 10 }] },
     { id: "stb-sp-2026", nome: "Só Track Boa Festival 2026 :: São Paulo", curto: "STB SP 26", ano: 2026, banner: bStbSp26, abertura: "15/12/2025", evento: "18/04/2026", capacidade: 55000, ingressos: 50284, ticket: 396, taxaPct: 0.0001, seed: 14, peaks: [{ center: 0.4, width: 0.04, height: 12 }, { center: 0.8, width: 0.05, height: 7 }] },
     { id: "stb-sp-2025", nome: "Só Track Boa Festival São Paulo 2025", curto: "STB SP 25", ano: 2025, banner: bStbSp25, abertura: "18/12/2024", evento: "19/04/2025", capacidade: 62000, ingressos: 56809, ticket: 320, taxaPct: 0.004, seed: 13, peaks: [{ center: 0.42, width: 0.045, height: 11 }, { center: 0.82, width: 0.05, height: 7 }] },
     { id: "twb-2026", nome: "TIME WARP BRASIL 2026", curto: "TWB 26", ano: 2026, banner: bTwb26, abertura: "12/06/2026", evento: "10/10/2026", capacidade: 18000, ingressos: 15654, ticket: 405, taxaPct: 0.0005, seed: 34, peaks: [{ center: 0.5, width: 0.04, height: 11 }, { center: 0.85, width: 0.05, height: 6 }] },
@@ -229,7 +237,7 @@ const metricDestaque = (t: EventoTotais, metric: Metric) =>
 /* ------------------------------------------------------------------ */
 
 export function Comparativos() {
-    const [selectedIds, setSelectedIds] = useState<string[]>(["stb-sp-2025", "stb-sp-2026"]);
+    const [selectedIds, setSelectedIds] = useState<string[]>(["reveillon-carneiros-2027", "twb-2026"]);
     const [metric, setMetric] = useState<Metric>("faturamento");
     const [alignment, setAlignment] = useState<Alignment>("evento");
     const [windowDays, setWindowDays] = useState<WindowDays>("all");

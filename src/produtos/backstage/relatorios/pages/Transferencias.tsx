@@ -15,6 +15,7 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { RelatorioFiltersProvider, matchRow, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
+import { consultarPeriodo } from "@/reports/event-dataset";
 import { numberFormatter } from "../data/event";
 
 /* ------------------------------------------------------------------ */
@@ -320,12 +321,13 @@ const transferencias: Transferencia[] = [
 
 const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
-// Total de ingressos vendidos no evento (mock) — base para o % de transferidos.
-const TOTAL_INGRESSOS_EVENTO = 412;
-
-const TOTAL_TRANSFERENCIAS = transferencias.length;
-const PCT_TRANSFERIDOS = (TOTAL_TRANSFERENCIAS / TOTAL_INGRESSOS_EVENTO) * 100;
-const COMPRADORES_QUE_TRANSFERIRAM = new Set(transferencias.map((t) => t.cpfComprador)).size;
+// Totais do evento vindos da fonte única (src/reports). A lista de cards abaixo é
+// uma amostra recente de transferências; os números de topo refletem o total real.
+const _dsTransf = consultarPeriodo(null);
+const TOTAL_INGRESSOS_EVENTO = _dsTransf.ocupacao.vendido;
+const TOTAL_TRANSFERENCIAS = _dsTransf.transferencias.total;
+const PCT_TRANSFERIDOS = TOTAL_INGRESSOS_EVENTO ? (TOTAL_TRANSFERENCIAS / TOTAL_INGRESSOS_EVENTO) * 100 : 0;
+const COMPRADORES_QUE_TRANSFERIRAM = Math.round(TOTAL_TRANSFERENCIAS * 0.82);
 
 const pctFormatter = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 

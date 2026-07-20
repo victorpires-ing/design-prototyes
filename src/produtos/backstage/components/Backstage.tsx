@@ -33,12 +33,21 @@ import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
 const eventCover = "https://casadeapostasarenadasdunas.com.br/wp-content/uploads/2026/05/AMERICAXLAGUNA.png";
 
-const BrandLogo = ({ className }: { className?: string }) => (
-    <>
-        <img src={LogoBlack} alt="Ingresse" className={cx("block dark:hidden", className)} />
-        <img src={LogoWhite} alt="Ingresse" className={cx("hidden dark:block", className)} />
-    </>
-);
+/** Logo da Ingresse — clicável, leva para a home do Backstage. */
+const BrandLogo = ({ className }: { className?: string }) => {
+    const navigate = useNavigate();
+    return (
+        <button
+            type="button"
+            onClick={() => navigate("/backstage/home")}
+            aria-label="Ir para a home do Backstage"
+            className="flex shrink-0 items-center rounded-md transition-opacity duration-100 ease-linear hover:opacity-80"
+        >
+            <img src={LogoBlack} alt="Ingresse" className={cx("block dark:hidden", className)} />
+            <img src={LogoWhite} alt="Ingresse" className={cx("hidden dark:block", className)} />
+        </button>
+    );
+};
 import { ThemeToggle } from "./ThemeToggle";
 
 export type BackstageSection =
@@ -63,6 +72,7 @@ export type BackstageItem =
     | "bordero"
     | "transferencias"
     | "comparativos"
+    | "relatorio-personalizado"
     | "relatorio-questionarios"
     | "chave-de-acesso"
     | "formularios-compra";
@@ -272,6 +282,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     bordero: "Borderô",
     transferencias: "Transferências",
     comparativos: "Comparativos",
+    "relatorio-personalizado": "Relatório personalizado",
     "relatorio-questionarios": "Questionários",
     "chave-de-acesso": "Chave de acesso",
     "formularios-compra": "Perguntas por ingresso",
@@ -777,6 +788,18 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 </TreeView.Item>
                 <TreeView.Item id="relatorio-questionarios" textValue="Questionários" href="/backstage/relatorios/questionarios">
                     <TreeView.ItemContent className={itemClass("relatorio-questionarios")}>Questionários</TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="relatorio-personalizado" textValue="Relatório personalizado" href="/backstage/relatorios/relatorio-personalizado">
+                    <TreeView.ItemContent
+                        className={itemClass("relatorio-personalizado")}
+                        action={
+                            <Badge size="sm" type="pill-color" color="brand">
+                                IA
+                            </Badge>
+                        }
+                    >
+                        Relatório personalizado
+                    </TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>
 

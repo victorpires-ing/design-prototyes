@@ -16,6 +16,7 @@ import { RelatorioFiltersProvider, matchRow, useRelatorioFilters, type FilterFie
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, numberFormatter } from "../data/event";
+import { consultarPeriodo, GRUPOS as GRUPOS_EVENTO, PERIODO_PADRAO } from "@/reports/event-dataset";
 
 const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
@@ -31,57 +32,31 @@ interface AcessoNode {
     children?: AcessoNode[];
 }
 
-// Setor → Tipo de ingresso. Vendidos batem com o relatório de Vendas; validados ≈ comparecimento.
-const mkSetor = (id: string, nome: string, inteira: number, meia: number, rate: number): AcessoNode => ({
-    id,
-    nome,
-    children: [
-        { id: `${id}-int`, nome: "Inteira", vendidos: inteira, validados: Math.round(inteira * rate) },
-        { id: `${id}-mei`, nome: "Meia-Entrada", vendidos: meia, validados: Math.round(meia * rate) },
-    ],
+// Fonte única: acesso do evento (src/reports), agregado do período completo.
+const ACESSO = consultarPeriodo(null).acesso;
+const slugSetor = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+// Setor (grupo de ingresso) → Inteira/Meia. Validados = comparecimento (taxa por grupo).
+const setores: AcessoNode[] = ACESSO.porGrupo.map((g) => {
+    const id = slugSetor(g.grupo);
+    const rate = g.vendido ? g.validado / g.vendido : 0;
+    const inteira = Math.round(g.vendido * 0.6);
+    const meia = g.vendido - inteira;
+    return {
+        id,
+        nome: g.grupo,
+        children: [
+            { id: `${id}-int`, nome: "Inteira", vendidos: inteira, validados: Math.round(inteira * rate) },
+            { id: `${id}-mei`, nome: "Meia-entrada", vendidos: meia, validados: Math.round(meia * rate) },
+        ],
+    };
 });
 
-// Entrada por facial só nos 4 setores principais de arquibancada (turnstiles).
-const setores: AcessoNode[] = [
-    mkSetor("leste-superior", "Leste Superior", 2225, 3877, 0.9),
-    mkSetor("leste-inferior", "Leste Inferior", 700, 1491, 0.9),
-    mkSetor("oeste-inferior", "Oeste Inferior", 508, 1337, 0.88),
-    mkSetor("oeste-superior-b", "Oeste Superior B", 1051, 1683, 0.87),
-];
+// Check-ins ao longo da noite do evento (faixas de horário do dataset).
+const CHECKINS_FAIXAS: { hora: string; checkins: number }[] = ACESSO.porFaixaHorario.map((f) => ({ hora: f.faixa, checkins: f.checkins }));
 
-// Histórico real de validação (check-ins) no dia do jogo, em faixas de 15 min.
-// Pico às 16:30 (jogo às 16h); total de 23.181 validações.
-const CHECKINS_FAIXAS: { hora: string; checkins: number }[] = [
-    { hora: "12:00", checkins: 1 },
-    { hora: "12:15", checkins: 3 },
-    { hora: "12:30", checkins: 5 },
-    { hora: "12:45", checkins: 5 },
-    { hora: "13:00", checkins: 8 },
-    { hora: "13:15", checkins: 13 },
-    { hora: "13:30", checkins: 9 },
-    { hora: "13:45", checkins: 16 },
-    { hora: "14:00", checkins: 5 },
-    { hora: "14:15", checkins: 3 },
-    { hora: "14:30", checkins: 3 },
-    { hora: "14:45", checkins: 0 },
-    { hora: "15:00", checkins: 456 },
-    { hora: "15:15", checkins: 448 },
-    { hora: "15:30", checkins: 936 },
-    { hora: "15:45", checkins: 1782 },
-    { hora: "16:00", checkins: 2940 },
-    { hora: "16:15", checkins: 4146 },
-    { hora: "16:30", checkins: 4833 },
-    { hora: "16:45", checkins: 4176 },
-    { hora: "17:00", checkins: 2186 },
-    { hora: "17:15", checkins: 959 },
-    { hora: "17:30", checkins: 165 },
-    { hora: "17:45", checkins: 59 },
-    { hora: "18:00", checkins: 24 },
-];
-
-// Totais reais do jogo (apenas os 4 setores com entrada por facial).
-const TOTAL_VALIDADOS = CHECKINS_FAIXAS.reduce((s, f) => s + f.checkins, 0); // 23.181
-const TOTAL_VENDIDOS = 24660; // ajustado p/ taxa de validação de 94%
+const TOTAL_VALIDADOS = ACESSO.validados;
+const TOTAL_VENDIDOS = ACESSO.validados + ACESSO.naoValidados;
 
 const sumVendidos = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumVendidos(c), 0) : node.vendidos ?? 0);
 const sumValidados = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumValidados(c), 0) : node.validados ?? 0);
@@ -121,10 +96,11 @@ interface PortadorAcesso {
 }
 
 const CANAIS = ["Online", "Offline"];
-const GRUPOS = ["Leste Superior", "Leste Inferior", "Oeste Inferior", "Oeste Superior B"];
-const TIPOS = ["Meia-Entrada", "Inteira", "Alvinegro", "Glorioso", "Preto", "Branco", "Cortesia"];
-const PORTOES = ["Portão A", "Portão B", "Portão C", "Portão D", "Portão E"];
-const OPERADORES = ["Giovanna Batista", "Josué da Fonseca Lima", "Bilheteria Estádio Nilton Santos", "Loja Oficial Botafogo - Nilton Santos"];
+const GRUPOS = GRUPOS_EVENTO.filter((g) => g.categoria === "Ingressos").map((g) => g.nome);
+const TIPOS = ["Inteira", "Meia-entrada", "Cortesia"];
+const PORTOES = ACESSO.porPortao.map((p) => p.portao);
+const OPERADORES = ["Giovanna Batista", "Josué da Fonseca Lima", "Bilheteria Praia de Carneiros", "Loja Oficial Réveillon Carneiros"];
+const SESSAO = { id: "reveillon-31-12", descricao: "31/12 · 22h00 · Praia de Carneiros" };
 
 const NOMES = [
     "João Barbosa", "Mariana Lopes", "Gabriel Souza", "Rafael Silva", "Camila Rodrigues",
@@ -145,7 +121,7 @@ const portadores: PortadorAcesso[] = Array.from({ length: 247 }, (_, idx) => {
     const ultimo = nome.split(" ").slice(-1)[0].toLowerCase();
     const email = `${primeiro}.${ultimo}${(idx % 9) + 1}@${pick(PROVEDORES, idx)}`;
     const validado = (idx * 13 + 7) % 100 < 78; // ~78% validados
-    const sessao = pick(EVENT.sessoes, Math.floor(idx / 7) + (idx % 2));
+    const sessao = SESSAO;
     return {
         id: String(idx + 1),
         sessaoId: sessao.id,
@@ -164,7 +140,7 @@ const portadores: PortadorAcesso[] = Array.from({ length: 247 }, (_, idx) => {
         operadorVendas: pick(OPERADORES, idx + (idx % 4)),
         portao: validado ? pick(PORTOES, idx) : undefined,
         status: validado ? "validado" : "pendente",
-        horario: validado ? `${13 + ((idx * 3) % 4)}:${pad((idx * 7) % 60, 2)}` : undefined,
+        horario: validado ? `${20 + (idx % 4)}:${pad((idx * 7) % 60, 2)}` : undefined,
     };
 });
 
@@ -216,7 +192,7 @@ const getInitials = (name: string) => {
 export function Acesso() {
     return (
         <BackstageLayout activeSection="relatorios" activeItem="acesso">
-            <RelatorioFiltersProvider fields={FILTER_FIELDS} sessoes={EVENT.sessoes}>
+            <RelatorioFiltersProvider fields={FILTER_FIELDS} initialDateRange={PERIODO_PADRAO}>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
                         <RelatorioPageHeader

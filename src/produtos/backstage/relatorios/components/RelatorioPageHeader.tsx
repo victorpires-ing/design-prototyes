@@ -5,7 +5,7 @@ import { Button } from "@/components/base/buttons/button";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { cx } from "@/utils/cx";
 import { EVENT, dateFormatter } from "../data/event";
-import { RelatorioFilterSlideout } from "./RelatorioFilterSlideout";
+import { RelatorioFilterSlideout, RelatorioPeriodoButton } from "./RelatorioFilterSlideout";
 import { useRelatorioFilters } from "./relatorio-filters";
 
 /* ------------------------------------------------------------------ */
@@ -71,7 +71,7 @@ const InfoChip = ({ icon: Icon, label }: { icon: typeof Clock; label: string }) 
 /*  Tira de filtros aplicados + meta do evento                         */
 /* ------------------------------------------------------------------ */
 
-const FiltersStrip = () => {
+const FiltersStrip = ({ showMeta = true }: { showMeta?: boolean }) => {
     const { fields, sessoes, dateRange, sessao, filters, appliedCount, apply, clear } = useRelatorioFilters();
     const tz = getLocalTimeZone();
 
@@ -81,12 +81,19 @@ const FiltersStrip = () => {
 
     const validFilters = filters.filter((f) => f.field && f.value);
 
+    // Sem meta (horário/moeda) e sem nenhum filtro aplicado → não renderiza a tira.
+    if (!showMeta && appliedCount === 0) return null;
+
     return (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <InfoChip icon={Clock} label={EVENT.tzLabel} />
-            <InfoChip icon={CurrencyDollarCircle} label={`Moeda: ${EVENT.currency} (${EVENT.currencyLabel})`} />
+            {showMeta && (
+                <>
+                    <InfoChip icon={Clock} label={EVENT.tzLabel} />
+                    <InfoChip icon={CurrencyDollarCircle} label={`Moeda: ${EVENT.currency} (${EVENT.currencyLabel})`} />
+                </>
+            )}
 
-            {appliedCount > 0 && <span className="h-4 w-px bg-border-secondary" aria-hidden="true" />}
+            {showMeta && appliedCount > 0 && <span className="h-4 w-px bg-border-secondary" aria-hidden="true" />}
 
             {dateRange && (
                 <FilterChip
@@ -130,13 +137,18 @@ interface RelatorioPageHeaderProps {
     actions?: ReactNode;
     /** Renderiza o botão de Filtros + tira de filtros (exige RelatorioFiltersProvider). Default true. */
     withFilters?: boolean;
+    /** "full" = slideout de filtros; "period" = só botão de Período. Default "full". */
+    filter?: "full" | "period";
+    /** Exibe a meta do evento (fuso horário / moeda) na tira. Default true. */
+    showEventMeta?: boolean;
     /** Controles fixos exibidos numa linha dentro do header (ex.: toggles de métrica). */
     toolbar?: ReactNode;
     /** Filtros à esquerda e ações (ex.: Exportar) à direita, em linha própria abaixo do título. */
     splitControls?: boolean;
 }
 
-export const RelatorioPageHeader = ({ title, actions, withFilters = true, toolbar, splitControls = false }: RelatorioPageHeaderProps) => {
+export const RelatorioPageHeader = ({ title, actions, withFilters = true, filter = "full", showEventMeta = true, toolbar, splitControls = false }: RelatorioPageHeaderProps) => {
+    const FilterControl = filter === "period" ? RelatorioPeriodoButton : RelatorioFilterSlideout;
     return (
         <div className={cx("sticky top-[var(--bs-header-offset,0px)] z-40 -mt-6 flex flex-col gap-3 border-x-8 border-[var(--color-bg-secondary)] bg-secondary pb-3 pt-6 shadow-[-8px_0_0_0_var(--color-bg-secondary),8px_0_0_0_var(--color-bg-secondary)] dark:border-[#0a0a0a] dark:bg-[#0a0a0a] dark:shadow-[-8px_0_0_0_#0a0a0a,8px_0_0_0_#0a0a0a]")}>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -145,19 +157,19 @@ export const RelatorioPageHeader = ({ title, actions, withFilters = true, toolba
                     <div className="flex flex-wrap items-center gap-3">
                         {splitControls ? (
                             <>
-                                {withFilters && <RelatorioFilterSlideout />}
+                                {withFilters && <FilterControl />}
                                 {actions}
                             </>
                         ) : (
                             <>
                                 {actions}
-                                {withFilters && <RelatorioFilterSlideout />}
+                                {withFilters && <FilterControl />}
                             </>
                         )}
                     </div>
                 )}
             </div>
-            {withFilters && <FiltersStrip />}
+            {withFilters && filter !== "period" && <FiltersStrip showMeta={showEventMeta} />}
             {toolbar && <div className="flex flex-wrap items-end gap-x-6 gap-y-3 overflow-x-auto">{toolbar}</div>}
         </div>
     );

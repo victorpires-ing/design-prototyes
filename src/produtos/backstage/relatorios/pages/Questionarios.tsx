@@ -80,7 +80,7 @@ const novoFiltro = (): FilterRow => ({ id: `qf${nextFilterId++}`, field: "", ope
 export function Questionarios() {
     return (
         <BackstageLayout activeSection="relatorios" activeItem="relatorio-questionarios">
-            <RelatorioFiltersProvider sessoes={EVENT.sessoes}>
+            <RelatorioFiltersProvider>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
                         <QuestionariosBody />

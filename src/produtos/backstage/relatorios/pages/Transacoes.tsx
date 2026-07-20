@@ -24,6 +24,7 @@ import { SortableHeader } from "../components/SortableHeader";
 import { TransacionadoChartCard, type ChartPoint } from "../components/TransacionadoChart";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
+import { EVENTO, GRUPOS, PERIODO_PADRAO } from "@/reports/event-dataset";
 
 /* ------------------------------------------------------------------ */
 /*  Status + meios                                                    */
@@ -103,52 +104,44 @@ interface Transacao {
     bundleDinamico: boolean;
 }
 
-// Setores e tipos de ingresso do jogo (Botafogo x Chapecoense). Nome do ingresso = lote = tipo.
+// Setores e tipos de ingresso derivados dos grupos do evento (src/reports).
 const t = (nome: string, valor: number) => ({ nome, valor, lote: nome });
-const CATALOGO = [
-    { setor: "Leste Superior", peso: 0.382, tipos: [t("Meia-Entrada", 20), t("Inteira", 40), t("Alvinegro", 0)] },
-    { setor: "Oeste Inferior", peso: 0.212, tipos: [t("Meia-Entrada", 50), t("Inteira", 100), t("Acompanhante Glorioso", 40)] },
-    { setor: "Leste Inferior", peso: 0.19, tipos: [t("Meia-Entrada", 40), t("Inteira", 80), t("Alvinegro", 0)] },
-    { setor: "Oeste Superior B", peso: 0.128, tipos: [t("Meia-Entrada", 30), t("Inteira", 60), t("Preto", 24)] },
-    { setor: "3º Andar Leste", peso: 0.062, tipos: [t("Meia-Entrada", 20), t("Inteira", 40)] },
-    { setor: "3º Andar Oeste", peso: 0.013, tipos: [t("Inteira", 40), t("Alvinegro", 0)] },
-    { setor: "Camarote", peso: 0.006, tipos: [t("Inteira", 60)] },
-    { setor: "Sul (Visitante)", peso: 0.004, tipos: [t("Meia-Entrada", 40), t("Inteira", 80)] },
-    { setor: "Tribuna", peso: 0.003, tipos: [t("Futebol", 120)] },
-];
+const CATALOGO = GRUPOS.filter((g) => g.categoria === "Ingressos").map((g) => ({
+    setor: g.nome,
+    peso: g.capacidade ?? 1,
+    tipos: [t("Inteira", g.precoMedio), t("Meia-entrada", Math.round(g.precoMedio / 2))],
+}));
 
 const PRIMEIROS = ["Adriano", "Mariana", "Pedro", "Camila", "Roberto", "Larissa", "Vinicius", "Davi", "Beatriz", "Gustavo", "Fernanda", "Rafael", "Juliana", "Bruno", "Aline", "Thiago", "Patrícia", "Lucas", "Carolina", "Felipe"];
 const SOBRENOMES = ["Albuquerque", "Lopes Ferreira", "Henrique Costa", "Rodrigues", "Santos Júnior", "Almeida", "Cayres", "Marinho da Silva", "Oliveira", "Souza", "Pereira", "Carvalho", "Ribeiro", "Gomes", "Martins", "Araújo", "Barbosa", "Nunes"];
 const LOCAIS = [
+    { estado: "PE", cidade: "Recife", ddd: "81" },
+    { estado: "PE", cidade: "Tamandaré", ddd: "81" },
     { estado: "SP", cidade: "São Paulo", ddd: "11" },
-    { estado: "SP", cidade: "Campinas", ddd: "19" },
     { estado: "RJ", cidade: "Rio de Janeiro", ddd: "21" },
     { estado: "MG", cidade: "Belo Horizonte", ddd: "31" },
     { estado: "BA", cidade: "Salvador", ddd: "71" },
-    { estado: "PR", cidade: "Curitiba", ddd: "41" },
-    { estado: "RS", cidade: "Porto Alegre", ddd: "51" },
+    { estado: "DF", cidade: "Brasília", ddd: "61" },
 ];
-const OPERADORES = ["Bilheteria Estádio Nilton Santos", "Loja Oficial Botafogo - Nilton Santos", "Loja Oficial Botafogo - Shopping Rio Sul"];
+const OPERADORES = ["Bilheteria Praia de Carneiros", "Loja Oficial Réveillon Carneiros"];
 const CUPONS = [
-    { cupom: "FOGAO15", pct: 0.15 },
-    { cupom: "GLORIOSO10", pct: 0.1 },
-    { cupom: "ALVINEGRO10", pct: 0.1 },
+    { cupom: "REVEILLON15", pct: 0.15 },
+    { cupom: "CARNEIROS10", pct: 0.1 },
+    { cupom: "VIRADA2027", pct: 0.1 },
 ];
-// Meios de pagamento (online) com pesos aproximados do relatório real.
+// Meios de pagamento (online), alinhados à distribuição do dataset.
 const MEIOS_PAGAMENTO: { nome: string; peso: number; isento?: boolean }[] = [
-    { nome: "Pix", peso: 0.637 },
-    { nome: "Cartão de Crédito", peso: 0.234 },
-    { nome: "Isento", peso: 0.103, isento: true },
-    { nome: "Apple Pay", peso: 0.014 },
-    { nome: "Google Pay", peso: 0.007 },
-    { nome: "Cartão de Débito", peso: 0.004 },
-    { nome: "Grátis", peso: 0.001, isento: true },
+    { nome: "Pix", peso: 0.63 },
+    { nome: "Cartão de Crédito", peso: 0.27 },
+    { nome: "Cartão de Débito", peso: 0.06 },
+    { nome: "Isento", peso: 0.04, isento: true },
 ];
 
 /** dd/mm/aaaa a partir de um offset (em dias) sobre a data de início de vendas. */
-const SALES_START_DATE = parseEventDate(EVENT.salesStart)!;
+const SALES_START_DATE = parseEventDate(EVENTO.vendasInicio)!;
 const SALES_TOTAL_DAYS =
-    Math.round((parseEventDate(EVENT.salesEnd)!.getTime() - SALES_START_DATE.getTime()) / 86_400_000) + 1;
+    Math.round((parseEventDate(EVENTO.vendasFim)!.getTime() - SALES_START_DATE.getTime()) / 86_400_000) + 1;
+const SESSAO_ID = "reveillon-31-12";
 
 const pad = (n: number, size = 2) => String(n).padStart(size, "0");
 const fmtDateTime = (d: Date) =>
@@ -217,11 +210,10 @@ const transacoes: Transacao[] = (() => {
         const email = `${emailUser}${Math.floor(rng() * 90 + 10)}@${pick(["gmail.com", "outlook.com", "hotmail.com", "yahoo.com"])}`;
         const cpf = String(Math.floor(rng() * 9e10 + 1e10));
         const telefone = `+55${local.ddd}9${String(Math.floor(rng() * 9e7 + 1e7))}`;
-        const sessao = pick(EVENT.sessoes);
 
         rows.push({
             id: `${pad(Math.floor(rng() * 9e7), 8)}-${pad(Math.floor(rng() * 9000), 4)}-4${pad(Math.floor(rng() * 900), 3)}-${pad(Math.floor(rng() * 9000), 4)}`,
-            sessaoId: sessao.id,
+            sessaoId: SESSAO_ID,
             dataCriacao: fmtDateTime(created),
             ultimaAtualizacao: fmtDateTime(updated),
             status,
@@ -327,7 +319,7 @@ function getFieldValue(t: Transacao, field: string): string {
 export function Transacoes() {
     return (
         <BackstageLayout activeSection="relatorios" activeItem="transacoes">
-            <RelatorioFiltersProvider fields={FILTER_FIELDS} sessoes={EVENT.sessoes}>
+            <RelatorioFiltersProvider fields={FILTER_FIELDS} initialDateRange={PERIODO_PADRAO}>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
                         <RelatorioPageHeader title="Transações" />

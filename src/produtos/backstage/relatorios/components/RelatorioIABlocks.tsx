@@ -66,6 +66,8 @@ export function RelatorioIABlocks({ blocos, ids, onRemover }: { blocos: Bloco[];
 
     // Uma métrica sozinha ocupa a largura toda; 2 ou 3+ se distribuem em colunas.
     const metricCols = metrics.length <= 1 ? "grid-cols-1" : metrics.length === 2 ? "grid-cols-1 @sm:grid-cols-2" : "grid-cols-1 @sm:grid-cols-2 @xl:grid-cols-3";
+    // Bloco único ocupa a largura toda; com vários, pequenos ocupam 1 coluna e densos 2.
+    const outrosCols = outros.length <= 1 ? "grid-cols-1" : "grid-cols-1 @md:grid-cols-2";
 
     return (
         // @container: as grades se adaptam à LARGURA DO CONTAINER (chat estreito → 1 coluna; relatório largo → 2–3).
@@ -74,7 +76,7 @@ export function RelatorioIABlocks({ blocos, ids, onRemover }: { blocos: Bloco[];
             {metrics.length > 0 && <div className={cx("grid items-stretch gap-4", metricCols)}>{metrics.map(({ bloco, i, id }) => item(bloco, i, id))}</div>}
             {/* Demais blocos: pequenos ocupam 1, densos ocupam 2. Lado a lado = mesma altura. */}
             {outros.length > 0 && (
-                <div className="grid grid-cols-1 items-stretch gap-4 @md:grid-cols-2">{outros.map(({ bloco, i, id }) => item(bloco, i, id, spanClasse(bloco)))}</div>
+                <div className={cx("grid items-stretch gap-4", outrosCols)}>{outros.map(({ bloco, i, id }) => item(bloco, i, id, outros.length > 1 ? spanClasse(bloco) : undefined))}</div>
             )}
         </div>
     );

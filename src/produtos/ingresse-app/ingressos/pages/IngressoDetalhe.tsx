@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import Lottie, { type LottieRefCurrentProps } from "lottie-react";
-import { ArrowLeft, CheckCircle, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
+import { ArrowLeft, CheckCircle, InfoCircle, Send01, Tag01, UserRight01, UsersPlus } from "@untitledui/icons";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
 import faceIdSuccess from "../assets/face-id-success.json";
@@ -12,7 +12,7 @@ import { ActionFab, type FabAction } from "../../components/ActionFab";
 import { StatusBar } from "../../components/StatusBar";
 import { Zigzag } from "../../components/Zigzag";
 import { getEvento, getItem } from "../data/eventos";
-import { isTransferido } from "../data/transfer-store";
+import { getDependenteAtribuido, isTransferido } from "../data/transfer-store";
 
 /** Carinha de reconhecimento facial: toca 2 vezes e congela no último frame. */
 function FaceAnimation() {
@@ -52,21 +52,41 @@ export function IngressoDetalhe() {
     const facial = item?.acesso === "facial";
     const qrModo = item?.qrModo;
 
+    // Se o ingresso foi atribuído a um dependente, o titular exibido passa a ser ele.
+    const dependente = getDependenteAtribuido(itemId);
+    const titularLabel = dependente ? "Dependente" : "Titular";
+    const titularNome = dependente ? dependente.nome : portador;
+    const titularCpf = dependente ? dependente.cpf : cpf;
+
     const [meuIngresso, setMeuIngresso] = useState(true);
     const [showQR, setShowQR] = useState(false);
     // Facial pendente começa não cadastrado; "Cadastrar agora" leva ao estado cadastrado.
     const [registered, setRegistered] = useState(item?.facial !== "pendente");
 
-    const acoes: FabAction[] = [
-        {
-            icon: Send01,
-            label: "Transferir ingresso",
-            short: "Transferir",
-            onClick: () => navigate(`/ingresse-app/ingressos/transferir/${eventoObj.id}/${itemId}`),
-        },
-        { icon: Tag01, label: "Revender ingresso", short: "Revender" },
-        { icon: Wallet02, label: "Adicionar à Carteira", short: "Carteira", dark: true },
-    ];
+    const acoes: FabAction[] = dependente
+        ? [
+              {
+                  icon: UsersPlus,
+                  label: "Trocar dependente",
+                  short: "Trocar dependente",
+                  onClick: () => navigate(`/ingresse-app/ingressos/transferir-dependente/${eventoObj.id}/${itemId}`),
+              },
+          ]
+        : [
+              {
+                  icon: Send01,
+                  label: "Transferir ingresso",
+                  short: "Transferir",
+                  onClick: () => navigate(`/ingresse-app/ingressos/transferir/${eventoObj.id}/${itemId}`),
+              },
+              { icon: Tag01, label: "Vender ingresso", short: "Vender" },
+              {
+                  icon: UsersPlus,
+                  label: "Atribuir dependente",
+                  short: "Dependente",
+                  onClick: () => navigate(`/ingresse-app/ingressos/transferir-dependente/${eventoObj.id}/${itemId}`),
+              },
+          ];
 
     return (
         <AppShell showTabBar={false} bottomBar={transferido ? undefined : <ActionFab actions={acoes} />}>
@@ -221,10 +241,10 @@ export function IngressoDetalhe() {
                                 <div className="-mx-6 my-5 border-t border-tertiary" />
                                 <div className="text-left">
                                     <p className="text-sm text-tertiary">
-                                        <span>Titular: </span><span className="font-semibold text-primary">{portador}</span>
+                                        <span>{titularLabel}: </span><span className="font-semibold text-primary">{titularNome}</span>
                                     </p>
                                     <p className="mt-1 text-sm text-tertiary">
-                                        <span>CPF: </span><span className="font-semibold text-primary">{cpf}</span>
+                                        <span>CPF: </span><span className="font-semibold text-primary">{titularCpf}</span>
                                     </p>
                                 </div>
                             </div>
@@ -257,10 +277,10 @@ export function IngressoDetalhe() {
                                 <div className="-mx-6 my-5 border-t border-tertiary" />
                                 <div className="text-left">
                                     <p className="text-sm text-tertiary">
-                                        <span>Titular: </span><span className="font-semibold text-primary">{portador}</span>
+                                        <span>{titularLabel}: </span><span className="font-semibold text-primary">{titularNome}</span>
                                     </p>
                                     <p className="mt-1 text-sm text-tertiary">
-                                        <span>CPF: </span><span className="font-semibold text-primary">{cpf}</span>
+                                        <span>CPF: </span><span className="font-semibold text-primary">{titularCpf}</span>
                                     </p>
                                 </div>
                             </div>

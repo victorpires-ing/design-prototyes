@@ -18,11 +18,14 @@ const CircleAction = ({
     label,
     onClick,
     variant = "primary",
+    onDark = false,
 }: {
     icon: FC<{ className?: string }>;
     label: string;
     onClick?: () => void;
     variant?: "primary" | "neutral";
+    /** Menu aberto (fundo escuro): rótulo em branco para contraste. */
+    onDark?: boolean;
 }) => (
     <button type="button" onClick={onClick} className="pointer-events-auto flex w-16 flex-col items-center gap-1.5">
         <span
@@ -33,7 +36,7 @@ const CircleAction = ({
         >
             <Icon className="size-6" />
         </span>
-        <span className="text-center text-xs leading-tight font-medium text-secondary">{label}</span>
+        <span className={cx("text-center text-xs leading-tight font-medium", onDark ? "text-white" : "text-secondary")}>{label}</span>
     </button>
 );
 
@@ -50,10 +53,20 @@ export function ActionFab({ actions }: { actions: FabAction[] }) {
     return (
         <>
             {open && rest.length > 0 && (
-                <button type="button" aria-label="Fechar" onClick={() => setOpen(false)} className="pointer-events-auto absolute inset-0 bg-black/30" />
+                <button
+                    type="button"
+                    aria-label="Fechar"
+                    onClick={() => setOpen(false)}
+                    className="pointer-events-auto absolute inset-0 bg-black/50 backdrop-blur-md duration-200 animate-in fade-in"
+                />
             )}
 
-            <div className="absolute inset-x-0 bottom-0 flex flex-col items-center bg-[linear-gradient(to_top,var(--color-bg-secondary)_30%,transparent)] px-5 pt-16 pb-6">
+            <div
+                className={cx(
+                    "absolute inset-x-0 bottom-0 flex flex-col items-center px-5 pt-16 pb-6",
+                    !open && "bg-[linear-gradient(to_top,var(--color-bg-secondary)_30%,transparent)]",
+                )}
+            >
                 {/* Bloco centralizado: a pílula alinha à direita (acima do "Mais/Fechar") */}
                 <div className="flex flex-col gap-5">
                 {/* Ações extras (reveladas pelo "Mais") em formato de pílula */}
@@ -85,10 +98,10 @@ export function ActionFab({ actions }: { actions: FabAction[] }) {
                 {/* Linha principal: 2 ações + Mais */}
                 <div className="flex items-start justify-center gap-8">
                     {primary.map((a) => (
-                        <CircleAction key={a.label} icon={a.icon} label={a.short ?? a.label} onClick={a.onClick} />
+                        <CircleAction key={a.label} icon={a.icon} label={a.short ?? a.label} onClick={a.onClick} onDark={open} />
                     ))}
                     {rest.length > 0 && (
-                        <CircleAction icon={open ? XClose : Plus} label={open ? "Fechar" : "Mais"} variant="neutral" onClick={() => setOpen((v) => !v)} />
+                        <CircleAction icon={open ? XClose : Plus} label={open ? "Fechar" : "Mais"} variant="neutral" onDark={open} onClick={() => setOpen((v) => !v)} />
                     )}
                 </div>
                 </div>

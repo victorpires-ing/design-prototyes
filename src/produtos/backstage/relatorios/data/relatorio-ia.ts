@@ -179,6 +179,20 @@ function rotearParte(parte: string, datas: { hoje: string; ontem: string }): Cha
     if (has("acumul")) return { medida: ehItens ? "itens" : "faturamento", dimensao: "dia", acumulado: true };
     if (has("acesso", "valida", "check-in", "checkin", "check in") && has("tipo", "grupo", "ingresso", "categoria", "setor"))
         return { medida: "taxaValidacao", dimensao: "grupo" };
+
+    /* ---- Perguntas frequentes do produtor (respostas mockadas) ---- */
+    // Gênero: "quantos homens e mulheres".
+    if (has("gênero", "genero", "homens", "mulheres", "masculino", "feminino", "sexo")) return { feature: "genero" };
+    // Vendas por lote.
+    if (has("lote", "lotes")) return { feature: "vendas_por_lote" };
+    // Total vendido no ano somando todos os eventos.
+    if (has("todos os eventos", "todos os meus eventos", "todos meus eventos") || (has("ano") && has("evento", "vendi", "ingresso", "total")))
+        return { feature: "vendas_ano" };
+    // Saldo disponível para repasse (antes de borderô, que também usa "repasse").
+    if (has("saldo") || has("disponível para repass", "disponivel para repass", "para executar pagament")) return { feature: "saldo_repasse" };
+    // Últimos pagamentos realizados (antes de "meio/pagamento" e "transfer").
+    if (has("favorecid") || (has("pagamento", "pagamentos") && has("últim", "ultim", "realiza", "fizemos", "realizamos", "5 ")))
+        return { feature: "ultimos_pagamentos" };
     if (has("correla", "relação entre", "relacao entre")) {
         const medidas: string[] = [];
         if (has("idade", "faixa etária", "faixa etaria")) medidas.push("idade");
@@ -224,7 +238,9 @@ export function responderLocal(historico: Mensagem[], dataset: Dataset, linhas: 
     const datas = datasDoDataset(dataset);
     // Correlação/relação é um pedido único — não dividir no " e " (ex.: "idade e grupo").
     const ehCorrelacao = /correla|rela[cç][aã]o entre/i.test(q);
-    const partes = ehCorrelacao
+    // Perguntas frequentes também são pedido único (têm vírgulas/"e" internos: "homens e mulheres", "favorecidos, e valores").
+    const ehFAQ = /homens e mulheres|g[êe]nero|favorecid|últimos?\s*\d*\s*pagamento|ultimos?\s*\d*\s*pagamento|saldo|por lote|ao longo do ano|todos os (meus )?eventos/i.test(q);
+    const partes = ehCorrelacao || ehFAQ
         ? [q]
         : q
               .split(/\s+e\s+|,|;|\btambém\b|\bmais\b/i)

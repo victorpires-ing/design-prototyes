@@ -97,6 +97,11 @@ export const CATALOGO = [
     { feature: "transferencias", descricao: "Relatório de Transferências: total, aceitas/pendentes/canceladas e taxa de churn.", args: {} },
     { feature: "questionarios", descricao: "Relatório de Questionários: total de respondentes, taxa de resposta e respostas por pergunta.", args: {} },
     { feature: "bordero", descricao: "Relatório de Borderô: valor bruto, taxas retidas e valor líquido a repassar.", args: {} },
+    { feature: "vendas_por_lote", descricao: "Ingressos vendidos e valor (preço) de cada lote dos ingressos.", args: {} },
+    { feature: "genero", descricao: "Distribuição de público por gênero (feminino, masculino, outro/não informado). Use para 'quantos homens e mulheres'.", args: {} },
+    { feature: "ultimos_pagamentos", descricao: "Últimos pagamentos/repasses realizados: data, favorecido e valor transferido.", args: {} },
+    { feature: "saldo_repasse", descricao: "Saldo líquido disponível no momento para executar repasses/pagamentos.", args: {} },
+    { feature: "vendas_ano", descricao: "Valor total de ingressos vendidos no ano somando TODOS os eventos do produtor, com quebra por evento.", args: {} },
 ];
 
 /** Schema de tools (function calling) no formato OpenAI/OpenRouter. */
@@ -433,6 +438,95 @@ export function executarChamada(chamada: Chamada, d: Dataset): Bloco[] {
                     ],
                 }),
             ];
+
+        /* ---- Perguntas frequentes do produtor (dados mockados) ---- */
+
+        case "vendas_por_lote": {
+            // Lotes dos ingressos: quantidade vendida + preço do lote (mock).
+            const lotes = [
+                { lote: "Pista — 1º lote", vendidos: 4200, preco: 180 },
+                { lote: "Pista — 2º lote", vendidos: 3800, preco: 240 },
+                { lote: "Pista — 3º lote", vendidos: 2600, preco: 320 },
+                { lote: "Pista Premium — 1º lote", vendidos: 1900, preco: 420 },
+                { lote: "Pista Premium — 2º lote", vendidos: 1450, preco: 520 },
+                { lote: "Camarote — 1º lote", vendidos: 980, preco: 890 },
+                { lote: "Camarote — 2º lote", vendidos: 620, preco: 1180 },
+                { lote: "Área VIP — Lote único", vendidos: 340, preco: 2200 },
+            ];
+            return [
+                {
+                    tipo: "tabela",
+                    titulo: "Ingressos vendidos e valor por lote",
+                    colunas: ["Lote", "Vendidos", "Valor do lote", "Total arrecadado"],
+                    linhas: lotes.map((l) => [l.lote, numberFormatter.format(l.vendidos), currencyFormatter.format(l.preco), currencyFormatter.format(l.vendidos * l.preco)]),
+                },
+            ];
+        }
+
+        case "genero": {
+            // Distribuição por gênero (mock, proporcional ao público vendido).
+            const base = d.ocupacao?.vendido || d.totais.itensVendidos || 12000;
+            const fem = Math.round(base * 0.54);
+            const masc = Math.round(base * 0.44);
+            const outro = Math.max(0, base - fem - masc);
+            return [
+                {
+                    tipo: "barras",
+                    titulo: "Público por gênero",
+                    formato: "numero",
+                    dados: [
+                        { nome: "Feminino", valor: fem },
+                        { nome: "Masculino", valor: masc },
+                        { nome: "Outro / não informado", valor: outro },
+                    ],
+                },
+            ];
+        }
+
+        case "ultimos_pagamentos": {
+            // Últimos repasses/pagamentos executados (mock).
+            const pagamentos = [
+                { data: "18/07/2026", favorecido: "Produtora Carneiros Live Ltda", valor: 420000 },
+                { data: "11/07/2026", favorecido: "Bar do Mar Serviços de A&B", valor: 96500 },
+                { data: "04/07/2026", favorecido: "Sound & Light Estruturas", valor: 158000 },
+                { data: "27/06/2026", favorecido: "Agência Talentos Brasil", valor: 240000 },
+                { data: "20/06/2026", favorecido: "Segurança Praia Norte ME", valor: 73200 },
+            ];
+            return [
+                {
+                    tipo: "tabela",
+                    titulo: "Últimos 5 pagamentos realizados",
+                    colunas: ["Data", "Favorecido", "Valor transferido"],
+                    linhas: pagamentos.map((p) => [p.data, p.favorecido, currencyFormatter.format(p.valor)]),
+                },
+            ];
+        }
+
+        case "saldo_repasse": {
+            // Saldo líquido disponível para repasse agora (mock derivado do borderô).
+            const saldo = d.bordero?.liquido ? Math.round(d.bordero.liquido * 0.38) : 3860000;
+            return [{ tipo: "metric", titulo: "Saldo disponível para repasse", valor: currencyFormatter.format(saldo), ajuda: "Valor líquido já liberado para executar pagamentos neste momento." }];
+        }
+
+        case "vendas_ano": {
+            // Total de ingressos vendidos no ano somando TODOS os eventos do produtor (mock).
+            const eventos = [
+                { nome: "Réveillon Carneiros 2027", valor: d.totais.valorTotalBruto || 13196160 },
+                { nome: "Carnaval Recife 2026", valor: 4820000 },
+                { nome: "São João Caruaru 2026", valor: 6310000 },
+                { nome: "Festival de Verão 2026", valor: 2140000 },
+                { nome: "Ano Novo Porto 2026", valor: 3960000 },
+            ];
+            const total = eventos.reduce((s, e) => s + e.valor, 0);
+            return [
+                {
+                    tipo: "barras",
+                    titulo: `Ingressos vendidos em 2026 — total ${currencyFormatter.format(total)} (todos os eventos)`,
+                    formato: "moeda",
+                    dados: eventos.map((e) => ({ nome: e.nome, valor: e.valor })),
+                },
+            ];
+        }
 
         default:
             return [{ tipo: "texto", titulo: cap(chamada.feature), conteudo: "Não reconheci essa análise." }];

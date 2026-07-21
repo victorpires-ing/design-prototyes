@@ -105,7 +105,7 @@ const EventoCortesiaCard = ({ evento }: { evento: EventoCortesia }) => {
                     <MarkerPin06 className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
                     <span className="truncate">{evento.local}</span>
                 </span>
-                <span className="mt-0.5 flex items-center gap-1.5 text-sm font-medium text-brand-secondary sm:hidden">
+                <span className="mt-0.5 flex items-center gap-1.5 text-sm font-medium text-blue-600 sm:hidden">
                     <Ticket01 className="size-4 shrink-0" aria-hidden="true" />
                     {label}
                 </span>

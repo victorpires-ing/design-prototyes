@@ -127,6 +127,53 @@ for (const g of GRUPOS) {
     });
 }
 
+/* ---- Catálogo demográfico: compradores com idade + localização ---- */
+// Faixas etárias e UFs; a geração cria correlações (tiers premium tendem a
+// ser mais velhos; PE concentra o público local) para análises de inferência.
+const FAIXAS = [
+    { faixa: "18–24", lo: 18, hi: 24, peso: 0.28 },
+    { faixa: "25–34", lo: 25, hi: 34, peso: 0.36 },
+    { faixa: "35–44", lo: 35, hi: 44, peso: 0.2 },
+    { faixa: "45–54", lo: 45, hi: 54, peso: 0.1 },
+    { faixa: "55+", lo: 55, hi: 72, peso: 0.06 },
+];
+const UFS = [
+    { uf: "PE", peso: 0.34 },
+    { uf: "SP", peso: 0.18 },
+    { uf: "RJ", peso: 0.12 },
+    { uf: "BA", peso: 0.1 },
+    { uf: "MG", peso: 0.08 },
+    { uf: "CE", peso: 0.06 },
+    { uf: "PB", peso: 0.05 },
+    { uf: "DF", peso: 0.04 },
+    { uf: "Outros", peso: 0.03 },
+];
+
+const rngC = makeRng(20270101);
+const pickPeso = (arr) => {
+    let r = rngC() * arr.reduce((s, x) => s + x.peso, 0);
+    for (const x of arr) {
+        r -= x.peso;
+        if (r <= 0) return x;
+    }
+    return arr[arr.length - 1];
+};
+const ingressos = GRUPOS.filter((g) => g.categoria === "Ingressos");
+const ingressosPorPreco = [...ingressos].sort((a, b) => a.precoMedio - b.precoMedio); // barato → caro
+
+const compradores = [];
+for (let i = 0; i < 2400; i++) {
+    const f = pickPeso(FAIXAS);
+    const idade = f.lo + Math.floor(rngC() * (f.hi - f.lo + 1));
+    const uf = pickPeso(UFS).uf;
+    // Correlação: quanto mais velho, maior a chance de grupo premium (índice mais alto).
+    const bias = (idade - 18) / 54; // 0..1
+    const idx = Math.min(ingressosPorPreco.length - 1, Math.floor((rngC() * 0.6 + bias * 0.4) * ingressosPorPreco.length));
+    const grupo = ingressosPorPreco[idx];
+    const valor = Math.round(grupo.precoMedio * (rngC() < 0.4 ? 0.5 : 1)); // meia/inteira
+    compradores.push({ idade, uf, grupo: grupo.nome, valor });
+}
+
 const event = {
     evento: EVENTO,
     periodoPadrao: { start: "2026-10-01", end: "2026-12-31" },
@@ -137,8 +184,11 @@ const event = {
     portoes: PORTOES,
     statusTransacao: STATUS_TRANSACAO,
     perguntas: PERGUNTAS,
+    faixasEtarias: FAIXAS,
+    ufs: UFS.map((u) => u.uf),
 };
 
 writeFileSync(join(outDir, "event.json"), JSON.stringify(event, null, 2));
 writeFileSync(join(outDir, "vendas.json"), JSON.stringify(vendas));
-console.log(`event.json: 1 config · vendas.json: ${vendas.length} linhas (${dias.length} dias × ${GRUPOS.length} grupos)`);
+writeFileSync(join(outDir, "compradores.json"), JSON.stringify(compradores));
+console.log(`event.json · vendas.json: ${vendas.length} linhas · compradores.json: ${compradores.length}`);

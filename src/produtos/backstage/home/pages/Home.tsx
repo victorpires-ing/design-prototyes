@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
-import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, BarChartSquare02, Calendar, MarkerPin01, Pin01 } from "@untitledui/icons";
+import { Pin01 } from "@untitledui/icons";
 import { CymaticsFill } from "@/components/application/loading-indicator/cymatics-loader";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
@@ -43,8 +41,18 @@ function resumir(bloco: Bloco): string {
     }
 }
 
+/** Orb de partículas (cymatics) redondo e flat. Sem fundo nem brilho. */
+function CymaticsOrb({ className = "size-12" }: { className?: string }) {
+    return (
+        <span className={cx("relative shrink-0 overflow-hidden rounded-full", className)}>
+            <CymaticsFill count={2000} dot={0.8} className="absolute inset-0 scale-125" />
+        </span>
+    );
+}
+
 /* ------------------------------------------------------------------ */
-/*  Chat conversacional (coluna direita)                               */
+/*  Chat conversacional (coluna direita) — o gráfico aparece inline      */
+/*  no chat (largura total, sem corte) e o usuário pode fixá-lo.         */
 /* ------------------------------------------------------------------ */
 
 interface Turno {
@@ -75,17 +83,12 @@ function ChatConversacional({ onPin }: { onPin: (bloco: Bloco) => void }) {
     }, [conversa, pending]);
 
     return (
-        <div className="flex flex-col overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary lg:sticky lg:top-6 lg:h-[calc(100vh-7rem)]">
-            <div className="flex items-center gap-2 border-b border-secondary px-4 py-3">
-                <BarChartSquare02 className="size-4 text-fg-brand-primary" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-primary">Assistente</h2>
-            </div>
-
-            <div className="flex min-h-[320px] flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div className="flex flex-col overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary lg:sticky lg:top-6 lg:h-[60vh]">
+            <div className="flex min-h-[280px] flex-1 flex-col gap-4 overflow-y-auto p-4">
                 {conversa.length === 0 && !pending && (
-                    <div className="m-auto flex max-w-xs flex-col items-center gap-2 text-center">
-                        <span className="size-12 rounded-full bg-gradient-to-br from-brand-300 to-brand-600" aria-hidden="true" />
-                        <p className="text-sm text-tertiary">Converse sobre o evento. Peça um gráfico e fixe no dashboard ao lado.</p>
+                    <div className="m-auto flex max-w-xs flex-col items-center gap-3 text-center">
+                        <CymaticsOrb className="size-14" />
+                        <p className="text-sm text-tertiary">Converse sobre os seus eventos, como posso ajudar?</p>
                     </div>
                 )}
 
@@ -95,11 +98,11 @@ function ChatConversacional({ onPin }: { onPin: (bloco: Bloco) => void }) {
                             {t.texto}
                         </div>
                     ) : (
-                        <div key={t.id} className="flex flex-col gap-2">
-                            {t.texto && <p className="max-w-[92%] self-start text-sm text-secondary">{t.texto}</p>}
+                        <div key={t.id} className="flex w-full flex-col gap-2">
+                            {t.texto && <p className="max-w-[95%] self-start text-sm text-secondary">{t.texto}</p>}
                             {t.bloco && (
-                                <div className="flex flex-col gap-1.5">
-                                    <RelatorioIABlocks blocos={[t.bloco]} />
+                                <div className="flex w-full flex-col gap-1.5">
+                                    <RelatorioIABlocks blocos={[t.bloco]} ids={[`c${t.id}`]} />
                                     <button
                                         type="button"
                                         onClick={() => onPin(t.bloco!)}
@@ -115,10 +118,9 @@ function ChatConversacional({ onPin }: { onPin: (bloco: Bloco) => void }) {
                 )}
 
                 {pending && (
-                    <div className="flex items-center gap-2 self-start text-sm text-tertiary">
-                        <span className="size-2 animate-bounce rounded-full bg-fg-quaternary [animation-delay:-0.2s]" />
-                        <span className="size-2 animate-bounce rounded-full bg-fg-quaternary [animation-delay:-0.1s]" />
-                        <span className="size-2 animate-bounce rounded-full bg-fg-quaternary" />
+                    <div className="flex items-center gap-3 self-start text-sm text-tertiary">
+                        <CymaticsOrb />
+                        Gerando…
                     </div>
                 )}
                 <div ref={fimRef} />
@@ -132,37 +134,24 @@ function ChatConversacional({ onPin }: { onPin: (bloco: Bloco) => void }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Dashboard (colunas 1–2): fixados + evento + relatórios             */
+/*  Eventos do produtor — pôster vertical 3:4                          */
 /* ------------------------------------------------------------------ */
 
-const RELATORIOS = [
-    { label: "Vendas por grupo", href: "/backstage/relatorios/vendas-por-grupo" },
-    { label: "Transações", href: "/backstage/relatorios/transacoes" },
-    { label: "Acesso", href: "/backstage/relatorios/acesso" },
-    { label: "Borderô", href: "/backstage/relatorios/bordero" },
-    { label: "Comparativos", href: "/backstage/relatorios/comparativos" },
-    { label: "Relatório personalizado", href: "/backstage/relatorios/relatorio-personalizado" },
-];
+const EVENTOS = [{ id: "reveillon", nome: EVENTO.nome, data: EVENTO.diaEvento, capa: eventCover }];
 
-function EventoCard() {
+function EventoCard({ nome, data, capa }: { nome: string; data: string; capa: string }) {
     return (
         <button
             type="button"
-            className="group flex w-full items-center gap-4 overflow-hidden rounded-2xl bg-primary p-3 text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:ring-brand"
+            className="group flex flex-col overflow-hidden rounded-2xl bg-primary text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:ring-brand"
         >
-            <img src={eventCover} alt="" aria-hidden="true" className="size-20 shrink-0 rounded-xl object-cover" />
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <h3 className="truncate text-md font-semibold text-primary">{EVENTO.nome}</h3>
-                <span className="flex items-center gap-1.5 text-sm text-tertiary">
-                    <Calendar className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                    {EVENTO.diaEvento}
-                </span>
-                <span className="flex items-center gap-1.5 text-sm text-tertiary">
-                    <MarkerPin01 className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                    <span className="truncate">{EVENTO.local}</span>
-                </span>
+            <div className="aspect-[3/4] w-full overflow-hidden bg-secondary">
+                <img src={capa} alt="" aria-hidden="true" className="size-full object-cover transition-transform duration-200 ease-out group-hover:scale-105" />
             </div>
-            <ArrowRight className="mr-1 size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-hover:translate-x-0.5" aria-hidden="true" />
+            <div className="flex flex-col gap-0.5 p-3">
+                <h3 className="line-clamp-2 text-sm font-semibold text-primary">{nome}</h3>
+                <span className="text-sm text-tertiary">{data}</span>
+            </div>
         </button>
     );
 }
@@ -177,7 +166,6 @@ interface Fixado {
 }
 
 export function Home() {
-    const navigate = useNavigate();
     const [fixados, setFixados] = useState<Fixado[]>([]);
     const fseq = useRef(0);
 
@@ -189,8 +177,8 @@ export function Home() {
 
     return (
         <BackstageLayout showEventContext={false}>
-            <div className="grid flex-1 grid-cols-1 gap-6 py-6 lg:grid-cols-3">
-                {/* Colunas 1–2: dashboard */}
+            <div className="grid min-w-0 flex-1 gap-6 py-8 md:px-2 lg:grid-cols-3">
+                {/* Colunas 1–2: dashboard (fixados + eventos) */}
                 <div className="flex flex-col gap-8 lg:col-span-2">
                     {fixados.length > 0 && (
                         <section className="flex flex-col gap-4">
@@ -200,32 +188,16 @@ export function Home() {
                     )}
 
                     <section className="flex flex-col gap-4">
-                        <h2 className="text-lg font-semibold text-primary">Seu evento</h2>
-                        <EventoCard />
-                    </section>
-
-                    <section className="flex flex-col gap-4">
-                        <h2 className="text-lg font-semibold text-primary">Relatórios</h2>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            {RELATORIOS.map((r) => (
-                                <button
-                                    key={r.href}
-                                    type="button"
-                                    onClick={() => navigate(r.href)}
-                                    className="group flex items-center justify-between gap-3 rounded-xl bg-primary px-4 py-3 text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:ring-brand"
-                                >
-                                    <span className="flex items-center gap-2.5 text-sm font-medium text-primary">
-                                        <BarChartSquare02 className="size-4 text-fg-quaternary" aria-hidden="true" />
-                                        {r.label}
-                                    </span>
-                                    <ArrowRight className="size-4 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-hover:translate-x-0.5" aria-hidden="true" />
-                                </button>
+                        <h2 className="text-lg font-semibold text-primary">Seus eventos</h2>
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                            {EVENTOS.map((e) => (
+                                <EventoCard key={e.id} nome={e.nome} data={e.data} capa={e.capa} />
                             ))}
                         </div>
                     </section>
                 </div>
 
-                {/* Coluna 3: chat conversacional */}
+                {/* Coluna 3: chat (fixo) — gráfico aparece aqui e pode ser fixado */}
                 <div className="lg:col-span-1">
                     <ChatConversacional onPin={fixar} />
                 </div>

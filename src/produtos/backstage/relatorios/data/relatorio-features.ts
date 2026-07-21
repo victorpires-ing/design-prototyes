@@ -8,6 +8,7 @@
 
 import Statistics from "statistics.js";
 import type { Bloco, Dataset, Formato } from "./relatorio-ia";
+import { COMPRADORES, GRUPOS } from "@/reports/event-dataset";
 import { currencyFormatter, numberFormatter } from "./event";
 
 /* -------------------------- Métodos estatísticos ------------------ */
@@ -83,7 +84,7 @@ export const CATALOGO = [
     { feature: "ocupacao", descricao: "Taxa de ocupação do evento (vendido vs capacidade).", args: {} },
     { feature: "serie_vendas", descricao: "Série temporal diária.", args: { metrica: "valor | itens" } },
     { feature: "estatisticas_vendas", descricao: "Estatísticas da série diária: média, mediana, desvio padrão, mínimo, máximo e tendência.", args: { metrica: "valor | itens" } },
-    { feature: "correlacao", descricao: "Correlação de Pearson entre duas medidas diárias (ex.: ingressos × faturamento, ou dia da campanha × faturamento para medir crescimento).", args: { a: "faturamento | ingressos | ticket | dia", b: "faturamento | ingressos | ticket | dia" } },
+    { feature: "correlacao", descricao: "Relação entre duas medidas. Diárias (Pearson): faturamento, ingressos, ticket, dia. Demográficas: idade × ticket (dispersão) e idade × grupo (idade média por grupo de ingresso).", args: { a: "faturamento | ingressos | ticket | dia | idade | grupo", b: "faturamento | ingressos | ticket | dia | idade | grupo" } },
     { feature: "distribuicao", descricao: "Distribuição por uma dimensão.", args: { dimensao: "mix (grupos de receita) | meios (meios de pagamento) | grupos (ingressos por grupo)" } },
     { feature: "ranking_grupos", descricao: "Ranking dos grupos de ingressos por uma métrica.", args: { metrica: "vendido | valor", limite: "número opcional (padrão 5)" } },
     { feature: "metrica_dia", descricao: "Faturamento e ingressos de um DIA específico (use o rótulo do dia, ex.: 20/6).", args: { dia: "rótulo do dia (ex.: 20/6)" } },
@@ -224,33 +225,76 @@ export function executarChamada(chamada: Chamada, d: Dataset): Bloco[] {
         }
 
         case "correlacao": {
-            // Medidas diárias disponíveis para correlacionar.
-            const alias: Record<string, "valor" | "itens" | "ticket" | "dia"> = {
+            const alias: Record<string, string> = {
                 valor: "valor", faturamento: "valor", receita: "valor",
                 itens: "itens", ingressos: "itens",
                 ticket: "ticket", "ticket medio": "ticket", "ticket médio": "ticket",
                 dia: "dia", tempo: "dia", data: "dia",
+                idade: "idade", idades: "idade", faixa: "idade", "faixa etaria": "idade",
+                grupo: "grupo", grupos: "grupo", setor: "grupo", "tipo de ingresso": "grupo", tipo: "grupo",
             };
-            const serie = d.vendasDiarias;
-            const coluna = (nome: "valor" | "itens" | "ticket" | "dia") =>
-                serie.map((x, i) => (nome === "valor" ? x.valor : nome === "itens" ? x.itens : nome === "ticket" ? (x.itens ? x.valor / x.itens : 0) : i));
             const a = alias[String(args.a ?? "itens").toLowerCase()] ?? "itens";
             const b = alias[String(args.b ?? "valor").toLowerCase()] ?? "valor";
+
+            // Idade × grupo de ingresso (numérico × categórico) → idade média por grupo.
+            if ((a === "idade" && b === "grupo") || (a === "grupo" && b === "idade")) {
+                const porGrupo = new Map<string, { soma: number; n: number }>();
+                for (const c of COMPRADORES) {
+                    const e = porGrupo.get(c.grupo) ?? { soma: 0, n: 0 };
+                    e.soma += c.idade;
+                    e.n++;
+                    porGrupo.set(c.grupo, e);
+                }
+                const ordem = GRUPOS.filter((g) => g.categoria === "Ingressos").map((g) => g.nome);
+                const dados = [...porGrupo.entries()]
+                    .map(([grupo, e]) => ({ nome: grupo, valor: Math.round(e.soma / e.n), i: ordem.indexOf(grupo) }))
+                    .sort((x, y) => (x.i < 0 ? 99 : x.i) - (y.i < 0 ? 99 : y.i))
+                    .map(({ nome, valor }) => ({ nome, valor }));
+                return [{ tipo: "barras", titulo: "Idade média por grupo de ingresso", formato: "numero", dados }];
+            }
+
+            const leitura = (r: number) => {
+                const abs = Math.abs(r);
+                const forca = abs >= 0.7 ? "forte" : abs >= 0.4 ? "moderada" : abs >= 0.2 ? "fraca" : "desprezível";
+                return `Correlação ${forca} ${r >= 0 ? "positiva" : "negativa"} (Pearson r = ${r.toFixed(2).replace(".", ",")})`;
+            };
+            const regressao = (xs: number[], ys: number[]) => {
+                const r = correlacaoPearson(xs, ys);
+                const eX = resumo(xs);
+                const eY = resumo(ys);
+                const slope = eX.desvioPadrao ? r * (eY.desvioPadrao / eX.desvioPadrao) : 0;
+                return { r, ajuste: { a: slope, b: eY.media - slope * eX.media } };
+            };
+
+            // Correlação envolvendo idade → catálogo de compradores (idade × ticket pago).
+            if (a === "idade" || b === "idade") {
+                const amostra = COMPRADORES.filter((_, i) => i % 3 === 0); // ~800 pontos
+                const xs = amostra.map((c) => c.idade);
+                const ys = amostra.map((c) => c.valor);
+                const { r, ajuste } = regressao(xs, ys);
+                return [
+                    {
+                        tipo: "dispersao",
+                        titulo: "Correlação — Idade × Ticket pago",
+                        dados: xs.map((x, i) => ({ x, y: ys[i] })),
+                        rotuloX: "Idade",
+                        rotuloY: "Ticket pago",
+                        r,
+                        ajuste,
+                        formatoX: "numero",
+                        formatoY: "moeda",
+                        ajuda: leitura(r),
+                    },
+                ];
+            }
+
+            const serie = d.vendasDiarias;
+            const coluna = (nome: string) => serie.map((x, i) => (nome === "valor" ? x.valor : nome === "itens" ? x.itens : nome === "ticket" ? (x.itens ? x.valor / x.itens : 0) : i));
             const rotulo: Record<string, string> = { valor: "Faturamento/dia", itens: "Ingressos/dia", ticket: "Ticket médio/dia", dia: "Dia da campanha" };
             const fmtDe: Record<string, Formato> = { valor: "moeda", ticket: "moeda", itens: "numero", dia: "numero" };
             const xs = coluna(a);
             const ys = coluna(b);
-            const r = correlacaoPearson(xs, ys);
-            const abs = Math.abs(r);
-            const forca = abs >= 0.7 ? "forte" : abs >= 0.4 ? "moderada" : abs >= 0.2 ? "fraca" : "desprezível";
-            const direcao = r >= 0 ? "positiva" : "negativa";
-
-            // Reta de regressão (mínimos quadrados) via desvios: slope = r · (σy/σx).
-            const estX = resumo(xs);
-            const estY = resumo(ys);
-            const slope = estX.desvioPadrao ? r * (estY.desvioPadrao / estX.desvioPadrao) : 0;
-            const intercept = estY.media - slope * estX.media;
-
+            const { r, ajuste } = regressao(xs, ys);
             return [
                 {
                     tipo: "dispersao",
@@ -259,10 +303,10 @@ export function executarChamada(chamada: Chamada, d: Dataset): Bloco[] {
                     rotuloX: rotulo[a],
                     rotuloY: rotulo[b],
                     r,
-                    ajuste: { a: slope, b: intercept },
+                    ajuste,
                     formatoX: fmtDe[a],
                     formatoY: fmtDe[b],
-                    ajuda: `Correlação ${forca} ${direcao} (Pearson r = ${r.toFixed(2).replace(".", ",")})`,
+                    ajuda: leitura(r),
                 },
             ];
         }

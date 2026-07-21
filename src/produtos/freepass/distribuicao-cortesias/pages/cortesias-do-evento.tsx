@@ -135,7 +135,7 @@ const ItemCortesiaCard = ({ eventoId, item, onClick }: { eventoId: string; item:
                         {item.data}
                     </span>
                 )}
-                <span className="text-sm font-medium text-brand-secondary">
+                <span className="text-sm font-medium text-blue-600">
                     {disponivel} {disponivel === 1 ? "disponível" : "disponíveis"}
                 </span>
             </div>

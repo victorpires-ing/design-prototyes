@@ -60,6 +60,8 @@ const ALIAS_DIM: Record<string, string> = {
     portao: "portao",
     faixahorario: "faixaHorario", horario: "faixaHorario", hora: "faixaHorario",
     pergunta: "pergunta",
+    "faixa etaria": "faixaEtaria", faixaetaria: "faixaEtaria", idade: "faixaEtaria", idades: "faixaEtaria", geracao: "faixaEtaria", faixa: "faixaEtaria",
+    uf: "uf", estado: "uf", estados: "uf", localizacao: "uf", regiao: "uf", cidade: "uf",
 };
 
 const UNIDADE: Record<string, Formato> = {
@@ -133,6 +135,15 @@ const chaveDim: Record<string, (r: FatoVenda) => string> = {
 
 function resolver(medida: string, dim: string | null, d: Dataset, linhas: FatoVenda[]): Resolvido | null {
     const unidade = UNIDADE[medida] ?? "numero";
+
+    // ---- Demografia (faixa etária / UF) para medidas de vendas ----
+    if ((dim === "faixaEtaria" || dim === "uf") && (medida in rowVal || medida === "ticketMedio")) {
+        const arr = dim === "faixaEtaria" ? d.demografia.porFaixa : d.demografia.porUf;
+        const nome = (x: { faixa?: string; uf?: string }) => x.faixa ?? x.uf ?? "";
+        if (medida === "ticketMedio") return { series: arr.map((x) => ({ nome: nome(x), valor: x.itens ? x.faturamento / x.itens : 0 })), unidade: "moeda" };
+        const campoItens = medida === "itens";
+        return { series: arr.map((x) => ({ nome: nome(x), valor: campoItens ? x.itens : x.faturamento })), unidade: campoItens ? "numero" : "moeda" };
+    }
 
     // ---- Medidas de vendas (tabela-fato) ----
     if (medida in rowVal) {

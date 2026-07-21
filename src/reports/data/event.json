@@ -208,5 +208,48 @@
       "pergunta": "Como conheceu o evento?",
       "share": 0.89
     }
+  ],
+  "faixasEtarias": [
+    {
+      "faixa": "18–24",
+      "lo": 18,
+      "hi": 24,
+      "peso": 0.28
+    },
+    {
+      "faixa": "25–34",
+      "lo": 25,
+      "hi": 34,
+      "peso": 0.36
+    },
+    {
+      "faixa": "35–44",
+      "lo": 35,
+      "hi": 44,
+      "peso": 0.2
+    },
+    {
+      "faixa": "45–54",
+      "lo": 45,
+      "hi": 54,
+      "peso": 0.1
+    },
+    {
+      "faixa": "55+",
+      "lo": 55,
+      "hi": 72,
+      "peso": 0.06
+    }
+  ],
+  "ufs": [
+    "PE",
+    "SP",
+    "RJ",
+    "BA",
+    "MG",
+    "CE",
+    "PB",
+    "DF",
+    "Outros"
   ]
 }

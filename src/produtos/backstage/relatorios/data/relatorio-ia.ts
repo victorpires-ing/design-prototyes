@@ -77,7 +77,7 @@ Responda SOMENTE com um JSON válido (sem markdown):
 
 MOTOR DE CONSULTA (combine livremente — cobre qualquer pergunta):
 - medida: faturamento | faturamentoLiquido | desconto | itens | ticketMedio | ocupacao | validados | taxaValidacao | checkins | transacoes | valorTransacoes | transferencias | churn | respostas | taxaResposta | meioPagamento | bordero
-- dimensao (opcional): dia | grupo | categoria | meioPagamento | status | canal | portao | faixaHorario | pergunta | null (número único)
+- dimensao (opcional): dia | grupo | categoria | meioPagamento | status | canal | portao | faixaHorario | pergunta | faixaEtaria | uf | null (número único)
 - acumulado: true = soma corrida no tempo (ex.: faturamento acumulado = {medida:"faturamento",dimensao:"dia",acumulado:true})
 - agregacao: para um número único sobre a série diária (media/mediana/desvio/min/max); default soma
 - grafico: "auto" (recomendado) escolhe pelo formato; ou linha/barras/pizza/medidor/metric/tabela
@@ -181,14 +181,21 @@ function rotearParte(parte: string, datas: { hoje: string; ontem: string }): Cha
         return { medida: "taxaValidacao", dimensao: "grupo" };
     if (has("correla", "relação entre", "relacao entre")) {
         const medidas: string[] = [];
+        if (has("idade", "faixa etária", "faixa etaria")) medidas.push("idade");
+        if (has("grupo", "setor", "tipo de ingresso")) medidas.push("grupo");
         if (has("ticket")) medidas.push("ticket");
-        if (has("ingresso", "itens")) medidas.push("itens");
-        if (has("fatur", "receita", "valor", "r$")) medidas.push("valor");
-        if (has("dia", "tempo", "campanha", "cresc")) medidas.push("dia");
+        if (medidas.length < 2 && has("fatur", "receita", "valor", "r$")) medidas.push("valor");
+        if (medidas.length < 2 && has("ingresso", "itens")) medidas.push("itens");
+        if (medidas.length < 2 && has("dia", "tempo", "campanha", "cresc")) medidas.push("dia");
         const a = medidas[0] ?? "itens";
         const b = medidas[1] ?? (a === "valor" ? "itens" : "valor");
         return { feature: "correlacao", args: { a, b } };
     }
+    // Demografia: faixa etária / localização (UF) → consulta genérica.
+    if (has("faixa etária", "faixa etaria", "idade", "geração", "geracao"))
+        return { medida: ehItens ? "itens" : "faturamento", dimensao: "faixaEtaria" };
+    if (has("estado", "uf", "localiz", "região", "regiao", "por cidade"))
+        return { medida: ehItens ? "itens" : "faturamento", dimensao: "uf" };
     if (has("ocupa", "lota")) return { feature: "ocupacao" };
     if (has("portão", "portao", "portões", "portoes")) return { feature: "acesso_portao" };
     if (has("horário", "horario", "fluxo", "por hora", "pico")) return { feature: "acesso_horario" };
@@ -215,10 +222,14 @@ function rotearParte(parte: string, datas: { hoje: string; ontem: string }): Cha
 export function responderLocal(historico: Mensagem[], dataset: Dataset, linhas: FatoVenda[]): RespostaIA {
     const q = historico.filter((m) => m.autor === "user").pop()?.texto || "";
     const datas = datasDoDataset(dataset);
-    const partes = q
-        .split(/\s+e\s+|,|;|\btambém\b|\bmais\b/i)
-        .map((s) => s.trim())
-        .filter((s) => s.length > 1);
+    // Correlação/relação é um pedido único — não dividir no " e " (ex.: "idade e grupo").
+    const ehCorrelacao = /correla|rela[cç][aã]o entre/i.test(q);
+    const partes = ehCorrelacao
+        ? [q]
+        : q
+              .split(/\s+e\s+|,|;|\btambém\b|\bmais\b/i)
+              .map((s) => s.trim())
+              .filter((s) => s.length > 1);
     const alvo = partes.length ? partes : [q];
 
     // Um pedido por parte (consulta OU feature), sem duplicar.

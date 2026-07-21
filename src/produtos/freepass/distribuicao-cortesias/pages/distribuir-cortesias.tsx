@@ -293,7 +293,7 @@ function DistribuirCortesias({ modo }: { modo: Modo }) {
                                                                         {item.data}
                                                                     </span>
                                                                 )}
-                                                                <span className={cx("text-sm font-medium", podeSelecionar ? "text-brand-secondary" : "text-error-primary")}>
+                                                                <span className={cx("text-sm font-medium", podeSelecionar ? "text-blue-600" : "text-error-primary")}>
                                                                     {podeSelecionar
                                                                         ? `${restante} de ${disp} ${disp === 1 ? "disponível" : "disponíveis"}`
                                                                         : `${disp} ${disp === 1 ? "disponível" : "disponíveis"}, quantidade insuficiente para enviar a todos`}

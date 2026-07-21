@@ -27,9 +27,9 @@ function spanClasse(b: Bloco): string {
         case "pizza":
             return b.dados.length > 4 ? "md:col-span-2" : ""; // poucas fatias cabem em 1 coluna
         case "barras":
-            return b.dados.length > 5 ? "md:col-span-2" : ""; // ranking/comparação curta → 1 coluna
+            return b.dados.length > 5 ? "@md:col-span-2" : ""; // ranking/comparação curta → 1 coluna
         default:
-            return "md:col-span-2"; // linha (temporal), dispersão, tabela e texto pedem largura
+            return "@md:col-span-2"; // linha (temporal), dispersão, tabela e texto pedem largura
     }
 }
 
@@ -65,12 +65,13 @@ export function RelatorioIABlocks({ blocos, ids, onRemover }: { blocos: Bloco[];
     );
 
     return (
-        <div className="flex flex-col gap-4">
-            {/* Metrics sempre agrupados no topo, em 3 colunas. */}
-            {metrics.length > 0 && <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3">{metrics.map(({ bloco, i, id }) => item(bloco, i, id))}</div>}
-            {/* Demais blocos: grade de 2 colunas — pequenos ocupam 1, densos ocupam 2. Lado a lado = mesma altura. */}
+        // @container: as grades se adaptam à LARGURA DO CONTAINER (chat estreito → 1 coluna; relatório largo → 2–3).
+        <div className="@container flex flex-col gap-4">
+            {/* Metrics agrupados no topo. */}
+            {metrics.length > 0 && <div className="grid grid-cols-1 items-stretch gap-4 @sm:grid-cols-2 @xl:grid-cols-3">{metrics.map(({ bloco, i, id }) => item(bloco, i, id))}</div>}
+            {/* Demais blocos: pequenos ocupam 1, densos ocupam 2. Lado a lado = mesma altura. */}
             {outros.length > 0 && (
-                <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">{outros.map(({ bloco, i, id }) => item(bloco, i, id, spanClasse(bloco)))}</div>
+                <div className="grid grid-cols-1 items-stretch gap-4 @md:grid-cols-2">{outros.map(({ bloco, i, id }) => item(bloco, i, id, spanClasse(bloco)))}</div>
             )}
         </div>
     );
@@ -104,8 +105,7 @@ function BlocoView({ bloco }: { bloco: Bloco }) {
         case "barras":
             return (
                 <Card title={bloco.titulo}>
-                    <div className="relative min-h-64 w-full flex-1">
-                        <div className="chart-eq" aria-hidden="true" />
+                    <div className="min-h-64 w-full flex-1">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={bloco.dados} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                                 <CartesianGrid stroke="var(--color-border-secondary)" strokeDasharray="2 4" vertical={false} />
@@ -180,9 +180,8 @@ function BlocoView({ bloco }: { bloco: Bloco }) {
             const total = bloco.dados.reduce((s, d) => s + d.valor, 0) || 1;
             return (
                 <Card title={bloco.titulo}>
-                    <div className="flex flex-1 flex-col items-center justify-center gap-4 sm:flex-row">
-                        <div className="relative h-52 w-52 shrink-0">
-                            <div className="chart-eq rounded-full" aria-hidden="true" />
+                    <div className="flex flex-1 flex-col items-center justify-center gap-4">
+                        <div className="h-52 w-52 shrink-0">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie data={bloco.dados} dataKey="valor" nameKey="nome" innerRadius="55%" outerRadius="100%" paddingAngle={2} stroke="none">

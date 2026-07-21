@@ -129,6 +129,21 @@ export const CAMADA_SEMANTICA = {
             ],
             dimensoes: [],
         },
+        {
+            nome: "demografia",
+            grao: "comprador",
+            temporal: false,
+            descricao: "Público por faixa etária e por localização (UF). Permite cruzar faturamento/itens com idade e região, e correlacionar idade × ticket pago.",
+            medidas: [
+                { campo: "faturamento", unidade: "moeda", agregacoes: ["soma", "distribuicaoPercentual"] },
+                { campo: "itens", unidade: "numero", agregacoes: ["soma", "distribuicaoPercentual"] },
+                { campo: "idade", unidade: "numero", agregacoes: ["media", "correlacao"] },
+            ],
+            dimensoes: [
+                { campo: "faixaEtaria", tipo: "categorico", valores: ["18–24", "25–34", "35–44", "45–54", "55+"] },
+                { campo: "uf", tipo: "categorico", descricao: "Estado do comprador (PE, SP, RJ…)." },
+            ],
+        },
     ],
 
     // Métodos disponíveis + quando usar cada um.

@@ -350,7 +350,7 @@ const PRODUCER_NAV: Array<{
     children?: Array<{ id: string; label: string }>;
 }> = [
     { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
-    { id: "permissao", icon: UsersPlus, label: "Permissão" },
+    { id: "permissao", icon: UsersPlus, label: "Permissão", href: "/backstage/permissao-envio" },
     { id: "produtos", icon: Package, label: "Produtos" },
     {
         id: "publico",

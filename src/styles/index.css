@@ -102,27 +102,3 @@ button {
 .ghost-buttom:active {
   background: #D2D2D2;
 }
-/* ------------------------------------------------------------------ */
-/*  Equalizer FX — grid branco animado sobre áreas coloridas dos       */
-/*  gráficos. mix-blend soft-light clareia a cor de fundo; a animação   */
-/*  idle sobe as "frequências". Ver RelatorioIABlocks.                  */
-/* ------------------------------------------------------------------ */
-.chart-eq {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  mix-blend-mode: soft-light;
-  opacity: 0.6;
-  background-image:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.9) 0 7px, rgba(255, 255, 255, 0) 7px 10px),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.85) 0 5px, rgba(255, 255, 255, 0) 5px 8px);
-  background-size: 10px 100%, 100% 8px;
-  animation: chart-eq-rise 3.2s ease-in-out infinite;
-}
-@keyframes chart-eq-rise {
-  0%, 100% { background-position: 0 0, 0 0; opacity: 0.45; }
-  50% { background-position: 0 0, 0 -4px; opacity: 0.7; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .chart-eq { animation: none; }
-}

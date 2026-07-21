@@ -13,6 +13,7 @@ import { CalendarDate, getLocalTimeZone } from "@internationalized/date";
 import type { DateValue } from "react-aria-components";
 import config from "./data/event.json";
 import vendasRaw from "./data/vendas.json";
+import compradoresRaw from "./data/compradores.json";
 
 /* ------------------------------- Config --------------------------- */
 
@@ -72,6 +73,36 @@ export const VENDAS: FatoVenda[] = (vendasRaw as Omit<FatoVenda, "ms" | "data">[
 }));
 
 const ITENS_TOTAL = VENDAS.reduce((s, v) => s + v.itens, 0);
+
+/* --------------------------- Demografia --------------------------- */
+/*  Catálogo de compradores (idade + localização) — base para análises  */
+/*  de inferência (faixa etária, UF, correlações com idade).            */
+
+export interface Comprador {
+    idade: number;
+    uf: string;
+    grupo: string;
+    valor: number;
+}
+export const COMPRADORES = compradoresRaw as Comprador[];
+
+const FAIXAS_ETARIAS = config.faixasEtarias as { faixa: string; lo: number; hi: number }[];
+const UFS = config.ufs as string[];
+// Escala a amostra de compradores para o total de itens do evento.
+const FATOR_DEMO = COMPRADORES.length ? ITENS_TOTAL / COMPRADORES.length : 0;
+
+const DEMOGRAFIA = {
+    porFaixa: FAIXAS_ETARIAS.map((f) => {
+        const rs = COMPRADORES.filter((c) => c.idade >= f.lo && c.idade <= f.hi);
+        return { faixa: f.faixa, itens: Math.round(rs.length * FATOR_DEMO), faturamento: Math.round(rs.reduce((s, c) => s + c.valor, 0) * FATOR_DEMO) };
+    }),
+    porUf: UFS.map((uf) => {
+        const rs = COMPRADORES.filter((c) => c.uf === uf);
+        return { uf, itens: Math.round(rs.length * FATOR_DEMO), faturamento: Math.round(rs.reduce((s, c) => s + c.valor, 0) * FATOR_DEMO) };
+    })
+        .filter((u) => u.itens > 0)
+        .sort((a, b) => b.itens - a.itens),
+};
 
 /* --------------------------- Consulta agregada -------------------- */
 
@@ -181,6 +212,7 @@ export function consultarPeriodo(periodo: PeriodoSelecionado) {
             const taxas = Math.round(bruto * 0.1);
             return { bruto, taxas, liquido: bruto - taxas };
         })(),
+        demografia: DEMOGRAFIA,
     };
 }
 

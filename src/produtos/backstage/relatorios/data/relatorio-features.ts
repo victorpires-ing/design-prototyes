@@ -486,18 +486,18 @@ export function executarChamada(chamada: Chamada, d: Dataset): Bloco[] {
         case "ultimos_pagamentos": {
             // Últimos repasses/pagamentos executados (mock).
             const pagamentos = [
-                { data: "18/07/2026", favorecido: "Produtora Carneiros Live Ltda", valor: 420000 },
-                { data: "11/07/2026", favorecido: "Bar do Mar Serviços de A&B", valor: 96500 },
-                { data: "04/07/2026", favorecido: "Sound & Light Estruturas", valor: 158000 },
-                { data: "27/06/2026", favorecido: "Agência Talentos Brasil", valor: 240000 },
-                { data: "20/06/2026", favorecido: "Segurança Praia Norte ME", valor: 73200 },
+                { data: "18/07/2026", favorecido: "Produtora Carneiros Live Ltda", email: "financeiro@carneiroslive.com.br", valor: 420000 },
+                { data: "11/07/2026", favorecido: "Bar do Mar Serviços de A&B", email: "contato@bardomar.com.br", valor: 96500 },
+                { data: "04/07/2026", favorecido: "Sound & Light Estruturas", email: "adm@soundlight.com.br", valor: 158000 },
+                { data: "27/06/2026", favorecido: "Agência Talentos Brasil", email: "pagamentos@talentosbrasil.com", valor: 240000 },
+                { data: "20/06/2026", favorecido: "Segurança Praia Norte ME", email: "financeiro@praianorte.com.br", valor: 73200 },
             ];
             return [
                 {
                     tipo: "tabela",
                     titulo: "Últimos 5 pagamentos realizados",
-                    colunas: ["Data", "Favorecido", "Valor transferido"],
-                    linhas: pagamentos.map((p) => [p.data, p.favorecido, currencyFormatter.format(p.valor)]),
+                    colunas: ["Data", "Favorecido", "E-mail", "Valor transferido"],
+                    linhas: pagamentos.map((p) => [p.data, p.favorecido, p.email, currencyFormatter.format(p.valor)]),
                 },
             ];
         }

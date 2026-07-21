@@ -232,6 +232,15 @@ function rotearParte(parte: string, datas: { hoje: string; ontem: string }): Cha
     return { feature: "metrica", args: { kpi: "valorBruto" } };
 }
 
+/**
+ * Perguntas frequentes do produtor: têm resposta mockada determinística e
+ * NÃO devem passar pelo LLM (que tende a confundir "pagamentos" com "meios de
+ * pagamento", etc.). São sempre roteadas localmente pelo `rotearParte`.
+ */
+export function ehPerguntaFrequente(texto: string): boolean {
+    return /homens e mulheres|g[êe]nero|favorecid|pagamento[s]? (que|realiz|fizemos)|[úu]ltimos?\s*\d*\s*pagamento|saldo|por lote|ao longo do ano|todos os (meus )?eventos/i.test(texto);
+}
+
 /** Modo demonstração: divide a mensagem em N solicitações e gera um gráfico por solicitação. */
 export function responderLocal(historico: Mensagem[], dataset: Dataset, linhas: FatoVenda[]): RespostaIA {
     const q = historico.filter((m) => m.autor === "user").pop()?.texto || "";
@@ -239,8 +248,7 @@ export function responderLocal(historico: Mensagem[], dataset: Dataset, linhas: 
     // Correlação/relação é um pedido único — não dividir no " e " (ex.: "idade e grupo").
     const ehCorrelacao = /correla|rela[cç][aã]o entre/i.test(q);
     // Perguntas frequentes também são pedido único (têm vírgulas/"e" internos: "homens e mulheres", "favorecidos, e valores").
-    const ehFAQ = /homens e mulheres|g[êe]nero|favorecid|últimos?\s*\d*\s*pagamento|ultimos?\s*\d*\s*pagamento|saldo|por lote|ao longo do ano|todos os (meus )?eventos/i.test(q);
-    const partes = ehCorrelacao || ehFAQ
+    const partes = ehCorrelacao || ehPerguntaFrequente(q)
         ? [q]
         : q
               .split(/\s+e\s+|,|;|\btambém\b|\bmais\b/i)
@@ -268,7 +276,10 @@ export async function chamarIA(historico: Mensagem[], periodo: PeriodoSelecionad
     const dataset = consultarPeriodo(periodo);
     const linhas = linhasDoPeriodo(periodo);
     const orKey = getApiKey();
-    const res = orKey ? await chamarOpenRouter(historico, dataset, linhas, orKey) : responderLocal(historico, dataset, linhas);
+    // Perguntas frequentes → resposta mockada determinística (não depende do LLM).
+    const ultimaUser = historico.filter((m) => m.autor === "user").pop()?.texto || "";
+    const usarLocal = !orKey || ehPerguntaFrequente(ultimaUser);
+    const res = usarLocal ? responderLocal(historico, dataset, linhas) : await chamarOpenRouter(historico, dataset, linhas, orKey);
     // Segura o loading +2s para mostrar mais a animação de geração do gráfico.
     await delay(LOADING_EXTRA_MS);
     return res;

@@ -12,52 +12,16 @@ import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
-import { RelatorioFiltersProvider, inDateRange, matchRow, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
+import { RelatorioFiltersProvider, matchRow, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
-import { EVENT, numberFormatter, parseEventDate } from "../data/event";
-import { COMBOS } from "../data/produtos";
+import { EVENT, numberFormatter } from "../data/event";
+import { consultarPeriodo, GRUPOS as GRUPOS_EVENTO, PERIODO_PADRAO } from "@/reports/event-dataset";
 
 const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
 /* ------------------------------------------------------------------ */
-/*  Réveillon Carneiros — acesso por FESTA (não por setor/catraca).    */
-/*  Cada portador tem um combo (NIGHT/FULL × gênero) e faz check-in     */
-/*  numa festa (Mouton 16h / Night 20–22h). NIGHT PASS só entra em      */
-/*  festas Night; FULL PASS entra em todas. Dados de teste.             */
-/* ------------------------------------------------------------------ */
-
-const ddmm = (data: string) => data.slice(0, 5);
-const areaOf = (descricao: string): "Mouton" | "Night" => (descricao.includes("Mouton") ? "Mouton" : "Night");
-const festaHour = (label: string): number => {
-    const m = label.match(/(\d{1,2})h/);
-    return m ? Number(m[1]) : 16;
-};
-
-interface FestaMeta {
-    id: string;
-    nome: string; // ex.: "31/12 | Night"
-    descricao: string;
-    data: string; // dd/mm/aaaa
-    area: "Mouton" | "Night";
-    hour: number;
-}
-
-// Metadados de cada festa derivados das sessões do evento.
-const FESTAS: FestaMeta[] = EVENT.sessoes.map((s) => {
-    const area = areaOf(s.descricao);
-    return { id: s.id, nome: `${ddmm(s.data)} | ${area}`, descricao: s.descricao, data: s.data, area, hour: festaHour(s.label) };
-});
-const festaById = new Map(FESTAS.map((f) => [f.id, f]));
-
-// Combos elegíveis por festa: NIGHT PASS só acessa festas Night; FULL PASS, todas.
-const FULL_COMBOS = COMBOS.filter((c) => c.passe === "FULL PASS");
-const combosDaFesta = (area: "Mouton" | "Night") => (area === "Night" ? COMBOS : FULL_COMBOS);
-
-const BAR_COLOR = "var(--color-brand-600)";
-
-/* ------------------------------------------------------------------ */
-/*  Árvore de validação — Festa → Combo                                */
+/*  Mock data — árvore Setor → Ingresso → Tipo                        */
 /* ------------------------------------------------------------------ */
 
 interface AcessoNode {
@@ -68,8 +32,36 @@ interface AcessoNode {
     children?: AcessoNode[];
 }
 
+// Fonte única: acesso do evento (src/reports), agregado do período completo.
+const ACESSO = consultarPeriodo(null).acesso;
+const slugSetor = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+// Setor (grupo de ingresso) → Inteira/Meia. Validados = comparecimento (taxa por grupo).
+const setores: AcessoNode[] = ACESSO.porGrupo.map((g) => {
+    const id = slugSetor(g.grupo);
+    const rate = g.vendido ? g.validado / g.vendido : 0;
+    const inteira = Math.round(g.vendido * 0.6);
+    const meia = g.vendido - inteira;
+    return {
+        id,
+        nome: g.grupo,
+        children: [
+            { id: `${id}-int`, nome: "Inteira", vendidos: inteira, validados: Math.round(inteira * rate) },
+            { id: `${id}-mei`, nome: "Meia-entrada", vendidos: meia, validados: Math.round(meia * rate) },
+        ],
+    };
+});
+
+// Check-ins ao longo da noite do evento (faixas de horário do dataset).
+const CHECKINS_FAIXAS: { hora: string; checkins: number }[] = ACESSO.porFaixaHorario.map((f) => ({ hora: f.faixa, checkins: f.checkins }));
+
+const TOTAL_VALIDADOS = ACESSO.validados;
+const TOTAL_VENDIDOS = ACESSO.validados + ACESSO.naoValidados;
+
 const sumVendidos = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumVendidos(c), 0) : node.vendidos ?? 0);
 const sumValidados = (node: AcessoNode): number => (node.children?.length ? node.children.reduce((s, c) => s + sumValidados(c), 0) : node.validados ?? 0);
+
+const BAR_COLOR = "var(--color-brand-600)";
 
 /* ------------------------------------------------------------------ */
 /*  Controle de acesso — lista por portador                           */
@@ -84,8 +76,7 @@ const ACESSO_STATUS: Record<StatusAcesso, { label: string; color: "success" | "g
 
 interface PortadorAcesso {
     id: string;
-    festaId: string;
-    data: string; // dd/mm/aaaa da festa (para o filtro de período)
+    sessaoId: string;
     portador: string;
     emailPortador: string;
     cpf: string;
@@ -94,20 +85,22 @@ interface PortadorAcesso {
     idTransacao: string;
     idIngresso: string;
     qrCode: string;
-    festa: string; // ex.: "31/12 | Night"
-    festaDescricao: string;
-    area: "Mouton" | "Night";
+    sessao: string;
     canal: string;
-    comboId: string;
-    combo: string; // nome do combo
-    grupo: string; // NIGHT PASS / FULL PASS
+    grupo: string;
+    tipoIngresso: string;
+    operadorVendas: string;
+    portao?: string;
     status: StatusAcesso;
     horario?: string;
 }
 
 const CANAIS = ["Online", "Offline"];
-const COMBO_NOMES = COMBOS.map((c) => c.nome);
-const FESTA_NOMES = FESTAS.map((f) => f.nome);
+const GRUPOS = GRUPOS_EVENTO.filter((g) => g.categoria === "Ingressos").map((g) => g.nome);
+const TIPOS = ["Inteira", "Meia-entrada", "Cortesia"];
+const PORTOES = ACESSO.porPortao.map((p) => p.portao);
+const OPERADORES = ["Giovanna Batista", "Josué da Fonseca Lima", "Bilheteria Praia de Carneiros", "Loja Oficial Réveillon Carneiros"];
+const SESSAO = { id: "reveillon-31-12", descricao: "31/12 · 22h00 · Praia de Carneiros" };
 
 const NOMES = [
     "João Barbosa", "Mariana Lopes", "Gabriel Souza", "Rafael Silva", "Camila Rodrigues",
@@ -120,28 +113,18 @@ const PROVEDORES = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com"];
 
 const pad = (n: number, len: number) => String(n).padStart(len, "0");
 const pick = <T,>(arr: T[], i: number): T => arr[((i % arr.length) + arr.length) % arr.length];
-const fmtMin = (m: number) => `${pad(Math.floor(m / 60), 2)}:${pad(m % 60, 2)}`;
-const toMin = (h: string) => {
-    const [a, b] = h.split(":").map(Number);
-    return a * 60 + b;
-};
 
-// Dataset determinístico (estável entre recargas) — 480 portadores.
-const portadores: PortadorAcesso[] = Array.from({ length: 480 }, (_, idx) => {
+// Dataset determinístico (estável entre recargas) — 247 portadores.
+const portadores: PortadorAcesso[] = Array.from({ length: 247 }, (_, idx) => {
     const nome = pick(NOMES, idx * 7 + (idx % 5));
     const primeiro = nome.split(" ")[0].toLowerCase();
     const ultimo = nome.split(" ").slice(-1)[0].toLowerCase();
     const email = `${primeiro}.${ultimo}${(idx % 9) + 1}@${pick(PROVEDORES, idx)}`;
-    const festa = pick(FESTAS, idx * 3 + (idx % 7));
-    const combo = pick(combosDaFesta(festa.area), idx * 2 + (idx % 3));
-    const validado = (idx * 13 + 7) % 100 < 82; // ~82% validados
-    // Horário coerente com a festa: Mouton a partir das 15h; Night ~1h antes do início.
-    const startMin = festa.area === "Mouton" ? 15 * 60 : (festa.hour - 1) * 60;
-    const horarioMin = startMin + ((idx * 17) % 150);
+    const validado = (idx * 13 + 7) % 100 < 78; // ~78% validados
+    const sessao = SESSAO;
     return {
         id: String(idx + 1),
-        festaId: festa.id,
-        data: festa.data,
+        sessaoId: sessao.id,
         portador: nome,
         emailPortador: email,
         cpf: pad((12000000000 + idx * 83729123) % 100000000000, 11),
@@ -150,15 +133,14 @@ const portadores: PortadorAcesso[] = Array.from({ length: 480 }, (_, idx) => {
         idTransacao: `TRX-${840192 - idx}`,
         idIngresso: `ING-${pad(451 + idx, 4)}`,
         qrCode: pad((idx * 48271) % 100000000, 8),
-        festa: festa.nome,
-        festaDescricao: festa.descricao,
-        area: festa.area,
+        sessao: sessao.descricao,
         canal: pick(CANAIS, idx + (idx % 3)),
-        comboId: combo.id,
-        combo: combo.nome,
-        grupo: combo.passe,
+        grupo: pick(GRUPOS, idx * 3 + (idx % 6)),
+        tipoIngresso: pick(TIPOS, idx * 2 + (idx % 3)),
+        operadorVendas: pick(OPERADORES, idx + (idx % 4)),
+        portao: validado ? pick(PORTOES, idx) : undefined,
         status: validado ? "validado" : "pendente",
-        horario: validado ? fmtMin(horarioMin) : undefined,
+        horario: validado ? `${20 + (idx % 4)}:${pad((idx * 7) % 60, 2)}` : undefined,
     };
 });
 
@@ -168,8 +150,8 @@ const portadores: PortadorAcesso[] = Array.from({ length: 480 }, (_, idx) => {
 
 const FILTER_FIELDS: FilterFieldDef[] = [
     { id: "canal", label: "Canal", multi: { options: CANAIS.map((c) => ({ id: c, label: c })) } },
-    { id: "festa", label: "Festa", multi: { options: FESTA_NOMES.map((f) => ({ id: f, label: f })) } },
-    { id: "combo", label: "Combo", multi: { options: COMBO_NOMES.map((c) => ({ id: c, label: c })) } },
+    { id: "grupo", label: "Grupo", multi: { options: GRUPOS.map((g) => ({ id: g, label: g })) } },
+    { id: "tipoIngresso", label: "Tipo de ingresso", multi: { options: TIPOS.map((t) => ({ id: t, label: t })) } },
     { id: "status", label: "Status", multi: { options: [{ id: "Validado", label: "Validado" }, { id: "Não validado", label: "Não validado" }] } },
 ];
 
@@ -177,10 +159,10 @@ function getFieldValue(p: PortadorAcesso, field: string): string {
     switch (field) {
         case "canal":
             return p.canal;
-        case "festa":
-            return p.festa;
-        case "combo":
-            return p.combo;
+        case "grupo":
+            return p.grupo;
+        case "tipoIngresso":
+            return p.tipoIngresso;
         case "status":
             return ACESSO_STATUS[p.status].label;
         default:
@@ -204,58 +186,18 @@ const getInitials = (name: string) => {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Derivações a partir das linhas filtradas                           */
-/* ------------------------------------------------------------------ */
-
-// Histograma de check-ins em faixas de 15 min (só validados, com horário).
-function buildFaixas(rows: PortadorAcesso[]): { hora: string; checkins: number }[] {
-    const slots = rows.filter((r) => r.horario).map((r) => Math.floor(toMin(r.horario!) / 15) * 15);
-    if (!slots.length) return [];
-    const min = Math.min(...slots);
-    const max = Math.max(...slots);
-    const counts = new Map<number, number>();
-    slots.forEach((m) => counts.set(m, (counts.get(m) ?? 0) + 1));
-    const out: { hora: string; checkins: number }[] = [];
-    for (let m = min; m <= max; m += 15) out.push({ hora: fmtMin(m), checkins: counts.get(m) ?? 0 });
-    return out;
-}
-
-// Árvore Festa → Combo, com esperados (linhas) e validados por nó.
-function buildTree(rows: PortadorAcesso[]): AcessoNode[] {
-    const festaOrder = FESTAS.map((f) => f.id).filter((id) => rows.some((r) => r.festaId === id));
-    return festaOrder.map((festaId) => {
-        const festa = festaById.get(festaId)!;
-        const rowsFesta = rows.filter((r) => r.festaId === festaId);
-        const combosPresentes = COMBOS.filter((c) => rowsFesta.some((r) => r.comboId === c.id));
-        return {
-            id: festaId,
-            nome: festa.nome,
-            children: combosPresentes.map((c) => {
-                const rowsCombo = rowsFesta.filter((r) => r.comboId === c.id);
-                return {
-                    id: `${festaId}-${c.id}`,
-                    nome: c.nome,
-                    vendidos: rowsCombo.length,
-                    validados: rowsCombo.filter((r) => r.status === "validado").length,
-                };
-            }),
-        };
-    });
-}
-
-/* ------------------------------------------------------------------ */
 /*  Page                                                              */
 /* ------------------------------------------------------------------ */
 
 export function Acesso() {
     return (
         <BackstageLayout activeSection="relatorios" activeItem="acesso">
-            <RelatorioFiltersProvider fields={FILTER_FIELDS} sessoes={EVENT.sessoes}>
+            <RelatorioFiltersProvider fields={FILTER_FIELDS} initialDateRange={PERIODO_PADRAO}>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
                         <RelatorioPageHeader
                             title="Acesso"
-                            filtroVariante="dropdown"
+                            splitControls
                             actions={<ExportMenu onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "A lista de entradas será exportada." })} />}
                         />
                         <AcessoBody />
@@ -267,31 +209,35 @@ export function Acesso() {
 }
 
 const AcessoBody = () => {
-    const { dateRange, sessao, filters } = useRelatorioFilters();
+    const { sessao, filters } = useRelatorioFilters();
 
     const filteredPortadores = useMemo(() => {
         const validFilters = filters.filter((f) => f.field && f.value);
         return portadores.filter((p) => {
-            if (sessao !== "all" && p.festaId !== sessao) return false;
-            if (!inDateRange(parseEventDate(p.data), dateRange)) return false;
+            if (sessao !== "all" && p.sessaoId !== sessao) return false;
             if (!matchRow(p, validFilters, getFieldValue)) return false;
             return true;
         });
-    }, [dateRange, sessao, filters]);
+    }, [sessao, filters]);
 
-    const totals = useMemo(() => {
-        const validados = filteredPortadores.filter((p) => p.status === "validado").length;
-        return { validados, pendentes: filteredPortadores.length - validados, total: filteredPortadores.length };
-    }, [filteredPortadores]);
+    // Totais reais do histórico de validação (23.181 validados de 23.909 vendidos).
+    const totals = useMemo(() => ({ validados: TOTAL_VALIDADOS, pendentes: TOTAL_VENDIDOS - TOTAL_VALIDADOS, total: TOTAL_VENDIDOS }), []);
 
-    const faixas = useMemo(() => buildFaixas(filteredPortadores), [filteredPortadores]);
-    const arvore = useMemo(() => buildTree(filteredPortadores), [filteredPortadores]);
+    // Check-ins por faixa de 15 min — histórico real de validação do jogo.
+    const faixas = CHECKINS_FAIXAS;
+
+    // Árvore filtrada pelos grupos selecionados (se houver).
+    const selectedGrupos = useMemo(() => {
+        const grupoFilter = filters.find((f) => f.field === "grupo" && f.value);
+        return grupoFilter ? new Set(grupoFilter.value.split(",").filter(Boolean)) : null;
+    }, [filters]);
+    const setoresView = useMemo(() => (selectedGrupos ? setores.filter((s) => selectedGrupos.has(s.nome)) : setores), [selectedGrupos]);
 
     return (
         <>
             <MetricsRow validados={totals.validados} pendentes={totals.pendentes} total={totals.total} />
             <EntradasPorFaixaCard faixas={faixas} />
-            <ValidacaoPorFestaCard festas={arvore} />
+            <ValidacaoPorSetorCard setores={setoresView} />
             <ControleDeAcessoCard rows={filteredPortadores} />
         </>
     );
@@ -311,10 +257,7 @@ const MetricsRow = ({ validados, pendentes, total }: { validados: number; penden
 
 const ValidacaoMetric = ({ validados, total }: { validados: number; total: number }) => {
     const pct = total === 0 ? 0 : Math.round((validados / total) * 100);
-    const legendas = [
-        { label: "Validado", pct, className: "bg-fg-brand-primary" },
-        { label: "Não validado", pct: 100 - pct, className: "bg-quaternary" },
-    ];
+    const legendas = [{ label: "Validado", pct, className: "bg-fg-brand-primary" }];
     return (
         <div className="rounded-xl bg-primary shadow-xs ring-1 ring-secondary ring-inset">
             <div className="flex h-full items-center gap-6 px-4 py-5 md:px-5">
@@ -374,35 +317,31 @@ const EntradasPorFaixaCard = ({ faixas }: { faixas: { hora: string; checkins: nu
             <header className="border-b border-secondary px-5 py-4">
                 <h3 className="text-md font-semibold text-primary">Entradas por faixa de horário</h3>
             </header>
-            {faixas.length === 0 ? (
-                <div className="px-5 py-12 text-center text-sm text-tertiary">Nenhum check-in corresponde aos filtros.</div>
-            ) : (
-                <div className="h-[280px] w-full px-2 pt-5 pb-2 md:h-[320px] md:px-4">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={faixas} margin={{ top: 24, right: 12, bottom: 4, left: 4 }}>
-                            <CartesianGrid stroke="var(--color-border-secondary)" strokeDasharray="2 4" strokeOpacity={0.6} vertical={false} />
-                            <XAxis dataKey="hora" tick={{ fill: "var(--color-text-tertiary)", fontSize: 11 }} tickLine={false} axisLine={false} tickMargin={10} interval="preserveStartEnd" minTickGap={16} />
-                            <YAxis tickFormatter={(v) => numberFormatter.format(Number(v))} tick={{ fill: "var(--color-text-tertiary)", fontSize: 11 }} tickLine={false} axisLine={false} tickMargin={8} width={40} />
-                            <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--color-bg-secondary)", opacity: 0.6 }} />
-                            <Bar dataKey="checkins" name="Check-ins" radius={[4, 4, 0, 0]} maxBarSize={36} isAnimationActive={false}>
-                                <LabelList dataKey="checkins" position="top" offset={6} fontSize={10} fontWeight={600} fill="var(--color-text-secondary)" formatter={(v) => numberFormatter.format(Number(v))} />
-                                {faixas.map((f) => (
-                                    <Cell key={f.hora} fill={BAR_COLOR} fillOpacity={f.hora === picoFaixa.hora ? 1 : 0.32} />
-                                ))}
-                            </Bar>
-                        </ComposedChart>
-                    </ResponsiveContainer>
-                </div>
-            )}
+            <div className="h-[280px] w-full px-2 pt-5 pb-2 md:h-[320px] md:px-4">
+                <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={faixas} margin={{ top: 24, right: 12, bottom: 4, left: 4 }}>
+                        <CartesianGrid stroke="var(--color-border-secondary)" strokeDasharray="2 4" strokeOpacity={0.6} vertical={false} />
+                        <XAxis dataKey="hora" tick={{ fill: "var(--color-text-tertiary)", fontSize: 11 }} tickLine={false} axisLine={false} tickMargin={10} interval="preserveStartEnd" minTickGap={16} />
+                        <YAxis tickFormatter={(v) => numberFormatter.format(Number(v))} tick={{ fill: "var(--color-text-tertiary)", fontSize: 11 }} tickLine={false} axisLine={false} tickMargin={8} width={40} />
+                        <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--color-bg-secondary)", opacity: 0.6 }} />
+                        <Bar dataKey="checkins" name="Check-ins" radius={[4, 4, 0, 0]} maxBarSize={36} isAnimationActive={false}>
+                            <LabelList dataKey="checkins" position="top" offset={6} fontSize={10} fontWeight={600} fill="var(--color-text-secondary)" formatter={(v) => numberFormatter.format(Number(v))} />
+                            {faixas.map((f) => (
+                                <Cell key={f.hora} fill={BAR_COLOR} fillOpacity={f.hora === picoFaixa.hora ? 1 : 0.32} />
+                            ))}
+                        </Bar>
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </div>
         </section>
     );
 };
 
 /* ------------------------------------------------------------------ */
-/*  Validação por festa                                               */
+/*  Validação por setor                                               */
 /* ------------------------------------------------------------------ */
 
-const ValidacaoPorFestaCard = ({ festas }: { festas: AcessoNode[] }) => {
+const ValidacaoPorSetorCard = ({ setores: setoresView }: { setores: AcessoNode[] }) => {
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const indent = (depth: number) => 16 + depth * 24;
 
@@ -414,7 +353,7 @@ const ValidacaoPorFestaCard = ({ festas }: { festas: AcessoNode[] }) => {
             return next;
         });
 
-    const renderNodes = (list: AcessoNode[], depth: number): ReactNode[] => {
+    const renderNodes = (list: AcessoNode[], depth: number, parent: AcessoNode | null): ReactNode[] => {
         const out: ReactNode[] = [];
         list.forEach((node) => {
             const hasChildren = !!node.children?.length;
@@ -422,8 +361,23 @@ const ValidacaoPorFestaCard = ({ festas }: { festas: AcessoNode[] }) => {
             const vendidos = sumVendidos(node);
             const validados = sumValidados(node);
 
-            // Taxa de validação: validados / esperados (na festa ou no combo).
-            const bar: ReactNode = <OccupancyBar value={validados} total={vendidos} />;
+            let bar: ReactNode;
+            if (depth === 0 || !parent) {
+                bar = <OccupancyBar value={validados} total={vendidos} />;
+            } else {
+                const parentVendidos = sumVendidos(parent);
+                const parentValidados = sumValidados(parent);
+                const prevValidados = list.slice(0, list.indexOf(node)).reduce((s, c) => s + sumValidados(c), 0);
+                const offsetPct = parentVendidos === 0 ? 0 : (prevValidados / parentVendidos) * 100;
+                const widthPct = parentVendidos === 0 ? 0 : (validados / parentVendidos) * 100;
+                const filledPct = parentVendidos === 0 ? 0 : (parentValidados / parentVendidos) * 100;
+                const labelPct = parentValidados === 0 ? 0 : (validados / parentValidados) * 100;
+                const boundaries = list.slice(0, -1).map((_, k) => {
+                    const sum = list.slice(0, k + 1).reduce((s, c) => s + sumValidados(c), 0);
+                    return parentVendidos === 0 ? 0 : (sum / parentVendidos) * 100;
+                });
+                bar = <SegmentedOccupancyBar offsetPct={offsetPct} widthPct={widthPct} filledPct={filledPct} labelPct={labelPct} boundaries={boundaries} />;
+            }
 
             const labelClass = depth === 0 ? "font-medium text-primary" : "text-secondary";
 
@@ -456,7 +410,7 @@ const ValidacaoPorFestaCard = ({ festas }: { festas: AcessoNode[] }) => {
                         <td className="hidden px-4 py-3.5 text-right text-sm text-tertiary md:table-cell">{numberFormatter.format(validados)}</td>
                         <td className="px-4 py-3.5">{bar}</td>
                     </tr>
-                    {hasChildren && isExpanded && renderNodes(node.children!, depth + 1)}
+                    {hasChildren && isExpanded && renderNodes(node.children!, depth + 1, node)}
                 </Fragment>,
             );
         });
@@ -464,7 +418,7 @@ const ValidacaoPorFestaCard = ({ festas }: { festas: AcessoNode[] }) => {
     };
 
     return (
-        <Card title="Validação por festa">
+        <Card title="Validação por grupo">
             <div className="overflow-x-auto overflow-y-clip">
                 <table className="w-full table-fixed border-collapse">
                     <colgroup>
@@ -475,19 +429,19 @@ const ValidacaoPorFestaCard = ({ festas }: { festas: AcessoNode[] }) => {
                     </colgroup>
                     <thead className="bg-secondary">
                         <tr className="border-b border-secondary text-left">
-                            <th className="px-4 py-3 text-sm font-semibold text-tertiary">Festa · Combo</th>
-                            <th className="hidden px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Esperados</th>
+                            <th className="px-4 py-3 text-sm font-semibold text-tertiary">Grupo · Ingresso · Tipo</th>
+                            <th className="hidden px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Vendidos</th>
                             <th className="hidden px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell">Validados</th>
                             <th className="px-4 py-3 text-sm font-semibold text-tertiary">Taxa de validação</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {festas.length === 0 ? (
+                        {setoresView.length === 0 ? (
                             <tr>
-                                <td colSpan={4} className="px-4 py-12 text-center text-sm text-tertiary">Nenhuma festa corresponde aos filtros.</td>
+                                <td colSpan={4} className="px-4 py-12 text-center text-sm text-tertiary">Nenhum grupo corresponde aos filtros.</td>
                             </tr>
                         ) : (
-                            renderNodes(festas, 0)
+                            renderNodes(setoresView, 0, null)
                         )}
                     </tbody>
                 </table>
@@ -509,6 +463,25 @@ const OccupancyBar = ({ value, total }: { value: number; total: number }) => {
     );
 };
 
+const SegmentedOccupancyBar = ({ offsetPct, widthPct, filledPct, labelPct, boundaries = [] }: { offsetPct: number; widthPct: number; filledPct: number; labelPct?: number; boundaries?: number[] }) => {
+    const clampedOffset = Math.min(100, Math.max(0, offsetPct));
+    const clampedWidth = Math.min(100 - clampedOffset, Math.max(0, widthPct));
+    const clampedFilled = Math.min(100, Math.max(0, filledPct));
+    const display = Math.round(labelPct ?? widthPct);
+    return (
+        <div className="flex min-w-0 items-center gap-2 md:gap-3">
+            <div className="relative h-2 min-w-0 flex-1 overflow-visible rounded-full bg-tertiary/90">
+                <div className="absolute h-full rounded-full bg-brand-solid/30 transition-all" style={{ left: 0, width: `${clampedFilled}%` }} />
+                <div className="absolute h-full rounded-full bg-brand-solid transition-all" style={{ left: `${clampedOffset}%`, width: `${clampedWidth}%` }} />
+                {boundaries.map((b, i) => (
+                    <span key={i} aria-hidden="true" className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-primary/70" style={{ left: `${Math.min(100, Math.max(0, b))}%` }} />
+                ))}
+            </div>
+            <span className="w-10 shrink-0 text-right text-sm text-tertiary">{display}%</span>
+        </div>
+    );
+};
+
 /* ------------------------------------------------------------------ */
 /*  Controle de acesso — lista                                        */
 /* ------------------------------------------------------------------ */
@@ -518,8 +491,8 @@ const PER_PAGE = 100;
 const SORT_ACCESSORS: Partial<Record<string, (p: PortadorAcesso) => string | number>> = {
     portador: (p) => p.portador,
     qrCode: (p) => p.qrCode,
-    festa: (p) => p.festa,
-    combo: (p) => p.combo,
+    grupo: (p) => p.grupo,
+    tipoIngresso: (p) => p.tipoIngresso,
     canal: (p) => p.canal,
     horario: (p) => {
         if (!p.horario) return -1;
@@ -539,7 +512,7 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
         const digits = search.replace(/\D/g, "");
         if (!term) return rows;
         return rows.filter((p) => {
-            const haystack = [p.portador, p.comprador, p.idTransacao, p.idIngresso, p.qrCode, p.festa, p.canal, p.combo].join(" ").toLowerCase();
+            const haystack = [p.portador, p.comprador, p.idTransacao, p.idIngresso, p.qrCode, p.grupo, p.canal, p.tipoIngresso].join(" ").toLowerCase();
             const cpfMatch = digits.length > 0 && p.cpf.includes(digits);
             return haystack.includes(term) || cpfMatch;
         });
@@ -586,8 +559,8 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                         <tr className="border-b border-secondary text-left">
                             <th className="px-4 py-3 text-sm font-semibold text-tertiary"><SortableHeader label="Portador" sortKey="portador" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary md:table-cell"><SortableHeader label="Code" sortKey="qrCode" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary lg:table-cell"><SortableHeader label="Festa" sortKey="festa" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary xl:table-cell"><SortableHeader label="Combo" sortKey="combo" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary lg:table-cell"><SortableHeader label="Grupo" sortKey="grupo" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary xl:table-cell"><SortableHeader label="Tipo" sortKey="tipoIngresso" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary xl:table-cell"><SortableHeader label="Canal" sortKey="canal" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary sm:table-cell"><SortableHeader label="Horário de entrada" sortKey="horario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="px-4 py-3 text-sm font-semibold text-tertiary"><SortableHeader label="Status" sortKey="status" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
@@ -631,8 +604,8 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                                             {p.qrCode}
                                         </span>
                                     </td>
-                                    <td className="hidden px-4 py-3 text-sm text-tertiary lg:table-cell">{p.festa}</td>
-                                    <td className="hidden px-4 py-3 text-sm text-tertiary xl:table-cell">{p.combo}</td>
+                                    <td className="hidden px-4 py-3 text-sm text-tertiary lg:table-cell">{p.grupo}</td>
+                                    <td className="hidden px-4 py-3 text-sm text-tertiary xl:table-cell">{p.tipoIngresso}</td>
                                     <td className="hidden px-4 py-3 text-sm text-tertiary xl:table-cell">{p.canal}</td>
                                     <td className="hidden px-4 py-3 text-sm text-secondary tabular-nums sm:table-cell">{p.horario ?? "—"}</td>
                                     <td className="px-4 py-3">
@@ -679,19 +652,19 @@ const AcessoDetailsSlideOut = ({ isOpen, row, onClose }: { isOpen: boolean; row:
             if (!open) onClose();
         }}
         isDismissable
-        className={({ isEntering, isExiting }) => cx("fixed inset-0 z-50 flex justify-end bg-overlay/70 outline-hidden backdrop-blur-[2px]", isEntering && "duration-300 ease-out animate-in fade-in", isExiting && "duration-200 ease-in animate-out fade-out")}
+        className="fixed inset-0 z-50 flex justify-end outline-hidden"
     >
-        <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[480px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
+        <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
             <AriaDialog className="flex h-full flex-col outline-hidden">
                 <div className="flex items-center justify-between gap-4 border-b border-secondary px-6 py-5">
                     <h2 className="text-lg font-semibold text-primary">Detalhes da entrada</h2>
                     <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
                 </div>
 
-                <div className="flex flex-1 flex-col overflow-y-auto">
+                <div className="flex min-h-0 flex-1 flex-col divide-y divide-secondary overflow-y-auto px-6">
                     {row && (
                         <>
-                            <div className="flex items-center gap-4 px-6 pt-6 pb-5">
+                            <div className="flex items-center gap-4 py-6">
                                 <Avatar size="lg" initials={getInitials(row.portador)} status={row.status === "validado" ? "online" : undefined} />
                                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                                     <span className="truncate text-md font-semibold text-primary">{row.portador}</span>
@@ -702,41 +675,29 @@ const AcessoDetailsSlideOut = ({ isOpen, row, onClose }: { isOpen: boolean; row:
                                 </div>
                             </div>
 
-                            <div className="mx-6 border-t border-secondary" />
-
-                            <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
+                            <div className="flex flex-col gap-3 py-6">
                                 <h3 className="text-md font-semibold text-primary">Portador</h3>
-                                <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="Nome" value={row.portador} />
-                                    <DetailRow label="E-mail" value={row.emailPortador} isEmail />
-                                    <DetailRow label="CPF" value={formatCPF(row.cpf)} />
-                                </dl>
+                                <DetailRow label="Nome" value={row.portador} />
+                                <DetailRow label="E-mail" value={row.emailPortador} isEmail />
+                                <DetailRow label="CPF" value={formatCPF(row.cpf)} />
                             </div>
 
-                            <div className="mx-6 border-t border-secondary" />
-
-                            <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
+                            <div className="flex flex-col gap-3 py-6">
                                 <h3 className="text-md font-semibold text-primary">Ingresso</h3>
-                                <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="Code" value={row.qrCode} isMono />
-                                    <DetailRow label="ID do ingresso" value={row.idIngresso} isMono />
-                                    <DetailRow label="ID da transação" value={row.idTransacao} isMono />
-                                    <DetailRow label="Combo" value={row.combo} />
-                                    <DetailRow label="Grupo" value={row.grupo} />
-                                    <DetailRow label="Festa" value={row.festaDescricao} />
-                                    <DetailRow label="Área" value={row.area} />
-                                    <DetailRow label="Canal" value={row.canal} />
-                                </dl>
+                                <DetailRow label="Code" value={row.qrCode} isMono />
+                                <DetailRow label="ID do ingresso" value={row.idIngresso} isMono />
+                                <DetailRow label="ID da transação" value={row.idTransacao} isMono />
+                                <DetailRow label="Sessão" value={row.sessao} />
+                                <DetailRow label="Canal" value={row.canal} />
+                                <DetailRow label="Grupo de ingressos" value={row.grupo} />
+                                <DetailRow label="Tipo de ingresso" value={row.tipoIngresso} />
+                                <DetailRow label="Portão de entrada" value={row.portao ?? "—"} />
                             </div>
 
-                            <div className="mx-6 border-t border-secondary" />
-
-                            <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
+                            <div className="flex flex-col gap-3 py-6">
                                 <h3 className="text-md font-semibold text-primary">Comprador</h3>
-                                <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="Nome" value={row.comprador} />
-                                    <DetailRow label="E-mail" value={row.emailComprador} isEmail />
-                                </dl>
+                                <DetailRow label="Nome" value={row.comprador} />
+                                <DetailRow label="E-mail" value={row.emailComprador} isEmail />
                             </div>
                         </>
                     )}
@@ -755,7 +716,7 @@ const AcessoDetailsSlideOut = ({ isOpen, row, onClose }: { isOpen: boolean; row:
 const DetailRow = ({ label, value, isEmail = false, isMono = false }: { label: string; value: string; isEmail?: boolean; isMono?: boolean }) => (
     <div className="flex flex-col gap-0.5">
         <dt className="text-sm text-tertiary">{label}</dt>
-        <dd className={cx("text-sm break-words", isEmail ? "text-brand-secondary" : "text-secondary", isMono && "font-mono text-primary")}>{value}</dd>
+        <dd className={cx("text-sm break-words", isEmail ? "text-brand-secondary" : "text-secondary", isMono && "font-mono text-sm text-primary")}>{value}</dd>
     </div>
 );
 

@@ -22,7 +22,7 @@ export function Publico() {
     const navigate = useNavigate();
 
     return (
-        <BackstageLayout showEventContext={false} activeProducer="publico">
+        <BackstageLayout showEventContext={false} showLayoutSwitcher={false} activeProducer="publico">
             <div className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-6">
                 <h1 className="text-display-xs font-bold text-primary">Público</h1>
 

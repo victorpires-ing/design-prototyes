@@ -1,80 +1,88 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Download01, Paperclip, SearchLg, XClose } from "@untitledui/icons";
-import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay, type Selection } from "react-aria-components";
+import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { toast } from "sonner";
+import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay, type Key, type Selection } from "react-aria-components";
+import { ChevronDown, ChevronRight, Download01, FilterLines, Paperclip, Plus, SearchLg, Ticket01, XClose } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { CloseButton } from "@/components/base/buttons/close-button";
 import { Input } from "@/components/base/input/input";
-import { Select } from "@/components/base/select/select";
 import { MultiSelect } from "@/components/base/select/multi-select";
-import { Tabs } from "@/components/application/tabs/tabs";
+import { Select } from "@/components/base/select/select";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
+import { Tabs } from "@/components/application/tabs/tabs";
+import { CountBadge, type FilterRow } from "@/components/application/filter-bar/filter-dropdown-menu";
 import { cx } from "@/utils/cx";
+import { FilterPopover } from "../components/FilterPopover";
 import { BackstageLayout } from "../../components/Backstage";
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
-import { RelatorioFiltersProvider } from "../components/relatorio-filters";
+import { RelatorioFiltersProvider, matchRow, type FilterFieldDef } from "../components/relatorio-filters";
 import { EVENT, numberFormatter, percentFormatter } from "../data/event";
-import { COMBOS, comboIngressos, grupoById, type Combo, type Ingresso } from "../data/produtos";
-import { PARTICIPANTES, QUESTIONARIO, TIPO_RESPOSTA, type ParticipanteRespostas, type QuestionarioPergunta, type RespostaDoParticipante } from "../data/questionarios";
+import { QUESTIONARIO, TIPO_RESPOSTA, type QuestionarioPergunta, type RespostaLinha } from "../data/questionarios";
 
+const pct = (n: number) => percentFormatter.format(n);
 const num = (n: number) => numberFormatter.format(n);
-const PAGE_SIZE_INICIAL = 10;
+const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
-/** Deriva de forma estável a partir do documento. */
-const hashStr = (s: string) => {
-    let h = 0;
-    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-    return Math.abs(h);
+type Respondente = RespostaLinha["respondente"];
+type Participante = { respondente: Respondente; respostas: number };
+
+const getInitials = (name: string): string => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "?";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-/** Combo (bundle) comprado pelo participante. */
-const comboDoParticipante = (p: ParticipanteRespostas): Combo => COMBOS[hashStr(p.respondente.documento) % COMBOS.length];
+/* ------------------------------------------------------------------ */
+/*  Filtro composto — campo = pergunta, valor = opção (ou texto).       */
+/* ------------------------------------------------------------------ */
 
-interface IngressoParticipante {
-    ingresso: Ingresso;
-    grupoNome: string;
-    loteNome: string;
-    respostas: RespostaDoParticipante[];
+const OPERADORES = [
+    { id: "contains", label: "inclui" },
+    { id: "does-not-contain", label: "não inclui" },
+];
+
+const PERGUNTA_FIELDS: FilterFieldDef[] = QUESTIONARIO.map((q) => ({
+    id: q.id,
+    label: q.titulo,
+    multi: q.opcoes ? { options: q.opcoes.map((o) => ({ id: o.label, label: o.label })) } : undefined,
+}));
+
+/** Participantes únicos (deduplicados por respondente) + nº de respostas. */
+const PARTICIPANTES: Participante[] = (() => {
+    const map = new Map<string, Participante>();
+    for (const q of QUESTIONARIO) {
+        for (const l of q.respostas) {
+            const ex = map.get(l.respondente.id);
+            if (ex) ex.respostas += 1;
+            else map.set(l.respondente.id, { respondente: l.respondente, respostas: 1 });
+        }
+    }
+    return Array.from(map.values());
+})();
+
+function valorDaResposta(respondenteId: string, perguntaId: string): string {
+    const q = QUESTIONARIO.find((x) => x.id === perguntaId);
+    if (!q) return "";
+    const linha = q.respostas.find((l) => l.respondente.id === respondenteId);
+    if (!linha) return "";
+    if (q.tipo === "selecao-unica") return linha.opcao ?? "";
+    if (q.tipo === "multipla-selecao") return (linha.opcoesMultiplas ?? []).join(" || ");
+    if (q.tipo === "texto-aberto") return linha.texto ?? "";
+    return linha.anexo?.arquivo ?? "";
 }
 
-/**
- * Ingressos que o participante recebeu — os ingressos reais do combo (bundle).
- * O questionário é respondido por ingresso, então cada um carrega as respostas.
- */
-const ingressosDoParticipante = (p: ParticipanteRespostas): IngressoParticipante[] =>
-    comboIngressos(comboDoParticipante(p)).map((ingresso) => ({
-        ingresso,
-        grupoNome: grupoById(ingresso.grupoId)?.nome ?? "",
-        loteNome: ingresso.lotes[0]?.nome ?? "Lote único",
-        respostas: p.respostas,
-    }));
-
-/** Perguntas de opção fechada (têm distribuição por opção). */
-const PERGUNTAS_FECHADAS = QUESTIONARIO.filter((q) => (q.tipo === "selecao-unica" || q.tipo === "multipla-selecao") && (q.opcoes?.length ?? 0) > 0);
-
-/** Um participante respondeu `opcao` na pergunta `perguntaId`? */
-const respostaInclui = (p: ParticipanteRespostas, perguntaId: string, opcao: string) => {
-    const r = p.respostas.find((x) => x.perguntaId === perguntaId);
-    if (!r) return false;
-    return r.linha.opcao === opcao || (r.linha.opcoesMultiplas?.includes(opcao) ?? false);
-};
-
-const getInitials = (nome: string) =>
-    nome
-        .split(" ")
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((p) => p[0])
-        .join("")
-        .toUpperCase();
+let nextFilterId = 1;
+const novoFiltro = (): FilterRow => ({ id: `qf${nextFilterId++}`, field: "", operator: "contains", value: "" });
 
 export function Questionarios() {
     return (
         <BackstageLayout activeSection="relatorios" activeItem="relatorio-questionarios">
-            <RelatorioFiltersProvider sessoes={EVENT.sessoes}>
+            <RelatorioFiltersProvider>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
-                        <RelatorioPageHeader title="Questionários" withFilters={false} actions={<ExportMenu />} />
                         <QuestionariosBody />
                     </main>
                 </div>
@@ -84,294 +92,415 @@ export function Questionarios() {
 }
 
 const QuestionariosBody = () => {
-    const [busca, setBusca] = useState("");
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(PAGE_SIZE_INICIAL);
-    const [selecionado, setSelecionado] = useState<ParticipanteRespostas | null>(null);
-    const [abrirIngresso, setAbrirIngresso] = useState<number | undefined>(undefined);
-    const [aba, setAba] = useState<"participantes" | "resumo">("resumo");
-    const [filtroPergunta, setFiltroPergunta] = useState<string | null>(null);
-    const [filtroOpcao, setFiltroOpcao] = useState<string | null>(null);
-    const topRef = useRef<HTMLDivElement>(null);
+    const [tab, setTab] = useState<Key>("resumo");
+    const [filters, setFilters] = useState<FilterRow[]>(() => [novoFiltro()]);
 
-    const filtrados = useMemo(() => {
-        const termo = busca.trim().toLowerCase();
-        return PARTICIPANTES.filter((p) => {
-            const r = p.respondente;
-            const okTexto = !termo || r.nome.toLowerCase().includes(termo) || r.email.toLowerCase().includes(termo) || r.documento.toLowerCase().includes(termo);
-            const okResposta = !filtroPergunta || !filtroOpcao || respostaInclui(p, filtroPergunta, filtroOpcao);
-            return okTexto && okResposta;
+    /** Conjunto de respondentes que atendem ao filtro (null = todos). */
+    const cohort = useMemo(() => {
+        const ativos = filters.filter((f) => f.field && f.value);
+        if (!ativos.length) return null;
+        const set = new Set<string>();
+        for (const p of PARTICIPANTES) {
+            if (matchRow(p.respondente.id, ativos, (rid, field) => valorDaResposta(rid, field))) set.add(p.respondente.id);
+        }
+        return set;
+    }, [filters]);
+
+    /** Clique numa opção do resumo aplica o filtro daquela pergunta e leva à lista de respostas. */
+    const mostrarQuemRespondeu = (perguntaId: string, opcao: string) => {
+        setFilters((prev) => {
+            if (prev.some((f) => f.field === perguntaId)) {
+                return prev.map((f) => (f.field === perguntaId ? { ...f, operator: "contains", value: opcao } : f));
+            }
+            const vazia = prev.find((f) => !f.field);
+            if (vazia) return prev.map((f) => (f.id === vazia.id ? { ...f, field: perguntaId, operator: "contains", value: opcao } : f));
+            return [...prev, { ...novoFiltro(), field: perguntaId, operator: "contains", value: opcao }];
         });
-    }, [busca, filtroPergunta, filtroOpcao]);
-
-    const totalPages = Math.max(1, Math.ceil(filtrados.length / pageSize));
-    const safePage = Math.min(page, totalPages);
-    const visiveis = useMemo(() => filtrados.slice((safePage - 1) * pageSize, safePage * pageSize), [filtrados, safePage, pageSize]);
-
-    useEffect(() => setPage(1), [busca, filtroPergunta, filtroOpcao]);
-
-    const irParaTopo = () => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-    const perguntaFiltro = PERGUNTAS_FECHADAS.find((q) => q.id === filtroPergunta);
+        setTab("respostas");
+        scrollToTop();
+    };
 
     return (
-        <div ref={topRef} className="flex scroll-mt-6 flex-col gap-6">
-            <Tabs selectedKey={aba} onSelectionChange={(k) => setAba(k as "participantes" | "resumo")}>
-                <Tabs.List type="underline" items={[{ id: "resumo", label: "Resumo das respostas" }, { id: "participantes", label: "Participantes" }]}>
-                    {(tab) => <Tabs.Item {...tab} />}
-                </Tabs.List>
+        <>
+            <RelatorioPageHeader
+                title="Questionários"
+                withFilters={false}
+                actions={
+                    <>
+                        <PerguntasFilter filters={filters} setFilters={setFilters} />
+                        <ExportMenu />
+                    </>
+                }
+            />
 
-                <Tabs.Panel id="participantes" className="flex flex-col gap-4 pt-5">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:max-w-xl">
-                            <Select
-                                label="Filtrar por pergunta"
-                                selectedKey={filtroPergunta ?? "__all__"}
-                                onSelectionChange={(k) => {
-                                    const v = String(k);
-                                    setFiltroPergunta(v === "__all__" ? null : v);
-                                    setFiltroOpcao(null);
-                                }}
-                                items={[{ id: "__all__", label: "Todas as perguntas" }, ...PERGUNTAS_FECHADAS.map((q) => ({ id: q.id, label: q.titulo }))]}
-                            >
-                                {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-                            </Select>
-                            <Select
-                                label="Resposta"
-                                placeholder={perguntaFiltro ? undefined : "Escolha a pergunta"}
-                                isDisabled={!perguntaFiltro}
-                                selectedKey={filtroOpcao ?? "__all__"}
-                                onSelectionChange={(k) => {
-                                    const v = String(k);
-                                    setFiltroOpcao(v === "__all__" ? null : v);
-                                }}
-                                items={[{ id: "__all__", label: "Todas as respostas", qtd: "" }, ...(perguntaFiltro?.opcoes ?? []).map((o) => ({ id: o.label, label: o.label, qtd: `${num(o.respostas)}` }))]}
-                            >
-                                {(item) => (
-                                    <Select.Item id={item.id} supportingText={item.qtd || undefined}>
-                                        {item.label}
-                                    </Select.Item>
-                                )}
-                            </Select>
-                        </div>
-                        <div className="w-full lg:w-80">
-                            <Input icon={SearchLg} size="sm" aria-label="Buscar participante" placeholder="Buscar por nome, e-mail ou documento" value={busca} onChange={setBusca} />
-                        </div>
-                    </div>
+            <div className="flex flex-col">
+                <Tabs selectedKey={tab} onSelectionChange={setTab}>
+                    <Tabs.List type="underline">
+                        <Tabs.Item id="resumo" label="Resumo" />
+                        <Tabs.Item id="respostas" label="Respostas" />
+                    </Tabs.List>
+                </Tabs>
 
-                    <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-tertiary">
-                            <span className="font-semibold text-primary">{num(filtrados.length)}</span> {filtrados.length === 1 ? "participante" : "participantes"}
-                            {filtroPergunta && filtroOpcao ? " no filtro" : ""}
-                        </span>
-                        {(filtroPergunta || busca) && (
-                            <Button
-                                size="sm"
-                                color="link-gray"
-                                onClick={() => {
-                                    setFiltroPergunta(null);
-                                    setFiltroOpcao(null);
-                                    setBusca("");
-                                }}
-                            >
-                                Limpar filtros
-                            </Button>
-                        )}
-                    </div>
-
-                    {visiveis.length === 0 ? (
-                        <div className="rounded-xl bg-primary px-4 py-12 text-center text-sm text-tertiary ring-1 ring-border-secondary">Nenhum participante encontrado.</div>
-                    ) : (
-                        <div className="flex flex-col gap-3">
-                            {visiveis.map((p) => (
-                                <ParticipanteCard
-                                    key={p.respondente.id}
-                                    participante={p}
-                                    isSelected={selecionado?.respondente.id === p.respondente.id}
-                                    onClick={() => {
-                                        setAbrirIngresso(undefined);
-                                        setSelecionado(p);
-                                    }}
-                                />
-                            ))}
-                        </div>
-                    )}
-
-                    <div className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-                        <PaginationCardAdvanced
-                            className="[&]:border-t-0"
-                            page={safePage}
-                            total={totalPages}
-                            pageSize={pageSize}
-                            onPageChange={(p: number) => {
-                                setPage(p);
-                                irParaTopo();
-                            }}
-                            onPageSizeChange={(s: number) => {
-                                setPageSize(s);
-                                setPage(1);
-                            }}
-                        />
-                    </div>
-                </Tabs.Panel>
-
-                <Tabs.Panel id="resumo" className="pt-5">
-                    <ResumoRespostasView
-                        onSelect={(p) => {
-                            setAbrirIngresso(0);
-                            setSelecionado(p);
-                        }}
-                    />
-                </Tabs.Panel>
-            </Tabs>
-
-            <RespostasSlideOut isOpen={selecionado !== null} participante={selecionado} abrirIngresso={abrirIngresso} onClose={() => setSelecionado(null)} />
-        </div>
+                {/* Conteúdo fora do <Tabs> (evita o collection-pass) + slide horizontal */}
+                <div className="overflow-hidden pt-4">
+                <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                        key={String(tab)}
+                        className="px-1 pb-1"
+                        initial={{ opacity: 0, x: 24 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -24 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                    >
+                        {tab === "respostas" ? <RespostasArea cohort={cohort} /> : <ResumoArea cohort={cohort} onFiltrar={mostrarQuemRespondeu} />}
+                    </motion.div>
+                </AnimatePresence>
+                </div>
+            </div>
+        </>
     );
 };
 
 /* ------------------------------------------------------------------ */
-/*  Visão "Respostas por opção" (distribuição de perguntas fechadas)   */
+/*  Filtro (dropdown composto)                                         */
 /* ------------------------------------------------------------------ */
 
-const RESUMIVEIS = QUESTIONARIO.filter((q) => q.tipo !== "anexar-arquivo");
-const TODAS_IDS = RESUMIVEIS.map((q) => q.id);
-const PARTICIPANTE_POR_ID = new Map(PARTICIPANTES.map((p) => [p.respondente.id, p]));
+function PerguntasFilter({ filters, setFilters }: { filters: FilterRow[]; setFilters: (fn: (prev: FilterRow[]) => FilterRow[]) => void }) {
+    const aplicados = filters.filter((f) => f.field && f.value).length;
 
-function ResumoRespostasView({ onSelect }: { onSelect: (p: ParticipanteRespostas) => void }) {
-    const [busca, setBusca] = useState("");
-    const [visiveis, setVisiveis] = useState<Selection>(new Set(TODAS_IDS));
+    const add = () => {
+        const novo = novoFiltro();
+        setFilters((prev) => [...prev, novo]);
+    };
+    const remove = (id: string) => setFilters((prev) => prev.filter((f) => f.id !== id));
+    const change = (id: string, patch: Partial<Omit<FilterRow, "id">>) => setFilters((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+    const limpar = () => {
+        const novo = novoFiltro();
+        setFilters(() => [novo]);
+    };
 
-    const idsVisiveis = visiveis === "all" ? new Set(TODAS_IDS) : visiveis;
-    const termo = busca.trim().toLowerCase();
-    const perguntas = RESUMIVEIS.filter((q) => idsVisiveis.has(q.id));
+    return (
+        <FilterPopover
+            className="md:w-[624px]"
+            trigger={
+                <Button color="secondary" size="sm" iconLeading={FilterLines} iconTrailing={ChevronDown} className={cx(aplicados > 0 && "bg-primary_hover")}>
+                    <span className="flex items-center gap-1.5">
+                        Filtros
+                        {aplicados > 0 && <CountBadge count={aplicados} />}
+                    </span>
+                </Button>
+            }
+        >
+            {(close) => (
+                <div className="flex max-h-[min(70vh,560px)] flex-col">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                        <div className="flex flex-col divide-y divide-secondary px-4">
+                            {filters.map((filter) => (
+                                <div key={filter.id} className="flex items-start gap-1 py-3 first:pt-4">
+                                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                                        <LinhaFiltro filter={filter} onChange={(patch) => change(filter.id, patch)} />
+                                    </div>
+                                    {filters.length > 1 && <CloseButton label="Remover pergunta" size="sm" onPress={() => remove(filter.id)} />}
+                                </div>
+                            ))}
+                        </div>
+                        <div className="px-4 pt-3 pb-4">
+                            <Button size="sm" color="secondary" iconLeading={Plus} onClick={add}>
+                                Adicionar pergunta
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 border-t border-secondary px-4 py-3">
+                        <Button size="sm" color="link-gray" onClick={limpar}>
+                            Limpar tudo
+                        </Button>
+                        <Button size="sm" color="primary" onClick={() => close()}>
+                            Aplicar filtro
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </FilterPopover>
+    );
+}
+
+function LinhaFiltro({ filter, onChange }: { filter: FilterRow; onChange: (patch: Partial<Omit<FilterRow, "id">>) => void }) {
+    const def = PERGUNTA_FIELDS.find((f) => f.id === filter.field);
+    return (
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <Select
+                className="w-full"
+                size="sm"
+                aria-label="Pergunta"
+                placeholder="Selecione a pergunta"
+                items={PERGUNTA_FIELDS}
+                selectedKey={filter.field || null}
+                onSelectionChange={(key: Key | null) => onChange({ field: key ? String(key) : "", value: "" })}
+            >
+                {(item: FilterFieldDef) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+            </Select>
+            <div className="flex items-center gap-2">
+                <Select
+                    className="w-32 shrink-0"
+                    size="sm"
+                    aria-label="Operador"
+                    items={OPERADORES}
+                    selectedKey={filter.operator || null}
+                    onSelectionChange={(key: Key | null) => onChange({ operator: key ? String(key) : "" })}
+                >
+                    {(item: { id: string; label: string }) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                </Select>
+                <ValorFiltro def={def} filter={filter} onChange={onChange} />
+            </div>
+        </div>
+    );
+}
+
+function ValorFiltro({ def, filter, onChange }: { def?: FilterFieldDef; filter: FilterRow; onChange: (patch: Partial<Omit<FilterRow, "id">>) => void }) {
+    if (def?.multi) {
+        const options = def.multi.options;
+        const selectedKeys: Selection = filter.value ? new Set(filter.value.split(",").filter(Boolean)) : new Set();
+        const count = selectedKeys instanceof Set ? selectedKeys.size : 0;
+        return (
+            <MultiSelect
+                className="min-w-0 flex-1"
+                size="sm"
+                aria-label="Valor"
+                placeholder="Selecione"
+                items={options}
+                selectedKeys={selectedKeys}
+                onSelectionChange={(keys: Selection) => onChange({ value: keys === "all" ? options.map((o) => o.id).join(",") : Array.from(keys).join(",") })}
+                supportingText={count > 0 ? `${count} selecionados` : undefined}
+                onReset={() => onChange({ value: "" })}
+                onSelectAll={() => onChange({ value: options.map((o) => o.id).join(",") })}
+            >
+                {(item: { id: string; label: string }) => (
+                    <MultiSelect.Item id={item.id} selectionIndicator="checkmark">
+                        {item.label}
+                    </MultiSelect.Item>
+                )}
+            </MultiSelect>
+        );
+    }
+    return (
+        <Input
+            className="min-w-0 flex-1"
+            size="sm"
+            aria-label="Valor"
+            placeholder="Digite um valor"
+            value={filter.value}
+            onChange={(value: string) => onChange({ value })}
+        />
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Aba Resumo — só perguntas de escolha, opção clicável = filtro       */
+/* ------------------------------------------------------------------ */
+
+function aplicarCohort(pergunta: QuestionarioPergunta, cohort: Set<string> | null): QuestionarioPergunta {
+    if (!cohort) return pergunta;
+    const respostas = pergunta.respostas.filter((l) => cohort.has(l.respondente.id));
+    const contagem = new Map<string, number>();
+    for (const l of respostas) {
+        if (pergunta.tipo === "selecao-unica" && l.opcao) contagem.set(l.opcao, (contagem.get(l.opcao) ?? 0) + 1);
+        else if (pergunta.tipo === "multipla-selecao") for (const o of l.opcoesMultiplas ?? []) contagem.set(o, (contagem.get(o) ?? 0) + 1);
+    }
+    return {
+        ...pergunta,
+        respondidas: respostas.length,
+        respostas,
+        opcoes: pergunta.opcoes ? pergunta.opcoes.map((o) => ({ label: o.label, respostas: contagem.get(o.label) ?? 0 })) : undefined,
+    };
+}
+
+function ResumoArea({ cohort, onFiltrar }: { cohort: Set<string> | null; onFiltrar: (perguntaId: string, opcao: string) => void }) {
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(15);
+
+    // Só perguntas de escolha (seleção única / múltipla / dropdown).
+    const perguntas = QUESTIONARIO.filter((q) => q.tipo === "selecao-unica" || q.tipo === "multipla-selecao").map((q) => aplicarCohort(q, cohort));
+
+    const totalPages = Math.max(1, Math.ceil(perguntas.length / pageSize));
+    const safePage = Math.min(page, totalPages);
+    const visiveis = perguntas.slice((safePage - 1) * pageSize, (safePage - 1) * pageSize + pageSize);
+
+    useEffect(() => setPage(1), [cohort]);
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div className="w-full sm:max-w-xs">
-                    <MultiSelect
-                        label="Perguntas exibidas"
-                        placeholder="Escolha as perguntas"
-                        showSearch={false}
-                        selectedKeys={visiveis}
-                        onSelectionChange={setVisiveis}
-                        onReset={() => setVisiveis(new Set())}
-                        onSelectAll={() => setVisiveis(new Set(TODAS_IDS))}
-                        selectedCountFormatter={(n) => (n === TODAS_IDS.length ? "Todas as perguntas" : `${n} de ${TODAS_IDS.length} perguntas`)}
-                        items={RESUMIVEIS.map((q) => ({ id: q.id, label: q.titulo }))}
-                    >
-                        {(item) => (
-                            <MultiSelect.Item id={item.id} selectionIndicator="checkbox" selectionIndicatorAlign="left">
-                                {item.label}
-                            </MultiSelect.Item>
-                        )}
-                    </MultiSelect>
-                </div>
-                <div className="w-full sm:w-72">
-                    <Input icon={SearchLg} size="sm" aria-label="Buscar nas respostas" placeholder="Buscar nas respostas" value={busca} onChange={setBusca} />
-                </div>
+            <span className="text-sm text-tertiary">
+                Exibindo{" "}
+                {perguntas.length === 0
+                    ? 0
+                    : `${num((safePage - 1) * pageSize + 1)}-${num(Math.min(safePage * pageSize, perguntas.length))}`}{" "}
+                de {num(perguntas.length)} perguntas
+            </span>
+
+            <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+                {visiveis.map((q) => (
+                    <ResumoPerguntaCard key={q.id} pergunta={q} onFiltrar={onFiltrar} />
+                ))}
             </div>
 
-            {perguntas.length === 0 ? (
-                <div className="rounded-xl bg-primary px-4 py-12 text-center text-sm text-tertiary ring-1 ring-border-secondary">Selecione ao menos uma pergunta para exibir.</div>
-            ) : (
-                perguntas.map((pergunta) =>
-                    pergunta.tipo === "texto-aberto" ? (
-                        <ResumoTextoCard key={pergunta.id} pergunta={pergunta} termo={termo} onSelect={onSelect} />
-                    ) : (
-                        <ResumoPerguntaCard key={pergunta.id} pergunta={pergunta} termo={termo} />
-                    ),
-                )
-            )}
+            <div className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
+                <PaginationCardAdvanced
+                    className="[&]:border-t-0"
+                    page={safePage}
+                    total={totalPages}
+                    pageSize={pageSize}
+                    onPageChange={(p: number) => {
+                        setPage(p);
+                        scrollToTop();
+                    }}
+                    onPageSizeChange={(size: number) => {
+                        setPageSize(size);
+                        setPage(1);
+                        scrollToTop();
+                    }}
+                />
+            </div>
         </div>
     );
 }
 
-/** Cabeçalho comum dos cards do resumo. */
-function ResumoHeader({ pergunta, extra }: { pergunta: QuestionarioPergunta; extra?: string }) {
-    return (
-        <div className="flex flex-col gap-1 border-b border-secondary px-5 py-3.5">
-            <h4 className="text-sm font-semibold text-primary">{pergunta.titulo}</h4>
-            <span className="text-sm text-tertiary">
-                {TIPO_RESPOSTA[pergunta.tipo].label}
-                {extra ? ` · ${extra}` : ""} · <span className="font-medium text-secondary">{num(pergunta.respondidas)}</span> de {num(pergunta.total)} responderam
-            </span>
-        </div>
-    );
-}
-
-/** Card de pergunta de texto aberto (estilo Typeform): lista rolável de respostas. */
-function ResumoTextoCard({ pergunta, termo, onSelect }: { pergunta: QuestionarioPergunta; termo: string; onSelect: (p: ParticipanteRespostas) => void }) {
-    const respostas = pergunta.respostas.filter((r) => {
-        if (!termo) return true;
-        return (r.texto ?? "").toLowerCase().includes(termo) || r.respondente.nome.toLowerCase().includes(termo);
-    });
-
-    if (termo && respostas.length === 0) return null;
+function ResumoPerguntaCard({ pergunta, onFiltrar }: { pergunta: QuestionarioPergunta; onFiltrar: (perguntaId: string, opcao: string) => void }) {
+    const opcoes = pergunta.opcoes ?? [];
 
     return (
-        <div className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-            <ResumoHeader pergunta={pergunta} extra={`${num(respostas.length)} respostas`} />
-            <div className="max-h-80 divide-y divide-secondary overflow-y-auto">
-                {respostas.map((r, i) => {
-                    const participante = PARTICIPANTE_POR_ID.get(r.respondente.id);
+        <section className="flex flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary md:p-6">
+            <div className="flex items-end justify-between gap-4">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                    <h2 className="line-clamp-2 text-md font-semibold text-primary">{pergunta.titulo}</h2>
+                    <span className="text-sm text-tertiary">{TIPO_RESPOSTA[pergunta.tipo].label}</span>
+                </div>
+                <span className="shrink-0 text-sm text-tertiary">{num(pergunta.respondidas)} responderam</span>
+            </div>
+
+            <div className="flex flex-col gap-2">
+                {opcoes.map((op) => {
+                    const fracao = pergunta.respondidas === 0 ? 0 : op.respostas / pergunta.respondidas;
                     return (
                         <button
-                            key={i}
+                            key={op.label}
                             type="button"
-                            disabled={!participante}
-                            onClick={() => participante && onSelect(participante)}
-                            className="flex w-full items-start justify-between gap-3 px-5 py-3.5 text-left transition duration-100 ease-linear hover:bg-primary_hover"
+                            onClick={() => onFiltrar(pergunta.id, op.label)}
+                            className="group -mx-2 flex cursor-pointer flex-col gap-1.5 rounded-lg px-2 py-2 text-left transition duration-100 ease-linear hover:bg-secondary"
                         >
-                            <span className="flex min-w-0 flex-col gap-1.5">
-                                <span className="text-sm text-secondary">“{r.texto}”</span>
-                                <span className="text-sm font-medium text-brand-secondary">{r.respondente.nome}</span>
-                            </span>
-                            <ChevronRight aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-fg-quaternary" />
+                            <div className="flex items-start justify-between gap-3">
+                                <span className="line-clamp-2 min-w-0 text-sm font-medium text-secondary group-hover:line-clamp-1">{op.label}</span>
+                                <div className="flex shrink-0 items-center gap-2">
+                                    <span className="text-sm text-tertiary">
+                                        <span className="font-semibold text-primary">{num(op.respostas)}</span> · {pct(fracao)}
+                                    </span>
+                                    {/* Surge da direita empurrando a contagem para a esquerda */}
+                                    <span className="flex max-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-sm font-medium text-brand-secondary opacity-0 transition-all duration-200 ease-out group-hover:max-w-56 group-hover:opacity-100">
+                                        Ver quem respondeu
+                                        <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="h-2.5 w-full overflow-hidden rounded-full bg-quaternary">
+                                <div className="h-full rounded-full bg-brand-solid transition-all duration-300 ease-linear" style={{ width: `${fracao * 100}%` }} />
+                            </div>
                         </button>
                     );
                 })}
             </div>
-        </div>
+        </section>
     );
 }
 
-function ResumoPerguntaCard({ pergunta, termo }: { pergunta: QuestionarioPergunta; termo: string }) {
-    const base = pergunta.respondidas || 1;
-    const maxResp = Math.max(...(pergunta.opcoes ?? []).map((o) => o.respostas), 1);
-    const opcoes = (pergunta.opcoes ?? []).filter((o) => !termo || o.label.toLowerCase().includes(termo)).sort((a, b) => b.respostas - a.respostas);
+/* ------------------------------------------------------------------ */
+/*  Aba Respostas — cards de participantes + slideout de detalhes       */
+/* ------------------------------------------------------------------ */
 
-    if (termo && opcoes.length === 0) return null;
+function RespostasArea({ cohort }: { cohort: Set<string> | null }) {
+    const [busca, setBusca] = useState("");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [selected, setSelected] = useState<Participante | null>(null);
+
+    const base = useMemo(() => (cohort ? PARTICIPANTES.filter((p) => cohort.has(p.respondente.id)) : PARTICIPANTES), [cohort]);
+
+    const filtrados = useMemo(() => {
+        const termo = busca.trim().toLowerCase();
+        if (!termo) return base;
+        return base.filter(({ respondente: r }) =>
+            r.nome.toLowerCase().includes(termo) || r.email.toLowerCase().includes(termo) || r.documento.toLowerCase().includes(termo),
+        );
+    }, [busca, base]);
+
+    const totalPages = Math.max(1, Math.ceil(filtrados.length / pageSize));
+    const safePage = Math.min(page, totalPages);
+    const visiveis = useMemo(() => filtrados.slice((safePage - 1) * pageSize, (safePage - 1) * pageSize + pageSize), [filtrados, safePage, pageSize]);
+
+    useEffect(() => setPage(1), [busca, cohort]);
 
     return (
-        <div className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-            <ResumoHeader pergunta={pergunta} extra={`${num(pergunta.opcoes?.length ?? 0)} opções`} />
-            <ul className="flex flex-col divide-y divide-secondary">
-                {opcoes.map((o) => (
-                    <li key={o.label} className="flex flex-col gap-2 px-5 py-3.5">
-                        <div className="flex items-center justify-between gap-4">
-                            <span className="min-w-0 truncate text-sm font-medium text-secondary">{o.label}</span>
-                            <span className="shrink-0 text-sm text-tertiary">
-                                <span className="font-semibold text-primary">{num(o.respostas)}</span> · {percentFormatter.format(o.respostas / base)}
-                            </span>
-                        </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-quaternary">
-                            <div className="h-full rounded-full bg-brand-solid transition-all duration-300 ease-linear" style={{ width: `${(o.respostas / maxResp) * 100}%` }} />
-                        </div>
-                    </li>
-                ))}
-            </ul>
+        <div className="flex flex-col gap-3">
+            <div className="flex items-end justify-between gap-3">
+                <span className="shrink-0 pb-1.5 text-sm text-tertiary">
+                    Exibindo{" "}
+                    {filtrados.length === 0
+                        ? 0
+                        : `${num((safePage - 1) * pageSize + 1)}-${num(Math.min(safePage * pageSize, filtrados.length))}`}{" "}
+                    de {num(filtrados.length)} respondentes
+                </span>
+                <div className="w-full sm:max-w-xs">
+                    <Input
+                        icon={SearchLg}
+                        size="sm"
+                        aria-label="Buscar participante"
+                        placeholder="Buscar por nome, e-mail ou documento"
+                        value={busca}
+                        onChange={(v) => setBusca(v)}
+                    />
+                </div>
+            </div>
+
+            {visiveis.length === 0 ? (
+                <div className="rounded-xl bg-primary px-4 py-12 text-center text-sm text-tertiary ring-1 ring-border-secondary">Nenhum participante encontrado.</div>
+            ) : (
+                <div className="flex flex-col gap-3">
+                    {visiveis.map((p) => (
+                        <ParticipanteCard
+                            key={p.respondente.id}
+                            participante={p}
+                            isSelected={selected?.respondente.id === p.respondente.id}
+                            onClick={() => setSelected(p)}
+                        />
+                    ))}
+                </div>
+            )}
+
+            <div className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
+                <PaginationCardAdvanced
+                    className="[&]:border-t-0"
+                    page={safePage}
+                    total={totalPages}
+                    pageSize={pageSize}
+                    onPageChange={(p: number) => {
+                        setPage(p);
+                        scrollToTop();
+                    }}
+                    onPageSizeChange={(size: number) => {
+                        setPageSize(size);
+                        setPage(1);
+                        scrollToTop();
+                    }}
+                />
+            </div>
+
+            <ParticipanteDetailsSlideOut isOpen={selected !== null} participante={selected} onClose={() => setSelected(null)} />
         </div>
     );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Card do participante                                               */
-/* ------------------------------------------------------------------ */
-
-function ParticipanteCard({ participante, isSelected, onClick }: { participante: ParticipanteRespostas; isSelected: boolean; onClick: () => void }) {
+const ParticipanteCard = ({ participante, isSelected, onClick }: { participante: Participante; isSelected: boolean; onClick: () => void }) => {
     const { respondente: r } = participante;
+    const ingressos = numIngressos(r.id);
     return (
         <button
             type="button"
@@ -384,142 +513,240 @@ function ParticipanteCard({ participante, isSelected, onClick }: { participante:
         >
             <Avatar size="md" initials={getInitials(r.nome)} />
             <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-semibold text-primary">{r.nome}</span>
+                <span className="line-clamp-2 text-sm font-semibold text-primary">{r.nome}</span>
                 <span className="truncate text-sm text-tertiary">{r.email}</span>
             </div>
-            <div className="hidden w-40 shrink-0 flex-col md:flex">
-                <span className="text-sm text-secondary">{r.documento}</span>
-                <span className="text-sm text-tertiary">Nasc. {r.nascimento}</span>
-            </div>
+            <span className="hidden shrink-0 text-sm text-tertiary sm:block">
+                {num(ingressos)} {ingressos === 1 ? "ingresso" : "ingressos"}
+            </span>
             <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-hover:translate-x-0.5" />
         </button>
     );
+};
+
+/* ------------------------------------------------------------------ */
+/*  Ingressos sintéticos do portador (cada um com comprador + respostas)*/
+/* ------------------------------------------------------------------ */
+
+interface IngressoResposta {
+    pergunta: QuestionarioPergunta;
+    linha: RespostaLinha | null;
+}
+interface Contato {
+    nome: string;
+    email: string;
+    telefone: string;
+    documento: string;
+    nascimento: string;
+}
+interface IngressoDoPortador {
+    grupo: string;
+    ingresso: string;
+    comprador: Contato;
+    ehComprador: boolean;
+    respostas: IngressoResposta[];
+}
+
+const NOMES_COMPRADORES = ["Marcelo Tavares", "Carolina Freitas", "Bruno Azevedo", "Patrícia Gomes", "Rodrigo Nunes", "Bianca Teixeira"];
+const GRUPOS_INGRESSOS = [
+    { grupo: "Pista", ingresso: "Inteira" },
+    { grupo: "Pista Premium", ingresso: "Meia-entrada" },
+    { grupo: "Arquibancada", ingresso: "Inteira" },
+    { grupo: "Camarote", ingresso: "Open bar" },
+    { grupo: "Cadeira Superior", ingresso: "Meia-entrada" },
+    { grupo: "Front Stage", ingresso: "Inteira" },
+];
+const hashStr = (s: string): number => Array.from(s).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+/** Nº de ingressos do portador (mesma regra usada no slideout). */
+const numIngressos = (id: string): number => 1 + (hashStr(id) % 2);
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const pad11 = (n: number) => String(n).padStart(11, "0");
+const formatCpf = (cpf: string): string => cpf.replace(/\D/g, "").padStart(11, "0").slice(0, 11).replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+const gerarTelefone = (seed: number): string => {
+    const meio = String(1000 + (seed % 9000));
+    const fim = String((seed * 31) % 10000).padStart(4, "0");
+    return `(11) 9${meio}-${fim}`;
+};
+const gerarNascimento = (seed: number): string => `${pad2((seed % 28) + 1)}/${pad2((seed % 12) + 1)}/${1980 + (seed % 25)}`;
+
+const gerarComprador = (seed: number): Contato => {
+    const nome = NOMES_COMPRADORES[seed % NOMES_COMPRADORES.length];
+    const [primeiro, ultimo] = [nome.split(" ")[0], nome.split(" ").slice(-1)[0]];
+    return {
+        nome,
+        email: `${primeiro}.${ultimo}@gmail.com`.toLowerCase(),
+        telefone: gerarTelefone(seed),
+        documento: pad11((seed * 7919) % 100000000000),
+        nascimento: gerarNascimento(seed),
+    };
+};
+
+function sintetizarLinha(q: QuestionarioPergunta, respondente: Respondente, seed: number): RespostaLinha {
+    const base: RespostaLinha = { respondente, data: "" };
+    const ops = q.opcoes ?? [];
+    if (q.tipo === "selecao-unica") return { ...base, opcao: ops[seed % (ops.length || 1)]?.label ?? "" };
+    if (q.tipo === "multipla-selecao") return { ...base, opcoesMultiplas: [ops[seed % (ops.length || 1)]?.label, ops[(seed + 1) % (ops.length || 1)]?.label].filter(Boolean) as string[] };
+    if (q.tipo === "texto-aberto") return { ...base, texto: "Resposta registrada neste ingresso." };
+    return { ...base, anexo: { arquivo: `comprovante-${(seed % 900) + 100}.pdf`, tamanho: "1,2 MB" } };
+}
+
+/** Dados do portador (o participante) — telefone sintetizado (não existe no mock). */
+function contatoDoPortador(respondente: Respondente): Contato {
+    return {
+        nome: respondente.nome,
+        email: respondente.email,
+        telefone: gerarTelefone(hashStr(respondente.id)),
+        documento: respondente.documento,
+        nascimento: respondente.nascimento,
+    };
+}
+
+function buildIngressos(participante: Participante): IngressoDoPortador[] {
+    const { respondente } = participante;
+    const h = hashStr(respondente.id);
+    const n = numIngressos(respondente.id); // 1 ou 2 ingressos
+    const ingressos: IngressoDoPortador[] = [];
+    for (let i = 0; i < n; i++) {
+        const gi = GRUPOS_INGRESSOS[(h + i) % GRUPOS_INGRESSOS.length];
+        const ehComprador = i === 0 && h % 3 !== 0;
+        const comprador = ehComprador ? contatoDoPortador(respondente) : gerarComprador(h + i);
+        const respostas: IngressoResposta[] = QUESTIONARIO.map((q) =>
+            i === 0
+                ? { pergunta: q, linha: q.respostas.find((l) => l.respondente.id === respondente.id) ?? null }
+                : { pergunta: q, linha: sintetizarLinha(q, respondente, h + i * 5 + q.titulo.length) },
+        );
+        ingressos.push({ grupo: gi.grupo, ingresso: gi.ingresso, comprador, ehComprador, respostas });
+    }
+    return ingressos;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Slideout — respostas do participante                               */
+/*  Slideout de detalhes do participante                               */
 /* ------------------------------------------------------------------ */
 
-function RespostasSlideOut({ isOpen, participante, abrirIngresso, onClose }: { isOpen: boolean; participante: ParticipanteRespostas | null; abrirIngresso?: number; onClose: () => void }) {
-    const r = participante?.respondente;
+const ParticipanteDetailsSlideOut = ({ isOpen, participante, onClose }: { isOpen: boolean; participante: Participante | null; onClose: () => void }) => (
+    <AriaModalOverlay
+        isOpen={isOpen}
+        onOpenChange={(open) => {
+            if (!open) onClose();
+        }}
+        isDismissable
+        className="fixed inset-0 z-50 flex justify-end outline-hidden"
+    >
+        <AriaModal
+            className={({ isEntering, isExiting }) =>
+                cx(
+                    "h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden",
+                    isEntering && "duration-300 ease-out animate-in slide-in-from-right",
+                    isExiting && "duration-200 ease-in animate-out slide-out-to-right",
+                )
+            }
+        >
+            <AriaDialog className="flex h-full flex-col outline-hidden">
+                <div className="flex items-center justify-between gap-4 border-b border-secondary px-6 py-5">
+                    <h2 className="text-lg font-semibold text-primary">Detalhes do participante</h2>
+                    <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
+                </div>
+                {participante && <SlideoutConteudo key={participante.respondente.id} participante={participante} />}
+                <div className="flex items-center justify-end gap-2 border-t border-secondary px-6 py-4">
+                    <Button size="sm" color="secondary" onClick={onClose}>
+                        Fechar
+                    </Button>
+                </div>
+            </AriaDialog>
+        </AriaModal>
+    </AriaModalOverlay>
+);
+
+function SlideoutConteudo({ participante }: { participante: Participante }) {
+    const [ingressos, setIngressos] = useState<IngressoDoPortador[]>(() => buildIngressos(participante));
+    // Accordion single-open: abrir um fecha o outro.
+    const [aberto, setAberto] = useState<number | null>(null);
+
+    const toggle = (i: number) => setAberto((prev) => (prev === i ? null : i));
+
+    const salvarResposta = (idx: number, perguntaId: string, novaLinha: RespostaLinha) =>
+        setIngressos((prev) =>
+            prev.map((ing, i) =>
+                i === idx ? { ...ing, respostas: ing.respostas.map((r) => (r.pergunta.id === perguntaId ? { ...r, linha: novaLinha } : r)) } : ing,
+            ),
+        );
+
+    const { respondente: r } = participante;
+    const portador = contatoDoPortador(r);
+
     return (
-        <AriaModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable className="fixed inset-0 z-50 flex justify-end outline-hidden">
-            <AriaModal
-                className={({ isEntering, isExiting }) =>
-                    cx(
-                        "h-full w-full max-w-[480px] bg-primary shadow-xl outline-hidden",
-                        isEntering && "duration-300 ease-out animate-in slide-in-from-right",
-                        isExiting && "duration-200 ease-in animate-out slide-out-to-right",
-                    )
-                }
-            >
-                <AriaDialog className="flex h-full flex-col outline-hidden">
-                    <div className="flex items-center justify-between gap-4 border-b border-secondary px-6 py-5">
-                        <h2 className="text-lg font-semibold text-primary">Respostas do participante</h2>
-                        <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
+        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-6 py-6">
+            {/* Portador — primeiro nível: separador, sem caixa */}
+            <div className="flex shrink-0 flex-col gap-4 border-b border-secondary pb-5">
+                <div className="flex items-center gap-3">
+                    <Avatar size="lg" initials={getInitials(r.nome)} />
+                    <div className="flex min-w-0 flex-col">
+                        <span className="line-clamp-2 text-md font-semibold text-primary">{r.nome}</span>
+                        <span className="text-sm text-tertiary">Portador</span>
                     </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                    <DetailRow label="Nome" value={portador.nome} />
+                    <DetailRow label="E-mail" value={portador.email} isEmail />
+                    <DetailRow label="Telefone" value={portador.telefone} />
+                    <DetailRow label="Documento" value={formatCpf(portador.documento)} />
+                    <DetailRow label="Data de nascimento" value={portador.nascimento} />
+                </div>
+            </div>
 
-                    <div className="flex flex-1 flex-col overflow-y-auto">
-                        {participante && r && (
-                            <>
-                                <div className="flex items-center gap-3 px-6 pt-6 pb-5">
-                                    <Avatar size="lg" initials={getInitials(r.nome)} />
-                                    <div className="flex min-w-0 flex-col">
-                                        <span className="truncate text-md font-semibold text-primary">{r.nome}</span>
-                                        <span className="truncate text-sm text-tertiary">{r.email}</span>
-                                    </div>
-                                </div>
+            <span className="shrink-0 text-sm font-semibold text-secondary">Ingressos ({num(ingressos.length)})</span>
 
-                                <div className="mx-6 border-t border-secondary" />
-
-                                <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
-                                    <h3 className="text-md font-semibold text-primary">Identificação</h3>
-                                    <dl className="flex flex-col gap-3">
-                                        <DetailStacked label="Documento" value={r.documento} />
-                                        <DetailStacked label="Data de nascimento" value={r.nascimento} />
-                                    </dl>
-                                </div>
-
-                                <div className="mx-6 border-t border-secondary" />
-
-                                {(() => {
-                                    const combo = comboDoParticipante(participante);
-                                    const ingressos = ingressosDoParticipante(participante);
-                                    if (ingressos.length === 1) {
-                                        const ing = ingressos[0];
-                                        return (
-                                            <>
-                                                <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
-                                                    <h3 className="text-md font-semibold text-primary">Ingresso</h3>
-                                                    <IngressoDetalhe ing={ing} />
-                                                </div>
-                                                <div className="mx-6 border-t border-secondary" />
-                                                <div className="flex flex-col gap-4 px-6 pt-5 pb-6">
-                                                    <h3 className="text-md font-semibold text-primary">Respostas</h3>
-                                                    <RespostasLista respostas={ing.respostas} />
-                                                </div>
-                                            </>
-                                        );
-                                    }
-                                    return (
-                                        <>
-                                            <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
-                                                <h3 className="text-md font-semibold text-primary">Combo</h3>
-                                                <dl className="flex flex-col gap-3">
-                                                    <DetailStacked label="Nome do combo" value={combo.nome} />
-                                                    <DetailStacked label="Tipo" value={combo.tipo === "fixo" ? "Fixo" : "Dinâmico"} />
-                                                </dl>
-                                            </div>
-                                            <div className="mx-6 border-t border-secondary" />
-                                            <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
-                                                <h3 className="text-md font-semibold text-primary">Ingressos ({num(ingressos.length)})</h3>
-                                                {ingressos.map((ing, i) => (
-                                                    <IngressoAccordion key={`${r.id}-${i}`} ing={ing} defaultOpen={i === abrirIngresso} />
-                                                ))}
-                                            </div>
-                                        </>
-                                    );
-                                })()}
-                            </>
-                        )}
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2 border-t border-secondary px-6 py-4">
-                        <Button size="sm" color="secondary" onClick={onClose}>
-                            Fechar
-                        </Button>
-                    </div>
-                </AriaDialog>
-            </AriaModal>
-        </AriaModalOverlay>
-    );
-}
-
-/** Dados do ingresso (grupo > ingresso > lote) empilhados. */
-function IngressoDetalhe({ ing }: { ing: IngressoParticipante }) {
-    return (
-        <dl className="flex flex-col gap-3">
-            <DetailStacked label="Grupo do ingresso" value={ing.grupoNome} />
-            <DetailStacked label="Nome do ingresso" value={ing.ingresso.nome} />
-            <DetailStacked label="Lote" value={ing.loteNome} />
-        </dl>
-    );
-}
-
-/** Lista de respostas do questionário para um conjunto de respostas. */
-function RespostasLista({ respostas }: { respostas: RespostaDoParticipante[] }) {
-    return (
-        <div className="flex flex-col gap-4">
-            {QUESTIONARIO.map((q) => {
-                const resp = respostas.find((x) => x.perguntaId === q.id);
-                const meta = TIPO_RESPOSTA[q.tipo];
+            {ingressos.map((ing, idx) => {
+                const estaAberto = aberto === idx;
                 return (
-                    <div key={q.id} className="flex flex-col gap-2 rounded-xl bg-secondary/50 p-4 ring-1 ring-border-secondary">
-                        <div className="flex items-start gap-2">
-                            <meta.icon className="mt-0.5 size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                            <span className="text-sm font-medium text-primary">{q.titulo}</span>
-                        </div>
-                        {resp ? <RespostaValor resp={resp} /> : <span className="text-sm text-tertiary italic">Não respondeu</span>}
+                    <div key={idx} className="shrink-0 overflow-hidden rounded-xl ring-1 ring-border-secondary">
+                        <button
+                            type="button"
+                            onClick={() => toggle(idx)}
+                            aria-expanded={estaAberto}
+                            className="flex w-full items-start gap-3 px-4 py-3 text-left transition duration-100 ease-linear hover:bg-primary_hover"
+                        >
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-fg-secondary ring-1 ring-border-secondary">
+                                <Ticket01 className="size-5" aria-hidden="true" />
+                            </span>
+                            <div className="flex min-w-0 flex-1 flex-col">
+                                <span className="line-clamp-2 text-sm font-semibold text-primary">
+                                    {ing.grupo} · {ing.ingresso}
+                                </span>
+                                <span className="line-clamp-2 text-sm text-tertiary">
+                                    {ing.ehComprador ? "Comprado pelo próprio portador" : `Comprado por ${ing.comprador.nome}`}
+                                </span>
+                            </div>
+                            <ChevronDown aria-hidden="true" className={cx("mt-1 size-5 shrink-0 text-fg-quaternary transition-transform duration-150", estaAberto && "rotate-180")} />
+                        </button>
+
+                        {estaAberto && (
+                            <div className="flex flex-col gap-4 border-t border-secondary p-4">
+                                {/* Comprador */}
+                                <div className="flex flex-col gap-2 rounded-lg bg-secondary p-3">
+                                    <span className="text-sm font-semibold text-secondary">Comprador</span>
+                                    <DetailRow label="Nome" value={ing.comprador.nome} />
+                                    <DetailRow label="E-mail" value={ing.comprador.email} isEmail />
+                                    <DetailRow label="Telefone" value={ing.comprador.telefone} />
+                                    <DetailRow label="Documento" value={formatCpf(ing.comprador.documento)} />
+                                    <DetailRow label="Data de nascimento" value={ing.comprador.nascimento} />
+                                </div>
+
+                                {/* Respostas do ingresso */}
+                                <div className="flex flex-col gap-3">
+                                    <span className="text-sm font-semibold text-secondary">Respostas do ingresso</span>
+                                    {ing.respostas.map((rr) => (
+                                        <RespostaEditavel
+                                            key={rr.pergunta.id}
+                                            pergunta={rr.pergunta}
+                                            linha={rr.linha}
+                                            onSave={(novaLinha) => salvarResposta(idx, rr.pergunta.id, novaLinha)}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
             })}
@@ -527,43 +754,117 @@ function RespostasLista({ respostas }: { respostas: RespostaDoParticipante[] }) 
     );
 }
 
-/** Ingresso como accordion: cabeçalho com grupo/ingresso/lote, corpo com as respostas. */
-function IngressoAccordion({ ing, defaultOpen }: { ing: IngressoParticipante; defaultOpen?: boolean }) {
-    const [open, setOpen] = useState(!!defaultOpen);
+const DetailRow = ({ label, value, isEmail = false }: { label: string; value: string; isEmail?: boolean }) => (
+    <div className="flex min-w-0 flex-col gap-0.5">
+        <dt className="text-sm text-tertiary">{label}</dt>
+        <dd className={cx("line-clamp-2 text-sm break-words", isEmail ? "text-brand-secondary" : "text-secondary")}>{value}</dd>
+    </div>
+);
+
+/* ------------------------------------------------------------------ */
+/*  Resposta (view / editar / confirmar) + download de anexo           */
+/* ------------------------------------------------------------------ */
+
+function RespostaEditavel({ pergunta, linha, onSave }: { pergunta: QuestionarioPergunta; linha: RespostaLinha | null; onSave: (linha: RespostaLinha) => void }) {
+    const [modo, setModo] = useState<"view" | "edit" | "confirm">("view");
+    const [txt, setTxt] = useState<string>(linha?.opcao ?? linha?.texto ?? "");
+    const [multi, setMulti] = useState<Selection>(new Set(linha?.opcoesMultiplas ?? []));
+
+    const podeEditar = linha !== null && pergunta.tipo !== "anexar-arquivo";
+    const opcoes = (pergunta.opcoes ?? []).map((o) => ({ id: o.label, label: o.label }));
+
+    const iniciarEdicao = () => {
+        setTxt(linha?.opcao ?? linha?.texto ?? "");
+        setMulti(new Set(linha?.opcoesMultiplas ?? []));
+        setModo("edit");
+    };
+
+    const confirmar = () => {
+        if (!linha) return;
+        let nova: RespostaLinha = linha;
+        if (pergunta.tipo === "selecao-unica") nova = { ...linha, opcao: txt };
+        else if (pergunta.tipo === "texto-aberto") nova = { ...linha, texto: txt };
+        else if (pergunta.tipo === "multipla-selecao") nova = { ...linha, opcoesMultiplas: multi === "all" ? opcoes.map((o) => o.id) : Array.from(multi, String) };
+        onSave(nova);
+        setModo("view");
+        toast.success("Resposta alterada");
+    };
+
     return (
-        <div className="overflow-hidden rounded-xl ring-1 ring-border-secondary">
-            <button
-                type="button"
-                aria-expanded={open}
-                onClick={() => setOpen((v) => !v)}
-                className={cx("flex w-full items-center gap-3 px-4 py-3 text-left transition duration-100 ease-linear hover:bg-primary_hover", open && "border-b border-secondary")}
-            >
-                <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-semibold text-primary">{ing.grupoNome}</span>
-                    <span className="truncate text-sm text-tertiary">{ing.ingresso.nome} · {ing.loteNome}</span>
-                </span>
-                <ChevronDown className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", open && "rotate-180")} aria-hidden="true" />
-            </button>
-            {open && (
-                <div className="flex flex-col gap-4 p-4">
-                    <IngressoDetalhe ing={ing} />
-                    <RespostasLista respostas={ing.respostas} />
+        <div className="flex flex-col gap-2 rounded-lg bg-secondary p-3">
+            <div className="flex items-start justify-between gap-2">
+                <span className="line-clamp-2 min-w-0 text-sm font-medium text-tertiary">{pergunta.titulo}</span>
+                {pergunta.tipo === "anexar-arquivo" && linha?.anexo ? (
+                    <Button size="sm" color="link-color" iconLeading={Download01} onClick={() => toast.success(`Baixando ${linha.anexo?.arquivo}`)}>
+                        Baixar
+                    </Button>
+                ) : (
+                    podeEditar && modo === "view" && (
+                        <Button size="sm" color="link-gray" onClick={iniciarEdicao}>
+                            Editar
+                        </Button>
+                    )
+                )}
+            </div>
+
+            {modo === "view" &&
+                (linha ? <RespostaCelula linha={linha} tipo={pergunta.tipo} /> : <span className="text-sm text-quaternary">Não respondeu</span>)}
+
+            {modo === "edit" && (
+                <div className="flex flex-col gap-2">
+                    {pergunta.tipo === "selecao-unica" && (
+                        <Select size="sm" aria-label="Nova resposta" items={opcoes} selectedKey={txt || null} onSelectionChange={(k: Key | null) => setTxt(k ? String(k) : "")}>
+                            {(item: { id: string; label: string }) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                        </Select>
+                    )}
+                    {pergunta.tipo === "multipla-selecao" && (
+                        <MultiSelect size="sm" aria-label="Nova resposta" placeholder="Selecione" items={opcoes} selectedKeys={multi} onSelectionChange={setMulti}>
+                            {(item: { id: string; label: string }) => (
+                                <MultiSelect.Item id={item.id} selectionIndicator="checkmark">
+                                    {item.label}
+                                </MultiSelect.Item>
+                            )}
+                        </MultiSelect>
+                    )}
+                    {pergunta.tipo === "texto-aberto" && <Input size="sm" aria-label="Nova resposta" value={txt} onChange={(v: string) => setTxt(v)} />}
+                    <div className="flex items-center justify-end gap-2">
+                        <Button size="sm" color="link-gray" onClick={() => setModo("view")}>
+                            Cancelar
+                        </Button>
+                        <Button size="sm" color="secondary" onClick={() => setModo("confirm")}>
+                            Salvar
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {modo === "confirm" && (
+                <div className="flex flex-col gap-2 rounded-lg bg-primary p-3 ring-1 ring-border-secondary">
+                    <p className="text-sm font-medium text-primary">Confirmar alteração desta resposta?</p>
+                    <p className="text-sm text-tertiary">A resposta original do participante será substituída.</p>
+                    <div className="flex items-center justify-end gap-2">
+                        <Button size="sm" color="link-gray" onClick={() => setModo("edit")}>
+                            Cancelar
+                        </Button>
+                        <Button size="sm" color="primary" onClick={confirmar}>
+                            Confirmar
+                        </Button>
+                    </div>
                 </div>
             )}
         </div>
     );
 }
 
-function RespostaValor({ resp }: { resp: RespostaDoParticipante }) {
-    const { tipo, linha } = resp;
+function RespostaCelula({ linha, tipo }: { linha: RespostaLinha; tipo: QuestionarioPergunta["tipo"] }) {
     if (tipo === "selecao-unica") {
-        return <span className="text-sm text-secondary">{linha.opcao}</span>;
+        return <span className="text-sm font-medium text-secondary">{linha.opcao}</span>;
     }
     if (tipo === "multipla-selecao") {
         return (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1">
                 {(linha.opcoesMultiplas ?? []).map((o) => (
-                    <span key={o} className="rounded-md bg-secondary px-2 py-0.5 text-sm text-secondary ring-1 ring-border-secondary">
+                    <span key={o} className="rounded-md bg-primary px-2 py-0.5 text-sm text-secondary ring-1 ring-border-secondary">
                         {o}
                     </span>
                 ))}
@@ -571,31 +872,13 @@ function RespostaValor({ resp }: { resp: RespostaDoParticipante }) {
         );
     }
     if (tipo === "texto-aberto") {
-        return <span className="text-sm text-secondary">“{linha.texto}”</span>;
+        return <span className="line-clamp-2 text-sm text-secondary">“{linha.texto}”</span>;
     }
     return (
-        <div className="flex items-center gap-2 rounded-lg bg-secondary/50 py-2 pr-2 pl-3 ring-1 ring-border-secondary">
+        <span className="inline-flex items-center gap-2 text-sm">
             <Paperclip className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-            <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-medium text-primary">{linha.anexo?.arquivo}</span>
-                <span className="text-sm text-tertiary">{linha.anexo?.tamanho}</span>
-            </div>
-            <ButtonUtility size="sm" color="tertiary" icon={Download01} tooltip="Baixar anexo" aria-label="Baixar anexo" />
-        </div>
+            <span className="min-w-0 truncate font-medium text-brand-secondary">{linha.anexo?.arquivo}</span>
+            <span className="shrink-0 text-tertiary">{linha.anexo?.tamanho}</span>
+        </span>
     );
 }
-
-/* ------------------------------------------------------------------ */
-/*  Subcomponentes                                                     */
-/* ------------------------------------------------------------------ */
-
-/** Label acima, valor abaixo alinhado à esquerda (para textos longos, ex.: nome do ingresso). */
-function DetailStacked({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="flex flex-col gap-1">
-            <dt className="text-sm text-tertiary">{label}</dt>
-            <dd className="text-sm font-medium break-words text-primary">{value}</dd>
-        </div>
-    );
-}
-

@@ -14,7 +14,14 @@ import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
 import { currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
-const COVER_REVEILLON = "https://ticket-backend-prod.imgix.net/media/event/144936dc-d79d-4f62-b418-007c9772141a/8124ebd8-e5c9-4424-a686-9b5d5344bd8f.jpeg?h=440&w=330&fit=crop";
+import { consultarPeriodo } from "@/reports/event-dataset";
+import bReveillon from "@/assets/event-cover.png";
+import bStbSp26 from "@/assets/event-cover.png";
+import bStbSp25 from "@/assets/gremio-poster-pacotes.jpeg";
+import bTwb26 from "@/assets/gremio-poster-tour.jpeg";
+import bTwb25 from "@/assets/gremio-poster-taca.jpeg";
+import bCena from "@/assets/gremio-poster-book.jpeg";
+import bSolomun from "@/assets/gremio-hero.webp";
 
 /* ------------------------------------------------------------------ */
 /*  Mock — edições de eventos (vários anos por evento)                */
@@ -108,11 +115,19 @@ interface EdicaoSpec {
     peaks: Peak[];
 }
 
+// Edição atual (Réveillon Carneiros 2027) com números da fonte única (src/reports).
+const _dsCmp = consultarPeriodo(null);
+const _revIng = _dsCmp.ocupacao.vendido;
+const _revTicket = _revIng ? Math.round((_dsCmp.mixDeReceita.find((m) => m.grupo === "Ingressos")?.valor ?? 0) / _revIng) : 0;
+
 const SPECS: EdicaoSpec[] = [
-    { id: "rev-2026", nome: "Réveillon Carneiros 2026", curto: "REV 26", ano: 2026, banner: COVER_REVEILLON, abertura: "15/09/2026", evento: "31/12/2026", capacidade: 16000, ingressos: 447, ticket: 7600, taxaPct: 0.0001, seed: 26, peaks: [{ center: 0.85, width: 0.05, height: 10 }] },
-    { id: "rev-2025", nome: "Réveillon Carneiros 2025", curto: "REV 25", ano: 2025, banner: COVER_REVEILLON, abertura: "15/09/2025", evento: "31/12/2025", capacidade: 16000, ingressos: 15375, ticket: 3190, taxaPct: 0.02, seed: 25, peaks: [{ center: 0.6, width: 0.05, height: 9 }, { center: 0.9, width: 0.04, height: 8 }] },
-    { id: "rev-2024", nome: "Réveillon Carneiros 2024", curto: "REV 24", ano: 2024, banner: COVER_REVEILLON, abertura: "15/09/2024", evento: "31/12/2024", capacidade: 14000, ingressos: 12375, ticket: 2192, taxaPct: 0.02, seed: 24, peaks: [{ center: 0.62, width: 0.05, height: 8 }, { center: 0.9, width: 0.04, height: 7 }] },
-    { id: "rev-2023", nome: "Réveillon Carneiros 2023", curto: "REV 23", ano: 2023, banner: COVER_REVEILLON, abertura: "15/09/2023", evento: "31/12/2023", capacidade: 15000, ingressos: 14555, ticket: 1410, taxaPct: 0.02, seed: 23, peaks: [{ center: 0.6, width: 0.06, height: 8 }, { center: 0.9, width: 0.04, height: 7 }] },
+    { id: "reveillon-carneiros-2027", nome: "Réveillon Carneiros 2027", curto: "Carneiros 27", ano: 2027, banner: bReveillon, abertura: "01/10/2026", evento: "31/12/2026", capacidade: _dsCmp.ocupacao.capacidade, ingressos: _revIng, ticket: _revTicket, taxaPct: 0.1, seed: 27, peaks: [{ center: 0.5, width: 0.05, height: 6 }, { center: 0.95, width: 0.04, height: 10 }] },
+    { id: "stb-sp-2026", nome: "Só Track Boa Festival 2026 :: São Paulo", curto: "STB SP 26", ano: 2026, banner: bStbSp26, abertura: "15/12/2025", evento: "18/04/2026", capacidade: 55000, ingressos: 50284, ticket: 396, taxaPct: 0.0001, seed: 14, peaks: [{ center: 0.4, width: 0.04, height: 12 }, { center: 0.8, width: 0.05, height: 7 }] },
+    { id: "stb-sp-2025", nome: "Só Track Boa Festival São Paulo 2025", curto: "STB SP 25", ano: 2025, banner: bStbSp25, abertura: "18/12/2024", evento: "19/04/2025", capacidade: 62000, ingressos: 56809, ticket: 320, taxaPct: 0.004, seed: 13, peaks: [{ center: 0.42, width: 0.045, height: 11 }, { center: 0.82, width: 0.05, height: 7 }] },
+    { id: "twb-2026", nome: "TIME WARP BRASIL 2026", curto: "TWB 26", ano: 2026, banner: bTwb26, abertura: "12/06/2026", evento: "10/10/2026", capacidade: 18000, ingressos: 15654, ticket: 405, taxaPct: 0.0005, seed: 34, peaks: [{ center: 0.5, width: 0.04, height: 11 }, { center: 0.85, width: 0.05, height: 6 }] },
+    { id: "twb-2025", nome: "TIME WARP BRASIL 2025", curto: "TWB 25", ano: 2025, banner: bTwb25, abertura: "09/06/2025", evento: "11/10/2025", capacidade: 22000, ingressos: 18867, ticket: 314, taxaPct: 0.027, seed: 33, peaks: [{ center: 0.52, width: 0.045, height: 10 }, { center: 0.84, width: 0.05, height: 6 }] },
+    { id: "cena-2022", nome: "Festival CENA 2K22", curto: "CENA 22", ano: 2022, banner: bCena, abertura: "01/03/2022", evento: "09/07/2022", capacidade: 14000, ingressos: 9800, ticket: 150, taxaPct: 0, seed: 41, peaks: [{ center: 0.5, width: 0.06, height: 8 }] },
+    { id: "solomun-2024", nome: "SOLOMUN :: CWB 31/10", curto: "SOLOMUN 24", ano: 2024, banner: bSolomun, abertura: "01/08/2024", evento: "31/10/2024", capacidade: 13000, ingressos: 11543, ticket: 410, taxaPct: 0, seed: 51, peaks: [{ center: 0.55, width: 0.05, height: 9 }, { center: 0.88, width: 0.04, height: 6 }] },
 ];
 
 const EVENTOS: EventoComparativo[] = SPECS.map((s, i) => {
@@ -222,7 +237,7 @@ const metricDestaque = (t: EventoTotais, metric: Metric) =>
 /* ------------------------------------------------------------------ */
 
 export function Comparativos() {
-    const [selectedIds, setSelectedIds] = useState<string[]>(["rev-2025", "rev-2026"]);
+    const [selectedIds, setSelectedIds] = useState<string[]>(["reveillon-carneiros-2027", "twb-2026"]);
     const [metric, setMetric] = useState<Metric>("faturamento");
     const [alignment, setAlignment] = useState<Alignment>("evento");
     const [windowDays, setWindowDays] = useState<WindowDays>("all");
@@ -268,7 +283,7 @@ const EventPicker = ({ selectedIds, onToggle }: { selectedIds: string[]; onToggl
     <section className="flex flex-col gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-sm font-semibold text-secondary">Eventos para comparar</span>
-            <span className="text-xs text-tertiary">
+            <span className="text-sm text-tertiary">
                 {selectedIds.length} selecionado{selectedIds.length === 1 ? "" : "s"}
             </span>
         </div>
@@ -294,9 +309,9 @@ const EventPicker = ({ selectedIds, onToggle }: { selectedIds: string[]; onToggl
                             {/* nome */}
                             <span className="flex min-w-0 flex-1 flex-col">
                                 <span className="truncate text-sm font-medium text-primary">{ev.nome}</span>
-                                <span className="text-xs text-tertiary">Evento em {ev.dataEvento}</span>
+                                <span className="text-sm text-tertiary">Evento em {ev.dataEvento}</span>
                             </span>
-                            <span className="hidden shrink-0 text-right text-xs text-tertiary tabular-nums sm:block">
+                            <span className="hidden shrink-0 text-right text-sm text-tertiary tabular-nums sm:block">
                                 {numberFormatter.format(t.ingressos)} ing. · {currencyFormatter.format(t.liquido)}
                             </span>
                         </button>
@@ -375,26 +390,30 @@ const ComparativoControls = (props: ControlsProps) => {
                 isOpen={open}
                 onOpenChange={setOpen}
                 isDismissable
-                className={({ isEntering, isExiting }) => cx("fixed inset-0 z-50 flex items-end justify-center bg-overlay/70 backdrop-blur-[2px]", isEntering && "duration-200 ease-out animate-in fade-in", isExiting && "duration-150 ease-in animate-out fade-out")}
+                className="fixed inset-0 z-50 flex justify-end outline-hidden"
             >
-                <AriaModal className={({ isEntering, isExiting }) => cx("w-full max-w-xl rounded-t-2xl bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-bottom", isExiting && "duration-200 ease-in animate-out slide-out-to-bottom")}>
-                    <AriaDialog className="flex flex-col gap-5 p-5 outline-hidden">
-                        <div className="flex items-center justify-between gap-4">
+                <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
+                    <AriaDialog className="flex h-full flex-col outline-hidden">
+                        <div className="flex items-center justify-between gap-4 border-b border-secondary px-6 py-5">
                             <h2 className="text-lg font-semibold text-primary">Ajustar comparação</h2>
                             <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar" onClick={() => setOpen(false)} />
                         </div>
-                        <SheetField label="Métrica">
-                            <MetricField metric={props.metric} onChange={props.onChangeMetric} className="w-full" />
-                        </SheetField>
-                        <SheetField label="Alinhar por">
-                            <AlignmentField alignment={props.alignment} onChange={props.onChangeAlignment} className="w-full" />
-                        </SheetField>
-                        <SheetField label="Intervalo de dias">
-                            <WindowField windowDays={props.windowDays} onChange={props.onChangeWindow} className="w-full" />
-                        </SheetField>
-                        <Button size="lg" color="primary" onClick={() => setOpen(false)}>
-                            Ver comparação
-                        </Button>
+                        <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-6">
+                            <SheetField label="Métrica">
+                                <MetricField metric={props.metric} onChange={props.onChangeMetric} className="w-full" />
+                            </SheetField>
+                            <SheetField label="Alinhar por">
+                                <AlignmentField alignment={props.alignment} onChange={props.onChangeAlignment} className="w-full" />
+                            </SheetField>
+                            <SheetField label="Intervalo de dias">
+                                <WindowField windowDays={props.windowDays} onChange={props.onChangeWindow} className="w-full" />
+                            </SheetField>
+                        </div>
+                        <div className="flex items-center justify-end gap-2 border-t border-secondary px-6 py-4">
+                            <Button size="sm" color="primary" onClick={() => setOpen(false)}>
+                                Ver comparação
+                            </Button>
+                        </div>
                     </AriaDialog>
                 </AriaModal>
             </AriaModalOverlay>
@@ -456,7 +475,7 @@ const InsightCards = ({ events }: { events: EventoComparativo[] }) => {
                 <div key={c.eyebrow} className="flex items-start gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
                     <FeaturedIcon icon={c.icon} color={c.color} theme="light" size="md" className="shrink-0" />
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="text-xs font-medium text-tertiary">{c.eyebrow}</span>
+                        <span className="text-sm font-medium text-tertiary">{c.eyebrow}</span>
                         <span className="flex items-center gap-1.5">
                             <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: c.ev.cor }} />
                             <span className="truncate text-md font-semibold text-primary">{c.ev.nome}</span>
@@ -483,12 +502,12 @@ const ResumoCards = ({ events, metric, alignment, windowDays }: { events: Evento
                         <span className="mt-1 size-3 shrink-0 rounded-full" style={{ backgroundColor: ev.cor }} />
                         <div className="flex min-w-0 flex-1 flex-col">
                             <span className="truncate text-sm font-semibold text-primary">{ev.nome}</span>
-                            <span className="text-xs text-tertiary">Evento em {ev.dataEvento}</span>
+                            <span className="text-sm text-tertiary">Evento em {ev.dataEvento}</span>
                         </div>
                     </div>
                     <div>
                         <p className="text-2xl font-semibold text-primary tabular-nums">{metricDestaque(t, metric)}</p>
-                        <p className="text-xs text-tertiary">
+                        <p className="text-sm text-tertiary">
                             {METRIC_LABEL[metric]} {janelaLabel(alignment, windowDays)}
                         </p>
                     </div>
@@ -506,7 +525,7 @@ const ResumoCards = ({ events, metric, alignment, windowDays }: { events: Evento
 
 const Stat = ({ label, value }: { label: string; value: string }) => (
     <div className="flex flex-col gap-0.5">
-        <dt className="text-xs text-tertiary">{label}</dt>
+        <dt className="text-sm text-tertiary">{label}</dt>
         <dd className="text-sm font-medium text-primary tabular-nums">{value}</dd>
     </div>
 );
@@ -564,10 +583,10 @@ const ComparativoChart = ({ events, metric, alignment, windowDays }: { events: E
         const ordered = [...payload].sort((a, b) => Number(b.value) - Number(a.value));
         return (
             <div className="flex flex-col gap-1.5 rounded-lg bg-primary-solid px-3 py-2.5 shadow-lg">
-                <p className="text-xs font-semibold text-white">{tooltipLabel(Number(label))}</p>
+                <p className="text-sm font-semibold text-white">{tooltipLabel(Number(label))}</p>
                 <ul className="flex flex-col gap-1">
                     {ordered.map((entry) => (
-                        <li key={entry.dataKey} className="flex items-center gap-2 text-xs">
+                        <li key={entry.dataKey} className="flex items-center gap-2 text-sm">
                             <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: entry.color }} />
                             <span className="text-tooltip-supporting-text">{entry.name}</span>
                             <span className="ml-auto pl-3 font-semibold text-white tabular-nums">{tooltipValue(entry.value)}</span>
@@ -593,7 +612,7 @@ const ComparativoChart = ({ events, metric, alignment, windowDays }: { events: E
 
             <div className="h-[320px] w-full px-2 pt-5 pb-2 text-tertiary md:h-[420px] md:px-4">
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={rows} className="[&_.recharts-text]:text-xs" margin={{ top: 16, right: 84, bottom: 4, left: 8 }}>
+                    <AreaChart data={rows} className="[&_.recharts-text]:text-sm" margin={{ top: 16, right: 84, bottom: 4, left: 8 }}>
                         <defs>
                             {events.map((ev) => (
                                 <Fragment key={ev.id}>
@@ -644,14 +663,6 @@ const ComparativoChart = ({ events, metric, alignment, windowDays }: { events: E
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
-            <footer className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-secondary px-5 py-3 text-sm text-tertiary">
-                {events.map((ev) => (
-                    <span key={ev.id} className="flex items-center gap-1.5">
-                        <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: ev.cor }} />
-                        {ev.curto}
-                    </span>
-                ))}
-            </footer>
         </section>
     );
 };
@@ -690,10 +701,10 @@ const AnoContraAnoChart = ({ events }: { events: EventoComparativo[] }) => {
         if (ordered.length === 0) return null;
         return (
             <div className="flex flex-col gap-1.5 rounded-lg bg-primary-solid px-3 py-2.5 shadow-lg">
-                <p className="text-xs font-semibold text-white capitalize">{label}</p>
+                <p className="text-sm font-semibold text-white capitalize">{label}</p>
                 <ul className="flex flex-col gap-1">
                     {ordered.map((entry) => (
-                        <li key={entry.dataKey} className="flex items-center gap-2 text-xs">
+                        <li key={entry.dataKey} className="flex items-center gap-2 text-sm">
                             <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: entry.color }} />
                             <span className="text-tooltip-supporting-text">{EVENTOS_POR_ID.get(entry.dataKey)?.curto ?? entry.dataKey}</span>
                             <span className="ml-auto pl-3 font-semibold text-white tabular-nums">{currencyFormatter.format(Number(entry.value))}</span>
@@ -712,7 +723,7 @@ const AnoContraAnoChart = ({ events }: { events: EventoComparativo[] }) => {
             </header>
             <div className="h-[300px] w-full px-2 pt-5 pb-2 text-tertiary md:h-[360px] md:px-4">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={rows} className="[&_.recharts-text]:text-xs" margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+                    <BarChart data={rows} className="[&_.recharts-text]:text-sm" margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
                         <CartesianGrid vertical={false} stroke="currentColor" className="text-utility-neutral-100" />
                         <XAxis dataKey="mes" fill="currentColor" tickLine={false} axisLine={false} tickMargin={10} />
                         <YAxis tickFormatter={(v) => `R$${(Number(v) / 1_000_000).toFixed(0)}mi`} fill="currentColor" tickLine={false} axisLine={false} tickMargin={8} width={56} />
@@ -725,7 +736,7 @@ const AnoContraAnoChart = ({ events }: { events: EventoComparativo[] }) => {
             </div>
             <footer className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-secondary px-5 py-3">
                 {events.map((ev) => (
-                    <span key={ev.id} className="flex items-center gap-1.5 text-xs text-tertiary">
+                    <span key={ev.id} className="flex items-center gap-1.5 text-sm text-tertiary">
                         <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: ev.cor }} />
                         {ev.curto}
                     </span>
@@ -833,15 +844,15 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
                 <table className="w-full border-collapse">
                     <thead className="bg-secondary">
                         <tr className="border-b border-secondary text-left">
-                            <th className="sticky left-0 z-10 whitespace-nowrap bg-secondary px-4 py-3 text-xs font-semibold text-tertiary">
+                            <th className="sticky left-0 z-10 whitespace-nowrap bg-secondary px-4 py-3 text-sm font-semibold text-tertiary">
                                 <SortableHeader label="Evento" sortKey="nome" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                             </th>
                             {buckets.map((b) => (
-                                <th key={b.id} className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
+                                <th key={b.id} className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary">
                                     <SortableHeader label={b.label} align="right" sortKey={b.id} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                                 </th>
                             ))}
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
+                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary">
                                 <SortableHeader label="Total" align="right" sortKey="total" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                             </th>
                         </tr>
@@ -900,7 +911,7 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
                                 );
                             })}
                         </div>
-                        <span className="text-xs text-tertiary">
+                        <span className="text-sm text-tertiary">
                             {row.pico ? (
                                 <>
                                     Pico: <span className="font-medium text-secondary">{row.pico.label}</span> {alignment === "abertura" ? "após a abertura" : "antes do evento"} ({Math.round(((row.values[row.pico.id] ?? 0) / (row.total || 1)) * 100)}% das vendas)
@@ -941,9 +952,9 @@ const ComparativoTable = ({ events, alignment, windowDays }: { events: EventoCom
                 <table className="w-full border-collapse">
                     <thead className="bg-secondary">
                         <tr className="border-b border-secondary text-left">
-                            <th className="sticky left-0 z-10 bg-secondary px-4 py-3 text-xs font-semibold text-tertiary">Métrica</th>
+                            <th className="sticky left-0 z-10 bg-secondary px-4 py-3 text-sm font-semibold text-tertiary">Métrica</th>
                             {totais.map(({ ev }) => (
-                                <th key={ev.id} className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-tertiary">
+                                <th key={ev.id} className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary">
                                     <span className="inline-flex items-center gap-1.5">
                                         <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: ev.cor }} />
                                         {ev.curto}

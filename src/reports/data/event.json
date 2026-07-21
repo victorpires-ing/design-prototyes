@@ -1,0 +1,255 @@
+{
+  "evento": {
+    "nome": "Réveillon Carneiros 2027",
+    "local": "Praia de Carneiros · Tamandaré/PE",
+    "moeda": "BRL",
+    "moedaLabel": "R$",
+    "fuso": "America/Sao_Paulo",
+    "fusoLabel": "Horário de Brasília (GMT-3)",
+    "diaEvento": "31/12/2026",
+    "vendasInicio": "01/10/2026",
+    "vendasFim": "31/12/2026"
+  },
+  "periodoPadrao": {
+    "start": "2026-10-01",
+    "end": "2026-12-31"
+  },
+  "capacidadeIngressos": 16300,
+  "grupos": [
+    {
+      "nome": "Pista",
+      "categoria": "Ingressos",
+      "capacidade": 8000,
+      "precoMedio": 350,
+      "validaPct": 0.9
+    },
+    {
+      "nome": "Pista Premium",
+      "categoria": "Ingressos",
+      "capacidade": 4000,
+      "precoMedio": 650,
+      "validaPct": 0.93
+    },
+    {
+      "nome": "Front Stage",
+      "categoria": "Ingressos",
+      "capacidade": 2000,
+      "precoMedio": 1200,
+      "validaPct": 0.95
+    },
+    {
+      "nome": "Lounge",
+      "categoria": "Ingressos",
+      "capacidade": 1200,
+      "precoMedio": 1800,
+      "validaPct": 0.96
+    },
+    {
+      "nome": "Camarote",
+      "categoria": "Ingressos",
+      "capacidade": 800,
+      "precoMedio": 2500,
+      "validaPct": 0.97
+    },
+    {
+      "nome": "Área VIP",
+      "categoria": "Ingressos",
+      "capacidade": 300,
+      "precoMedio": 4500,
+      "validaPct": 0.98
+    },
+    {
+      "nome": "Combo Casal",
+      "categoria": "Combos",
+      "capacidade": null,
+      "precoMedio": 900,
+      "validaPct": 0.94
+    },
+    {
+      "nome": "Combo Open Bar",
+      "categoria": "Combos",
+      "capacidade": null,
+      "precoMedio": 550,
+      "validaPct": 0.94
+    },
+    {
+      "nome": "Estacionamento",
+      "categoria": "Produtos",
+      "capacidade": null,
+      "precoMedio": 120,
+      "validaPct": null
+    },
+    {
+      "nome": "Copo Oficial",
+      "categoria": "Produtos",
+      "capacidade": null,
+      "precoMedio": 40,
+      "validaPct": null
+    },
+    {
+      "nome": "Camiseta do Evento",
+      "categoria": "Produtos",
+      "capacidade": null,
+      "precoMedio": 90,
+      "validaPct": null
+    }
+  ],
+  "meiosDePagamento": [
+    {
+      "meio": "Pix",
+      "pct": 63
+    },
+    {
+      "meio": "Cartão de Crédito",
+      "pct": 27
+    },
+    {
+      "meio": "Cartão de Débito",
+      "pct": 6
+    },
+    {
+      "meio": "Isento / Cortesia",
+      "pct": 4
+    }
+  ],
+  "faixasHorario": [
+    {
+      "faixa": "20h",
+      "share": 0.06
+    },
+    {
+      "faixa": "21h",
+      "share": 0.12
+    },
+    {
+      "faixa": "22h",
+      "share": 0.2
+    },
+    {
+      "faixa": "23h",
+      "share": 0.22
+    },
+    {
+      "faixa": "00h",
+      "share": 0.16
+    },
+    {
+      "faixa": "01h",
+      "share": 0.12
+    },
+    {
+      "faixa": "02h",
+      "share": 0.07
+    },
+    {
+      "faixa": "03h",
+      "share": 0.05
+    }
+  ],
+  "portoes": [
+    {
+      "portao": "Portão Norte",
+      "share": 0.34
+    },
+    {
+      "portao": "Portão Sul",
+      "share": 0.3
+    },
+    {
+      "portao": "Portão Praia",
+      "share": 0.2
+    },
+    {
+      "portao": "Portão VIP",
+      "share": 0.16
+    }
+  ],
+  "statusTransacao": [
+    {
+      "status": "Aprovado",
+      "q": 0.84,
+      "v": 0.86
+    },
+    {
+      "status": "Pendente",
+      "q": 0.06,
+      "v": 0.05
+    },
+    {
+      "status": "Cancelado",
+      "q": 0.05,
+      "v": 0.045
+    },
+    {
+      "status": "Estornado",
+      "q": 0.03,
+      "v": 0.03
+    },
+    {
+      "status": "Reembolso",
+      "q": 0.02,
+      "v": 0.015
+    }
+  ],
+  "perguntas": [
+    {
+      "pergunta": "Como você vai chegar ao evento?",
+      "share": 1
+    },
+    {
+      "pergunta": "Já foi ao Réveillon de Carneiros antes?",
+      "share": 0.97
+    },
+    {
+      "pergunta": "O que mais te atrai no evento?",
+      "share": 0.93
+    },
+    {
+      "pergunta": "Como conheceu o evento?",
+      "share": 0.89
+    }
+  ],
+  "faixasEtarias": [
+    {
+      "faixa": "18–24",
+      "lo": 18,
+      "hi": 24,
+      "peso": 0.28
+    },
+    {
+      "faixa": "25–34",
+      "lo": 25,
+      "hi": 34,
+      "peso": 0.36
+    },
+    {
+      "faixa": "35–44",
+      "lo": 35,
+      "hi": 44,
+      "peso": 0.2
+    },
+    {
+      "faixa": "45–54",
+      "lo": 45,
+      "hi": 54,
+      "peso": 0.1
+    },
+    {
+      "faixa": "55+",
+      "lo": 55,
+      "hi": 72,
+      "peso": 0.06
+    }
+  ],
+  "ufs": [
+    "PE",
+    "SP",
+    "RJ",
+    "BA",
+    "MG",
+    "CE",
+    "PB",
+    "DF",
+    "Outros"
+  ]
+}

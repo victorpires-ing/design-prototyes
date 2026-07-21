@@ -126,8 +126,8 @@ function selecionarRespondentes(qtd: number, seed: number): Respondente[] {
 }
 
 function dataResposta(r: () => number): string {
-    const dia = ["16", "17", "18"][Math.floor(r() * 3)];
-    return `${dia}/06/2026 · ${pad(9 + Math.floor(r() * 13), 2)}:${pad(Math.floor(r() * 60), 2)}`;
+    const dia = ["29", "30", "31"][Math.floor(r() * 3)];
+    return `${dia}/12/2026 · ${pad(9 + Math.floor(r() * 13), 2)}:${pad(Math.floor(r() * 60), 2)}`;
 }
 
 /* ---- builders por tipo ---- */
@@ -192,18 +192,18 @@ function buildMultipla(
 }
 
 const TEXTOS = [
-    "Vamos com tudo, Fogão! O Nilton Santos vai tremer hoje. 🔥",
-    "Confio demais nesse time. Raça e coração até o apito final!",
-    "Primeira vez levando meu filho ao estádio, que seja inesquecível.",
-    "Glorioso, hoje é dia de classificação. Bora pra cima!",
-    "Independente do resultado, seguimos juntos. Amo esse clube.",
-    "Que a torcida faça a diferença do primeiro ao último minuto!",
-    "Estádio lotado, energia lá em cima. Vamos, Botafogo!",
-    "Fé no elenco e no trabalho da comissão. Copa do Brasil é nossa!",
-    "Sempre alvinegro, na alegria e na dificuldade. Vamos vencer!",
-    "Preparado pra empurrar o time até o fim. É hoje!",
-    "Que jogo especial, mal posso esperar pelo apito inicial.",
-    "Time guerreiro, torcida gigante. Rumo à próxima fase!",
+    "Ano novo na praia de Carneiros, não vejo a hora! 🎆",
+    "Primeira virada fora de casa, vai ser inesquecível.",
+    "Preparado pra dançar até o sol nascer. Bora!",
+    "Que 2027 comece com muita música e mar.",
+    "Levando a família toda pra virar o ano juntos.",
+    "Open bar, line-up dos sonhos e praia. Perfeito.",
+    "Contagem regressiva pra melhor festa do ano!",
+    "Vim de longe só pra essa virada. Ansioso demais.",
+    "Réveillon dos sonhos, com os amigos de sempre.",
+    "Que a queima de fogos em Carneiros seja épica!",
+    "Já garanti o camarote, agora é só curtir.",
+    "Fim de ano com pé na areia é outro nível.",
 ];
 
 function buildTexto(id: string, titulo: string, obrigatoria: boolean, respondidas: number, seed: number): QuestionarioPergunta {
@@ -236,32 +236,32 @@ function buildAnexo(id: string, titulo: string, obrigatoria: boolean, respondida
 
 /* ------------------------------------------------------------------ */
 /*  Questionário — todos os tipos, 100 participantes                   */
-/*  Evento: Botafogo x Chapecoense — Copa do Brasil.                   */
+/*  Evento: Réveillon Carneiros 2027.                                  */
 /* ------------------------------------------------------------------ */
 
 export const QUESTIONARIO: QuestionarioPergunta[] = [
     buildSelecaoUnica(
         "q-chegada",
-        "Como você vai chegar ao estádio?",
+        "Como você vai chegar ao evento?",
         true,
         100,
         [
-            { label: "Carro próprio", peso: 38 },
-            { label: "Transporte por app", peso: 27 },
-            { label: "Ônibus / Metrô", peso: 22 },
-            { label: "A pé", peso: 8 },
-            { label: "Bicicleta", peso: 5 },
+            { label: "Carro próprio", peso: 34 },
+            { label: "Transporte por app", peso: 24 },
+            { label: "Van / Excursão", peso: 22 },
+            { label: "Ônibus fretado", peso: 14 },
+            { label: "A pé (hospedagem próxima)", peso: 6 },
         ],
         101,
     ),
     buildSelecaoUnica(
         "q-primeira-vez",
-        "É a sua primeira vez no Nilton Santos?",
+        "Já foi ao Réveillon de Carneiros antes?",
         false,
         96,
         [
-            { label: "Não, já fui outras vezes", peso: 59 },
-            { label: "Sim, é a primeira vez", peso: 41 },
+            { label: "Não, é a primeira vez", peso: 58 },
+            { label: "Sim, já fui outras vezes", peso: 42 },
         ],
         102,
     ),
@@ -271,64 +271,27 @@ export const QUESTIONARIO: QuestionarioPergunta[] = [
         false,
         100,
         [
-            { label: "Camisa oficial", prob: 0.61 },
-            { label: "Cachecol", prob: 0.34 },
-            { label: "Boné", prob: 0.29 },
-            { label: "Bandeira", prob: 0.23 },
-            { label: "Caneca", prob: 0.18 },
+            { label: "Camiseta do evento", prob: 0.58 },
+            { label: "Copo oficial", prob: 0.44 },
+            { label: "Kit Open Bar", prob: 0.31 },
+            { label: "Boné", prob: 0.22 },
             { label: "Nenhum por enquanto", prob: 0.12, exclusivo: true },
         ],
         103,
     ),
     buildMultipla(
         "q-servicos",
-        "Quais serviços você usaria no dia do jogo?",
+        "Quais serviços você usaria no evento?",
         false,
         88,
         [
-            { label: "Bar / Alimentação", prob: 0.82 },
-            { label: "Estacionamento", prob: 0.5 },
-            { label: "Loja oficial", prob: 0.43 },
-            { label: "Guarda-volumes", prob: 0.17 },
+            { label: "Open bar / Alimentação", prob: 0.84 },
+            { label: "Estacionamento", prob: 0.52 },
+            { label: "Lounge VIP", prob: 0.4 },
+            { label: "Guarda-volumes", prob: 0.2 },
         ],
         104,
     ),
-    buildTexto("q-mensagem", "Deixe uma mensagem de incentivo para o time", false, 84, 105),
+    buildTexto("q-mensagem", "Deixe uma mensagem sobre a virada de ano", false, 84, 105),
     buildAnexo("q-documento", "Anexe um documento com foto para retirada", true, 92, 106),
 ];
-
-/* ------------------------------------------------------------------ */
-/*  Visão por participante (pivô das respostas por pessoa)             */
-/* ------------------------------------------------------------------ */
-
-export interface RespostaDoParticipante {
-    perguntaId: string;
-    titulo: string;
-    tipo: TipoResposta;
-    linha: RespostaLinha;
-}
-
-export interface ParticipanteRespostas {
-    respondente: Respondente;
-    respostas: RespostaDoParticipante[];
-}
-
-/** Total de perguntas do questionário. */
-export const TOTAL_PERGUNTAS = QUESTIONARIO.length;
-
-/** Pivota as respostas por pessoa: cada participante com o que respondeu em cada pergunta. */
-export const PARTICIPANTES: ParticipanteRespostas[] = (() => {
-    const map = new Map<string, ParticipanteRespostas>();
-    for (const q of QUESTIONARIO) {
-        for (const linha of q.respostas) {
-            const r = linha.respondente;
-            let p = map.get(r.id);
-            if (!p) {
-                p = { respondente: r, respostas: [] };
-                map.set(r.id, p);
-            }
-            p.respostas.push({ perguntaId: q.id, titulo: q.titulo, tipo: q.tipo, linha });
-        }
-    }
-    return [...map.values()].sort((a, b) => a.respondente.nome.localeCompare(b.respondente.nome));
-})();

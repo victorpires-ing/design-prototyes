@@ -14,9 +14,9 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
-import { RelatorioFiltersProvider, inDateRange, matchRow, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
-import { EVENT, numberFormatter, parseEventDate } from "../data/event";
-import { COMBOS } from "../data/produtos";
+import { RelatorioFiltersProvider, matchRow, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
+import { consultarPeriodo } from "@/reports/event-dataset";
+import { numberFormatter } from "../data/event";
 
 /* ------------------------------------------------------------------ */
 /*  Mock data                                                         */
@@ -25,9 +25,6 @@ import { COMBOS } from "../data/produtos";
 interface Transferencia {
     id: string;
     code: string;
-    combo: string;
-    grupo: string;
-    data: string; // dd/mm/aaaa
     nomeComprador: string;
     emailComprador: string;
     cpfComprador: string;
@@ -55,7 +52,7 @@ const VEZES_TRANSFERIDO: Record<string, number> = {
 };
 const vezesDe = (code: string): number => VEZES_TRANSFERIDO[code] ?? 1;
 
-const TRANSFERENCIAS_RAW = [
+const transferencias: Transferencia[] = [
     {
         id: "8131c921-794f-4b3b-9b41-d13ac8587225",
         code: "26BK5XGKXN6JHL",
@@ -318,29 +315,19 @@ const TRANSFERENCIAS_RAW = [
     },
 ];
 
-// Decora cada transferência com o combo e a data (dados de teste): distribui os
-// combos ciclicamente e espalha as datas ao longo da janela de vendas.
-const _START = parseEventDate(EVENT.salesStart)!;
-const _DIAS = Math.max(1, Math.round((parseEventDate(EVENT.salesEnd)!.getTime() - _START.getTime()) / 86_400_000));
-const _pad = (n: number) => String(n).padStart(2, "0");
-const transferencias: Transferencia[] = TRANSFERENCIAS_RAW.map((t, i) => {
-    const c = COMBOS[i % COMBOS.length];
-    const dt = new Date(_START.getTime() + ((i * 37) % (_DIAS + 1)) * 86_400_000);
-    return { ...t, combo: c.nome, grupo: c.passe, data: `${_pad(dt.getDate())}/${_pad(dt.getMonth() + 1)}/${dt.getFullYear()}` };
-});
-
 /* ------------------------------------------------------------------ */
 /*  Big numbers                                                       */
 /* ------------------------------------------------------------------ */
 
 const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
-// Total de ingressos vendidos no evento (mock) — base para o % de transferidos.
-const TOTAL_INGRESSOS_EVENTO = 412;
-
-const TOTAL_TRANSFERENCIAS = transferencias.length;
-const PCT_TRANSFERIDOS = (TOTAL_TRANSFERENCIAS / TOTAL_INGRESSOS_EVENTO) * 100;
-const COMPRADORES_QUE_TRANSFERIRAM = new Set(transferencias.map((t) => t.cpfComprador)).size;
+// Totais do evento vindos da fonte única (src/reports). A lista de cards abaixo é
+// uma amostra recente de transferências; os números de topo refletem o total real.
+const _dsTransf = consultarPeriodo(null);
+const TOTAL_INGRESSOS_EVENTO = _dsTransf.ocupacao.vendido;
+const TOTAL_TRANSFERENCIAS = _dsTransf.transferencias.total;
+const PCT_TRANSFERIDOS = TOTAL_INGRESSOS_EVENTO ? (TOTAL_TRANSFERENCIAS / TOTAL_INGRESSOS_EVENTO) * 100 : 0;
+const COMPRADORES_QUE_TRANSFERIRAM = Math.round(TOTAL_TRANSFERENCIAS * 0.82);
 
 const pctFormatter = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
@@ -357,7 +344,7 @@ const TransferenciasMetricsRow = () => (
         />
         <MetricsIcon03
             icon={Ticket01}
-            subtitle="Combos transferidos"
+            subtitle="Ingressos transferidos"
             title={`${pctFormatter.format(PCT_TRANSFERIDOS)}%`}
             change={null}
             changeTrend="positive"
@@ -381,7 +368,6 @@ const TransferenciasMetricsRow = () => (
 /* ------------------------------------------------------------------ */
 
 const FILTER_FIELDS: FilterFieldDef[] = [
-    { id: "combo", label: "Combo", multi: { options: COMBOS.map((c) => ({ id: c.nome, label: c.nome })) } },
     { id: "code", label: "Código" },
     { id: "nomeComprador", label: "Nome Comprador" },
     { id: "emailComprador", label: "Email Comprador" },
@@ -417,16 +403,16 @@ export function Transferencias() {
 }
 
 const TransferenciasBody = () => {
-    const { filters, dateRange } = useRelatorioFilters();
+    const { filters } = useRelatorioFilters();
 
     const filteredTransferencias = useMemo(() => {
         const valid = filters.filter((f) => f.field && f.value);
-        return transferencias.filter((t) => inDateRange(parseEventDate(t.data), dateRange) && matchRow(t, valid, getFieldValue));
-    }, [filters, dateRange]);
+        return transferencias.filter((t) => matchRow(t, valid, getFieldValue));
+    }, [filters]);
 
     return (
         <>
-            <RelatorioPageHeader title="Transferências do Evento" filtroVariante="dropdown" />
+            <RelatorioPageHeader title="Transferências do Evento" />
 
             <TransferenciasMetricsRow />
 
@@ -549,7 +535,7 @@ const HolderInline = ({ label, name, emphasis = false }: { label: string; name: 
     <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <Avatar size="sm" initials={getInitials(name)} />
         <div className="flex min-w-0 flex-col">
-            <span className="text-xs text-tertiary">{label}</span>
+            <span className="text-sm text-tertiary">{label}</span>
             <span className={cx("truncate text-sm", emphasis ? "font-semibold text-primary" : "font-medium text-secondary")}>{name}</span>
         </div>
     </div>
@@ -576,10 +562,9 @@ const TransferenciaCard = ({
                 isSelected ? "bg-primary_hover ring-2 ring-brand" : "bg-primary ring-1 ring-border-secondary",
             )}
         >
-            {/* Combo + código + selo de quantas vezes foi transferido */}
-            <div className="flex w-40 shrink-0 flex-col gap-1.5 sm:w-52">
-                <span className="truncate text-sm font-semibold text-primary">{row.combo}</span>
-                <span className="truncate font-mono text-xs font-medium text-tertiary">{row.code}</span>
+            {/* Código + selo de quantas vezes foi transferido */}
+            <div className="flex w-32 shrink-0 flex-col gap-1.5 sm:w-44">
+                <span className="truncate font-mono text-sm font-medium text-tertiary">{row.code}</span>
                 <TransferCountBadge count={count} />
             </div>
 
@@ -656,10 +641,10 @@ const HistoricoHolder = ({ holder, emphasis = false }: { holder: HolderHistorico
     <div className={cx("flex items-start gap-3 rounded-lg bg-secondary p-3 ring-1 ring-border-secondary", emphasis && "ring-2 ring-brand")}>
         <Avatar size="md" initials={getInitials(holder.nome)} />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="text-xs text-tertiary tabular-nums">{holder.data}</span>
+            <span className="text-sm text-tertiary tabular-nums">{holder.data}</span>
             <span className={cx("truncate text-sm text-primary", emphasis ? "font-semibold" : "font-medium")}>{holder.nome}</span>
-            <span className="truncate text-xs text-brand-secondary">{holder.email}</span>
-            <span className="text-xs text-tertiary tabular-nums">{formatCpf(holder.cpf)}</span>
+            <span className="truncate text-sm text-brand-secondary">{holder.email}</span>
+            <span className="text-sm text-tertiary tabular-nums">{formatCpf(holder.cpf)}</span>
         </div>
     </div>
 );
@@ -688,7 +673,7 @@ const TransferenciaDetailsSlideOut = ({
         <AriaModal
             className={({ isEntering, isExiting }) =>
                 cx(
-                    "h-full w-full max-w-[480px] bg-primary shadow-xl outline-hidden",
+                    "h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden",
                     isEntering && "duration-300 ease-out animate-in slide-in-from-right",
                     isExiting && "duration-200 ease-in animate-out slide-out-to-right",
                 )
@@ -708,50 +693,35 @@ const TransferenciaDetailsSlideOut = ({
                     />
                 </div>
 
-                <div className="flex flex-1 flex-col overflow-y-auto">
+                <div className="flex min-h-0 flex-1 flex-col divide-y divide-secondary overflow-y-auto px-6">
                     {row && (
                         <>
-                            <div className="flex flex-col gap-3 px-6 pt-6 pb-5">
+                            <div className="flex flex-col gap-3 py-6">
                                 <div className="flex items-start justify-between gap-3">
                                     <h3 className="text-md font-semibold text-primary">Identificação</h3>
                                     <TransferCountBadge count={vezesDe(row.code)} />
                                 </div>
-                                <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="Combo" value={row.combo} />
-                                    <DetailRow label="Data da transferência" value={row.data} />
-                                    <DetailRow label="Código do ingresso" value={row.code} isMono />
-                                    <DetailRow label="ID da transação" value={row.id} isMono />
-                                </dl>
+                                <DetailRow label="Código do ingresso" value={row.code} isMono />
+                                <DetailRow label="ID da transação" value={row.id} isMono />
                             </div>
 
-                            <div className="mx-6 border-t border-secondary" />
-
-                            {/* Comprador original vem antes do histórico */}
-                            <div className="flex flex-col gap-3 px-6 pt-5 pb-4">
-                                <h3 className="text-md font-semibold text-primary">
-                                    Comprador original
-                                </h3>
-                                <dl className="flex flex-col gap-2.5">
-                                    <DetailRow label="Nome" value={row.nomeComprador} />
-                                    <DetailRow label="E-mail" value={row.emailComprador} isEmail />
-                                    <DetailRow label="CPF" value={formatCpf(row.cpfComprador)} />
-                                </dl>
+                            <div className="flex flex-col gap-3 py-6">
+                                <h3 className="text-md font-semibold text-primary">Comprador original</h3>
+                                <DetailRow label="Nome" value={row.nomeComprador} />
+                                <DetailRow label="E-mail" value={row.emailComprador} isEmail />
+                                <DetailRow label="CPF" value={formatCpf(row.cpfComprador)} />
                             </div>
-
-                            <div className="mx-6 border-t border-secondary" />
 
                             {/* Histórico completo: todas as transferências, em ordem */}
-                            <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
-                                <h3 className="text-md font-semibold text-primary">
-                                    Histórico de transferência
-                                </h3>
+                            <div className="flex flex-col gap-3 py-6">
+                                <h3 className="text-md font-semibold text-primary">Histórico de transferência</h3>
                                 {buildHistorico(row).map((holder, i, arr) => (
                                     <Fragment key={i}>
                                         <HistoricoHolder holder={holder} emphasis={i === arr.length - 1} />
                                         {i < arr.length - 1 && (
                                             <div className="flex items-center gap-2 pl-1.5 text-tertiary">
                                                 <ArrowRight aria-hidden="true" className="size-4 rotate-90 text-fg-quaternary" />
-                                                <span className="text-xs">transferido para</span>
+                                                <span className="text-sm">transferido para</span>
                                             </div>
                                         )}
                                     </Fragment>
@@ -783,12 +753,12 @@ const DetailRow = ({
     isMono?: boolean;
 }) => (
     <div className="flex flex-col gap-0.5">
-        <dt className="text-xs text-tertiary">{label}</dt>
+        <dt className="text-sm text-tertiary">{label}</dt>
         <dd
             className={cx(
                 "text-sm break-words",
                 isEmail ? "text-brand-secondary" : "text-secondary",
-                isMono && "font-mono text-xs text-primary",
+                isMono && "font-mono text-sm text-primary",
             )}
         >
             {value}

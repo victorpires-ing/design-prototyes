@@ -78,9 +78,9 @@ export function EntradaTeste() {
     const nConteudo = estado.tela === "intro" ? estado.teste.blocos.filter((b) => b.tipo === "atividade" || b.tipo === "pergunta" || b.tipo === "sus").length : 0;
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-quaternary px-4 py-20 text-primary">
+        <div className="flex min-h-screen items-center justify-center bg-primary px-4 py-20 text-primary">
             <LogoTopo logoParceira={logoParceira} />
-            <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl bg-primary p-8 text-center shadow-sm ring-1 ring-border-secondary">
+            <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl bg-primary p-8 text-center">
                 {estado.tela === "carregando" && <p className="py-8 text-sm text-tertiary">Carregando…</p>}
 
                 {estado.tela === "indisponivel" && (

@@ -5,6 +5,7 @@ import { useTheme } from '../providers/theme-provider';
 import { ScenarioControls } from '../app/components/ui/ScenarioControls';
 import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
 import { ProductSelection } from '../app/components/ProductSelection';
+import { CymaticsShowcase } from '../app/components/CymaticsShowcase';
 import { CortesiasProvider } from '../produtos/backstage/cortesias/data/cortesias-store';
 import { EmissaoCortesias } from '../produtos/backstage/cortesias/pages/EmissaoCortesias';
 import { PermissaoEnvio } from '../produtos/backstage/permissao-envio/pages/PermissaoEnvio';
@@ -22,7 +23,10 @@ import { Transferencias } from '../produtos/backstage/relatorios/pages/Transfere
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
 import { Comparativos } from '../produtos/backstage/relatorios/pages/Comparativos';
-import { Comissarios } from '../produtos/backstage/relatorios/pages/Comissarios';
+import { RelatorioPersonalizado } from '../produtos/backstage/relatorios/pages/RelatorioPersonalizado';
+import { Home as BackstageHome } from '../produtos/backstage/home/pages/Home';
+import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';
+import { NovoGrupoV2 } from '../produtos/backstage/membros-v2/pages/NovoGrupoV2';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
@@ -53,6 +57,7 @@ import { IngressoDetalhe as IngresseAppIngressoDetalhe } from '../produtos/ingre
 import { ComboDetalhe as IngresseAppComboDetalhe } from '../produtos/ingresse-app/ingressos/pages/ComboDetalhe';
 import { ProdutoDetalhe as IngresseAppProdutoDetalhe } from '../produtos/ingresse-app/ingressos/pages/ProdutoDetalhe';
 import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingresse-app/ingressos/pages/TransferirIngresso';
+import { TransferirDependente as IngresseAppTransferirDependente } from '../produtos/ingresse-app/ingressos/pages/TransferirDependente';
 import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pages/Perfil';
 import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
 import { MeusIngressosWeb } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressosWeb';
@@ -115,6 +120,11 @@ import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/Sol
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
 import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
 import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
+import { PreVenda } from '../produtos/backstage/marketing/pages/PreVenda';
+import { DistribuicaoCortesias } from '../produtos/freepass/distribuicao-cortesias/pages/distribuicao-cortesias';
+import { CortesiasDoEvento } from '../produtos/freepass/distribuicao-cortesias/pages/cortesias-do-evento';
+import { DetalhesCortesia } from '../produtos/freepass/distribuicao-cortesias/pages/detalhes-cortesia';
+import { EnviarCortesiasFlow, ResgatarCortesiasFlow } from '../produtos/freepass/distribuicao-cortesias/pages/distribuir-cortesias';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -144,7 +154,11 @@ export default function App() {
       <PesquisasProvider>
       <Routes>
         <Route path="/" element={<ProductSelection />} />
+        <Route path="/loading" element={<CymaticsShowcase />} />
         <Route path="/backstage" element={<RelatorioPedidos />} />
+        <Route path="/backstage/home" element={<BackstageHome />} />
+        <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
+        <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
         <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
         <Route path="/backstage/permissao-envio" element={<PermissaoEnvio />} />
         <Route path="/backstage/permissao-envio/nova" element={<NovaPermissao />} />
@@ -163,6 +177,7 @@ export default function App() {
         <Route path="/backstage/relatorios/comparativos" element={<Comparativos />} />
         <Route path="/backstage/relatorios/questionarios" element={<Questionarios />} />
         <Route path="/backstage/relatorios/comissarios" element={<Comissarios />} />
+        <Route path="/backstage/relatorios/relatorio-personalizado" element={<RelatorioPersonalizado />} />
         <Route path="/backstage/marketing/chave-de-acesso" element={<ChaveDeAcesso />} />
         <Route path="/backstage/marketing/chave-de-acesso/vincular-itens" element={<VincularItens />} />
         <Route path="/backstage/marketing/chave-de-acesso/lista" element={<ListaChaves />} />
@@ -238,6 +253,7 @@ export default function App() {
         <Route path="/ingresse-app/ingressos/combo/:eventId/:comboId" element={<IngresseAppComboDetalhe />} />
         <Route path="/ingresse-app/ingressos/produto/:eventId/:itemId" element={<IngresseAppProdutoDetalhe />} />
         <Route path="/ingresse-app/ingressos/transferir/:eventId/:id" element={<IngresseAppTransferir />} />
+        <Route path="/ingresse-app/ingressos/transferir-dependente/:eventId/:id" element={<IngresseAppTransferirDependente />} />
         <Route path="/ingresse-app/perfil" element={<IngresseAppPerfil />} />
         <Route path="/testes" element={<UsabilidadeGate><TestesPainel /></UsabilidadeGate>} />
         <Route path="/testes/novo" element={<UsabilidadeGate><EditorTeste /></UsabilidadeGate>} />
@@ -254,6 +270,12 @@ export default function App() {
         <Route path="/backstage/publico" element={<Publico />} />
         <Route path="/backstage/publico/formularios" element={<FormulariosParticipacao />} />
         <Route path="/backstage/publico/solicitacoes" element={<SolicitacoesParticipacao />} />
+        <Route path="/backstage/marketing/pre-venda" element={<PreVenda />} />
+        <Route path="/freepass/distribuicao-cortesias" element={<DistribuicaoCortesias />} />
+        <Route path="/freepass/distribuicao-cortesias/:eventoId" element={<CortesiasDoEvento />} />
+        <Route path="/freepass/distribuicao-cortesias/:eventoId/enviar" element={<EnviarCortesiasFlow />} />
+        <Route path="/freepass/distribuicao-cortesias/:eventoId/resgatar" element={<ResgatarCortesiasFlow />} />
+        <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </PesquisasProvider>

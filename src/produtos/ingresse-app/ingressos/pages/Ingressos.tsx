@@ -11,7 +11,7 @@ import { BottomSheet } from "../../components/BottomSheet";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { getEvento, type Combo, type EventoDetalhe, type ItemIngresso } from "../data/eventos";
-import { isTransferido } from "../data/transfer-store";
+import { getDependenteAtribuido, isTransferido } from "../data/transfer-store";
 import googleMapsLogo from "../assets/google-maps.png";
 import appleMapsLogo from "../assets/apple-maps.png";
 import wazeLogo from "../assets/waze.png";
@@ -420,6 +420,7 @@ const ComboCardContent = ({ combo, evento }: { combo: Combo; evento: EventoDetal
 const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
     const Icon = item.acesso === "facial" ? FaceIdSquare : QrCode02;
     const transf = isTransferido(item.id);
+    const dep = getDependenteAtribuido(item.id);
 
     // Item de produto/merchandising (ex.: camiseta) — visual diferente do ingresso.
     if (item.produto) {
@@ -470,7 +471,7 @@ const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
                 </div>
                 <p className="flex items-center gap-1.5 text-sm text-secondary">
                     <User01 className="size-4 shrink-0 text-fg-quaternary" />
-                    <span>{item.portador}</span>
+                    <span>{dep ? dep.nome : item.portador}</span>
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
                     {transf ? (
@@ -484,6 +485,11 @@ const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
                     ) : (
                         <Badge size="md" color="success" type="pill-color">
                             Pronto para uso
+                        </Badge>
+                    )}
+                    {dep && (
+                        <Badge size="md" color="gray" type="pill-color">
+                            Dependente
                         </Badge>
                     )}
                 </div>

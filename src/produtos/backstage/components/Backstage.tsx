@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import type { Key } from "react-aria-components";
 import {
@@ -10,7 +10,10 @@ import {
     Eye,
     File03,
     Globe01,
+    ImageUser,
     InfoCircle,
+    LayoutLeft,
+    LayoutTop,
     LogOut01,
     Menu02,
     Package,
@@ -23,18 +26,28 @@ import {
 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Badge } from "@/components/base/badges/badges";
+import { NavButton } from "@/components/application/app-navigation/base-components/nav-button";
 import { TreeView } from "@/components/application/tree-view/tree-view";
 import { cx } from "@/utils/cx";
 import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
-const eventCover = "https://ticket-backend-prod.imgix.net/media/event/a871f5c2-ebfb-4fc4-a98c-8adfee4bfcc0/ac61f9f8-02f4-4422-94a4-ad67a56f925d.jpeg?h=440&w=330&fit=crop";
+const eventCover = "https://casadeapostasarenadasdunas.com.br/wp-content/uploads/2026/05/AMERICAXLAGUNA.png";
 
-const BrandLogo = ({ className }: { className?: string }) => (
-    <>
-        <img src={LogoBlack} alt="Ingresse" className={cx("block dark:hidden", className)} />
-        <img src={LogoWhite} alt="Ingresse" className={cx("hidden dark:block", className)} />
-    </>
-);
+/** Logo da Ingresse — clicável, leva para a home do Backstage. */
+const BrandLogo = ({ className }: { className?: string }) => {
+    const navigate = useNavigate();
+    return (
+        <button
+            type="button"
+            onClick={() => navigate("/backstage/home")}
+            aria-label="Ir para a home do Backstage"
+            className="flex shrink-0 items-center rounded-md transition-opacity duration-100 ease-linear hover:opacity-80"
+        >
+            <img src={LogoBlack} alt="Ingresse" className={cx("block dark:hidden", className)} />
+            <img src={LogoWhite} alt="Ingresse" className={cx("hidden dark:block", className)} />
+        </button>
+    );
+};
 import { ThemeToggle } from "./ThemeToggle";
 
 export type BackstageSection =
@@ -59,7 +72,7 @@ export type BackstageItem =
     | "bordero"
     | "transferencias"
     | "comparativos"
-    | "comissarios"
+    | "relatorio-personalizado"
     | "relatorio-questionarios"
     | "chave-de-acesso"
     | "formularios-compra";
@@ -72,7 +85,34 @@ interface BackstageLayoutProps {
     activeProducer?: string;
     /** Mostra o contexto do evento (card + funcionalidades). Default: true. */
     showEventContext?: boolean;
+    /** Mostra o switch flutuante de variante de layout (clássico/topbar). Default: true. */
+    showLayoutSwitcher?: boolean;
     children: ReactNode;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Variante de layout — alterna entre a shell clássica (rails         */
+/*  laterais) e a nova (barra da organização no topo). Persistida em   */
+/*  localStorage para sobreviver à navegação entre páginas.            */
+/* ------------------------------------------------------------------ */
+
+type LayoutVariant = "classic" | "topbar";
+const LAYOUT_STORAGE_KEY = "backstage-layout-variant";
+
+function useLayoutVariant(): [LayoutVariant, (v: LayoutVariant) => void] {
+    const [variant, setVariant] = useState<LayoutVariant>(() => {
+        if (typeof window === "undefined") return "classic";
+        return window.localStorage.getItem(LAYOUT_STORAGE_KEY) === "topbar" ? "topbar" : "classic";
+    });
+    const update = useCallback((v: LayoutVariant) => {
+        setVariant(v);
+        try {
+            window.localStorage.setItem(LAYOUT_STORAGE_KEY, v);
+        } catch {
+            /* ignora ambientes sem storage */
+        }
+    }, []);
+    return [variant, update];
 }
 
 export function BackstageLayout({
@@ -80,9 +120,11 @@ export function BackstageLayout({
     activeItem,
     activeProducer,
     showEventContext = true,
+    showLayoutSwitcher = true,
     children,
 }: BackstageLayoutProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [variant, setVariant] = useLayoutVariant();
 
     useEffect(() => {
         if (!isMobileMenuOpen) return;
@@ -98,30 +140,85 @@ export function BackstageLayout({
         };
     }, [isMobileMenuOpen]);
 
+    const mobileChrome = (
+        <>
+            <MobileTopBar onOpenMenu={() => setIsMobileMenuOpen(true)} />
+            <MobileDrawer isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+        </>
+    );
+
+    const mobileContext = showEventContext && (
+        <div className="flex flex-col gap-3 md:hidden">
+            <MobileEventCard />
+            <MobileSectionSelector activeSection={activeSection} activeItem={activeItem} />
+        </div>
+    );
+
+    if (variant === "topbar") {
+        return (
+            <div
+                className="min-h-screen bg-secondary dark:bg-[#0a0a0a]"
+                style={{ "--bs-header-offset": "64px" } as CSSProperties}
+            >
+                {mobileChrome}
+                <OrgTopBar activeProducer={activeProducer} />
+                <div className="flex flex-col gap-3 px-3 py-3 md:flex-row md:gap-6 md:px-6 md:py-6">
+                    {mobileContext}
+                    {showEventContext && <EventRailTop activeSection={activeSection} activeItem={activeItem} />}
+                    <main className="flex min-w-0 flex-1 flex-col">
+                        <div className="mx-auto flex w-full max-w-[1088px] flex-1 flex-col">{children}</div>
+                    </main>
+                </div>
+                {showLayoutSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-secondary dark:bg-[#0a0a0a]">
-            <MobileTopBar onOpenMenu={() => setIsMobileMenuOpen(true)} />
-            <MobileDrawer
-                isOpen={isMobileMenuOpen}
-                onClose={() => setIsMobileMenuOpen(false)}
-            />
+            {mobileChrome}
             <div className="flex min-h-screen flex-col gap-3 px-3 py-3 md:flex-row md:py-6">
-                {showEventContext && (
-                    <div className="flex flex-col gap-3 md:hidden">
-                        <MobileEventCard />
-                        <MobileSectionSelector
-                            activeSection={activeSection}
-                            activeItem={activeItem}
-                        />
-                    </div>
-                )}
+                {mobileContext}
                 <ProducerRail activeProducer={activeProducer} />
                 {showEventContext && <EventRail activeSection={activeSection} activeItem={activeItem} />}
                 {children}
             </div>
+            {showLayoutSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
         </div>
     );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Switch flutuante para alternar entre as duas shells.               */
+/* ------------------------------------------------------------------ */
+
+const LAYOUT_OPTIONS = [
+    { id: "classic", icon: LayoutLeft, label: "Clássico" },
+    { id: "topbar", icon: LayoutTop, label: "Novo" },
+] as const;
+
+const LayoutSwitcher = ({ variant, onChange }: { variant: LayoutVariant; onChange: (v: LayoutVariant) => void }) => (
+    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-1 rounded-full bg-primary p-1 shadow-lg ring-1 ring-border-secondary">
+        {LAYOUT_OPTIONS.map((opt) => {
+            const active = variant === opt.id;
+            return (
+                <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => onChange(opt.id)}
+                    aria-pressed={active}
+                    className={cx(
+                        "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear",
+                        active ? "bg-secondary text-primary ring-1 ring-border-secondary" : "text-tertiary hover:text-secondary_hover",
+                    )}
+                >
+                    <opt.icon className="size-4" aria-hidden="true" />
+                    {opt.label}
+                </button>
+            );
+        })}
+    </div>
+);
 
 /* ------------------------------------------------------------------ */
 /*  Mobile top bar + drawer                                           */
@@ -145,7 +242,7 @@ const MobileEventCard = () => (
     <div className="flex items-start gap-3 rounded-xl bg-secondary p-3">
         <img
             src={eventCover}
-            alt="Visão completa"
+            alt="América x Laguna (5 a 0)"
             className="size-16 shrink-0 rounded-lg object-cover"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -156,7 +253,7 @@ const MobileEventCard = () => (
                 </Badge>
             </div>
             <p className="text-sm font-semibold leading-snug text-primary line-clamp-2">
-                Visão completa
+                América x Laguna (5 a 0)
             </p>
         </div>
     </div>
@@ -185,7 +282,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     bordero: "Borderô",
     transferencias: "Transferências",
     comparativos: "Comparativos",
-    comissarios: "Comissários",
+    "relatorio-personalizado": "Relatório personalizado",
     "relatorio-questionarios": "Questionários",
     "chave-de-acesso": "Chave de acesso",
     "formularios-compra": "Perguntas por ingresso",
@@ -253,7 +350,7 @@ const PRODUCER_NAV: Array<{
     children?: Array<{ id: string; label: string }>;
 }> = [
     { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
-    { id: "permissao", icon: UsersPlus, label: "Permissão" },
+    { id: "permissao", icon: UsersPlus, label: "Permissão", href: "/backstage/permissao-envio" },
     { id: "produtos", icon: Package, label: "Produtos" },
     {
         id: "publico",
@@ -449,8 +546,7 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
             </div>
             <nav className="flex flex-col items-center gap-1">
                 <ProducerRailItem icon={Calendar} label="Eventos" href="/backstage/" isActive={activeProducer === "eventos" || !activeProducer} />
-                <ProducerRailItem icon={UsersPlus} label="Membros" href="/backstage/membros" isActive={activeProducer === "membros"} />
-                <ProducerRailItem icon={UsersPlus} label={"Membros\nv2"} href="/backstage/membros-v2" isActive={activeProducer === "membros-v2"} />
+                <ProducerRailItem icon={UsersPlus} label="Equipe" />
                 <ProducerRailItem icon={Bank} label="Finanças" />
                 <ProducerRailItem icon={Users01} label="Público" href="/backstage/publico" isActive={activeProducer === "publico"} />
                 <ProducerRailItem icon={Settings01} label="Ajustes" />
@@ -465,8 +561,80 @@ interface EventRailProps {
     activeItem?: BackstageItem;
 }
 
+/** Scrollbar suave (fino, track transparente, thumb em cor de borda) — evita
+ *  o contraste alto do scrollbar global dentro do card branco do menu. */
+const SOFT_SCROLLBAR =
+    "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--color-border-secondary)] hover:[&::-webkit-scrollbar-thumb]:bg-[var(--color-border-primary)]";
+
 const EventRail = ({ activeSection, activeItem }: EventRailProps) => (
-    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex">
+    <aside className={cx("sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex", SOFT_SCROLLBAR)}>
+        <EventDetailsCard />
+        <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
+    </aside>
+);
+
+/* ------------------------------------------------------------------ */
+/*  Nova shell — barra horizontal da organização no topo.              */
+/* ------------------------------------------------------------------ */
+
+const ORG_NAV: Array<{ id: string; icon: ComponentType<{ className?: string }>; label: string; href?: string }> = [
+    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
+    { id: "equipe", icon: UsersPlus, label: "Equipe" },
+    { id: "financas", icon: Bank, label: "Finanças" },
+    { id: "publico", icon: Users01, label: "Público" },
+    { id: "ajustes", icon: Settings01, label: "Ajustes" },
+];
+
+const OrgTopBar = ({ activeProducer }: { activeProducer?: string }) => {
+    const navigate = useNavigate();
+    return (
+        <header className="sticky top-0 z-30 hidden border-b border-secondary bg-primary md:block">
+            <div className="flex h-16 items-center gap-3 px-4 md:px-6">
+                <BrandLogo className="h-6 shrink-0" />
+                <span className="h-6 w-px shrink-0 bg-border-secondary" aria-hidden="true" />
+                <nav className="flex items-center gap-0.5">
+                    {ORG_NAV.map((item) => {
+                        const current = activeProducer === item.id || (item.id === "eventos" && !activeProducer);
+                        return (
+                            <NavButton
+                                key={item.id}
+                                icon={item.icon}
+                                current={current}
+                                href={item.href ?? "#"}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    if (item.href) navigate(item.href);
+                                }}
+                                tooltipPlacement="bottom"
+                                className="text-tertiary"
+                            >
+                                {item.label}
+                            </NavButton>
+                        );
+                    })}
+                </nav>
+                <div className="ml-auto flex items-center gap-3">
+                    <ThemeToggle />
+                    <span className="h-6 w-px shrink-0 bg-border-secondary" aria-hidden="true" />
+                    <button
+                        type="button"
+                        className="flex shrink-0 items-center gap-2 rounded-full bg-secondary py-1.5 pr-2.5 pl-1.5 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary_hover"
+                    >
+                        <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-secondary-solid text-[10px] font-bold text-white">
+                            eng
+                        </span>
+                        <span className="text-sm font-semibold text-primary">Ingresse</span>
+                        <ChevronDown className="size-4 text-fg-quaternary" />
+                    </button>
+                </div>
+            </div>
+        </header>
+    );
+};
+
+/** Menu do evento à esquerda na nova shell (offset abaixo da barra do topo). */
+const EventRailTop = ({ activeSection, activeItem }: EventRailProps) => (
+    <aside className={cx("sticky top-22 hidden h-[calc(100vh-7rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex", SOFT_SCROLLBAR)}>
         <EventDetailsCard />
         <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
     </aside>
@@ -477,7 +645,7 @@ const EventDetailsCard = () => (
         <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-secondary">
             <img
                 src={eventCover}
-                alt="Visão completa"
+                alt="América x Laguna (5 a 0)"
                 className="size-full object-cover"
             />
             <span className="absolute top-3 left-3 rounded-xl bg-white/50 px-3 py-1 text-[12px] font-medium tracking-wide text-primary uppercase backdrop-blur-md">
@@ -491,7 +659,7 @@ const EventDetailsCard = () => (
         </div>
         <div className="flex flex-col gap-0.5 px-1">
             <span className="text-xs text-tertiary">ID: 1234</span>
-            <h3 className="text-md font-bold text-primary">Visão completa</h3>
+            <h3 className="text-md font-bold text-primary">América x Laguna (5 a 0)</h3>
             <p className="text-sm text-tertiary">Ingresse</p>
         </div>
         <div className="flex items-center gap-2 px-1">
@@ -540,6 +708,15 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
         >
             <TreeView.Item id="informacoes-evento" textValue="Informações do evento">
                 <TreeView.ItemContent icon={InfoCircle}>Informações do evento</TreeView.ItemContent>
+            </TreeView.Item>
+
+            <TreeView.Item id="equipe-e-permissoes" textValue="Equipe e Permissões" href="/backstage/equipe-e-permissoes">
+                <TreeView.ItemContent
+                    icon={ImageUser}
+                    className={activeSection === "equipe-e-permissoes" ? ACTIVE_CLASS : undefined}
+                >
+                    Equipe e Permissões
+                </TreeView.ItemContent>
             </TreeView.Item>
 
             <TreeView.Item id="itens" textValue="Itens">
@@ -609,20 +786,20 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                         Comparativos
                     </TreeView.ItemContent>
                 </TreeView.Item>
-                <TreeView.Item id="comissarios" textValue="Comissários" href="/backstage/relatorios/comissarios">
+                <TreeView.Item id="relatorio-questionarios" textValue="Questionários" href="/backstage/relatorios/questionarios">
+                    <TreeView.ItemContent className={itemClass("relatorio-questionarios")}>Questionários</TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="relatorio-personalizado" textValue="Relatório personalizado" href="/backstage/relatorios/relatorio-personalizado">
                     <TreeView.ItemContent
-                        className={itemClass("comissarios")}
+                        className={itemClass("relatorio-personalizado")}
                         action={
-                            <Badge size="sm" type="pill-color" color="error">
-                                Novo
+                            <Badge size="sm" type="pill-color" color="brand">
+                                IA
                             </Badge>
                         }
                     >
-                        Comissários
+                        Relatório personalizado
                     </TreeView.ItemContent>
-                </TreeView.Item>
-                <TreeView.Item id="relatorio-questionarios" textValue="Questionários" href="/backstage/relatorios/questionarios">
-                    <TreeView.ItemContent className={itemClass("relatorio-questionarios")}>Questionários</TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>
 

@@ -147,7 +147,7 @@ export function SolicitacoesParticipacao() {
 
     if (carregandoFormulario) {
         return (
-            <BackstageLayout showEventContext={false} activeProducer="publico">
+            <BackstageLayout showEventContext={false} showLayoutSwitcher={false} activeProducer="publico">
                 <div className="flex min-w-0 flex-1 items-center justify-center overflow-hidden rounded-xl ring-1 ring-border-secondary md:mx-3 md:h-[calc(100dvh-3rem)]">
                     <div
                         className="size-8 animate-spin rounded-full border-2 border-secondary border-t-fg-brand-primary"
@@ -160,7 +160,7 @@ export function SolicitacoesParticipacao() {
     }
 
     return (
-        <BackstageLayout showEventContext={false} activeProducer="publico">
+        <BackstageLayout showEventContext={false} showLayoutSwitcher={false} activeProducer="publico">
             <div className="flex min-w-0 flex-1 overflow-hidden rounded-xl ring-1 ring-border-secondary md:mx-3 md:h-[calc(100dvh-3rem)]">
                 {/* Lista */}
                 <aside className="flex h-full w-full max-w-[420px] shrink-0 flex-col border-r border-secondary bg-primary">

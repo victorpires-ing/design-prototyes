@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowDown, ArrowLeft, ChevronRight, InfoCircle, XClose } from "@untitledui/icons";
+import { ArrowDown, ArrowLeft, ChevronRight, InfoCircle, UserPlus01, XClose } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { AppShell } from "../../components/AppShell";
@@ -8,21 +8,16 @@ import { BottomSheet } from "../../components/BottomSheet";
 import { StatusBar } from "../../components/StatusBar";
 import { getEvento, getItem } from "../data/eventos";
 import { atribuirDependente } from "../data/transfer-store";
-
-/** Dependentes vinculados à conta (mock). */
-type Dependente = { id: string; nome: string; cpf: string; email: string; iniciais: string };
-
-const DEPENDENTES: Dependente[] = [
-    { id: "d1", nome: "Mariana Costa Lima", cpf: "943.039.930-00", email: "maria.costa@gmail.com", iniciais: "MC" },
-    { id: "d2", nome: "Camilla Queiroz", cpf: "943.039.930-00", email: "camilla.queiroz@gmail.com", iniciais: "CQ" },
-    { id: "d3", nome: "Eduardo Carlos", cpf: "943.039.930-32", email: "eduardo.carlos@gmail.com", iniciais: "EC" },
-];
+import { getDependentes, type Dependente } from "../data/dependentes-store";
 
 const maskEmail = (e: string) => {
     const [local, domain] = e.split("@");
     if (!domain || local.length < 4) return e;
     return `${local.slice(0, 1)}*****${local.slice(-3)}@${domain}`;
 };
+
+/** Contato exibido do dependente: e-mail mascarado ou CPF. */
+const contatoDep = (d: Dependente) => (d.email ? maskEmail(d.email) : `CPF: ${d.cpf}`);
 
 export function TransferirDependente() {
     const navigate = useNavigate();
@@ -109,7 +104,7 @@ export function TransferirDependente() {
                         <p className="mt-1 text-sm text-tertiary">Selecione uma pessoa vinculada à sua conta para receber o ingresso.</p>
 
                         <div className="mt-4 flex flex-col gap-1 border-t border-tertiary pt-2">
-                            {DEPENDENTES.map((dep) => (
+                            {getDependentes().map((dep) => (
                                 <button
                                     key={dep.id}
                                     type="button"
@@ -125,6 +120,18 @@ export function TransferirDependente() {
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    {/* CTA: cadastrar dependente (fora do card, terciário) */}
+                    <div className="mt-5 flex justify-center">
+                        <Button
+                            size="lg"
+                            color="tertiary"
+                            iconLeading={UserPlus01}
+                            onClick={() => navigate(`/ingresse-app/ingressos/cadastrar-dependente/${evento.id}/${id}`)}
+                        >
+                            Cadastrar dependente
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -152,7 +159,7 @@ export function TransferirDependente() {
                         <Avatar size="md" initials={selecionado.iniciais} alt={selecionado.nome} />
                         <div className="min-w-0 flex-1">
                             <p className="text-sm font-bold text-primary">{selecionado.nome}</p>
-                            <p className="truncate text-sm text-tertiary">{maskEmail(selecionado.email)}</p>
+                            <p className="truncate text-sm text-tertiary">{contatoDep(selecionado)}</p>
                         </div>
                     </div>
                 )}
@@ -188,7 +195,7 @@ export function TransferirDependente() {
                         <Avatar size="md" initials={selecionado.iniciais} alt={selecionado.nome} />
                         <div className="min-w-0 flex-1">
                             <p className="text-sm font-bold text-primary">{selecionado.nome}</p>
-                            <p className="truncate text-sm text-tertiary">{maskEmail(selecionado.email)}</p>
+                            <p className="truncate text-sm text-tertiary">{contatoDep(selecionado)}</p>
                         </div>
                     </div>
                 )}

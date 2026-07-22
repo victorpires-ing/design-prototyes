@@ -59,6 +59,7 @@ import { ComboDetalhe as IngresseAppComboDetalhe } from '../produtos/ingresse-ap
 import { ProdutoDetalhe as IngresseAppProdutoDetalhe } from '../produtos/ingresse-app/ingressos/pages/ProdutoDetalhe';
 import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingresse-app/ingressos/pages/TransferirIngresso';
 import { TransferirDependente as IngresseAppTransferirDependente } from '../produtos/ingresse-app/ingressos/pages/TransferirDependente';
+import { CadastrarDependente as IngresseAppCadastrarDependente } from '../produtos/ingresse-app/ingressos/pages/CadastrarDependente';
 import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pages/Perfil';
 import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
 import { MeusIngressosWeb } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressosWeb';
@@ -256,6 +257,7 @@ export default function App() {
         <Route path="/ingresse-app/ingressos/produto/:eventId/:itemId" element={<IngresseAppProdutoDetalhe />} />
         <Route path="/ingresse-app/ingressos/transferir/:eventId/:id" element={<IngresseAppTransferir />} />
         <Route path="/ingresse-app/ingressos/transferir-dependente/:eventId/:id" element={<IngresseAppTransferirDependente />} />
+        <Route path="/ingresse-app/ingressos/cadastrar-dependente/:eventId/:id" element={<IngresseAppCadastrarDependente />} />
         <Route path="/ingresse-app/perfil" element={<IngresseAppPerfil />} />
         <Route path="/testes" element={<UsabilidadeGate><TestesPainel /></UsabilidadeGate>} />
         <Route path="/testes/novo" element={<UsabilidadeGate><EditorTeste /></UsabilidadeGate>} />

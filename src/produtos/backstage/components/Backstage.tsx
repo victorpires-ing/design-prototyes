@@ -65,6 +65,7 @@ export type BackstageItem =
     | "catalogo-ingressos"
     | "catalogo-combos"
     | "catalogo-produtos"
+    | "catalogo-aberturas"
     | "emissao-cortesias"
     | "vendas-por-grupo"
     | "transacoes"
@@ -275,6 +276,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     "catalogo-ingressos": "Ingressos",
     "catalogo-combos": "Combos",
     "catalogo-produtos": "Produtos",
+    "catalogo-aberturas": "Aberturas de vendas",
     "emissao-cortesias": "Emissão de cortesias",
     "vendas-por-grupo": "Vendas",
     transacoes: "Transações",
@@ -728,30 +730,15 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                     <TreeView.ItemContent className={itemClass("catalogo-combos")}>Combos</TreeView.ItemContent>
                 </TreeView.Item>
                 <TreeView.Item id="catalogo-produtos" textValue="Produtos">
-                    <TreeView.ItemContent
-                        className={itemClass("catalogo-produtos")}
-                        action={
-                            <Badge size="sm" type="pill-color" color="error">
-                                Novo
-                            </Badge>
-                        }
-                    >
-                        Produtos
-                    </TreeView.ItemContent>
+                    <TreeView.ItemContent className={itemClass("catalogo-produtos")}>Produtos</TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="catalogo-aberturas" textValue="Aberturas de vendas" href="/backstage/catalogo/aberturas-de-vendas">
+                    <TreeView.ItemContent className={itemClass("catalogo-aberturas")}>Aberturas de vendas</TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>
 
             <TreeView.Item id="cortesias" textValue="Cortesias">
-                <TreeView.ItemContent
-                    icon={Ticket01}
-                    action={
-                        <Badge size="sm" type="pill-color" color="error">
-                            Novo
-                        </Badge>
-                    }
-                >
-                    Cortesias
-                </TreeView.ItemContent>
+                <TreeView.ItemContent icon={Ticket01}>Cortesias</TreeView.ItemContent>
                 <TreeView.Item id="emissao-cortesias" textValue="Emissão de cortesias" href="/backstage/cortesias">
                     <TreeView.ItemContent className={itemClass("emissao-cortesias")}>Emissão de cortesias</TreeView.ItemContent>
                 </TreeView.Item>
@@ -775,16 +762,7 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                     <TreeView.ItemContent className={itemClass("transferencias")}>Transferências</TreeView.ItemContent>
                 </TreeView.Item>
                 <TreeView.Item id="comparativos" textValue="Comparativos" href="/backstage/relatorios/comparativos">
-                    <TreeView.ItemContent
-                        className={itemClass("comparativos")}
-                        action={
-                            <Badge size="sm" type="pill-color" color="error">
-                                Novo
-                            </Badge>
-                        }
-                    >
-                        Comparativos
-                    </TreeView.ItemContent>
+                    <TreeView.ItemContent className={itemClass("comparativos")}>Comparativos</TreeView.ItemContent>
                 </TreeView.Item>
                 <TreeView.Item id="relatorio-questionarios" textValue="Questionários" href="/backstage/relatorios/questionarios">
                     <TreeView.ItemContent className={itemClass("relatorio-questionarios")}>Questionários</TreeView.ItemContent>

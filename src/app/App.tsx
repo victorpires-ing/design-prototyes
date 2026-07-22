@@ -40,6 +40,8 @@ import { Busca as NovoSiteBusca } from '../produtos/novo-site/home/pages/busca';
 import { Itens as CatalogoItens } from '../produtos/backstage/catalogo/pages/Itens';
 import { Ingressos as CatalogoIngressos } from '../produtos/backstage/ingressos/pages/Ingressos';
 import { Formulario as IngressosFormulario } from '../produtos/backstage/ingressos/pages/Formulario';
+import { EditarGrupos } from '../produtos/backstage/ingressos/pages/EditarGrupos';
+import { AberturasDeVendas } from '../produtos/backstage/aberturas-de-vendas/pages/AberturasDeVendas';
 import { PerguntasProvider } from '../produtos/backstage/perguntas/data/perguntas-store';
 import { Perguntas } from '../produtos/backstage/perguntas/pages/Perguntas';
 import { PerguntaForm } from '../produtos/backstage/perguntas/pages/PerguntaForm';
@@ -182,6 +184,8 @@ export default function App() {
         <Route path="/backstage/catalogo/itens" element={<CatalogoItens />} />
         <Route path="/backstage/catalogo/ingressos" element={<CatalogoIngressos />} />
         <Route path="/backstage/catalogo/ingressos/formulario" element={<IngressosFormulario />} />
+        <Route path="/backstage/catalogo/ingressos/editar-grupos" element={<EditarGrupos />} />
+        <Route path="/backstage/catalogo/aberturas-de-vendas" element={<AberturasDeVendas />} />
         <Route path="/backstage/perguntas" element={<Perguntas />} />
         <Route path="/backstage/perguntas/nova" element={<PerguntaForm />} />
         <Route path="/backstage/perguntas/:id/editar" element={<PerguntaForm />} />

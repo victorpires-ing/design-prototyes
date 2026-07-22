@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
 import type { FC } from "react";
-import { Calendar, ChevronDown, ChevronRight, Edit01, Key01, Plus, QrCode01, Trash01, XClose, Zap } from "@untitledui/icons";
+import { useNavigate } from "react-router";
+import { Calendar, ChevronDown, ChevronRight, Copy01, Edit01, Key01, Plus, QrCode01, Trash01, XClose, Zap } from "@untitledui/icons";
 import { AnimatePresence, Reorder, motion, useDragControls } from "motion/react";
 import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
@@ -27,20 +29,12 @@ const COL = {
     virada: "w-40",
     preco: "w-28",
     emissoes: "w-40",
-    acoes: "w-24",
+    acoes: "w-36",
 };
 
-/** Ícone de ação (editar / vincular / excluir) exibido na coluna Ações. */
-function ActionIcon({ icon: Icon, label }: { icon: FC<{ className?: string }>; label: string }) {
-    return (
-        <button
-            type="button"
-            aria-label={label}
-            className="flex size-7 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-secondary"
-        >
-            <Icon className="size-4" />
-        </button>
-    );
+/** Ícone de ação com tooltip (editar / duplicar / vincular / excluir) na coluna Ações. */
+function ActionIcon({ icon, label, onClick }: { icon: FC<{ className?: string }>; label: string; onClick?: () => void }) {
+    return <ButtonUtility size="xs" color="tertiary" icon={icon} tooltip={label} tooltipPlacement="top" onClick={onClick} />;
 }
 
 /** Contexto do que está sendo reordenado (para o modal de confirmação). */
@@ -81,6 +75,7 @@ const orderSig = (ss: Sessao[]) =>
 const clone = (ss: Sessao[]): Sessao[] => ss.map((s) => ({ ...s, grupos: s.grupos.map((g) => ({ ...g, ingressos: [...g.ingressos] })) }));
 
 export function Ingressos() {
+    const navigate = useNavigate();
     const [sessoes, setSessoes] = useState<Sessao[]>(SESSOES);
     const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set([SESSOES[0].grupos[0].id]));
     const [expanded, setExpanded] = useState<Set<string>>(() => new Set([SESSOES[0].grupos[0].ingressos[0].id]));
@@ -149,7 +144,7 @@ export function Ingressos() {
                         <Button size="md" color="secondary">
                             Ajustar abertura de vendas
                         </Button>
-                        <Button size="md" color="primary">
+                        <Button size="md" color="primary" onClick={() => navigate("/backstage/catalogo/ingressos/editar-grupos")}>
                             Editar grupos
                         </Button>
                     </div>
@@ -425,6 +420,7 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
                 </div>
                 <div className={cx("flex shrink-0 items-center justify-end gap-0.5", COL.acoes)}>
                     <ActionIcon icon={Edit01} label="Editar" />
+                    <ActionIcon icon={Copy01} label="Duplicar" />
                     <ActionIcon icon={Key01} label="Vincular códigos" />
                     <ActionIcon icon={Trash01} label="Excluir" />
                 </div>

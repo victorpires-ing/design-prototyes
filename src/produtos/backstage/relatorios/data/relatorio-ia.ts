@@ -222,7 +222,7 @@ function rotearParte(parte: string, datas: { hoje: string; ontem: string }): Cha
     if (has("borderô", "bordero", "repasse", "taxa retid")) return { feature: "bordero" };
     if (has("estat", "média", "media", "mediana", "desvio", "tend")) return { feature: "estatisticas_vendas", args: { metrica: ehItens ? "itens" : "valor" } };
     if (has("ranking", "top", "mais vend", "melhores grupo", "maiores grupo")) return { feature: "ranking_grupos", args: { metrica: has("receita", "faturamento", "valor") ? "valor" : "vendido" } };
-    if (has("por dia", "diá", "diario", "por data", "ao longo", "evolu", "linha do tempo")) return { feature: "serie_vendas", args: { metrica: ehItens ? "itens" : "valor" } };
+    if (has("por dia", "cada dia", "dia a dia", "por data", "diá", "diario", "ao longo", "evolu", "linha do tempo", "quando vend", "vendas diárias", "vendas diarias")) return { feature: "serie_vendas", args: { metrica: ehItens ? "itens" : "valor" } };
     if (has("mix", "receita por grupo", "composi", "combos", "produtos")) return { feature: "distribuicao", args: { dimensao: "mix" } };
     if (has("grupo", "setor")) return { feature: "distribuicao", args: { dimensao: "grupos" } };
     if (has("ticket")) return { feature: "metrica", args: { kpi: "ticketMedio" } };

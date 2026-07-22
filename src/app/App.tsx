@@ -22,7 +22,6 @@ import { Transacoes } from '../produtos/backstage/relatorios/pages/Transacoes';
 import { Transferencias } from '../produtos/backstage/relatorios/pages/Transferencias';
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
-import { Comparativos } from '../produtos/backstage/relatorios/pages/Comparativos';
 import { RelatorioPersonalizado } from '../produtos/backstage/relatorios/pages/RelatorioPersonalizado';
 import { Home as BackstageHome } from '../produtos/backstage/home/pages/Home';
 import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';

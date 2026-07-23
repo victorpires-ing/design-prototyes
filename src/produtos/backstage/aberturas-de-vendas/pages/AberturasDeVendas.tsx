@@ -78,7 +78,20 @@ export function AberturasDeVendas() {
     const seq = useRef(0);
     const nextId = (p: string) => `${p}-${(seq.current += 1)}`;
 
-    const [aberturas, setAberturas] = useState<Abertura[]>([]);
+    const [aberturas, setAberturas] = useState<Abertura[]>([
+        {
+            id: "ab-seed-1",
+            nome: "Primeira abertura",
+            periodo: "02 de jan. às 15:00 - 10 de jan. às 15:00",
+            configs: [{ id: "cfg-seed-1", venderPara: "", ingressos: "", canais: "Todos" }],
+        },
+        {
+            id: "ab-seed-2",
+            nome: "Venda antecipada",
+            periodo: "15 de jan. às 10:00 - 31 de jan. às 23:59",
+            configs: [{ id: "cfg-seed-2", venderPara: "", ingressos: "", canais: "Todos" }],
+        },
+    ]);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [confirm, setConfirm] = useState<{ tipo: "excluir" | "duplicar"; id: string } | null>(null);
@@ -206,19 +219,32 @@ export function AberturasDeVendas() {
 
                             {/* Lista de aberturas */}
                             <div className="flex flex-col gap-4">
-                                {aberturas.map((ab) => (
-                                    <AberturaCard
-                                        key={ab.id}
-                                        abertura={ab}
-                                        expanded={expandedId === ab.id}
-                                        onToggle={() => toggleExpand(ab.id)}
-                                        onRemover={() => setConfirm({ tipo: "excluir", id: ab.id })}
-                                        onDuplicar={() => setConfirm({ tipo: "duplicar", id: ab.id })}
-                                        onNovaConfig={() => novaConfig(ab.id)}
-                                        onRemoverConfig={(cfgId) => removerConfig(ab.id, cfgId)}
-                                        flash={flashId === ab.id}
-                                    />
-                                ))}
+                                <AnimatePresence initial={false}>
+                                    {aberturas.map((ab) => (
+                                        <motion.div
+                                            key={ab.id}
+                                            className="overflow-hidden"
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: "auto" }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            transition={{
+                                                height: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+                                                opacity: { duration: 0.45, ease: "easeOut" },
+                                            }}
+                                        >
+                                            <AberturaCard
+                                                abertura={ab}
+                                                expanded={expandedId === ab.id}
+                                                onToggle={() => toggleExpand(ab.id)}
+                                                onRemover={() => setConfirm({ tipo: "excluir", id: ab.id })}
+                                                onDuplicar={() => setConfirm({ tipo: "duplicar", id: ab.id })}
+                                                onNovaConfig={() => novaConfig(ab.id)}
+                                                onRemoverConfig={(cfgId) => removerConfig(ab.id, cfgId)}
+                                                flash={flashId === ab.id}
+                                            />
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
                             </div>
                         </div>
                     )}

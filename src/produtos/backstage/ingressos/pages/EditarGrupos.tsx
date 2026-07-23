@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { ChevronDown, ChevronLeft, Copy01, InfoCircle, Plus, Trash01, XClose } from "@untitledui/icons";
+import { AnimatePresence, motion } from "motion/react";
+import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
@@ -48,7 +50,11 @@ export function EditarGrupos() {
     const [sessoes, setSessoes] = useState<SessaoGrupos[]>(() =>
         SESSOES_DEF.map((s) => ({ ...s, grupos: GRUPOS_TPL.map((g) => ({ ...g, id: nid() })) })),
     );
-    const [confirmDup, setConfirmDup] = useState<string | null>(null);
+    const [confirm, setConfirm] = useState<{ tipo: "duplicar" | "remover"; id: string } | null>(null);
+    // Badge temporária "cópia de grupo" no grupo recém-duplicado.
+    const [flashId, setFlashId] = useState<string | null>(null);
+
+    const removerSessao = (sessaoId: string) => setSessoes((prev) => prev.filter((s) => s.id !== sessaoId));
 
     const addGrupo = (sessaoId: string) =>
         setSessoes((prev) =>
@@ -59,17 +65,23 @@ export function EditarGrupos() {
     const removeGrupo = (sessaoId: string, grupoId: string) =>
         setSessoes((prev) => prev.map((s) => (s.id === sessaoId ? { ...s, grupos: s.grupos.filter((g) => g.id !== grupoId) } : s)));
 
-    // Duplica a sessão (com todos os grupos) logo abaixo, com novos ids.
-    const duplicarSessao = (sessaoId: string) =>
+    // Duplica a sessão (com todos os grupos) logo abaixo, com novos ids + badge temporária.
+    const duplicarSessao = (sessaoId: string) => {
+        const orig = sessoes.find((s) => s.id === sessaoId);
+        if (!orig) return;
+        const copiaId = `s-${(seq.current += 1)}`;
+        const copia: SessaoGrupos = { ...orig, id: copiaId, grupos: orig.grupos.map((g) => ({ ...g, id: nid() })) };
         setSessoes((prev) => {
             const idx = prev.findIndex((s) => s.id === sessaoId);
             if (idx === -1) return prev;
-            const orig = prev[idx];
-            const copia: SessaoGrupos = { ...orig, id: `s-${(seq.current += 1)}`, grupos: orig.grupos.map((g) => ({ ...g, id: nid() })) };
             const next = [...prev];
             next.splice(idx + 1, 0, copia);
             return next;
         });
+        // Badge some (com fade) depois de 30s.
+        setFlashId(copiaId);
+        window.setTimeout(() => setFlashId((cur) => (cur === copiaId ? null : cur)), 30000);
+    };
 
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-ingressos">
@@ -94,20 +106,58 @@ export function EditarGrupos() {
 
                 {/* Sessões */}
                 <div className="mt-8 flex flex-col gap-6">
+                    <AnimatePresence initial={false}>
                     {sessoes.map((sessao) => (
-                        <section key={sessao.id} className="rounded-2xl bg-secondary p-4 ring-1 ring-border-secondary md:p-5">
+                        <motion.div
+                            key={sessao.id}
+                            className="overflow-hidden"
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{
+                                height: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+                                opacity: { duration: 0.45, ease: "easeOut" },
+                            }}
+                        >
+                        <section className="rounded-2xl bg-secondary p-4 ring-1 ring-border-secondary md:p-5">
                             <div className="flex items-start justify-between gap-3">
-                                <h2 className="text-lg font-semibold text-primary">
-                                    {sessao.label} <span className="font-normal text-tertiary">({sessao.dia})</span>
-                                </h2>
-                                <ButtonUtility
-                                    size="sm"
-                                    color="tertiary"
-                                    icon={Copy01}
-                                    tooltip="Duplicar grupo"
-                                    tooltipPlacement="bottom"
-                                    onClick={() => setConfirmDup(sessao.id)}
-                                />
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h2 className="text-lg font-semibold text-primary">
+                                        {sessao.label} <span className="font-normal text-tertiary">({sessao.dia})</span>
+                                    </h2>
+                                    <AnimatePresence>
+                                        {flashId === sessao.id && (
+                                            <motion.span
+                                                initial={{ opacity: 0, scale: 0.8, y: -4 }}
+                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.6, ease: "easeInOut" } }}
+                                                transition={{ type: "spring", stiffness: 420, damping: 22 }}
+                                            >
+                                                <Badge size="sm" color="blue" type="pill-color">
+                                                    cópia de grupo
+                                                </Badge>
+                                            </motion.span>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-2">
+                                    <ButtonUtility
+                                        size="sm"
+                                        color="tertiary"
+                                        icon={Copy01}
+                                        tooltip="Duplicar grupo"
+                                        tooltipPlacement="bottom"
+                                        onClick={() => setConfirm({ tipo: "duplicar", id: sessao.id })}
+                                    />
+                                    <ButtonUtility
+                                        size="sm"
+                                        color="tertiary"
+                                        icon={Trash01}
+                                        tooltip="Remover grupo"
+                                        tooltipPlacement="bottom"
+                                        onClick={() => setConfirm({ tipo: "remover", id: sessao.id })}
+                                    />
+                                </div>
                             </div>
 
                             <div className="mt-4 overflow-x-auto">
@@ -157,39 +207,48 @@ export function EditarGrupos() {
                                 </div>
                             </div>
                         </section>
+                        </motion.div>
                     ))}
+                    </AnimatePresence>
                 </div>
             </div>
 
-            {/* Modal de confirmação: duplicar grupo */}
-            {confirmDup && (
+            {/* Modal de confirmação: duplicar / remover grupo */}
+            {confirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/60 p-4" role="dialog" aria-modal="true">
                     <div className="w-full max-w-md rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex items-start justify-between gap-3">
-                            <h2 className="text-lg font-bold text-primary">Duplicar grupo</h2>
+                            <h2 className="text-lg font-bold text-primary">
+                                {confirm.tipo === "duplicar" ? "Duplicar grupo?" : "Remover grupo?"}
+                            </h2>
                             <button
                                 type="button"
                                 aria-label="Fechar"
-                                onClick={() => setConfirmDup(null)}
+                                onClick={() => setConfirm(null)}
                                 className="shrink-0 text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary"
                             >
                                 <XClose className="size-5" />
                             </button>
                         </div>
-                        <p className="mt-2 text-sm leading-relaxed text-tertiary">Deseja criar uma cópia deste grupo com os mesmos dados?</p>
+                        <p className="mt-2 text-sm leading-relaxed text-tertiary">
+                            {confirm.tipo === "duplicar"
+                                ? "Será criado um novo grupo com as mesmas configurações deste. Depois, você poderá revisar e ajustar o que for necessário."
+                                : "O grupo inteiro será removido. Esta ação não poderá ser desfeita."}
+                        </p>
                         <div className="mt-6 flex items-center justify-end gap-2">
-                            <Button size="lg" color="link-gray" onClick={() => setConfirmDup(null)}>
+                            <Button size="lg" color="link-gray" onClick={() => setConfirm(null)}>
                                 Cancelar
                             </Button>
                             <Button
                                 size="lg"
-                                color="primary"
+                                color={confirm.tipo === "duplicar" ? "primary" : "primary-destructive"}
                                 onClick={() => {
-                                    duplicarSessao(confirmDup);
-                                    setConfirmDup(null);
+                                    if (confirm.tipo === "duplicar") duplicarSessao(confirm.id);
+                                    else removerSessao(confirm.id);
+                                    setConfirm(null);
                                 }}
                             >
-                                Duplicar
+                                {confirm.tipo === "duplicar" ? "Duplicar grupo" : "Remover grupo"}
                             </Button>
                         </div>
                     </div>

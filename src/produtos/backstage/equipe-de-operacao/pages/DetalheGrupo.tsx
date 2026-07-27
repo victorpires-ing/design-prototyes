@@ -8,7 +8,7 @@ import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ITENS_POR_ID, rotuloItem } from "../data/equipe-data";
-import { useEquipe } from "../data/equipe-store";
+import { cotaTotal, useEquipe } from "../data/equipe-store";
 
 const iniciais = (nome: string) => nome.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "GR";
 
@@ -31,7 +31,7 @@ export function DetalheGrupo() {
         );
     }
 
-    const total = grupo.cota;
+    const total = cotaTotal(grupo);
     const pct = total ? Math.min(100, Math.round((grupo.emitidas / total) * 100)) : 0;
 
     return (
@@ -88,14 +88,29 @@ export function DetalheGrupo() {
                         </div>
                         <div className="mx-5 border-t border-secondary" />
                         <ul className="flex flex-col px-5">
-                            {grupo.itens.map((id) => {
-                                const item = ITENS_POR_ID[id];
+                            {grupo.itens.map((v, i) => {
+                                const item = ITENS_POR_ID[v.itemId];
+                                // Distribui o total emitido entre os itens (mock determinístico) para o modo compartilhado.
+                                const n = grupo.itens.length;
+                                const emitidosCompart = n ? Math.floor(grupo.emitidas / n) + (i < grupo.emitidas % n ? 1 : 0) : 0;
+                                const emitidasItem = grupo.modo === "individual" && v.cota ? Math.min(v.cota, Math.round(v.cota * (total ? grupo.emitidas / total : 0))) : 0;
+                                const pctItem = v.cota ? Math.round((emitidasItem / v.cota) * 100) : 0;
                                 return (
-                                    <li key={id} className="flex items-center gap-4 border-b border-secondary py-3 last:border-b-0">
+                                    <li key={v.itemId} className="flex items-center gap-4 border-b border-secondary py-3 last:border-b-0">
                                         <div className="flex min-w-0 flex-1 flex-col">
-                                            <span className="truncate text-sm font-medium text-primary">{item ? rotuloItem(item) : id}</span>
+                                            <span className="truncate text-sm font-medium text-primary">{item ? rotuloItem(item) : v.itemId}</span>
                                             <span className="truncate text-xs text-tertiary">{item?.grupo}</span>
                                         </div>
+                                        {grupo.modo === "individual" ? (
+                                            <div className="flex w-[88px] shrink-0 flex-col gap-1.5">
+                                                <span className="text-sm text-secondary tabular-nums"><span className="font-semibold text-primary">{emitidasItem}</span> de {v.cota}</span>
+                                                <div className="h-2 overflow-hidden rounded-full bg-quaternary">
+                                                    <div className={cx("h-full rounded-full", pctItem >= 100 ? "bg-error-solid" : "bg-brand-solid")} style={{ width: `${pctItem}%` }} />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <span className="shrink-0 text-sm text-secondary tabular-nums"><span className="font-semibold text-primary">{emitidosCompart}</span> emitidos</span>
+                                        )}
                                     </li>
                                 );
                             })}

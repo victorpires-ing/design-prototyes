@@ -7,20 +7,26 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { EVENTO_TEM_ITENS } from "./equipe-data";
 
-/** Como a cota única do grupo é distribuída. */
+/** Como a cota do grupo é definida. */
 export type CotaModo = "compartilhada" | "individual";
+
+/** Item liberado + sua cota (usada só no modo individual). */
+export interface ItemCota {
+    itemId: string;
+    cota: number;
+}
 
 export interface GrupoOperacao {
     id: string;
     nome: string;
     ativo: boolean;
-    /** compartilhada = saldo único dividido entre os operadores; individual = cada operador recebe esse saldo. */
+    /** compartilhada = cota única do grupo; individual = cota por item (por operador). */
     modo: CotaModo;
     operadores: string[]; // e-mails
-    /** Cota única do grupo — vale para qualquer item liberado. */
+    /** Cota única do grupo (modo compartilhada). */
     cota: number;
-    /** IDs dos itens liberados para o grupo. */
-    itens: string[];
+    /** Itens liberados. No modo individual, cada um tem sua cota. */
+    itens: ItemCota[];
     /** Cortesias já emitidas pelo grupo (mock). */
     emitidas: number;
 }
@@ -30,14 +36,20 @@ export interface NovoGrupo {
     modo: CotaModo;
     operadores: string[];
     cota: number;
-    itens: string[];
+    itens: ItemCota[];
 }
 
 // Começa vazio: o produtor cai no estado vazio e cria o primeiro grupo pelo fluxo.
 const SEED: GrupoOperacao[] = [];
 
-/** % de uso da cota (emitidas / cota). */
-export const usoDaCota = (g: GrupoOperacao) => (g.cota ? Math.min(100, Math.round((g.emitidas / g.cota) * 100)) : 0);
+/** Cota total do grupo: única (compartilhada) ou soma das cotas por item (individual). */
+export const cotaTotal = (g: GrupoOperacao) => (g.modo === "individual" ? g.itens.reduce((s, i) => s + i.cota, 0) : g.cota);
+
+/** % de uso da cota (emitidas / cota total). */
+export const usoDaCota = (g: GrupoOperacao) => {
+    const total = cotaTotal(g);
+    return total ? Math.min(100, Math.round((g.emitidas / total) * 100)) : 0;
+};
 
 interface EquipeContextValue {
     grupos: GrupoOperacao[];
@@ -66,6 +78,9 @@ export function EquipeProvider({ children }: { children: ReactNode }) {
     );
 
     const criarGrupo = useCallback((dados: NovoGrupo) => {
+        // Emissão mockada (~40% da cota) para que os fluxos de detalhe/edição já
+        // mostrem consumo por item; num cenário real começaria em 0.
+        const total = dados.modo === "individual" ? dados.itens.reduce((s, i) => s + i.cota, 0) : dados.cota;
         const novo: GrupoOperacao = {
             id: `g${Date.now()}`,
             nome: dados.nome.trim(),
@@ -74,7 +89,7 @@ export function EquipeProvider({ children }: { children: ReactNode }) {
             operadores: dados.operadores,
             cota: dados.cota,
             itens: dados.itens,
-            emitidas: 0,
+            emitidas: Math.round(total * 0.4),
         };
         setGrupos((prev) => [novo, ...prev]);
         return novo;

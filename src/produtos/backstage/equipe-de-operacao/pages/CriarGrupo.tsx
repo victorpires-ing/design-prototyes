@@ -10,7 +10,7 @@ import { WizardHeader } from "../components/WizardHeader";
 import { ItensCotasSelector } from "../components/ItensCotasSelector";
 import { OperadoresEditor, OperadoresList } from "../components/OperadoresEditor";
 import { COTA_MAXIMA, ITENS_POR_ID, SESSAO_DO_ITEM } from "../data/equipe-data";
-import { useEquipe, type CotaModo } from "../data/equipe-store";
+import { useEquipe, type CotaModo, type ItemCota } from "../data/equipe-store";
 import { toastSucesso } from "../utils/toast";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,12 +27,12 @@ export function CriarGrupo() {
     const [modo, setModo] = useState<CotaModo | null>(null);
 
     const [step, setStep] = useState(0);
-    const [itens, setItens] = useState<string[]>([]);
+    const [itens, setItens] = useState<ItemCota[]>([]);
     const [cota, setCota] = useState(0);
     const [operadores, setOperadores] = useState<string[]>([]);
     const [nome, setNome] = useState("");
 
-    const itensValidos = itens.length > 0 && cota <= COTA_MAXIMA;
+    const itensValidos = itens.length > 0 && (modo === "individual" ? itens.every((i) => i.cota <= COTA_MAXIMA) : cota <= COTA_MAXIMA);
     const operadoresValidos = operadores.length > 0 && operadores.every((e) => EMAIL_RE.test(e));
     const nomeUnico = nomeDisponivel(nome);
     const nomeValido = nome.trim().length > 0 && nome.trim().length <= NOME_MAX && nomeUnico;
@@ -88,7 +88,7 @@ export function CriarGrupo() {
                             <Progress.IconsWithText items={steps} type="number" size="sm" orientation="vertical" className="w-full md:hidden" />
 
                             <section className="w-full max-w-[1000px]">
-                                {step === 0 && <ItensCotasSelector itens={itens} onItens={setItens} cota={cota} onCota={setCota} />}
+                                {step === 0 && <ItensCotasSelector modo={modo ?? "compartilhada"} itens={itens} onItens={setItens} cota={cota} onCota={setCota} />}
                                 {step === 1 && (
                                     <div className="mx-auto max-w-[720px]">
                                         <OperadoresEditor value={operadores} onChange={setOperadores} />
@@ -141,7 +141,7 @@ interface RevisaoProps {
     nomeUnico: boolean;
     operadores: string[];
     onOperadores: (emails: string[]) => void;
-    itens: string[];
+    itens: ItemCota[];
     cota: number;
     modo: CotaModo;
 }
@@ -183,21 +183,28 @@ function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens, cot
                     <span className="text-sm text-tertiary">{modo === "individual" ? "Cota por operador" : "Cota compartilhada pelos operadores"}</span>
                 </div>
                 <div className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary dark:bg-[#0a0a0a]">
-                    <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-sm text-tertiary">Cota do grupo</span>
-                        <span className="text-lg font-bold text-primary tabular-nums">{cota.toLocaleString("pt-BR")}</span>
-                    </div>
-                    <div className="border-t border-secondary" />
+                    {modo !== "individual" && (
+                        <>
+                            <div className="flex items-baseline justify-between gap-2">
+                                <span className="text-sm text-tertiary">Cota do grupo</span>
+                                <span className="text-lg font-bold text-primary tabular-nums">{cota.toLocaleString("pt-BR")}</span>
+                            </div>
+                            <div className="border-t border-secondary" />
+                        </>
+                    )}
                     <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {itens.map((id) => {
-                            const item = ITENS_POR_ID[id];
+                        {itens.map((v) => {
+                            const item = ITENS_POR_ID[v.itemId];
                             return (
-                                <div key={id} className="flex min-w-0 flex-col">
-                                    <span className="truncate text-sm font-medium text-primary">
-                                        {item?.nome}
-                                        {item?.tipo ? <span className="text-tertiary"> · {item.tipo}</span> : null}
-                                    </span>
-                                    <span className="truncate text-xs text-tertiary">{item?.grupo} • {SESSAO_DO_ITEM[id]}</span>
+                                <div key={v.itemId} className="flex min-w-0 items-start gap-2.5">
+                                    {modo === "individual" && <span className="shrink-0 text-sm font-bold text-primary tabular-nums">{v.cota}x</span>}
+                                    <div className="flex min-w-0 flex-col">
+                                        <span className="text-sm font-medium text-primary">
+                                            {item?.nome}
+                                            {item?.tipo ? <span className="text-tertiary"> · {item.tipo}</span> : null}
+                                        </span>
+                                        <span className="truncate text-xs text-tertiary">{item?.grupo} • {SESSAO_DO_ITEM[v.itemId]}</span>
+                                    </div>
                                 </div>
                             );
                         })}

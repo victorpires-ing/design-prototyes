@@ -12,7 +12,7 @@ import { PaginationCardAdvanced } from "@/components/application/pagination/pagi
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { useEquipe, usoDaCota, type GrupoOperacao } from "../data/equipe-store";
+import { cotaTotal, useEquipe, usoDaCota, type GrupoOperacao } from "../data/equipe-store";
 import { toastSucesso } from "../utils/toast";
 
 const PORTAL_URL = "freepass.ingresse.com/emitir-cortesia";
@@ -209,7 +209,7 @@ const ListaGrupos = ({ grupos, onToggle, onDetalhe }: { grupos: GrupoOperacao[];
                             <div className="hidden h-2 w-40 overflow-hidden rounded-full bg-quaternary sm:block lg:w-72">
                                 <div className={cx("h-full rounded-full", pct >= 100 ? "bg-error-solid" : "bg-brand-solid")} style={{ width: `${pct}%` }} />
                             </div>
-                            <span className="text-sm font-medium text-secondary tabular-nums">{pct}%</span>
+                            <span className="text-sm font-medium text-secondary tabular-nums">{g.emitidas} de {cotaTotal(g)}</span>
                         </div>
 
                         <ChevronRight className="size-5 shrink-0 text-fg-quaternary transition duration-100 ease-linear group-hover:translate-x-0.5 group-hover:text-fg-brand-primary" aria-hidden="true" />

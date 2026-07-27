@@ -251,7 +251,7 @@ export default function App() {
         <Route path="/lp-ss/home" element={<LpSsHome />} />
         <Route path="/lp-ss/home/acessivel" element={<LpSsHomeAcessivel />} />
         <Route path="/lp-ss/home/claro" element={<LpSsHomeClaro />} />
-        <Route path="/lp-ss/v3" element={<LpSsHome />} />
+        <Route path="/lp-ss-v3" element={<LpSsHome />} />
         <Route path="/futebol/landing-pages" element={<SeletorTimes />} />
         <Route path="/futebol/landing-pages/gremio" element={<Gremio />} />
         <Route path="/futebol/landing-pages/botafogo" element={<Botafogo />} />

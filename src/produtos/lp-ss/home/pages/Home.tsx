@@ -1,43 +1,153 @@
-import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowRight, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, ClockStopwatch, HeartHand, MarkerPin01, Menu01, UsersPlus, XClose } from "@untitledui/icons";
-import { cx } from "@/utils/cx";
-import { VersaoSwitch } from "../../components/VersaoSwitch";
-import { BABY, EVENTO, FAQ, INCLUSAO, KITS, LARGADAS_INTRO, LOTES_DATAS, LOTES_OBS, ONDAS, SOBRE } from "../data/evento";
+import { useEffect, useRef, useState } from "react";
+import { PlusCircle, MinusCircle } from "@untitledui/icons";
+import { GuiaMedidasModal } from "../components/GuiaMedidasModal";
+import { PcdDetalhesModal } from "../components/PcdDetalhesModal";
+import { ComoFuncionaModal } from "../components/ComoFuncionaModal";
+import { InformacoesSection } from "../components/InformacoesSection";
+import { AnimatedMosaic } from "../components/AnimatedMosaic";
+import { Reveal } from "../components/Reveal";
+import { InstagramIcon, FacebookIcon, TiktokIcon, YoutubeIcon } from "../components/SocialIcons";
+import { FAQ_101 } from "../data/ss101";
+import { HERO_MOSAIC_TOP, HERO_MOSAIC_LEFT_EDGE, HERO_MOSAIC_RIGHT } from "../data/hero-mosaics";
+import logoTicketsportsColor from "../assets/logo-ticketsports-color.png";
+import logoHeader from "../assets/logo-header.svg";
+import heroLogoCrop from "../assets/hero-logo-crop.png";
+import kitPhoto from "../assets/kit-photo.png";
+import kitPhotoAzul from "../assets/kit-photo-azul.png";
+import kitPhotoVerde from "../assets/kit-photo-verde.png";
+import kitPhotoLaranja from "../assets/kit-photo-laranja.png";
+import kitShape from "../assets/kit-shape.svg";
+import kitBgMiddle from "../assets/kit-bg-middle.svg";
+import kitBgLeft from "../assets/kit-bg-left.svg";
+import kitBgRight from "../assets/kit-bg-right.svg";
+import footerBlocks from "../assets/footer-blocks.svg";
+import faqMosaic from "../assets/faq-mosaic.svg";
 
-const ACCENT = "#E30613";
+// ===== Design tokens — Manual de Marca São Silvestre 101 =====
+const ACCENT = "#0099FF"; // Azul de destaque — eyebrows, "101", acentos
+const BOTAO_PRIMARIO = "#0086FF"; // Azul específico dos botões primários (header, hero)
+const HEADER_BG = "#171717"; // Fundo escuro do header
+const ROXO = "#971AFE";
+const AZUL_INSCRICAO = "#0070CC"; // Eyebrow "Inscreva-se agora" + card "Geral"
+const LARANJA_INSCRICAO = "#C83000"; // Eyebrow + checkmarks do card "Inscrição PNE"
+const LARANJA_INSCRICAO_BOTAO = "#FF2F01"; // Botão do card "Inscrição PNE"
+const LARANJA_KIT = "#FE3800"; // Heading + setas do carrossel do Kit do atleta
+const INK = "#0A0A0A";
+const MIST = "#F4F4F5";
+const LINE = "#E5E5E5";
+const MUTED = "#525252";
 
+const TITLE_FONT = "'Outfit', -apple-system, 'Segoe UI', Roboto, sans-serif";
+const BODY_FONT = "'Work Sans', -apple-system, 'Segoe UI', Roboto, sans-serif";
+
+const KIT_AUTOPLAY_MS = 4500;
+
+const KIT_VARIANTES = [
+    { nome: "Kit roxo", imagem: kitPhoto },
+    { nome: "Kit azul", imagem: kitPhotoAzul },
+    { nome: "Kit verde", imagem: kitPhotoVerde },
+    { nome: "Kit laranja", imagem: kitPhotoLaranja },
+];
+
+const NAV_LINKS = [
+    { label: "Inscrições", href: "#inscricoes" },
+    { label: "Kit do atleta", href: "#kit" },
+    { label: "Informações gerais", href: "#informacoes" },
+    { label: "Dúvidas", href: "#faq" },
+    { label: "Sua inscrição", href: "#inscricoes" },
+];
+
+const INSCRICAO_CARDS = [
+    {
+        cor: AZUL_INSCRICAO,
+        corBotao: BOTAO_PRIMARIO,
+        eyebrow: "Aberta ao público",
+        titulo: "Inscrição geral",
+        texto: "Essa é pra quem quer garantir seu lugar na 10ª e viver os 15 km mais clássicos da Paulista, no seu ritmo.",
+        cta: "Garantir minha vaga",
+        ctaSecundario: "Acessar inscrição",
+    },
+    {
+        cor: LARANJA_INSCRICAO,
+        corBotao: LARANJA_INSCRICAO_BOTAO,
+        eyebrow: "Todo mundo na pista",
+        titulo: "Inscrição PCD gratuita",
+        texto: "Categoria gratuita e adaptada com largada exclusiva, apoio dedicado e acessibilidade em todo o percurso.",
+        cta: "Enviar documentação",
+        ctaSecundario: "Detalhes e requisitos",
+    },
+    {
+        cor: ROXO,
+        corBotao: ROXO,
+        eyebrow: "Pra correr junto",
+        titulo: "Grupos e assessorias",
+        texto: "Vai correr com a galera? Solicite vagas para grupos a partir de 20 pessoas. Receba a confirmação por e-mail em até 7 dias.",
+        cta: "Inscrever meu grupo",
+        ctaSecundario: "Como funciona?",
+    },
+];
+
+/** Produto lp-ss → Home: recriação hifi da landing page da 101ª São Silvestre, a partir do handoff de design. */
 export function Home() {
     const [menuAberto, setMenuAberto] = useState(false);
     const [faqAberto, setFaqAberto] = useState<number | null>(0);
+    const [guideOpen, setGuideOpen] = useState(false);
+    const [pcdModalOpen, setPcdModalOpen] = useState(false);
+    const [comoFuncionaModalOpen, setComoFuncionaModalOpen] = useState(false);
+    const [kitVisible, setKitVisible] = useState(false);
+    const [kitIndex, setKitIndex] = useState(0);
+    const [kitIndexSaindo, setKitIndexSaindo] = useState<number | null>(null);
+    const kitSaidaTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const kitVariante = KIT_VARIANTES[kitIndex];
+    const trocarKit = (novoIndex: number) => {
+        setKitIndexSaindo(kitIndex);
+        setKitIndex(novoIndex);
+        if (kitSaidaTimeout.current) clearTimeout(kitSaidaTimeout.current);
+        kitSaidaTimeout.current = setTimeout(() => setKitIndexSaindo(null), 450);
+    };
+    const proximoKit = () => trocarKit((kitIndex + 1) % KIT_VARIANTES.length);
+    const anteriorKit = () => trocarKit((kitIndex - 1 + KIT_VARIANTES.length) % KIT_VARIANTES.length);
+    const kitRef = useRef<HTMLElement>(null);
 
-    const heroCtaRef = useRef<HTMLAnchorElement>(null);
-    const footerRef = useRef<HTMLElement>(null);
-    const [heroOut, setHeroOut] = useState(false);
-    const [footerIn, setFooterIn] = useState(false);
+    // Autoplay do carrossel do Kit: avança sozinho enquanto visível; qualquer troca (manual ou automática) reinicia a contagem.
     useEffect(() => {
-        const hero = heroCtaRef.current;
-        const footer = footerRef.current;
-        const obsHero = hero && new IntersectionObserver(([e]) => setHeroOut(!e.isIntersecting), { threshold: 0 });
-        const obsFooter = footer && new IntersectionObserver(([e]) => setFooterIn(e.isIntersecting), { threshold: 0 });
-        if (hero && obsHero) obsHero.observe(hero);
-        if (footer && obsFooter) obsFooter.observe(footer);
-        return () => {
-            obsHero && obsHero.disconnect();
-            obsFooter && obsFooter.disconnect();
-        };
+        if (!kitVisible) return;
+        const t = setTimeout(proximoKit, KIT_AUTOPLAY_MS);
+        return () => clearTimeout(t);
+    }, [kitVisible, kitIndex]);
+
+    // Dispara a animação de surgimento do Kit do atleta quando a seção entra na viewport.
+    useEffect(() => {
+        const el = kitRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setKitVisible(true);
+                    observer.disconnect();
+                }
+            },
+            { threshold: 0.15 },
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
     }, []);
-    const ctaFixo = heroOut && !footerIn;
 
-    const [scrolled, setScrolled] = useState(false);
+    // Carrega as fontes da marca (Outfit + Work Sans) só nesta página, sem afetar o resto do app.
     useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 40);
-        onScroll();
-        window.addEventListener("scroll", onScroll, { passive: true });
-        return () => window.removeEventListener("scroll", onScroll);
+        const links = [
+            Object.assign(document.createElement("link"), { rel: "preconnect", href: "https://fonts.googleapis.com" }),
+            Object.assign(document.createElement("link"), { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" }),
+            Object.assign(document.createElement("link"), {
+                rel: "stylesheet",
+                href: "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Work+Sans:ital,wght@0,400;0,500;0,600;0,700;1,600&display=swap",
+            }),
+        ];
+        links.forEach((l) => document.head.appendChild(l));
+        return () => links.forEach((l) => l.remove());
     }, []);
 
     const scrollSuave = (e: React.MouseEvent, href: string) => {
-        if (!href.startsWith("#")) return;
         const el = document.querySelector(href);
         if (!el) return;
         e.preventDefault();
@@ -45,508 +155,512 @@ export function Home() {
         setMenuAberto(false);
     };
 
-    const nav = [
-        { label: "Início", href: "#topo" },
-        { label: "Sobre", href: "#sobre" },
-        { label: "Kits", href: "#kit" },
-        { label: "Programação", href: "#programacao" },
-        { label: "Grupos e Benefícios", href: "#grupos-beneficios" },
-        { label: "Dúvidas", href: "#faq" },
-        { label: "Minha inscrição", href: "#inscricao" },
-    ];
-
     return (
-        <div className="min-h-dvh scroll-smooth bg-[#0c0c0f] text-white">
-            <VersaoSwitch atual="noturno" />
-            {/* ===== Header ===== */}
+        <div className="min-h-dvh scroll-smooth bg-white" style={{ color: INK, fontFamily: BODY_FONT }}>
+            <style>{`
+                @keyframes ss-float { 0%,100% { transform: translateY(0) rotate(var(--ss-r,0deg)); } 50% { transform: translateY(-14px) rotate(var(--ss-r,0deg)); } }
+                @keyframes ss-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes ss-piece-in { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+                @keyframes ss-grow-in { from { opacity: 0; transform: scale(0.88); } to { opacity: 1; transform: scale(1); } }
+                @keyframes ss-kit-fade-in { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes ss-kit-fade-out { from { opacity: 1; } to { opacity: 0; } }
+                @keyframes ss-kit-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+                @media (min-width: 768px) { .ss-hero-content { opacity: 0; animation: ss-rise 0.8s ease-out 0.4s both; } }
+                @media (prefers-reduced-motion: reduce) { [style*="ss-float"], [style*="ss-rise"], [style*="ss-piece-in"], [style*="ss-grow-in"], [style*="ss-kit-fade"], [style*="ss-kit-progress"] { animation: none !important; } .ss-hero-content { opacity: 1 !important; animation: none !important; } }
+            `}</style>
+
+            {/* ===== Nav ===== */}
             <header
-                className={cx(
-                    "fixed inset-x-0 z-50 transition-all duration-500 ease-out",
-                    scrolled
-                        ? "top-0 border-b border-white/10 bg-[#0c0c0f]/85 backdrop-blur-md"
-                        : "top-9 border-b border-transparent bg-gradient-to-b from-black/70 via-black/25 to-transparent",
-                )}
+                className="sticky top-0 z-50"
+                style={{ backgroundColor: HEADER_BG, WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale" }}
             >
-                <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3.5 md:px-8">
-                    <a href="#topo" className="flex items-center gap-3">
-                        <img src="/lp-ss/logo-ts.png" alt="Ticket Sports" className="h-8 w-auto" />
-                        <span className="h-6 w-px bg-white/20" />
-                        <img src="/lp-ss/logo-ss.png" alt="São Silvestre" className="h-6 w-auto" />
+                <div className="mx-auto flex max-w-[1240px] items-center justify-between gap-6 px-6 py-3.5">
+                    <a href="#top" onClick={(e) => scrollSuave(e, "#top")}>
+                        <img src={logoHeader} alt="Ticket Sports by Ingresse" className="h-9 w-auto" />
                     </a>
-                    <nav className="hidden items-center gap-5 lg:flex">
-                        {nav.map((n) => (
-                            <Fragment key={n.href}>
-                                {n.label === "Minha inscrição" && <span className="h-5 w-px bg-white/15" aria-hidden="true" />}
-                                <a
-                                    href={n.href}
-                                    onClick={(e) => scrollSuave(e, n.href)}
-                                    className="whitespace-nowrap text-sm font-semibold text-white/70 transition hover:text-white"
-                                >
+                    <div className="hidden items-center gap-7 lg:flex">
+                        <nav className="flex gap-[26px]">
+                            {NAV_LINKS.map((n) => (
+                                <a key={n.label} href={n.href} onClick={(e) => scrollSuave(e, n.href)} className="text-base font-semibold text-white" style={{ fontFamily: BODY_FONT }}>
                                     {n.label}
                                 </a>
-                            </Fragment>
-                        ))}
-                    </nav>
-                    <button
-                        type="button"
-                        onClick={() => setMenuAberto((v) => !v)}
-                        aria-label="Menu"
-                        className="flex size-9 items-center justify-center rounded-lg text-white lg:hidden"
-                    >
-                        {menuAberto ? <XClose className="size-6" /> : <Menu01 className="size-6" />}
+                            ))}
+                        </nav>
+                        <a
+                            href="#inscricoes"
+                            onClick={(e) => scrollSuave(e, "#inscricoes")}
+                            className="rounded-xl px-5 py-2.5 text-base font-bold text-white"
+                            style={{ backgroundColor: BOTAO_PRIMARIO, fontFamily: TITLE_FONT }}
+                        >
+                            Inscreva-se
+                        </a>
+                    </div>
+                    <button type="button" onClick={() => setMenuAberto((v) => !v)} aria-label="Menu" className="flex size-9 items-center justify-center rounded-lg lg:hidden">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
+                            {menuAberto ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+                        </svg>
                     </button>
                 </div>
                 {menuAberto && (
-                    <nav className="flex flex-col gap-1 border-t border-white/10 px-5 py-3 lg:hidden">
-                        {nav.map((n) => (
-                            <a
-                                key={n.href}
-                                href={n.href}
-                                onClick={(e) => scrollSuave(e, n.href)}
-                                className={cx(
-                                    "rounded-lg px-2 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/5",
-                                    n.label === "Minha inscrição" && "mt-1 border-t border-white/10 pt-3.5",
-                                )}
-                            >
+                    <nav className="flex flex-col gap-1 border-t px-6 py-3 lg:hidden" style={{ borderColor: "#333" }}>
+                        {NAV_LINKS.map((n) => (
+                            <a key={n.label} href={n.href} onClick={(e) => scrollSuave(e, n.href)} className="rounded-lg px-2 py-2.5 text-sm font-semibold text-white">
                                 {n.label}
                             </a>
                         ))}
+                        <a href="#inscricoes" onClick={(e) => scrollSuave(e, "#inscricoes")} className="mt-1 rounded-lg px-2 py-2.5 text-sm font-bold text-white">
+                            Inscreva-se
+                        </a>
                     </nav>
                 )}
             </header>
 
-            {/* ===== CTA flutuante (aparece quando o botão do hero sai da tela) ===== */}
-            <div
-                className={cx(
-                    "fixed inset-x-0 bottom-0 z-50 flex justify-center bg-gradient-to-t from-[#0c0c0f] via-[#0c0c0f]/85 to-transparent px-4 pb-6 pt-14 transition-all duration-300",
-                    ctaFixo ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0",
-                )}
-            >
-                <a
-                    href="#inscricao"
-                    className="rounded-xl px-8 py-4 text-base font-bold text-white shadow-2xl ring-1 ring-white/20 transition hover:opacity-90"
-                    style={{ backgroundColor: ACCENT }}
-                >
-                    Inscreva-se Agora
-                </a>
-            </div>
 
             {/* ===== Hero ===== */}
-            <section id="topo" className="relative flex min-h-dvh items-center overflow-hidden pt-16">
-                <style>{`@keyframes heroZoom{from{transform:scale(1)}to{transform:scale(1.15)}}@media (prefers-reduced-motion:reduce){.hero-zoom{animation:none!important}}`}</style>
-                <img
-                    src={EVENTO.heroImg}
-                    alt=""
-                    className="hero-zoom absolute inset-0 size-full object-cover will-change-transform"
-                    style={{ animation: "heroZoom 12s ease-out forwards" }}
-                />
-                {/* Filtro degradê: preto → vermelho escuro */}
-                <span className="absolute inset-0 bg-gradient-to-tr from-black via-[#4a0207]/85 to-[#8b0000]/80" />
-                {/* Reforço na base para leitura do texto */}
-                <span className="absolute inset-0 bg-gradient-to-t from-[#0c0c0f] via-transparent to-transparent" />
-                <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center px-5 py-16 text-center md:px-8">
-                    <img src="/lp-ss/selo-100.png" alt="100 anos — Corrida Internacional de São Silvestre" className="w-56 max-w-full md:w-80" />
-                    <p className="mt-6 text-2xl font-black leading-snug text-white md:text-5xl">{EVENTO.tagline}</p>
-                    <p className="mt-4 max-w-3xl text-base text-white/80 md:text-xl">{EVENTO.descricao}</p>
-                    <div className="mt-8 inline-flex flex-col divide-y divide-white/15 overflow-hidden rounded-2xl border border-white/15 bg-white/5 text-sm font-semibold text-white/90 backdrop-blur md:flex-row md:divide-x md:divide-y-0">
-                        <span className="flex items-center justify-center gap-2 px-6 py-3.5">
-                            <Calendar className="size-5" style={{ color: ACCENT }} /> {EVENTO.data} · {EVENTO.hora}
-                        </span>
-                        <span className="flex items-center justify-center gap-2 px-6 py-3.5">
-                            <MarkerPin01 className="size-5" style={{ color: ACCENT }} /> {EVENTO.local}
-                        </span>
-                        <span className="flex items-center justify-center gap-2 px-6 py-3.5">
-                            <ClockStopwatch className="size-5" style={{ color: ACCENT }} /> Inscrições até {EVENTO.inscricoesAte}
-                        </span>
+            <section id="top" className="relative overflow-hidden bg-white">
+                {/* Referência de 1470px (largura do frame no Figma), 672px de altura só no desktop — os grafismos usam essas medidas fixas pra ficar pixel-perfect */}
+                <div className="relative mx-auto md:h-[672px]" style={{ maxWidth: 1470 }}>
+                    {/* Grafismo decorativo direito (Group 1000005778, rotate 180°) — relativo ao hero inteiro (1470) */}
+                    <div className="pointer-events-none absolute hidden md:block" style={{ left: 625.3, top: -265.9, width: 938.4, height: 937.9 }}>
+                        <div className="size-full" style={{ transform: "rotate(180deg)" }}>
+                            <AnimatedMosaic viewBox={HERO_MOSAIC_RIGHT.viewBox} paths={HERO_MOSAIC_RIGHT.paths} baseDelay={0.5} />
+                        </div>
                     </div>
-                    <div className="mt-8">
-                        <a
-                            ref={heroCtaRef}
-                            href="#inscricao"
-                            className="inline-block rounded-xl px-10 py-5 text-lg font-bold text-white shadow-lg transition hover:opacity-90 md:text-xl"
-                            style={{ backgroundColor: ACCENT }}
-                        >
-                            Inscreva-se Agora
-                        </a>
+
+                    <div className="relative mx-auto md:h-[672px]" style={{ maxWidth: 1240 }}>
+                        {/* Grafismos decorativos superior/esquerda (rotate 90°) — relativos ao container (1240) */}
+                        <div className="pointer-events-none absolute hidden items-center justify-center md:flex" style={{ left: -489.8, top: -851.8, width: 979.3, height: 979.8 }}>
+                            <div style={{ width: 979.8, height: 979.3, transform: "rotate(90deg)" }}>
+                                <AnimatedMosaic viewBox={HERO_MOSAIC_TOP.viewBox} paths={HERO_MOSAIC_TOP.paths} baseDelay={0.1} />
+                            </div>
+                        </div>
+                        <div className="pointer-events-none absolute hidden items-center justify-center md:flex" style={{ left: -1059.7, top: 131, width: 979.2, height: 979.8 }}>
+                            <div style={{ width: 979.8, height: 979.2, transform: "rotate(90deg)" }}>
+                                <AnimatedMosaic viewBox={HERO_MOSAIC_LEFT_EDGE.viewBox} paths={HERO_MOSAIC_LEFT_EDGE.paths} baseDelay={0.3} />
+                            </div>
+                        </div>
+
+                        <div className="ss-hero-content mx-auto flex max-w-[694px] flex-col items-center gap-6 px-6 py-20 text-center md:absolute md:left-0 md:top-[203px] md:mx-0 md:max-w-none md:w-[694px] md:items-start md:px-0 md:py-0 md:text-left">
+                            <div
+                                role="img"
+                                aria-label="São Silvestre 101 — São Paulo, Brasil"
+                                className="hidden md:block"
+                                style={{
+                                    width: 490,
+                                    height: 167,
+                                    backgroundImage: `url(${heroLogoCrop})`,
+                                    backgroundSize: "990px auto",
+                                    backgroundPosition: "-48px -144px",
+                                    backgroundRepeat: "no-repeat",
+                                }}
+                            />
+                            <div
+                                role="img"
+                                aria-label="São Silvestre 101 — São Paulo, Brasil"
+                                className="md:hidden"
+                                style={{
+                                    width: 300,
+                                    height: 300 * (167 / 490),
+                                    backgroundImage: `url(${heroLogoCrop})`,
+                                    backgroundSize: "606px auto",
+                                    backgroundPosition: "-29px -88px",
+                                    backgroundRepeat: "no-repeat",
+                                }}
+                            />
+
+                            <div className="flex flex-col items-center gap-1 md:items-start">
+                                <h1 className="text-[26px] leading-normal md:text-[30px]" style={{ fontFamily: TITLE_FONT, color: "#404040" }}>
+                                    <span className="font-light">A primeira corrida dos</span> <span className="font-semibold">próximos 100 anos</span>
+                                </h1>
+                                <p className="max-w-[500px] text-lg leading-[1.5] md:max-w-[622px]" style={{ color: "#737373" }}>
+                                    15 km pelo coração de São Paulo, na virada mais famosa do mundo. Garanta sua vaga até 20/11/2026 e faça parte desse próximo capítulo.
+                                </p>
+                            </div>
+
+                            <a
+                                href="#inscricoes"
+                                onClick={(e) => scrollSuave(e, "#inscricoes")}
+                                className="inline-block w-fit rounded-xl px-[34px] py-4 text-base font-bold text-white shadow-[0_4px_10px_rgba(0,153,255,0.5)] transition-shadow duration-150 ease-linear hover:shadow-[0_6px_24px_rgba(0,153,255,0.85)]"
+                                style={{ backgroundColor: BOTAO_PRIMARIO, fontFamily: TITLE_FONT }}
+                            >
+                                Garanta sua inscrição
+                            </a>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/* ===== Sobre ===== */}
-            <Secao id="sobre" titulo="Sobre a prova" subtitulo="Uma tradição de fim de ano" primeira>
-                <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
-                    <div className="flex flex-col">
-                        <p className="text-2xl font-black leading-snug text-white md:text-3xl">{SOBRE.lead}</p>
-                        <span className="mt-6 h-1 w-12 rounded-full" style={{ backgroundColor: ACCENT }} />
-                        {SOBRE.paragrafos.map((p, i) => (
-                            <div key={i}>
-                                {i > 0 && (
-                                    <div className="my-6 flex items-center gap-3" aria-hidden="true">
-                                        <span className="h-px w-8" style={{ backgroundColor: ACCENT }} />
-                                        <span className="size-1.5 rotate-45" style={{ backgroundColor: ACCENT }} />
-                                        <span className="h-px flex-1 bg-white/10" />
+            {/* ===== Inscrições ===== */}
+            <section id="inscricoes" className="relative overflow-hidden">
+                <div className="relative mx-auto max-w-[1240px] px-6 py-[72px]">
+                    <div className="max-w-[640px]">
+                        <div className="text-sm font-bold tracking-[2px] uppercase" style={{ fontFamily: TITLE_FONT, color: AZUL_INSCRICAO }}>
+                            Inscreva-se agora
+                        </div>
+                        <h2 className="mt-3 text-[36px] leading-[0.98] tracking-[-1px] uppercase md:text-[48px] md:tracking-[-1.5px]" style={{ fontFamily: TITLE_FONT, fontWeight: 900 }}>
+                            Com seu jeito de correr
+                        </h2>
+                        <p className="mt-4 text-lg leading-[1.5]" style={{ color: MUTED }}>
+                            Individual, adaptada ou em turma: Escolha como quer virar o ano correndo.
+                        </p>
+                    </div>
+
+                    <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3">
+                        {INSCRICAO_CARDS.map((c, i) => (
+                            <Reveal key={c.titulo} delay={i * 0.12} className="h-full">
+                                <div className="relative flex h-full flex-col overflow-hidden rounded-3xl p-8" style={{ backgroundColor: "#fff", border: `1px solid ${LINE}` }}>
+                                    <div className="text-sm font-bold tracking-[1.5px] uppercase" style={{ fontFamily: TITLE_FONT, color: c.cor }}>
+                                        {c.eyebrow}
                                     </div>
-                                )}
-                                <p className="text-base leading-relaxed text-white/75 md:text-lg">{p}</p>
-                            </div>
+                                    <h3 className="mt-2.5 text-[28px] font-extrabold" style={{ fontFamily: TITLE_FONT }}>
+                                        {c.titulo}
+                                    </h3>
+                                    <p className="mt-3 mb-[26px] text-base leading-[1.45]" style={{ color: MUTED }}>
+                                        {c.texto}
+                                    </p>
+                                    <div className="mt-auto flex flex-col gap-2">
+                                        {c.titulo === "Grupos e assessorias" ? (
+                                            <button
+                                                type="button"
+                                                disabled
+                                                aria-disabled="true"
+                                                className="block cursor-not-allowed rounded-[11px] py-3.5 text-center text-base font-semibold opacity-50"
+                                                style={{ backgroundColor: c.corBotao, color: "#fff", fontFamily: TITLE_FONT }}
+                                            >
+                                                Em breve
+                                            </button>
+                                        ) : (
+                                            <a href="#" className="block rounded-[11px] py-3.5 text-center text-base font-semibold" style={{ backgroundColor: c.corBotao, color: "#fff", fontFamily: TITLE_FONT }}>
+                                                {c.cta}
+                                            </a>
+                                        )}
+                                        {c.titulo === "Inscrição PCD gratuita" || c.titulo === "Grupos e assessorias" ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => (c.titulo === "Inscrição PCD gratuita" ? setPcdModalOpen(true) : setComoFuncionaModalOpen(true))}
+                                                className="block rounded-[11px] py-3.5 text-center text-base font-semibold"
+                                                style={{ border: `1px solid ${c.corBotao}`, color: c.corBotao, fontFamily: TITLE_FONT }}
+                                            >
+                                                {c.ctaSecundario}
+                                            </button>
+                                        ) : (
+                                            <a
+                                                href="#"
+                                                className="block rounded-[11px] py-3.5 text-center text-base font-semibold"
+                                                style={{ border: `1px solid ${c.corBotao}`, color: c.corBotao, fontFamily: TITLE_FONT }}
+                                            >
+                                                {c.ctaSecundario}
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            </Reveal>
                         ))}
                     </div>
+                </div>
+            </section>
+
+            {/* ===== Kit do atleta ===== */}
+            <section id="kit" ref={kitRef} className="relative overflow-hidden bg-white">
+                <div className="relative mx-auto md:h-[742px]" style={{ maxWidth: 1240 }}>
+                    {/* Grafismos decorativos — só no desktop, calculados a partir do node 2188:21916 */}
+                    <div className="pointer-events-none absolute hidden md:block" style={{ left: 49.4, top: -297.3, width: 1262.2, height: 1261.5 }}>
+                        <img src={kitBgMiddle} alt="" className="block size-full" />
+                    </div>
+                    <div className="pointer-events-none absolute hidden items-center justify-center md:flex" style={{ left: -1221.8, top: -298.6, width: 1261.5, height: 1262.2 }}>
+                        <div style={{ width: 1262.2, height: 1261.5, transform: "rotate(-90deg)" }}>
+                            <img src={kitBgLeft} alt="" className="block size-full" />
+                        </div>
+                    </div>
                     <img
-                        src={SOBRE.imagem}
+                        src={kitBgRight}
                         alt=""
-                        className="aspect-[4/5] w-full rounded-2xl object-cover ring-1 ring-white/10 lg:sticky lg:top-24"
+                        className="pointer-events-none absolute hidden md:block"
+                        style={{ left: 1320.9, top: -298.3, width: 1262.2, height: 1261.6, transform: "rotate(180deg)" }}
                     />
-                </div>
-            </Secao>
 
-            {/* ===== Kits ===== */}
-            <Secao id="kit" titulo="Kits de participação" subtitulo="Escolha sua experiência" alt>
-                <KitCarousel />
-            </Secao>
-
-            {/* ===== Programação ===== */}
-            <Secao id="programacao" titulo="Programação" subtitulo="Datas, lotes e largadas">
-                <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
-                    {/* Coluna 1 — Datas e lotes */}
-                    <div className="flex h-full flex-col gap-6">
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-7">
-                            <h3 className="flex items-center gap-2 text-xl font-black text-white">
-                                <span className="h-5 w-1 rounded-full" style={{ backgroundColor: ACCENT }} /> Datas e lotes
-                            </h3>
-                            <ul className="mt-4 flex flex-col">
-                                {LOTES_DATAS.map((l, i) => (
-                                    <li key={l.nome} className={cx("flex items-center justify-between gap-3 py-3", i > 0 && "border-t border-white/10")}>
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-bold text-white">{l.nome}</span>
-                                            <span className="text-sm text-white/55">{l.data}</span>
-                                        </div>
-                                        {l.esgotado && (
-                                            <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-bold text-white/70">Esgotado</span>
-                                        )}
-                                    </li>
-                                ))}
-                            </ul>
-                            <p className="mt-4 rounded-lg bg-white/[0.04] p-3 text-xs leading-relaxed text-white/60">{LOTES_OBS}</p>
+                    {/* Layout mobile — empilhado, sem os grafismos/carrossel */}
+                    <div className="px-6 py-16 md:hidden" style={{ opacity: kitVisible ? 1 : 0, animation: kitVisible ? "ss-rise 0.7s ease-out both" : undefined }}>
+                        <div className="text-sm font-bold tracking-[2px] uppercase" style={{ fontFamily: TITLE_FONT, color: "#171717" }}>
+                            Kit do atleta
                         </div>
-
-                        <div className="flex flex-1 flex-col rounded-2xl border p-6 md:p-7" style={{ borderColor: `${ACCENT}55`, backgroundColor: `${ACCENT}12` }}>
-                            <h3 className="text-xl font-black text-white">{INCLUSAO.titulo}</h3>
-                            <p className="mt-1 text-sm text-white/70">{INCLUSAO.intro}</p>
-                            <ul className="mt-4 flex flex-col gap-3">
-                                {INCLUSAO.itens.map((it) => (
-                                    <li key={it.titulo} className="flex gap-3">
-                                        <span className="text-2xl leading-none">{it.emoji}</span>
-                                        <p className="text-sm text-white/80">
-                                            <strong className="text-white">{it.titulo}:</strong> {it.texto}
-                                        </p>
-                                    </li>
-                                ))}
-                            </ul>
-                            <p className="mt-4 text-xs italic text-white/50">Obs.: {INCLUSAO.obs}</p>
-
-                            {/* Faixa decorativa ancorada no fundo */}
-                            <div className="mt-auto flex items-center gap-4 rounded-2xl bg-white/[0.06] p-4 pt-4">
-                                <div className="flex -space-x-2">
-                                    {INCLUSAO.itens.map((it) => (
-                                        <span
-                                            key={it.titulo}
-                                            className="flex size-10 items-center justify-center rounded-full bg-[#0c0c0f] text-lg ring-2 ring-white/10"
-                                        >
-                                            {it.emoji}
-                                        </span>
-                                    ))}
-                                </div>
-                                <span className="text-sm font-black leading-tight text-white">
-                                    Todo mundo tem seu lugar <span style={{ color: ACCENT }}>na largada.</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Coluna 2 — Horário das largadas */}
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-7">
-                        <h3 className="flex items-center gap-2 text-xl font-black text-white">
-                            <span className="h-5 w-1 rounded-full" style={{ backgroundColor: ACCENT }} /> Horário das largadas
-                        </h3>
-                        <p className="mt-2 text-sm leading-relaxed text-white/60">{LARGADAS_INTRO}</p>
-                        <ul className="mt-5 flex flex-col gap-3">
-                            {ONDAS.map((o) => (
-                                <li key={o.onda} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                                    <div className="flex items-center gap-3">
-                                        <span className="flex min-w-[64px] shrink-0 items-center justify-center rounded-lg py-1.5 text-sm font-black text-white" style={{ backgroundColor: ACCENT }}>
-                                            {o.hora.includes("h") && !o.hora.includes("partir") ? o.hora : "Kids"}
-                                        </span>
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: ACCENT }}>{o.onda}</span>
-                                            <span className="text-sm font-bold text-white">{o.nome}</span>
-                                            {o.detalhe && <span className="text-xs text-white/55">{o.hora.includes("partir") ? `${o.hora} · ` : ""}{o.detalhe}</span>}
-                                        </div>
-                                    </div>
-                                    {o.sub && (
-                                        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/10 pt-3 sm:grid-cols-3">
-                                            {o.sub.map((s) => (
-                                                <div key={s.hora} className="flex flex-col rounded-lg bg-white/[0.05] px-2.5 py-1.5">
-                                                    <span className="text-sm font-bold text-white">{s.hora}</span>
-                                                    <span className="text-xs text-white/55">{s.texto}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </li>
-                            ))}
-                            <li className="rounded-xl border border-dashed border-white/15 p-4">
-                                <span className="text-sm font-bold text-white">{BABY.nome}</span>
-                                <p className="mt-0.5 text-xs text-white/60">{BABY.texto}</p>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </Secao>
-
-            {/* ===== Grupos e Benefícios ===== */}
-            <Secao id="grupos-beneficios" titulo="Grupos e Benefícios" subtitulo="Vagas especiais" alt>
-                <div className="grid gap-6 md:grid-cols-2">
-                    {[
-                        {
-                            icon: UsersPlus,
-                            titulo: "Grupos Esportivos",
-                            texto: "Solicite vagas para sua equipe, grupo esportivo ou assessoria da corrida.",
-                            cta: "Solicitar vagas para grupo",
-                        },
-                        {
-                            icon: HeartHand,
-                            titulo: "Benefício PCD",
-                            texto: "Solicite a análise do seu benefício enviando seus dados e documentos comprobatórios.",
-                            cta: "Solicitar benefício",
-                        },
-                    ].map((c) => (
-                        <div
-                            key={c.titulo}
-                            className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-8 transition duration-300 hover:border-white/20 hover:bg-white/[0.06]"
+                        <h2 className="mt-3 text-[36px] leading-[0.98] tracking-[-1px] uppercase" style={{ fontFamily: TITLE_FONT, fontWeight: 900, color: LARANJA_KIT }}>
+                            Tudo que você
+                            <br />
+                            veste pra virar
+                            <br />o ano correndo
+                        </h2>
+                        <p className="mt-[18px] text-lg leading-[1.5]" style={{ color: MUTED }}>
+                            Retirada na Expo São Silvestre, nos dias que antecedem a prova. Endereço e horários chegam no seu e-mail.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setGuideOpen(true)}
+                            className="mt-[26px] inline-flex items-center gap-2 rounded-xl px-[26px] py-3.5 text-base font-bold"
+                            style={{ color: INK, backgroundColor: "#fff", fontFamily: TITLE_FONT, boxShadow: `0 0 0 1.5px ${LINE} inset` }}
                         >
-                            {/* Ícone marca-d'água ao fundo */}
-                            <c.icon className="pointer-events-none absolute -right-6 -top-6 size-40 text-white/[0.04] transition duration-500 group-hover:scale-110" />
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.8">
+                                <path d="M3 6v12M21 6v12M7 9v6M11 10v4M15 9v6M19 10v4" />
+                            </svg>
+                            Guia de medidas
+                        </button>
+                        <div className="relative mt-10 flex items-center justify-center" style={{ height: 520 }}>
+                            <img src={kitShape} alt="" aria-hidden="true" className="pointer-events-none absolute" style={{ width: 331, height: 520 }} />
+                            <img
+                                src={kitVariante.imagem}
+                                alt="Kit oficial: camiseta, número com chip, medalha de finisher e mochila"
+                                className="relative transition-opacity duration-200 ease-in-out"
+                                style={{ width: 340, height: "auto" }}
+                            />
+                        </div>
+                        <div className="mx-auto flex max-w-[200px] gap-1.5">
+                            {KIT_VARIANTES.map((v, i) => (
+                                <div key={v.nome} className="h-1 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: LINE }}>
+                                    <div
+                                        className="h-full origin-left rounded-full"
+                                        style={{
+                                            backgroundColor: LARANJA_KIT,
+                                            transform: i < kitIndex ? "scaleX(1)" : "scaleX(0)",
+                                            animation: i === kitIndex ? `ss-kit-progress ${KIT_AUTOPLAY_MS}ms linear both` : undefined,
+                                        }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
-                            <span className="flex size-14 items-center justify-center rounded-2xl text-white" style={{ backgroundColor: ACCENT }}>
-                                <c.icon className="size-7" />
-                            </span>
-                            <h3 className="mt-5 text-2xl font-black text-white">{c.titulo}</h3>
-                            <p className="mt-2 max-w-sm text-base leading-relaxed text-white/70">{c.texto}</p>
+                    {/* Layout desktop — posicionamento absoluto igual ao Figma */}
+                    <div className="hidden md:block">
+                        <div
+                            className="absolute top-1/2 left-0 -translate-y-1/2 transition-opacity duration-700 ease-out"
+                            style={{ width: 511, opacity: kitVisible ? 1 : 0 }}
+                        >
+                            <div className="text-sm font-bold tracking-[2px] uppercase" style={{ fontFamily: TITLE_FONT, color: "#171717" }}>
+                                Kit do atleta
+                            </div>
+                            <h2 className="mt-3 text-[48px] leading-[0.98] tracking-[-1.5px] uppercase" style={{ fontFamily: TITLE_FONT, fontWeight: 900, color: LARANJA_KIT }}>
+                                Tudo que você
+                                <br />
+                                veste pra virar
+                                <br />o ano correndo
+                            </h2>
+                            <p className="mt-[18px] text-lg leading-[1.5]" style={{ color: MUTED }}>
+                                Retirada na Expo São Silvestre, nos dias que antecedem a prova. Endereço e horários chegam no seu e-mail.
+                            </p>
                             <button
                                 type="button"
-                                className="group/btn mt-6 inline-flex w-max items-center gap-2 rounded-xl border border-white/25 bg-white/5 px-6 py-3 text-sm font-semibold text-white/90 transition hover:border-white/40 hover:bg-white/10"
+                                onClick={() => setGuideOpen(true)}
+                                className="mt-[26px] inline-flex items-center gap-2 rounded-xl px-[27px] py-[15px] text-base font-bold"
+                                style={{ color: INK, backgroundColor: "#fff", fontFamily: TITLE_FONT, boxShadow: `0 0 0 1px ${LINE} inset` }}
                             >
-                                {c.cta}
-                                <ArrowRight className="size-4 transition group-hover/btn:translate-x-0.5" style={{ color: ACCENT }} />
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.8">
+                                    <path d="M3 6v12M21 6v12M7 9v6M11 10v4M15 9v6M19 10v4" />
+                                </svg>
+                                Guia de medidas
                             </button>
                         </div>
-                    ))}
+
+                        <div
+                            className="absolute"
+                            style={{
+                                left: 567.2,
+                                top: 71.4,
+                                width: 624.8,
+                                height: 597.5,
+                                opacity: kitVisible ? 1 : 0,
+                                animation: kitVisible ? "ss-rise 0.8s ease-out 0.15s both" : undefined,
+                            }}
+                        >
+                            <div className="absolute text-right" style={{ left: 0, top: 541.5, width: 228.8 }}>
+                                <p className="text-xl font-bold" style={{ color: MUTED, fontFamily: BODY_FONT }}>
+                                    {kitVariante.nome}
+                                </p>
+                                <p className="text-lg" style={{ color: MUTED, fontFamily: BODY_FONT }}>
+                                    Lorem ipsum dolor sit
+                                </p>
+                            </div>
+                            <img src={kitShape} alt="" aria-hidden="true" className="absolute" style={{ left: 244.8, top: 0, width: 380, height: 597.5 }} />
+                            {kitIndexSaindo !== null && (
+                                <img
+                                    src={KIT_VARIANTES[kitIndexSaindo].imagem}
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="absolute"
+                                    style={{
+                                        left: 191.5,
+                                        top: 0,
+                                        width: 410.7,
+                                        height: 508.5,
+                                        animation: "ss-kit-fade-out 0.45s ease-in-out both",
+                                    }}
+                                />
+                            )}
+                            <img
+                                key={kitIndex}
+                                src={kitVariante.imagem}
+                                alt="Kit oficial: camiseta, número com chip, medalha de finisher e mochila"
+                                className="absolute"
+                                style={{
+                                    left: 191.5,
+                                    top: 0,
+                                    width: 410.7,
+                                    height: 508.5,
+                                    animation: kitIndexSaindo !== null ? "ss-kit-fade-in 0.45s ease-in-out both" : undefined,
+                                }}
+                            />
+                            <div className="absolute flex gap-1.5" style={{ left: 381.8, top: 518, width: 106 }}>
+                                {KIT_VARIANTES.map((v, i) => (
+                                    <div key={v.nome} className="h-1 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: LINE }}>
+                                        <div
+                                            className="h-full origin-left rounded-full"
+                                            style={{
+                                                backgroundColor: LARANJA_KIT,
+                                                transform: i < kitIndex ? "scaleX(1)" : "scaleX(0)",
+                                                animation: i === kitIndex ? `ss-kit-progress ${KIT_AUTOPLAY_MS}ms linear both` : undefined,
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={proximoKit}
+                                aria-label="Próximo item do kit"
+                                className="absolute flex items-center justify-center rounded-2xl bg-white"
+                                style={{ left: 604.8, top: 278.7, width: 40, height: 40, border: `1px solid ${LINE}` }}
+                            >
+                                <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+                                    <path d="M1 13L7 7L1 1" stroke={LARANJA_KIT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={anteriorKit}
+                                aria-label="Item anterior do kit"
+                                className="absolute flex items-center justify-center rounded-2xl bg-white"
+                                style={{ left: 224.8, top: 278.7, width: 40, height: 40, border: `1px solid ${LINE}` }}
+                            >
+                                <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+                                    <path d="M7 13L1 7L7 1" stroke={LARANJA_KIT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </Secao>
+            </section>
+
+            <InformacoesSection />
 
             {/* ===== FAQ ===== */}
-            <section id="faq" className="scroll-mt-16 border-t border-white/10 bg-white/[0.02]">
-                <div className="mx-auto grid max-w-6xl gap-8 px-5 py-16 md:grid-cols-[minmax(0,0.9fr)_1.6fr] md:gap-12 md:px-8 md:py-24">
-                    {/* Cabeçalho (esquerda) */}
-                    <div className="md:sticky md:top-28 md:self-start">
-                        <span className="text-sm font-bold uppercase tracking-widest" style={{ color: ACCENT }}>
-                            Antes de correr
-                        </span>
-                        <h2 className="mt-1 text-3xl font-black tracking-tight text-white md:text-5xl">Dúvidas frequentes</h2>
-                        <p className="mt-4 max-w-xs text-base text-white/60">
-                            Tudo o que você precisa saber sobre inscrição, acesso e suporte. Não achou sua dúvida?
-                        </p>
-                        <a
-                            href="#grupos-beneficios"
-                            className="mt-4 inline-flex items-center gap-2 text-sm font-bold transition hover:opacity-80"
-                            style={{ color: ACCENT }}
-                        >
-                            Fale com a gente <ArrowRight className="size-4" />
-                        </a>
-                    </div>
-
-                    {/* Lista de perguntas (direita) */}
-                    <div className="flex flex-col gap-3">
-                        {FAQ.map((f, i) => {
-                            const aberto = faqAberto === i;
-                            return (
-                                <div
-                                    key={i}
-                                    className={cx(
-                                        "overflow-hidden rounded-2xl border transition duration-200",
-                                        aberto ? "border-white/20 bg-white/[0.06]" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.05]",
-                                    )}
-                                >
-                                    <button
-                                        type="button"
-                                        onClick={() => setFaqAberto(aberto ? null : i)}
-                                        className="flex w-full items-center gap-4 p-5 text-left"
-                                    >
-                                        <span className="text-sm font-black tabular-nums" style={{ color: ACCENT }}>
-                                            {String(i + 1).padStart(2, "0")}
-                                        </span>
-                                        <span className="flex-1 text-base font-bold text-white">{f.q}</span>
-                                        <span
-                                            className={cx(
-                                                "flex size-8 shrink-0 items-center justify-center rounded-full border transition duration-300",
-                                                aberto ? "rotate-180 border-transparent text-white" : "border-white/20 text-white/60",
-                                            )}
-                                            style={aberto ? { backgroundColor: ACCENT } : undefined}
-                                        >
-                                            <ChevronDown className="size-4" />
-                                        </span>
-                                    </button>
-                                    <div className={cx("grid transition-all duration-300", aberto ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
-                                        <div className="overflow-hidden">
-                                            <p className="px-5 pb-5 pl-14 text-sm leading-relaxed text-white/70">{f.a}</p>
+            <section id="faq" className="relative overflow-hidden bg-white">
+                <div className="relative mx-auto max-w-[1470px]">
+                    <img
+                        src={faqMosaic}
+                        alt=""
+                        aria-hidden="true"
+                        className="pointer-events-none absolute top-0 left-0 hidden md:block"
+                        style={{ width: 525, height: 430 }}
+                    />
+                    <div className="relative mx-auto flex max-w-[1280px] flex-col gap-16 px-8 pt-40 pb-24">
+                        <div className="mx-auto flex max-w-[768px] flex-col items-center gap-5 text-center">
+                            <h2 className="text-[36px] leading-[1.2] tracking-[-1px]" style={{ fontFamily: TITLE_FONT, fontWeight: 600 }}>
+                                Perguntas frequentes
+                            </h2>
+                            <p className="text-xl leading-[1.4]" style={{ color: MUTED }}>
+                                Reunimos aqui algumas respostas para dúvidas que você possa ter.
+                                <br />
+                                Não encontrou o que precisa?{" "}
+                                <a href="mailto:contato@saosilvestre.com.br" className="font-semibold" style={{ color: ACCENT }}>
+                                    Fala com a gente
+                                </a>
+                                .
+                            </p>
+                        </div>
+                        <div className="mx-auto flex w-full max-w-[768px] flex-col gap-4">
+                            {FAQ_101.map((f, i) => {
+                                const aberto = faqAberto === i;
+                                return (
+                                    <Reveal key={i} variant="grow" delay={i * 0.08}>
+                                        <div className="rounded-2xl p-6" style={aberto ? { backgroundColor: MIST } : undefined}>
+                                            <button type="button" onClick={() => setFaqAberto(aberto ? null : i)} className="flex w-full items-start justify-between gap-4 text-left">
+                                                <div className="flex flex-1 flex-col">
+                                                    <span className="text-base font-semibold" style={{ color: INK }}>
+                                                        {f.q}
+                                                    </span>
+                                                    <div className="grid transition-[grid-template-rows] duration-300 ease-in-out" style={{ gridTemplateRows: aberto ? "1fr" : "0fr" }}>
+                                                        <div className="overflow-hidden">
+                                                            <span
+                                                                className="block pt-1 text-base leading-[1.5] font-normal transition-opacity duration-200 ease-in-out"
+                                                                style={{ color: MUTED, opacity: aberto ? 1 : 0 }}
+                                                            >
+                                                                {f.a}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {aberto ? (
+                                                    <MinusCircle className="size-6 shrink-0" style={{ color: "#A3A3A3" }} />
+                                                ) : (
+                                                    <PlusCircle className="size-6 shrink-0" style={{ color: "#A3A3A3" }} />
+                                                )}
+                                            </button>
                                         </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                    </Reveal>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* ===== Footer ===== */}
-            <footer ref={footerRef} className="border-t border-white/10 bg-black/40">
-                <div className="mx-auto max-w-6xl px-5 py-8 text-center text-sm text-white/50 md:px-8">
-                    © 2026 São Silvestre. Todos os direitos reservados.
+            <footer className="relative overflow-hidden border-t" style={{ backgroundColor: "#fff", color: INK, borderColor: LINE }}>
+                <div className="relative mx-auto max-w-[1240px] px-6 pt-12 pb-10">
+                    <div className="md:min-h-[258px]">
+                        <img src={logoTicketsportsColor} alt="Ticket Sports by Ingresse" className="h-auto w-[183px]" />
+                        <p className="mt-[18px] max-w-[403px] text-sm leading-[1.7]" style={{ color: MUTED }}>
+                            Ticket Sports é líder nacional para organizadores de eventos esportivos, faça parte agora!
+                        </p>
+                        <div className="mt-[22px] flex gap-3">
+                            {[
+                                { Icone: InstagramIcon, label: "Instagram" },
+                                { Icone: FacebookIcon, label: "Facebook" },
+                                { Icone: TiktokIcon, label: "TikTok" },
+                                { Icone: YoutubeIcon, label: "YouTube" },
+                            ].map(({ Icone, label }) => (
+                                <a
+                                    key={label}
+                                    href="#"
+                                    aria-label={label}
+                                    className="flex size-[42px] items-center justify-center rounded-xl"
+                                    style={{ backgroundColor: MIST, color: INK }}
+                                >
+                                    <Icone />
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="mt-11 flex flex-wrap justify-between gap-3 border-t pt-6" style={{ borderColor: LINE }}>
+                        <span className="text-sm" style={{ color: MUTED }}>
+                            © São Silvestre · Todos os direitos reservados.
+                        </span>
+                        <span className="text-sm" style={{ color: MUTED }}>
+                            São Paulo — Brasil 🇧🇷
+                        </span>
+                    </div>
+                    <img
+                        src={footerBlocks}
+                        alt=""
+                        aria-hidden="true"
+                        className="pointer-events-none absolute top-0 hidden md:block"
+                        style={{ left: 1006, width: 350, height: 435 }}
+                    />
                 </div>
             </footer>
+
+            <GuiaMedidasModal isOpen={guideOpen} onClose={() => setGuideOpen(false)} />
+            <PcdDetalhesModal isOpen={pcdModalOpen} onClose={() => setPcdModalOpen(false)} />
+            <ComoFuncionaModal isOpen={comoFuncionaModalOpen} onClose={() => setComoFuncionaModalOpen(false)} />
         </div>
-    );
-}
-
-function KitCarousel() {
-    const [idx, setIdx] = useState(0);
-    const total = KITS.length;
-    const ir = (n: number) => setIdx((n + total) % total);
-
-    return (
-        <div className="flex flex-col gap-5">
-            {/* Intro + seletor de kits (mesma linha) */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <p className="text-base text-white/70 md:whitespace-nowrap md:text-lg">
-                    Você pode escolher entre diferentes <strong className="text-white">kits de participação</strong>:
-                </p>
-                <div className="inline-flex flex-wrap gap-1 self-start rounded-full border border-white/10 bg-white/5 p-1 md:self-auto">
-                    {KITS.map((k, i) => (
-                        <button
-                            key={k.id}
-                            type="button"
-                            onClick={() => setIdx(i)}
-                            className={cx(
-                                "rounded-full px-4 py-2 text-sm font-bold transition",
-                                i === idx ? "text-white shadow-sm" : "text-white/55 hover:text-white",
-                            )}
-                            style={i === idx ? { backgroundColor: ACCENT } : undefined}
-                        >
-                            {k.nome}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
-                <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${idx * 100}%)` }}>
-                    {KITS.map((k) => (
-                        <div key={k.id} className="w-full shrink-0">
-                            <div className="grid gap-0 md:h-[440px] md:grid-cols-2">
-                                {/* Imagem */}
-                                <div className="relative aspect-[4/3] bg-neutral-100 md:aspect-auto md:h-full">
-                                    <img src={k.imagem} alt={k.nome} className="size-full object-cover" />
-                                    {/* Fade suave para o painel de texto (embaixo no mobile, à direita no desktop) */}
-                                    <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-b from-transparent to-white md:hidden" />
-                                    <span className="pointer-events-none absolute inset-y-0 right-0 hidden w-2/5 bg-gradient-to-r from-transparent to-white md:block" />
-                                    {k.destaque && (
-                                        <span className="absolute left-4 top-4 z-10 rounded-full px-3 py-1 text-xs font-bold text-white" style={{ backgroundColor: ACCENT }}>
-                                            Mais escolhido
-                                        </span>
-                                    )}
-                                </div>
-                                {/* Detalhes */}
-                                <div className="flex flex-col justify-center gap-4 p-6 md:p-10">
-                                    <div>
-                                        <span className="text-sm font-bold uppercase tracking-widest" style={{ color: ACCENT }}>
-                                            Kit {idx + 1} de {total}
-                                        </span>
-                                        <h3 className="mt-1 text-3xl font-black text-neutral-900 md:text-4xl">{k.nome}</h3>
-                                        <p className="mt-1 text-neutral-500">{k.resumo}</p>
-                                    </div>
-                                    <ul className="flex flex-col gap-2.5">
-                                        {k.base && (
-                                            <li className="flex items-center gap-2 rounded-lg bg-neutral-100 px-3 py-2 text-sm font-bold text-neutral-900">
-                                                <span className="flex size-5 items-center justify-center rounded-full text-white" style={{ backgroundColor: ACCENT }}>
-                                                    <Check className="size-3.5" />
-                                                </span>
-                                                {k.base}
-                                            </li>
-                                        )}
-                                        {k.itens.map((item) => (
-                                            <li key={item} className="flex items-center gap-2 text-sm text-neutral-700 md:text-base">
-                                                <Check className="size-4 shrink-0" style={{ color: ACCENT }} /> {item}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Setas */}
-                <button
-                    type="button"
-                    onClick={() => ir(idx - 1)}
-                    aria-label="Kit anterior"
-                    className="absolute left-3 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-200 bg-white/90 text-neutral-800 shadow-sm backdrop-blur transition hover:bg-white"
-                >
-                    <ChevronLeft className="size-6" />
-                </button>
-                <button
-                    type="button"
-                    onClick={() => ir(idx + 1)}
-                    aria-label="Próximo kit"
-                    className="absolute right-3 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-200 bg-white/90 text-neutral-800 shadow-sm backdrop-blur transition hover:bg-white"
-                >
-                    <ChevronRight className="size-6" />
-                </button>
-            </div>
-        </div>
-    );
-}
-
-function Secao({
-    id,
-    titulo,
-    subtitulo,
-    alt,
-    light,
-    primeira,
-    children,
-}: {
-    id: string;
-    titulo: string;
-    subtitulo: string;
-    alt?: boolean;
-    light?: boolean;
-    primeira?: boolean;
-    children: React.ReactNode;
-}) {
-    return (
-        <section id={id} className={cx("scroll-mt-16", !primeira && "border-t border-white/10", light ? "bg-white text-neutral-900" : alt && "bg-white/[0.02]")}>
-            <div className="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-24">
-                <div className="mb-8 md:mb-12">
-                    <span className="text-sm font-bold uppercase tracking-widest" style={{ color: ACCENT }}>
-                        {subtitulo}
-                    </span>
-                    <h2 className={cx("mt-1 text-3xl font-black tracking-tight md:text-5xl", light ? "text-neutral-900" : "text-white")}>
-                        {titulo}
-                    </h2>
-                </div>
-                {children}
-            </div>
-        </section>
     );
 }

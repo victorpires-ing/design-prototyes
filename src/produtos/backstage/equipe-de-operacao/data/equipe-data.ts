@@ -16,6 +16,8 @@ export interface CatalogoItem extends ItemCombable {
     id: string;
     kind: ItemKind;
     grupo: string; // nome do grupo de ingresso/combo
+    /** Imagem do produto (só para kind "produto"). */
+    imagem?: string;
     /** Sub-itens de um combo (fixo/dinâmico). */
     componentes?: ItemCombable[];
 }
@@ -39,8 +41,8 @@ export const SESSOES: Sessao[] = [
             { id: "i-pista-soc", kind: "ingresso", grupo: "Pista", nome: "Pista", tipo: "Social" },
             { id: "i-cam-int", kind: "ingresso", grupo: "Camarote", nome: "Camarote", tipo: "Inteira" },
             { id: "i-cam-mei", kind: "ingresso", grupo: "Camarote", nome: "Camarote", tipo: "Meia" },
-            { id: "p-camiseta", kind: "produto", grupo: "Produtos oficiais", nome: "Camiseta do evento", tipo: "Unissex" },
-            { id: "p-copo", kind: "produto", grupo: "Produtos oficiais", nome: "Copo colecionável", tipo: "500ml" },
+            { id: "p-camiseta", kind: "produto", grupo: "Produtos oficiais", nome: "Camiseta do evento", tipo: "Unissex", imagem: "https://picsum.photos/seed/camiseta-evento/80" },
+            { id: "p-copo", kind: "produto", grupo: "Produtos oficiais", nome: "Copo colecionável", tipo: "500ml", imagem: "https://picsum.photos/seed/copo-colecionavel/80" },
             {
                 id: "c-familia",
                 kind: "combo",

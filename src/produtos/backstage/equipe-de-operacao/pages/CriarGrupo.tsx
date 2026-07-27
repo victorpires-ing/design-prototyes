@@ -31,7 +31,7 @@ export function CriarGrupo() {
     const [operadores, setOperadores] = useState<string[]>([]);
     const [nome, setNome] = useState("");
 
-    const itensValidos = itens.length > 0 && itens.every((i) => i.cota >= 1 && i.cota <= COTA_MAXIMA);
+    const itensValidos = itens.length > 0 && itens.every((i) => i.cota <= COTA_MAXIMA);
     const operadoresValidos = operadores.length > 0 && operadores.every((e) => EMAIL_RE.test(e));
     const nomeUnico = nomeDisponivel(nome);
     const nomeValido = nome.trim().length > 0 && nome.trim().length <= NOME_MAX && nomeUnico;
@@ -93,7 +93,7 @@ export function CriarGrupo() {
                                         <OperadoresEditor value={operadores} onChange={setOperadores} />
                                     </div>
                                 )}
-                                {step === 2 && <Revisao nome={nome} onNome={setNome} nomeUnico={nomeUnico} operadores={operadores} onOperadores={setOperadores} itens={itens} />}
+                                {step === 2 && <Revisao nome={nome} onNome={setNome} nomeUnico={nomeUnico} operadores={operadores} onOperadores={setOperadores} itens={itens} modo={modo ?? "compartilhada"} />}
                             </section>
                         </>
                     )}
@@ -141,9 +141,10 @@ interface RevisaoProps {
     operadores: string[];
     onOperadores: (emails: string[]) => void;
     itens: ItemCota[];
+    modo: CotaModo;
 }
 
-function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens }: RevisaoProps) {
+function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens, modo }: RevisaoProps) {
     const excedeu = nome.trim().length > NOME_MAX;
     const erro = !nomeUnico ? "O nome do grupo deve ser único." : excedeu ? `O nome do grupo deve ter ${NOME_MAX} ou menos caracteres.` : undefined;
 
@@ -175,7 +176,10 @@ function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens }: R
 
             {/* Container 2: externo (claro/elevado) + container interno mais escuro com os itens */}
             <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-5 ring-1 ring-border-secondary">
-                <span className="text-sm font-semibold text-primary">Itens e cotas</span>
+                <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-primary">Itens e cotas</span>
+                    <span className="text-sm text-tertiary">{modo === "individual" ? "Cota por operador" : "Cota compartilhada pelos operadores"}</span>
+                </div>
                 <div className="rounded-xl bg-primary p-4 ring-1 ring-border-secondary dark:bg-[#0a0a0a]">
                     <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
                         {itens.map((v) => {

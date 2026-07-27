@@ -172,6 +172,11 @@ function ItemRow({ item, cota, minCota, onToggle, onCota }: ItemRowProps) {
                                     <span className="text-sm font-semibold text-primary">{item.nome}</span>
                                     <span className="text-xs font-normal text-tertiary">{item.tipo}</span>
                                 </span>
+                            ) : item.kind === "produto" ? (
+                                <span className="flex items-center gap-3">
+                                    <img src={item.imagem} alt="" className="size-9 shrink-0 rounded-md object-cover ring-1 ring-secondary" />
+                                    <span className="text-sm font-medium text-primary">{item.nome}</span>
+                                </span>
                             ) : (
                                 <span className="flex items-baseline gap-2">
                                     <span className="text-sm font-medium text-primary">{item.nome}</span>

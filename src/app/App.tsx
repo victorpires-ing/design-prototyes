@@ -26,6 +26,12 @@ import { RelatorioPersonalizado } from '../produtos/backstage/relatorios/pages/R
 import { Home as BackstageHome } from '../produtos/backstage/home/pages/Home';
 import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';
 import { NovoGrupoV2 } from '../produtos/backstage/membros-v2/pages/NovoGrupoV2';
+import { EquipeProvider } from '../produtos/backstage/equipe-de-operacao/data/equipe-store';
+import { EquipeDeOperacao } from '../produtos/backstage/equipe-de-operacao/pages/EquipeDeOperacao';
+import { CriarGrupo as CriarGrupoOperacao } from '../produtos/backstage/equipe-de-operacao/pages/CriarGrupo';
+import { DetalheGrupo as DetalheGrupoOperacao } from '../produtos/backstage/equipe-de-operacao/pages/DetalheGrupo';
+import { EditarItensCotas } from '../produtos/backstage/equipe-de-operacao/pages/EditarItensCotas';
+import { EditarOperadores } from '../produtos/backstage/equipe-de-operacao/pages/EditarOperadores';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
@@ -154,6 +160,7 @@ export default function App() {
     <CortesiasProvider>
       <PerguntasProvider>
       <PesquisasProvider>
+      <EquipeProvider>
       <Routes>
         <Route path="/" element={<ProductSelection />} />
         <Route path="/loading" element={<CymaticsShowcase />} />
@@ -161,6 +168,11 @@ export default function App() {
         <Route path="/backstage/home" element={<BackstageHome />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
+        <Route path="/backstage/equipe-de-operacao" element={<EquipeDeOperacao />} />
+        <Route path="/backstage/equipe-de-operacao/criar" element={<CriarGrupoOperacao />} />
+        <Route path="/backstage/equipe-de-operacao/:grupoId" element={<DetalheGrupoOperacao />} />
+        <Route path="/backstage/equipe-de-operacao/:grupoId/editar-itens" element={<EditarItensCotas />} />
+        <Route path="/backstage/equipe-de-operacao/:grupoId/editar-operadores" element={<EditarOperadores />} />
         <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
         <Route path="/backstage/permissao-envio" element={<PermissaoEnvio />} />
         <Route path="/backstage/permissao-envio/nova" element={<NovaPermissao />} />
@@ -282,6 +294,7 @@ export default function App() {
         <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
+      </EquipeProvider>
       </PesquisasProvider>
       </PerguntasProvider>
     </CortesiasProvider>

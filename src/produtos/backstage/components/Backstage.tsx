@@ -4,13 +4,11 @@ import type { Key } from "react-aria-components";
 import {
     Announcement01,
     Bank,
-    BarChartSquare02,
     Calendar,
     ChevronDown,
     Eye,
     File03,
     Globe01,
-    ImageUser,
     InfoCircle,
     LayoutLeft,
     LayoutTop,
@@ -56,6 +54,7 @@ export type BackstageSection =
     | "itens"
     | "pesquisas"
     | "cortesias"
+    | "equipe-de-operacao"
     | "relatorios"
     | "marketing";
 
@@ -67,6 +66,7 @@ export type BackstageItem =
     | "catalogo-produtos"
     | "catalogo-aberturas"
     | "emissao-cortesias"
+    | "grupos-operacao"
     | "vendas-por-grupo"
     | "transacoes"
     | "acesso"
@@ -266,6 +266,7 @@ const SECTION_LABELS: Record<BackstageSection, string> = {
     itens: "Itens",
     pesquisas: "Coleta de dados",
     cortesias: "Cortesias",
+    "equipe-de-operacao": "Equipe de operação",
     relatorios: "Relatórios",
     marketing: "Marketing",
 };
@@ -278,6 +279,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     "catalogo-produtos": "Produtos",
     "catalogo-aberturas": "Aberturas de vendas",
     "emissao-cortesias": "Emissão de cortesias",
+    "grupos-operacao": "Grupos de operação",
     "vendas-por-grupo": "Vendas",
     transacoes: "Transações",
     acesso: "Acesso",
@@ -712,12 +714,12 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 <TreeView.ItemContent icon={InfoCircle}>Informações do evento</TreeView.ItemContent>
             </TreeView.Item>
 
-            <TreeView.Item id="equipe-e-permissoes" textValue="Equipe e Permissões" href="/backstage/equipe-e-permissoes">
+            <TreeView.Item id="equipe-de-operacao" textValue="Equipe de operação" href="/backstage/equipe-de-operacao">
                 <TreeView.ItemContent
-                    icon={ImageUser}
-                    className={activeSection === "equipe-e-permissoes" ? ACTIVE_CLASS : undefined}
+                    icon={UsersPlus}
+                    className={activeSection === "equipe-de-operacao" ? ACTIVE_CLASS : undefined}
                 >
-                    Equipe e Permissões
+                    Equipe de operação
                 </TreeView.ItemContent>
             </TreeView.Item>
 
@@ -788,25 +790,6 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 </TreeView.Item>
             </TreeView.Item>
 
-            <TreeView.Item id="pesquisas" textValue="Coleta de dados">
-                <TreeView.ItemContent
-                    icon={BarChartSquare02}
-                    action={
-                        <Badge size="sm" type="pill-color" color="error">
-                            Novo
-                        </Badge>
-                    }
-                >
-                    Coleta de dados
-                </TreeView.ItemContent>
-                <TreeView.Item id="formularios-compra" textValue="Perguntas por ingresso" href="/backstage/pesquisas">
-                    <TreeView.ItemContent className={itemClass("formularios-compra")}>
-                        <span className="flex items-center gap-2 ml-2">
-                            • Perguntas por ingresso
-                        </span>
-                    </TreeView.ItemContent>
-                </TreeView.Item>
-            </TreeView.Item>
         </TreeView>
     );
 };

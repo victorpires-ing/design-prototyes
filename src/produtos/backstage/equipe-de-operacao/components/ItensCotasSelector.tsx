@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Calendar, CheckCircle, ChevronDown, InfoCircle, Package, SearchLg, ShoppingCart01, Trash01 } from "@untitledui/icons";
+import { Calendar, CheckCircle, ChevronDown, Package, SearchLg, ShoppingCart01, Trash01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
@@ -9,13 +9,7 @@ import { Tabs } from "@/components/application/tabs/tabs";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { COTA_MAXIMA, ITENS_POR_ID, KIND_TABS, SESSAO_DO_ITEM, SESSOES, type CatalogoItem, type ItemKind } from "../data/equipe-data";
-import type { CotaModo, ItemCota } from "../data/equipe-store";
-
-/** Texto do aviso de consumo da cota conforme o modo escolhido. */
-export const AVISO_COTA: Record<CotaModo, string> = {
-    compartilhada: "Os operadores consumirão juntos a cota de itens.",
-    individual: "Cada operador terá a própria cota para cada item.",
-};
+import type { ItemCota } from "../data/equipe-store";
 
 const COTA_PADRAO = 0;
 
@@ -38,11 +32,9 @@ interface Props {
     onChange: (itens: ItemCota[]) => void;
     /** Piso da cota por item (ex.: já emitidos) — usado na edição. */
     minPorItem?: Record<string, number>;
-    /** Modo de gestão da cota (muda o texto do aviso). */
-    modo?: CotaModo;
 }
 
-export function ItensCotasSelector({ value, onChange, minPorItem, modo = "compartilhada" }: Props) {
+export function ItensCotasSelector({ value, onChange, minPorItem }: Props) {
     const [tab, setTab] = useState<ItemKind>("ingresso");
     const [busca, setBusca] = useState("");
     const [fechadas, setFechadas] = useState<Set<string>>(new Set());
@@ -113,13 +105,9 @@ export function ItensCotasSelector({ value, onChange, minPorItem, modo = "compar
                 )}
             </section>
 
-            {/* Coluna direita: resumo + aviso fora do card */}
+            {/* Coluna direita: resumo */}
             <div className="flex w-full shrink-0 flex-col gap-3 lg:sticky lg:top-6 lg:w-[340px] lg:self-start">
                 <ResumoPanel value={value} onRemover={remover} onRemoverTodos={() => onChange([])} />
-                <div className="flex items-start gap-2 px-1">
-                    <InfoCircle className="mt-0.5 size-4 shrink-0 text-blue-600" aria-hidden="true" />
-                    <p className="text-xs text-primary">{AVISO_COTA[modo]}</p>
-                </div>
             </div>
         </div>
     );

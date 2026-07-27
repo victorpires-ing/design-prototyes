@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { InfoCircle, User01, Users01 } from "@untitledui/icons";
+import { User01, Users01 } from "@untitledui/icons";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressIconType } from "@/components/application/progress-steps/progress-types";
 import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { BackstageLayout } from "../../components/Backstage";
 import { WizardHeader } from "../components/WizardHeader";
-import { ItensCotasSelector, AVISO_COTA } from "../components/ItensCotasSelector";
+import { ItensCotasSelector } from "../components/ItensCotasSelector";
 import { OperadoresEditor, OperadoresList } from "../components/OperadoresEditor";
 import { COTA_MAXIMA, ITENS_POR_ID, SESSAO_DO_ITEM } from "../data/equipe-data";
 import { useEquipe, type CotaModo, type ItemCota } from "../data/equipe-store";
@@ -87,13 +87,13 @@ export function CriarGrupo() {
                             <Progress.IconsWithText items={steps} type="number" size="sm" orientation="vertical" className="w-full md:hidden" />
 
                             <section className="w-full max-w-[1000px]">
-                                {step === 0 && <ItensCotasSelector value={itens} onChange={setItens} modo={modo ?? "compartilhada"} />}
+                                {step === 0 && <ItensCotasSelector value={itens} onChange={setItens} />}
                                 {step === 1 && (
                                     <div className="mx-auto max-w-[720px]">
                                         <OperadoresEditor value={operadores} onChange={setOperadores} />
                                     </div>
                                 )}
-                                {step === 2 && <Revisao nome={nome} onNome={setNome} nomeUnico={nomeUnico} operadores={operadores} onOperadores={setOperadores} itens={itens} modo={modo ?? "compartilhada"} />}
+                                {step === 2 && <Revisao nome={nome} onNome={setNome} nomeUnico={nomeUnico} operadores={operadores} onOperadores={setOperadores} itens={itens} />}
                             </section>
                         </>
                     )}
@@ -141,10 +141,9 @@ interface RevisaoProps {
     operadores: string[];
     onOperadores: (emails: string[]) => void;
     itens: ItemCota[];
-    modo: CotaModo;
 }
 
-function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens, modo }: RevisaoProps) {
+function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens }: RevisaoProps) {
     const excedeu = nome.trim().length > NOME_MAX;
     const erro = !nomeUnico ? "O nome do grupo deve ser único." : excedeu ? `O nome do grupo deve ter ${NOME_MAX} ou menos caracteres.` : undefined;
 
@@ -176,12 +175,7 @@ function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens, mod
 
             {/* Container 2: externo (claro/elevado) + container interno mais escuro com os itens */}
             <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-5 ring-1 ring-border-secondary">
-                <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-primary">Itens e cotas</span>
-                    <span className="flex items-center gap-1.5 text-xs text-tertiary">
-                        <InfoCircle className="size-3.5 text-blue-600" aria-hidden="true" /> {AVISO_COTA[modo]}
-                    </span>
-                </div>
+                <span className="text-sm font-semibold text-primary">Itens e cotas</span>
                 <div className="rounded-xl bg-primary p-4 ring-1 ring-border-secondary dark:bg-[#0a0a0a]">
                     <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
                         {itens.map((v) => {

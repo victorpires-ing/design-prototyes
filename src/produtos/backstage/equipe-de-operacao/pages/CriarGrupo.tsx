@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Check, InfoCircle, User01, Users01 } from "@untitledui/icons";
+import { InfoCircle, User01, Users01 } from "@untitledui/icons";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressIconType } from "@/components/application/progress-steps/progress-types";
 import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { WizardHeader } from "../components/WizardHeader";
 import { ItensCotasSelector, AVISO_COTA } from "../components/ItensCotasSelector";
@@ -37,7 +36,13 @@ export function CriarGrupo() {
     const nomeUnico = nomeDisponivel(nome);
     const nomeValido = nome.trim().length > 0 && nome.trim().length <= NOME_MAX && nomeUnico;
 
-    const podeAvancar = !emWizard ? !!modo : step === 0 ? itensValidos : step === 1 ? operadoresValidos : nomeValido;
+    const podeAvancar = step === 0 ? itensValidos : step === 1 ? operadoresValidos : nomeValido;
+
+    // Escolher o modo já avança para o stepper (sem confirmação).
+    const escolherModo = (m: CotaModo) => {
+        setModo(m);
+        setEmWizard(true);
+    };
 
     const steps: ProgressIconType[] = useMemo(
         () =>
@@ -57,7 +62,6 @@ export function CriarGrupo() {
 
     const avancar = () => {
         if (!podeAvancar) return;
-        if (!emWizard) return setEmWizard(true); // confirma o modo → entra no stepper
         if (step < 2) return setStep((s) => s + 1);
         criarGrupo({ nome: nome.trim(), modo: modo!, operadores, itens });
         toastSucesso("Grupo de operação criado", `“${nome.trim()}” já pode emitir itens dentro da cota definida.`);
@@ -70,13 +74,13 @@ export function CriarGrupo() {
                 <WizardHeader
                     title="Criar grupo"
                     onBack={voltar}
-                    actionLabel={emWizard && step === 2 ? "Criar grupo" : "Avançar"}
-                    onAction={avancar}
+                    actionLabel={emWizard ? (step === 2 ? "Criar grupo" : "Avançar") : undefined}
+                    onAction={emWizard ? avancar : undefined}
                     actionDisabled={!podeAvancar}
                 />
                 <main className="flex flex-1 flex-col items-center gap-8 px-6 pb-10">
                     {!emWizard ? (
-                        <ModoSelector modo={modo} onSelect={setModo} />
+                        <ModoSelector onSelect={escolherModo} />
                     ) : (
                         <>
                             <Progress.IconsWithText items={steps} type="number" size="sm" orientation="horizontal" className="max-w-[640px] max-md:hidden" />
@@ -102,41 +106,29 @@ export function CriarGrupo() {
 /* ----------------------- Seleção do modo de cota ------------------ */
 
 const MODOS: { id: CotaModo; icon: typeof Users01; titulo: string; descricao: string }[] = [
-    { id: "compartilhada", icon: Users01, titulo: "Compartilhada", descricao: "Os operadores usam a cota de cada item selecionado em conjunto." },
-    { id: "individual", icon: User01, titulo: "Individual por operador", descricao: "Cada operador do grupo recebe a própria cota para cada item selecionado." },
+    { id: "compartilhada", icon: Users01, titulo: "Compartilhada", descricao: "A cota de cada item selecionado é usada em conjunto." },
+    { id: "individual", icon: User01, titulo: "Individual", descricao: "Cada operador do grupo recebe a própria cota para cada item selecionado." },
 ];
 
-function ModoSelector({ modo, onSelect }: { modo: CotaModo | null; onSelect: (m: CotaModo) => void }) {
+function ModoSelector({ onSelect }: { onSelect: (m: CotaModo) => void }) {
     return (
-        <div className="mt-20 flex w-full max-w-[720px] flex-col gap-4">
-            <div className="flex flex-col gap-1 text-center">
-                <h2 className="text-lg font-semibold text-primary">Como a cota de itens será gerenciada?</h2>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {MODOS.map((m) => {
-                    const ativo = modo === m.id;
-                    return (
-                        <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => onSelect(m.id)}
-                            aria-pressed={ativo}
-                            className={cx(
-                                "relative flex flex-col gap-3 rounded-2xl bg-primary p-5 text-left ring-1 transition duration-100 ease-linear",
-                                ativo ? "ring-2 ring-brand" : "ring-border-secondary hover:ring-border-primary",
-                            )}
-                        >
-                            <span className={cx("absolute right-4 top-4 flex size-5 items-center justify-center rounded-full transition duration-100 ease-linear", ativo ? "bg-brand-solid text-white" : "ring-1 ring-border-primary")}>
-                                {ativo && <Check className="size-3.5" aria-hidden="true" />}
-                            </span>
-                            <FeaturedIcon icon={m.icon} color="gray" theme="modern" size="lg" />
-                            <div className="flex flex-col gap-1">
-                                <span className="text-md font-semibold text-primary">{m.titulo}</span>
-                                <span className="text-sm text-tertiary">{m.descricao}</span>
-                            </div>
-                        </button>
-                    );
-                })}
+        <div className="mt-20 flex w-full max-w-[860px] flex-col gap-8">
+            <h2 className="text-center text-lg font-semibold text-primary">Como as cotas do grupo serão gerenciadas?</h2>
+            <div className="flex flex-wrap justify-center gap-6">
+                {MODOS.map((m) => (
+                    <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => onSelect(m.id)}
+                        className="flex h-[280px] w-[260px] flex-col items-center justify-center gap-4 rounded-2xl bg-secondary p-6 text-center ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary_hover hover:ring-brand"
+                    >
+                        <FeaturedIcon icon={m.icon} color="gray" theme="modern" size="lg" />
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-md font-semibold text-primary">{m.titulo}</span>
+                            <span className="text-sm text-tertiary">{m.descricao}</span>
+                        </div>
+                    </button>
+                ))}
             </div>
         </div>
     );

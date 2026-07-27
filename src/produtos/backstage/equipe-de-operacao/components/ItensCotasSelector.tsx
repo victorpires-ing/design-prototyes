@@ -17,7 +17,7 @@ export const AVISO_COTA: Record<CotaModo, string> = {
     individual: "Cada operador terá a própria cota para cada item.",
 };
 
-const COTA_PADRAO = 100;
+const COTA_PADRAO = 0;
 
 const TAB_ICON: Record<ItemKind, React.FC<{ className?: string }>> = { ingresso: Calendar, produto: ShoppingCart01, combo: Package };
 
@@ -49,7 +49,11 @@ export function ItensCotasSelector({ value, onChange, minPorItem, modo = "compar
 
     const mapa = useMemo(() => new Map(value.map((v) => [v.itemId, v.cota])), [value]);
 
-    const setCota = useCallback((itemId: string, cota: number) => onChange([...value.filter((v) => v.itemId !== itemId), { itemId, cota }]), [onChange, value]);
+    const setCota = useCallback(
+        (itemId: string, cota: number) =>
+            onChange(value.some((v) => v.itemId === itemId) ? value.map((v) => (v.itemId === itemId ? { ...v, cota } : v)) : [...value, { itemId, cota }]),
+        [onChange, value],
+    );
     const remover = useCallback((itemId: string) => onChange(value.filter((v) => v.itemId !== itemId)), [onChange, value]);
     const toggle = (item: CatalogoItem, on: boolean) => (on ? setCota(item.id, minPorItem?.[item.id] ?? COTA_PADRAO) : remover(item.id));
 
@@ -159,9 +163,11 @@ interface ItemRowProps {
 
 function ItemRow({ item, cota, minCota, onToggle, onCota }: ItemRowProps) {
     const selecionado = cota !== undefined;
-    const piso = minCota ?? 1;
-    const invalido = selecionado && (cota! < piso || cota! > COTA_MAXIMA);
-    const erro = cota! > COTA_MAXIMA ? `A quantidade máxima é ${COTA_MAXIMA.toLocaleString("pt-BR")}` : cota! < piso ? `A cota não pode ser menor que ${piso} (já emitidos)` : undefined;
+    const piso = minCota ?? 0;
+    const acimaMax = cota! > COTA_MAXIMA;
+    const abaixoMin = minCota !== undefined && cota! < minCota;
+    const invalido = selecionado && (acimaMax || abaixoMin);
+    const erro = acimaMax ? `A quantidade máxima é ${COTA_MAXIMA.toLocaleString("pt-BR")}` : abaixoMin ? `A cota não pode ser menor que ${minCota} (já emitidos)` : undefined;
     const ehCombo = !!item.componentes?.length;
 
     return (

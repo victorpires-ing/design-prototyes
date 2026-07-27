@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { AlertTriangle, Lock01, Mail01, Trash01, UploadCloud02, XClose } from "@untitledui/icons";
+import { AlertTriangle, Lock01, Plus, Trash01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { Input } from "@/components/base/input/input";
+import { InputBase } from "@/components/base/input/input";
+import { InputGroup } from "@/components/base/input/input-group";
 import { cx } from "@/utils/cx";
+import { ImportarEmailsModal } from "./ImportarEmailsModal";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -42,7 +44,7 @@ export function OperadoresEditor({ value, onChange, bloqueados = [], mostrarCont
     return (
         <div className="flex flex-col gap-4 rounded-xl bg-secondary p-4">
             <div className="flex items-center justify-between gap-3">
-                <Button size="sm" color="secondary" iconLeading={UploadCloud02} onClick={() => setImportando(true)}>
+                <Button size="sm" color="secondary" iconLeading={<XlsFileIcon data-icon className="size-5" />} onClick={() => setImportando(true)}>
                     Importar e-mails
                 </Button>
                 {temRemoviveis && (
@@ -53,44 +55,47 @@ export function OperadoresEditor({ value, onChange, bloqueados = [], mostrarCont
             </div>
 
             <div className="flex flex-col gap-1.5">
-                <div className="flex items-start gap-2">
-                    <div className="flex-1">
-                        <Input
-                            icon={Mail01}
-                            placeholder="E-mail do operador"
-                            value={entrada}
-                            onChange={setEntrada}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && entrada.trim()) {
-                                    e.preventDefault();
-                                    adicionar(entrada);
-                                }
-                            }}
-                            aria-label="E-mail do operador"
-                        />
-                    </div>
-                    <Button size="md" color="primary" isDisabled={!entrada.trim()} onClick={() => adicionar(entrada)}>
-                        Adicionar
-                    </Button>
-                </div>
-                <p className="text-xs text-tertiary">Cole ou digite os e-mails separados por espaço ou vírgula. Cada operador pode fazer parte de apenas um grupo.</p>
+                <InputGroup
+                    value={entrada}
+                    onChange={setEntrada}
+                    aria-label="E-mail do operador"
+                    trailingAddon={
+                        <Button size="md" color="secondary" iconLeading={Plus} isDisabled={!entrada.trim()} onClick={() => adicionar(entrada)}>
+                            Adicionar
+                        </Button>
+                    }
+                >
+                    <InputBase
+                        placeholder="E-mail do operador"
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && entrada.trim()) {
+                                e.preventDefault();
+                                adicionar(entrada);
+                            }
+                        }}
+                    />
+                </InputGroup>
+                <p className="text-xs text-tertiary">Cole ou digite os e-mails separados por espaço ou vírgula para adicionar vários e-mails de uma vez.</p>
             </div>
 
             <OperadoresList value={value} onChange={onChange} bloqueados={bloqueados} mostrarConta={mostrarConta} badgeConta={badgeConta} />
 
-            {importando && <ImportModal onClose={() => setImportando(false)} onConfirm={(t) => { adicionar(t); setImportando(false); }} />}
+            <ImportarEmailsModal isOpen={importando} onClose={() => setImportando(false)} onConfirm={(emails) => { adicionar(emails.join(" ")); setImportando(false); }} />
         </div>
     );
 }
 
-/** Lista vertical de operadores (e-mail + status de cadastro + remover). Reutilizada na edição/revisão. */
+/** Lista vertical de operadores (e-mail + status de cadastro + remover). E-mails inválidos vêm primeiro. */
 export function OperadoresList({ value, onChange, bloqueados = [], badgeConta = false, mostrarConta = false }: Props) {
     if (value.length === 0) return null;
+    // Inválidos no topo (ordenação estável preserva o resto da ordem).
+    const ordenado = value.map((email, i) => ({ email, i })).sort((a, b) => Number(statusEmail(b.email) === "invalido") - Number(statusEmail(a.email) === "invalido"));
+
     return (
         <ul className="flex flex-col divide-y divide-border-secondary rounded-lg bg-primary ring-1 ring-border-secondary">
-            {value.map((email, i) => {
+            {ordenado.map(({ email, i }) => {
                 const base = statusEmail(email);
-                // Status de conta só quando habilitado (não na edição). Teste: 3º operador sempre "sem conta".
+                // Status de conta só quando habilitado (não na etapa 2). Teste: 3º operador sempre "sem conta".
                 const st = !mostrarConta ? (base === "invalido" ? "invalido" : "ok") : i === 2 && base === "ok" ? "sem-cadastro" : base;
                 const travado = bloqueados.includes(email);
                 return (
@@ -123,36 +128,12 @@ export function OperadoresList({ value, onChange, bloqueados = [], badgeConta = 
     );
 }
 
-function ImportModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (texto: string) => void }) {
-    const [texto, setTexto] = useState("");
-    const total = separar(texto).length;
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4" onClick={onClose}>
-            <div className="flex w-full max-w-md flex-col gap-4 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-start justify-between gap-3">
-                    <div className="flex flex-col gap-1">
-                        <h3 className="text-lg font-semibold text-primary">Importar e-mails</h3>
-                        <p className="text-sm text-tertiary">Cole a lista de e-mails, separados por espaço, vírgula ou quebra de linha.</p>
-                    </div>
-                    <button type="button" onClick={onClose} aria-label="Fechar" className="shrink-0 text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary">
-                        <XClose className="size-5" aria-hidden="true" />
-                    </button>
-                </div>
-                <textarea
-                    value={texto}
-                    onChange={(e) => setTexto(e.target.value)}
-                    rows={6}
-                    placeholder="joao@empresa.com, maria@empresa.com…"
-                    className="w-full resize-none rounded-lg bg-primary px-3.5 py-2.5 text-sm text-primary shadow-xs ring-1 ring-border-primary outline-none transition duration-100 ease-linear placeholder:text-placeholder focus:ring-2 focus:ring-brand"
-                />
-                <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-tertiary">{total} e-mail{total === 1 ? "" : "s"} detectado{total === 1 ? "" : "s"}</span>
-                    <div className="flex gap-3">
-                        <Button size="md" color="secondary" onClick={onClose}>Cancelar</Button>
-                        <Button size="md" color="primary" isDisabled={!total} onClick={() => onConfirm(texto)}>Importar</Button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
+/** Ícone de planilha (Excel) verde, usado no botão "Importar e-mails". */
+const XlsFileIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg viewBox="0 0 40 40" fill="none" {...props}>
+        <path stroke="currentColor" strokeWidth={1.5} d="M7.75 4A3.25 3.25 0 0 1 11 .75h16c.121 0 .238.048.323.134l10.793 10.793a.46.46 0 0 1 .134.323v24A3.25 3.25 0 0 1 35 39.25H11A3.25 3.25 0 0 1 7.75 36z" />
+        <path stroke="currentColor" strokeWidth={1.5} d="M27 .5V8a4 4 0 0 0 4 4h7.5" />
+        <rect width={28} height={16} x={1} y={18} fill="#079455" rx={2} />
+        <path fill="#fff" d="M11.273 25.273H9.717a1.5 1.5 0 0 0-.174-.536 1.4 1.4 0 0 0-.337-.405 1.5 1.5 0 0 0-.476-.255 1.8 1.8 0 0 0-.579-.09q-.564 0-.983.282-.42.276-.65.81-.231.528-.231 1.285 0 .777.23 1.306.236.53.654.8.42.27.97.27.309 0 .571-.082.267-.082.473-.238a1.4 1.4 0 0 0 .34-.387q.14-.228.192-.519l1.556.007q-.06.501-.302.966a2.9 2.9 0 0 1-.643.828 3 3 0 0 1-.959.575q-.554.21-1.253.21-.973 0-1.74-.44a3.13 3.13 0 0 1-1.208-1.276q-.44-.834-.44-2.02 0-1.19.447-2.024.448-.835 1.215-1.272a3.4 3.4 0 0 1 1.726-.44q.632 0 1.172.177.543.179.962.519.42.337.682.827.265.49.34 1.122m5.048-.454a.9.9 0 0 0-.366-.668q-.324-.238-.877-.238-.377 0-.636.107a.9.9 0 0 0-.398.288.7.7 0 0 0-.135.419.6.6 0 0 0 .082.34.85.85 0 0 0 .252.253q.16.103.37.18.21.075.447.129l.653.156q.477.106.874.284.398.177.689.437.291.259.45.61.164.353.168.807-.004.667-.341 1.157-.335.487-.966.757-.63.266-1.516.266-.882 0-1.534-.27a2.25 2.25 0 0 1-1.016-.799q-.362-.533-.38-1.317h1.488q.024.366.21.61.188.242.5.366.316.12.714.12.39 0 .678-.113a1.04 1.04 0 0 0 .451-.316.73.73 0 0 0 .16-.465q0-.244-.146-.412a1.1 1.1 0 0 0-.419-.284 4 4 0 0 0-.67-.213l-.793-.199q-.92-.224-1.452-.7-.533-.475-.53-1.282-.003-.66.352-1.154.36-.493.984-.77.625-.277 1.42-.277.81 0 1.414.277.608.276.944.77.338.494.348 1.144zm3.92-2.092L22 28.253h.067l1.762-5.526h1.704L23.026 30h-1.982l-2.51-7.273z" />
+    </svg>
+);

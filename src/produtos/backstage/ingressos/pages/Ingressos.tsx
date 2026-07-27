@@ -84,11 +84,15 @@ export function Ingressos() {
     );
     const [pending, setPending] = useState<Pending | null>(null);
     const [draggingId, setDraggingId] = useState<string | null>(null);
+    // Duplicação de ingresso: modal de confirmação + badge temporária "cópia de ingresso".
+    const [dupIngresso, setDupIngresso] = useState<{ sessaoId: string; grupoId: string; ingressoId: string; nome: string } | null>(null);
+    const [copiaId, setCopiaId] = useState<string | null>(null);
 
     const sessoesRef = useRef(sessoes);
     sessoesRef.current = sessoes;
     const snapshotRef = useRef<Sessao[] | null>(null);
     const dragCtxRef = useRef<Pending | null>(null);
+    const dupSeq = useRef(0);
 
     const toggleGroup = (id: string) => setOpenGroups((p) => toggleSet(p, id));
     const toggleExpand = (id: string) => setExpanded((p) => toggleSet(p, id));
@@ -100,6 +104,33 @@ export function Ingressos() {
         setSessoes((prev) =>
             prev.map((s) => (s.id === sessaoId ? { ...s, grupos: s.grupos.map((g) => (g.id === grupoId ? { ...g, ingressos: next } : g)) } : s)),
         );
+
+    // Duplica o ingresso (com todos os lotes) logo abaixo, com novos ids + badge temporária.
+    const duplicarIngresso = (sessaoId: string, grupoId: string, ingressoId: string) => {
+        const orig = sessoes.find((s) => s.id === sessaoId)?.grupos.find((g) => g.id === grupoId)?.ingressos.find((i) => i.id === ingressoId);
+        if (!orig) return;
+        const sfx = `-c${(dupSeq.current += 1)}`;
+        const novoId = orig.id + sfx;
+        const copia: Ingresso = { ...orig, id: novoId, lotes: orig.lotes.map((l) => ({ ...l, id: l.id + sfx })) };
+        setSessoes((prev) =>
+            prev.map((s) =>
+                s.id !== sessaoId
+                    ? s
+                    : {
+                          ...s,
+                          grupos: s.grupos.map((g) => {
+                              if (g.id !== grupoId) return g;
+                              const idx = g.ingressos.findIndex((i) => i.id === ingressoId);
+                              const ings = [...g.ingressos];
+                              ings.splice(idx + 1, 0, copia);
+                              return { ...g, ingressos: ings };
+                          }),
+                      },
+            ),
+        );
+        setCopiaId(novoId);
+        window.setTimeout(() => setCopiaId((cur) => (cur === novoId ? null : cur)), 30000);
+    };
 
     // Ao iniciar o arraste: guarda a ordem anterior (para reverter) + o contexto.
     const handleDragStart = (ctx: Pending) => {
@@ -171,6 +202,8 @@ export function Ingressos() {
                                         active={active}
                                         onToggleActive={toggleActive}
                                         onReorderIngressos={(next) => reorderIngressos(sessao.id, grupo.id, next)}
+                                        onDuplicarIngresso={(ing) => setDupIngresso({ sessaoId: sessao.id, grupoId: grupo.id, ingressoId: ing.id, nome: ing.name })}
+                                        copiaId={copiaId}
                                         onDragStart={handleDragStart}
                                         onDragEnd={handleDragEnd}
                                         draggingId={draggingId}
@@ -224,6 +257,44 @@ export function Ingressos() {
                     </div>
                 </div>
             )}
+
+            {/* Modal de confirmação: duplicar ingresso */}
+            {dupIngresso && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/60 p-4" role="dialog" aria-modal="true">
+                    <div className="w-full max-w-md rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                        <div className="flex items-start justify-between gap-3">
+                            <h2 className="text-lg font-bold text-primary">Duplicar ingresso?</h2>
+                            <button
+                                type="button"
+                                onClick={() => setDupIngresso(null)}
+                                aria-label="Fechar"
+                                className="flex size-8 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-secondary"
+                            >
+                                <XClose className="size-5" aria-hidden="true" />
+                            </button>
+                        </div>
+                        <p className="mt-2 text-sm leading-relaxed text-tertiary">
+                            Será criado um novo ingresso com as mesmas configurações e lotes deste. Depois, você poderá revisar e ajustar o que for necessário.
+                        </p>
+                        <div className="mt-6 grid grid-cols-2 gap-3">
+                            <Button size="md" color="secondary" onClick={() => setDupIngresso(null)} className="w-full">
+                                Cancelar
+                            </Button>
+                            <Button
+                                size="md"
+                                color="primary"
+                                className="w-full"
+                                onClick={() => {
+                                    duplicarIngresso(dupIngresso.sessaoId, dupIngresso.grupoId, dupIngresso.ingressoId);
+                                    setDupIngresso(null);
+                                }}
+                            >
+                                Duplicar ingresso
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </BackstageLayout>
     );
 }
@@ -238,13 +309,15 @@ interface GrupoCardProps {
     active: Set<string>;
     onToggleActive: (id: string) => void;
     onReorderIngressos: (next: Ingresso[]) => void;
+    onDuplicarIngresso: (ingresso: Ingresso) => void;
+    copiaId: string | null;
     onDragStart: (ctx: Pending) => void;
     onDragEnd: () => void;
     draggingId: string | null;
     dropLine: DropSide;
 }
 
-function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggleExpand, active, onToggleActive, onReorderIngressos, onDragStart, onDragEnd, draggingId, dropLine }: GrupoCardProps) {
+function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggleExpand, active, onToggleActive, onReorderIngressos, onDuplicarIngresso, copiaId, onDragStart, onDragEnd, draggingId, dropLine }: GrupoCardProps) {
     const controls = useDragControls();
     // overflow-hidden só durante a animação de abrir/fechar; quando aberto, "visible"
     // para não cortar o handle de arraste (que fica meio pra fora) nem a linha em drag.
@@ -330,6 +403,8 @@ function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggl
                                     onToggleExpand={() => onToggleExpand(ingresso.id)}
                                     active={active}
                                     onToggleActive={onToggleActive}
+                                    onDuplicar={() => onDuplicarIngresso(ingresso)}
+                                    isCopia={copiaId === ingresso.id}
                                     onDragStart={onDragStart}
                                     onDragEnd={onDragEnd}
                                     dropLine={dropLineFor(grupo.ingressos, idx, draggingId)}
@@ -359,12 +434,14 @@ interface IngressoRowProps {
     onToggleExpand: () => void;
     active: Set<string>;
     onToggleActive: (id: string) => void;
+    onDuplicar: () => void;
+    isCopia: boolean;
     onDragStart: (ctx: Pending) => void;
     onDragEnd: () => void;
     dropLine: DropSide;
 }
 
-function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, onToggleActive, onDragStart, onDragEnd, dropLine }: IngressoRowProps) {
+function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, onToggleActive, onDuplicar, isCopia, onDragStart, onDragEnd, dropLine }: IngressoRowProps) {
     const controls = useDragControls();
 
     return (
@@ -376,6 +453,9 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
             onDragStart={() => onDragStart({ kind: "tipo", nome: ingresso.name, contexto: grupoNome, id: ingresso.id })}
             onDragEnd={onDragEnd}
             whileDrag={{ backgroundColor: "var(--color-bg-primary)", boxShadow: "0 8px 24px rgba(16,24,40,0.12)", zIndex: 20 }}
+            initial={isCopia ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            transition={{ opacity: { duration: 0.45, ease: "easeOut" } }}
             className="relative select-none"
         >
             {dropLine && <DropLine position={dropLine} />}
@@ -401,7 +481,23 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                     <Toggle size="sm" isSelected={active.has(ingresso.id)} onChange={() => onToggleActive(ingresso.id)} />
                     <div className="flex min-w-0 flex-col">
-                        <span className="text-sm font-semibold text-primary">{ingresso.name}</span>
+                        <span className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-primary">{ingresso.name}</span>
+                            <AnimatePresence>
+                                {isCopia && (
+                                    <motion.span
+                                        initial={{ opacity: 0, scale: 0.8, y: -4 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.6, ease: "easeInOut" } }}
+                                        transition={{ type: "spring", stiffness: 420, damping: 22 }}
+                                    >
+                                        <Badge size="sm" type="pill-color" color="blue">
+                                            cópia de ingresso
+                                        </Badge>
+                                    </motion.span>
+                                )}
+                            </AnimatePresence>
+                        </span>
                         <span className="truncate text-sm text-tertiary">{ingresso.lotesLabel}</span>
                     </div>
                 </div>
@@ -420,7 +516,7 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
                 </div>
                 <div className={cx("flex shrink-0 items-center justify-end gap-0.5", COL.acoes)}>
                     <ActionIcon icon={Edit01} label="Editar" />
-                    <ActionIcon icon={Copy01} label="Duplicar" />
+                    <ActionIcon icon={Copy01} label="Duplicar" onClick={onDuplicar} />
                     <ActionIcon icon={Key01} label="Vincular códigos" />
                     <ActionIcon icon={Trash01} label="Excluir" />
                 </div>

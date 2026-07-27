@@ -10,13 +10,13 @@ import { WizardHeader } from "../components/WizardHeader";
 import { ItensCotasSelector } from "../components/ItensCotasSelector";
 import { OperadoresEditor, OperadoresList } from "../components/OperadoresEditor";
 import { COTA_MAXIMA, ITENS_POR_ID, SESSAO_DO_ITEM } from "../data/equipe-data";
-import { useEquipe, type CotaModo, type ItemCota } from "../data/equipe-store";
+import { useEquipe, type CotaModo } from "../data/equipe-store";
 import { toastSucesso } from "../utils/toast";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NOME_MAX = 20;
 
-const TITULOS = ["Itens e cotas", "Operadores", "Revisão"];
+const TITULOS = ["Itens e cota", "Operadores", "Revisão"];
 
 export function CriarGrupo() {
     const navigate = useNavigate();
@@ -27,11 +27,12 @@ export function CriarGrupo() {
     const [modo, setModo] = useState<CotaModo | null>(null);
 
     const [step, setStep] = useState(0);
-    const [itens, setItens] = useState<ItemCota[]>([]);
+    const [itens, setItens] = useState<string[]>([]);
+    const [cota, setCota] = useState(0);
     const [operadores, setOperadores] = useState<string[]>([]);
     const [nome, setNome] = useState("");
 
-    const itensValidos = itens.length > 0 && itens.every((i) => i.cota <= COTA_MAXIMA);
+    const itensValidos = itens.length > 0 && cota <= COTA_MAXIMA;
     const operadoresValidos = operadores.length > 0 && operadores.every((e) => EMAIL_RE.test(e));
     const nomeUnico = nomeDisponivel(nome);
     const nomeValido = nome.trim().length > 0 && nome.trim().length <= NOME_MAX && nomeUnico;
@@ -63,8 +64,8 @@ export function CriarGrupo() {
     const avancar = () => {
         if (!podeAvancar) return;
         if (step < 2) return setStep((s) => s + 1);
-        criarGrupo({ nome: nome.trim(), modo: modo!, operadores, itens });
-        toastSucesso("Grupo de operação criado", `“${nome.trim()}” já pode emitir itens dentro da cota definida.`);
+        criarGrupo({ nome: nome.trim(), modo: modo!, operadores, cota, itens });
+        toastSucesso("Grupo de operação criado", `“${nome.trim()}” já pode emitir dentro da cota definida.`);
         navigate("/backstage/equipe-de-operacao");
     };
 
@@ -87,13 +88,13 @@ export function CriarGrupo() {
                             <Progress.IconsWithText items={steps} type="number" size="sm" orientation="vertical" className="w-full md:hidden" />
 
                             <section className="w-full max-w-[1000px]">
-                                {step === 0 && <ItensCotasSelector value={itens} onChange={setItens} />}
+                                {step === 0 && <ItensCotasSelector itens={itens} onItens={setItens} cota={cota} onCota={setCota} />}
                                 {step === 1 && (
                                     <div className="mx-auto max-w-[720px]">
                                         <OperadoresEditor value={operadores} onChange={setOperadores} />
                                     </div>
                                 )}
-                                {step === 2 && <Revisao nome={nome} onNome={setNome} nomeUnico={nomeUnico} operadores={operadores} onOperadores={setOperadores} itens={itens} modo={modo ?? "compartilhada"} />}
+                                {step === 2 && <Revisao nome={nome} onNome={setNome} nomeUnico={nomeUnico} operadores={operadores} onOperadores={setOperadores} itens={itens} cota={cota} modo={modo ?? "compartilhada"} />}
                             </section>
                         </>
                     )}
@@ -106,8 +107,8 @@ export function CriarGrupo() {
 /* ----------------------- Seleção do modo de cota ------------------ */
 
 const MODOS: { id: CotaModo; icon: typeof Users01; titulo: string; descricao: string }[] = [
-    { id: "compartilhada", icon: Users01, titulo: "Compartilhada", descricao: "A cota de cada item selecionado é usada em conjunto." },
-    { id: "individual", icon: User01, titulo: "Individual", descricao: "Cada operador do grupo recebe a própria cota para cada item selecionado." },
+    { id: "compartilhada", icon: Users01, titulo: "Compartilhada", descricao: "A cota é usada em conjunto por todos os operadores." },
+    { id: "individual", icon: User01, titulo: "Individual", descricao: "Cada operador do grupo recebe a própria cota." },
 ];
 
 function ModoSelector({ onSelect }: { onSelect: (m: CotaModo) => void }) {
@@ -140,11 +141,12 @@ interface RevisaoProps {
     nomeUnico: boolean;
     operadores: string[];
     onOperadores: (emails: string[]) => void;
-    itens: ItemCota[];
+    itens: string[];
+    cota: number;
     modo: CotaModo;
 }
 
-function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens, modo }: RevisaoProps) {
+function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens, cota, modo }: RevisaoProps) {
     const excedeu = nome.trim().length > NOME_MAX;
     const erro = !nomeUnico ? "O nome do grupo deve ser único." : excedeu ? `O nome do grupo deve ter ${NOME_MAX} ou menos caracteres.` : undefined;
 
@@ -174,26 +176,28 @@ function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens, mod
                 </div>
             </div>
 
-            {/* Container 2: externo (claro/elevado) + container interno mais escuro com os itens */}
+            {/* Container 2: cota única + itens liberados */}
             <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-5 ring-1 ring-border-secondary">
                 <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-primary">Itens e cotas</span>
+                    <span className="text-sm font-semibold text-primary">Itens e cota</span>
                     <span className="text-sm text-tertiary">{modo === "individual" ? "Cota por operador" : "Cota compartilhada pelos operadores"}</span>
                 </div>
-                <div className="rounded-xl bg-primary p-4 ring-1 ring-border-secondary dark:bg-[#0a0a0a]">
-                    <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {itens.map((v) => {
-                            const item = ITENS_POR_ID[v.itemId];
+                <div className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary dark:bg-[#0a0a0a]">
+                    <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-sm text-tertiary">Cota do grupo</span>
+                        <span className="text-lg font-bold text-primary tabular-nums">{cota.toLocaleString("pt-BR")}</span>
+                    </div>
+                    <div className="border-t border-secondary" />
+                    <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {itens.map((id) => {
+                            const item = ITENS_POR_ID[id];
                             return (
-                                <div key={v.itemId} className="flex min-w-0 items-start gap-2.5">
-                                    <span className="shrink-0 text-sm font-bold text-primary tabular-nums">{v.cota}x</span>
-                                    <div className="flex min-w-0 flex-col">
-                                        <span className="text-sm font-medium text-primary">
-                                            {item?.nome}
-                                            {item?.tipo ? <span className="text-tertiary"> · {item.tipo}</span> : null}
-                                        </span>
-                                        <span className="truncate text-xs text-tertiary">{item?.grupo} • {SESSAO_DO_ITEM[v.itemId]}</span>
-                                    </div>
+                                <div key={id} className="flex min-w-0 flex-col">
+                                    <span className="truncate text-sm font-medium text-primary">
+                                        {item?.nome}
+                                        {item?.tipo ? <span className="text-tertiary"> · {item.tipo}</span> : null}
+                                    </span>
+                                    <span className="truncate text-xs text-tertiary">{item?.grupo} • {SESSAO_DO_ITEM[id]}</span>
                                 </div>
                             );
                         })}

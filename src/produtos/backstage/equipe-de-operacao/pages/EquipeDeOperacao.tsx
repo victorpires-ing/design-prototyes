@@ -83,18 +83,44 @@ export function EquipeDeOperacao() {
 
 /* ------------------------- Portal do operador -------------------- */
 
-const PortalOperador = () => (
-    <section className="flex items-center justify-between gap-4 rounded-xl bg-secondary px-4 py-3 lg:w-[400px] lg:shrink-0">
-        <div className="flex min-w-0 flex-col">
-            <span className="text-sm font-medium text-tertiary">Portal do operador</span>
-            <span className="truncate text-sm text-secondary">{PORTAL_URL}</span>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-            <ButtonUtility size="sm" color="tertiary" icon={Copy01} tooltip="Copiar link" onClick={() => toastSucesso("Link copiado", "O link do portal do operador foi copiado.")} />
-            <ButtonUtility size="sm" color="tertiary" icon={Share07} tooltip="Compartilhar" onClick={() => toastSucesso("Link pronto para compartilhar", "O link do portal do operador foi copiado.")} />
-        </div>
-    </section>
-);
+const PortalOperador = () => {
+    const url = `https://${PORTAL_URL}`;
+
+    const copiarLink = async () => {
+        try {
+            await navigator.clipboard?.writeText(url);
+            toastSucesso("Link copiado", "O link do portal do operador foi copiado.");
+        } catch {
+            toastSucesso("Link do portal", url);
+        }
+    };
+
+    const compartilhar = async () => {
+        // Web Share API nativa (mobile/desktop compatíveis); fallback: copiar.
+        if (typeof navigator !== "undefined" && navigator.share) {
+            try {
+                await navigator.share({ title: "Portal do operador", text: "Emita cortesias pelo portal do operador", url });
+            } catch {
+                /* usuário cancelou o compartilhamento */
+            }
+            return;
+        }
+        await copiarLink();
+    };
+
+    return (
+        <section className="flex items-center justify-between gap-4 rounded-xl bg-secondary px-4 py-3 lg:w-[400px] lg:shrink-0">
+            <div className="flex min-w-0 flex-col">
+                <span className="text-sm font-medium text-tertiary">Portal do operador</span>
+                <span className="truncate text-sm text-secondary">{PORTAL_URL}</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+                <ButtonUtility size="sm" color="tertiary" icon={Copy01} tooltip="Copiar link" onClick={copiarLink} />
+                <ButtonUtility size="sm" color="tertiary" icon={Share07} tooltip="Compartilhar" onClick={compartilhar} />
+            </div>
+        </section>
+    );
+};
 
 /* --------------------------- Estados vazios ---------------------- */
 

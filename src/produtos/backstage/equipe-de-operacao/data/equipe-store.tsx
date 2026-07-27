@@ -1,28 +1,26 @@
 /* ------------------------------------------------------------------ */
 /*  Store da Equipe de operação (in-memory, escopo do protótipo).       */
-/*  Guarda os grupos de operação — cada grupo tem operadores (e-mails), */
-/*  itens com cota e um total de cortesias já emitidas (mock).          */
+/*  Cada grupo tem operadores (e-mails), uma COTA ÚNICA e a lista de     */
+/*  itens liberados — a cota vale para qualquer um dos itens.            */
 /* ------------------------------------------------------------------ */
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { EVENTO_TEM_ITENS } from "./equipe-data";
 
-export interface ItemCota {
-    itemId: string;
-    cota: number;
-}
-
-/** Como a cota de itens é gerenciada pelo grupo. */
+/** Como a cota única do grupo é distribuída. */
 export type CotaModo = "compartilhada" | "individual";
 
 export interface GrupoOperacao {
     id: string;
     nome: string;
     ativo: boolean;
-    /** compartilhada = todos dividem a mesma cota; individual = cada operador tem a própria cota. */
+    /** compartilhada = saldo único dividido entre os operadores; individual = cada operador recebe esse saldo. */
     modo: CotaModo;
     operadores: string[]; // e-mails
-    itens: ItemCota[];
+    /** Cota única do grupo — vale para qualquer item liberado. */
+    cota: number;
+    /** IDs dos itens liberados para o grupo. */
+    itens: string[];
     /** Cortesias já emitidas pelo grupo (mock). */
     emitidas: number;
 }
@@ -31,20 +29,15 @@ export interface NovoGrupo {
     nome: string;
     modo: CotaModo;
     operadores: string[];
-    itens: ItemCota[];
+    cota: number;
+    itens: string[];
 }
 
-// Começa vazio: o produtor cai no estado vazio ("Configure grupos de operação")
-// e cria o primeiro grupo pelo fluxo. Os grupos criados populam a listagem.
+// Começa vazio: o produtor cai no estado vazio e cria o primeiro grupo pelo fluxo.
 const SEED: GrupoOperacao[] = [];
 
-/** Cota total do grupo = soma das cotas dos itens. */
-export const cotaTotal = (g: GrupoOperacao) => g.itens.reduce((s, i) => s + i.cota, 0);
-/** % de uso da cota (emitidas / cota total). */
-export const usoDaCota = (g: GrupoOperacao) => {
-    const total = cotaTotal(g);
-    return total ? Math.min(100, Math.round((g.emitidas / total) * 100)) : 0;
-};
+/** % de uso da cota (emitidas / cota). */
+export const usoDaCota = (g: GrupoOperacao) => (g.cota ? Math.min(100, Math.round((g.emitidas / g.cota) * 100)) : 0);
 
 interface EquipeContextValue {
     grupos: GrupoOperacao[];
@@ -79,6 +72,7 @@ export function EquipeProvider({ children }: { children: ReactNode }) {
             ativo: true,
             modo: dados.modo,
             operadores: dados.operadores,
+            cota: dados.cota,
             itens: dados.itens,
             emitidas: 0,
         };

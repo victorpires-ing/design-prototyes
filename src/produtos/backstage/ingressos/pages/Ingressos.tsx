@@ -453,13 +453,12 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
             onDragStart={() => onDragStart({ kind: "tipo", nome: ingresso.name, contexto: grupoNome, id: ingresso.id })}
             onDragEnd={onDragEnd}
             whileDrag={{ backgroundColor: "var(--color-bg-primary)", boxShadow: "0 8px 24px rgba(16,24,40,0.12)", zIndex: 20 }}
-            initial={isCopia ? { opacity: 0 } : false}
-            animate={{ opacity: 1 }}
-            transition={{ opacity: { duration: 0.45, ease: "easeOut" } }}
             className="relative select-none"
         >
             {dropLine && <DropLine position={dropLine} />}
 
+            {/* Entrada da cópia: só fade (a linha ocupa a altura no fluxo, empurrando apenas o que está abaixo — sem pulo) */}
+            <motion.div initial={isCopia ? { opacity: 0 } : false} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: "easeOut" }}>
             {/* Linha do ingresso */}
             <div className="group/row relative flex items-center gap-3 border-b border-secondary px-4 py-3.5">
                 {/* Handle de arraste — aparece no hover, colado na borda esquerda */}
@@ -561,6 +560,7 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
                     </motion.div>
                 )}
             </AnimatePresence>
+            </motion.div>
         </Reorder.Item>
     );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Camera01, ChevronLeft, MarkerPin01, Wifi, Zap } from "@untitledui/icons";
+import { cx } from "@/utils/cx";
 import { AppShell } from "../../components/AppShell";
 import { GradientFill } from "../../components/GradientFill";
 import logoIngresse from "../../assets/Company logo-dark-mode.png";
@@ -14,6 +15,7 @@ const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "
 export function TelaBloqueadaIphone() {
     const navigate = useNavigate();
     const [restante, setRestante] = useState(START);
+    const [prompt, setPrompt] = useState(true);
 
     // Atividade ao Vivo: contagem regressiva até o início da sessão.
     useEffect(() => {
@@ -66,7 +68,7 @@ export function TelaBloqueadaIphone() {
             {/* Live Activity + prompt */}
             <div className="relative z-10 px-3 pb-3">
                 {/* Widget da Atividade ao Vivo — vidro translúcido (fundo sempre transparente) */}
-                <div className="rounded-[26px] bg-black/30 p-4 shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl">
+                <div className={cx("bg-black/30 p-4 shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl", prompt ? "rounded-t-[26px]" : "rounded-[26px]")}>
                     <div className="flex gap-4">
                         <div className="flex min-w-0 flex-1 flex-col">
                             <IngressoLogo />
@@ -91,6 +93,29 @@ export function TelaBloqueadaIphone() {
                         <Poster />
                     </div>
                 </div>
+
+                {/* Prompt do sistema: permitir Atividades ao Vivo */}
+                {prompt && (
+                    <div className="overflow-hidden rounded-b-[26px] bg-black/30 shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl">
+                        <p className="border-t border-white/12 px-5 py-4 text-center text-[15px] font-medium text-white/90">Permitir Atividades ao Vivo do app Ingresse?</p>
+                        <div className="grid grid-cols-2 border-t border-white/12">
+                            <button
+                                type="button"
+                                onClick={() => setPrompt(false)}
+                                className="border-r border-white/12 py-3.5 text-center text-[17px] text-white/90 transition active:bg-white/10"
+                            >
+                                Não Permitir
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPrompt(false)}
+                                className="py-3.5 text-center text-[17px] font-semibold text-white transition active:bg-white/10"
+                            >
+                                Permitir
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Ações inferiores + indicador de home */}

@@ -1,12 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Camera01, ChevronLeft, MarkerPin01, Zap } from "@untitledui/icons";
-import { cx } from "@/utils/cx";
-import { useTheme } from "@/providers/theme-provider";
+import { Camera01, ChevronLeft, MarkerPin01, Wifi, Zap } from "@untitledui/icons";
 import { AppShell } from "../../components/AppShell";
 import { GradientFill } from "../../components/GradientFill";
-import logoDark from "../../assets/Company logo-dark-mode.png";
-import logoLight from "../../assets/Company logo-light-mode.png";
+import logoIngresse from "../../assets/Company logo-dark-mode.png";
 import wallpaper from "../../assets/wallpaper.avif";
 
 const START = 45 * 60 + 17; // 45:17
@@ -16,18 +13,7 @@ const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "
 
 export function TelaBloqueadaIphone() {
     const navigate = useNavigate();
-    const { theme } = useTheme();
-    const [systemDark, setSystemDark] = useState(() => window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false);
-    useEffect(() => {
-        const mq = window.matchMedia("(prefers-color-scheme: dark)");
-        const handler = () => setSystemDark(mq.matches);
-        mq.addEventListener("change", handler);
-        return () => mq.removeEventListener("change", handler);
-    }, []);
-    const isDark = theme === "system" ? systemDark : theme === "dark";
-
     const [restante, setRestante] = useState(START);
-    const [prompt, setPrompt] = useState(true);
 
     // Atividade ao Vivo: contagem regressiva até o início da sessão.
     useEffect(() => {
@@ -59,10 +45,10 @@ export function TelaBloqueadaIphone() {
 
             {/* Status bar */}
             <div className="relative z-10 flex items-center justify-between px-8 pt-3.5 text-[15px] font-semibold">
-                <span>VIVO</span>
+                <span>9:41</span>
                 <div className="flex items-center gap-1.5">
                     <SignalBars />
-                    <span className="text-sm">5G</span>
+                    <Wifi className="size-[17px]" />
                     <Battery />
                 </div>
             </div>
@@ -72,60 +58,39 @@ export function TelaBloqueadaIphone() {
             {/* Relógio */}
             <div className="relative z-10 pt-6 text-center [text-shadow:0_1px_16px_rgba(0,0,0,0.25)]">
                 <p className="text-xl font-semibold text-white/95">Qua. 13 de mai.</p>
-                <p className="mt-1 text-[92px] leading-none font-semibold tracking-tight">19:49</p>
+                <p className="mt-1 text-[92px] leading-none font-semibold tracking-tight">9:41</p>
             </div>
 
             <div className="flex-1" />
 
             {/* Live Activity + prompt */}
             <div className="relative z-10 px-3 pb-3">
-                {/* Widget da Atividade ao Vivo — segue o tema (dark/light) */}
-                <div className={cx("bg-primary p-4 shadow-2xl", prompt ? "rounded-t-[26px]" : "rounded-[26px]")}>
+                {/* Widget da Atividade ao Vivo — vidro translúcido (fundo sempre transparente) */}
+                <div className="rounded-[26px] bg-black/30 p-4 shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl">
                     <div className="flex gap-4">
                         <div className="flex min-w-0 flex-1 flex-col">
-                            <IngressoLogo dark={isDark} />
-                            <p className="mt-3 text-2xl font-bold tracking-tight text-primary">Arena Brasileira</p>
-                            <p className="mt-1 flex items-center gap-1.5 text-[15px] text-tertiary">
+                            <IngressoLogo />
+                            <p className="mt-3 text-2xl font-bold tracking-tight text-white">Arena Brasileira</p>
+                            <p className="mt-1 flex items-center gap-1.5 text-[15px] text-white/70">
                                 <MarkerPin01 className="size-4 shrink-0" />
                                 Parque Ibirapuera • São Paulo/SP
                             </p>
 
-                            <div className="mt-3.5 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                            <div className="mt-3.5 h-1.5 w-full overflow-hidden rounded-full bg-white/20">
                                 <div className="h-full rounded-full bg-[#ff271a] transition-all duration-1000 ease-linear" style={{ width: `${progresso}%` }} />
                             </div>
                             <div className="mt-2 flex items-end justify-between gap-2">
                                 <p className="text-[15px]">
                                     <span className="font-semibold text-[#ff271a] tabular-nums">{fmt(restante)}</span>{" "}
-                                    <span className="text-tertiary">até o evento começar</span>
+                                    <span className="text-white/60">até o evento começar</span>
                                 </p>
-                                <p className="text-[15px] font-medium text-secondary tabular-nums">20:35</p>
+                                <p className="text-[15px] font-medium text-white/85 tabular-nums">20:35</p>
                             </div>
                         </div>
 
                         <Poster />
                     </div>
                 </div>
-
-                {/* Prompt do sistema: permitir Atividades ao Vivo */}
-                {prompt && (
-                    <div className="overflow-hidden rounded-b-[26px] bg-primary/95 backdrop-blur">
-                        <p className="border-t border-secondary px-5 py-4 text-center text-[15px] font-medium text-secondary">
-                            Permitir Atividades ao Vivo do app Ingresse?
-                        </p>
-                        <div className="grid grid-cols-2 border-t border-secondary">
-                            <button
-                                type="button"
-                                onClick={() => setPrompt(false)}
-                                className="border-r border-secondary py-3.5 text-center text-[17px] text-secondary transition active:bg-secondary"
-                            >
-                                Não Permitir
-                            </button>
-                            <button type="button" onClick={() => setPrompt(false)} className="py-3.5 text-center text-[17px] font-semibold text-primary transition active:bg-secondary">
-                                Permitir
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Ações inferiores + indicador de home */}
@@ -143,8 +108,8 @@ export function TelaBloqueadaIphone() {
     );
 }
 
-/* Logo Ingresse — versão conforme o tema. */
-const IngressoLogo = ({ dark }: { dark: boolean }) => <img src={dark ? logoDark : logoLight} alt="Ingresse" className="h-5 w-auto self-start object-contain" />;
+/* Logo Ingresse (dark mode) — o widget tem fundo escuro translúcido. */
+const IngressoLogo = () => <img src={logoIngresse} alt="Ingresse" className="h-5 w-auto self-start object-contain" />;
 
 /* "Foto" do evento — cor sólida, como nos demais eventos do app. */
 const Poster = () => (
@@ -164,7 +129,7 @@ const SignalBars = () => (
 const Battery = () => (
     <span className="ml-0.5 flex items-center">
         <span className="relative h-[13px] w-[24px] rounded-[4px] ring-[1.5px] ring-white/50">
-            <span className="absolute inset-[2px] right-auto w-[9px] rounded-[2px] bg-[#f5c542]" />
+            <span className="absolute inset-[2px] rounded-[2px] bg-white" />
         </span>
         <span className="ml-[1px] h-[5px] w-[2px] rounded-r bg-white/50" />
     </span>

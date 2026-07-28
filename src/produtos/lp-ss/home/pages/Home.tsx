@@ -218,8 +218,8 @@ export function Home() {
 
             {/* ===== Hero ===== */}
             <section id="top" className="relative overflow-hidden bg-white">
-                {/* Referência de 1470px (largura do frame no Figma), 672px de altura só no desktop — os grafismos usam essas medidas fixas pra ficar pixel-perfect */}
-                <div className="relative mx-auto md:h-[672px]" style={{ maxWidth: 1470 }}>
+                {/* Referência de 1470px (largura do frame no Figma), fixa (não max-width) no desktop pra os dois níveis de grafismos (1470 e 1240) nunca perderem alinhamento entre si em viewports menores; a seção recorta o excesso */}
+                <div className="relative mx-auto md:min-h-[672px] md:w-[1470px]" style={{ maxWidth: 1470 }}>
                     {/* Grafismo decorativo direito (Group 1000005778, rotate 180°) — relativo ao hero inteiro (1470) */}
                     <div className="pointer-events-none absolute hidden md:block" style={{ left: 625.3, top: -265.9, width: 938.4, height: 937.9 }}>
                         <div className="size-full" style={{ transform: "rotate(180deg)" }}>
@@ -227,7 +227,7 @@ export function Home() {
                         </div>
                     </div>
 
-                    <div className="relative mx-auto md:h-[672px]" style={{ maxWidth: 1240 }}>
+                    <div className="relative mx-auto md:min-h-[672px]" style={{ maxWidth: 1240 }}>
                         {/* Grafismos decorativos superior/esquerda (rotate 90°) — relativos ao container (1240) */}
                         <div className="pointer-events-none absolute hidden items-center justify-center md:flex" style={{ left: -489.8, top: -851.8, width: 979.3, height: 979.8 }}>
                             <div style={{ width: 979.8, height: 979.3, transform: "rotate(90deg)" }}>

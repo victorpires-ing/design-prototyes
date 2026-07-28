@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, CreditCard01, LogOut01, Moon01, Settings01, User01 } from "@untitledui/icons";
+import { useNavigate } from "react-router";
+import { ChevronRight, CreditCard01, Lock01, LogOut01, Moon01, Settings01, User01 } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { useTheme } from "@/providers/theme-provider";
@@ -7,6 +8,7 @@ import { AppShell } from "../../components/AppShell";
 import { StatusBar } from "../../components/StatusBar";
 
 export function Perfil() {
+    const navigate = useNavigate();
     const { theme, setTheme } = useTheme();
     const [systemDark, setSystemDark] = useState(() => window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false);
 
@@ -60,6 +62,7 @@ export function Perfil() {
                         <SettingRow icon={User01} label="Meus dados" />
                         <SettingRow icon={CreditCard01} label="Pagamentos" />
                         <SettingRow icon={Settings01} label="Configurações" />
+                        <SettingRow icon={Lock01} label="Tela bloqueada iPhone" onClick={() => navigate("/ingresse-app/tela-bloqueada/iphone")} />
                         <SettingRow icon={LogOut01} label="Sair" destructive />
                     </div>
                 </div>
@@ -68,9 +71,10 @@ export function Perfil() {
     );
 }
 
-const SettingRow = ({ icon: Icon, label, destructive }: { icon: typeof User01; label: string; destructive?: boolean }) => (
+const SettingRow = ({ icon: Icon, label, destructive, onClick }: { icon: typeof User01; label: string; destructive?: boolean; onClick?: () => void }) => (
     <button
         type="button"
+        onClick={onClick}
         className="flex w-full items-center gap-3 border-b border-secondary p-4 text-left transition duration-100 ease-linear last:border-0 active:bg-secondary"
     >
         <Icon className={`size-5 shrink-0 ${destructive ? "text-fg-error-primary" : "text-fg-quaternary"}`} />

@@ -6,8 +6,9 @@ interface WizardHeaderProps {
     title: string;
     subtitle?: string;
     onBack: () => void;
-    actionLabel: string;
-    onAction: () => void;
+    /** Ação primária opcional (à direita). Quando ausente, o header não mostra botão. */
+    actionLabel?: string;
+    onAction?: () => void;
     actionDisabled?: boolean;
     actionLoading?: boolean;
 }
@@ -21,9 +22,13 @@ export function WizardHeader({ title, subtitle, onBack, actionLabel, onAction, a
                 <h1 className="text-display-xs font-bold text-primary">{title}</h1>
                 {subtitle && <p className="text-sm text-tertiary">{subtitle}</p>}
             </div>
-            <Button size="md" color="primary" isDisabled={actionDisabled} isLoading={actionLoading} onClick={onAction}>
-                {actionLabel}
-            </Button>
+            {actionLabel && onAction ? (
+                <Button size="md" color="primary" isDisabled={actionDisabled} isLoading={actionLoading} onClick={onAction}>
+                    {actionLabel}
+                </Button>
+            ) : (
+                <span className="size-11" aria-hidden="true" />
+            )}
         </header>
     );
 }

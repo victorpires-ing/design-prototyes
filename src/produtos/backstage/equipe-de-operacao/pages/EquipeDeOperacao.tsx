@@ -12,7 +12,7 @@ import { PaginationCardAdvanced } from "@/components/application/pagination/pagi
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { useEquipe, usoDaCota, type GrupoOperacao } from "../data/equipe-store";
+import { cotaTotal, useEquipe, usoDaCota, type GrupoOperacao } from "../data/equipe-store";
 import { toastSucesso } from "../utils/toast";
 
 const PORTAL_URL = "freepass.ingresse.com/emitir-cortesia";
@@ -83,18 +83,44 @@ export function EquipeDeOperacao() {
 
 /* ------------------------- Portal do operador -------------------- */
 
-const PortalOperador = () => (
-    <section className="flex items-center justify-between gap-4 rounded-xl bg-secondary px-4 py-3 lg:w-[400px] lg:shrink-0">
-        <div className="flex min-w-0 flex-col">
-            <span className="text-sm font-medium text-tertiary">Portal do operador</span>
-            <span className="truncate text-sm text-secondary">{PORTAL_URL}</span>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-            <ButtonUtility size="sm" color="tertiary" icon={Copy01} tooltip="Copiar link" onClick={() => toastSucesso("Link copiado", "O link do portal do operador foi copiado.")} />
-            <ButtonUtility size="sm" color="tertiary" icon={Share07} tooltip="Compartilhar" onClick={() => toastSucesso("Link pronto para compartilhar", "O link do portal do operador foi copiado.")} />
-        </div>
-    </section>
-);
+const PortalOperador = () => {
+    const url = `https://${PORTAL_URL}`;
+
+    const copiarLink = async () => {
+        try {
+            await navigator.clipboard?.writeText(url);
+            toastSucesso("Link copiado", "O link do portal do operador foi copiado.");
+        } catch {
+            toastSucesso("Link do portal", url);
+        }
+    };
+
+    const compartilhar = async () => {
+        // Web Share API nativa (mobile/desktop compatíveis); fallback: copiar.
+        if (typeof navigator !== "undefined" && navigator.share) {
+            try {
+                await navigator.share({ title: "Portal do operador", text: "Emita cortesias pelo portal do operador", url });
+            } catch {
+                /* usuário cancelou o compartilhamento */
+            }
+            return;
+        }
+        await copiarLink();
+    };
+
+    return (
+        <section className="flex items-center justify-between gap-4 rounded-xl bg-secondary px-4 py-3 lg:w-[400px] lg:shrink-0">
+            <div className="flex min-w-0 flex-col">
+                <span className="text-sm font-medium text-tertiary">Portal do operador</span>
+                <span className="truncate text-sm text-secondary">{PORTAL_URL}</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+                <ButtonUtility size="sm" color="tertiary" icon={Copy01} tooltip="Copiar link" onClick={copiarLink} />
+                <ButtonUtility size="sm" color="tertiary" icon={Share07} tooltip="Compartilhar" onClick={compartilhar} />
+            </div>
+        </section>
+    );
+};
 
 /* --------------------------- Estados vazios ---------------------- */
 
@@ -183,7 +209,7 @@ const ListaGrupos = ({ grupos, onToggle, onDetalhe }: { grupos: GrupoOperacao[];
                             <div className="hidden h-2 w-40 overflow-hidden rounded-full bg-quaternary sm:block lg:w-72">
                                 <div className={cx("h-full rounded-full", pct >= 100 ? "bg-error-solid" : "bg-brand-solid")} style={{ width: `${pct}%` }} />
                             </div>
-                            <span className="text-sm font-medium text-secondary tabular-nums">{pct}%</span>
+                            <span className="text-sm font-medium text-secondary tabular-nums">{g.emitidas} de {cotaTotal(g)}</span>
                         </div>
 
                         <ChevronRight className="size-5 shrink-0 text-fg-quaternary transition duration-100 ease-linear group-hover:translate-x-0.5 group-hover:text-fg-brand-primary" aria-hidden="true" />

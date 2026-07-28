@@ -1,14 +1,13 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Check, InfoCircle, User01, Users01 } from "@untitledui/icons";
+import { User01, Users01 } from "@untitledui/icons";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressIconType } from "@/components/application/progress-steps/progress-types";
 import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { WizardHeader } from "../components/WizardHeader";
-import { ItensCotasSelector, AVISO_COTA } from "../components/ItensCotasSelector";
+import { ItensCotasSelector } from "../components/ItensCotasSelector";
 import { OperadoresEditor, OperadoresList } from "../components/OperadoresEditor";
 import { COTA_MAXIMA, ITENS_POR_ID, SESSAO_DO_ITEM } from "../data/equipe-data";
 import { useEquipe, type CotaModo, type ItemCota } from "../data/equipe-store";
@@ -17,7 +16,7 @@ import { toastSucesso } from "../utils/toast";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NOME_MAX = 20;
 
-const TITULOS = ["Itens e cotas", "Operadores", "Revisão"];
+const TITULOS = ["Itens e cota", "Operadores", "Revisão"];
 
 export function CriarGrupo() {
     const navigate = useNavigate();
@@ -29,15 +28,22 @@ export function CriarGrupo() {
 
     const [step, setStep] = useState(0);
     const [itens, setItens] = useState<ItemCota[]>([]);
+    const [cota, setCota] = useState(0);
     const [operadores, setOperadores] = useState<string[]>([]);
     const [nome, setNome] = useState("");
 
-    const itensValidos = itens.length > 0 && itens.every((i) => i.cota >= 1 && i.cota <= COTA_MAXIMA);
+    const itensValidos = itens.length > 0 && (modo === "individual" ? itens.every((i) => i.cota <= COTA_MAXIMA) : cota <= COTA_MAXIMA);
     const operadoresValidos = operadores.length > 0 && operadores.every((e) => EMAIL_RE.test(e));
     const nomeUnico = nomeDisponivel(nome);
     const nomeValido = nome.trim().length > 0 && nome.trim().length <= NOME_MAX && nomeUnico;
 
-    const podeAvancar = !emWizard ? !!modo : step === 0 ? itensValidos : step === 1 ? operadoresValidos : nomeValido;
+    const podeAvancar = step === 0 ? itensValidos : step === 1 ? operadoresValidos : nomeValido;
+
+    // Escolher o modo já avança para o stepper (sem confirmação).
+    const escolherModo = (m: CotaModo) => {
+        setModo(m);
+        setEmWizard(true);
+    };
 
     const steps: ProgressIconType[] = useMemo(
         () =>
@@ -57,10 +63,9 @@ export function CriarGrupo() {
 
     const avancar = () => {
         if (!podeAvancar) return;
-        if (!emWizard) return setEmWizard(true); // confirma o modo → entra no stepper
         if (step < 2) return setStep((s) => s + 1);
-        criarGrupo({ nome: nome.trim(), modo: modo!, operadores, itens });
-        toastSucesso("Grupo de operação criado", `“${nome.trim()}” já pode emitir itens dentro da cota definida.`);
+        criarGrupo({ nome: nome.trim(), modo: modo!, operadores, cota, itens });
+        toastSucesso("Grupo de operação criado", `“${nome.trim()}” já pode emitir dentro da cota definida.`);
         navigate("/backstage/equipe-de-operacao");
     };
 
@@ -70,26 +75,26 @@ export function CriarGrupo() {
                 <WizardHeader
                     title="Criar grupo"
                     onBack={voltar}
-                    actionLabel={emWizard && step === 2 ? "Criar grupo" : "Avançar"}
-                    onAction={avancar}
+                    actionLabel={emWizard ? (step === 2 ? "Criar grupo" : "Avançar") : undefined}
+                    onAction={emWizard ? avancar : undefined}
                     actionDisabled={!podeAvancar}
                 />
                 <main className="flex flex-1 flex-col items-center gap-8 px-6 pb-10">
                     {!emWizard ? (
-                        <ModoSelector modo={modo} onSelect={setModo} />
+                        <ModoSelector onSelect={escolherModo} />
                     ) : (
                         <>
                             <Progress.IconsWithText items={steps} type="number" size="sm" orientation="horizontal" className="max-w-[640px] max-md:hidden" />
                             <Progress.IconsWithText items={steps} type="number" size="sm" orientation="vertical" className="w-full md:hidden" />
 
                             <section className="w-full max-w-[1000px]">
-                                {step === 0 && <ItensCotasSelector value={itens} onChange={setItens} modo={modo ?? "compartilhada"} />}
+                                {step === 0 && <ItensCotasSelector modo={modo ?? "compartilhada"} itens={itens} onItens={setItens} cota={cota} onCota={setCota} />}
                                 {step === 1 && (
                                     <div className="mx-auto max-w-[720px]">
                                         <OperadoresEditor value={operadores} onChange={setOperadores} />
                                     </div>
                                 )}
-                                {step === 2 && <Revisao nome={nome} onNome={setNome} nomeUnico={nomeUnico} operadores={operadores} onOperadores={setOperadores} itens={itens} modo={modo ?? "compartilhada"} />}
+                                {step === 2 && <Revisao nome={nome} onNome={setNome} nomeUnico={nomeUnico} operadores={operadores} onOperadores={setOperadores} itens={itens} cota={cota} modo={modo ?? "compartilhada"} />}
                             </section>
                         </>
                     )}
@@ -102,41 +107,29 @@ export function CriarGrupo() {
 /* ----------------------- Seleção do modo de cota ------------------ */
 
 const MODOS: { id: CotaModo; icon: typeof Users01; titulo: string; descricao: string }[] = [
-    { id: "compartilhada", icon: Users01, titulo: "Compartilhada", descricao: "Os operadores usam a cota de cada item selecionado em conjunto." },
-    { id: "individual", icon: User01, titulo: "Individual por operador", descricao: "Cada operador do grupo recebe a própria cota para cada item selecionado." },
+    { id: "compartilhada", icon: Users01, titulo: "Compartilhada", descricao: "A cota é usada em conjunto por todos os operadores." },
+    { id: "individual", icon: User01, titulo: "Individual", descricao: "Cada operador do grupo recebe a própria cota." },
 ];
 
-function ModoSelector({ modo, onSelect }: { modo: CotaModo | null; onSelect: (m: CotaModo) => void }) {
+function ModoSelector({ onSelect }: { onSelect: (m: CotaModo) => void }) {
     return (
-        <div className="mt-20 flex w-full max-w-[720px] flex-col gap-4">
-            <div className="flex flex-col gap-1 text-center">
-                <h2 className="text-lg font-semibold text-primary">Como a cota de itens será gerenciada?</h2>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {MODOS.map((m) => {
-                    const ativo = modo === m.id;
-                    return (
-                        <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => onSelect(m.id)}
-                            aria-pressed={ativo}
-                            className={cx(
-                                "relative flex flex-col gap-3 rounded-2xl bg-primary p-5 text-left ring-1 transition duration-100 ease-linear",
-                                ativo ? "ring-2 ring-brand" : "ring-border-secondary hover:ring-border-primary",
-                            )}
-                        >
-                            <span className={cx("absolute right-4 top-4 flex size-5 items-center justify-center rounded-full transition duration-100 ease-linear", ativo ? "bg-brand-solid text-white" : "ring-1 ring-border-primary")}>
-                                {ativo && <Check className="size-3.5" aria-hidden="true" />}
-                            </span>
-                            <FeaturedIcon icon={m.icon} color="gray" theme="modern" size="lg" />
-                            <div className="flex flex-col gap-1">
-                                <span className="text-md font-semibold text-primary">{m.titulo}</span>
-                                <span className="text-sm text-tertiary">{m.descricao}</span>
-                            </div>
-                        </button>
-                    );
-                })}
+        <div className="mt-20 flex w-full max-w-[860px] flex-col gap-8">
+            <h2 className="text-center text-lg font-semibold text-primary">Como as cotas do grupo serão gerenciadas?</h2>
+            <div className="flex flex-wrap justify-center gap-6">
+                {MODOS.map((m) => (
+                    <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => onSelect(m.id)}
+                        className="flex h-[280px] w-[260px] flex-col items-center justify-center gap-4 rounded-2xl bg-secondary p-6 text-center ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary_hover hover:ring-brand"
+                    >
+                        <FeaturedIcon icon={m.icon} color="gray" theme="modern" size="lg" />
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-md font-semibold text-primary">{m.titulo}</span>
+                            <span className="text-sm text-tertiary">{m.descricao}</span>
+                        </div>
+                    </button>
+                ))}
             </div>
         </div>
     );
@@ -149,10 +142,11 @@ interface RevisaoProps {
     operadores: string[];
     onOperadores: (emails: string[]) => void;
     itens: ItemCota[];
+    cota: number;
     modo: CotaModo;
 }
 
-function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens, modo }: RevisaoProps) {
+function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens, cota, modo }: RevisaoProps) {
     const excedeu = nome.trim().length > NOME_MAX;
     const erro = !nomeUnico ? "O nome do grupo deve ser único." : excedeu ? `O nome do grupo deve ter ${NOME_MAX} ou menos caracteres.` : undefined;
 
@@ -182,21 +176,28 @@ function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens, mod
                 </div>
             </div>
 
-            {/* Container 2: externo (claro/elevado) + container interno mais escuro com os itens */}
+            {/* Container 2: cota única + itens liberados */}
             <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-5 ring-1 ring-border-secondary">
                 <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-primary">Itens e cotas</span>
-                    <span className="flex items-center gap-1.5 text-xs text-tertiary">
-                        <InfoCircle className="size-3.5 text-blue-600" aria-hidden="true" /> {AVISO_COTA[modo]}
-                    </span>
+                    <span className="text-sm font-semibold text-primary">Itens e cota</span>
+                    <span className="text-sm text-tertiary">{modo === "individual" ? "Cota por operador" : "Cota compartilhada pelos operadores"}</span>
                 </div>
-                <div className="rounded-xl bg-primary p-4 ring-1 ring-border-secondary dark:bg-[#0a0a0a]">
-                    <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary dark:bg-[#0a0a0a]">
+                    {modo !== "individual" && (
+                        <>
+                            <div className="flex items-baseline justify-between gap-2">
+                                <span className="text-sm text-tertiary">Cota do grupo</span>
+                                <span className="text-lg font-bold text-primary tabular-nums">{cota.toLocaleString("pt-BR")}</span>
+                            </div>
+                            <div className="border-t border-secondary" />
+                        </>
+                    )}
+                    <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
                         {itens.map((v) => {
                             const item = ITENS_POR_ID[v.itemId];
                             return (
                                 <div key={v.itemId} className="flex min-w-0 items-start gap-2.5">
-                                    <span className="shrink-0 text-sm font-bold text-primary tabular-nums">{v.cota}x</span>
+                                    {modo === "individual" && <span className="shrink-0 text-sm font-bold text-primary tabular-nums">{v.cota}x</span>}
                                     <div className="flex min-w-0 flex-col">
                                         <span className="text-sm font-medium text-primary">
                                             {item?.nome}

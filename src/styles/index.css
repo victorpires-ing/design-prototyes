@@ -7,19 +7,22 @@
    NOTE: não definir `scrollbar-width`/`scrollbar-color` aqui: no Chrome 121+
    isso faz o navegador ignorar o `::-webkit-scrollbar` e voltar pra barra
    overlay do SO (que some sozinha no macOS). Usando só o `::-webkit-scrollbar`
-   o Chrome/Safari renderizam a barra clássica, sempre visível. */
-::-webkit-scrollbar {
+   o Chrome/Safari renderizam a barra clássica, sempre visível.
+   :not(.ss-native-scrollbar) permite que uma página específica (ex.: a LP
+   São Silvestre) opte por sair disso e usar a barra padrão do navegador,
+   sem afetar o resto do app — ver `html.ss-native-scrollbar` abaixo. */
+html:not(.ss-native-scrollbar) ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
-::-webkit-scrollbar-track {
+html:not(.ss-native-scrollbar) ::-webkit-scrollbar-track {
   background-color: transparent;
 }
 
 /* Thumb usa tokens de borda (mode-aware) em vez de neutral-300 (fixo, claro
    demais no dark). Track transparente para fundir com qualquer fundo. */
-::-webkit-scrollbar-thumb {
+html:not(.ss-native-scrollbar) ::-webkit-scrollbar-thumb {
   background-color: var(--color-border-secondary);
   border-radius: 9999px;
   border: 2px solid transparent;
@@ -27,11 +30,11 @@
   transition: background-color 0.1s linear;
 }
 
-::-webkit-scrollbar-thumb:hover {
+html:not(.ss-native-scrollbar) ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-border-primary);
 }
 
-::-webkit-scrollbar-corner {
+html:not(.ss-native-scrollbar) ::-webkit-scrollbar-corner {
   background-color: transparent;
 }
 

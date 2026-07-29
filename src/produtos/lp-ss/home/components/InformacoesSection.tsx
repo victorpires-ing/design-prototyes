@@ -78,7 +78,7 @@ export function InformacoesSection() {
             <div className="relative mx-auto max-w-[1240px] px-6 py-[72px]">
                 <div className="max-w-[740px]">
                     <h2
-                        className="sticky top-[68px] z-10 bg-white pt-6 pb-6 text-[36px] font-black uppercase tracking-[-1px] md:text-[48px] md:tracking-[-1.5px]"
+                        className="sticky top-16 z-10 bg-white pt-6 pb-6 text-2xl font-black uppercase tracking-[-1px] md:text-[48px] md:tracking-[-1.5px]"
                         style={{ fontFamily: TITLE_FONT, color: "#171717" }}
                     >
                         Informações Gerais

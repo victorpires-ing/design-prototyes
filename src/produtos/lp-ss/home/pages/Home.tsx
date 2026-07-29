@@ -1075,7 +1075,7 @@ export function Home() {
             </section>
 
             {/* ===== Footer ===== */}
-            <footer className="relative overflow-hidden border-t" style={{ backgroundColor: "#fff", color: INK, borderColor: LINE }}>
+            <footer className="relative min-h-[496px] overflow-hidden border-t md:min-h-0" style={{ backgroundColor: "#fff", color: INK, borderColor: LINE }}>
                 <div aria-hidden="true" className="pointer-events-none absolute top-0 right-0 overflow-hidden md:hidden" style={{ width: 390, height: 252 }}>
                     {FOOTER_MOBILE_SHAPES.map((s) => (
                         <div
@@ -1085,7 +1085,7 @@ export function Home() {
                         />
                     ))}
                 </div>
-                <div className="relative mx-auto max-w-[1240px] px-6 pt-12 pb-10">
+                <div className="relative mx-auto max-w-[1240px] px-6 pt-[127px] pb-10 md:pt-12">
                     <div className="md:min-h-[258px]">
                         <img src={logoTicketsportsColor} alt="Ticket Sports by Ingresse" className="h-auto w-[183px]" />
                         <p className="mt-[18px] max-w-[403px] text-sm leading-[1.7]" style={{ color: MUTED }}>
@@ -1110,7 +1110,7 @@ export function Home() {
                             ))}
                         </div>
                     </div>
-                    <div className="mt-11 flex flex-wrap justify-between gap-3 border-t pt-6" style={{ borderColor: LINE }}>
+                    <div className="mt-11 flex flex-col items-start gap-3 border-t pt-6 md:flex-row md:flex-wrap md:items-center md:justify-between" style={{ borderColor: LINE }}>
                         <span className="text-sm" style={{ color: MUTED }}>
                             © São Silvestre · Todos os direitos reservados.
                         </span>

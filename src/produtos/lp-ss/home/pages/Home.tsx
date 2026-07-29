@@ -1076,7 +1076,7 @@ export function Home() {
 
             {/* ===== Footer ===== */}
             <footer className="relative overflow-hidden border-t" style={{ backgroundColor: "#fff", color: INK, borderColor: LINE }}>
-                <div aria-hidden="true" className="pointer-events-none absolute top-0 left-0 overflow-hidden md:hidden" style={{ width: 390, height: 252 }}>
+                <div aria-hidden="true" className="pointer-events-none absolute top-0 right-0 overflow-hidden md:hidden" style={{ width: 390, height: 252 }}>
                     {FOOTER_MOBILE_SHAPES.map((s) => (
                         <div
                             key={s.key}

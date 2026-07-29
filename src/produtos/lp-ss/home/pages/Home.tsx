@@ -198,8 +198,8 @@ const INSCRICAO_CARDS = [
         cor: LARANJA_INSCRICAO,
         corBotao: LARANJA_INSCRICAO_BOTAO,
         eyebrow: "Todo mundo na pista",
-        titulo: "Inscrição PCD gratuita",
-        texto: "Categoria gratuita e adaptada com largada exclusiva, apoio dedicado e acessibilidade em todo o percurso.",
+        titulo: "Inscrição PCD",
+        texto: "Categoria adaptada com largada exclusiva, apoio dedicado e acessibilidade em todo o percurso.",
         cta: "Enviar documentação",
         ctaSecundario: "Detalhes e requisitos",
     },
@@ -634,10 +634,10 @@ export function Home() {
                                                 {c.cta}
                                             </a>
                                         )}
-                                        {c.titulo === "Inscrição PCD gratuita" || c.titulo === "Grupos e assessorias" ? (
+                                        {c.titulo === "Inscrição PCD" || c.titulo === "Grupos e assessorias" ? (
                                             <button
                                                 type="button"
-                                                onClick={() => (c.titulo === "Inscrição PCD gratuita" ? setPcdModalOpen(true) : setComoFuncionaModalOpen(true))}
+                                                onClick={() => (c.titulo === "Inscrição PCD" ? setPcdModalOpen(true) : setComoFuncionaModalOpen(true))}
                                                 className="block rounded-[11px] py-3.5 text-center text-base font-semibold"
                                                 style={{ border: `1px solid ${c.corBotao}`, color: c.corBotao, fontFamily: TITLE_FONT }}
                                             >

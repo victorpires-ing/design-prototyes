@@ -60,7 +60,7 @@ export const PcdDetalhesModal = ({ isOpen, onClose }: PcdDetalhesModalProps) => 
                         ×
                     </button>
                     <h3 className="max-w-[420px] text-3xl font-extrabold" style={{ fontFamily: "'Outfit', sans-serif", color: INK }}>
-                        Inscrição PCD gratuita
+                        Inscrição PCD
                     </h3>
                 </div>
 

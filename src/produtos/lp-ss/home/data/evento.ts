@@ -141,7 +141,7 @@ export const INCLUSAO = {
     itens: [
         { emoji: "🧓", titulo: "Idosos", texto: "50% de desconto garantido por lei." },
         { emoji: "🏳️‍🌈", titulo: "Pessoas transgênero", texto: "basta entrar em contato com a coordenação para confirmar sua participação." },
-        { emoji: "♿", titulo: "PCDs e pacientes com AME", texto: "essa corrida é feita por vocês e para vocês! Inscrição gratuita." },
+        { emoji: "♿", titulo: "PCDs e pacientes com AME", texto: "essa corrida é feita por vocês e para vocês!" },
     ],
     obs: "Inscrições de PCDs passam por análise do laudo inserido no processo de inscrição.",
 };

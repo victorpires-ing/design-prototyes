@@ -66,6 +66,10 @@ import { ProdutoDetalhe as IngresseAppProdutoDetalhe } from '../produtos/ingress
 import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingresse-app/ingressos/pages/TransferirIngresso';
 import { TransferirDependente as IngresseAppTransferirDependente } from '../produtos/ingresse-app/ingressos/pages/TransferirDependente';
 import { CadastrarDependente as IngresseAppCadastrarDependente } from '../produtos/ingresse-app/ingressos/pages/CadastrarDependente';
+import { TransferenciaPagamento as IngresseAppTransferenciaPagamento } from '../produtos/ingresse-app/ingressos/pages/TransferenciaPagamento';
+import { PagamentoCartao as IngresseAppPagamentoCartao } from '../produtos/ingresse-app/ingressos/pages/PagamentoCartao';
+import { PagamentoPix as IngresseAppPagamentoPix } from '../produtos/ingresse-app/ingressos/pages/PagamentoPix';
+import { TransferenciaSucesso as IngresseAppTransferenciaSucesso } from '../produtos/ingresse-app/ingressos/pages/TransferenciaSucesso';
 import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pages/Perfil';
 import { TelaBloqueadaIphone as IngresseAppTelaBloqueadaIphone } from '../produtos/ingresse-app/tela-bloqueada/pages/TelaBloqueadaIphone';
 import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
@@ -272,6 +276,10 @@ export default function App() {
         <Route path="/ingresse-app/ingressos/transferir/:eventId/:id" element={<IngresseAppTransferir />} />
         <Route path="/ingresse-app/ingressos/transferir-dependente/:eventId/:id" element={<IngresseAppTransferirDependente />} />
         <Route path="/ingresse-app/ingressos/cadastrar-dependente/:eventId/:id" element={<IngresseAppCadastrarDependente />} />
+        <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id" element={<IngresseAppTransferenciaPagamento />} />
+        <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/cartao" element={<IngresseAppPagamentoCartao />} />
+        <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/pix" element={<IngresseAppPagamentoPix />} />
+        <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/sucesso" element={<IngresseAppTransferenciaSucesso />} />
         <Route path="/ingresse-app/perfil" element={<IngresseAppPerfil />} />
         <Route path="/ingresse-app/tela-bloqueada/iphone" element={<IngresseAppTelaBloqueadaIphone />} />
         <Route path="/testes" element={<UsabilidadeGate><TestesPainel /></UsabilidadeGate>} />

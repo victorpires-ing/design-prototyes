@@ -165,6 +165,15 @@ export function IngressoDetalhe() {
 
                                 <p className="mt-4 text-sm text-tertiary">Data da transferência</p>
                                 <p className="mt-0.5 text-md font-bold text-primary">10 de junho • 12:20</p>
+
+                                {eventoObj.taxaTransferencia ? (
+                                    <>
+                                        <p className="mt-4 text-sm text-tertiary">Pagamento de transferência</p>
+                                        <p className="mt-0.5 text-md font-bold text-primary">
+                                            R$ {eventoObj.taxaTransferencia.toFixed(2).replace(".", ",")}
+                                        </p>
+                                    </>
+                                ) : null}
                             </div>
                         ) : facial ? (
                             /* Acesso por reconhecimento facial (com troca animada para o QR) */

@@ -48,6 +48,19 @@ const VEM_AI: GrupoMes[] = [
         ],
     },
     {
+        mes: "Agosto 2026",
+        eventos: [
+            {
+                id: "gop-tun",
+                title: "Gop Tun Festival 2026",
+                date: "Sex, 14 ago • 22:00",
+                local: "Audio • São Paulo/SP",
+                qtd: 2,
+                gradient: "linear-gradient(160deg,#ef4444 0%,#111827 55%,#0b0b0f 100%)",
+            },
+        ],
+    },
+    {
         mes: "Dezembro 2026",
         eventos: [
             {

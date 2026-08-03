@@ -78,6 +78,10 @@ export interface EventoDetalhe {
     sessao: string;
     ingressos?: ItemIngresso[];
     combos?: Combo[];
+    /** Habilita o fluxo de transferência com pagamento (cobra taxa antes de concluir). */
+    transferenciaPaga?: boolean;
+    /** Valor da taxa de transferência (em reais). */
+    taxaTransferencia?: number;
 }
 
 const PORTADOR = "Priscilão Alcantara Raro";
@@ -194,6 +198,20 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
                     { pergunta: "Tipo sanguíneo", resposta: "O+" },
                 ],
             },
+        ],
+    },
+    "gop-tun": {
+        id: "gop-tun",
+        title: "Gop Tun Festival 2026",
+        date: "Sex, 14 ago • 22:00",
+        local: "Audio • São Paulo/SP",
+        gradient: "linear-gradient(160deg,#ef4444 0%,#111827 55%,#0b0b0f 100%)",
+        sessao: "Sex, 14 ago • 22:00",
+        transferenciaPaga: true,
+        taxaTransferencia: 50,
+        ingressos: [
+            { id: "inteira", title: "Main Stage (11.04)", tipo: "Inteira", data: "Sex, 14 ago • 22:00", portador: PORTADOR, cpf: CPF },
+            { id: "meia", title: "Main Stage (11.04)", tipo: "Meia-entrada", data: "Sex, 14 ago • 22:00", portador: PORTADOR, cpf: CPF },
         ],
     },
     "samba-independente": {

@@ -8,6 +8,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { AppShell } from "../../components/AppShell";
 import { BottomSheet } from "../../components/BottomSheet";
 import { StatusBar } from "../../components/StatusBar";
+import { InfoCircleAnimation } from "../components/InfoCircleAnimation";
 import { Zigzag } from "../../components/Zigzag";
 import { getCombo, getEvento, getItem } from "../data/eventos";
 import { marcarTransferido } from "../data/transfer-store";
@@ -38,6 +39,10 @@ export function TransferirIngresso() {
     const [searched, setSearched] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [done, setDone] = useState(false);
+    // Transferência com pagamento (só em eventos com transferenciaPaga)
+    const [paidOpen, setPaidOpen] = useState(false);
+    const taxa = evento.taxaTransferencia ?? 0;
+    const taxaLabel = `R$ ${taxa.toFixed(2).replace(".", ",")}`;
 
     // Questionário (apenas eventos que pedem formulário, ex.: São Silvestre)
     const [formOpen, setFormOpen] = useState(false);
@@ -247,7 +252,7 @@ export function TransferirIngresso() {
 
                             <button
                                 type="button"
-                                onClick={() => (temFormulario ? setFormOpen(true) : setConfirming(true))}
+                                onClick={() => (evento.transferenciaPaga ? setPaidOpen(true) : temFormulario ? setFormOpen(true) : setConfirming(true))}
                                 className="flex w-full items-center gap-3 text-left transition duration-100 ease-linear active:opacity-70"
                             >
                                 <Avatar size="md" alt={DESTINATARIO} />
@@ -262,6 +267,42 @@ export function TransferirIngresso() {
                 </div>
             </div>
             )}
+
+            {/* Bottom sheet: transferência com pagamento (feature paga) */}
+            <BottomSheet isOpen={paidOpen} onClose={() => setPaidOpen(false)}>
+                <div className="flex justify-end">
+                    <button
+                        type="button"
+                        aria-label="Fechar"
+                        onClick={() => setPaidOpen(false)}
+                        className="shrink-0 text-fg-quaternary transition duration-100 ease-linear active:text-fg-secondary"
+                    >
+                        <XClose className="size-6" />
+                    </button>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                    {paidOpen && (
+                        <div className="my-6">
+                            <InfoCircleAnimation />
+                        </div>
+                    )}
+                    <h2 className="text-lg font-bold text-primary">Esta transferência agora tem um valor</h2>
+                    <p className="mt-1 text-sm leading-relaxed text-tertiary">
+                        O valor para transferir este ingresso é de <span className="font-semibold text-secondary">{taxaLabel}</span>.
+                    </p>
+                    <p className="mt-3 text-sm leading-relaxed text-tertiary">
+                        Antes de finalizar, você poderá escolher quem receberá o ingresso e revisar todos os dados.
+                    </p>
+                </div>
+                <Button
+                    size="lg"
+                    color="primary"
+                    className="mt-5 w-full rounded-full"
+                    onClick={() => navigate(`/ingresse-app/ingressos/transferir-pagamento/${evento.id}/${id}`)}
+                >
+                    Continuar transferência
+                </Button>
+            </BottomSheet>
 
             {/* Bottom sheet: confirmar transferência */}
             <BottomSheet isOpen={confirming} onClose={() => setConfirming(false)}>

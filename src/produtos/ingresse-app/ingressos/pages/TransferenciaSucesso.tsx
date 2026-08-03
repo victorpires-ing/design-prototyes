@@ -20,13 +20,13 @@ export function TransferenciaSucesso() {
         return () => clearTimeout(timer.current);
     }, [id]);
 
-    // Após a animação do ícone tocar 2×: revela o texto (ícone sobe) e, ~1,8s depois,
+    // Após a animação do ícone: revela o texto (ícone sobe) e, ~4,8s depois (tempo de ler),
     // vai para o ingresso transferido.
     const aoTerminarAnimacao = () => {
         setShowText(true);
         timer.current = setTimeout(() => {
             navigate(`/ingresse-app/ingressos/detalhe/${evento.id}/${id}`, { replace: true });
-        }, 1800);
+        }, 4800);
     };
 
     return (

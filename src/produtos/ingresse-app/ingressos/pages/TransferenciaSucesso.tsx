@@ -4,8 +4,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { AppShell } from "../../components/AppShell";
 import { StatusBar } from "../../components/StatusBar";
 import { TicketCheckAnimation } from "../components/TicketCheckAnimation";
-import { getEvento } from "../data/eventos";
+import { getCombo, getEvento } from "../data/eventos";
 import { marcarTransferido } from "../data/transfer-store";
+
+const DESTINATARIO = "Mariana Costa Lima";
 
 export function TransferenciaSucesso() {
     const navigate = useNavigate();
@@ -20,18 +22,23 @@ export function TransferenciaSucesso() {
         return () => clearTimeout(timer.current);
     }, [id]);
 
+    // Volta para o combo (se for combo) ou para o detalhe do ingresso.
+    const destino = getCombo(eventId, id)
+        ? `/ingresse-app/ingressos/combo/${evento.id}/${id}`
+        : `/ingresse-app/ingressos/detalhe/${evento.id}/${id}`;
+
     // Após a animação do ícone: revela o texto (ícone sobe) e, ~4,8s depois (tempo de ler),
     // vai para o ingresso transferido.
     const aoTerminarAnimacao = () => {
         setShowText(true);
         timer.current = setTimeout(() => {
-            navigate(`/ingresse-app/ingressos/detalhe/${evento.id}/${id}`, { replace: true });
+            navigate(destino, { replace: true });
         }, 4800);
     };
 
     return (
-        <AppShell showTabBar={false} scrollClassName="bg-primary">
-            <div className="flex min-h-full flex-col bg-primary">
+        <AppShell showTabBar={false} scrollClassName="bg-secondary">
+            <div className="flex min-h-full flex-col bg-secondary">
                 <StatusBar tone="dark" />
                 <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
                     {/* Ícone: começa centralizado sozinho e reposiciona (sobe) quando o texto surge */}
@@ -49,7 +56,7 @@ export function TransferenciaSucesso() {
                             >
                                 <h1 className="mt-4 text-xl font-bold text-primary">Ingresso transferido</h1>
                                 <p className="mt-2 text-sm leading-relaxed text-tertiary">
-                                    O ingresso foi enviado para <span className="font-medium text-secondary">Duny Alves da Silva</span> com sucesso.
+                                    A transferência foi concluída e o ingresso já está com <span className="font-medium text-secondary">{DESTINATARIO}</span>.
                                 </p>
                             </motion.div>
                         )}

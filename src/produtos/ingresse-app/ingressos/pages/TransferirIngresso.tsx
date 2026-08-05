@@ -1,26 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowDown, ArrowLeft, CheckCircle, ChevronRight, Send01, XClose } from "@untitledui/icons";
+import { ArrowDown, ArrowLeft, ChevronRight, XClose } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { AppShell } from "../../components/AppShell";
 import { BottomSheet } from "../../components/BottomSheet";
 import { StatusBar } from "../../components/StatusBar";
-import { InfoCircleAnimation } from "../components/InfoCircleAnimation";
+import { BankCardSendAnimation } from "../components/BankCardSendAnimation";
 import { Zigzag } from "../../components/Zigzag";
 import { getCombo, getEvento, getItem } from "../data/eventos";
-import { marcarTransferido } from "../data/transfer-store";
 import alertAmareloIcon from "../../assets/alert-amarelo.png";
 
-const DESTINATARIO = "Duny Alves da Silva";
-
-const maskEmail = (e: string) => {
-    const [local, domain] = e.split("@");
-    if (!domain || local.length < 4) return e;
-    return `${local.slice(0, 1)}*****${local.slice(-3)}@${domain}`;
-};
+const DESTINATARIO = "Mariana Costa Lima";
+const INICIAIS = "MC";
 
 export function TransferirIngresso() {
     const navigate = useNavigate();
@@ -38,10 +31,12 @@ export function TransferirIngresso() {
     const [email, setEmail] = useState("");
     const [searched, setSearched] = useState(false);
     const [confirming, setConfirming] = useState(false);
-    const [done, setDone] = useState(false);
-    // Transferência com pagamento (só em eventos com transferenciaPaga)
+    // Config de transferência por ingresso: paga (com taxa) e/ou primeira gratuita
     const [paidOpen, setPaidOpen] = useState(false);
-    const taxa = evento.taxaTransferencia ?? 0;
+    const transferenciaPaga = !!item?.transferenciaPaga;
+    const primeiraGratis = !!item?.primeiraTransferenciaGratis;
+    const recebidoDe = item?.recebidoDe;
+    const taxa = item?.taxaTransferencia ?? 0;
     const taxaLabel = `R$ ${taxa.toFixed(2).replace(".", ",")}`;
 
     // Questionário (apenas eventos que pedem formulário, ex.: São Silvestre)
@@ -62,12 +57,7 @@ export function TransferirIngresso() {
 
     const confirmarTransferencia = () => {
         setConfirming(false);
-        setDone(true);
-    };
-    const concluir = () => {
-        setDone(false);
-        marcarTransferido(id);
-        navigate(destino);
+        navigate(`/ingresse-app/ingressos/transferir-pagamento/${evento.id}/${id}/sucesso`);
     };
 
     return (
@@ -94,7 +84,7 @@ export function TransferirIngresso() {
 
                         {/* Para quem está transferindo */}
                         <div className="mt-4 flex items-center gap-3 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
-                            <Avatar size="md" initials="DA" alt={DESTINATARIO} />
+                            <Avatar size="md" initials={INICIAIS} alt={DESTINATARIO} />
                             <div className="min-w-0 flex-1">
                                 <p className="text-xs text-tertiary">Transferindo para</p>
                                 <p className="text-sm font-bold text-primary">{DESTINATARIO}</p>
@@ -211,7 +201,7 @@ export function TransferirIngresso() {
 
                     {/* Busca por e-mail */}
                     <div className="rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
-                        <p className="text-md font-bold text-primary">E-mail do destinatário</p>
+                        <p className="text-md font-bold text-primary">E-mail de quem vai receber</p>
                         <div className="mt-3">
                             <Input
                                 type="email"
@@ -223,10 +213,7 @@ export function TransferirIngresso() {
                                 }}
                             />
                         </div>
-                        <p className="mt-2 flex items-start gap-1.5 text-sm text-tertiary">
-                            <img src={alertAmareloIcon} alt="" aria-hidden="true" className="mt-0.5 size-9 shrink-0 object-contain" />
-                            <span>Depois da transferência, o ingresso passa a ser do destinatário.</span>
-                        </p>
+                        <p className="mt-2 text-sm text-tertiary">Este e-mail precisa estar cadastrado.</p>
 
                         <Button
                             size="lg"
@@ -235,9 +222,17 @@ export function TransferirIngresso() {
                             isDisabled={email.trim() === ""}
                             onClick={() => setSearched(true)}
                         >
-                            Buscar destinatário
+                            Encontrar conta
                         </Button>
                     </div>
+
+                    {/* Aviso: primeira transferência gratuita (some quando a conta é encontrada) */}
+                    {primeiraGratis && !searched && (
+                        <p className="mt-3 flex items-start gap-1.5 px-1 text-sm text-tertiary">
+                            <img src={alertAmareloIcon} alt="" aria-hidden="true" className="mt-0.5 size-9 shrink-0 object-contain" />
+                            <span>Esta transferência é gratuita. As próximas transferências deste ingresso terão uma taxa.</span>
+                        </p>
+                    )}
 
                     {/* Resultados da busca */}
                     {searched && (
@@ -245,20 +240,22 @@ export function TransferirIngresso() {
                             ref={resultRef}
                             className="mt-4 scroll-mt-6 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary duration-300 animate-in fade-in slide-in-from-bottom-3"
                         >
-                            <p className="text-md font-bold text-primary">Resultados da busca</p>
-                            <p className="mt-1 text-sm text-tertiary">Escolha o destinatário correto antes de confirmar a transferência.</p>
+                            <p className="text-md font-bold text-primary">Conta encontrada</p>
+                            <p className="mt-1 text-sm text-tertiary">
+                                Confira o nome e o e-mail antes de continuar{transferenciaPaga ? " para o pagamento" : ""}.
+                            </p>
 
                             <div className="my-4 border-t border-tertiary" />
 
                             <button
                                 type="button"
-                                onClick={() => (evento.transferenciaPaga ? setPaidOpen(true) : temFormulario ? setFormOpen(true) : setConfirming(true))}
+                                onClick={() => (transferenciaPaga ? setPaidOpen(true) : temFormulario ? setFormOpen(true) : setConfirming(true))}
                                 className="flex w-full items-center gap-3 text-left transition duration-100 ease-linear active:opacity-70"
                             >
-                                <Avatar size="md" alt={DESTINATARIO} />
+                                <Avatar size="md" initials={INICIAIS} alt={DESTINATARIO} />
                                 <div className="min-w-0 flex-1">
                                     <p className="text-sm font-bold text-primary">{DESTINATARIO}</p>
-                                    <p className="truncate text-sm text-tertiary">{maskEmail(email)}</p>
+                                    <p className="truncate text-sm text-tertiary">{email}</p>
                                 </div>
                                 <ChevronRight className="size-5 shrink-0 text-fg-quaternary" />
                             </button>
@@ -281,17 +278,15 @@ export function TransferirIngresso() {
                     </button>
                 </div>
                 <div className="flex flex-col items-center text-center">
-                    {paidOpen && (
-                        <div className="my-6">
-                            <InfoCircleAnimation />
-                        </div>
-                    )}
-                    <h2 className="text-lg font-bold text-primary">Esta transferência agora tem um valor</h2>
+                    {paidOpen && <BankCardSendAnimation />}
+                    <h2 className="mt-2 text-lg font-bold text-primary">Esta transferência agora tem um valor</h2>
                     <p className="mt-1 text-sm leading-relaxed text-tertiary">
-                        O valor para transferir este ingresso é de <span className="font-semibold text-secondary">{taxaLabel}</span>.
+                        Você recebeu este ingresso de {recebidoDe}. Para transferi-lo novamente, será cobrada uma taxa de
+                        <br />
+                        <span className="text-md font-medium whitespace-nowrap text-secondary">{taxaLabel}</span>.
                     </p>
                     <p className="mt-3 text-sm leading-relaxed text-tertiary">
-                        Antes de finalizar, você poderá escolher quem receberá o ingresso e revisar todos os dados.
+                        Após o pagamento, o ingresso será transferido para <span className="font-medium text-secondary">{DESTINATARIO}</span>.
                     </p>
                 </div>
                 <Button
@@ -300,14 +295,13 @@ export function TransferirIngresso() {
                     className="mt-5 w-full rounded-full"
                     onClick={() => navigate(`/ingresse-app/ingressos/transferir-pagamento/${evento.id}/${id}`)}
                 >
-                    Continuar transferência
+                    Continuar para o pagamento
                 </Button>
             </BottomSheet>
 
             {/* Bottom sheet: confirmar transferência */}
             <BottomSheet isOpen={confirming} onClose={() => setConfirming(false)}>
-                <div className="flex items-start justify-between gap-3">
-                    <FeaturedIcon icon={Send01} color="gray" theme="modern" size="lg" />
+                <div className="flex justify-end">
                     <button
                         type="button"
                         aria-label="Fechar"
@@ -318,17 +312,17 @@ export function TransferirIngresso() {
                     </button>
                 </div>
 
-                <h2 className="mt-4 text-lg font-bold text-primary">Confirmar transferência</h2>
-                <p className="mt-1 text-sm text-tertiary">
-                    Confira se o destinatário e o e-mail estão corretos. Depois de confirmar,{" "}
-                    <span className="font-semibold text-secondary">a transferência não poderá ser desfeita.</span>
+                <h2 className="text-lg font-bold text-primary">Tudo certo para transferir?</h2>
+                <p className="mt-1 text-sm leading-relaxed text-tertiary">
+                    Você está transferindo este ingresso para <span className="font-semibold text-secondary">{DESTINATARIO}</span>. Depois de confirmar, não será
+                    possível desfazer a transferência.
                 </p>
 
                 <div className="mt-4 flex items-center gap-3 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
-                    <Avatar size="md" initials="DA" alt={DESTINATARIO} />
+                    <Avatar size="md" initials={INICIAIS} alt={DESTINATARIO} />
                     <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-primary">{DESTINATARIO}</p>
-                        <p className="truncate text-sm text-tertiary">{maskEmail(email)}</p>
+                        <p className="truncate text-sm text-tertiary">{email}</p>
                     </div>
                 </div>
 
@@ -357,37 +351,6 @@ export function TransferirIngresso() {
                     }}
                 >
                     Cancelar
-                </Button>
-            </BottomSheet>
-
-            {/* Bottom sheet: transferência concluída */}
-            <BottomSheet isOpen={done} onClose={concluir}>
-                <div className="flex items-start gap-3">
-                    <FeaturedIcon icon={CheckCircle} color="success" theme="modern" size="lg" />
-                    <div className="min-w-0 flex-1">
-                        <h2 className="text-lg font-bold text-primary">Transferência concluída</h2>
-                        <p className="mt-1 text-sm text-tertiary">O ingresso foi enviado com sucesso para o destinatário selecionado.</p>
-                    </div>
-                    <button
-                        type="button"
-                        aria-label="Fechar"
-                        onClick={concluir}
-                        className="text-fg-quaternary transition duration-100 ease-linear active:text-fg-secondary"
-                    >
-                        <XClose className="size-6" />
-                    </button>
-                </div>
-
-                <div className="mt-4 flex items-center gap-3 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
-                    <Avatar size="md" initials="DA" alt={DESTINATARIO} />
-                    <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-primary">{DESTINATARIO}</p>
-                        <p className="truncate text-sm text-tertiary">{maskEmail(email)}</p>
-                    </div>
-                </div>
-
-                <Button size="lg" color="primary" className="mt-5 w-full rounded-full" onClick={concluir}>
-                    Concluir
                 </Button>
             </BottomSheet>
         </AppShell>

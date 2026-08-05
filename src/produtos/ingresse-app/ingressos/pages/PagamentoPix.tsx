@@ -18,7 +18,7 @@ export function PagamentoPix() {
     const { eventId, id } = useParams();
     const evento = getEvento(eventId);
     const item = getItem(eventId, id);
-    const taxa = evento.taxaTransferencia ?? 0;
+    const taxa = item?.taxaTransferencia ?? 0;
 
     const [restante, setRestante] = useState(TOTAL);
     const [copiado, setCopiado] = useState(false);

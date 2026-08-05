@@ -5,7 +5,7 @@ import { cx } from "@/utils/cx";
 import { Button } from "@/components/base/buttons/button";
 import { AppShell } from "../../components/AppShell";
 import { StatusBar } from "../../components/StatusBar";
-import { getEvento } from "../data/eventos";
+import { getEvento, getItem } from "../data/eventos";
 
 const brl = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
 
@@ -36,8 +36,9 @@ export function PagamentoCartao() {
     const navigate = useNavigate();
     const { eventId, id } = useParams();
     const evento = getEvento(eventId);
+    const item = getItem(eventId, id);
 
-    const parcelas = gerarParcelas(evento.taxaTransferencia ?? 0);
+    const parcelas = gerarParcelas(item?.taxaTransferencia ?? 0);
     const [cartao, setCartao] = useState("1234");
     const [cvc, setCvc] = useState("");
     const [parcela, setParcela] = useState("1");

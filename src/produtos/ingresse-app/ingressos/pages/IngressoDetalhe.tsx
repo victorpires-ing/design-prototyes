@@ -158,19 +158,19 @@ export function IngressoDetalhe() {
                                 <div className="my-4 border-t border-tertiary" />
 
                                 <p className="text-sm text-tertiary">Transferido para</p>
-                                <p className="mt-0.5 text-md font-bold text-primary">Duny Alves da Silva</p>
+                                <p className="mt-0.5 text-md font-bold text-primary">Mariana Costa Lima</p>
                                 <p className="mt-1 text-sm text-tertiary">
-                                    <span>CPF: </span><span className="font-semibold text-secondary">009.789.568-90</span>
+                                    <span>CPF: </span><span className="font-semibold text-secondary">943.039.930-00</span>
                                 </p>
 
                                 <p className="mt-4 text-sm text-tertiary">Data da transferência</p>
                                 <p className="mt-0.5 text-md font-bold text-primary">10 de junho • 12:20</p>
 
-                                {eventoObj.taxaTransferencia ? (
+                                {item?.taxaTransferencia ? (
                                     <>
-                                        <p className="mt-4 text-sm text-tertiary">Pagamento de transferência</p>
+                                        <p className="mt-4 text-sm text-tertiary">Taxa de transferência</p>
                                         <p className="mt-0.5 text-md font-bold text-primary">
-                                            R$ {eventoObj.taxaTransferencia.toFixed(2).replace(".", ",")}
+                                            R$ {item.taxaTransferencia.toFixed(2).replace(".", ",")}
                                         </p>
                                     </>
                                 ) : null}

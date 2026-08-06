@@ -5,6 +5,7 @@ import { AppShell } from "../../components/AppShell";
 import { StatusBar } from "../../components/StatusBar";
 import { TicketCheckAnimation } from "../components/TicketCheckAnimation";
 import { getCombo, getEvento } from "../data/eventos";
+import textura from "../../assets/textura.png";
 import { marcarTransferido } from "../data/transfer-store";
 
 const DESTINATARIO = "Mariana Costa Lima";
@@ -38,9 +39,12 @@ export function TransferenciaSucesso() {
 
     return (
         <AppShell showTabBar={false} scrollClassName="bg-secondary">
-            <div className="flex min-h-full flex-col bg-secondary">
-                <StatusBar tone="dark" />
-                <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+            <div className="relative flex min-h-full flex-col overflow-hidden bg-secondary">
+                <img src={textura} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 size-full object-cover opacity-60" />
+                <div className="relative z-10">
+                    <StatusBar tone="dark" />
+                </div>
+                <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 text-center">
                     {/* Ícone: começa centralizado sozinho e reposiciona (sobe) quando o texto surge */}
                     <motion.div layout transition={{ type: "spring", stiffness: 220, damping: 26 }}>
                         <TicketCheckAnimation plays={1} onDone={aoTerminarAnimacao} />

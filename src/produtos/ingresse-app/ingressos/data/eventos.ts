@@ -214,15 +214,15 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
     "gop-tun": {
         id: "gop-tun",
         title: "Gop Tun Festival 2026",
-        date: "Sex, 14 ago • 22:00",
+        date: "11 de Abr 2026",
         local: "Audio • São Paulo/SP",
         gradient: "linear-gradient(160deg,#ef4444 0%,#111827 55%,#0b0b0f 100%)",
-        sessao: "Sex, 14 ago • 22:00",
+        sessao: "11 de Abr 2026",
         ingressos: [
             // 1º ingresso: primeira transferência gratuita (as próximas terão taxa)
-            { id: "inteira", title: "Main Stage (11.04)", tipo: "Inteira", data: "Sex, 14 ago • 22:00", portador: TITULAR_GOP, cpf: CPF_GOP, primeiraTransferenciaGratis: true },
+            { id: "inteira", title: "Main Stage (11.04)", tipo: "Inteira", data: "11 de Abr 2026", portador: TITULAR_GOP, cpf: CPF_GOP, primeiraTransferenciaGratis: true },
             // 2º ingresso: recebido de outra pessoa; nova transferência já com taxa
-            { id: "meia", title: "Club Stage (11.04)", tipo: "Meia-entrada", data: "Sex, 14 ago • 22:00", portador: TITULAR_GOP, cpf: CPF_GOP, transferenciaPaga: true, taxaTransferencia: 50, recebidoDe: "Duny Alves da Silva" },
+            { id: "meia", title: "Club Stage (11.04)", tipo: "Meia-entrada", data: "11 de Abr 2026", portador: TITULAR_GOP, cpf: CPF_GOP, transferenciaPaga: true, taxaTransferencia: 50, recebidoDe: "Duny Alves da Silva" },
         ],
     },
     "samba-independente": {

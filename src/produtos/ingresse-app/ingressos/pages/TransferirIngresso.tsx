@@ -25,7 +25,6 @@ export function TransferirIngresso() {
 
     const evNome = evento.title;
     const title = item?.title ?? "Ingresso";
-    const tipo = item?.tipo;
     const sessao = evento.sessao;
 
     const [email, setEmail] = useState("");
@@ -168,27 +167,12 @@ export function TransferirIngresso() {
                                 </div>
                             </>
                         ) : (
-                            <>
-                                <div className="p-5">
-                                    <p className="text-xs font-medium tracking-wide text-tertiary uppercase">{evNome}</p>
-                                    <div className="my-3 border-t border-tertiary" />
-                                    <p className="text-2xl leading-tight font-bold text-primary">{title}</p>
-                                    {tipo && <p className="mt-1.5 text-sm text-tertiary">{tipo}</p>}
-                                </div>
-
-                                <div className="relative py-1">
-                                    <div className="absolute top-1/2 -left-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
-                                    <div className="absolute top-1/2 -right-2.5 size-5 -translate-y-1/2 rounded-full bg-secondary" />
-                                    <div className="px-3">
-                                        <Zigzag />
-                                    </div>
-                                </div>
-
-                                <div className="p-5">
-                                    <p className="text-xs font-semibold text-tertiary">Sessão</p>
-                                    <p className="mt-1 text-sm font-bold text-primary">{sessao}</p>
-                                </div>
-                            </>
+                            <div className="p-5">
+                                <p className="text-sm text-tertiary">{evNome}</p>
+                                <div className="my-3 border-t border-tertiary" />
+                                <p className="text-2xl leading-tight font-bold text-primary">{title}</p>
+                                <p className="mt-1.5 text-sm text-tertiary">Data do evento: {sessao}</p>
+                            </div>
                         )}
                     </div>
 
@@ -205,7 +189,7 @@ export function TransferirIngresso() {
                         <div className="mt-3">
                             <Input
                                 type="email"
-                                placeholder="nome@exemplo.com"
+                                placeholder="Este e-mail precisa estar cadastrado"
                                 value={email}
                                 onChange={(v) => {
                                     setEmail(v);
@@ -213,7 +197,12 @@ export function TransferirIngresso() {
                                 }}
                             />
                         </div>
-                        <p className="mt-2 text-sm text-tertiary">Este e-mail precisa estar cadastrado.</p>
+                        {primeiraGratis && (
+                            <div className="mt-2 flex items-center gap-2">
+                                <img src={alertAmareloIcon} alt="" aria-hidden="true" className="size-[38px] shrink-0 object-contain" />
+                                <span className="text-sm text-tertiary">Esta transferência é gratuita. As próximas deste ingresso terão uma taxa.</span>
+                            </div>
+                        )}
 
                         <Button
                             size="lg"
@@ -226,14 +215,6 @@ export function TransferirIngresso() {
                         </Button>
                     </div>
 
-                    {/* Aviso: primeira transferência gratuita (some quando a conta é encontrada) */}
-                    {primeiraGratis && !searched && (
-                        <p className="mt-3 flex items-start gap-1.5 px-1 text-sm text-tertiary">
-                            <img src={alertAmareloIcon} alt="" aria-hidden="true" className="mt-0.5 size-9 shrink-0 object-contain" />
-                            <span>Esta transferência é gratuita. As próximas transferências deste ingresso terão uma taxa.</span>
-                        </p>
-                    )}
-
                     {/* Resultados da busca */}
                     {searched && (
                         <div
@@ -241,9 +222,7 @@ export function TransferirIngresso() {
                             className="mt-4 scroll-mt-6 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary duration-300 animate-in fade-in slide-in-from-bottom-3"
                         >
                             <p className="text-md font-bold text-primary">Conta encontrada</p>
-                            <p className="mt-1 text-sm text-tertiary">
-                                Confira o nome e o e-mail antes de continuar{transferenciaPaga ? " para o pagamento" : ""}.
-                            </p>
+                            <p className="mt-1 text-sm text-tertiary">Confira o nome e o e-mail antes de continuar.</p>
 
                             <div className="my-4 border-t border-tertiary" />
 

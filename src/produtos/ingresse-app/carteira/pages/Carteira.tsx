@@ -22,6 +22,19 @@ interface GrupoMes {
 
 const VEM_AI: GrupoMes[] = [
     {
+        mes: "Abril 2026",
+        eventos: [
+            {
+                id: "gop-tun",
+                title: "Gop Tun Festival 2026",
+                date: "11 de Abr 2026",
+                local: "Audio • São Paulo/SP",
+                qtd: 2,
+                gradient: "linear-gradient(160deg,#ef4444 0%,#111827 55%,#0b0b0f 100%)",
+            },
+        ],
+    },
+    {
         mes: "Junho 2026",
         eventos: [
             {
@@ -44,19 +57,6 @@ const VEM_AI: GrupoMes[] = [
                 local: "Fundição Progresso • Rio de Janeiro/RJ",
                 qtd: 2,
                 gradient: "linear-gradient(135deg,#F59E0B 0%,#DB2777 55%,#7C3AED 100%)",
-            },
-        ],
-    },
-    {
-        mes: "Agosto 2026",
-        eventos: [
-            {
-                id: "gop-tun",
-                title: "Gop Tun Festival 2026",
-                date: "Sex, 14 ago • 22:00",
-                local: "Audio • São Paulo/SP",
-                qtd: 2,
-                gradient: "linear-gradient(160deg,#ef4444 0%,#111827 55%,#0b0b0f 100%)",
             },
         ],
     },

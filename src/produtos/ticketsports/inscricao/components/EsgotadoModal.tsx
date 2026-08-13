@@ -1,5 +1,5 @@
 import { X } from "@untitledui/icons";
-import { AnguishedAnimation } from "./AnguishedAnimation";
+import { ErrorBadgeAnimation } from "./ErrorBadgeAnimation";
 
 /** Modal exibido quando a opção esgota no momento da seleção. */
 export function EsgotadoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -18,7 +18,7 @@ export function EsgotadoModal({ open, onClose }: { open: boolean; onClose: () =>
                 </button>
 
                 <div className="flex items-start gap-3 pr-6">
-                    <AnguishedAnimation className="size-12 shrink-0" />
+                    <ErrorBadgeAnimation className="size-12 shrink-0" />
                     <div className="pt-0.5">
                         <h3 className="text-lg font-bold text-gray-900">Essa opção acabou de esgotar</h3>
                         <p className="mt-1 text-sm text-gray-500">Mas ainda há outras opções disponíveis. Escolha uma para continuar.</p>

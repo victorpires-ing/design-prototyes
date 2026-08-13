@@ -61,6 +61,7 @@ import { Home as IngresseAppHome } from '../produtos/ingresse-app/home/pages/Hom
 import { Carteira as IngresseAppCarteira } from '../produtos/ingresse-app/carteira/pages/Carteira';
 import { Ingressos as IngresseAppIngressos } from '../produtos/ingresse-app/ingressos/pages/Ingressos';
 import { IngressoDetalhe as IngresseAppIngressoDetalhe } from '../produtos/ingresse-app/ingressos/pages/IngressoDetalhe';
+import { TrocarIngresso as IngresseAppTrocarIngresso } from '../produtos/ingresse-app/ingressos/pages/TrocarIngresso';
 import { ComboDetalhe as IngresseAppComboDetalhe } from '../produtos/ingresse-app/ingressos/pages/ComboDetalhe';
 import { ProdutoDetalhe as IngresseAppProdutoDetalhe } from '../produtos/ingresse-app/ingressos/pages/ProdutoDetalhe';
 import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingresse-app/ingressos/pages/TransferirIngresso';
@@ -124,6 +125,7 @@ import { EditorTeste } from '../produtos/usabilidade/testes/pages/EditorTeste';
 import { Resultados as TesteResultados } from '../produtos/usabilidade/testes/pages/Resultados';
 import { EntradaTeste } from '../produtos/usabilidade/testes/pages/EntradaTeste';
 import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPagesMenu';
+import { Inscricao as TicketSportsInscricao } from '../produtos/ticketsports/inscricao/pages/Inscricao';
 import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
 import { SolicitacaoVagas } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoVagas';
 import { SolicitacaoBeneficioPcd } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoBeneficioPcd';
@@ -271,6 +273,7 @@ export default function App() {
         <Route path="/ingresse-app/ingressos" element={<IngresseAppCarteira />} />
         <Route path="/ingresse-app/ingressos/evento/:eventId" element={<IngresseAppIngressos />} />
         <Route path="/ingresse-app/ingressos/detalhe/:eventId/:itemId" element={<IngresseAppIngressoDetalhe />} />
+        <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId" element={<IngresseAppTrocarIngresso />} />
         <Route path="/ingresse-app/ingressos/combo/:eventId/:comboId" element={<IngresseAppComboDetalhe />} />
         <Route path="/ingresse-app/ingressos/produto/:eventId/:itemId" element={<IngresseAppProdutoDetalhe />} />
         <Route path="/ingresse-app/ingressos/transferir/:eventId/:id" element={<IngresseAppTransferir />} />
@@ -288,6 +291,8 @@ export default function App() {
         <Route path="/testes/:id/resultados" element={<UsabilidadeGate><TesteResultados /></UsabilidadeGate>} />
         <Route path="/t/:id" element={<EntradaTeste />} />
         <Route path="/landing-pages" element={<LandingPagesMenu />} />
+        {/* Link separado — não listado na ProductSelection (home) */}
+        <Route path="/ticketsports/inscricao" element={<TicketSportsInscricao />} />
         <Route path="/landing-pages/sao-silvestre" element={<SaoSilvestre />} />
         <Route path="/landing-pages/sao-silvestre/solicitar-vagas" element={<SolicitacaoVagas />} />
         <Route path="/landing-pages/sao-silvestre/solicitar-beneficio-pcd" element={<SolicitacaoBeneficioPcd />} />

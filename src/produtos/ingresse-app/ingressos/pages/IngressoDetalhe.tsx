@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import Lottie, { type LottieRefCurrentProps } from "lottie-react";
-import { ArrowLeft, CheckCircle, InfoCircle, Send01, Tag01, UserRight01, UsersPlus } from "@untitledui/icons";
+import { ArrowLeft, CheckCircle, InfoCircle, RefreshCcw05, Send01, Tag01, UserRight01, UsersPlus } from "@untitledui/icons";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
 import faceIdSuccess from "../assets/face-id-success.json";
@@ -63,6 +63,14 @@ export function IngressoDetalhe() {
     // Facial pendente começa não cadastrado; "Cadastrar agora" leva ao estado cadastrado.
     const [registered, setRegistered] = useState(item?.facial !== "pendente");
 
+    // CTA de troca/upgrade de ingresso — liberado em todos os ingressos.
+    const trocarIngresso: FabAction = {
+        icon: RefreshCcw05,
+        label: "Trocar ingresso",
+        short: "Trocar",
+        onClick: () => navigate(`/ingresse-app/ingressos/trocar/${eventoObj.id}/${itemId}`),
+    };
+
     const acoes: FabAction[] = dependente
         ? [
               {
@@ -71,6 +79,7 @@ export function IngressoDetalhe() {
                   short: "Trocar dependente",
                   onClick: () => navigate(`/ingresse-app/ingressos/transferir-dependente/${eventoObj.id}/${itemId}`),
               },
+              trocarIngresso,
           ]
         : [
               {
@@ -86,6 +95,7 @@ export function IngressoDetalhe() {
                   short: "Dependente",
                   onClick: () => navigate(`/ingresse-app/ingressos/transferir-dependente/${eventoObj.id}/${itemId}`),
               },
+              trocarIngresso,
           ];
 
     return (

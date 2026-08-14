@@ -3,6 +3,7 @@ import { ChevronDown, ChevronLeft, ChevronUp, HelpCircle, InfoCircle, Plus, QrCo
 import { cx } from "@/utils/cx";
 import { CAMPOS, EVENTO, RESUMO, type CampoFormulario } from "../data/formulario";
 import { EsgotadoModal } from "../components/EsgotadoModal";
+import alertAmarelo from "../assets/alert-amarelo.png";
 
 const BLUE = "#1aa0de";
 
@@ -22,6 +23,18 @@ export function Inscricao() {
     const esgotarAgora = (campoId: string, opcaoId: string) => {
         setEsgotados((s) => new Set(s).add(chave(campoId, opcaoId)));
         setRespostas((r) => (r[campoId] === opcaoId ? { ...r, [campoId]: "" } : r));
+    };
+
+    // Cenário 3 — todas as opções de uma pergunta esgotam.
+    const esgotarTodas = (campoId: string) => {
+        const campo = CAMPOS.find((c) => c.id === campoId);
+        if (!campo?.opcoes) return;
+        setEsgotados((s) => {
+            const next = new Set(s);
+            campo.opcoes!.forEach((o) => next.add(chave(campoId, o.id)));
+            return next;
+        });
+        setRespostas((r) => (campo.opcoes!.some((o) => o.id === r[campoId]) ? { ...r, [campoId]: "" } : r));
     };
 
     // Seleção de uma opção — considera o cenário 2 (esgota no momento da seleção).
@@ -213,6 +226,7 @@ export function Inscricao() {
                 armado={armado}
                 setArmado={setArmado}
                 onEsgotar={esgotarAgora}
+                onEsgotarTodas={esgotarTodas}
                 onReset={() => {
                     setEsgotados(new Set());
                     setArmado(false);
@@ -240,7 +254,7 @@ const RadioDot = ({ on, disabled }: { on?: boolean; disabled?: boolean }) => (
 );
 
 const EsgotadoPill = () => (
-    <span className="rounded-full bg-[var(--color-utility-neutral-50)] px-2 py-0.5 text-xs font-medium text-[var(--color-utility-neutral-700)] ring-1 ring-[var(--color-utility-neutral-200)]">
+    <span className="rounded-full bg-[var(--color-neutral-50)] px-2 py-0.5 text-xs font-medium text-[var(--color-neutral-700)] ring-1 ring-[var(--color-neutral-200)]">
         Esgotado
     </span>
 );
@@ -262,8 +276,22 @@ function Campo({
 }) {
     const label = (
         <label className="mb-1.5 block text-sm text-gray-700">
-            {campo.label} {campo.obrigatorio && <span className="text-red-500">*</span>}
+            {campo.label} {campo.obrigatorio && <span style={{ color: BLUE }}>*</span>}
         </label>
+    );
+
+    // Cenário: todas as opções desta pergunta esgotaram.
+    const todasEsgotadas = !!campo.estoque && !!campo.opcoes?.length && campo.opcoes.every((o) => esgotado(o.id));
+    const alertaTudoEsgotado = todasEsgotadas && (
+        <div className="mt-2 flex items-start gap-2 rounded-xl border border-gray-200 bg-white p-4">
+            <img src={alertAmarelo} alt="" aria-hidden="true" className="size-9 shrink-0 object-contain" />
+            <div>
+                <p className="text-sm font-bold text-gray-900">Não foi possível continuar com esta inscrição</p>
+                <p className="mt-1 text-sm text-gray-500">
+                    Todas as opções de {campo.label} estão esgotadas. Tente novamente ou volte para escolher outra opção de inscrição.
+                </p>
+            </div>
+        </div>
     );
 
     if (campo.tipo === "texto") {
@@ -302,6 +330,7 @@ function Campo({
                         );
                     })}
                 </div>
+                {alertaTudoEsgotado}
             </div>
         );
     }
@@ -348,6 +377,7 @@ function Campo({
                         </div>
                     )}
                 </div>
+                {alertaTudoEsgotado}
             </div>
         );
     }
@@ -374,12 +404,14 @@ function ScenarioPanel({
     armado,
     setArmado,
     onEsgotar,
+    onEsgotarTodas,
     onReset,
 }: {
     esgotado: (campoId: string, opId: string) => boolean;
     armado: boolean;
     setArmado: (v: boolean) => void;
     onEsgotar: (campoId: string, opId: string) => void;
+    onEsgotarTodas: (campoId: string) => void;
     onReset: () => void;
 }) {
     const [aberto, setAberto] = useState(true);
@@ -456,7 +488,32 @@ function ScenarioPanel({
             </button>
             <p className="mt-1 text-xs text-gray-500">A próxima opção com estoque que você selecionar vai esgotar e abrir o modal.</p>
 
-            <button type="button" onClick={onReset} className="mt-3 w-full rounded-lg py-2 text-xs font-medium text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50">
+            {/* Cenário 3 */}
+            <p className="mt-4 text-[11px] font-semibold tracking-wide text-gray-500 uppercase">3 · Todas as opções esgotadas</p>
+            <p className="mt-0.5 text-xs text-gray-500">Esgota todas as opções da pergunta de uma vez.</p>
+            <div className="mt-2 flex flex-col gap-1.5">
+                {camposEstoque
+                    .filter((c) => c.id === "tamanho")
+                    .map((c) => {
+                        const todas = c.opcoes!.every((o) => esgotado(c.id, o.id));
+                        return (
+                            <button
+                                key={c.id}
+                                type="button"
+                                disabled={todas}
+                                onClick={() => onEsgotarTodas(c.id)}
+                                className={cx(
+                                    "w-full rounded-md px-2.5 py-1.5 text-left text-xs font-medium ring-1 transition",
+                                    todas ? "cursor-not-allowed text-gray-300 ring-gray-100" : "text-gray-700 ring-gray-300 hover:bg-gray-50",
+                                )}
+                            >
+                                Esgotar todas — {c.label}
+                            </button>
+                        );
+                    })}
+            </div>
+
+            <button type="button" onClick={onReset} className="mt-4 w-full rounded-lg py-2 text-xs font-medium text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50">
                 Resetar
             </button>
         </div>

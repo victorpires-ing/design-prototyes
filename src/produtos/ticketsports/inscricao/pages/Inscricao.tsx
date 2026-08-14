@@ -51,6 +51,11 @@ export function Inscricao() {
         setSelectAberto(null);
     };
 
+    // Bloqueia o salvar quando uma pergunta obrigatória com estoque tem todas as opções esgotadas.
+    const bloqueadoPorEstoque = CAMPOS.some(
+        (c) => c.estoque && c.obrigatorio && !!c.opcoes?.length && c.opcoes.every((o) => estaEsgotado(c.id, o.id)),
+    );
+
     return (
         <div className="min-h-screen bg-[#f4f4f5] text-gray-900">
             {/* Header preto */}
@@ -145,8 +150,12 @@ export function Inscricao() {
 
                             <button
                                 type="button"
-                                className="mt-6 w-full rounded-lg py-3 text-sm font-semibold text-white transition hover:brightness-95"
-                                style={{ backgroundColor: BLUE }}
+                                disabled={bloqueadoPorEstoque}
+                                className={cx(
+                                    "mt-6 w-full rounded-lg py-3 text-sm font-semibold text-white transition",
+                                    bloqueadoPorEstoque ? "cursor-not-allowed" : "hover:brightness-95",
+                                )}
+                                style={{ backgroundColor: bloqueadoPorEstoque ? "#9fd6f0" : BLUE }}
                             >
                                 Salvar respostas
                             </button>

@@ -42,7 +42,7 @@ export function TransferenciaProcessando() {
                         size="lg"
                         color="primary"
                         className="w-full rounded-full"
-                        onClick={() => navigate("/ingresse-app/ingressos")}
+                        onClick={() => navigate(`/ingresse-app/ingressos/evento/${evento.id}`)}
                     >
                         Ir para a carteira
                     </Button>

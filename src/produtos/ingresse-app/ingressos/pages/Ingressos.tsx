@@ -11,7 +11,7 @@ import { BottomSheet } from "../../components/BottomSheet";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { getEvento, type Combo, type EventoDetalhe, type ItemIngresso } from "../data/eventos";
-import { getDependenteAtribuido, isTransferido } from "../data/transfer-store";
+import { getDependenteAtribuido, isEmTransferencia, isTransferido } from "../data/transfer-store";
 import googleMapsLogo from "../assets/google-maps.png";
 import appleMapsLogo from "../assets/apple-maps.png";
 import wazeLogo from "../assets/waze.png";
@@ -420,6 +420,7 @@ const ComboCardContent = ({ combo, evento }: { combo: Combo; evento: EventoDetal
 const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
     const Icon = item.acesso === "facial" ? FaceIdSquare : QrCode02;
     const transf = isTransferido(item.id);
+    const emTransf = isEmTransferencia(item.id);
     const dep = getDependenteAtribuido(item.id);
 
     // Item de produto/merchandising (ex.: camiseta) — visual diferente do ingresso.
@@ -477,6 +478,10 @@ const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
                     {transf ? (
                         <Badge size="md" color="blue" type="pill-color">
                             Transferido
+                        </Badge>
+                    ) : emTransf ? (
+                        <Badge size="md" color="warning" type="pill-color">
+                            Em transferência
                         </Badge>
                     ) : item.acesso === "facial" && item.facial !== "cadastrada" ? (
                         <Badge size="md" color="warning" type="pill-color">

@@ -74,6 +74,7 @@ import { TransferenciaPagamento as IngresseAppTransferenciaPagamento } from '../
 import { PagamentoCartao as IngresseAppPagamentoCartao } from '../produtos/ingresse-app/ingressos/pages/PagamentoCartao';
 import { PagamentoPix as IngresseAppPagamentoPix } from '../produtos/ingresse-app/ingressos/pages/PagamentoPix';
 import { TransferenciaSucesso as IngresseAppTransferenciaSucesso } from '../produtos/ingresse-app/ingressos/pages/TransferenciaSucesso';
+import { TransferenciaProcessando as IngresseAppTransferenciaProcessando } from '../produtos/ingresse-app/ingressos/pages/TransferenciaProcessando';
 import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pages/Perfil';
 import { TelaBloqueadaIphone as IngresseAppTelaBloqueadaIphone } from '../produtos/ingresse-app/tela-bloqueada/pages/TelaBloqueadaIphone';
 import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
@@ -288,6 +289,7 @@ export default function App() {
         <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id" element={<IngresseAppTransferenciaPagamento />} />
         <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/cartao" element={<IngresseAppPagamentoCartao />} />
         <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/pix" element={<IngresseAppPagamentoPix />} />
+        <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/processando" element={<IngresseAppTransferenciaProcessando />} />
         <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/sucesso" element={<IngresseAppTransferenciaSucesso />} />
         <Route path="/ingresse-app/perfil" element={<IngresseAppPerfil />} />
         <Route path="/ingresse-app/tela-bloqueada/iphone" element={<IngresseAppTelaBloqueadaIphone />} />

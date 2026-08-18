@@ -32,8 +32,8 @@ export function PagamentoPix() {
     const copiar = () => {
         navigator.clipboard?.writeText(PIX).catch(() => {});
         setCopiado(true);
-        // Após copiar, o pagamento é "confirmado" e o fluxo segue para a tela de sucesso.
-        setTimeout(() => navigate(`/ingresse-app/ingressos/transferir-pagamento/${evento.id}/${id}/sucesso`), 1200);
+        // Pix leva alguns minutos para confirmar: segue para a tela de processamento.
+        setTimeout(() => navigate(`/ingresse-app/ingressos/transferir-pagamento/${evento.id}/${id}/processando`), 1200);
     };
 
     return (

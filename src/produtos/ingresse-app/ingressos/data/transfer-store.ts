@@ -11,6 +11,23 @@ export const marcarTransferido = (id?: string) => {
 
 export const isTransferido = (id?: string) => !!id && transferidos.has(id);
 
+/* --- Em transferência (pagamento em processamento) --- */
+
+const emTransferencia = new Set<string>();
+
+export const marcarEmTransferencia = (id?: string) => {
+    if (id) emTransferencia.add(id);
+};
+
+export const isEmTransferencia = (id?: string) => !!id && emTransferencia.has(id);
+
+/** Conclui a transferência: sai de "em transferência" e passa a "transferido". */
+export const concluirTransferencia = (id?: string) => {
+    if (!id) return;
+    emTransferencia.delete(id);
+    transferidos.add(id);
+};
+
 /* --- Dependente atribuído --- */
 
 export type DependenteAtribuido = { nome: string; cpf: string; email: string; iniciais: string };

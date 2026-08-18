@@ -62,6 +62,9 @@ import { Carteira as IngresseAppCarteira } from '../produtos/ingresse-app/cartei
 import { Ingressos as IngresseAppIngressos } from '../produtos/ingresse-app/ingressos/pages/Ingressos';
 import { IngressoDetalhe as IngresseAppIngressoDetalhe } from '../produtos/ingresse-app/ingressos/pages/IngressoDetalhe';
 import { TrocarIngresso as IngresseAppTrocarIngresso } from '../produtos/ingresse-app/ingressos/pages/TrocarIngresso';
+import { TrocarPagamento as IngresseAppTrocarPagamento } from '../produtos/ingresse-app/ingressos/pages/TrocarPagamento';
+import { TrocarPagamentoPix as IngresseAppTrocarPagamentoPix } from '../produtos/ingresse-app/ingressos/pages/TrocarPagamentoPix';
+import { TrocaSucesso as IngresseAppTrocaSucesso } from '../produtos/ingresse-app/ingressos/pages/TrocaSucesso';
 import { ComboDetalhe as IngresseAppComboDetalhe } from '../produtos/ingresse-app/ingressos/pages/ComboDetalhe';
 import { ProdutoDetalhe as IngresseAppProdutoDetalhe } from '../produtos/ingresse-app/ingressos/pages/ProdutoDetalhe';
 import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingresse-app/ingressos/pages/TransferirIngresso';
@@ -274,6 +277,9 @@ export default function App() {
         <Route path="/ingresse-app/ingressos/evento/:eventId" element={<IngresseAppIngressos />} />
         <Route path="/ingresse-app/ingressos/detalhe/:eventId/:itemId" element={<IngresseAppIngressoDetalhe />} />
         <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId" element={<IngresseAppTrocarIngresso />} />
+        <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/pagamento" element={<IngresseAppTrocarPagamento />} />
+        <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/pagamento/pix" element={<IngresseAppTrocarPagamentoPix />} />
+        <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/sucesso" element={<IngresseAppTrocaSucesso />} />
         <Route path="/ingresse-app/ingressos/combo/:eventId/:comboId" element={<IngresseAppComboDetalhe />} />
         <Route path="/ingresse-app/ingressos/produto/:eventId/:itemId" element={<IngresseAppProdutoDetalhe />} />
         <Route path="/ingresse-app/ingressos/transferir/:eventId/:id" element={<IngresseAppTransferir />} />

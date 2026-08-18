@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import type { FC } from "react";
 import { ChevronRight, ClockRewind, Ticket01 } from "@untitledui/icons";
@@ -6,6 +6,9 @@ import { cx } from "@/utils/cx";
 import { AppShell } from "../../components/AppShell";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
+import { TrocaOnboarding } from "../../ingressos/components/TrocaOnboarding";
+
+const ONBOARDING_KEY = "ing-onboarding-troca";
 
 interface Evento {
     id: string;
@@ -103,8 +106,23 @@ export function Carteira() {
     const [tab, setTab] = useState<"vem-ai" | "passados">("vem-ai");
     const grupos = tab === "vem-ai" ? VEM_AI : PASSADOS;
 
+    // Onboarding da troca de ingresso — abre ao entrar na Carteira (1ª vez, ou via ?onboarding=1).
+    const [onboardingOpen, setOnboardingOpen] = useState(false);
+    useEffect(() => {
+        const forcar = new URLSearchParams(window.location.search).get("onboarding") === "1";
+        if (forcar || !localStorage.getItem(ONBOARDING_KEY)) {
+            const t = setTimeout(() => setOnboardingOpen(true), 600);
+            return () => clearTimeout(t);
+        }
+    }, []);
+    const fecharOnboarding = () => {
+        localStorage.setItem(ONBOARDING_KEY, "1");
+        setOnboardingOpen(false);
+    };
+
     return (
         <AppShell activeTab="ingressos" scrollClassName="bg-secondary">
+            <TrocaOnboarding isOpen={onboardingOpen} onClose={fecharOnboarding} />
             <div className="min-h-full bg-secondary">
                 <StatusBar tone="dark" />
 

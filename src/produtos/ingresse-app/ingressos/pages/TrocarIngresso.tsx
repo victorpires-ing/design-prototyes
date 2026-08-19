@@ -114,7 +114,7 @@ export function TrocarIngresso() {
                                     <InfoCircle className="size-4 text-blue-500" />
                                 </p>
                             ) : (
-                                <p className="min-w-0 text-md font-semibold text-primary">Troca sem custo adicional</p>
+                                <p className="min-w-0 text-md font-semibold text-primary">Nenhum valor adicional</p>
                             )}
                             <Button
                                 size="lg"
@@ -129,7 +129,7 @@ export function TrocarIngresso() {
                                     )
                                 }
                             >
-                                Continuar
+                                {diferenca > 0 ? "Continuar" : "Trocar"}
                             </Button>
                         </div>
                     </div>

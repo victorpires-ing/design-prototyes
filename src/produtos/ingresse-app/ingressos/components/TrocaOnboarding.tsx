@@ -106,10 +106,7 @@ export function TrocaOnboarding({ isOpen, onClose }: { isOpen: boolean; onClose:
 
                 <h2 className="mt-5 text-lg font-bold text-primary">Troque ou faça upgrade do seu ingresso</h2>
                 <p className="mt-1.5 text-sm leading-relaxed text-tertiary">
-                    Agora você pode escolher outra opção disponível para o mesmo evento direto pela sua Carteira.
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-tertiary">
-                    Se o novo ingresso tiver um valor maior, você paga apenas a diferença e as taxas aplicáveis.
+                    Escolha uma nova opção de ingresso para o mesmo evento na Carteira. Se ela custar mais, você paga apenas a diferença e as taxas aplicáveis.
                 </p>
 
                 <Button size="lg" color="primary" className="mt-5 w-full rounded-full" onClick={onClose}>

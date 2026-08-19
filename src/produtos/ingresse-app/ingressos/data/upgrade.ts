@@ -128,8 +128,9 @@ export const getCatalogoTroca = (eventId?: string, itemId?: string): CatalogoTro
 
     const atualValor =
         (itemId ? cfg.valorAtualPorItem[itemId] : undefined) ?? cfg.atualPadrao ?? Object.values(cfg.valorAtualPorItem)[0] ?? 0;
-    const valorCompraInicial =
-        (itemId ? cfg.valorCompraInicialPorItem[itemId] : undefined) ?? cfg.compraInicialPadrao ?? Object.values(cfg.valorCompraInicialPorItem)[0] ?? atualValor;
+    // A diferença é sempre calculada contra o valor do ingresso atual:
+    // selecionar um ingresso de mesmo valor => diferença 0 (troca sem custo).
+    const valorCompraInicial = atualValor;
 
     return {
         atualNome: item?.title ?? evento.title,

@@ -27,7 +27,7 @@ export function TrocarPagamento() {
 
     const metodos: { id: string; label: string; icon: FC<{ className?: string }>; tint: string; to?: string }[] = [
         { id: "pix", label: "Pix", icon: QrCode01, tint: "text-teal-500", to: `${base}/pix${qs}` },
-        { id: "credito", label: "Cartão de Crédito", icon: CreditCard01, tint: "text-fg-secondary" },
+        { id: "credito", label: "Cartão de Crédito", icon: CreditCard01, tint: "text-fg-secondary", to: `${base}/cartao${qs}` },
         { id: "debito", label: "Cartão de Débito", icon: CreditCard02, tint: "text-fg-secondary" },
         { id: "nupay", label: "Nupay", icon: Wallet02, tint: "text-purple-500" },
         { id: "apple", label: "Apple Pay", icon: Wallet01, tint: "text-primary" },

@@ -38,8 +38,8 @@ export function TrocarPagamentoPix() {
     const copiar = () => {
         navigator.clipboard?.writeText(PIX).catch(() => {});
         setCopiado(true);
-        // Após copiar, o pagamento é "confirmado" e o fluxo segue para a tela de sucesso.
-        setTimeout(() => navigate(`/ingresse-app/ingressos/trocar/${evento.id}/${itemId}/sucesso`), 1200);
+        // Pix leva alguns minutos para confirmar: segue para a tela de processamento da troca.
+        setTimeout(() => navigate(`/ingresse-app/ingressos/trocar/${evento.id}/${itemId}/processando`), 1200);
     };
 
     return (

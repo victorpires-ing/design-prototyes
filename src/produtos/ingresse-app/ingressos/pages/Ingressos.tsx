@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import type { FC, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ArrowLeft, ChevronRight, FaceIdSquare, FilterLines, Map01, Package, QrCode02, Send01, Tag01, User01, XClose } from "@untitledui/icons";
@@ -11,7 +11,7 @@ import { BottomSheet } from "../../components/BottomSheet";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { getEvento, type Combo, type EventoDetalhe, type ItemIngresso } from "../data/eventos";
-import { getDependenteAtribuido, isEmTransferencia, isTransferido } from "../data/transfer-store";
+import { getDependenteAtribuido, isEmTransferencia, isEmTroca, isTransferido, subscribeTicketStore } from "../data/transfer-store";
 import googleMapsLogo from "../assets/google-maps.png";
 import appleMapsLogo from "../assets/apple-maps.png";
 import wazeLogo from "../assets/waze.png";
@@ -20,6 +20,10 @@ export function Ingressos() {
     const navigate = useNavigate();
     const { eventId } = useParams();
     const evento = getEvento(eventId);
+
+    // Re-renderiza quando o estado dos ingressos muda (ex.: troca concluída em background).
+    const [, forcar] = useReducer((n: number) => n + 1, 0);
+    useEffect(() => subscribeTicketStore(forcar), []);
 
     const total = evento.combos ? evento.combos.length : (evento.ingressos?.length ?? 0);
 
@@ -350,13 +354,17 @@ function useLongPress(onLongPress: (rect: DOMRect) => void, onTap: () => void) {
 
 const TicketRow = ({ item, isFirst, onTap, onLongPress }: { item: ItemIngresso; isFirst: boolean; onTap: () => void; onLongPress: (rect: DOMRect) => void }) => {
     const { pressing, handlers } = useLongPress(onLongPress, onTap);
+    // Em troca (pagamento processando): o ingresso não pode ser acessado.
+    const bloqueado = isEmTroca(item.id);
     return (
         <button
             type="button"
-            {...handlers}
+            {...(bloqueado ? {} : handlers)}
+            disabled={bloqueado}
             className={cx(
-                "block w-full select-none transition duration-100 ease-linear active:bg-secondary",
-                pressing && "scale-[0.98] bg-secondary",
+                "block w-full select-none transition duration-100 ease-linear",
+                !bloqueado && "active:bg-secondary",
+                pressing && !bloqueado && "scale-[0.98] bg-secondary",
                 !isFirst && "border-t border-secondary",
             )}
         >
@@ -364,6 +372,11 @@ const TicketRow = ({ item, isFirst, onTap, onLongPress }: { item: ItemIngresso; 
         </button>
     );
 };
+
+/** Spinner âmbar (processando) exibido no lugar da setinha. */
+const Spinner = () => (
+    <span className="mt-0.5 block size-5 shrink-0 animate-spin rounded-full border-2 border-[color:var(--color-bg-warning-solid)]/25 border-t-[color:var(--color-bg-warning-solid)]" />
+);
 
 /** Card de combo (QR único) com o mesmo atalho de pressionar e segurar. */
 const ComboCard = ({ combo, evento, onTap, onLongPress }: { combo: Combo; evento: EventoDetalhe; onTap: () => void; onLongPress: (rect: DOMRect) => void }) => {
@@ -421,6 +434,7 @@ const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
     const Icon = item.acesso === "facial" ? FaceIdSquare : QrCode02;
     const transf = isTransferido(item.id);
     const emTransf = isEmTransferencia(item.id);
+    const emTroca = isEmTroca(item.id);
     const dep = getDependenteAtribuido(item.id);
 
     // Item de produto/merchandising (ex.: camiseta) — visual diferente do ingresso.
@@ -468,7 +482,7 @@ const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-bold text-primary">{item.title}</p>
-                    <ChevronRight className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
+                    {emTroca ? <Spinner /> : <ChevronRight className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />}
                 </div>
                 <p className="flex items-center gap-1.5 text-sm text-secondary">
                     <User01 className="size-4 shrink-0 text-fg-quaternary" />
@@ -478,6 +492,10 @@ const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
                     {transf ? (
                         <Badge size="md" color="blue" type="pill-color">
                             Transferido
+                        </Badge>
+                    ) : emTroca ? (
+                        <Badge size="md" color="warning" type="pill-color">
+                            Processando troca
                         </Badge>
                     ) : emTransf ? (
                         <Badge size="md" color="warning" type="pill-color">

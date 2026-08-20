@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router";
-import { AlertTriangle, CheckCircle, ChevronDown, Minus, Package, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronRight, FileCheck02, InfoCircle, Minus, Package, Phone01, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Badge } from "@/components/base/badges/badges";
@@ -575,6 +575,31 @@ export function SelecaoEAtribuicao() {
             <div className="flex w-full flex-col gap-8 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary lg:w-[1062px]">
                 <h2 className="text-lg font-bold text-primary">{unidades.length > 1 ? "Para quem são essas inscrições?" : "Para quem é essa inscrição?"}</h2>
 
+                {/* Acessos à página de informações da meia-entrada (âncoras) */}
+                <div className="rounded-2xl bg-secondary p-4 ring-1 ring-border-secondary">
+                    <p className="text-sm font-bold text-primary">Informações da meia-entrada</p>
+                    <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        {[
+                            { icon: InfoCircle, label: "Regras da meia-entrada", secao: "quem-tem-direito" },
+                            { icon: FileCheck02, label: "Documento comprobatório", secao: "quem-tem-direito" },
+                            { icon: Phone01, label: "Órgãos de fiscalização", secao: "fiscalizacao" },
+                        ].map((a) => {
+                            const Icon = a.icon;
+                            return (
+                                <button
+                                    key={a.secao}
+                                    type="button"
+                                    onClick={() => navigate(`/marketplace/meia-entrada?secao=${a.secao}`)}
+                                    className="flex items-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
+                                >
+                                    <Icon className="size-4 shrink-0 text-fg-quaternary" />
+                                    <span className="flex-1 text-sm font-medium text-primary">{a.label}</span>
+                                    <ChevronRight className="size-4 shrink-0 text-fg-quaternary" />
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
 
                 {unidades.map((u) =>
                     config.modoAtribuicao === "accordion" ? (

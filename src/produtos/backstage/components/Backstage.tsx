@@ -365,9 +365,9 @@ const MobileEventNav = ({ activeSection, activeItem }: EventRailProps) => {
                                 initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.12, duration: 0.22 }}
-                                className="p-3"
+                                className="p-3 [&_[role=row]]:min-h-10"
                             >
-                                <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
+                                <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} size="md" />
                             </motion.div>
                         </motion.div>
                         <motion.button
@@ -378,7 +378,7 @@ const MobileEventNav = ({ activeSection, activeItem }: EventRailProps) => {
                             transition={sheetTransition}
                             aria-label="Fechar funcionalidades do evento"
                             onClick={() => setIsOpen(false)}
-                            className="flex-1 bg-overlay"
+                            className="flex-1 bg-overlay/70"
                         />
                     </div>
                 )}
@@ -576,7 +576,7 @@ const MobileDrawer = ({ isOpen, onClose }: MobileDrawerProps) => {
                         transition={sheetTransition}
                         aria-label="Fechar menu"
                         onClick={onClose}
-                        className="flex-1 bg-overlay"
+                        className="flex-1 bg-overlay/70"
                     />
                 </div>
             )}
@@ -789,11 +789,13 @@ const EventDetailsCard = () => (
 interface EventFunctionalitiesListProps {
     activeSection?: BackstageSection;
     activeItem?: BackstageItem;
+    /** `md` deixa as linhas com 40px — usado na gaveta mobile. */
+    size?: "sm" | "md";
 }
 
 const ACTIVE_CLASS = "bg-tertiary hover:bg-tertiary";
 
-const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctionalitiesListProps) => {
+const EventFunctionalitiesList = ({ activeSection, activeItem, size = "sm" }: EventFunctionalitiesListProps) => {
     const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(() => new Set(activeSection ? [activeSection] : []));
 
     useEffect(() => {
@@ -807,7 +809,7 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
     return (
         <TreeView
             aria-label="Funcionalidades do evento"
-            size="sm"
+            size={size}
             selectionMode="none"
             disabledKeys={DISABLED_KEYS}
             expandedKeys={expandedKeys}

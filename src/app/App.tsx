@@ -33,6 +33,9 @@ import { DetalheGrupo as DetalheGrupoOperacao } from '../produtos/backstage/equi
 import { EditarItensCotas } from '../produtos/backstage/equipe-de-operacao/pages/EditarItensCotas';
 import { EditarOperadores } from '../produtos/backstage/equipe-de-operacao/pages/EditarOperadores';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
+import { VenderIngressos } from '../produtos/backstage/bilheteria/pages/VenderIngressos';
+import { IngressoPdf } from '../produtos/backstage/bilheteria/pages/IngressoPdf';
+import { PedidosBilheteria } from '../produtos/backstage/bilheteria/pages/Pedidos';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
 import { SeletorTimes } from '../produtos/futebol/landing-pages/pages/SeletorTimes';
@@ -187,6 +190,9 @@ export default function App() {
         <Route path="/backstage/equipe-de-operacao/:grupoId" element={<DetalheGrupoOperacao />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId/editar-itens" element={<EditarItensCotas />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId/editar-operadores" element={<EditarOperadores />} />
+        <Route path="/backstage/bilheteria" element={<PedidosBilheteria />} />
+        <Route path="/backstage/bilheteria/vender" element={<VenderIngressos />} />
+        <Route path="/backstage/bilheteria/ingresso-pdf" element={<IngressoPdf />} />
         <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
         <Route path="/backstage/permissao-envio" element={<PermissaoEnvio />} />
         <Route path="/backstage/permissao-envio/nova" element={<NovaPermissao />} />

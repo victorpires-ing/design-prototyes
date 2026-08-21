@@ -49,6 +49,7 @@ const BrandLogo = ({ className }: { className?: string }) => {
 import { ThemeToggle } from "./ThemeToggle";
 
 export type BackstageSection =
+    | "bilheteria"
     | "equipe-e-permissoes"
     | "informacoes-evento"
     | "itens"
@@ -59,6 +60,7 @@ export type BackstageSection =
     | "marketing";
 
 export type BackstageItem =
+    | "bilheteria-online"
     | "permissao-envio"
     | "catalogo-itens"
     | "catalogo-ingressos"
@@ -261,6 +263,7 @@ const MobileEventCard = () => (
 );
 
 const SECTION_LABELS: Record<BackstageSection, string> = {
+    bilheteria: "Bilheteria",
     "equipe-e-permissoes": "Equipe e Permissões",
     "informacoes-evento": "Informações do evento",
     itens: "Itens",
@@ -272,6 +275,7 @@ const SECTION_LABELS: Record<BackstageSection, string> = {
 };
 
 const ITEM_LABELS: Record<BackstageItem, string> = {
+    "bilheteria-online": "Bilheteria online",
     "permissao-envio": "Permissão de envio",
     "catalogo-itens": "Itens",
     "catalogo-ingressos": "Ingressos",
@@ -736,6 +740,13 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 </TreeView.Item>
                 <TreeView.Item id="catalogo-aberturas" textValue="Aberturas de vendas" href="/backstage/catalogo/aberturas-de-vendas">
                     <TreeView.ItemContent className={itemClass("catalogo-aberturas")}>Aberturas de vendas</TreeView.ItemContent>
+                </TreeView.Item>
+            </TreeView.Item>
+
+            <TreeView.Item id="bilheteria" textValue="Bilheteria">
+                <TreeView.ItemContent icon={ShoppingCart01}>Bilheteria</TreeView.ItemContent>
+                <TreeView.Item id="bilheteria-online" textValue="Bilheteria online" href="/backstage/bilheteria">
+                    <TreeView.ItemContent className={itemClass("bilheteria-online")}>Bilheteria online</TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>
 

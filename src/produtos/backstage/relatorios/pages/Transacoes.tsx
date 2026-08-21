@@ -5,6 +5,7 @@ import {
     ClockFastForward,
     CreditCard02,
     CurrencyDollarCircle,
+    Edit02,
     RefreshCcw01,
     SearchLg,
     ShoppingCart01,
@@ -12,12 +13,14 @@ import {
 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
+import { Button } from "@/components/base/buttons/button";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { DEFAULT_SELECTED, ManageColumnsModal } from "../components/ManageColumnsModal";
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { RelatorioFiltersProvider, matchRow, inDateRange, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
 import { SortableHeader } from "../components/SortableHeader";
@@ -124,6 +127,7 @@ const LOCAIS = [
     { estado: "DF", cidade: "Brasília", ddd: "61" },
 ];
 const OPERADORES = ["Bilheteria Praia de Carneiros", "Loja Oficial Réveillon Carneiros"];
+const PASSKEYS = ["VIP2027", "EARLYBIRD", "PARCEIRO2027", "IMPRENSA27", "STAFF2027"];
 const CUPONS = [
     { cupom: "REVEILLON15", pct: 0.15 },
     { cupom: "CARNEIROS10", pct: 0.1 },
@@ -192,12 +196,14 @@ const transacoes: Transacao[] = (() => {
         const tipo = pick(cat.tipos);
         const qtdItem = rng() < 0.82 ? 1 : rng() < 0.7 ? 2 : rng() < 0.7 ? 3 : 4;
 
-        // Jogo único; vendas majoritariamente online. Offline (bilheteria) usa dinheiro.
+        // Jogo único; vendas majoritariamente online. Bilheteria (PDV) usa dinheiro;
+        // cortesias (isentas) entram como canal próprio.
         const isPdv = rng() < 0.01;
-        const canal = isPdv ? "Offline" : "Online";
         const meio = isPdv ? { nome: "Dinheiro", peso: 1 } : pickWeighted(MEIOS_PAGAMENTO);
         const tipoPagamento = meio.nome;
         const isento = "isento" in meio && meio.isento === true;
+        const canal = isento ? "Cortesia" : isPdv ? "Bilheteria" : "Online";
+        const temPasskey = rng() < 0.08;
 
         const valor = isento ? 0 : tipo.valor * qtdItem;
         const temCupom = !isento && rng() < 0.12;
@@ -234,7 +240,7 @@ const transacoes: Transacao[] = (() => {
             valorDesconto,
             valorFinal,
             qtdItem,
-            passkey: "—",
+            passkey: temPasskey ? pick(PASSKEYS) : "—",
             pdv: isPdv,
             bundle: false,
             bundleDinamico: false,
@@ -245,14 +251,36 @@ const transacoes: Transacao[] = (() => {
     return rows;
 })();
 
+/** Dia (00:00) da transação mais recente do dataset — usado como "hoje" para o filtro
+ * "Aprovados hoje", já que os dados são gerados numa janela fixa que pode não coincidir
+ * com a data real. */
+const ULTIMO_DIA_MS = (() => {
+    const d = parseEventDate(transacoes[0]?.dataCriacao ?? "");
+    return d ? new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() : 0;
+})();
+const isMesmoDia = (dataStr: string, diaMs: number): boolean => {
+    const d = parseEventDate(dataStr);
+    if (!d) return false;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() === diaMs;
+};
+
 /* ------------------------------------------------------------------ */
 /*  Filtros — definição de campos (usada pelo slideout global)         */
 /* ------------------------------------------------------------------ */
 
-const STATUS_OPTIONS = Object.entries(STATUS_META).map(([, m]) => ({ id: m.label, label: m.label }));
+const ULTIMO_DIA_LABEL = (() => {
+    const d = new Date(ULTIMO_DIA_MS);
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+})();
+const STATUS_OPTIONS = [
+    { id: "Aprovados hoje", label: `Aprovados hoje (${ULTIMO_DIA_LABEL})` },
+    ...Object.entries(STATUS_META).map(([, m]) => ({ id: m.label, label: m.label })),
+];
 const CANAL_OPTIONS = [
     { id: "Online", label: "Online" },
     { id: "Offline", label: "Offline" },
+    { id: "Bilheteria", label: "Bilheteria" },
+    { id: "Cortesia", label: "Cortesia" },
 ];
 const MEIO_PAGAMENTO_OPTIONS = [
     { id: "Pix", label: "Pix" },
@@ -273,18 +301,29 @@ const FILTER_FIELDS: FilterFieldDef[] = [
     { id: "setor", label: "Setor", multi: { options: SETOR_OPTIONS } },
     { id: "email", label: "Email" },
     { id: "cpf", label: "CPF" },
-    { id: "passkey", label: "Passkey" },
+    {
+        id: "passkey",
+        label: "Uso da passkey",
+        presenceSelect: { anyLabel: "Qualquer uso", hasLabel: "Com passkey", specificLabel: "Com passkey específica", noneLabel: "Sem passkey" },
+    },
     { id: "nomeComprador", label: "Nome Comprador" },
     { id: "operador", label: "Operador de Vendas" },
     { id: "tipoIngresso", label: "Tipo do Ingresso" },
     { id: "idTransacao", label: "ID Transação" },
-    { id: "cupom", label: "Cupom" },
+    {
+        id: "cupom",
+        label: "Uso do cupom",
+        presenceSelect: { anyLabel: "Qualquer uso", hasLabel: "Com cupom", specificLabel: "Com cupom específico", noneLabel: "Sem cupom" },
+    },
 ];
 
 function getFieldValue(t: Transacao, field: string): string {
     switch (field) {
-        case "status":
-            return STATUS_META[t.status].label;
+        case "status": {
+            const base = STATUS_META[t.status].label;
+            const aprovadoHoje = t.status === "aprovado" && isMesmoDia(t.dataCriacao, ULTIMO_DIA_MS);
+            return aprovadoHoje ? `${base},Aprovados hoje` : base;
+        }
         case "canal":
             return t.canal;
         case "meioPagamento":
@@ -576,6 +615,8 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
 /*  Lista de transações                                               */
 /* ------------------------------------------------------------------ */
 
+// Só existem colunas para os campos oferecidos no modal "Editar colunas" (ver
+// COLUMN_FIELD_MAP) — a tabela nunca exibe uma coluna que o usuário não possa desmarcar.
 const TRANSACAO_COLUMNS: Array<{ key: keyof Transacao | "status"; label: string; align?: "right" }> = [
     { key: "id", label: "ID" },
     { key: "dataCriacao", label: "Data de Criação" },
@@ -590,19 +631,37 @@ const TRANSACAO_COLUMNS: Array<{ key: keyof Transacao | "status"; label: string;
     { key: "email", label: "Email do Comprador" },
     { key: "canal", label: "Canal" },
     { key: "tipoPagamento", label: "Tipo de Pagamento" },
-    { key: "estado", label: "Estado" },
-    { key: "cidade", label: "Cidade" },
     { key: "operadorVendas", label: "Operador de Vendas" },
     { key: "valor", label: "Valor", align: "right" },
     { key: "cupom", label: "Cupom" },
-    { key: "valorDesconto", label: "Valor Desconto", align: "right" },
     { key: "valorFinal", label: "Valor Final", align: "right" },
-    { key: "qtdItem", label: "Qtd. de Itens", align: "right" },
     { key: "passkey", label: "Passkey" },
-    { key: "pdv", label: "PDV" },
-    { key: "bundle", label: "Bundle" },
-    { key: "bundleDinamico", label: "Bundle Dinâmico" },
 ];
+
+/** Liga cada campo selecionável no modal "Editar colunas" à coluna correspondente da tabela. */
+const COLUMN_FIELD_MAP: Partial<Record<string, keyof Transacao | "status">> = {
+    pedido_id: "id",
+    pedido_dataCriacao: "dataCriacao",
+    pedido_ultimaAtualizacao: "ultimaAtualizacao",
+    pedido_status: "status",
+    pedido_tipoPagamento: "tipoPagamento",
+    pedido_canal: "canal",
+    item_tipo: "nomeIngresso",
+    item_setor: "setor",
+    item_lote: "lote",
+    item_valorOriginal: "valor",
+    item_valorComDesconto: "valorFinal",
+    item_passkey: "passkey",
+    item_cupom: "cupom",
+    portador_nome: "comprador",
+    portador_documento: "cpf",
+    portador_telefone: "telefone",
+    portador_email: "email",
+    bilheteria_operadorNome: "operadorVendas",
+};
+const FIELD_BY_COLUMN_KEY = new Map<keyof Transacao | "status", string>(
+    Object.entries(COLUMN_FIELD_MAP).map(([fieldId, colKey]) => [colKey as keyof Transacao | "status", fieldId]),
+);
 
 const renderTransacaoCell = (row: Transacao, key: keyof Transacao | "status"): ReactNode => {
     if (key === "status") {
@@ -610,9 +669,7 @@ const renderTransacaoCell = (row: Transacao, key: keyof Transacao | "status"): R
         return <span className="font-medium text-primary">{meta.label}</span>;
     }
     const value = row[key];
-    if (typeof value === "boolean") return value ? "Sim" : "Não";
-    if (key === "valor" || key === "valorDesconto" || key === "valorFinal") return currencyFormatter.format(Number(value));
-    if (key === "qtdItem") return numberFormatter.format(Number(value));
+    if (key === "valor" || key === "valorFinal") return currencyFormatter.format(Number(value));
     return String(value);
 };
 
@@ -626,6 +683,16 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(50);
     const [search, setSearch] = useState("");
+    const [isManageColumnsOpen, setIsManageColumnsOpen] = useState(false);
+    const [selectedFields, setSelectedFields] = useState<string[]>(DEFAULT_SELECTED);
+
+    const visibleColumns = useMemo(
+        () => TRANSACAO_COLUMNS.filter((col) => {
+            const fieldId = FIELD_BY_COLUMN_KEY.get(col.key);
+            return !fieldId || selectedFields.includes(fieldId);
+        }),
+        [selectedFields],
+    );
 
     const searched = useMemo(() => {
         const term = search.trim().toLowerCase();
@@ -672,18 +739,31 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
                     onChange={setSearch}
                     className="lg:max-w-xs lg:flex-1"
                 />
-                <ExportMenu
-                    size="sm"
-                    formats={["excel", "csv"]}
-                    onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "As transações serão exportadas." })}
-                />
+                <div className="flex items-center gap-2">
+                    <Button size="sm" color="secondary" iconLeading={Edit02} onClick={() => setIsManageColumnsOpen(true)}>
+                        Editar colunas
+                    </Button>
+                    <ExportMenu
+                        size="sm"
+                        formats={["excel", "csv"]}
+                        onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "As transações serão exportadas." })}
+                    />
+                </div>
             </div>
 
-            <div className="overflow-x-auto overflow-y-clip">
+            <ManageColumnsModal
+                isOpen={isManageColumnsOpen}
+                onClose={() => setIsManageColumnsOpen(false)}
+                selected={selectedFields}
+                onSelectedChange={setSelectedFields}
+                onExport={(fields) => toast.success("Exportação concluída", { description: `${fields.length} colunas foram exportadas.` })}
+            />
+
+            <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
-                            {TRANSACAO_COLUMNS.map((col) => (
+                            {visibleColumns.map((col) => (
                                 <th key={String(col.key)} className={cx("whitespace-nowrap px-4 py-3 text-sm font-semibold text-tertiary", col.align === "right" && "text-right")}>
                                     <SortableHeader label={col.label} align={col.align} sortKey={String(col.key)} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                                 </th>
@@ -693,14 +773,14 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
                     <tbody>
                         {visibleRows.length === 0 && (
                             <tr>
-                                <td colSpan={TRANSACAO_COLUMNS.length} className="px-4 py-12 text-center text-sm text-tertiary">
+                                <td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-sm text-tertiary">
                                     Nenhuma transação corresponde aos filtros aplicados.
                                 </td>
                             </tr>
                         )}
                         {visibleRows.map((row, i) => (
                             <tr key={row.id} className={cx("transition duration-100 ease-linear hover:bg-primary_hover", i !== visibleRows.length - 1 && "border-b border-secondary")}>
-                                {TRANSACAO_COLUMNS.map((col) => (
+                                {visibleColumns.map((col) => (
                                     <td key={String(col.key)} className={cx("whitespace-nowrap px-4 py-4 text-sm text-tertiary", col.align === "right" && "text-right", col.key === "id" && "font-mono text-sm text-secondary")}>
                                         {renderTransacaoCell(row, col.key)}
                                     </td>

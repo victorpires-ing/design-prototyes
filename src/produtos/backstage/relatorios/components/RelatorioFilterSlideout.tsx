@@ -4,23 +4,97 @@ import type { Key, Selection } from "react-aria-components";
 import { CountBadge, type FilterRow } from "@/components/application/filter-bar/filter-dropdown-menu";
 import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
 import { Button } from "@/components/base/buttons/button";
+import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
 import { MultiSelect } from "@/components/base/select/multi-select";
 import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { FilterPopover } from "./FilterPopover";
-import { useRelatorioFilters, type DateRange, type FilterFieldDef } from "./relatorio-filters";
+import { HAS_VALUE_SENTINEL, NO_VALUE_SENTINEL, useRelatorioFilters, type DateRange, type FilterFieldDef } from "./relatorio-filters";
+
+type PresenceMode = "qualquer" | "com" | "especifico" | "sem";
+
+const presenceModeFrom = (value: string, operator: string): PresenceMode => {
+    if (!value) return "qualquer";
+    if (operator === "has-value") return "com";
+    if (operator === "no-value") return "sem";
+    return "especifico";
+};
+
+/** Select de 4 estados (qualquer uso / com valor / com valor específico / sem valor) —
+ * o modo "específico" revela um input de texto abaixo para digitar o valor exato. */
+const PresenceSelectFiltro = ({
+    field,
+    value,
+    operator,
+    onChange,
+}: {
+    field: FilterFieldDef & { presenceSelect: NonNullable<FilterFieldDef["presenceSelect"]> };
+    value: string;
+    operator: string;
+    onChange: (value: string, operator: string) => void;
+}) => {
+    const [mode, setMode] = useState<PresenceMode>(() => presenceModeFrom(value, operator));
+    const [specificText, setSpecificText] = useState(() => (operator === "contains" ? value : ""));
+
+    const options = [
+        { id: "qualquer", label: field.presenceSelect.anyLabel },
+        { id: "com", label: field.presenceSelect.hasLabel },
+        { id: "especifico", label: field.presenceSelect.specificLabel },
+        { id: "sem", label: field.presenceSelect.noneLabel },
+    ];
+
+    const selectMode = (next: PresenceMode) => {
+        setMode(next);
+        if (next === "qualquer") onChange("", "is");
+        else if (next === "com") onChange(HAS_VALUE_SENTINEL, "has-value");
+        else if (next === "sem") onChange(NO_VALUE_SENTINEL, "no-value");
+        else onChange(specificText, "contains");
+    };
+
+    return (
+        <div className="flex flex-col gap-2">
+            <Select
+                size="sm"
+                aria-label={field.label}
+                selectedKey={mode}
+                onSelectionChange={(key: Key | null) => selectMode((key as PresenceMode) ?? "qualquer")}
+                items={options}
+            >
+                {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+            </Select>
+            {mode === "especifico" && (
+                <Input
+                    size="sm"
+                    aria-label={`${field.label} — valor específico`}
+                    placeholder="Digite o valor exato"
+                    value={specificText}
+                    onChange={(v: string) => {
+                        setSpecificText(v);
+                        onChange(v, "contains");
+                    }}
+                />
+            )}
+        </div>
+    );
+};
 
 /** Um campo do filtro: MultiSelect quando tem opções, senão input de texto. */
 const CampoFiltro = ({
     field,
     value,
+    operator,
     onChange,
 }: {
     field: FilterFieldDef;
     value: string;
+    operator: string;
     onChange: (value: string, operator: string) => void;
 }) => {
+    if (field.presenceSelect) {
+        return <PresenceSelectFiltro field={field as FilterFieldDef & { presenceSelect: NonNullable<FilterFieldDef["presenceSelect"]> }} value={value} operator={operator} onChange={onChange} />;
+    }
+
     if (field.multi) {
         const options = field.multi.options;
         const selectedKeys: Selection = value ? new Set(value.split(",").filter(Boolean)) : new Set();
@@ -48,14 +122,26 @@ const CampoFiltro = ({
         );
     }
 
+    const hasValueChecked = value === HAS_VALUE_SENTINEL;
     return (
-        <Input
-            size="sm"
-            aria-label={field.label}
-            placeholder="Digite um valor"
-            value={value}
-            onChange={(v: string) => onChange(v, "contains")}
-        />
+        <div className="flex flex-col gap-2">
+            <Input
+                size="sm"
+                aria-label={field.label}
+                placeholder="Digite um valor"
+                value={hasValueChecked ? "" : value}
+                isDisabled={hasValueChecked}
+                onChange={(v: string) => onChange(v, "contains")}
+            />
+            {field.hasValueCheckbox && (
+                <Checkbox
+                    size="sm"
+                    label={field.hasValueCheckbox}
+                    isSelected={hasValueChecked}
+                    onChange={(checked) => onChange(checked ? HAS_VALUE_SENTINEL : "", "has-value")}
+                />
+            )}
+        </div>
     );
 };
 
@@ -88,6 +174,7 @@ export const RelatorioFilterSlideout = ({ triggerClassName }: { triggerClassName
     };
 
     const valorDoCampo = (fieldId: string) => draftFilters.find((f) => f.field === fieldId)?.value ?? "";
+    const operadorDoCampo = (fieldId: string) => draftFilters.find((f) => f.field === fieldId)?.operator ?? "is";
     const setCampo = (fieldId: string, value: string, operator: string) =>
         setDraftFilters((prev) => {
             if (!value) return prev.filter((f) => f.field !== fieldId);
@@ -146,7 +233,12 @@ export const RelatorioFilterSlideout = ({ triggerClassName }: { triggerClassName
                             fields.map((field) => (
                                 <section key={field.id} className="flex flex-col gap-2">
                                     <span className="text-sm font-semibold text-secondary">{field.label}</span>
-                                    <CampoFiltro field={field} value={valorDoCampo(field.id)} onChange={(value, operator) => setCampo(field.id, value, operator)} />
+                                    <CampoFiltro
+                                        field={field}
+                                        value={valorDoCampo(field.id)}
+                                        operator={operadorDoCampo(field.id)}
+                                        onChange={(value, operator) => setCampo(field.id, value, operator)}
+                                    />
                                 </section>
                             ))}
                     </div>

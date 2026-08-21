@@ -26,7 +26,25 @@ export interface FilterFieldDef {
     id: string;
     label: string;
     multi?: { options: { id: string; label: string }[] };
+    /** Quando definido, exibe abaixo do input um checkbox com este rótulo (ex.: "Com
+     * passkey") que filtra por "campo preenchido", como alternativa a digitar um valor. */
+    hasValueCheckbox?: string;
+    /** Torna o campo um select de 4 estados — presença/ausência de valor, ou um valor
+     * específico (que revela um input de texto). Ex.: "Qualquer uso" / "Com cupom" /
+     * "Com cupom específico" / "Sem cupom". */
+    presenceSelect?: {
+        anyLabel: string;
+        hasLabel: string;
+        specificLabel: string;
+        noneLabel: string;
+    };
 }
+
+/** Valor sentinela usado pelo `hasValueCheckbox`/`presenceSelect` — não é comparado
+ * literalmente, apenas sinaliza para `matchFilterValue` que o operador "has-value" ou
+ * "no-value" deve ser aplicado. */
+export const HAS_VALUE_SENTINEL = "__has_value__";
+export const NO_VALUE_SENTINEL = "__no_value__";
 
 export interface AppliedFilters {
     dateRange: DateRange;
@@ -95,11 +113,23 @@ export function matchFilterValue(haystack: string, needle: string, operator: str
     const h = haystack.toLowerCase();
     const n = needle.toLowerCase();
     switch (operator) {
-        case "equals":
+        case "has-value":
+            // Ignora `needle` (o sentinela) — só verifica se o campo tem valor real.
+            return h.trim() !== "" && h !== "—";
+        case "no-value":
+            return h.trim() === "" || h === "—";
         case "is":
-            return h === n;
         case "is-not":
-            return h !== n;
+            // Trata o haystack como um conjunto de tags separadas por vírgula, para permitir
+            // que uma linha corresponda a mais de um rótulo simultaneamente (ex.: status
+            // "Aprovado" + tag derivada "Aprovados hoje"). Compatível com haystacks de uma
+            // única tag (comportamento anterior de igualdade exata).
+            return h
+                .split(",")
+                .map((tag) => tag.trim())
+                .includes(n) === (operator === "is");
+        case "equals":
+            return h === n;
         case "starts-with":
             return h.startsWith(n);
         case "does-not-contain":

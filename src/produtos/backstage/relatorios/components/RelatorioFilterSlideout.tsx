@@ -8,7 +8,6 @@ import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
 import { MultiSelect } from "@/components/base/select/multi-select";
 import { Select } from "@/components/base/select/select";
-import { cx } from "@/utils/cx";
 import { FilterPopover } from "./FilterPopover";
 import { HAS_VALUE_SENTINEL, NO_VALUE_SENTINEL, useRelatorioFilters, type DateRange, type FilterFieldDef } from "./relatorio-filters";
 
@@ -128,7 +127,7 @@ const CampoFiltro = ({
             <Input
                 size="sm"
                 aria-label={field.label}
-                placeholder="Digite um valor"
+                placeholder={field.placeholder ?? "Digite um valor"}
                 value={hasValueChecked ? "" : value}
                 isDisabled={hasValueChecked}
                 onChange={(v: string) => onChange(v, "contains")}
@@ -194,7 +193,7 @@ export const RelatorioFilterSlideout = ({ triggerClassName }: { triggerClassName
                     size="md"
                     iconLeading={FilterLines}
                     iconTrailing={ChevronDown}
-                    className={cx(appliedCount > 0 && "bg-primary_hover", triggerClassName)}
+                    className={triggerClassName}
                 >
                     <span className="flex items-center gap-1.5">
                         Filtros

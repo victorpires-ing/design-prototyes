@@ -130,7 +130,7 @@ const OPERADORES = ["Bilheteria Praia de Carneiros", "Loja Oficial Réveillon Ca
 const PASSKEYS = ["VIP2027", "EARLYBIRD", "PARCEIRO2027", "IMPRENSA27", "STAFF2027"];
 const CUPONS = [
     { cupom: "REVEILLON15", pct: 0.15 },
-    { cupom: "CARNEIROS10", pct: 0.1 },
+    { cupom: "OFF10", pct: 0.1 },
     { cupom: "VIRADA2027", pct: 0.1 },
 ];
 // Meios de pagamento (online), alinhados à distribuição do dataset.
@@ -277,10 +277,14 @@ const STATUS_OPTIONS = [
     ...Object.entries(STATUS_META).map(([, m]) => ({ id: m.label, label: m.label })),
 ];
 const CANAL_OPTIONS = [
-    { id: "Online", label: "Online" },
-    { id: "Offline", label: "Offline" },
     { id: "Bilheteria", label: "Bilheteria" },
     { id: "Cortesia", label: "Cortesia" },
+    { id: "Online", label: "Online" },
+];
+const TIPO_PRODUTO_OPTIONS = [
+    { id: "Inscrição", label: "Inscrição" },
+    { id: "Produto", label: "Produto" },
+    { id: "Combo", label: "Combo" },
 ];
 const MEIO_PAGAMENTO_OPTIONS = [
     { id: "Pix", label: "Pix" },
@@ -292,29 +296,13 @@ const MEIO_PAGAMENTO_OPTIONS = [
     { id: "Isento", label: "Isento" },
     { id: "Grátis", label: "Grátis" },
 ];
-const SETOR_OPTIONS = CATALOGO.map((c) => ({ id: c.setor, label: c.setor }));
 
 const FILTER_FIELDS: FilterFieldDef[] = [
     { id: "status", label: "Status", multi: { options: STATUS_OPTIONS } },
+    { id: "meioPagamento", label: "Meio de pagamento", multi: { options: MEIO_PAGAMENTO_OPTIONS } },
     { id: "canal", label: "Canal", multi: { options: CANAL_OPTIONS } },
-    { id: "meioPagamento", label: "Meio de Pagamento", multi: { options: MEIO_PAGAMENTO_OPTIONS } },
-    { id: "setor", label: "Setor", multi: { options: SETOR_OPTIONS } },
-    { id: "email", label: "Email" },
-    { id: "cpf", label: "CPF" },
-    {
-        id: "passkey",
-        label: "Uso da passkey",
-        presenceSelect: { anyLabel: "Qualquer uso", hasLabel: "Com passkey", specificLabel: "Com passkey específica", noneLabel: "Sem passkey" },
-    },
-    { id: "nomeComprador", label: "Nome Comprador" },
-    { id: "operador", label: "Operador de Vendas" },
-    { id: "tipoIngresso", label: "Tipo do Ingresso" },
-    { id: "idTransacao", label: "ID Transação" },
-    {
-        id: "cupom",
-        label: "Uso do cupom",
-        presenceSelect: { anyLabel: "Qualquer uso", hasLabel: "Com cupom", specificLabel: "Com cupom específico", noneLabel: "Sem cupom" },
-    },
+    { id: "tipoIngresso", label: "Tipo de produto", multi: { options: TIPO_PRODUTO_OPTIONS } },
+    { id: "cupom", label: "Cupom", placeholder: "Buscar por um cupom específico" },
 ];
 
 function getFieldValue(t: Transacao, field: string): string {
@@ -622,7 +610,7 @@ const TRANSACAO_COLUMNS: Array<{ key: keyof Transacao | "status"; label: string;
     { key: "dataCriacao", label: "Data de Criação" },
     { key: "ultimaAtualizacao", label: "Última Atualização" },
     { key: "status", label: "Status" },
-    { key: "nomeIngresso", label: "Nome do Ingresso" },
+    { key: "nomeIngresso", label: "Inscrição" },
     { key: "setor", label: "Setor" },
     { key: "lote", label: "Lote" },
     { key: "comprador", label: "Comprador" },
@@ -663,6 +651,14 @@ const FIELD_BY_COLUMN_KEY = new Map<keyof Transacao | "status", string>(
     Object.entries(COLUMN_FIELD_MAP).map(([fieldId, colKey]) => [colKey as keyof Transacao | "status", fieldId]),
 );
 
+const formatCpf = (cpf: string): string => cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+const formatTelefone = (telefone: string): string => {
+    const match = telefone.match(/^\+55(\d{2})(\d{9})$/);
+    if (!match) return telefone;
+    const [, ddd, numero] = match;
+    return `+55 (${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
+};
+
 const renderTransacaoCell = (row: Transacao, key: keyof Transacao | "status"): ReactNode => {
     if (key === "status") {
         const meta = STATUS_META[row.status];
@@ -670,6 +666,8 @@ const renderTransacaoCell = (row: Transacao, key: keyof Transacao | "status"): R
     }
     const value = row[key];
     if (key === "valor" || key === "valorFinal") return currencyFormatter.format(Number(value));
+    if (key === "cpf") return formatCpf(String(value));
+    if (key === "telefone") return formatTelefone(String(value));
     return String(value);
 };
 

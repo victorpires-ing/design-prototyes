@@ -26,7 +26,7 @@ export const EXPORT_FIELD_GROUPS: ExportFieldGroup[] = [
         id: "item",
         title: "Dados do Item",
         fields: [
-            { id: "item_tipo", label: "Tipo de item" },
+            { id: "item_tipo", label: "Inscrição" },
             { id: "item_nome", label: "Nome" },
             { id: "item_setor", label: "Setor" },
             { id: "item_lote", label: "Lote" },

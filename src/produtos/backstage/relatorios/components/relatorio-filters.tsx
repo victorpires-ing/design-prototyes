@@ -38,6 +38,8 @@ export interface FilterFieldDef {
         specificLabel: string;
         noneLabel: string;
     };
+    /** Placeholder do input de texto simples. Default: "Digite um valor". */
+    placeholder?: string;
 }
 
 /** Valor sentinela usado pelo `hasValueCheckbox`/`presenceSelect` — não é comparado

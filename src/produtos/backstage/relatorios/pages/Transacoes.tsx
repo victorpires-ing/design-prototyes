@@ -28,6 +28,7 @@ import { TransacionadoChartCard, type ChartPoint } from "../components/Transacio
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
 import { EVENTO, GRUPOS, PERIODO_PADRAO } from "@/reports/event-dataset";
+import { EXPORT_FIELD_GROUPS } from "../data/export-fields";
 
 /* ------------------------------------------------------------------ */
 /*  Status + meios                                                    */
@@ -105,6 +106,42 @@ interface Transacao {
     pdv: boolean;
     bundle: boolean;
     bundleDinamico: boolean;
+    // Perguntas e respostas (formulário de inscrição) — só existem para poder popular a
+    // tabela quando o usuário marca esses campos na gestão de colunas.
+    perguntaPace: string;
+    perguntaCorTamanhoCamisa: string;
+    perguntaTenis: string;
+    perguntaContatoEmergencia: string;
+    perguntaDistanciaProva: string;
+    perguntaTempoEstimado: string;
+    perguntaMelhorTempoPessoal: string;
+    perguntaJaCorreuProva: string;
+    perguntaQtdParticipacoes: string;
+    perguntaAssessoriaEsportiva: string;
+    perguntaFederadoCBAt: string;
+    perguntaGrupoPace: string;
+    perguntaCategoriaParticipacao: string;
+    perguntaFaixaEtaria: string;
+    perguntaModalidade: string;
+    perguntaEquipeRevezamento: string;
+    perguntaFuncaoRevezamento: string;
+    perguntaRetiradaKitTerceiros: string;
+    perguntaNomeCertificado: string;
+    perguntaTipoSanguineo: string;
+    perguntaAlergias: string;
+    perguntaMedicacaoContinua: string;
+    perguntaDoencaPreExistente: string;
+    perguntaMarcaPasso: string;
+    perguntaConvenioMedico: string;
+    perguntaPeso: string;
+    perguntaAltura: string;
+    perguntaNumeracaoCalcado: string;
+    perguntaCorreAcompanhado: string;
+    perguntaNomeAcompanhante: string;
+    perguntaComoConheceuEvento: string;
+    perguntaMetaTempo: string;
+    perguntaAnoInicioCorrida: string;
+    perguntaTermoResponsabilidade: string;
 }
 
 // Setores e tipos de ingresso derivados dos grupos do evento (src/reports).
@@ -133,6 +170,31 @@ const CUPONS = [
     { cupom: "OFF10", pct: 0.1 },
     { cupom: "VIRADA2027", pct: 0.1 },
 ];
+
+// Pools para as "Perguntas e respostas" do formulário de inscrição (mock).
+const TENIS_MARCAS = ["Nike", "Adidas", "Asics", "Mizuno", "Hoka", "New Balance", "Under Armour", "Puma"];
+const CAMISA_CORES = ["Preta", "Branca", "Azul", "Vermelha", "Verde"];
+const CAMISA_TAMANHOS = ["PP", "P", "M", "G", "GG", "XG"];
+const DISTANCIA_PROVA_OPTIONS = ["5km", "10km", "21km", "42km"];
+const CATEGORIA_PARTICIPACAO_OPTIONS = ["Geral", "PCD", "Elite", "Master"];
+const FAIXA_ETARIA_OPTIONS = ["18-24", "25-34", "35-44", "45-54", "55+"];
+const MODALIDADE_OPTIONS = ["Corrida", "Caminhada"];
+const TIPO_SANGUINEO_OPTIONS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+const ALERGIA_OPTIONS = ["Nenhuma", "Dipirona", "Amendoim", "Frutos do mar", "Poeira", "Látex"];
+const CONVENIO_OPTIONS = ["Unimed", "Bradesco Saúde", "SulAmérica", "Amil", "Nenhum"];
+const COMO_CONHECEU_OPTIONS = ["Instagram", "Indicação de amigo", "Assessoria esportiva", "Site do evento", "Facebook"];
+const ASSESSORIA_OPTIONS = ["Bora Correr Assessoria", "Run Free Team", "Pace Certo Assessoria", "Correndo Juntos"];
+const FUNCAO_REVEZAMENTO_OPTIONS = ["1º trecho", "2º trecho", "3º trecho", "4º trecho"];
+
+/** "H:MM:SS" a partir de um total de minutos (usado por tempos de prova). */
+const formatDuracao = (totalMinutos: number): string => {
+    const totalSegundos = Math.round(totalMinutos * 60);
+    const h = Math.floor(totalSegundos / 3600);
+    const m = Math.floor((totalSegundos % 3600) / 60);
+    const s = totalSegundos % 60;
+    return `${h}:${pad(m)}:${pad(s)}`;
+};
+
 // Meios de pagamento (online), alinhados à distribuição do dataset.
 const MEIOS_PAGAMENTO: { nome: string; peso: number; isento?: boolean }[] = [
     { nome: "Pix", peso: 0.63 },
@@ -217,6 +279,50 @@ const transacoes: Transacao[] = (() => {
         const cpf = String(Math.floor(rng() * 9e10 + 1e10));
         const telefone = `+55${local.ddd}9${String(Math.floor(rng() * 9e7 + 1e7))}`;
 
+        // Perguntas e respostas (formulário de inscrição de corrida de rua).
+        const jaCorreuProva = rng() < 0.55;
+        const distanciaProva = pick(DISTANCIA_PROVA_OPTIONS);
+        const distanciaKm = { "5km": 5, "10km": 10, "21km": 21, "42km": 42 }[distanciaProva] ?? 10;
+        const paceMin = 4 + rng() * 3; // 4:00–7:00 min/km
+        const temEquipeRevezamento = distanciaKm >= 21 && rng() < 0.15;
+        const correAcompanhado = rng() < 0.35;
+        const perguntas = {
+            perguntaPace: `${Math.floor(paceMin)}:${pad(Math.round((paceMin % 1) * 60))} min/km`,
+            perguntaCorTamanhoCamisa: `${pick(CAMISA_CORES)} - ${pick(CAMISA_TAMANHOS)}`,
+            perguntaTenis: pick(TENIS_MARCAS),
+            perguntaContatoEmergencia: `${pick(PRIMEIROS)} ${pick(SOBRENOMES)} - (${local.ddd}) 9${String(Math.floor(rng() * 9e7 + 1e7)).slice(0, 4)}-${String(Math.floor(rng() * 9e7 + 1e7)).slice(0, 4)}`,
+            perguntaDistanciaProva: distanciaProva,
+            perguntaTempoEstimado: formatDuracao(distanciaKm * paceMin),
+            perguntaMelhorTempoPessoal: jaCorreuProva ? formatDuracao(distanciaKm * (paceMin - 0.3)) : "—",
+            perguntaJaCorreuProva: jaCorreuProva ? "Sim" : "Não",
+            perguntaQtdParticipacoes: jaCorreuProva ? String(1 + Math.floor(rng() * 9)) : "0",
+            perguntaAssessoriaEsportiva: rng() < 0.4 ? pick(ASSESSORIA_OPTIONS) : "—",
+            perguntaFederadoCBAt: rng() < 0.08 ? "Sim" : "Não",
+            perguntaGrupoPace: `${Math.floor(paceMin)}:00-${Math.floor(paceMin) + 1}:00 min/km`,
+            perguntaCategoriaParticipacao: pick(CATEGORIA_PARTICIPACAO_OPTIONS),
+            perguntaFaixaEtaria: pick(FAIXA_ETARIA_OPTIONS),
+            perguntaModalidade: pick(MODALIDADE_OPTIONS),
+            perguntaEquipeRevezamento: temEquipeRevezamento ? `Equipe ${pick(SOBRENOMES)}` : "—",
+            perguntaFuncaoRevezamento: temEquipeRevezamento ? pick(FUNCAO_REVEZAMENTO_OPTIONS) : "—",
+            perguntaRetiradaKitTerceiros: rng() < 0.1 ? "Sim" : "Não",
+            perguntaNomeCertificado: nome,
+            perguntaTipoSanguineo: pick(TIPO_SANGUINEO_OPTIONS),
+            perguntaAlergias: rng() < 0.15 ? pick(ALERGIA_OPTIONS.slice(1)) : "Nenhuma",
+            perguntaMedicacaoContinua: rng() < 0.12 ? "Sim" : "Não",
+            perguntaDoencaPreExistente: rng() < 0.06 ? "Sim" : "Não",
+            perguntaMarcaPasso: rng() < 0.01 ? "Sim" : "Não",
+            perguntaConvenioMedico: pick(CONVENIO_OPTIONS),
+            perguntaPeso: `${Math.round(55 + rng() * 40)} kg`,
+            perguntaAltura: `${Math.round(155 + rng() * 40)} cm`,
+            perguntaNumeracaoCalcado: String(Math.round(34 + rng() * 12)),
+            perguntaCorreAcompanhado: correAcompanhado ? "Sim" : "Não",
+            perguntaNomeAcompanhante: correAcompanhado ? `${pick(PRIMEIROS)} ${pick(SOBRENOMES)}` : "—",
+            perguntaComoConheceuEvento: pick(COMO_CONHECEU_OPTIONS),
+            perguntaMetaTempo: formatDuracao(distanciaKm * (paceMin - 0.2)),
+            perguntaAnoInicioCorrida: jaCorreuProva ? String(2010 + Math.floor(rng() * 17)) : "—",
+            perguntaTermoResponsabilidade: "Sim",
+        };
+
         rows.push({
             id: `${pad(Math.floor(rng() * 9e7), 8)}-${pad(Math.floor(rng() * 9000), 4)}-4${pad(Math.floor(rng() * 900), 3)}-${pad(Math.floor(rng() * 9000), 4)}`,
             sessaoId: SESSAO_ID,
@@ -244,6 +350,7 @@ const transacoes: Transacao[] = (() => {
             pdv: isPdv,
             bundle: false,
             bundleDinamico: false,
+            ...perguntas,
         });
     }
     // Ordena do mais recente para o mais antigo (como uma lista de transações real).
@@ -646,10 +753,54 @@ const COLUMN_FIELD_MAP: Partial<Record<string, keyof Transacao | "status">> = {
     portador_telefone: "telefone",
     portador_email: "email",
     bilheteria_operadorNome: "operadorVendas",
+    pergunta_pace: "perguntaPace",
+    pergunta_corTamanhoCamisa: "perguntaCorTamanhoCamisa",
+    pergunta_tenis: "perguntaTenis",
+    pergunta_contatoEmergencia: "perguntaContatoEmergencia",
+    pergunta_distanciaProva: "perguntaDistanciaProva",
+    pergunta_tempoEstimado: "perguntaTempoEstimado",
+    pergunta_melhorTempoPessoal: "perguntaMelhorTempoPessoal",
+    pergunta_jaCorreuProva: "perguntaJaCorreuProva",
+    pergunta_qtdParticipacoes: "perguntaQtdParticipacoes",
+    pergunta_assessoriaEsportiva: "perguntaAssessoriaEsportiva",
+    pergunta_federadoCBAt: "perguntaFederadoCBAt",
+    pergunta_grupoPace: "perguntaGrupoPace",
+    pergunta_categoriaParticipacao: "perguntaCategoriaParticipacao",
+    pergunta_faixaEtaria: "perguntaFaixaEtaria",
+    pergunta_modalidade: "perguntaModalidade",
+    pergunta_equipeRevezamento: "perguntaEquipeRevezamento",
+    pergunta_funcaoRevezamento: "perguntaFuncaoRevezamento",
+    pergunta_retiradaKitTerceiros: "perguntaRetiradaKitTerceiros",
+    pergunta_nomeCertificado: "perguntaNomeCertificado",
+    pergunta_tipoSanguineo: "perguntaTipoSanguineo",
+    pergunta_alergias: "perguntaAlergias",
+    pergunta_medicacaoContinua: "perguntaMedicacaoContinua",
+    pergunta_doencaPreExistente: "perguntaDoencaPreExistente",
+    pergunta_marcaPasso: "perguntaMarcaPasso",
+    pergunta_convenioMedico: "perguntaConvenioMedico",
+    pergunta_peso: "perguntaPeso",
+    pergunta_altura: "perguntaAltura",
+    pergunta_numeracaoCalcado: "perguntaNumeracaoCalcado",
+    pergunta_correAcompanhado: "perguntaCorreAcompanhado",
+    pergunta_nomeAcompanhante: "perguntaNomeAcompanhante",
+    pergunta_comoConheceuEvento: "perguntaComoConheceuEvento",
+    pergunta_metaTempo: "perguntaMetaTempo",
+    pergunta_anoInicioCorrida: "perguntaAnoInicioCorrida",
+    pergunta_termoResponsabilidade: "perguntaTermoResponsabilidade",
 };
 const FIELD_BY_COLUMN_KEY = new Map<keyof Transacao | "status", string>(
     Object.entries(COLUMN_FIELD_MAP).map(([fieldId, colKey]) => [colKey as keyof Transacao | "status", fieldId]),
 );
+
+// Rótulos das colunas de "Perguntas e respostas" vêm do próprio export-fields.ts (fonte
+// única de verdade) para nunca divergir do texto mostrado na gestão de colunas.
+const EXPORT_FIELD_LABELS: Record<string, string> = Object.fromEntries(
+    EXPORT_FIELD_GROUPS.flatMap((g) => g.fields.map((f) => [f.id, f.label] as const)),
+);
+const PERGUNTA_COLUMNS: Array<{ key: keyof Transacao; label: string }> = Object.entries(COLUMN_FIELD_MAP)
+    .filter(([exportId]) => exportId.startsWith("pergunta_"))
+    .map(([exportId, colKey]) => ({ key: colKey as keyof Transacao, label: EXPORT_FIELD_LABELS[exportId] }));
+TRANSACAO_COLUMNS.push(...PERGUNTA_COLUMNS);
 
 const formatCpf = (cpf: string): string => cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
 const formatTelefone = (telefone: string): string => {

@@ -46,7 +46,12 @@ export function VenderIngressos() {
 
     const searchTimer = useRef<number | undefined>(undefined);
 
-    const buyer: Buyer | null = search.status === "found" ? search.buyer : null;
+    const buyer: Buyer | null =
+        search.status === "found"
+            ? search.buyer
+            : search.status === "multiple"
+              ? (search.buyers.find((candidate) => candidate.id === search.selectedId) ?? null)
+              : null;
     const fallbackEmail = search.status === "email-not-found" ? search.email : undefined;
     const total = cartTotal(cart);
     const count = cartCount(cart);
@@ -62,9 +67,9 @@ export function VenderIngressos() {
     );
 
     const canAdvance = useMemo(() => {
-        if (step === 0) return skipped || search.status === "found" || search.status === "email-not-found";
+        if (step === 0) return skipped || Boolean(buyer) || search.status === "email-not-found";
         return count > 0;
-    }, [step, skipped, search.status, count]);
+    }, [step, skipped, buyer, search.status, count]);
 
     const runSearch = useCallback(() => {
         const value = term.trim();
@@ -223,7 +228,11 @@ export function VenderIngressos() {
                                     search={search}
                                     onSearch={runSearch}
                                     onSkip={() => setIsSkipModalOpen(true)}
-                                    onSelectBuyer={(selected) => setSearch({ status: "found", buyer: selected })}
+                                    onSelectBuyer={(buyerId) =>
+                                        setSearch((current) =>
+                                            current.status === "multiple" ? { ...current, selectedId: buyerId } : current,
+                                        )
+                                    }
                                     mobileAdvance={advanceButton}
                                 />
                             )}

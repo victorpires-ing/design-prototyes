@@ -1,8 +1,9 @@
 import type { FormEvent } from "react";
-import { AlertCircle, ChevronRight } from "@untitledui/icons";
+import { AlertCircle } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
+import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
 import type { Buyer } from "../data/catalogo";
 
 export type BuyerSearch =
@@ -10,7 +11,7 @@ export type BuyerSearch =
     | { status: "searching" }
     | { status: "invalid-email" }
     | { status: "found"; buyer: Buyer }
-    | { status: "multiple"; buyers: Buyer[] }
+    | { status: "multiple"; buyers: Buyer[]; selectedId?: string }
     | { status: "email-not-found"; email: string }
     | { status: "document-not-found" };
 
@@ -21,7 +22,7 @@ interface BuyerStepProps {
     onSearch: () => void;
     onSkip: () => void;
     /** Escolha da conta quando o e-mail pertence a mais de uma. */
-    onSelectBuyer: (buyer: Buyer) => void;
+    onSelectBuyer: (buyerId: string) => void;
     /** Botão "Avançar" repetido abaixo do conteúdo no mobile (no desktop ele vive no header). */
     mobileAdvance?: React.ReactNode;
 }
@@ -90,19 +91,22 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
                         <p className="text-sm text-tertiary">Escolha para qual delas os ingressos vão.</p>
                     </div>
                     <hr className="border-secondary" />
-                    <div className="flex flex-col gap-2">
+                    <RadioGroup
+                        aria-label="Conta do comprador"
+                        value={search.selectedId ?? null}
+                        onChange={onSelectBuyer}
+                        className="gap-2"
+                    >
                         {search.buyers.map((buyer) => (
-                            <button
+                            <label
                                 key={buyer.id}
-                                type="button"
-                                onClick={() => onSelectBuyer(buyer)}
-                                className="flex items-center gap-3 rounded-lg bg-secondary p-3 text-left transition duration-100 ease-linear hover:bg-secondary_hover"
+                                className="flex cursor-pointer items-center gap-3 rounded-lg bg-secondary p-3 transition duration-100 ease-linear hover:bg-secondary_hover"
                             >
+                                <RadioButton value={buyer.id} slot={null} aria-label={buyer.name} />
                                 <BuyerIdentity buyer={buyer} />
-                                <ChevronRight className="ml-auto size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                            </button>
+                            </label>
                         ))}
-                    </div>
+                    </RadioGroup>
                 </div>
             )}
 

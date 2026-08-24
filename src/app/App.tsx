@@ -34,6 +34,10 @@ import { CriarGrupo as CriarGrupoOperacao } from '../produtos/backstage/equipe-d
 import { DetalheGrupo as DetalheGrupoOperacao } from '../produtos/backstage/equipe-de-operacao/pages/DetalheGrupo';
 import { EditarItensCotas } from '../produtos/backstage/equipe-de-operacao/pages/EditarItensCotas';
 import { EditarOperadores } from '../produtos/backstage/equipe-de-operacao/pages/EditarOperadores';
+import { EquipeV2Provider } from '../produtos/backstage/equipe-de-operacao-v2/data/equipe-v2-store';
+import { EquipeDeOperacaoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/EquipeDeOperacaoV2';
+import { CriarGrupoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/CriarGrupoV2';
+import { DetalheGrupoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/DetalheGrupoV2';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VenderIngressos } from '../produtos/backstage/bilheteria/pages/VenderIngressos';
 import { IngressoPdf } from '../produtos/backstage/bilheteria/pages/IngressoPdf';
@@ -180,6 +184,7 @@ export default function App() {
       <PerguntasProvider>
       <PesquisasProvider>
       <EquipeProvider>
+      <EquipeV2Provider>
       <Routes>
         <Route path="/" element={<ProductSelection />} />
         <Route path="/loading" element={<CymaticsShowcase />} />
@@ -190,6 +195,10 @@ export default function App() {
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao" element={<EquipeDeOperacao />} />
+        {/* v2: o grupo ganha permissões de cortesia, PDV e bilheteria, cada uma com sua cota. */}
+        <Route path="/backstage/equipe-de-operacao/v2" element={<EquipeDeOperacaoV2 />} />
+        <Route path="/backstage/equipe-de-operacao/v2/criar" element={<CriarGrupoV2 />} />
+        <Route path="/backstage/equipe-de-operacao/v2/:grupoId" element={<DetalheGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao/criar" element={<CriarGrupoOperacao />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId" element={<DetalheGrupoOperacao />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId/editar-itens" element={<EditarItensCotas />} />
@@ -334,6 +343,7 @@ export default function App() {
         <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
+      </EquipeV2Provider>
       </EquipeProvider>
       </PesquisasProvider>
       </PerguntasProvider>

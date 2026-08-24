@@ -1,0 +1,303 @@
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
+import { ArrowLeft, ChevronRight, Copy01, Plus, SearchLg, Share07, ShoppingCart01, SlashCircle01, UsersPlus } from "@untitledui/icons";
+import { EmptyState } from "@/components/application/empty-state/empty-state";
+import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
+import { Avatar } from "@/components/base/avatar/avatar";
+import { Badge } from "@/components/base/badges/badges";
+import { Button } from "@/components/base/buttons/button";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Input } from "@/components/base/input/input";
+import { Toggle } from "@/components/base/toggle/toggle";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
+import { cx } from "@/utils/cx";
+import { BackstageLayout } from "../../components/Backstage";
+import { PERMISSAO_META, permissoesDo, useEquipeV2, usoDaCota, type GrupoOperacaoV2 } from "../data/equipe-v2-store";
+import { toastSucesso } from "../utils/toast";
+
+const PORTAL_URL = "freepass.ingresse.com/operador";
+
+const iniciais = (nome: string) =>
+    nome
+        .trim()
+        .split(/\s+/)
+        .map((p) => p[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase() || "GR";
+
+/** v2 da Equipe de operação — o grupo passa a ter cortesia, PDV e bilheteria. */
+export function EquipeDeOperacaoV2() {
+    const navigate = useNavigate();
+    const { grupos, temItens, toggleAtivo } = useEquipeV2();
+    const [busca, setBusca] = useState("");
+    const [page, setPage] = useState(0);
+    const [pageSize, setPageSize] = useState(10);
+
+    const filtrados = useMemo(() => {
+        const t = busca.trim().toLowerCase();
+        return t ? grupos.filter((g) => g.nome.toLowerCase().includes(t) || g.operadores.some((e) => e.toLowerCase().includes(t))) : grupos;
+    }, [grupos, busca]);
+
+    const totalPages = Math.max(1, Math.ceil(filtrados.length / pageSize));
+    const safePage = Math.min(page, totalPages - 1);
+    const visiveis = filtrados.slice(safePage * pageSize, (safePage + 1) * pageSize);
+
+    const vazio = grupos.length === 0;
+
+    return (
+        <BackstageLayout activeSection="equipe-de-operacao" activeItem="grupos-operacao">
+            <div className="flex min-w-0 flex-1 flex-col">
+                <header className="flex items-center gap-3 px-6 py-6">
+                    <ButtonUtility size="md" color="tertiary" icon={ArrowLeft} tooltip="Voltar" onClick={() => navigate("/backstage/")} />
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-display-xs font-bold text-primary">Equipe de operação</h1>
+                        <span className="rounded-md bg-brand-secondary px-2 py-0.5 text-sm font-medium text-brand-secondary">v2</span>
+                    </div>
+                    {temItens && (
+                        <Button
+                            size="md"
+                            color="primary"
+                            iconLeading={Plus}
+                            className="ml-auto"
+                            onClick={() => navigate("/backstage/equipe-de-operacao/v2/criar")}
+                        >
+                            Criar grupo
+                        </Button>
+                    )}
+                </header>
+
+                <main className="flex flex-1 flex-col gap-5 px-6 pb-10">
+                    {!temItens ? (
+                        <EstadoSemItens onConfigurar={() => navigate("/backstage/catalogo/ingressos")} />
+                    ) : vazio ? (
+                        <EstadoSemGrupos onCriar={() => navigate("/backstage/equipe-de-operacao/v2/criar")} />
+                    ) : (
+                        <>
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                                <div className="flex flex-col gap-1.5 lg:w-[300px]">
+                                    <span className="text-sm font-semibold text-secondary">Busca</span>
+                                    <Input
+                                        icon={SearchLg}
+                                        placeholder="Buscar por nome ou e-mail"
+                                        value={busca}
+                                        onChange={(v) => {
+                                            setBusca(v);
+                                            setPage(0);
+                                        }}
+                                        aria-label="Buscar grupo"
+                                    />
+                                </div>
+                                <PortalOperador />
+                            </div>
+
+                            <ListaGrupos
+                                grupos={visiveis}
+                                onToggle={toggleAtivo}
+                                onDetalhe={(id) => navigate(`/backstage/equipe-de-operacao/v2/${id}`)}
+                            />
+
+                            {filtrados.length > 0 && (
+                                <div className="overflow-hidden rounded-xl bg-secondary ring-1 ring-border-secondary">
+                                    <PaginationCardAdvanced
+                                        page={safePage + 1}
+                                        total={totalPages}
+                                        pageSize={pageSize}
+                                        onPageChange={(p) => setPage(p - 1)}
+                                        onPageSizeChange={(s) => {
+                                            setPageSize(s);
+                                            setPage(0);
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </>
+                    )}
+                </main>
+            </div>
+        </BackstageLayout>
+    );
+}
+
+/* ------------------------- Portal do operador -------------------- */
+
+const PortalOperador = () => {
+    const url = `https://${PORTAL_URL}`;
+
+    const copiarLink = async () => {
+        try {
+            await navigator.clipboard?.writeText(url);
+            toastSucesso("Link copiado", "O link do portal do operador foi copiado.");
+        } catch {
+            toastSucesso("Link do portal", url);
+        }
+    };
+
+    const compartilhar = async () => {
+        if (typeof navigator !== "undefined" && navigator.share) {
+            try {
+                await navigator.share({ title: "Portal do operador", text: "Opere cortesias, PDV e bilheteria", url });
+            } catch {
+                /* usuário cancelou o compartilhamento */
+            }
+            return;
+        }
+        await copiarLink();
+    };
+
+    return (
+        <section className="flex items-center justify-between gap-4 rounded-xl bg-secondary px-4 py-3 lg:w-[400px] lg:shrink-0">
+            <div className="flex min-w-0 flex-col">
+                <span className="text-sm font-medium text-tertiary">Portal do operador</span>
+                <span className="truncate text-sm text-secondary">{PORTAL_URL}</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+                <ButtonUtility size="sm" color="tertiary" icon={Copy01} tooltip="Copiar link" onClick={copiarLink} />
+                <ButtonUtility size="sm" color="tertiary" icon={Share07} tooltip="Compartilhar" onClick={compartilhar} />
+            </div>
+        </section>
+    );
+};
+
+/* --------------------------- Estados vazios ---------------------- */
+
+const EstadoSemItens = ({ onConfigurar }: { onConfigurar: () => void }) => (
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
+        <FeaturedIcon icon={SlashCircle01} color="gray" theme="modern" size="lg" />
+        <div className="flex max-w-md flex-col gap-1">
+            <h2 className="text-lg font-semibold text-primary">Configure algum item antes de gerir operadores</h2>
+            <p className="text-sm text-tertiary">
+                É necessário ter itens cadastrados no evento para configurar as permissões dos operadores.
+            </p>
+        </div>
+        <Button size="md" color="primary" iconLeading={ShoppingCart01} onClick={onConfigurar}>
+            Configurar itens
+        </Button>
+    </div>
+);
+
+const AVATARES = [
+    { src: "https://www.untitledui.com/images/avatars/marco-kelly?fm=webp&q=80" },
+    { src: "https://www.untitledui.com/images/avatars/lily-rose-chedjou?fm=webp&q=80" },
+    { src: "https://www.untitledui.com/images/avatars/ammar-foley?fm=webp&q=80" },
+    { src: "https://www.untitledui.com/images/avatars/sienna-hewitt?fm=webp&q=80" },
+    { src: "https://www.untitledui.com/images/avatars/caitlyn-king?fm=webp&q=80" },
+    { src: "https://www.untitledui.com/images/avatars/mathilde-lewis?fm=webp&q=80" },
+];
+
+const EstadoSemGrupos = ({ onCriar }: { onCriar: () => void }) => (
+    <div className="flex flex-1 items-center justify-center py-16">
+        <EmptyState size="md">
+            <EmptyState.Header pattern="none" className="mb-6">
+                <EmptyState.AvatarRow avatars={AVATARES}>
+                    <EmptyState.FeaturedIcon icon={UsersPlus} color="gray" theme="modern-neue" size="xl" className="text-fg-quaternary" />
+                </EmptyState.AvatarRow>
+            </EmptyState.Header>
+
+            <EmptyState.Content>
+                <EmptyState.Title>Configure grupos de operação</EmptyState.Title>
+                <EmptyState.Description>
+                    Crie grupos de operadores e defina, para cada permissão — cortesia, PDV e bilheteria —, a cota e os itens liberados.
+                </EmptyState.Description>
+            </EmptyState.Content>
+
+            <EmptyState.Footer>
+                <Button size="md" iconLeading={Plus} onClick={onCriar}>
+                    Criar grupo
+                </Button>
+            </EmptyState.Footer>
+        </EmptyState>
+    </div>
+);
+
+/* ----------------------- Lista de grupos (cards) ----------------- */
+
+const ListaGrupos = ({
+    grupos,
+    onToggle,
+    onDetalhe,
+}: {
+    grupos: GrupoOperacaoV2[];
+    onToggle: (id: string) => void;
+    onDetalhe: (id: string) => void;
+}) => {
+    if (grupos.length === 0) {
+        return (
+            <div className="rounded-xl bg-secondary px-6 py-16 text-center text-sm text-tertiary ring-1 ring-border-secondary">
+                Nenhum grupo encontrado.
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-3">
+            {grupos.map((g) => (
+                <div
+                    key={g.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onDetalhe(g.id)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onDetalhe(g.id);
+                        }
+                    }}
+                    className="group flex cursor-pointer flex-col gap-4 rounded-xl bg-secondary px-5 py-4 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary_hover hover:ring-border-primary"
+                >
+                    <div className="flex items-center gap-4">
+                        {/* Toggle não navega */}
+                        <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                            <Toggle isSelected={g.ativo} onChange={() => onToggle(g.id)} size="sm" aria-label={`Ativar grupo ${g.nome}`} />
+                        </span>
+
+                        <Avatar size="md" initials={iniciais(g.nome)} alt={g.nome} />
+
+                        <div className="flex min-w-0 flex-col">
+                            <div className="flex items-center gap-2">
+                                <span className="truncate text-sm font-semibold text-primary">{g.nome}</span>
+                                {!g.ativo && (
+                                    <Badge size="sm" color="gray" type="modern">
+                                        Desativado
+                                    </Badge>
+                                )}
+                            </div>
+                            <span className="text-sm text-tertiary">
+                                {g.operadores.length} {g.operadores.length === 1 ? "operador" : "operadores"}
+                            </span>
+                        </div>
+
+                        <ChevronRight
+                            className="ml-auto size-5 shrink-0 text-fg-quaternary transition duration-100 ease-linear group-hover:translate-x-0.5 group-hover:text-fg-brand-primary"
+                            aria-hidden="true"
+                        />
+                    </div>
+
+                    {/* Uma barra por permissão: é isso que a v2 acrescenta à listagem. */}
+                    <div className="grid gap-3 pl-[4.5rem] sm:grid-cols-2 lg:grid-cols-3">
+                        {permissoesDo(g).map((id) => {
+                            const config = g.permissoes[id]!;
+                            const pct = usoDaCota(config);
+                            return (
+                                <div key={id} className="flex flex-col gap-1.5">
+                                    <div className="flex items-baseline justify-between gap-2">
+                                        <span className="flex items-center gap-1.5 text-sm text-tertiary">{PERMISSAO_META[id].label}</span>
+                                        <span className="text-sm font-medium text-secondary tabular-nums">
+                                            {config.usadas} de {config.cota}
+                                        </span>
+                                    </div>
+                                    <div className="h-2 overflow-hidden rounded-full bg-quaternary">
+                                        <div
+                                            className={cx("h-full rounded-full", pct >= 100 ? "bg-error-solid" : "bg-brand-solid")}
+                                            style={{ width: `${pct}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};

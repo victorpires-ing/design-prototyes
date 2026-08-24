@@ -1,6 +1,32 @@
 import { Fragment, useMemo, useState } from "react";
-import { BarChartSquare02, Calendar, Check, CurrencyDollarCircle, Receipt, Rocket02, Sliders02, Ticket01, TrendUp01, Trophy01, XClose } from "@untitledui/icons";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, LabelList, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+    BarChartSquare02,
+    Calendar,
+    Check,
+    CurrencyDollarCircle,
+    Receipt,
+    Rocket02,
+    Sliders02,
+    Ticket01,
+    TrendUp01,
+    Trophy01,
+    XClose,
+} from "@untitledui/icons";
+import {
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    LabelList,
+    Line,
+    LineChart,
+    ReferenceLine,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import type { Key } from "react-aria-components";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
@@ -46,6 +72,34 @@ interface EventoComparativo {
     janelaDias: number;
     taxaPct: number; // taxa retida (bruto → líquido)
     serie: DiaSerie[];
+    /** Escada de lotes: preço praticado a partir de cada dia da janela. */
+    precos: DegrauPreco[];
+}
+
+/** Um degrau da escada de preços — vale do `dia` até o próximo degrau. */
+interface DegrauPreco {
+    dia: number;
+    valor: number;
+}
+
+/**
+ * Lotes de uma edição. Os degraus ficam mais próximos perto do evento, que é
+ * quando o produtor costuma virar lote com mais frequência.
+ */
+function buildPrecos(janelaDias: number, ticket: number, seed: number): DegrauPreco[] {
+    const rand = mulberry32(seed * 7 + 3);
+    const degraus = 5 + Math.floor(rand() * 4);
+    // Elasticidade realista: o topo costuma ficar entre +70% e +120% do 1º lote.
+    const inicial = Math.round(ticket * 0.72);
+    const topo = Math.round(inicial * (1.7 + rand() * 0.5));
+
+    return Array.from({ length: degraus }, (_, i) => {
+        const t = i / (degraus - 1);
+        return {
+            dia: Math.round(Math.pow(t, 0.75) * (janelaDias - 1)),
+            valor: Math.round(inicial + (topo - inicial) * Math.pow(t, 1.35)),
+        };
+    });
 }
 
 function mulberry32(seed: number) {
@@ -82,7 +136,11 @@ function buildSerie(janelaDias: number, totalIngressos: number, ticketBase: numb
         const prox = N === 1 ? 1 : d / (N - 1);
         const ingressos = Math.round((totalIngressos * w) / soma);
         const ticket = ticketBase * (0.8 + 0.45 * prox);
-        return { vendas: Math.round(ingressos * ticket), ingressos, transacoes: Math.max(ingressos > 0 ? 1 : 0, Math.round(ingressos / (1.2 + 0.5 * rng()))) };
+        return {
+            vendas: Math.round(ingressos * ticket),
+            ingressos,
+            transacoes: Math.max(ingressos > 0 ? 1 : 0, Math.round(ingressos / (1.2 + 0.5 * rng()))),
+        };
     });
 }
 
@@ -121,13 +179,129 @@ const _revIng = _dsCmp.ocupacao.vendido;
 const _revTicket = _revIng ? Math.round((_dsCmp.mixDeReceita.find((m) => m.grupo === "Ingressos")?.valor ?? 0) / _revIng) : 0;
 
 const SPECS: EdicaoSpec[] = [
-    { id: "reveillon-carneiros-2027", nome: "Réveillon Carneiros 2027", curto: "Carneiros 27", ano: 2027, banner: bReveillon, abertura: "01/10/2026", evento: "31/12/2026", capacidade: _dsCmp.ocupacao.capacidade, ingressos: _revIng, ticket: _revTicket, taxaPct: 0.1, seed: 27, peaks: [{ center: 0.5, width: 0.05, height: 6 }, { center: 0.95, width: 0.04, height: 10 }] },
-    { id: "stb-sp-2026", nome: "Só Track Boa Festival 2026 :: São Paulo", curto: "STB SP 26", ano: 2026, banner: bStbSp26, abertura: "15/12/2025", evento: "18/04/2026", capacidade: 55000, ingressos: 50284, ticket: 396, taxaPct: 0.0001, seed: 14, peaks: [{ center: 0.4, width: 0.04, height: 12 }, { center: 0.8, width: 0.05, height: 7 }] },
-    { id: "stb-sp-2025", nome: "Só Track Boa Festival São Paulo 2025", curto: "STB SP 25", ano: 2025, banner: bStbSp25, abertura: "18/12/2024", evento: "19/04/2025", capacidade: 62000, ingressos: 56809, ticket: 320, taxaPct: 0.004, seed: 13, peaks: [{ center: 0.42, width: 0.045, height: 11 }, { center: 0.82, width: 0.05, height: 7 }] },
-    { id: "twb-2026", nome: "TIME WARP BRASIL 2026", curto: "TWB 26", ano: 2026, banner: bTwb26, abertura: "12/06/2026", evento: "10/10/2026", capacidade: 18000, ingressos: 15654, ticket: 405, taxaPct: 0.0005, seed: 34, peaks: [{ center: 0.5, width: 0.04, height: 11 }, { center: 0.85, width: 0.05, height: 6 }] },
-    { id: "twb-2025", nome: "TIME WARP BRASIL 2025", curto: "TWB 25", ano: 2025, banner: bTwb25, abertura: "09/06/2025", evento: "11/10/2025", capacidade: 22000, ingressos: 18867, ticket: 314, taxaPct: 0.027, seed: 33, peaks: [{ center: 0.52, width: 0.045, height: 10 }, { center: 0.84, width: 0.05, height: 6 }] },
-    { id: "cena-2022", nome: "Festival CENA 2K22", curto: "CENA 22", ano: 2022, banner: bCena, abertura: "01/03/2022", evento: "09/07/2022", capacidade: 14000, ingressos: 9800, ticket: 150, taxaPct: 0, seed: 41, peaks: [{ center: 0.5, width: 0.06, height: 8 }] },
-    { id: "solomun-2024", nome: "SOLOMUN :: CWB 31/10", curto: "SOLOMUN 24", ano: 2024, banner: bSolomun, abertura: "01/08/2024", evento: "31/10/2024", capacidade: 13000, ingressos: 11543, ticket: 410, taxaPct: 0, seed: 51, peaks: [{ center: 0.55, width: 0.05, height: 9 }, { center: 0.88, width: 0.04, height: 6 }] },
+    {
+        id: "reveillon-carneiros-2027",
+        nome: "Réveillon Carneiros 2027",
+        curto: "Carneiros 27",
+        ano: 2027,
+        banner: bReveillon,
+        abertura: "01/10/2026",
+        evento: "31/12/2026",
+        capacidade: _dsCmp.ocupacao.capacidade,
+        ingressos: _revIng,
+        ticket: _revTicket,
+        taxaPct: 0.1,
+        seed: 27,
+        peaks: [
+            { center: 0.5, width: 0.05, height: 6 },
+            { center: 0.95, width: 0.04, height: 10 },
+        ],
+    },
+    {
+        id: "stb-sp-2026",
+        nome: "Só Track Boa Festival 2026 :: São Paulo",
+        curto: "STB SP 26",
+        ano: 2026,
+        banner: bStbSp26,
+        abertura: "15/12/2025",
+        evento: "18/04/2026",
+        capacidade: 55000,
+        ingressos: 50284,
+        ticket: 396,
+        taxaPct: 0.0001,
+        seed: 14,
+        peaks: [
+            { center: 0.4, width: 0.04, height: 12 },
+            { center: 0.8, width: 0.05, height: 7 },
+        ],
+    },
+    {
+        id: "stb-sp-2025",
+        nome: "Só Track Boa Festival São Paulo 2025",
+        curto: "STB SP 25",
+        ano: 2025,
+        banner: bStbSp25,
+        abertura: "18/12/2024",
+        evento: "19/04/2025",
+        capacidade: 62000,
+        ingressos: 56809,
+        ticket: 320,
+        taxaPct: 0.004,
+        seed: 13,
+        peaks: [
+            { center: 0.42, width: 0.045, height: 11 },
+            { center: 0.82, width: 0.05, height: 7 },
+        ],
+    },
+    {
+        id: "twb-2026",
+        nome: "TIME WARP BRASIL 2026",
+        curto: "TWB 26",
+        ano: 2026,
+        banner: bTwb26,
+        abertura: "12/06/2026",
+        evento: "10/10/2026",
+        capacidade: 18000,
+        ingressos: 15654,
+        ticket: 405,
+        taxaPct: 0.0005,
+        seed: 34,
+        peaks: [
+            { center: 0.5, width: 0.04, height: 11 },
+            { center: 0.85, width: 0.05, height: 6 },
+        ],
+    },
+    {
+        id: "twb-2025",
+        nome: "TIME WARP BRASIL 2025",
+        curto: "TWB 25",
+        ano: 2025,
+        banner: bTwb25,
+        abertura: "09/06/2025",
+        evento: "11/10/2025",
+        capacidade: 22000,
+        ingressos: 18867,
+        ticket: 314,
+        taxaPct: 0.027,
+        seed: 33,
+        peaks: [
+            { center: 0.52, width: 0.045, height: 10 },
+            { center: 0.84, width: 0.05, height: 6 },
+        ],
+    },
+    {
+        id: "cena-2022",
+        nome: "Festival CENA 2K22",
+        curto: "CENA 22",
+        ano: 2022,
+        banner: bCena,
+        abertura: "01/03/2022",
+        evento: "09/07/2022",
+        capacidade: 14000,
+        ingressos: 9800,
+        ticket: 150,
+        taxaPct: 0,
+        seed: 41,
+        peaks: [{ center: 0.5, width: 0.06, height: 8 }],
+    },
+    {
+        id: "solomun-2024",
+        nome: "SOLOMUN :: CWB 31/10",
+        curto: "SOLOMUN 24",
+        ano: 2024,
+        banner: bSolomun,
+        abertura: "01/08/2024",
+        evento: "31/10/2024",
+        capacidade: 13000,
+        ingressos: 11543,
+        ticket: 410,
+        taxaPct: 0,
+        seed: 51,
+        peaks: [
+            { center: 0.55, width: 0.05, height: 9 },
+            { center: 0.88, width: 0.04, height: 6 },
+        ],
+    },
 ];
 
 const EVENTOS: EventoComparativo[] = SPECS.map((s, i) => {
@@ -145,6 +319,7 @@ const EVENTOS: EventoComparativo[] = SPECS.map((s, i) => {
         janelaDias,
         taxaPct: s.taxaPct,
         serie: buildSerie(janelaDias, s.ingressos, s.ticket, s.seed, s.peaks),
+        precos: buildPrecos(janelaDias, s.ticket, s.seed),
     };
 });
 
@@ -230,7 +405,9 @@ function totaisDe(ev: EventoComparativo, range: [number, number]): EventoTotais 
 }
 
 const metricDestaque = (t: EventoTotais, metric: Metric) =>
-    metric === "faturamento" ? currencyFormatter.format(t.liquido) : numberFormatter.format(metric === "ingressos" ? t.ingressos : t.transacoes);
+    metric === "faturamento"
+        ? currencyFormatter.format(t.liquido)
+        : numberFormatter.format(metric === "ingressos" ? t.ingressos : t.transacoes);
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                              */
@@ -242,7 +419,10 @@ export function Comparativos() {
     const [alignment, setAlignment] = useState<Alignment>("evento");
     const [windowDays, setWindowDays] = useState<WindowDays>("all");
 
-    const selectedEvents = useMemo(() => selectedIds.map((id) => EVENTOS_POR_ID.get(id)).filter(Boolean) as EventoComparativo[], [selectedIds]);
+    const selectedEvents = useMemo(
+        () => selectedIds.map((id) => EVENTOS_POR_ID.get(id)).filter(Boolean) as EventoComparativo[],
+        [selectedIds],
+    );
     const toggleEvent = (id: string) => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
     return (
@@ -252,7 +432,16 @@ export function Comparativos() {
                     <RelatorioPageHeader
                         title="Comparativos"
                         withFilters={false}
-                        actions={<ComparativoControls metric={metric} onChangeMetric={setMetric} alignment={alignment} onChangeAlignment={setAlignment} windowDays={windowDays} onChangeWindow={setWindowDays} />}
+                        actions={
+                            <ComparativoControls
+                                metric={metric}
+                                onChangeMetric={setMetric}
+                                alignment={alignment}
+                                onChangeAlignment={setAlignment}
+                                windowDays={windowDays}
+                                onChangeWindow={setWindowDays}
+                            />
+                        }
                     />
 
                     <EventPicker selectedIds={selectedIds} onToggle={toggleEvent} />
@@ -265,6 +454,8 @@ export function Comparativos() {
                             <ResumoCards events={selectedEvents} metric={metric} alignment={alignment} windowDays={windowDays} />
                             <ComparativoChart events={selectedEvents} metric={metric} alignment={alignment} windowDays={windowDays} />
                             <AnoContraAnoChart events={selectedEvents} />
+                            <PrecoAoLongoDoTempo events={selectedEvents} alignment={alignment} />
+                            <AmplitudeDePreco events={selectedEvents} />
                             <CohortCard events={selectedEvents} metric={metric} alignment={alignment} />
                             <ComparativoTable events={selectedEvents} alignment={alignment} windowDays={windowDays} />
                         </>
@@ -298,14 +489,27 @@ const EventPicker = ({ selectedIds, onToggle }: { selectedIds: string[]; onToggl
                             type="button"
                             onClick={() => onToggle(ev.id)}
                             aria-pressed={selected}
-                            className={cx("flex w-full items-center gap-3 px-3 py-2.5 text-left transition duration-100 ease-linear hover:bg-primary_hover", selected && "bg-secondary/60")}
+                            className={cx(
+                                "flex w-full items-center gap-3 px-3 py-2.5 text-left transition duration-100 ease-linear hover:bg-primary_hover",
+                                selected && "bg-secondary/60",
+                            )}
                         >
                             {/* [] */}
-                            <span className={cx("flex size-5 shrink-0 items-center justify-center rounded-md border transition", selected ? "border-transparent bg-brand-solid text-white" : "border-primary text-transparent")}>
+                            <span
+                                className={cx(
+                                    "flex size-5 shrink-0 items-center justify-center rounded-md border transition",
+                                    selected ? "border-transparent bg-brand-solid text-white" : "border-primary text-transparent",
+                                )}
+                            >
                                 <Check className="size-3.5" aria-hidden="true" />
                             </span>
                             {/* {banner} */}
-                            <img src={ev.banner} alt="" aria-hidden="true" className="size-10 shrink-0 rounded-md object-cover ring-1 ring-border-secondary" />
+                            <img
+                                src={ev.banner}
+                                alt=""
+                                aria-hidden="true"
+                                className="size-10 shrink-0 rounded-md object-cover ring-1 ring-border-secondary"
+                            />
                             {/* nome */}
                             <span className="flex min-w-0 flex-1 flex-col">
                                 <span className="truncate text-sm font-medium text-primary">{ev.nome}</span>
@@ -336,19 +540,47 @@ interface ControlsProps {
 }
 
 const MetricField = ({ metric, onChange, className }: { metric: Metric; onChange: (m: Metric) => void; className?: string }) => (
-    <Select size="sm" aria-label="Métrica" className={className} items={METRIC_OPTIONS} selectedKey={metric} onSelectionChange={(k: Key | null) => k && onChange(String(k) as Metric)}>
+    <Select
+        size="sm"
+        aria-label="Métrica"
+        className={className}
+        items={METRIC_OPTIONS}
+        selectedKey={metric}
+        onSelectionChange={(k: Key | null) => k && onChange(String(k) as Metric)}
+    >
         {(item: { id: Metric; label: string }) => <Select.Item id={item.id}>{item.label}</Select.Item>}
     </Select>
 );
 
-const AlignmentField = ({ alignment, onChange, className }: { alignment: Alignment; onChange: (a: Alignment) => void; className?: string }) => (
-    <ButtonGroup size="sm" selectedKeys={[alignment]} onSelectionChange={(k: Set<React.Key> | "all") => k !== "all" && onChange([...k][0] as Alignment)} className={className}>
+const AlignmentField = ({
+    alignment,
+    onChange,
+    className,
+}: {
+    alignment: Alignment;
+    onChange: (a: Alignment) => void;
+    className?: string;
+}) => (
+    <ButtonGroup
+        size="sm"
+        selectedKeys={[alignment]}
+        onSelectionChange={(k: Set<React.Key> | "all") => k !== "all" && onChange([...k][0] as Alignment)}
+        className={className}
+    >
         <ButtonGroupItem id="abertura">Após a abertura</ButtonGroupItem>
         <ButtonGroupItem id="evento">Antes do evento</ButtonGroupItem>
     </ButtonGroup>
 );
 
-const WindowField = ({ windowDays, onChange, className }: { windowDays: WindowDays; onChange: (w: WindowDays) => void; className?: string }) => (
+const WindowField = ({
+    windowDays,
+    onChange,
+    className,
+}: {
+    windowDays: WindowDays;
+    onChange: (w: WindowDays) => void;
+    className?: string;
+}) => (
     <Select
         size="sm"
         aria-label="Intervalo de dias"
@@ -392,7 +624,15 @@ const ComparativoControls = (props: ControlsProps) => {
                 isDismissable
                 className="fixed inset-0 z-50 flex justify-end outline-hidden"
             >
-                <AriaModal className={({ isEntering, isExiting }) => cx("h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden", isEntering && "duration-300 ease-out animate-in slide-in-from-right", isExiting && "duration-200 ease-in animate-out slide-out-to-right")}>
+                <AriaModal
+                    className={({ isEntering, isExiting }) =>
+                        cx(
+                            "h-full w-full max-w-[520px] bg-primary shadow-xl outline-hidden",
+                            isEntering && "duration-300 ease-out animate-in slide-in-from-right",
+                            isExiting && "duration-200 ease-in animate-out slide-out-to-right",
+                        )
+                    }
+                >
                     <AriaDialog className="flex h-full flex-col outline-hidden">
                         <div className="flex items-center justify-between gap-4 border-b border-secondary px-6 py-5">
                             <h2 className="text-lg font-semibold text-primary">Ajustar comparação</h2>
@@ -425,12 +665,18 @@ const EmptyState = () => (
     <div className="flex flex-col items-center justify-center gap-3 rounded-xl bg-primary px-6 py-16 text-center ring-1 ring-border-secondary">
         <FeaturedIcon icon={BarChartSquare02} color="gray" theme="modern" size="lg" />
         <p className="text-sm font-semibold text-primary">Selecione pelo menos dois eventos</p>
-        <p className="max-w-sm text-sm text-tertiary">Escolha dois ou mais eventos (ou edições de anos diferentes) para comparar como cada um performou.</p>
+        <p className="max-w-sm text-sm text-tertiary">
+            Escolha dois ou mais eventos (ou edições de anos diferentes) para comparar como cada um performou.
+        </p>
     </div>
 );
 
 const janelaLabel = (alignment: Alignment, windowDays: WindowDays) =>
-    windowDays === "all" ? "no período total de vendas" : alignment === "abertura" ? `nos primeiros ${windowDays} dias` : `nos últimos ${windowDays} dias antes do evento`;
+    windowDays === "all"
+        ? "no período total de vendas"
+        : alignment === "abertura"
+          ? `nos primeiros ${windowDays} dias`
+          : `nos últimos ${windowDays} dias antes do evento`;
 
 /* ------------------------------------------------------------------ */
 /*  Insights em linguagem simples                                     */
@@ -464,9 +710,27 @@ const InsightCards = ({ events }: { events: EventoComparativo[] }) => {
     const melhorRetaFinal = stats.reduce((a, b) => (b.retaFinal > a.retaFinal ? b : a));
 
     const cards = [
-        { icon: Trophy01, color: "warning" as const, eyebrow: "Maior bilheteria", ev: maiorBilheteria.ev, valor: currencyFormatter.format(maiorBilheteria.total.liquido) },
-        { icon: Rocket02, color: "brand" as const, eyebrow: "Vendeu mais rápido", ev: maisRapido.ev, valor: `Atingiu metade das vendas em ${maisRapido.diasMetade} dias` },
-        { icon: TrendUp01, color: "success" as const, eyebrow: "Melhor reta final", ev: melhorRetaFinal.ev, valor: `${Math.round(melhorRetaFinal.retaFinal * 100)}% das vendas nos últimos 15 dias` },
+        {
+            icon: Trophy01,
+            color: "warning" as const,
+            eyebrow: "Maior bilheteria",
+            ev: maiorBilheteria.ev,
+            valor: currencyFormatter.format(maiorBilheteria.total.liquido),
+        },
+        {
+            icon: Rocket02,
+            color: "brand" as const,
+            eyebrow: "Vendeu mais rápido",
+            ev: maisRapido.ev,
+            valor: `Atingiu metade das vendas em ${maisRapido.diasMetade} dias`,
+        },
+        {
+            icon: TrendUp01,
+            color: "success" as const,
+            eyebrow: "Melhor reta final",
+            ev: melhorRetaFinal.ev,
+            valor: `${Math.round(melhorRetaFinal.retaFinal * 100)}% das vendas nos últimos 15 dias`,
+        },
     ];
 
     return (
@@ -492,7 +756,17 @@ const InsightCards = ({ events }: { events: EventoComparativo[] }) => {
 /*  Resumo por evento                                                 */
 /* ------------------------------------------------------------------ */
 
-const ResumoCards = ({ events, metric, alignment, windowDays }: { events: EventoComparativo[]; metric: Metric; alignment: Alignment; windowDays: WindowDays }) => (
+const ResumoCards = ({
+    events,
+    metric,
+    alignment,
+    windowDays,
+}: {
+    events: EventoComparativo[];
+    metric: Metric;
+    alignment: Alignment;
+    windowDays: WindowDays;
+}) => (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {events.map((ev) => {
             const t = totaisDe(ev, windowRange(ev, alignment, windowDays));
@@ -534,7 +808,17 @@ const Stat = ({ label, value }: { label: string; value: string }) => (
 /*  Gráfico comparativo (tempo relativo)                              */
 /* ------------------------------------------------------------------ */
 
-const ComparativoChart = ({ events, metric, alignment, windowDays }: { events: EventoComparativo[]; metric: Metric; alignment: Alignment; windowDays: WindowDays }) => {
+const ComparativoChart = ({
+    events,
+    metric,
+    alignment,
+    windowDays,
+}: {
+    events: EventoComparativo[];
+    metric: Metric;
+    alignment: Alignment;
+    windowDays: WindowDays;
+}) => {
     const [mode, setMode] = useState<Mode>("diario");
 
     const { rows, xMin, xMax, lastIdxByEvent } = useMemo(() => {
@@ -562,8 +846,10 @@ const ComparativoChart = ({ events, metric, alignment, windowDays }: { events: E
         return { rows, xMin: min, xMax: max, lastIdxByEvent };
     }, [events, metric, alignment, mode, windowDays]);
 
-    const formatX = (x: number) => (x === 0 ? (alignment === "abertura" ? "Abertura" : "Evento") : alignment === "abertura" ? `${x} dias` : `${Math.abs(x)} dias`);
-    const formatYAxis = (v: number | string) => (metric === "faturamento" ? `R$${(Number(v) / 1000).toFixed(0)}k` : numberFormatter.format(Number(v)));
+    const formatX = (x: number) =>
+        x === 0 ? (alignment === "abertura" ? "Abertura" : "Evento") : alignment === "abertura" ? `${x} dias` : `${Math.abs(x)} dias`;
+    const formatYAxis = (v: number | string) =>
+        metric === "faturamento" ? `R$${(Number(v) / 1000).toFixed(0)}k` : numberFormatter.format(Number(v));
     const tooltipLabel = (label: number) =>
         alignment === "abertura"
             ? Number(label) === 0
@@ -575,10 +861,19 @@ const ComparativoChart = ({ events, metric, alignment, windowDays }: { events: E
     const tooltipValue = (value: number | string) => fmtMetric(Number(value), metric);
 
     const showLabels = typeof windowDays === "number" && windowDays <= 15;
-    const fmtLabel = (v: number | string) => (metric === "faturamento" ? `R$${(Number(v) / 1000).toFixed(0)}k` : numberFormatter.format(Number(v)));
+    const fmtLabel = (v: number | string) =>
+        metric === "faturamento" ? `R$${(Number(v) / 1000).toFixed(0)}k` : numberFormatter.format(Number(v));
     const useFill = events.length <= 2;
 
-    const ChartTooltip = ({ active, label, payload }: { active?: boolean; label?: number; payload?: { dataKey: string; name: string; value: number; color: string }[] }) => {
+    const ChartTooltip = ({
+        active,
+        label,
+        payload,
+    }: {
+        active?: boolean;
+        label?: number;
+        payload?: { dataKey: string; name: string; value: number; color: string }[];
+    }) => {
         if (!active || !payload || payload.length === 0) return null;
         const ordered = [...payload].sort((a, b) => Number(b.value) - Number(a.value));
         return (
@@ -602,9 +897,18 @@ const ComparativoChart = ({ events, metric, alignment, windowDays }: { events: E
             <header className="flex flex-col gap-3 border-b border-secondary px-5 py-4 md:flex-row md:items-start md:justify-between">
                 <div className="flex flex-col gap-1">
                     <h3 className="text-md font-semibold text-primary">{`${METRIC_LABEL[metric]} ${mode === "acumulado" ? "acumulado" : "por dia"}`}</h3>
-                    <p className="text-sm text-tertiary">{alignment === "abertura" ? "Contado a partir do dia em que as vendas abriram" : "Contado a partir do dia do evento (0 = dia do show)"} · {janelaLabel(alignment, windowDays)}</p>
+                    <p className="text-sm text-tertiary">
+                        {alignment === "abertura"
+                            ? "Contado a partir do dia em que as vendas abriram"
+                            : "Contado a partir do dia do evento (0 = dia do show)"}{" "}
+                        · {janelaLabel(alignment, windowDays)}
+                    </p>
                 </div>
-                <ButtonGroup size="sm" selectedKeys={[mode]} onSelectionChange={(k: Set<React.Key> | "all") => k !== "all" && setMode([...k][0] as Mode)}>
+                <ButtonGroup
+                    size="sm"
+                    selectedKeys={[mode]}
+                    onSelectionChange={(k: Set<React.Key> | "all") => k !== "all" && setMode([...k][0] as Mode)}
+                >
                     <ButtonGroupItem id="diario">Por dia</ButtonGroupItem>
                     <ButtonGroupItem id="acumulado">Acumulado</ButtonGroupItem>
                 </ButtonGroup>
@@ -628,10 +932,37 @@ const ComparativoChart = ({ events, metric, alignment, windowDays }: { events: E
                             ))}
                         </defs>
                         <CartesianGrid vertical={false} stroke="currentColor" className="text-utility-neutral-100" />
-                        <XAxis dataKey="x" type="number" domain={[xMin, xMax]} tickFormatter={formatX} fill="currentColor" tickLine={false} axisLine={false} tickMargin={10} minTickGap={28} />
-                        <YAxis tickFormatter={formatYAxis} fill="currentColor" tickLine={false} axisLine={false} tickMargin={8} width={56} />
+                        <XAxis
+                            dataKey="x"
+                            type="number"
+                            domain={[xMin, xMax]}
+                            tickFormatter={formatX}
+                            fill="currentColor"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={10}
+                            minTickGap={28}
+                        />
+                        <YAxis
+                            tickFormatter={formatYAxis}
+                            fill="currentColor"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={8}
+                            width={56}
+                        />
                         <Tooltip content={<ChartTooltip />} cursor={{ stroke: "var(--color-utility-brand-600)", strokeWidth: 2 }} />
-                        <ReferenceLine x={0} stroke="var(--color-border-primary)" strokeDasharray="3 3" label={{ value: alignment === "abertura" ? "Abertura" : "Evento", position: "insideTopLeft", fontSize: 10, fill: "var(--color-text-tertiary)" }} />
+                        <ReferenceLine
+                            x={0}
+                            stroke="var(--color-border-primary)"
+                            strokeDasharray="3 3"
+                            label={{
+                                value: alignment === "abertura" ? "Abertura" : "Evento",
+                                position: "insideTopLeft",
+                                fontSize: 10,
+                                fill: "var(--color-text-tertiary)",
+                            }}
+                        />
                         {events.map((ev) => (
                             <Area
                                 key={ev.id}
@@ -641,18 +972,40 @@ const ComparativoChart = ({ events, metric, alignment, windowDays }: { events: E
                                 stroke={ev.cor}
                                 strokeWidth={2.5}
                                 fill={useFill ? `url(#vlines-${ev.id})` : "none"}
-                                className={useFill ? "[&_.recharts-area-area]:translate-y-[6px] [&_.recharts-area-area]:[clip-path:inset(0_0_6px_0)]" : undefined}
+                                className={
+                                    useFill
+                                        ? "[&_.recharts-area-area]:translate-y-[6px] [&_.recharts-area-area]:[clip-path:inset(0_0_6px_0)]"
+                                        : undefined
+                                }
                                 dot={false}
                                 connectNulls
                                 isAnimationActive={false}
                                 activeDot={{ r: 4, fill: "var(--color-bg-primary)", stroke: ev.cor, strokeWidth: 2 }}
                             >
-                                {showLabels && <LabelList dataKey={ev.id} position="top" offset={10} fill="var(--color-text-primary)" fontSize={10} fontWeight={600} formatter={fmtLabel} />}
+                                {showLabels && (
+                                    <LabelList
+                                        dataKey={ev.id}
+                                        position="top"
+                                        offset={10}
+                                        fill="var(--color-text-primary)"
+                                        fontSize={10}
+                                        fontWeight={600}
+                                        formatter={fmtLabel}
+                                    />
+                                )}
                                 <LabelList
                                     dataKey={ev.id}
                                     content={(p: { x?: number; y?: number; index?: number }) =>
                                         p.index === lastIdxByEvent[ev.id] && p.x != null && p.y != null ? (
-                                            <text x={p.x + 8} y={p.y} dy={4} fontSize={11} fontWeight={600} fill={ev.cor} textAnchor="start">
+                                            <text
+                                                x={p.x + 8}
+                                                y={p.y}
+                                                dy={4}
+                                                fontSize={11}
+                                                fontWeight={600}
+                                                fill={ev.cor}
+                                                textAnchor="start"
+                                            >
                                                 {ev.curto}
                                             </text>
                                         ) : null
@@ -695,7 +1048,15 @@ const AnoContraAnoChart = ({ events }: { events: EventoComparativo[] }) => {
         });
     }, [events]);
 
-    const ChartTooltip = ({ active, label, payload }: { active?: boolean; label?: string; payload?: { dataKey: string; value: number; color: string }[] }) => {
+    const ChartTooltip = ({
+        active,
+        label,
+        payload,
+    }: {
+        active?: boolean;
+        label?: string;
+        payload?: { dataKey: string; value: number; color: string }[];
+    }) => {
         if (!active || !payload || payload.length === 0) return null;
         const ordered = [...payload].filter((e) => Number(e.value) > 0).sort((a, b) => Number(b.value) - Number(a.value));
         if (ordered.length === 0) return null;
@@ -706,8 +1067,12 @@ const AnoContraAnoChart = ({ events }: { events: EventoComparativo[] }) => {
                     {ordered.map((entry) => (
                         <li key={entry.dataKey} className="flex items-center gap-2 text-sm">
                             <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: entry.color }} />
-                            <span className="text-tooltip-supporting-text">{EVENTOS_POR_ID.get(entry.dataKey)?.curto ?? entry.dataKey}</span>
-                            <span className="ml-auto pl-3 font-semibold text-white tabular-nums">{currencyFormatter.format(Number(entry.value))}</span>
+                            <span className="text-tooltip-supporting-text">
+                                {EVENTOS_POR_ID.get(entry.dataKey)?.curto ?? entry.dataKey}
+                            </span>
+                            <span className="ml-auto pl-3 font-semibold text-white tabular-nums">
+                                {currencyFormatter.format(Number(entry.value))}
+                            </span>
                         </li>
                     ))}
                 </ul>
@@ -726,10 +1091,25 @@ const AnoContraAnoChart = ({ events }: { events: EventoComparativo[] }) => {
                     <BarChart data={rows} className="[&_.recharts-text]:text-sm" margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
                         <CartesianGrid vertical={false} stroke="currentColor" className="text-utility-neutral-100" />
                         <XAxis dataKey="mes" fill="currentColor" tickLine={false} axisLine={false} tickMargin={10} />
-                        <YAxis tickFormatter={(v) => `R$${(Number(v) / 1_000_000).toFixed(0)}mi`} fill="currentColor" tickLine={false} axisLine={false} tickMargin={8} width={56} />
+                        <YAxis
+                            tickFormatter={(v) => `R$${(Number(v) / 1_000_000).toFixed(0)}mi`}
+                            fill="currentColor"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={8}
+                            width={56}
+                        />
                         <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--color-bg-secondary)", opacity: 0.5 }} />
                         {events.map((ev) => (
-                            <Bar key={ev.id} dataKey={ev.id} name={ev.curto} fill={ev.cor} radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+                            <Bar
+                                key={ev.id}
+                                dataKey={ev.id}
+                                name={ev.curto}
+                                fill={ev.cor}
+                                radius={[3, 3, 0, 0]}
+                                maxBarSize={22}
+                                isAnimationActive={false}
+                            />
                         ))}
                     </BarChart>
                 </ResponsiveContainer>
@@ -830,14 +1210,21 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
         return acc;
     }, [buckets]);
 
-    const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(rows as unknown as Record<string, unknown>[], accessors as Partial<Record<string, (r: Record<string, unknown>) => string | number>>, { key: "total", dir: "desc" });
+    const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(
+        rows as unknown as Record<string, unknown>[],
+        accessors as Partial<Record<string, (r: Record<string, unknown>) => string | number>>,
+        { key: "total", dir: "desc" },
+    );
     const sortedRows = sorted as unknown as CohortRow[];
 
     return (
         <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
             <header className="flex flex-col gap-1 border-b border-secondary px-4 py-4">
                 <h3 className="text-md font-semibold text-primary">Em que momento cada evento vendeu</h3>
-                <p className="text-sm text-tertiary">% do total de cada evento por faixa {alignment === "abertura" ? "de dias após a abertura" : "de dias antes do evento"}. Cor mais forte = pico de vendas.</p>
+                <p className="text-sm text-tertiary">
+                    % do total de cada evento por faixa {alignment === "abertura" ? "de dias após a abertura" : "de dias antes do evento"}.
+                    Cor mais forte = pico de vendas.
+                </p>
             </header>
 
             <div className="hidden overflow-x-auto overflow-y-clip md:block">
@@ -849,11 +1236,25 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
                             </th>
                             {buckets.map((b) => (
                                 <th key={b.id} className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary">
-                                    <SortableHeader label={b.label} align="right" sortKey={b.id} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                                    <SortableHeader
+                                        label={b.label}
+                                        align="right"
+                                        sortKey={b.id}
+                                        activeKey={sortKey}
+                                        dir={sortDir}
+                                        onSort={toggleSort}
+                                    />
                                 </th>
                             ))}
                             <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary">
-                                <SortableHeader label="Total" align="right" sortKey="total" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                                <SortableHeader
+                                    label="Total"
+                                    align="right"
+                                    sortKey="total"
+                                    activeKey={sortKey}
+                                    dir={sortDir}
+                                    onSort={toggleSort}
+                                />
                             </th>
                         </tr>
                     </thead>
@@ -862,7 +1263,11 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
                             <tr key={row.ev.id} className={cx(i !== sortedRows.length - 1 && "border-b border-secondary")}>
                                 <td className="sticky left-0 z-10 whitespace-nowrap bg-primary px-4 py-3">
                                     <span className="flex items-center gap-2">
-                                        <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: row.ev.cor }} />
+                                        <span
+                                            aria-hidden="true"
+                                            className="size-2.5 shrink-0 rounded-full"
+                                            style={{ background: row.ev.cor }}
+                                        />
                                         <span className="text-sm font-medium text-primary">{row.ev.curto}</span>
                                     </span>
                                 </td>
@@ -874,14 +1279,25 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
                                     return (
                                         <td
                                             key={b.id}
-                                            className={cx("px-4 py-3 text-right text-sm tabular-nums", intensity > 0.55 ? "font-semibold text-white" : "text-primary")}
-                                            style={has ? { backgroundColor: `color-mix(in srgb, ${row.ev.cor} ${Math.round((0.08 + 0.78 * intensity) * 100)}%, transparent)` } : undefined}
+                                            className={cx(
+                                                "px-4 py-3 text-right text-sm tabular-nums",
+                                                intensity > 0.55 ? "font-semibold text-white" : "text-primary",
+                                            )}
+                                            style={
+                                                has
+                                                    ? {
+                                                          backgroundColor: `color-mix(in srgb, ${row.ev.cor} ${Math.round((0.08 + 0.78 * intensity) * 100)}%, transparent)`,
+                                                      }
+                                                    : undefined
+                                            }
                                         >
                                             {has ? `${Math.round(pct * 100)}%` : "—"}
                                         </td>
                                     );
                                 })}
-                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-primary tabular-nums">{cohortTotalDisplay(row, metric)}</td>
+                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-primary tabular-nums">
+                                    {cohortTotalDisplay(row, metric)}
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -896,7 +1312,9 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
                                 <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: row.ev.cor }} />
                                 <span className="truncate text-sm font-medium text-primary">{row.ev.nome}</span>
                             </span>
-                            <span className="shrink-0 text-sm font-semibold text-primary tabular-nums">{cohortTotalDisplay(row, metric)}</span>
+                            <span className="shrink-0 text-sm font-semibold text-primary tabular-nums">
+                                {cohortTotalDisplay(row, metric)}
+                            </span>
                         </div>
                         <div className="flex h-16 items-end gap-1">
                             {buckets.map((b) => {
@@ -906,7 +1324,13 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
                                     <span
                                         key={b.id}
                                         className="flex-1 rounded-t-sm"
-                                        style={{ height: `${Math.max(v > 0 ? 8 : 2, intensity * 100)}%`, backgroundColor: v > 0 ? `color-mix(in srgb, ${row.ev.cor} ${Math.round((0.35 + 0.65 * intensity) * 100)}%, transparent)` : "var(--color-bg-quaternary)" }}
+                                        style={{
+                                            height: `${Math.max(v > 0 ? 8 : 2, intensity * 100)}%`,
+                                            backgroundColor:
+                                                v > 0
+                                                    ? `color-mix(in srgb, ${row.ev.cor} ${Math.round((0.35 + 0.65 * intensity) * 100)}%, transparent)`
+                                                    : "var(--color-bg-quaternary)",
+                                        }}
                                     />
                                 );
                             })}
@@ -914,7 +1338,9 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
                         <span className="text-sm text-tertiary">
                             {row.pico ? (
                                 <>
-                                    Pico: <span className="font-medium text-secondary">{row.pico.label}</span> {alignment === "abertura" ? "após a abertura" : "antes do evento"} ({Math.round(((row.values[row.pico.id] ?? 0) / (row.total || 1)) * 100)}% das vendas)
+                                    Pico: <span className="font-medium text-secondary">{row.pico.label}</span>{" "}
+                                    {alignment === "abertura" ? "após a abertura" : "antes do evento"} (
+                                    {Math.round(((row.values[row.pico.id] ?? 0) / (row.total || 1)) * 100)}% das vendas)
                                 </>
                             ) : (
                                 "Sem dados"
@@ -931,9 +1357,21 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
 /*  Tabela comparativa (métrica × evento)                             */
 /* ------------------------------------------------------------------ */
 
-const ComparativoTable = ({ events, alignment, windowDays }: { events: EventoComparativo[]; alignment: Alignment; windowDays: WindowDays }) => {
+const ComparativoTable = ({
+    events,
+    alignment,
+    windowDays,
+}: {
+    events: EventoComparativo[];
+    alignment: Alignment;
+    windowDays: WindowDays;
+}) => {
     const totais = events.map((ev) => ({ ev, t: totaisDe(ev, windowRange(ev, alignment, windowDays)) }));
-    const linhas: { label: string; icon: typeof CurrencyDollarCircle; render: (x: { ev: EventoComparativo; t: EventoTotais }) => string }[] = [
+    const linhas: {
+        label: string;
+        icon: typeof CurrencyDollarCircle;
+        render: (x: { ev: EventoComparativo; t: EventoTotais }) => string;
+    }[] = [
         { label: "Valor líquido", icon: CurrencyDollarCircle, render: ({ t }) => currencyFormatter.format(t.liquido) },
         { label: "Valor bruto", icon: CurrencyDollarCircle, render: ({ t }) => currencyFormatter.format(t.bruto) },
         { label: "Ingressos vendidos", icon: Ticket01, render: ({ t }) => numberFormatter.format(t.ingressos) },
@@ -973,7 +1411,10 @@ const ComparativoTable = ({ events, alignment, windowDays }: { events: EventoCom
                                     </span>
                                 </td>
                                 {totais.map((item) => (
-                                    <td key={item.ev.id} className="whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-primary tabular-nums">
+                                    <td
+                                        key={item.ev.id}
+                                        className="whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-primary tabular-nums"
+                                    >
                                         {linha.render(item)}
                                     </td>
                                 ))}
@@ -981,6 +1422,197 @@ const ComparativoTable = ({ events, alignment, windowDays }: { events: EventoCom
                         ))}
                     </tbody>
                 </table>
+            </div>
+        </section>
+    );
+};
+
+/* ------------------------------------------------------------------ */
+/*  Preço ao longo do tempo — a escada de lotes de cada edição         */
+/* ------------------------------------------------------------------ */
+
+const PrecoAoLongoDoTempo = ({ events, alignment }: { events: EventoComparativo[]; alignment: Alignment }) => {
+    const { rows, xMin, xMax } = useMemo(() => {
+        // Eixo comum: todo dia em que qualquer edição virou lote.
+        const xs = new Set<number>();
+        for (const ev of events) {
+            for (const degrau of ev.precos) {
+                xs.add(alignment === "abertura" ? degrau.dia : degrau.dia - (ev.janelaDias - 1));
+            }
+            xs.add(alignment === "abertura" ? ev.janelaDias - 1 : 0);
+        }
+        const ordenados = [...xs].sort((a, b) => a - b);
+
+        const rows = ordenados.map((x) => {
+            const row: Record<string, number> = { x };
+            for (const ev of events) {
+                const dia = alignment === "abertura" ? x : x + (ev.janelaDias - 1);
+                if (dia < 0 || dia > ev.janelaDias - 1) continue;
+                // Preço vigente = último degrau que já entrou em vigor.
+                const vigente = [...ev.precos].reverse().find((degrau) => degrau.dia <= dia);
+                if (vigente) row[ev.id] = vigente.valor;
+            }
+            return row;
+        });
+
+        return { rows, xMin: ordenados[0] ?? 0, xMax: ordenados[ordenados.length - 1] ?? 0 };
+    }, [events, alignment]);
+
+    const formatX = (x: number) =>
+        x === 0 ? (alignment === "abertura" ? "Abertura" : "Evento") : alignment === "abertura" ? `${x} dias` : `${Math.abs(x)} dias`;
+
+    const ChartTooltip = ({
+        active,
+        label,
+        payload,
+    }: {
+        active?: boolean;
+        label?: number;
+        payload?: { dataKey: string; name: string; value: number; color: string }[];
+    }) => {
+        if (!active || !payload?.length) return null;
+        const ordered = [...payload].sort((a, b) => Number(b.value) - Number(a.value));
+        return (
+            <div className="flex flex-col gap-1.5 rounded-lg bg-primary-solid px-3 py-2.5 shadow-lg">
+                <p className="text-sm font-semibold text-white">
+                    {Number(label) === 0
+                        ? alignment === "abertura"
+                            ? "Dia da abertura das vendas"
+                            : "Dia do evento"
+                        : alignment === "abertura"
+                          ? `${label} dias após a abertura`
+                          : `${Math.abs(Number(label))} dias antes do evento`}
+                </p>
+                <ul className="flex flex-col gap-1">
+                    {ordered.map((entry) => (
+                        <li key={entry.dataKey} className="flex items-center gap-2 text-sm">
+                            <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: entry.color }} />
+                            <span className="text-tooltip-supporting-text">{entry.name}</span>
+                            <span className="ml-auto pl-3 font-semibold text-white tabular-nums">
+                                {currencyFormatter.format(Number(entry.value))}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        );
+    };
+
+    return (
+        <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
+            <header className="flex flex-col gap-1 border-b border-secondary px-5 py-4">
+                <h3 className="text-md font-semibold text-primary">Preço ao longo do tempo</h3>
+                <p className="text-sm text-tertiary">
+                    Preço praticado a cada momento da venda. Compare em que ponto da curva cada edição virou lote.
+                </p>
+            </header>
+
+            <div className="h-[280px] w-full px-2 pt-5 pb-2 text-tertiary md:h-[340px] md:px-4">
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={rows} className="[&_.recharts-text]:text-sm" margin={{ top: 8, right: 24, bottom: 4, left: 8 }}>
+                        <CartesianGrid vertical={false} stroke="currentColor" className="text-utility-neutral-100" />
+                        <XAxis
+                            dataKey="x"
+                            type="number"
+                            domain={[xMin, xMax]}
+                            tickFormatter={formatX}
+                            fill="currentColor"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={10}
+                            minTickGap={28}
+                        />
+                        <YAxis
+                            tickFormatter={(v) => `R$${Math.round(Number(v))}`}
+                            fill="currentColor"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={8}
+                            width={64}
+                        />
+                        <Tooltip content={<ChartTooltip />} cursor={{ stroke: "var(--color-utility-brand-600)", strokeWidth: 2 }} />
+                        {events.map((ev) => (
+                            <Line
+                                key={ev.id}
+                                type="stepAfter"
+                                dataKey={ev.id}
+                                name={ev.curto}
+                                stroke={ev.cor}
+                                strokeWidth={2.5}
+                                dot={false}
+                                connectNulls
+                                isAnimationActive={false}
+                            />
+                        ))}
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
+        </section>
+    );
+};
+
+/* ------------------------------------------------------------------ */
+/*  Amplitude de preço — do primeiro lote ao topo praticado            */
+/* ------------------------------------------------------------------ */
+
+const AmplitudeDePreco = ({ events }: { events: EventoComparativo[] }) => {
+    const linhas = events.map((ev) => {
+        const inicial = ev.precos[0]?.valor ?? 0;
+        const topo = ev.precos[ev.precos.length - 1]?.valor ?? 0;
+        return { ev, inicial, topo, alta: inicial ? topo / inicial - 1 : 0 };
+    });
+
+    const maximo = Math.max(...linhas.map((l) => l.topo), 1);
+    const posicao = (valor: number) => `${(valor / maximo) * 100}%`;
+
+    return (
+        <section className="flex flex-col gap-5 rounded-xl bg-primary px-5 py-4 ring-1 ring-border-secondary">
+            <div className="flex flex-col gap-1">
+                <h3 className="text-md font-semibold text-primary">Amplitude de preço por edição</h3>
+                <p className="text-sm text-tertiary">Do primeiro lote ao topo praticado — quanto cada temporada conseguiu subir o preço.</p>
+            </div>
+
+            <div className="flex flex-col gap-4">
+                {linhas.map(({ ev, inicial, topo, alta }) => (
+                    <div key={ev.id} className="flex flex-col gap-2">
+                        <div className="flex items-baseline justify-between gap-3">
+                            <span className="text-sm font-medium text-secondary">{ev.curto}</span>
+                            <span className="text-sm text-tertiary tabular-nums">
+                                {currencyFormatter.format(inicial)} → {currencyFormatter.format(topo)}
+                            </span>
+                        </div>
+
+                        <div className="relative h-6">
+                            <span aria-hidden="true" className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border-secondary" />
+                            <span
+                                aria-hidden="true"
+                                className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full"
+                                style={{ left: posicao(inicial), width: posicao(topo - inicial), background: ev.cor, opacity: 0.35 }}
+                            />
+                            <span
+                                aria-hidden="true"
+                                className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-bg-primary"
+                                style={{ left: posicao(inicial), background: ev.cor }}
+                            />
+                            <span
+                                aria-hidden="true"
+                                className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-bg-primary"
+                                style={{ left: posicao(topo), background: ev.cor }}
+                            />
+                            <span
+                                className="absolute top-1/2 -translate-y-1/2 pl-3 text-sm font-semibold tabular-nums"
+                                style={{ left: posicao(topo), color: ev.cor }}
+                            >
+                                +{Math.round(alta * 100)}%
+                            </span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="flex justify-between text-sm text-quaternary tabular-nums">
+                <span>R$ 0</span>
+                <span>{currencyFormatter.format(maximo)}</span>
             </div>
         </section>
     );

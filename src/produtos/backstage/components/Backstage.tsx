@@ -5,6 +5,7 @@ import type { Key } from "react-aria-components";
 import {
     Announcement01,
     Bank,
+    BarChartSquare02,
     Calendar,
     ChevronDown,
     ChevronRight,
@@ -38,9 +39,11 @@ import { NavButton } from "@/components/application/app-navigation/base-componen
 import { TreeView } from "@/components/application/tree-view/tree-view";
 import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
+import { EVENTO_STATUS_LABEL, useEventoAtual } from "../eventos/data/eventos";
+import { RemixProvider } from "./remix/remix-context";
+import { RemixDock, RemixLauncher } from "./remix/RemixShell";
 import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
-const eventCover = "https://casadeapostasarenadasdunas.com.br/wp-content/uploads/2026/05/AMERICAXLAGUNA.png";
 
 /** Logo da Ingresse — clicável, leva para a home do Backstage. */
 const BrandLogo = ({ className }: { className?: string }) => {
@@ -60,6 +63,7 @@ const BrandLogo = ({ className }: { className?: string }) => {
 import { ThemeToggle } from "./ThemeToggle";
 
 export type BackstageSection =
+    | "visao-geral"
     | "bilheteria"
     | "equipe-e-permissoes"
     | "informacoes-evento"
@@ -71,6 +75,7 @@ export type BackstageSection =
     | "marketing";
 
 export type BackstageItem =
+    | "visao-geral"
     | "bilheteria-online"
     | "permissao-envio"
     | "catalogo-itens"
@@ -129,7 +134,54 @@ function useLayoutVariant(): [LayoutVariant, (v: LayoutVariant) => void] {
     return [variant, update];
 }
 
-export function BackstageLayout({
+const SWITCHER_STORAGE_KEY = "backstage-layout-switcher-visivel";
+
+/**
+ * O switch de layout é uma ferramenta de protótipo, não de produto: fica
+ * escondido e só aparece com Shift+L. A escolha persiste entre as telas.
+ */
+function useLayoutSwitcherVisivel(): boolean {
+    const [visivel, setVisivel] = useState(() => {
+        if (typeof window === "undefined") return false;
+        return window.localStorage.getItem(SWITCHER_STORAGE_KEY) === "1";
+    });
+
+    useEffect(() => {
+        const onKey = (event: KeyboardEvent) => {
+            if (!event.shiftKey || event.key.toLowerCase() !== "l" || event.metaKey || event.ctrlKey || event.altKey) return;
+
+            // Não intercepta enquanto o usuário digita.
+            const alvo = event.target as HTMLElement | null;
+            if (alvo?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(alvo?.tagName ?? "")) return;
+
+            event.preventDefault();
+            setVisivel((atual) => {
+                const proximo = !atual;
+                try {
+                    window.localStorage.setItem(SWITCHER_STORAGE_KEY, proximo ? "1" : "0");
+                } catch {
+                    /* storage indisponível — vale só para esta sessão */
+                }
+                return proximo;
+            });
+        };
+
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, []);
+
+    return visivel;
+}
+
+export function BackstageLayout(props: BackstageLayoutProps) {
+    return (
+        <RemixProvider>
+            <BackstageShell {...props} />
+        </RemixProvider>
+    );
+}
+
+function BackstageShell({
     activeSection,
     activeItem,
     activeProducer,
@@ -139,6 +191,7 @@ export function BackstageLayout({
 }: BackstageLayoutProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [variant, setVariant] = useLayoutVariant();
+    const switcherVisivel = useLayoutSwitcherVisivel();
 
     useEffect(() => {
         if (!isMobileMenuOpen) return;
@@ -179,8 +232,10 @@ export function BackstageLayout({
                     <main className="flex min-w-0 flex-1 flex-col">
                         <div className="mx-auto flex w-full max-w-[1088px] flex-1 flex-col">{children}</div>
                     </main>
+                    <RemixDock />
                 </div>
-                {showLayoutSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
+                {showLayoutSwitcher && switcherVisivel && <LayoutSwitcher variant={variant} onChange={setVariant} />}
+                <RemixLauncher />
             </div>
         );
     }
@@ -198,8 +253,10 @@ export function BackstageLayout({
                 <ProducerRail activeProducer={activeProducer} />
                 {showEventContext && <EventRail activeSection={activeSection} activeItem={activeItem} />}
                 {children}
+                <RemixDock />
             </div>
-            {showLayoutSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
+            {showLayoutSwitcher && switcherVisivel && <LayoutSwitcher variant={variant} onChange={setVariant} />}
+            <RemixLauncher />
         </div>
     );
 }
@@ -267,7 +324,7 @@ interface OrgSection {
 
 /** Seções da organização — compartilhadas pelo rail, pela topbar e pelo menu mobile. */
 const ORG_SECTIONS: OrgSection[] = [
-    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
+    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/eventos" },
     { id: "membros", icon: UserSquare, label: "Membros" },
     { id: "financas", icon: Bank, label: "Finanças" },
     { id: "produtos", icon: ShoppingBag03, label: "Produtos" },
@@ -308,6 +365,7 @@ const MobileTopBar = ({ onOpenMenu }: { onOpenMenu: () => void }) => (
  * funcionalidades numa gaveta, como no `navbar-event-mobile` do design system.
  */
 const MobileEventNav = ({ activeSection, activeItem }: EventRailProps) => {
+    const evento = useEventoAtual();
     const { pathname } = useLocation();
     const [isOpen, setIsOpen] = useState(false);
 
@@ -339,10 +397,10 @@ const MobileEventNav = ({ activeSection, activeItem }: EventRailProps) => {
             >
                 {isOpen ? <XClose className="size-5" /> : <Menu02 className="size-5" />}
             </button>
-            <img src={eventCover} alt="" className="size-10 shrink-0 rounded-md object-cover" />
-            <p className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold text-primary">América x Laguna (5 a 0)</p>
-            <Badge size="sm" type="pill-color" color="success">
-                Publicado
+            <img src={evento.cover} alt="" className="size-10 shrink-0 rounded-md object-cover" />
+            <p className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold text-primary">{evento.nome}</p>
+            <Badge size="sm" type="pill-color" color={evento.status === "publicado" ? "success" : "gray"}>
+                {EVENTO_STATUS_LABEL[evento.status]}
             </Badge>
         </div>
     );
@@ -399,7 +457,7 @@ const PRODUCER_NAV: Array<{
     href?: string;
     children?: Array<{ id: string; label: string }>;
 }> = [
-    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
+    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/eventos" },
     { id: "permissao", icon: UsersPlus, label: "Permissão", href: "/backstage/permissao-envio" },
     { id: "produtos", icon: Package, label: "Produtos" },
     {
@@ -753,38 +811,42 @@ const EventRailTop = ({ activeSection, activeItem }: EventRailProps) => (
     </aside>
 );
 
-const EventDetailsCard = () => (
-    <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-3">
-        <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-secondary">
-            <img src={eventCover} alt="América x Laguna (5 a 0)" className="size-full object-cover" />
-            <span className="absolute top-3 left-3 rounded-xl bg-white/50 px-3 py-1 text-[12px] font-medium tracking-wide text-primary uppercase backdrop-blur-md">
-                Rascunho
-            </span>
-            <div className="absolute bottom-3 right-3 flex w-12 flex-col items-center rounded-xl bg-white/50 px-2 py-3 text-primary backdrop-blur-md">
-                <span className="text-[10px] font-medium tracking-wide uppercase">Dom</span>
-                <span className="text-base font-bold leading-tight">21</span>
-                <span className="text-[10px] font-medium tracking-wide uppercase">Jun</span>
+const EventDetailsCard = () => {
+    const evento = useEventoAtual();
+
+    return (
+        <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-3">
+            <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-secondary">
+                <img src={evento.cover} alt={evento.nome} className="size-full object-cover" />
+                <span className="absolute top-3 left-3 rounded-xl bg-white/50 px-3 py-1 text-[12px] font-medium tracking-wide text-primary uppercase backdrop-blur-md">
+                    {EVENTO_STATUS_LABEL[evento.status]}
+                </span>
+                <div className="absolute right-3 bottom-3 flex w-12 flex-col items-center rounded-xl bg-white/50 px-2 py-3 text-primary backdrop-blur-md">
+                    <span className="text-[10px] font-medium tracking-wide uppercase">{evento.weekday}</span>
+                    <span className="text-base leading-tight font-bold">{evento.day}</span>
+                    <span className="text-[10px] font-medium tracking-wide uppercase">{evento.month}</span>
+                </div>
+            </div>
+            <div className="flex flex-col gap-0.5 px-1">
+                <span className="text-xs text-tertiary">ID: {evento.id}</span>
+                <h3 className="text-md font-bold text-primary">{evento.nome}</h3>
+                <p className="text-sm text-tertiary">{evento.produtor}</p>
+            </div>
+            <div className="flex items-center gap-2 px-1">
+                <button
+                    type="button"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-fg-secondary ring-1 ring-border-primary shadow-xs transition duration-100 ease-linear hover:bg-primary_hover"
+                    aria-label="Pré-visualizar evento"
+                >
+                    <Eye className="size-4" />
+                </button>
+                <Button size="sm" color="primary" className="flex-1">
+                    {evento.status === "publicado" ? "Ver evento" : "Publicar evento"}
+                </Button>
             </div>
         </div>
-        <div className="flex flex-col gap-0.5 px-1">
-            <span className="text-xs text-tertiary">ID: 1234</span>
-            <h3 className="text-md font-bold text-primary">América x Laguna (5 a 0)</h3>
-            <p className="text-sm text-tertiary">Ingresse</p>
-        </div>
-        <div className="flex items-center gap-2 px-1">
-            <button
-                type="button"
-                className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-fg-secondary ring-1 ring-border-primary shadow-xs transition duration-100 ease-linear hover:bg-primary_hover"
-                aria-label="Pré-visualizar evento"
-            >
-                <Eye className="size-4" />
-            </button>
-            <Button size="sm" color="primary" className="flex-1">
-                Publicar evento
-            </Button>
-        </div>
-    </div>
-);
+    );
+};
 
 interface EventFunctionalitiesListProps {
     activeSection?: BackstageSection;
@@ -815,6 +877,12 @@ const EventFunctionalitiesList = ({ activeSection, activeItem, size = "sm" }: Ev
             expandedKeys={expandedKeys}
             onExpandedChange={(keys: Set<Key>) => setExpandedKeys(new Set(keys))}
         >
+            <TreeView.Item id="visao-geral" textValue="Visão geral" href="/backstage/evento/visao-geral">
+                <TreeView.ItemContent icon={BarChartSquare02} className={activeSection === "visao-geral" ? ACTIVE_CLASS : undefined}>
+                    Visão geral
+                </TreeView.ItemContent>
+            </TreeView.Item>
+
             <TreeView.Item id="informacoes-evento" textValue="Informações do evento">
                 <TreeView.ItemContent icon={InfoCircle}>Informações do evento</TreeView.ItemContent>
             </TreeView.Item>

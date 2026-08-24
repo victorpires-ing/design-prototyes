@@ -24,6 +24,8 @@ import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPor
 import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
 import { RelatorioPersonalizado } from '../produtos/backstage/relatorios/pages/RelatorioPersonalizado';
 import { Home as BackstageHome } from '../produtos/backstage/home/pages/Home';
+import { Eventos as BackstageEventos } from '../produtos/backstage/eventos/pages/Eventos';
+import { VisaoGeralEvento } from '../produtos/backstage/eventos/pages/VisaoGeralEvento';
 import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';
 import { NovoGrupoV2 } from '../produtos/backstage/membros-v2/pages/NovoGrupoV2';
 import { EquipeProvider } from '../produtos/backstage/equipe-de-operacao/data/equipe-store';
@@ -181,7 +183,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<ProductSelection />} />
         <Route path="/loading" element={<CymaticsShowcase />} />
-        <Route path="/backstage" element={<RelatorioPedidos />} />
+        <Route path="/backstage" element={<BackstageEventos />} />
+        <Route path="/backstage/eventos" element={<BackstageEventos />} />
+        <Route path="/backstage/evento/visao-geral" element={<VisaoGeralEvento />} />
         <Route path="/backstage/home" element={<BackstageHome />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />

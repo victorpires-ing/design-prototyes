@@ -1,7 +1,7 @@
 import { useEffect, useState, type FC, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useSearchParams } from "react-router";
-import { CheckCircle, ChevronDown, GraduationHat01, HeartHand, Phone01, Scales02, User01, Wallet02 } from "@untitledui/icons";
+import { CheckCircle, ChevronDown, GraduationHat01, HeartHand, Menu01, Phone01, Scales02, User01, Wallet02, XClose } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -149,6 +149,12 @@ function CategoriaItem({
 export function MeiaEntrada() {
     const [params] = useSearchParams();
     const { theme, setTheme } = useTheme();
+    const [menuAberto, setMenuAberto] = useState(false);
+
+    const irParaFechando = (id: string) => {
+        setMenuAberto(false);
+        irPara(id);
+    };
 
     useEffect(() => {
         const prev = theme;
@@ -190,29 +196,58 @@ export function MeiaEntrada() {
     return (
         <div className="min-h-screen bg-primary text-primary">
             {/* Header claro: logo Ingresse + links das seções */}
-            <header className="sticky top-0 z-30 px-4 pt-4 md:px-8">
-                <div className="mx-auto flex h-16 w-full max-w-container items-center gap-8 rounded-2xl bg-primary px-5 shadow-sm ring-1 ring-border-secondary md:px-6">
-                    <a href="#" onClick={(e) => e.preventDefault()} className="flex shrink-0 items-center">
-                        <img src={INGRESSE_LOGO} alt="Ingresse" className="h-6 w-auto md:h-7" style={{ filter: "invert(1)" }} />
-                    </a>
-                    <nav className="flex flex-1 items-center gap-6 overflow-x-auto">
-                        {SECOES.map((s) => (
-                            <button
-                                key={s.id}
-                                type="button"
-                                onClick={() => irPara(s.id)}
-                                className="text-sm font-semibold whitespace-nowrap text-secondary transition duration-100 ease-linear hover:text-primary"
-                            >
-                                {s.label}
-                            </button>
-                        ))}
-                    </nav>
+            <header className="sticky top-0 z-30 px-6 pt-4 md:px-8">
+                <div className="mx-auto w-full max-w-container">
+                    <div className="flex h-16 items-center justify-between gap-8 rounded-2xl bg-primary px-5 shadow-sm ring-1 ring-border-secondary md:px-6">
+                        <a href="#" onClick={(e) => e.preventDefault()} className="flex shrink-0 items-center">
+                            <img src={INGRESSE_LOGO} alt="Ingresse" className="h-6 w-auto md:h-7" style={{ filter: "invert(1)" }} />
+                        </a>
+                        {/* Nav desktop */}
+                        <nav className="hidden items-center gap-6 md:flex">
+                            {SECOES.map((s) => (
+                                <button
+                                    key={s.id}
+                                    type="button"
+                                    onClick={() => irPara(s.id)}
+                                    className="text-sm font-semibold whitespace-nowrap text-secondary transition duration-100 ease-linear hover:text-primary"
+                                >
+                                    {s.label}
+                                </button>
+                            ))}
+                        </nav>
+                        {/* Botão menu (mobile) */}
+                        <button
+                            type="button"
+                            aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}
+                            aria-expanded={menuAberto}
+                            onClick={() => setMenuAberto((v) => !v)}
+                            className="-mr-1 flex size-10 items-center justify-center rounded-lg text-fg-secondary transition duration-100 ease-linear hover:bg-secondary md:hidden"
+                        >
+                            {menuAberto ? <XClose className="size-6" /> : <Menu01 className="size-6" />}
+                        </button>
+                    </div>
+
+                    {/* Menu mobile (dropdown) */}
+                    {menuAberto && (
+                        <nav className="mt-2 flex flex-col gap-1 rounded-2xl bg-primary p-2 shadow-sm ring-1 ring-border-secondary md:hidden">
+                            {SECOES.map((s) => (
+                                <button
+                                    key={s.id}
+                                    type="button"
+                                    onClick={() => irParaFechando(s.id)}
+                                    className="rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-secondary transition duration-100 ease-linear hover:bg-secondary hover:text-primary"
+                                >
+                                    {s.label}
+                                </button>
+                            ))}
+                        </nav>
+                    )}
                 </div>
             </header>
 
             {/* Hero */}
             <section className="relative overflow-hidden pt-12 md:pt-16">
-                <div className="mx-auto w-full max-w-container px-4 md:px-8">
+                <div className="mx-auto w-full max-w-container px-6 md:px-8">
                     <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
                         <h1 className="text-display-md font-semibold text-primary md:text-display-lg lg:text-display-xl">Meia-entrada</h1>
                         <p className="mt-4 max-w-2xl text-lg text-tertiary md:mt-6 md:text-xl">
@@ -227,7 +262,7 @@ export function MeiaEntrada() {
 
             {/* Quem tem direito — categorias à esquerda, informações complementares à direita */}
             <section id="quem-tem-direito" className="scroll-mt-24 bg-secondary py-16 md:py-24">
-                <div className="mx-auto w-full max-w-container px-4 md:px-8">
+                <div className="mx-auto w-full max-w-container px-6 md:px-8">
                     <div className="max-w-3xl">
                         <h2 className="text-display-sm font-semibold text-primary md:text-display-md">Quem tem direito à meia-entrada?</h2>
                         <p className="mt-4 text-lg text-tertiary md:mt-5">Confira quem tem direito ao benefício e qual documento deve ser apresentado para comprovação.</p>
@@ -287,7 +322,7 @@ export function MeiaEntrada() {
 
             {/* Carteira de Identificação Estudantil */}
             <section id="cie" className="scroll-mt-24 bg-primary py-16 md:py-24">
-                <div className="mx-auto grid w-full max-w-container grid-cols-1 items-stretch gap-10 px-4 md:px-8 lg:grid-cols-2 lg:gap-16">
+                <div className="mx-auto grid w-full max-w-container grid-cols-1 items-stretch gap-10 px-6 md:px-8 lg:grid-cols-2 lg:gap-16">
                     <div className="flex flex-col">
                         <h2 className="text-display-sm font-semibold text-primary md:text-display-md">Como identificar uma CIE válida</h2>
                         <p className="mt-4 text-lg text-tertiary md:mt-5">
@@ -309,7 +344,8 @@ export function MeiaEntrada() {
                             Não serão aceitos em nenhuma hipótese boleto bancário, declarações, comprovante de mensalidade, carteirinhas vencidas e/ou quaisquer
                             documentos que não estejam de acordo com a legislação vigente.
                         </p>
-                        <div className="mt-6">
+                        {/* CTA desktop: sob o texto, na coluna esquerda */}
+                        <div className="mt-6 hidden lg:block">
                             <Button color="secondary" size="lg" onClick={() => irPara("faq")}>
                                 Verificar se minha carteirinha está válida
                             </Button>
@@ -325,12 +361,18 @@ export function MeiaEntrada() {
                         </div>
                         <p className="text-xs text-quaternary">Imagem meramente ilustrativa. O layout da CIE pode variar conforme a entidade emissora.</p>
                     </div>
+                    {/* CTA mobile: depois da imagem de exemplo */}
+                    <div className="lg:hidden">
+                        <Button color="secondary" size="lg" className="w-full" onClick={() => irPara("faq")}>
+                            Verificar se minha carteirinha está válida
+                        </Button>
+                    </div>
                 </div>
             </section>
 
             {/* Órgãos de fiscalização */}
             <section id="fiscalizacao" className="scroll-mt-24 bg-secondary py-16 md:py-24">
-                <div className="mx-auto w-full max-w-container px-4 md:px-8">
+                <div className="mx-auto w-full max-w-container px-6 md:px-8">
                     <div className="max-w-3xl">
                         <h2 className="text-display-sm font-semibold text-primary md:text-display-md">Órgãos de fiscalização</h2>
                         <p className="mt-4 text-lg text-tertiary md:mt-5">
@@ -366,7 +408,7 @@ export function MeiaEntrada() {
 
             {/* Legislação */}
             <section id="legislacao" className="scroll-mt-24 bg-primary py-16 md:py-24">
-                <div className="mx-auto w-full max-w-container px-4 md:px-8">
+                <div className="mx-auto w-full max-w-container px-6 md:px-8">
                     <div className="max-w-3xl">
                         <h2 className="text-display-sm font-semibold text-primary md:text-display-md">O que diz a lei</h2>
                         <p className="mt-4 text-lg text-tertiary md:mt-5">
@@ -441,7 +483,7 @@ export function MeiaEntrada() {
 
             {/* Dúvidas frequentes (Accordion 02) */}
             <section id="faq" className="scroll-mt-24 bg-secondary py-16 md:py-24">
-                <div className="mx-auto w-full max-w-container px-4 md:px-8">
+                <div className="mx-auto w-full max-w-container px-6 md:px-8">
                     <div className="max-w-3xl">
                         <h2 className="text-display-sm font-semibold text-primary md:text-display-md">Dúvidas frequentes</h2>
                         <p className="mt-4 text-lg text-tertiary md:mt-5">Tudo o que você precisa saber sobre o uso da meia-entrada.</p>
@@ -512,7 +554,7 @@ export function MeiaEntrada() {
 
             {/* Footer */}
             <footer className="border-t border-secondary bg-primary py-8">
-                <div className="mx-auto flex w-full max-w-container flex-col items-center gap-6 px-4 md:flex-row md:justify-between md:px-8">
+                <div className="mx-auto flex w-full max-w-container flex-col-reverse items-center gap-6 px-6 md:flex-row md:justify-between md:px-8">
                     <p className="text-sm text-tertiary">© 2026 Ingresse. Todos os direitos reservados.</p>
                     <div className="flex items-center gap-5">
                         {SOCIAIS.map((s) => (

@@ -87,11 +87,14 @@ interface Transacao {
     status: StatusTransacao;
     nomeIngresso: string;
     setor: string;
+    modalidade: string;
     lote: string;
     comprador: string;
+    tipoDocumentoComprador: string;
     cpf: string;
     telefone: string;
     email: string;
+    dataNascimentoComprador: string;
     canal: string;
     tipoPagamento: string;
     estado: string;
@@ -109,17 +112,25 @@ interface Transacao {
     bundleDinamico: boolean;
     // Dados da inscrição.
     itemCodigo: string;
+    idInscricao: string;
     // Dados do atleta — normalmente a mesma pessoa que comprou, mas pode ser outra
     // (compra feita para terceiros).
     atletaNome: string;
+    atletaTipoDocumento: string;
     atletaDocumento: string;
     atletaEmail: string;
     atletaTelefone: string;
-    // Compra em grupo — só preenchido quando o pedido é de uma equipe ("—" nos demais).
-    grupoNomeEquipe: string;
-    grupoResponsavel: string;
-    grupoEmailResponsavel: string;
-    grupoCelularResponsavel: string;
+    atletaDataNascimento: string;
+    // Compra em grupo — os campos de líder só são preenchidos quando o pedido é de um
+    // grupo ("—" nos demais).
+    grupoCompraEmGrupo: string;
+    grupoNomeGrupo: string;
+    grupoLiderGrupo: string;
+    grupoTelefoneLider: string;
+    grupoEmailLider: string;
+    grupoDocLider: string;
+    grupoNumDocLider: string;
+    grupoDataNascLider: string;
     // Perguntas (formulário de inscrição) — só existem para poder popular a
     // tabela quando o usuário marca esses campos na gestão de colunas.
     perguntaPace: string;
@@ -170,6 +181,13 @@ const LOCAIS = [
 ];
 const OPERADORES = ["Bilheteria Praia de Carneiros", "Loja Oficial Réveillon Carneiros"];
 const PASSKEYS = ["VIP2027", "EARLYBIRD", "PARCEIRO2027", "IMPRENSA27", "STAFF2027"];
+const MODALIDADE_OPTIONS = ["Corrida", "Caminhada"];
+const LOTE_OPTIONS = [
+    { lote: "1º lote", peso: 0.35 },
+    { lote: "2º lote", peso: 0.3 },
+    { lote: "3º lote", peso: 0.25 },
+    { lote: "4º lote", peso: 0.1 },
+];
 const CUPONS = [
     { cupom: "REVEILLON15", pct: 0.15 },
     { cupom: "OFF10", pct: 0.1 },
@@ -177,8 +195,9 @@ const CUPONS = [
 ];
 
 // Pools para as "Perguntas" do formulário de inscrição (mock).
-const DISTANCIA_PROVA_OPTIONS = ["5km", "10km", "21km", "42km"];
+const DISTANCIA_PROVA_OPTIONS = ["5km", "10km", "15km", "21km", "42km"];
 const CATEGORIA_PARTICIPACAO_OPTIONS = ["Geral", "PCD", "Elite", "Master"];
+const CATEGORIA_COMPETICAO_OPTIONS = ["Feminino", "Masculino", "Idosos", "PCD"];
 const CAMISA_TAMANHOS = ["PP", "P", "M", "G", "GG", "XG"];
 const FAIXA_ETARIA_OPTIONS = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
 const CONVENIO_OPTIONS = ["Nenhum", "Unimed", "Bradesco Saúde", "SulAmérica", "Amil", "Hapvida"];
@@ -214,7 +233,8 @@ const SESSAO_ID = "reveillon-31-12";
 
 const pad = (n: number, size = 2) => String(n).padStart(size, "0");
 const fmtDateTime = (d: Date) =>
-    `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} às ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const fmtDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 
 function mulberry32(seed: number) {
     return function () {
@@ -250,7 +270,7 @@ const transacoes: Transacao[] = (() => {
         }
         const created = new Date(SALES_START_DATE);
         created.setDate(created.getDate() + dayOffset);
-        created.setHours(Math.floor(rng() * 24), Math.floor(rng() * 60));
+        created.setHours(Math.floor(rng() * 24), Math.floor(rng() * 60), Math.floor(rng() * 60));
         const updated = new Date(created.getTime() + Math.floor(rng() * 30) * 60_000);
 
         const statusRoll = rng();
@@ -281,6 +301,8 @@ const transacoes: Transacao[] = (() => {
         const email = `${emailUser}${Math.floor(rng() * 90 + 10)}@${pick(["gmail.com", "outlook.com", "hotmail.com", "yahoo.com"])}`;
         const cpf = String(Math.floor(rng() * 9e10 + 1e10));
         const telefone = `+55${local.ddd}9${String(Math.floor(rng() * 9e7 + 1e7))}`;
+        const tipoDocumentoComprador = rng() < 0.85 ? "CPF" : "Passaporte";
+        const dataNascimentoComprador = fmtDate(new Date(1955 + Math.floor(rng() * 50), Math.floor(rng() * 12), 1 + Math.floor(rng() * 28)));
 
         // Dados do atleta — na maioria das vezes é quem comprou; ~15% das compras são
         // feitas para outra pessoa (ex.: presente, inscrição em nome de terceiros).
@@ -290,8 +312,10 @@ const transacoes: Transacao[] = (() => {
         const atletaEmail = compradoParaOutro
             ? `${atletaEmailUser}${Math.floor(rng() * 90 + 10)}@${pick(["gmail.com", "outlook.com", "hotmail.com", "yahoo.com"])}`
             : email;
+        const atletaTipoDocumento = compradoParaOutro ? (rng() < 0.85 ? "CPF" : "Passaporte") : tipoDocumentoComprador;
         const atletaDocumento = compradoParaOutro ? String(Math.floor(rng() * 9e10 + 1e10)) : cpf;
         const atletaTelefone = compradoParaOutro ? `+55${local.ddd}9${String(Math.floor(rng() * 9e7 + 1e7))}` : telefone;
+        const atletaDataNascimento = fmtDate(new Date(1955 + Math.floor(rng() * 50), Math.floor(rng() * 12), 1 + Math.floor(rng() * 28)));
 
         // Compra em grupo — só ~12% dos pedidos são de uma equipe; o comprador é o
         // responsável pelo pedido nesse modelo (não há sub-registros por integrante).
@@ -300,9 +324,12 @@ const transacoes: Transacao[] = (() => {
         // Perguntas (formulário de inscrição de corrida de rua).
         const jaCorreuProva = rng() < 0.55;
         const distanciaProva = pick(DISTANCIA_PROVA_OPTIONS);
-        const distanciaKm = { "5km": 5, "10km": 10, "21km": 21, "42km": 42 }[distanciaProva] ?? 10;
+        const distanciaKm = { "5km": 5, "10km": 10, "15km": 15, "21km": 21, "42km": 42 }[distanciaProva] ?? 10;
         const paceMin = 4 + rng() * 3; // 4:00–7:00 min/km
         const participaRevezamento = rng() < 0.1;
+        const categoriaCompeticao = pick(CATEGORIA_COMPETICAO_OPTIONS);
+        const modalidade = `${pick(MODALIDADE_OPTIONS)} ${distanciaProva}`;
+        const lote = pickWeighted(LOTE_OPTIONS).lote;
         const perguntas = {
             perguntaPace: `${Math.floor(paceMin)}:${pad(Math.round((paceMin % 1) * 60))} min/km`,
             perguntaDistanciaProva: distanciaProva,
@@ -337,13 +364,16 @@ const transacoes: Transacao[] = (() => {
             dataCriacao: fmtDateTime(created),
             ultimaAtualizacao: fmtDateTime(updated),
             status,
-            nomeIngresso: tipo.nome,
-            setor: cat.setor,
-            lote: tipo.lote,
+            nomeIngresso: distanciaProva,
+            setor: categoriaCompeticao,
+            modalidade,
+            lote,
             comprador: nome,
+            tipoDocumentoComprador,
             cpf,
             telefone,
             email,
+            dataNascimentoComprador,
             canal,
             tipoPagamento,
             estado: local.estado,
@@ -360,14 +390,21 @@ const transacoes: Transacao[] = (() => {
             bundle: false,
             bundleDinamico: false,
             itemCodigo: `IT-${pad(Math.floor(rng() * 9999), 4)}`,
+            idInscricao: `INS-${pad(Math.floor(rng() * 999999), 6)}`,
             atletaNome,
+            atletaTipoDocumento,
             atletaDocumento,
             atletaEmail,
             atletaTelefone,
-            grupoNomeEquipe: compraEmGrupo ? `${pick(EQUIPE_PREFIXOS)} ${pick(SOBRENOMES)}` : "—",
-            grupoResponsavel: compraEmGrupo ? nome : "—",
-            grupoEmailResponsavel: compraEmGrupo ? email : "—",
-            grupoCelularResponsavel: compraEmGrupo ? telefone : "—",
+            atletaDataNascimento,
+            grupoCompraEmGrupo: compraEmGrupo ? "Sim" : "Não",
+            grupoNomeGrupo: compraEmGrupo ? `${pick(EQUIPE_PREFIXOS)} ${pick(SOBRENOMES)}` : "—",
+            grupoLiderGrupo: compraEmGrupo ? nome : "—",
+            grupoTelefoneLider: compraEmGrupo ? telefone : "—",
+            grupoEmailLider: compraEmGrupo ? email : "—",
+            grupoDocLider: compraEmGrupo ? tipoDocumentoComprador : "—",
+            grupoNumDocLider: compraEmGrupo ? cpf : "—",
+            grupoDataNascLider: compraEmGrupo ? dataNascimentoComprador : "—",
             ...perguntas,
         });
     }
@@ -739,9 +776,14 @@ const COLUMN_FIELD_MAP: Partial<Record<string, keyof Transacao | "status">> = {
     pedido_canal: "canal",
     pedido_operadorVendas: "operadorVendas",
     pedido_comprador: "comprador",
+    pedido_tipoDocumentoComprador: "tipoDocumentoComprador",
     pedido_documentoComprador: "cpf",
     pedido_emailComprador: "email",
     pedido_telefoneComprador: "telefone",
+    pedido_dataNascimentoComprador: "dataNascimentoComprador",
+    inscricao_categoria: "setor",
+    inscricao_modalidade: "modalidade",
+    pedido_idInscricao: "idInscricao",
     pedido_cupom: "cupom",
     pedido_passkey: "passkey",
     pedido_quantidade: "qtdItem",
@@ -749,17 +791,21 @@ const COLUMN_FIELD_MAP: Partial<Record<string, keyof Transacao | "status">> = {
     pedido_valorDesconto: "valorDesconto",
     pedido_valorTotal: "valorFinal",
     inscricao_item: "itemCodigo",
-    inscricao_nomeItem: "nomeIngresso",
-    inscricao_categoria: "setor",
     inscricao_lote: "lote",
     atleta_nome: "atletaNome",
+    atleta_tipoDocumento: "atletaTipoDocumento",
     atleta_documento: "atletaDocumento",
     atleta_email: "atletaEmail",
     atleta_telefone: "atletaTelefone",
-    grupo_nomeEquipe: "grupoNomeEquipe",
-    grupo_responsavel: "grupoResponsavel",
-    grupo_emailResponsavel: "grupoEmailResponsavel",
-    grupo_celularResponsavel: "grupoCelularResponsavel",
+    atleta_dataNascimento: "atletaDataNascimento",
+    grupo_compraEmGrupo: "grupoCompraEmGrupo",
+    grupo_nomeGrupo: "grupoNomeGrupo",
+    grupo_liderGrupo: "grupoLiderGrupo",
+    grupo_telefoneLider: "grupoTelefoneLider",
+    grupo_emailLider: "grupoEmailLider",
+    grupo_docLider: "grupoDocLider",
+    grupo_numDocLider: "grupoNumDocLider",
+    grupo_dataNascLider: "grupoDataNascLider",
     pergunta_pace: "perguntaPace",
     pergunta_distanciaProva: "perguntaDistanciaProva",
     pergunta_tempoEstimado: "perguntaTempoEstimado",
@@ -786,22 +832,26 @@ const COLUMN_FIELD_MAP: Partial<Record<string, keyof Transacao | "status">> = {
     pergunta_peso: "perguntaPeso",
     pergunta_numeracaoCalcado: "perguntaNumeracaoCalcado",
 };
-const FIELD_BY_COLUMN_KEY = new Map<keyof Transacao | "status", string>(
-    Object.entries(COLUMN_FIELD_MAP).map(([fieldId, colKey]) => [colKey as keyof Transacao | "status", fieldId]),
-);
-
-// Rótulos e ordem das colunas vêm do próprio export-fields.ts (fonte única de verdade),
-// na mesma ordem de COLUMN_FIELD_MAP, para nunca divergir do texto/ordem da gestão de colunas.
+// Rótulos das colunas vêm do próprio export-fields.ts (fonte única de verdade), para
+// nunca divergir do texto mostrado na gestão de colunas.
 const EXPORT_FIELD_LABELS: Record<string, string> = Object.fromEntries(
     EXPORT_FIELD_GROUPS.flatMap((g) => g.fields.map((f) => [f.id, f.label] as const)),
 );
 const RIGHT_ALIGN_KEYS = new Set<keyof Transacao>(["qtdItem", "valorUnitario", "valorDesconto", "valorFinal"]);
-const TRANSACAO_COLUMNS: Array<{ key: keyof Transacao | "status"; label: string; align?: "right" }> = Object.entries(COLUMN_FIELD_MAP).map(
-    ([exportId, colKey]) => ({
-        key: colKey as keyof Transacao | "status",
-        label: EXPORT_FIELD_LABELS[exportId],
-        align: RIGHT_ALIGN_KEYS.has(colKey as keyof Transacao) ? "right" : undefined,
-    }),
+
+/** Definição de coluna por campo — a ORDEM em que as colunas aparecem na tabela não vem
+ * daqui, e sim da ordem de `selectedFields` (ver `visibleColumns`), que reflete tanto a
+ * ordem canônica de COLUMN_FIELD_MAP quanto qualquer reordenação feita via drag and drop
+ * no modal "Editar colunas". */
+const COLUMN_BY_FIELD_ID = new Map(
+    Object.entries(COLUMN_FIELD_MAP).map(([exportId, colKey]) => [
+        exportId,
+        {
+            key: colKey as keyof Transacao | "status",
+            label: EXPORT_FIELD_LABELS[exportId],
+            align: RIGHT_ALIGN_KEYS.has(colKey as keyof Transacao) ? ("right" as const) : undefined,
+        },
+    ]),
 );
 
 const formatCpf = (cpf: string): string => cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
@@ -813,8 +863,8 @@ const formatTelefone = (telefone: string): string => {
 };
 
 const CURRENCY_KEYS = new Set<keyof Transacao>(["valorUnitario", "valorDesconto", "valorFinal"]);
-const DOCUMENTO_KEYS = new Set<keyof Transacao>(["cpf", "atletaDocumento"]);
-const TELEFONE_KEYS = new Set<keyof Transacao>(["telefone", "atletaTelefone", "grupoCelularResponsavel"]);
+const DOCUMENTO_KEYS = new Set<keyof Transacao>(["cpf", "atletaDocumento", "grupoNumDocLider"]);
+const TELEFONE_KEYS = new Set<keyof Transacao>(["telefone", "atletaTelefone", "grupoTelefoneLider"]);
 
 const renderTransacaoCell = (row: Transacao, key: keyof Transacao | "status"): ReactNode => {
     if (key === "status") {
@@ -843,10 +893,7 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
     const [selectedFields, setSelectedFields] = useState<string[]>(DEFAULT_SELECTED);
 
     const visibleColumns = useMemo(
-        () => TRANSACAO_COLUMNS.filter((col) => {
-            const fieldId = FIELD_BY_COLUMN_KEY.get(col.key);
-            return !fieldId || selectedFields.includes(fieldId);
-        }),
+        () => selectedFields.map((fieldId) => COLUMN_BY_FIELD_ID.get(fieldId)).filter((col): col is NonNullable<typeof col> => Boolean(col)),
         [selectedFields],
     );
 

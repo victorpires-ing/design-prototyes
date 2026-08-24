@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Reorder, useDragControls } from "motion/react";
 import { Focusable as AriaFocusable } from "react-aria-components";
 import { Lock01, SearchLg, XClose } from "@untitledui/icons";
 import { Tabs } from "@/components/application/tabs/tabs";
@@ -15,6 +16,52 @@ import { EXPORT_FIELD_GROUPS, type ExportField } from "../data/export-fields";
 
 type PainelAtivo = "opcoes" | "selecionadas";
 
+function GripVertical({ className }: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+            <circle cx="9" cy="6" r="1.6" />
+            <circle cx="9" cy="12" r="1.6" />
+            <circle cx="9" cy="18" r="1.6" />
+            <circle cx="15" cy="6" r="1.6" />
+            <circle cx="15" cy="12" r="1.6" />
+            <circle cx="15" cy="18" r="1.6" />
+        </svg>
+    );
+}
+
+/** Uma linha da lista "Colunas selecionadas" — arrastável por um handle dedicado
+ * (dragListener={false} + useDragControls), igual ao padrão usado em Ingressos. */
+const ColunaSelecionadaItem = ({ id, label, onRemover }: { id: string; label: string; onRemover: () => void }) => {
+    const controls = useDragControls();
+    return (
+        <Reorder.Item
+            value={id}
+            dragListener={false}
+            dragControls={controls}
+            whileDrag={{ backgroundColor: "var(--color-bg-primary)", boxShadow: "0 8px 24px rgba(16,24,40,0.12)", zIndex: 20 }}
+            className="flex items-center gap-2 rounded-lg border border-secondary bg-primary px-3 py-2.5"
+        >
+            <button
+                type="button"
+                onPointerDown={(e) => controls.start(e)}
+                aria-label={`Arrastar para reordenar ${label}`}
+                className="flex shrink-0 cursor-grab touch-none items-center justify-center text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary active:cursor-grabbing"
+            >
+                <GripVertical className="size-4" />
+            </button>
+            <span className="flex-1 truncate text-sm font-medium text-primary">{label}</span>
+            <button
+                type="button"
+                aria-label={`Remover ${label}`}
+                onClick={onRemover}
+                className="flex shrink-0 items-center justify-center text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary"
+            >
+                <XClose className="size-4" aria-hidden="true" />
+            </button>
+        </Reorder.Item>
+    );
+};
+
 /** Campo fixo — sempre incluído, sempre na primeira posição, não aparece
  * como opção (só existem os campos que o comprador pode escolher). */
 const ANCHOR_FIELD_ID = "pedido_id";
@@ -28,16 +75,23 @@ const ALL_FIELD_IDS = EXPORT_FIELD_GROUPS.flatMap((g) => g.fields.map((f) => f.i
 export const DEFAULT_SELECTED = [
     ANCHOR_FIELD_ID,
     "pedido_status",
-    "pedido_comprador",
-    "pedido_documentoComprador",
-    "pedido_emailComprador",
-    "pedido_telefoneComprador",
-    "pedido_cupom",
-    "inscricao_nomeItem",
+    "atleta_nome",
+    "atleta_tipoDocumento",
+    "atleta_documento",
+    "atleta_telefone",
+    "atleta_email",
+    "atleta_dataNascimento",
     "inscricao_categoria",
+    "inscricao_modalidade",
+    "inscricao_lote",
     "pedido_valorUnitario",
     "pedido_valorDesconto",
     "pedido_valorTotal",
+    "pedido_cupom",
+    "pedido_canal",
+    "pedido_formaPagamento",
+    "pedido_dataCriacao",
+    "pedido_ultimaAtualizacao",
 ];
 
 interface ManageColumnsModalProps {
@@ -93,7 +147,9 @@ export const ManageColumnsModal = ({ isOpen, onClose, selected, onSelectedChange
         return EXPORT_FIELD_GROUPS.map((group) => ({
             id: group.id,
             title: group.title,
-            fields: group.fields.filter((f: ExportField) => f.id !== ANCHOR_FIELD_ID && (!term || f.label.toLowerCase().includes(term))),
+            fields: group.fields
+                .filter((f: ExportField) => f.id !== ANCHOR_FIELD_ID && (!term || f.label.toLowerCase().includes(term)))
+                .sort((a, b) => a.label.localeCompare(b.label, "pt-BR")),
         })).filter((group) => group.fields.length > 0);
     }, [leftSearch]);
 
@@ -200,7 +256,7 @@ export const ManageColumnsModal = ({ isOpen, onClose, selected, onSelectedChange
 
                     <div className="flex min-h-0 flex-1 flex-col divide-y divide-secondary md:flex-row md:divide-x md:divide-y-0">
                         {/* Opções de colunas */}
-                        <div className={cx("flex min-h-0 flex-1 flex-col gap-4 px-4 pt-2 md:px-6 md:pt-6", painelAtivo !== "opcoes" && "hidden md:flex")}>
+                        <div className={cx("flex min-h-0 min-w-0 flex-1 flex-col gap-4 px-4 pt-2 md:px-6 md:pt-6", painelAtivo !== "opcoes" && "hidden md:flex")}>
                             <p className="hidden shrink-0 text-sm font-semibold text-primary md:block">Opções de colunas</p>
                             <Input size="sm" icon={SearchLg} aria-label="Buscar coluna" placeholder="Buscar coluna" value={leftSearch} onChange={setLeftSearch} className="shrink-0" />
                             <div className="-mx-4 shrink-0 border-b border-secondary md:hidden" />
@@ -247,7 +303,7 @@ export const ManageColumnsModal = ({ isOpen, onClose, selected, onSelectedChange
                         </div>
 
                         {/* Colunas selecionadas */}
-                        <div className={cx("flex min-h-0 flex-1 flex-col gap-4 px-4 pt-2 md:gap-6 md:px-6 md:pt-6", painelAtivo !== "selecionadas" && "hidden md:flex")}>
+                        <div className={cx("flex min-h-0 min-w-0 flex-1 flex-col gap-4 px-4 pt-2 md:gap-6 md:px-6 md:pt-6", painelAtivo !== "selecionadas" && "hidden md:flex")}>
                             <div className="flex shrink-0 flex-col gap-4">
                                 <div className="hidden items-center gap-2 md:flex">
                                     <p className="text-sm font-semibold text-primary">Colunas selecionadas</p>
@@ -265,19 +321,35 @@ export const ManageColumnsModal = ({ isOpen, onClose, selected, onSelectedChange
                                         <Lock01 className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
                                     </TooltipTrigger>
                                 </Tooltip>
-                                {visibleRest.map((id) => (
-                                    <div key={id} className="flex items-center gap-2 rounded-lg border border-secondary bg-primary px-3 py-2.5">
-                                        <span className="flex-1 truncate text-sm font-medium text-primary">{FIELD_LABELS[id] ?? id}</span>
-                                        <button
-                                            type="button"
-                                            aria-label={`Remover ${FIELD_LABELS[id] ?? id}`}
-                                            onClick={() => toggleField(id, false)}
-                                            className="flex shrink-0 items-center justify-center text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary"
-                                        >
-                                            <XClose className="size-4" aria-hidden="true" />
-                                        </button>
-                                    </div>
-                                ))}
+                                {rightSearch.trim() ? (
+                                    // Durante a busca a lista fica filtrada — reordenar um subconjunto não tem
+                                    // uma posição final óbvia no array completo, então o arrastar fica desativado.
+                                    visibleRest.map((id) => (
+                                        <div key={id} className="flex items-center gap-2 rounded-lg border border-secondary bg-primary px-3 py-2.5">
+                                            <span className="flex-1 truncate text-sm font-medium text-primary">{FIELD_LABELS[id] ?? id}</span>
+                                            <button
+                                                type="button"
+                                                aria-label={`Remover ${FIELD_LABELS[id] ?? id}`}
+                                                onClick={() => toggleField(id, false)}
+                                                className="flex shrink-0 items-center justify-center text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary"
+                                            >
+                                                <XClose className="size-4" aria-hidden="true" />
+                                            </button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <Reorder.Group
+                                        as="div"
+                                        axis="y"
+                                        values={rest}
+                                        onReorder={(newRest) => setDraft([ANCHOR_FIELD_ID, ...newRest])}
+                                        className="flex flex-col gap-2"
+                                    >
+                                        {rest.map((id) => (
+                                            <ColunaSelecionadaItem key={id} id={id} label={FIELD_LABELS[id] ?? id} onRemover={() => toggleField(id, false)} />
+                                        ))}
+                                    </Reorder.Group>
+                                )}
                                 {draft.length === 1 && <p className="py-6 text-center text-sm text-tertiary">Nenhuma coluna adicional selecionada.</p>}
                             </div>
                         </div>

@@ -7,7 +7,7 @@ import { cx } from "@/utils/cx";
 /*  Products                                                          */
 /* ------------------------------------------------------------------ */
 
-type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes" | "marketplace" | "carteira-web" | "freepass" | "payin" | "payout";
+type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes" | "marketplace" | "carteira-web" | "freepass" | "payin";
 
 interface ProductCardData {
     id: string;
@@ -88,13 +88,6 @@ const PRODUCTS: ProductCardData[] = [
         to: "/payin/suspensao-de-conta",
         illustration: "payin",
     },
-    {
-        id: "payout",
-        name: "PayOut",
-        description: "Repasses aos organizadores: fila, cálculo e liberação",
-        to: "/payout/repasses",
-        illustration: "payout",
-    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
@@ -108,7 +101,6 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     "carteira-web": CarteiraWebIllustration,
     freepass: FreepassIllustration,
     payin: PayInIllustration,
-    payout: PayOutIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -184,58 +176,6 @@ const ProductCard = ({ product }: { product: ProductCardData }) => {
 /* ------------------------------------------------------------------ */
 /*  Illustrations — neutral tones with brand-colored highlights       */
 /* ------------------------------------------------------------------ */
-
-function PayOutIllustration() {
-    return (
-        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
-            <defs>
-                <linearGradient id="po-bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="160">
-                    <stop offset="0%" stopColor={N100} />
-                    <stop offset="100%" stopColor={N200} />
-                </linearGradient>
-            </defs>
-            <rect width="320" height="160" fill="url(#po-bg)" />
-
-            {/* Extrato do repasse à esquerda (bruto → taxas → líquido) */}
-            <rect x="22" y="26" width="122" height="108" rx="10" fill={N50} stroke={BORDER} />
-            <rect x="34" y="40" width="60" height="6" rx="3" fill={N400} />
-            <rect x="34" y="58" width="98" height="5" rx="2.5" fill={N200} />
-            <rect x="34" y="72" width="98" height="5" rx="2.5" fill={N200} />
-            <rect x="34" y="86" width="98" height="5" rx="2.5" fill={N200} />
-            <line x1="34" y1="102" x2="132" y2="102" stroke={N300} strokeWidth="1.5" strokeDasharray="4 4" />
-            <rect x="34" y="112" width="62" height="9" rx="4.5" fill={BRAND} />
-
-            {/* Seta de saída do dinheiro */}
-            <g stroke={BRAND} strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M154 80 L188 80" />
-                <polyline points="181,73 188,80 181,87" />
-            </g>
-
-            {/* Conta bancária de destino */}
-            <rect x="198" y="46" width="98" height="68" rx="10" fill={N50} stroke={BORDER} />
-            <path d="M212 74 L247 58 L282 74 Z" fill={BRAND_SOFT} />
-            <g fill={N300}>
-                <rect x="216" y="80" width="7" height="20" rx="2" />
-                <rect x="230" y="80" width="7" height="20" rx="2" />
-                <rect x="244" y="80" width="7" height="20" rx="2" />
-                <rect x="258" y="80" width="7" height="20" rx="2" />
-                <rect x="272" y="80" width="7" height="20" rx="2" />
-            </g>
-            <rect x="212" y="102" width="70" height="5" rx="2.5" fill={N200} />
-
-            {/* Selo de pagamento confirmado */}
-            <circle cx="292" cy="118" r="13" fill={BRAND} />
-            <polyline
-                points="286,118 291,123 299,114"
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
-}
 
 function PayInIllustration() {
     return (

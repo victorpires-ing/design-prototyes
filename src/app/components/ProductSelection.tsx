@@ -7,7 +7,7 @@ import { cx } from "@/utils/cx";
 /*  Products                                                          */
 /* ------------------------------------------------------------------ */
 
-type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes" | "marketplace" | "carteira-web" | "freepass";
+type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes" | "marketplace" | "carteira-web" | "freepass" | "payin";
 
 interface ProductCardData {
     id: string;
@@ -81,6 +81,13 @@ const PRODUCTS: ProductCardData[] = [
         to: "/freepass/distribuicao-cortesias",
         illustration: "freepass",
     },
+    {
+        id: "payin",
+        name: "PayIn",
+        description: "Antifraude: fila de análise e suspensão de conta",
+        to: "/payin/suspensao-de-conta",
+        illustration: "payin",
+    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
@@ -93,6 +100,7 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     marketplace: MarketplaceIllustration,
     "carteira-web": CarteiraWebIllustration,
     freepass: FreepassIllustration,
+    payin: PayInIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -168,6 +176,49 @@ const ProductCard = ({ product }: { product: ProductCardData }) => {
 /* ------------------------------------------------------------------ */
 /*  Illustrations — neutral tones with brand-colored highlights       */
 /* ------------------------------------------------------------------ */
+
+function PayInIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <defs>
+                <linearGradient id="sc-bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="160">
+                    <stop offset="0%" stopColor={N100} />
+                    <stop offset="100%" stopColor={N200} />
+                </linearGradient>
+            </defs>
+            <rect width="320" height="160" fill="url(#sc-bg)" />
+
+            {/* Fila de transações à esquerda */}
+            <rect x="24" y="30" width="132" height="100" rx="10" fill={N50} stroke={BORDER} />
+            <rect x="24" y="30" width="132" height="16" rx="10" fill={N200} />
+            <rect x="34" y="56" width="112" height="14" rx="4" fill={N200} />
+            <rect x="34" y="76" width="112" height="14" rx="4" fill={N200} />
+            <rect x="34" y="96" width="112" height="14" rx="4" fill={BRAND_SOFT} />
+            <rect x="34" y="96" width="4" height="14" rx="2" fill={BRAND} />
+
+            {/* Escudo de antifraude com a compra suspensa */}
+            <path
+                d="M232 24 l44 16 v34 c0 27 -18 48 -44 58 c-26 -10 -44 -31 -44 -58 v-34 Z"
+                fill={N50}
+                stroke={BORDER}
+            />
+            <rect x="208" y="66" width="48" height="30" rx="6" fill={N200} />
+            <circle cx="208" cy="66" r="5" fill={N100} />
+            <circle cx="256" cy="66" r="5" fill={N100} />
+            {/* Traço de suspensão */}
+            <g stroke={BRAND} strokeWidth="5" strokeLinecap="round">
+                <line x1="214" y1="96" x2="250" y2="66" />
+            </g>
+            <circle cx="232" cy="118" r="4" fill={N400} />
+
+            {/* Seta da fila para a decisão */}
+            <g stroke={N400} strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M164 80 L186 80" />
+                <polyline points="180,74 186,80 180,86" />
+            </g>
+        </svg>
+    );
+}
 
 function AppIllustration() {
     return (

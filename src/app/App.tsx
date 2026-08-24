@@ -156,6 +156,9 @@ import { DistribuicaoCortesias } from '../produtos/freepass/distribuicao-cortesi
 import { CortesiasDoEvento } from '../produtos/freepass/distribuicao-cortesias/pages/cortesias-do-evento';
 import { DetalhesCortesia } from '../produtos/freepass/distribuicao-cortesias/pages/detalhes-cortesia';
 import { EnviarCortesiasFlow, ResgatarCortesiasFlow } from '../produtos/freepass/distribuicao-cortesias/pages/distribuir-cortesias';
+import { Reanalise } from '../produtos/payin/suspensao-de-conta/pages/Reanalise';
+import { SuspenderUsuario } from '../produtos/payin/suspensao-de-conta/pages/SuspenderUsuario';
+import { Desfecho as DesfechoAntifraude } from '../produtos/payin/suspensao-de-conta/pages/Desfecho';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -341,6 +344,9 @@ export default function App() {
         <Route path="/freepass/distribuicao-cortesias/:eventoId/enviar" element={<EnviarCortesiasFlow />} />
         <Route path="/freepass/distribuicao-cortesias/:eventoId/resgatar" element={<ResgatarCortesiasFlow />} />
         <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />
+        <Route path="/payin/suspensao-de-conta" element={<Reanalise />} />
+        <Route path="/payin/suspensao-de-conta/suspender-usuario" element={<SuspenderUsuario />} />
+        <Route path="/payin/suspensao-de-conta/desfecho/:contaId" element={<DesfechoAntifraude />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </EquipeV2Provider>

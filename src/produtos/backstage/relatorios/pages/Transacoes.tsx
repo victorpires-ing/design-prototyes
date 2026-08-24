@@ -510,7 +510,7 @@ export function Transacoes() {
         <BackstageLayout activeSection="relatorios" activeItem="transacoes">
             <RelatorioFiltersProvider fields={FILTER_FIELDS} initialDateRange={PERIODO_PADRAO}>
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                    <main className="flex flex-1 flex-col gap-6 py-6 md:px-6">
                         <RelatorioPageHeader title="Transações" />
                         <TransacoesBody />
                     </main>
@@ -610,14 +610,14 @@ const TransacoesBody = () => {
             </div>
             <TransacionadoChartCard
                 data={chartData}
-                title="Total transacionado e número de ingressos"
-                subtitle="Distribuição diária de transações e ingressos vendidos"
+                title="Total transacionado e número de inscrições"
+                subtitle="Distribuição diária de transações e inscrições vendidas"
             />
             <TransacionadoChartCard
                 data={chartData}
                 acumulado
-                title="Total transacionado e número de ingressos acumulados"
-                subtitle="Evolução acumulada de transações e ingressos vendidos"
+                title="Total transacionado e número de inscrições acumuladas"
+                subtitle="Evolução acumulada de transações e inscrições vendidas"
             />
             <ListaTransacoesCard rows={filtered} />
         </>
@@ -647,7 +647,7 @@ const TotalTransacionadoCard = ({ total }: { total: number }) => (
 const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) => {
     if (rows.length === 0) {
         return (
-            <Card title="Quantidade de Ingressos e Valor por status">
+            <Card title="Quantidade de Inscrições e Valor por status">
                 <div className="px-4 py-12 text-center text-sm text-tertiary">Nenhum status corresponde aos filtros.</div>
             </Card>
         );
@@ -655,7 +655,7 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
     const totalValor = rows.reduce((s, r) => s + r.total, 0);
     const pctOf = (v: number) => (totalValor === 0 ? 0 : Math.round((v / totalValor) * 100));
     return (
-        <Card title="Quantidade de Ingressos e Valor por status">
+        <Card title="Quantidade de Inscrições e Valor por status">
             <div className="flex flex-col gap-6 px-4 py-5 md:px-5">
                 {/* Barra horizontal segmentada por status (largura ∝ valor) */}
                 <div className="flex w-full items-start gap-1">
@@ -672,7 +672,7 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
                     <thead>
                         <tr className="border-b border-secondary">
                             <th className="py-2 pr-4 text-left text-sm font-semibold text-tertiary" />
-                            <th className="px-4 py-2 text-right text-sm font-semibold text-tertiary">Total ingressos</th>
+                            <th className="px-4 py-2 text-right text-sm font-semibold text-tertiary">Total inscrições</th>
                             <th className="py-2 pl-4 text-right text-sm font-semibold text-tertiary">Total</th>
                         </tr>
                     </thead>
@@ -736,7 +736,7 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
                     <thead>
                         <tr className="border-b border-secondary">
                             <th className="py-2 pr-4 text-left text-sm font-semibold text-tertiary" />
-                            <th className="px-4 py-2 text-right text-sm font-semibold text-tertiary">Total ingressos</th>
+                            <th className="px-4 py-2 text-right text-sm font-semibold text-tertiary">Total inscrições</th>
                             <th className="py-2 pl-4 text-right text-sm font-semibold text-tertiary">Total</th>
                         </tr>
                     </thead>

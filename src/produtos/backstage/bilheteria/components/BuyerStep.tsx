@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { AlertCircle } from "@untitledui/icons";
+import { AlertCircle, ChevronRight } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
@@ -10,6 +10,7 @@ export type BuyerSearch =
     | { status: "searching" }
     | { status: "invalid-email" }
     | { status: "found"; buyer: Buyer }
+    | { status: "multiple"; buyers: Buyer[] }
     | { status: "email-not-found"; email: string }
     | { status: "document-not-found" };
 
@@ -19,12 +20,14 @@ interface BuyerStepProps {
     search: BuyerSearch;
     onSearch: () => void;
     onSkip: () => void;
+    /** Escolha da conta quando o e-mail pertence a mais de uma. */
+    onSelectBuyer: (buyer: Buyer) => void;
     /** Botão "Avançar" repetido abaixo do conteúdo no mobile (no desktop ele vive no header). */
     mobileAdvance?: React.ReactNode;
 }
 
 /** Passo 1 — identifica o comprador por documento ou e-mail. */
-export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, mobileAdvance }: BuyerStepProps) {
+export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSelectBuyer, mobileAdvance }: BuyerStepProps) {
     const isSearching = search.status === "searching";
     const isInvalid = search.status === "invalid-email";
 
@@ -79,6 +82,29 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, mobile
             </form>
 
             {search.status === "found" && <FoundCard buyer={search.buyer} />}
+
+            {search.status === "multiple" && (
+                <div className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
+                    <div className="flex flex-col gap-0.5">
+                        <h2 className="text-md font-semibold text-primary">{search.buyers.length} contas usam esse e-mail</h2>
+                        <p className="text-sm text-tertiary">Escolha para qual delas os ingressos vão.</p>
+                    </div>
+                    <hr className="border-secondary" />
+                    <div className="flex flex-col gap-2">
+                        {search.buyers.map((buyer) => (
+                            <button
+                                key={buyer.id}
+                                type="button"
+                                onClick={() => onSelectBuyer(buyer)}
+                                className="flex items-center gap-3 rounded-lg bg-secondary p-3 text-left transition duration-100 ease-linear hover:bg-secondary_hover"
+                            >
+                                <BuyerIdentity buyer={buyer} />
+                                <ChevronRight className="ml-auto size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {search.status === "email-not-found" && (
                 <ResultCard title="Conta não encontrada">

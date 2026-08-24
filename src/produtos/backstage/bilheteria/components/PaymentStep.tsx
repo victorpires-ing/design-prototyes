@@ -118,7 +118,12 @@ const ItemRow = ({ line, onQuantityChange }: { line: CartLine; onQuantityChange:
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
                     <p className="text-sm font-semibold text-primary">{formatBRL(line.unitPrice)}</p>
-                    <QuantityStepper label={line.name} value={line.quantity} onChange={(quantity) => onQuantityChange(line.id, quantity)} />
+                    <QuantityStepper
+                        label={line.name}
+                        value={line.quantity}
+                        showRemoveAtMin
+                        onChange={(quantity) => onQuantityChange(line.id, quantity)}
+                    />
                 </div>
             </div>
 

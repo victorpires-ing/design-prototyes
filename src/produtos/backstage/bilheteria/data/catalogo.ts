@@ -164,6 +164,8 @@ export const combos: ComboItem[] = [
 /* ------------------------------------------------------------------ */
 
 export interface Buyer {
+    /** Identifica a conta — e-mails podem se repetir entre contas. */
+    id: string;
     name: string;
     email: string;
     /** Documento já mascarado, como o backend devolve. */
@@ -173,6 +175,7 @@ export interface Buyer {
 
 const knownBuyers: Array<Buyer & { document?: string }> = [
     {
+        id: "acc-joao",
         name: "João Silva",
         email: "joaosilva@gmail.com",
         document: "12345678910",
@@ -180,11 +183,29 @@ const knownBuyers: Array<Buyer & { document?: string }> = [
         initials: "JS",
     },
     {
+        id: "acc-maria",
         name: "Maria Cunha",
         email: "maria.cunha@gmail.com",
         document: "98765432100",
         maskedDocument: "CPF •••.•••.432-00",
         initials: "MC",
+    },
+    // Duas contas com o mesmo e-mail — o passo 1 precisa deixar escolher qual delas.
+    {
+        id: "acc-ana",
+        name: "Ana Ribeiro",
+        email: "familia@gmail.com",
+        document: "11122233344",
+        maskedDocument: "CPF •••.•••.233-44",
+        initials: "AR",
+    },
+    {
+        id: "acc-carlos",
+        name: "Carlos Ribeiro",
+        email: "familia@gmail.com",
+        document: "55566677788",
+        maskedDocument: "CPF •••.•••.677-88",
+        initials: "CR",
     },
 ];
 
@@ -194,17 +215,18 @@ export const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.t
 
 const onlyDigits = (value: string) => value.replace(/\D/g, "");
 
-export function findBuyer(term: string): Buyer | null {
+/** Um e-mail pode estar em mais de uma conta; documento é sempre único. */
+export function findBuyers(term: string): Buyer[] {
     const value = term.trim().toLowerCase();
-    if (!value) return null;
+    if (!value) return [];
 
     if (isEmail(value)) {
-        return knownBuyers.find((buyer) => buyer.email === value) ?? null;
+        return knownBuyers.filter((buyer) => buyer.email === value);
     }
 
     const digits = onlyDigits(value);
-    if (!digits) return null;
-    return knownBuyers.find((buyer) => buyer.document === digits) ?? null;
+    if (!digits) return [];
+    return knownBuyers.filter((buyer) => buyer.document === digits);
 }
 
 export const formatBRL = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });

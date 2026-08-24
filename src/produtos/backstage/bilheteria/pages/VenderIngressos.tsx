@@ -18,7 +18,7 @@ import { cartCount, cartTotal, type Cart } from "../data/carrinho";
 import { addPedido, createPedido } from "../data/pedidos-store";
 import { gerarIngressosCsv, gerarIngressosPdf } from "../utils/gerar-ingressos";
 import type { Pedido } from "../data/pedidos";
-import { findBuyer, formatBRL, isEmail, isValidEmail, type Buyer } from "../data/catalogo";
+import { findBuyers, formatBRL, isEmail, isValidEmail, type Buyer } from "../data/catalogo";
 
 type Phase = "flow" | "processing" | "success";
 
@@ -78,9 +78,11 @@ export function VenderIngressos() {
         setSearch({ status: "searching" });
         window.clearTimeout(searchTimer.current);
         searchTimer.current = window.setTimeout(() => {
-            const found = findBuyer(value);
-            if (found) {
-                setSearch({ status: "found", buyer: found });
+            const found = findBuyers(value);
+            if (found.length === 1) {
+                setSearch({ status: "found", buyer: found[0] });
+            } else if (found.length > 1) {
+                setSearch({ status: "multiple", buyers: found });
             } else if (isEmail(value)) {
                 setSearch({ status: "email-not-found", email: value });
             } else {
@@ -136,13 +138,14 @@ export function VenderIngressos() {
         [cart, buyer, fallbackEmail],
     );
 
+    // Só o passo 1 volta para a lista; a tela de pedido emitido não tem "voltar".
     const handleBack = useCallback(() => {
-        if (phase === "success" || step === 0) {
+        if (step === 0) {
             navigate("/backstage/bilheteria");
             return;
         }
         setStep(step - 1);
-    }, [phase, step, navigate]);
+    }, [step, navigate]);
 
     /* --------------------------------------------------------------- */
 
@@ -156,7 +159,7 @@ export function VenderIngressos() {
         <BackstageLayout activeSection="bilheteria" activeItem="bilheteria-online">
             <div className="flex min-w-0 flex-1 flex-col">
                 <header className="relative flex items-center justify-between gap-3 px-4 py-6 max-md:justify-start md:px-6">
-                    {phase !== "processing" && (
+                    {phase === "flow" && (
                         <ButtonUtility size="sm" color="tertiary" icon={ArrowLeft} tooltip="Voltar" onClick={handleBack} />
                     )}
                     <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary max-md:static max-md:translate-x-0">
@@ -220,6 +223,7 @@ export function VenderIngressos() {
                                     search={search}
                                     onSearch={runSearch}
                                     onSkip={() => setIsSkipModalOpen(true)}
+                                    onSelectBuyer={(selected) => setSearch({ status: "found", buyer: selected })}
                                     mobileAdvance={advanceButton}
                                 />
                             )}

@@ -1,4 +1,4 @@
-import { Minus, Plus } from "@untitledui/icons";
+import { Minus, Plus, Trash01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 
 interface QuantityStepperProps {
@@ -7,12 +7,16 @@ interface QuantityStepperProps {
     max?: number;
     isDisabled?: boolean;
     label: string;
+    /** Com quantidade 1, troca o "−" por uma lixeira para deixar claro que o item sai da lista. */
+    showRemoveAtMin?: boolean;
 }
 
 /** Contador de quantidade `− 00 +` usado nas listas de itens e no resumo. */
-export function QuantityStepper({ value, onChange, max = 99, isDisabled, label }: QuantityStepperProps) {
+export function QuantityStepper({ value, onChange, max = 99, isDisabled, label, showRemoveAtMin }: QuantityStepperProps) {
     const buttonClass =
         "flex size-9 shrink-0 items-center justify-center text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary_hover disabled:cursor-not-allowed disabled:opacity-50";
+
+    const removes = showRemoveAtMin && value === 1;
 
     return (
         <div
@@ -23,12 +27,12 @@ export function QuantityStepper({ value, onChange, max = 99, isDisabled, label }
         >
             <button
                 type="button"
-                aria-label={`Remover uma unidade de ${label}`}
+                aria-label={removes ? `Remover ${label}` : `Remover uma unidade de ${label}`}
                 disabled={isDisabled || value <= 0}
                 onClick={() => onChange(Math.max(0, value - 1))}
-                className={cx(buttonClass, "rounded-l-lg")}
+                className={cx(buttonClass, "rounded-l-lg", removes && "hover:text-fg-error-secondary")}
             >
-                <Minus className="size-4" aria-hidden="true" />
+                {removes ? <Trash01 className="size-4" aria-hidden="true" /> : <Minus className="size-4" aria-hidden="true" />}
             </button>
             <span aria-live="polite" className="min-w-9 text-center text-sm font-medium tabular-nums text-primary">
                 {value.toString().padStart(2, "0")}

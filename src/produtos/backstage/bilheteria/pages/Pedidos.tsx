@@ -13,7 +13,7 @@ import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { CancelPedidosModal } from "../components/CancelPedidosModal";
-import { PedidoDetailsSlideOut } from "../components/PedidoDetailsSlideOut";
+import { PedidoDetailsSlideOut, type ResendChannel } from "../components/PedidoDetailsSlideOut";
 import { formatBRL } from "../data/catalogo";
 import { PEDIDO_STATUS_META, PEDIDO_TIPO_LABEL, type Pedido } from "../data/pedidos";
 import { cancelPedidos, formatDateTime, registerResend, usePedidos } from "../data/pedidos-store";
@@ -94,11 +94,11 @@ export function PedidosBilheteria() {
         toast.success(targets.length === 1 ? "Pedido cancelado" : `${targets.length} pedidos cancelados`);
     };
 
-    const handleResend = (pedido: Pedido) => {
+    const handleResend = (pedido: Pedido, canal: ResendChannel) => {
         const at = formatDateTime(new Date());
         registerResend(pedido.id, at);
         setDetail((current) => (current && current.id === pedido.id ? { ...current, resentAt: at } : current));
-        toast.success("Link reenviado com sucesso!");
+        toast.success(canal === "email" ? "Link reenviado por e-mail!" : "Link aberto no WhatsApp");
     };
 
     return (

@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import ticketArt from "../assets/ticket-art.webp";
 import type { Pedido } from "../data/pedidos";
 
 /**
@@ -53,18 +54,37 @@ export function ticketUnits(pedido: Pedido): TicketUnit[] {
 /** Retângulos do QR fictício — mesmo padrão determinístico da pré-visualização. */
 const qrCells = (seed: number) => Array.from({ length: 100 }, (_, index) => (index * 7 + (index % 5) * 13 + seed) % 3 !== 0);
 
-function drawTicketArt(doc: jsPDF, y: number) {
-    doc.setFillColor(255, 74, 64);
-    doc.rect(X, y, COL, 132, "F");
+/** Resolução da arte no PDF — 4x a largura impressa (178pt), ~288 dpi. */
+const ART_SCALE = 4;
 
-    doc.setFillColor(255, 255, 255);
-    doc.circle(X + COL / 2, y, 12, "F");
-
-    doc.setFillColor(0, 0, 0);
-    doc.roundedRect(X + 16, y + 72, COL - 32, 60, 28, 28, "F");
-    doc.circle(X + 30, y + 68, 14, "F");
-    doc.circle(X + 72, y + 68, 14, "F");
-    doc.circle(X + COL - 30, y + 68, 14, "F");
+/**
+ * Carrega a arte do ingresso e reamostra num canvas.
+ *
+ * A arte é bitmap porque o fundo tem um shader que não sobrevive à exportação
+ * em SVG. O WebP não entra direto num PDF, mas o navegador decodifica e o
+ * jsPDF aceita o canvas — que ainda por cima sai na resolução de impressão.
+ */
+function loadTicketArt(): Promise<HTMLCanvasElement> {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = COL * ART_SCALE;
+            canvas.height = Math.round((canvas.width * image.naturalHeight) / image.naturalWidth);
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+                reject(new Error("Canvas indisponível para rasterizar a arte do ingresso"));
+                return;
+            }
+            // Achata sobre branco: o papel já é branco e o JPEG (sem alpha) deixa o PDF bem menor.
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+            resolve(canvas);
+        };
+        image.onerror = () => reject(new Error("Não foi possível carregar a arte do ingresso"));
+        image.src = ticketArt;
+    });
 }
 
 function drawQr(doc: jsPDF, x: number, y: number, seed: number) {
@@ -79,7 +99,7 @@ function drawQr(doc: jsPDF, x: number, y: number, seed: number) {
     });
 }
 
-function drawPage(doc: jsPDF, pedido: Pedido, ticket: TicketUnit) {
+function drawPage(doc: jsPDF, pedido: Pedido, ticket: TicketUnit, art: HTMLCanvasElement) {
     doc.setTextColor(0, 0, 0);
 
     doc.setFont("helvetica", "bold");
@@ -112,10 +132,13 @@ function drawPage(doc: jsPDF, pedido: Pedido, ticket: TicketUnit) {
     doc.setFontSize(6);
     doc.text(ticket.codigo, X, y + 9);
 
+    // A arte mantém a proporção do arquivo, então trocar o PNG não quebra o layout.
     const artY = y + 34;
-    drawTicketArt(doc, artY);
+    const artHeight = (COL * art.height) / art.width;
+    // O alias faz o jsPDF reaproveitar a mesma imagem em todas as páginas.
+    doc.addImage(art, "JPEG", X, artY, COL, artHeight, "ticket-art", "FAST");
 
-    const infoY = artY + 144;
+    const infoY = artY + artHeight + 12;
     doc.setFontSize(6);
     doc.setFont("helvetica", "bold");
     doc.text("DADOS DA COMPRA", X, infoY);
@@ -137,12 +160,13 @@ function drawPage(doc: jsPDF, pedido: Pedido, ticket: TicketUnit) {
     doc.text(pedido.id, X, infoY + 56);
 }
 
-export function gerarIngressosPdf(pedido: Pedido) {
+export async function gerarIngressosPdf(pedido: Pedido) {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const art = await loadTicketArt();
 
     ticketUnits(pedido).forEach((ticket, index) => {
         if (index > 0) doc.addPage();
-        drawPage(doc, pedido, ticket);
+        drawPage(doc, pedido, ticket, art);
     });
 
     doc.save(`ingressos-${pedido.id.slice(0, 8)}.pdf`);

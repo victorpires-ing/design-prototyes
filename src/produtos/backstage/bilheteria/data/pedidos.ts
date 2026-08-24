@@ -10,6 +10,8 @@ export interface PedidoItem {
     name: string;
     /** `{Grupo_nome} • {Sessão}` ou a composição resumida do combo. */
     subtitle?: string;
+    /** Lote do ingresso, quando o item é um ingresso. */
+    lote?: string;
 }
 
 export interface Pedido {
@@ -46,7 +48,7 @@ export const PEDIDO_TIPO_LABEL: Record<PedidoTipo, string> = {
 const PAYMENT_LINK = "cart.ingresse.com/971c14dc-89ba-41dd-a469-cad4a1fde120";
 
 const baseItens = (): PedidoItem[] => [
-    { id: "it-1", quantity: 2, name: "Passaporte 2 dias - Inteira", subtitle: "Pista • 08 de agosto às 14:00" },
+    { id: "it-1", quantity: 2, name: "Passaporte 2 dias - Inteira", subtitle: "Pista • 08 de agosto às 14:00", lote: "1º lote" },
     { id: "it-2", quantity: 1, name: "Copo oficial do evento" },
     { id: "it-3", quantity: 1, name: "Passaporte de 2 dias", subtitle: "Combo • 2 sessões" },
     {
@@ -54,8 +56,9 @@ const baseItens = (): PedidoItem[] => [
         quantity: 1,
         name: "Nome muito longo para um item de ingresso - Meia-entrada",
         subtitle: "Camarote inferior direito • 27/09 15:00",
+        lote: "3º lote",
     },
-    { id: "it-5", quantity: 1, name: "Domingo - Inteira", subtitle: "Pista • 09 de agosto às 14:30" },
+    { id: "it-5", quantity: 1, name: "Domingo - Inteira", subtitle: "Pista • 09 de agosto às 14:30", lote: "2º lote" },
 ];
 
 const EMISSORES = ["nome@exemplo.com", "operacao@exemplo.com", "bilheteria@exemplo.com"];

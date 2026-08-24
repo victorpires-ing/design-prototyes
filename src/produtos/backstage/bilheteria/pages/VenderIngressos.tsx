@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import { ArrowLeft, ChevronDown, InfoCircle } from "@untitledui/icons";
 import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
@@ -68,8 +69,9 @@ export function VenderIngressos() {
 
     const canAdvance = useMemo(() => {
         if (step === 0) return skipped || Boolean(buyer) || search.status === "email-not-found";
-        return count > 0;
-    }, [step, skipped, buyer, search.status, count]);
+        if (step === 1) return count > 0;
+        return Boolean(method);
+    }, [step, skipped, buyer, search.status, count, method]);
 
     const runSearch = useCallback(() => {
         const value = term.trim();
@@ -160,6 +162,19 @@ export function VenderIngressos() {
         </Button>
     );
 
+    // No passo 3 o botão do header conclui a venda, no lugar do "Avançar".
+    const sellButton = (
+        <Button
+            size="md"
+            color="primary"
+            isDisabled={!canAdvance}
+            onClick={() => method && handleSelectMethod(method)}
+            className="max-md:w-full"
+        >
+            Vender ingresso
+        </Button>
+    );
+
     return (
         <BackstageLayout activeSection="bilheteria" activeItem="bilheteria-online">
             <div className="flex min-w-0 flex-1 flex-col">
@@ -170,7 +185,7 @@ export function VenderIngressos() {
                     <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary max-md:static max-md:translate-x-0">
                         Vender ingressos
                     </h1>
-                    {phase === "flow" && step < 2 && <div className="max-md:hidden">{advanceButton}</div>}
+                    {phase === "flow" && <div className="max-md:hidden">{step < 2 ? advanceButton : sellButton}</div>}
                 </header>
 
                 <main className="flex flex-1 flex-col items-center gap-6 px-4 pb-6 md:px-6">
@@ -200,7 +215,9 @@ export function VenderIngressos() {
                                 if (!pedido) return;
                                 if (format === "pdf") gerarIngressosPdf(pedido);
                                 if (format === "csv") gerarIngressosCsv(pedido);
+                                if (format === "zebra") toast("Impressão Zebra ainda não está disponível neste protótipo");
                             }}
+                            onSendPdf={() => toast.success(`PDF enviado para ${buyer?.email ?? fallbackEmail}`)}
                         />
                     )}
 
@@ -254,6 +271,8 @@ export function VenderIngressos() {
                                     cart={cart}
                                     buyer={buyer}
                                     fallbackEmail={fallbackEmail}
+                                    method={method}
+                                    onMethodChange={setMethod}
                                     onSelectMethod={handleSelectMethod}
                                     onQuantityChange={handleQuantityChange}
                                     linkBlocked={skipped}

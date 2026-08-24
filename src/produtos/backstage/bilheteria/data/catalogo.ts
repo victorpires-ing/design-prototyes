@@ -168,6 +168,8 @@ export interface Buyer {
     id: string;
     name: string;
     email: string;
+    /** WhatsApp da conta, já formatado. */
+    phone?: string;
     /** Documento já mascarado, como o backend devolve. */
     maskedDocument?: string;
     initials: string;
@@ -177,6 +179,7 @@ const knownBuyers: Array<Buyer & { document?: string }> = [
     {
         id: "acc-joao",
         name: "João Silva",
+        phone: "(11) 98812-4477",
         email: "joaosilva@gmail.com",
         document: "12345678910",
         maskedDocument: "CPF •••.•••.123-10",
@@ -185,6 +188,7 @@ const knownBuyers: Array<Buyer & { document?: string }> = [
     {
         id: "acc-maria",
         name: "Maria Cunha",
+        phone: "(21) 99640-1382",
         email: "maria.cunha@gmail.com",
         document: "98765432100",
         maskedDocument: "CPF •••.•••.432-00",
@@ -194,6 +198,7 @@ const knownBuyers: Array<Buyer & { document?: string }> = [
     {
         id: "acc-ana",
         name: "Ana Ribeiro",
+        phone: "(31) 99125-7708",
         email: "familia@gmail.com",
         document: "11122233344",
         maskedDocument: "CPF •••.•••.233-44",
@@ -202,6 +207,7 @@ const knownBuyers: Array<Buyer & { document?: string }> = [
     {
         id: "acc-carlos",
         name: "Carlos Ribeiro",
+        phone: "(31) 98431-2260",
         email: "familia@gmail.com",
         document: "55566677788",
         maskedDocument: "CPF •••.•••.677-88",

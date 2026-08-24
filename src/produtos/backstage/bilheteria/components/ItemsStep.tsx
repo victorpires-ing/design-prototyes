@@ -18,7 +18,7 @@ const TABS: Array<{ id: ItemsTab; label: string }> = [
 interface ItemsStepProps {
     cart: Cart;
     onQuantityChange: (id: string, quantity: number) => void;
-    /** Identificação pulada — ingressos com acesso por facial não podem ser vendidos. */
+    /** Identificação pulada — ingressos com acesso por face não podem ser vendidos. */
     facialBlocked: boolean;
 }
 
@@ -189,7 +189,7 @@ const SessionAccordion = ({ label, tickets, cart, defaultOpen, facialBlocked, on
                             <p className="text-sm text-tertiary">{ticket.lote}</p>
                             <p className="text-sm text-tertiary">{ticket.description}</p>
                             {isBlocked && (
-                                <p className="text-sm text-tertiary">Acesso por facial: indisponível sem identificação do comprador.</p>
+                                <p className="text-sm text-tertiary">Acesso por face: indisponível sem identificação do comprador.</p>
                             )}
                             <div className="flex items-center justify-between gap-3">
                                 <p className="text-md font-semibold text-primary">{formatBRL(ticket.price)}</p>

@@ -104,6 +104,7 @@ export function createPedido({ cart, buyer, fallbackEmail, tipo, emissor, paymen
         quantity: line.quantity,
         name: line.name,
         subtitle: [line.meta, line.date].filter(Boolean).join(" • ") || undefined,
+        lote: line.lote,
     }));
 
     const sessions = [...new Set(lines.map((line) => line.date).filter(Boolean))].join(" | ");

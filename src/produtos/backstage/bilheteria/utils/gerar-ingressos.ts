@@ -27,6 +27,8 @@ export interface TicketUnit {
     codigo: string;
     itemName: string;
     itemSubtitle?: string;
+    /** Lote do ingresso — vazio para produtos e combos. */
+    lote?: string;
 }
 
 /** Expande os itens do pedido em uma unidade por ingresso impresso. */
@@ -42,6 +44,7 @@ export function ticketUnits(pedido: Pedido): TicketUnit[] {
                 codigo: `${base.slice(0, 12)}${sequencia.toString().padStart(4, "0")}`,
                 itemName: item.name,
                 itemSubtitle: item.subtitle,
+                lote: item.lote,
             };
         }),
     );
@@ -176,12 +179,12 @@ export async function gerarIngressosPdf(pedido: Pedido) {
 /*  CSV                                                                */
 /* ------------------------------------------------------------------ */
 
-const CSV_COLUMNS = ["sequência", "código QR", "pedido"];
+const CSV_COLUMNS = ["sequência", "código QR", "pedido", "lote"];
 
 const escapeCell = (value: string) => (/[";\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
 
 export function gerarIngressosCsv(pedido: Pedido) {
-    const rows = ticketUnits(pedido).map((ticket) => [String(ticket.sequencia), ticket.codigo, pedido.id]);
+    const rows = ticketUnits(pedido).map((ticket) => [String(ticket.sequencia), ticket.codigo, pedido.id, ticket.lote ?? "—"]);
 
     // `;` como separador e BOM para o Excel em pt-BR abrir o arquivo corretamente.
     const csv = [CSV_COLUMNS, ...rows].map((row) => row.map(escapeCell).join(";")).join("\r\n");

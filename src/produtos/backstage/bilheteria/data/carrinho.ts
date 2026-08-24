@@ -15,6 +15,8 @@ export interface CartLine {
     /** `{DD} de {mês} • {HH:MM}` — só para ingressos e combos. */
     date?: string;
     unitPrice: number;
+    /** Lote do ingresso — vai para o CSV de conferência. */
+    lote?: string;
     access?: AccessType;
     /** Composição do combo, para o bloco "Detalhes". */
     composicao?: Array<{ quantity: number; ticketName: string; loteName: string; date: string }>;
@@ -33,6 +35,7 @@ const catalogIndex = (): Record<string, CartLine> => {
                 meta: `${ticket.group} - ${ticket.type}`,
                 date: session.shortDate,
                 unitPrice: ticket.price,
+                lote: ticket.lote,
                 access: ticket.access,
             };
         }

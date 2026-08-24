@@ -21,7 +21,7 @@ export function SkipIdentificationModal({ isOpen, onClose, onConfirm }: SkipIden
                             <ButtonUtility size="xs" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
                         </div>
                         <p className="mt-1 text-sm text-tertiary">
-                            Ingressos do tipo facial estarão desabilitados para venda e você não poderá usar o{" "}
+                            Ingressos com acesso por face estarão desabilitados para venda e você não poderá usar o{" "}
                             <strong className="font-semibold text-secondary">“Link de pagamento”</strong> para concluir a venda.
                         </p>
 

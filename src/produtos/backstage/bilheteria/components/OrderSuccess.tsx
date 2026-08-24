@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { FileIcon } from "@untitledui/file-icons";
-import { CheckCircle, Copy01, Ticket02 } from "@untitledui/icons";
+import { CheckCircle, Copy01, Mail01, Ticket02 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import type { Buyer } from "../data/catalogo";
-import { BuyerIdentity } from "./BuyerStep";
+import { BuyerIdentity, BuyerNoAccount } from "./BuyerStep";
 
 export type OrderChannel = "link" | "saldo";
 
@@ -17,6 +17,8 @@ interface OrderSuccessProps {
     onNewSale: () => void;
     onManageOrders: () => void;
     onDownload: (format: "pdf" | "zebra" | "csv") => void;
+    /** Envia o PDF dos ingressos para o e-mail do comprador. */
+    onSendPdf: () => void;
 }
 
 /** Tela final — pedido emitido, com link de pagamento ou download dos QR codes. */
@@ -29,6 +31,7 @@ export function OrderSuccess({
     onNewSale,
     onManageOrders,
     onDownload,
+    onSendPdf,
 }: OrderSuccessProps) {
     const [copied, setCopied] = useState(false);
 
@@ -59,8 +62,8 @@ export function OrderSuccess({
                 {buyer ? (
                     <BuyerIdentity buyer={buyer} />
                 ) : fallbackEmail ? (
-                    <div className="flex flex-col gap-0.5">
-                        <p className="text-sm font-semibold text-primary">Comprador ainda sem conta na Ingresse</p>
+                    <div className="flex flex-col gap-3">
+                        <BuyerNoAccount email={fallbackEmail} />
                         <p className="text-sm text-tertiary">
                             Os ingressos vão para <strong className="font-semibold text-secondary">{fallbackEmail}</strong>. Peça que o
                             comprador crie uma conta Ingresse com esse mesmo e-mail para acessá-los na carteira.
@@ -119,6 +122,18 @@ export function OrderSuccess({
                                 onClick={() => onDownload("csv")}
                             />
                         </div>
+
+                        {(buyer?.email ?? fallbackEmail) && (
+                            <div className="flex flex-col gap-2 border-t border-secondary pt-4 md:flex-row md:items-center md:justify-between">
+                                <p className="text-sm text-tertiary">
+                                    Prefere enviar direto para o comprador? Mandamos o PDF para{" "}
+                                    <strong className="font-semibold text-secondary">{buyer?.email ?? fallbackEmail}</strong>.
+                                </p>
+                                <Button size="md" color="secondary" iconLeading={Mail01} onClick={onSendPdf} className="shrink-0">
+                                    Enviar PDF por e-mail
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 )}
             </section>

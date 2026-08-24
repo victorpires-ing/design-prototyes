@@ -13,7 +13,8 @@ import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { CancelPedidosModal } from "../components/CancelPedidosModal";
-import { PedidoDetailsSlideOut, type ResendChannel } from "../components/PedidoDetailsSlideOut";
+import { PedidoDetailsSlideOut, type PedidoDownload, type ResendChannel } from "../components/PedidoDetailsSlideOut";
+import { gerarIngressosCsv, gerarIngressosPdf } from "../utils/gerar-ingressos";
 import { formatBRL } from "../data/catalogo";
 import { PEDIDO_STATUS_META, PEDIDO_TIPO_LABEL, type Pedido } from "../data/pedidos";
 import { cancelPedidos, formatDateTime, registerResend, usePedidos } from "../data/pedidos-store";
@@ -98,7 +99,15 @@ export function PedidosBilheteria() {
         const at = formatDateTime(new Date());
         registerResend(pedido.id, at);
         setDetail((current) => (current && current.id === pedido.id ? { ...current, resentAt: at } : current));
-        toast.success(canal === "email" ? "Link reenviado por e-mail!" : "Link aberto no WhatsApp");
+        // Saldo do produtor não tem link: o que vai por e-mail são os próprios ingressos.
+        if (canal === "whatsapp") return toast.success("Link aberto no WhatsApp");
+        toast.success(pedido.tipo === "saldo" ? `Ingressos enviados para ${pedido.destinatario}` : "Link reenviado por e-mail!");
+    };
+
+    const handleDownload = (pedido: Pedido, formato: PedidoDownload) => {
+        if (formato === "csv") return gerarIngressosCsv(pedido);
+        if (formato === "zebra") return toast("Impressão Zebra ainda não está disponível neste protótipo");
+        gerarIngressosPdf(pedido);
     };
 
     return (
@@ -227,7 +236,7 @@ export function PedidosBilheteria() {
                                         isDisabled={selected.length === 0}
                                         onClick={() => setPendingCancel(rows.filter((row) => selected.includes(row.id)))}
                                     >
-                                        Cancelar itens selecionados
+                                        Cancelar pedidos selecionados
                                     </Button>
                                 </div>
                             </div>
@@ -303,7 +312,7 @@ export function PedidosBilheteria() {
                                                             size="xs"
                                                             color="tertiary"
                                                             icon={SlashCircle01}
-                                                            tooltip="Cancelar"
+                                                            tooltip="Cancelar pedido"
                                                             isDisabled={row.status === "cancelado"}
                                                             onClick={() => setPendingCancel([row])}
                                                         />
@@ -383,6 +392,7 @@ export function PedidosBilheteria() {
                 onClose={() => setDetail(null)}
                 onCancelPedido={(pedido) => setPendingCancel([pedido])}
                 onResend={handleResend}
+                onDownload={handleDownload}
             />
 
             <CancelPedidosModal

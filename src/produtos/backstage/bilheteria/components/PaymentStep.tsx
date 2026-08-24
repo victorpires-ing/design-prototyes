@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Coins01, Link01 } from "@untitledui/icons";
+import { Button } from "@/components/base/buttons/button";
+import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
+import { AlertTriangle, ChevronDown, Coins01, Link01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { cx } from "@/utils/cx";
 import { formatBRL, type Buyer } from "../data/catalogo";
 import { cartCount, cartLines, cartTotal, type Cart, type CartLine } from "../data/carrinho";
-import { BuyerIdentity } from "./BuyerStep";
+import { BuyerIdentity, BuyerNoAccount } from "./BuyerStep";
 import { ComboComposition } from "./ItemsStep";
 import { QuantityStepper } from "./QuantityStepper";
 
@@ -18,7 +20,10 @@ interface PaymentStepProps {
     buyer: Buyer | null;
     /** E-mail informado quando a conta não foi encontrada. */
     fallbackEmail?: string;
-    /** Escolher o meio de pagamento já conclui a venda — não há botão "Avançar". */
+    /** Meio de pagamento escolhido — o estado vive na página, porque o botão de concluir fica no header no desktop. */
+    method: PaymentMethod | null;
+    onMethodChange: (method: PaymentMethod) => void;
+    /** Conclui a venda com o meio de pagamento escolhido. */
     onSelectMethod: (method: PaymentMethod) => void;
     onQuantityChange: (id: string, quantity: number) => void;
     /** Identificação pulada — link de pagamento indisponível. */
@@ -26,7 +31,16 @@ interface PaymentStepProps {
 }
 
 /** Passo 3 — escolha do meio de pagamento e conferência do pedido. */
-export function PaymentStep({ cart, buyer, fallbackEmail, onSelectMethod, onQuantityChange, linkBlocked }: PaymentStepProps) {
+export function PaymentStep({
+    cart,
+    buyer,
+    fallbackEmail,
+    method,
+    onMethodChange,
+    onSelectMethod,
+    onQuantityChange,
+    linkBlocked,
+}: PaymentStepProps) {
     const lines = cartLines(cart);
     const subtotal = cartTotal(cart);
     const fee = subtotal * SERVICE_FEE_RATE;
@@ -34,49 +48,64 @@ export function PaymentStep({ cart, buyer, fallbackEmail, onSelectMethod, onQuan
 
     return (
         <div className="flex w-full max-w-[800px] flex-col gap-6">
-            <section className="flex flex-col gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
+            <section className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
                 <h2 className="text-sm font-medium text-secondary">Escolha como vai ser pago</h2>
 
-                <MethodRow icon={Link01} label="Link de pagamento" isDisabled={linkBlocked} onClick={() => onSelectMethod("link")} />
-                {linkBlocked && (
-                    <p className="-mt-1 text-sm text-tertiary">
-                        Indisponível: sem identificação do comprador não há e-mail para onde enviar o link e os ingressos.
-                    </p>
-                )}
+                <RadioGroup
+                    aria-label="Meio de pagamento"
+                    value={method}
+                    onChange={(value) => onMethodChange(value as PaymentMethod)}
+                    className="gap-3"
+                >
+                    <MethodOption
+                        icon={Link01}
+                        label="Link de pagamento"
+                        value="link"
+                        isSelected={method === "link"}
+                        isDisabled={linkBlocked}
+                    >
+                        {linkBlocked ? (
+                            <p className="text-sm text-tertiary">
+                                Indisponível: sem identificação do comprador não há e-mail para onde enviar o link e os ingressos.
+                            </p>
+                        ) : (
+                            <p className="text-sm text-tertiary">O comprador paga {formatBRL(subtotal + fee)}</p>
+                        )}
+                    </MethodOption>
 
-                <MethodRow icon={Coins01} label="Saldo do produtor" onClick={() => onSelectMethod("saldo")} />
+                    <MethodOption icon={Coins01} label="Saldo do produtor" value="saldo" isSelected={method === "saldo"}>
+                        <p className="text-sm text-tertiary">
+                            O comprador não paga nada. O débito sai do saldo do produtor pelo valor combinado em contrato.
+                        </p>
+                    </MethodOption>
+                </RadioGroup>
 
-                <div className="flex items-start gap-2 pt-1">
+                <div className="flex items-start gap-2">
                     <AlertTriangle className="mt-0.5 size-4 shrink-0 text-fg-warning-secondary" aria-hidden="true" />
                     <div className="flex flex-col">
                         <p className="text-sm font-medium text-secondary">O pedido será criado antes do pagamento</p>
                         <p className="text-sm text-tertiary">O comprador realizará o pagamento após a emissão do pedido.</p>
                     </div>
                 </div>
+
+                <Button
+                    size="md"
+                    color="primary"
+                    isDisabled={!method}
+                    onClick={() => method && onSelectMethod(method)}
+                    className="w-full md:hidden"
+                >
+                    Vender ingresso
+                </Button>
             </section>
 
             <section className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
-                <dl className="flex flex-col gap-2 px-4 py-4 md:px-5">
-                    <div className="flex justify-between text-sm">
-                        <dt className="text-tertiary">Subtotal</dt>
-                        <dd className="text-secondary">{formatBRL(subtotal)}</dd>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                        <dt className="text-tertiary">Taxa de serviço</dt>
-                        <dd className="text-secondary">{formatBRL(fee)}</dd>
-                    </div>
-                    <div className="flex justify-between text-sm font-semibold">
-                        <dt className="text-primary">Total com taxas</dt>
-                        <dd className="text-primary">{formatBRL(subtotal + fee)}</dd>
-                    </div>
-                </dl>
-
                 <div className="border-t border-secondary px-4 py-4 md:px-5">
                     {buyer ? (
                         <BuyerIdentity buyer={buyer} />
                     ) : fallbackEmail ? (
-                        <div className="flex flex-col gap-0.5">
-                            <p className="text-sm font-semibold text-primary">Comprador ainda sem conta na Ingresse</p>
+                        <div className="flex flex-col gap-3">
+                            <BuyerNoAccount email={fallbackEmail} />
                             <p className="text-sm text-tertiary">
                                 Os ingressos vão para <strong className="font-semibold text-secondary">{fallbackEmail}</strong>. Peça que o
                                 comprador crie uma conta Ingresse com esse mesmo e-mail para acessá-los na carteira.
@@ -153,33 +182,37 @@ const ItemRow = ({ line, onQuantityChange }: { line: CartLine; onQuantityChange:
     );
 };
 
-interface MethodRowProps {
+interface MethodOptionProps {
     icon: typeof Link01;
     label: string;
+    value: PaymentMethod;
+    isSelected: boolean;
     isDisabled?: boolean;
-    onClick: () => void;
+    children: React.ReactNode;
 }
 
-const MethodRow = ({ icon: Icon, label, isDisabled, onClick }: MethodRowProps) => (
-    <button
-        type="button"
-        disabled={isDisabled}
-        onClick={onClick}
+/** Cartão de meio de pagamento: radio, título e o resumo da cobrança como descrição. */
+const MethodOption = ({ icon: Icon, label, value, isSelected, isDisabled, children }: MethodOptionProps) => (
+    <label
         className={cx(
-            "group flex w-full items-center gap-3 rounded-lg bg-secondary px-4 py-4 text-left transition duration-100 ease-linear",
-            !isDisabled && "cursor-pointer hover:bg-secondary_hover",
-            isDisabled && "cursor-not-allowed opacity-50",
+            "group flex flex-col gap-3 rounded-lg bg-secondary p-4 ring-1 transition duration-100 ease-linear",
+            isDisabled ? "cursor-not-allowed opacity-50 ring-transparent" : "cursor-pointer hover:bg-secondary_hover",
+            isSelected ? "ring-brand" : "ring-transparent",
         )}
     >
-        {/* No hover o fundo clareia e o ícone quaternário some — vira brand. */}
-        <Icon
-            className={cx(
-                "size-5 shrink-0 text-fg-quaternary transition-colors duration-100 ease-linear",
-                !isDisabled && "group-hover:text-fg-brand-primary",
-            )}
-            aria-hidden="true"
-        />
-        <span className="flex-1 text-sm font-medium text-primary">{label}</span>
-        <ChevronRight className="size-5 shrink-0 text-fg-brand-primary" aria-hidden="true" />
-    </button>
+        <span className="flex items-center gap-3">
+            <RadioButton value={value} slot={null} isDisabled={isDisabled} aria-label={label} />
+            <Icon
+                className={cx(
+                    "size-5 shrink-0 transition-colors duration-100 ease-linear",
+                    isSelected ? "text-fg-brand-primary" : "text-fg-quaternary",
+                    !isDisabled && "group-hover:text-fg-brand-primary",
+                )}
+                aria-hidden="true"
+            />
+            <span className="text-sm font-medium text-primary">{label}</span>
+        </span>
+        {/* Recuo alinhado ao texto do rótulo, não ao radio. */}
+        <div className="flex flex-col gap-2 pl-8">{children}</div>
+    </label>
 );

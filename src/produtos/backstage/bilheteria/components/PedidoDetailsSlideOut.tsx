@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Copy01, Mail01, SearchLg, SlashCircle01, XClose } from "@untitledui/icons";
+import { Copy01, Download01, Mail01, SearchLg, SlashCircle01, Ticket02, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
 import { BadgeWithDot } from "@/components/base/badges/badges";
@@ -11,16 +11,19 @@ import { formatBRL } from "../data/catalogo";
 import { PEDIDO_STATUS_META, PEDIDO_TIPO_LABEL, type Pedido } from "../data/pedidos";
 
 export type ResendChannel = "email" | "whatsapp";
+export type PedidoDownload = "pdf" | "zebra" | "csv";
 
 interface PedidoDetailsSlideOutProps {
     pedido: Pedido | null;
     onClose: () => void;
     onCancelPedido: (pedido: Pedido) => void;
     onResend: (pedido: Pedido, canal: ResendChannel) => void;
+    /** Baixa os ingressos do pedido no formato escolhido. */
+    onDownload: (pedido: Pedido, formato: PedidoDownload) => void;
 }
 
 /** Slideout de detalhes do pedido, com ações e a lista de itens do pedido. */
-export function PedidoDetailsSlideOut({ pedido, onClose, onCancelPedido, onResend }: PedidoDetailsSlideOutProps) {
+export function PedidoDetailsSlideOut({ pedido, onClose, onCancelPedido, onResend, onDownload }: PedidoDetailsSlideOutProps) {
     const [term, setTerm] = useState("");
 
     const itens = useMemo(() => {
@@ -129,8 +132,45 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onCancelPedido, onResen
                                             isDisabled={isCancelled}
                                             onClick={() => onCancelPedido(pedido)}
                                         >
-                                            Cancelar
+                                            Cancelar pedido
                                         </Button>
+                                        {/* Pago pelo saldo: os ingressos já existem, então dá para baixar e reenviar. */}
+                                        {pedido.tipo === "saldo" && !isCancelled && (
+                                            <>
+                                                <Button
+                                                    size="md"
+                                                    color="secondary"
+                                                    iconLeading={Download01}
+                                                    onClick={() => onDownload(pedido, "pdf")}
+                                                >
+                                                    Baixar PDF
+                                                </Button>
+                                                <Button
+                                                    size="md"
+                                                    color="secondary"
+                                                    iconLeading={Ticket02}
+                                                    onClick={() => onDownload(pedido, "zebra")}
+                                                >
+                                                    Baixar Zebra
+                                                </Button>
+                                                <Button
+                                                    size="md"
+                                                    color="secondary"
+                                                    iconLeading={Download01}
+                                                    onClick={() => onDownload(pedido, "csv")}
+                                                >
+                                                    Baixar .csv
+                                                </Button>
+                                                <Button
+                                                    size="md"
+                                                    color="secondary"
+                                                    iconLeading={Mail01}
+                                                    onClick={() => onResend(pedido, "email")}
+                                                >
+                                                    Reenviar por e-mail
+                                                </Button>
+                                            </>
+                                        )}
                                         {pedido.tipo === "link" && pedido.status === "pendente" && (
                                             <>
                                                 <Button

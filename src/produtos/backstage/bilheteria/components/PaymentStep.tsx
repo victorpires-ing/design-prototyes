@@ -166,12 +166,19 @@ const MethodRow = ({ icon: Icon, label, isDisabled, onClick }: MethodRowProps) =
         disabled={isDisabled}
         onClick={onClick}
         className={cx(
-            "flex w-full items-center gap-3 rounded-lg bg-secondary px-4 py-4 text-left transition duration-100 ease-linear",
+            "group flex w-full items-center gap-3 rounded-lg bg-secondary px-4 py-4 text-left transition duration-100 ease-linear",
             !isDisabled && "cursor-pointer hover:bg-secondary_hover",
             isDisabled && "cursor-not-allowed opacity-50",
         )}
     >
-        <Icon className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+        {/* No hover o fundo clareia e o ícone quaternário some — vira brand. */}
+        <Icon
+            className={cx(
+                "size-5 shrink-0 text-fg-quaternary transition-colors duration-100 ease-linear",
+                !isDisabled && "group-hover:text-fg-brand-primary",
+            )}
+            aria-hidden="true"
+        />
         <span className="flex-1 text-sm font-medium text-primary">{label}</span>
         <ChevronRight className="size-5 shrink-0 text-fg-brand-primary" aria-hidden="true" />
     </button>

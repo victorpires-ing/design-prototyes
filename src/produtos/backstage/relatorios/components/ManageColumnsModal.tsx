@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Focusable as AriaFocusable } from "react-aria-components";
 import { Lock01, SearchLg, XClose } from "@untitledui/icons";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { Badge } from "@/components/base/badges/badges";
@@ -26,19 +27,17 @@ const ALL_FIELD_IDS = EXPORT_FIELD_GROUPS.flatMap((g) => g.fields.map((f) => f.i
 
 export const DEFAULT_SELECTED = [
     ANCHOR_FIELD_ID,
-    "item_tipo",
-    "item_nome",
-    "item_setor",
-    "item_lote",
-    "item_valorOriginal",
-    "item_valorComDesconto",
-    "item_cupom",
-    "item_passkey",
     "pedido_status",
-    "portador_nome",
-    "portador_documento",
-    "portador_email",
-    "portador_telefone",
+    "pedido_comprador",
+    "pedido_documentoComprador",
+    "pedido_emailComprador",
+    "pedido_telefoneComprador",
+    "pedido_cupom",
+    "inscricao_nomeItem",
+    "inscricao_categoria",
+    "pedido_valorUnitario",
+    "pedido_valorDesconto",
+    "pedido_valorTotal",
 ];
 
 interface ManageColumnsModalProps {
@@ -105,19 +104,20 @@ export const ManageColumnsModal = ({ isOpen, onClose, selected, onSelectedChange
         return rest.filter((id) => (FIELD_LABELS[id] ?? id).toLowerCase().includes(term));
     }, [rest, rightSearch]);
 
-    // Até 50 colunas cabem na tabela — o botão apenas salva a seleção. Acima disso a
-    // tabela não comporta todas as colunas, então o botão exporta o relatório completo.
+    // Até 50 colunas cabem na tabela — acima disso "Salvar" fica desabilitado e a única
+    // forma de levar a seleção adiante é exportando o relatório completo em .csv.
     const overLimit = draft.length > 50;
 
     const handlePrimaryAction = () => {
-        if (isExporting) return;
+        if (isExporting || overLimit) return;
         onSelectedChange(draft);
-        if (overLimit) {
-            exportedFieldsRef.current = draft;
-            setIsExporting(true);
-        } else {
-            onClose();
-        }
+        onClose();
+    };
+
+    const handleExportAction = () => {
+        if (isExporting) return;
+        exportedFieldsRef.current = draft;
+        setIsExporting(true);
     };
 
     // Escape ainda fecha (comportamento esperado de diálogo), mesmo sem o focus-trap do react-aria.
@@ -294,21 +294,30 @@ export const ManageColumnsModal = ({ isOpen, onClose, selected, onSelectedChange
                             Restaurar padrão
                         </Button>
                         <div className="flex flex-1 items-center gap-3 md:flex-initial">
-                            <Button size="md" color="secondary" onClick={onClose} isDisabled={isExporting}>
-                                Cancelar
-                            </Button>
                             <Button
                                 size="md"
-                                color="primary"
-                                onClick={handlePrimaryAction}
+                                color="secondary"
+                                onClick={handleExportAction}
                                 iconLeading={isExporting ? ExportingIcon : undefined}
-                                // Só o fundo fica a 50% durante o loading — texto e ícone continuam
-                                // 100% opacos. Usar isDisabled aqui aplicaria opacity-50 no botão
-                                // inteiro; o clique já é bloqueado via guarda em handlePrimaryAction.
-                                className={cx("flex-1 md:flex-initial", isExporting && "pointer-events-none !bg-brand-solid/50 hover:!bg-brand-solid/50")}
+                                className={cx(isExporting && "pointer-events-none opacity-50")}
                             >
-                                {isExporting ? "Exportando..." : overLimit ? "Exportar .csv" : "Salvar"}
+                                {isExporting ? "Exportando..." : "Exportar .csv"}
                             </Button>
+                            <Tooltip title="Para mais de 50 colunas, exporte como .CSV" isDisabled={!overLimit}>
+                                <AriaFocusable>
+                                    <span className="flex flex-1 md:flex-initial">
+                                        <Button
+                                            size="md"
+                                            color="primary"
+                                            onClick={handlePrimaryAction}
+                                            isDisabled={overLimit || isExporting}
+                                            className="w-full"
+                                        >
+                                            Salvar
+                                        </Button>
+                                    </span>
+                                </AriaFocusable>
+                            </Tooltip>
                         </div>
                     </div>
                 </div>

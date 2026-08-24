@@ -159,6 +159,8 @@ import { EnviarCortesiasFlow, ResgatarCortesiasFlow } from '../produtos/freepass
 import { Reanalise } from '../produtos/payin/suspensao-de-conta/pages/Reanalise';
 import { SuspenderUsuario } from '../produtos/payin/suspensao-de-conta/pages/SuspenderUsuario';
 import { Desfecho as DesfechoAntifraude } from '../produtos/payin/suspensao-de-conta/pages/Desfecho';
+import { Repasses } from '../produtos/payout/repasses/pages/Repasses';
+import { DetalheRepasse } from '../produtos/payout/repasses/pages/DetalheRepasse';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -347,6 +349,8 @@ export default function App() {
         <Route path="/payin/suspensao-de-conta" element={<Reanalise />} />
         <Route path="/payin/suspensao-de-conta/suspender-usuario" element={<SuspenderUsuario />} />
         <Route path="/payin/suspensao-de-conta/desfecho/:contaId" element={<DesfechoAntifraude />} />
+        <Route path="/payout/repasses" element={<Repasses />} />
+        <Route path="/payout/repasses/:repasseId" element={<DetalheRepasse />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </EquipeV2Provider>

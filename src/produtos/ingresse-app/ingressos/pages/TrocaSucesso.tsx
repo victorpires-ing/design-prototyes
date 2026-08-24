@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
+import { Button } from "@/components/base/buttons/button";
 import { AppShell } from "../../components/AppShell";
 import { StatusBar } from "../../components/StatusBar";
 import { CardWalletAnimation } from "../components/CardWalletAnimation";
@@ -19,11 +20,15 @@ export function TrocaSucesso() {
 
     const destino = `/ingresse-app/ingressos/detalhe/${evento.id}/${itemId}`;
 
+    const irParaIngresso = () => {
+        clearTimeout(timer.current);
+        navigate(destino, { replace: true });
+    };
+
     const aoTerminarAnimacao = () => {
         setShowText(true);
-        timer.current = setTimeout(() => {
-            navigate(destino, { replace: true });
-        }, 4800);
+        // Fallback: se o usuário não tocar em "Concluir", redireciona automaticamente.
+        timer.current = setTimeout(irParaIngresso, 4800);
     };
 
     return (
@@ -47,6 +52,22 @@ export function TrocaSucesso() {
                         )}
                     </AnimatePresence>
                 </div>
+
+                {/* CTA: leva ao novo ingresso. Aparece junto com o texto de sucesso. */}
+                <AnimatePresence>
+                    {showText && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.35, ease: "easeOut", delay: 0.1 }}
+                            className="relative z-10 px-6 pb-8"
+                        >
+                            <Button size="lg" color="primary" className="w-full" onClick={irParaIngresso}>
+                                Concluir
+                            </Button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </AppShell>
     );

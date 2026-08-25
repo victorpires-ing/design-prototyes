@@ -3,13 +3,13 @@ import { useNavigate, useSearchParams } from "react-router";
 import { cx } from "@/utils/cx";
 import { AntifraudeShell } from "../components/AntifraudeShell";
 import { IconBan, IconCalendar, IconCheck, IconExternal } from "../components/retool/icons";
-import { RBadge, RButton, RKeyValue, RSelect, RTabs } from "../components/retool/ui";
+import { RButton, RKeyValue, RSelect, RTabs } from "../components/retool/ui";
+import { UsuariosSuspensos } from "./UsuariosSuspensos";
 import {
     FERRAMENTAS,
     OPERADORES,
     STATUS_ANALISE,
     TRANSACOES,
-    USUARIOS_SUSPENSOS,
     moeda,
     numero,
     type Transacao,
@@ -236,61 +236,7 @@ export function Reanalise() {
                         </div>
                     </>
                 ) : (
-                    <section className="rt-card flex min-w-0 flex-col">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <h1 className="text-[17px] font-semibold text-[var(--rt-text)]">Usuários suspensos</h1>
-                                <p className="mt-1 text-[13px] text-[var(--rt-text-secondary)]">
-                                    Contas suspensas pela esteira de antifraude e o desfecho de cada ocorrência.
-                                </p>
-                            </div>
-                            <RButton
-                                variant="primary"
-                                icon={<IconBan />}
-                                onClick={() => navigate("/payin/suspensao-de-conta/suspender-usuario")}
-                            >
-                                Suspender usuário
-                            </RButton>
-                        </div>
-
-                        <div className="mt-4 overflow-x-auto">
-                            <table className="rt-table">
-                                <thead>
-                                    <tr>
-                                        <th>Usuário</th>
-                                        <th>Motivo</th>
-                                        <th>Ação</th>
-                                        <th>Analista</th>
-                                        <th>Data</th>
-                                        <th className="!text-right">Compras</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {USUARIOS_SUSPENSOS.map((usuario) => (
-                                        <tr
-                                            key={usuario.contaId}
-                                            className="rt-row--clickable"
-                                            onClick={() => navigate(`/payin/suspensao-de-conta/desfecho/${usuario.contaId}`)}
-                                        >
-                                            <td>
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium">{usuario.nome}</span>
-                                                    <span className="text-[12px] text-[var(--rt-text-secondary)]">{usuario.email}</span>
-                                                </div>
-                                            </td>
-                                            <td className="text-[var(--rt-text-secondary)]">{usuario.motivo}</td>
-                                            <td>
-                                                <RBadge tone={usuario.altaCerteza ? "red" : "amber"}>{usuario.acao}</RBadge>
-                                            </td>
-                                            <td className="text-[var(--rt-text-secondary)]">{usuario.analista}</td>
-                                            <td className="whitespace-nowrap text-[var(--rt-text-secondary)]">{usuario.data}</td>
-                                            <td className="rt-num !text-right text-[var(--rt-text-secondary)]">{usuario.compras.length}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
+                    <UsuariosSuspensos />
                 )}
             </div>
         </AntifraudeShell>

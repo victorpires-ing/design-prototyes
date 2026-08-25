@@ -1,6 +1,6 @@
 import { useEffect, type ButtonHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { cx } from "@/utils/cx";
-import { IconClose } from "./icons";
+import { IconCheck, IconClose } from "./icons";
 import "./retool.css";
 
 /* ------------------------------------------------------------------ */
@@ -13,9 +13,10 @@ interface RButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: Variante;
     size?: "sm" | "md";
     icon?: ReactNode;
+    iconTrailing?: ReactNode;
 }
 
-export function RButton({ variant = "secondary", size = "md", icon, children, className, type = "button", ...props }: RButtonProps) {
+export function RButton({ variant = "secondary", size = "md", icon, iconTrailing, children, className, type = "button", ...props }: RButtonProps) {
     return (
         <button
             type={type}
@@ -24,6 +25,7 @@ export function RButton({ variant = "secondary", size = "md", icon, children, cl
         >
             {icon}
             {children}
+            {iconTrailing}
         </button>
     );
 }
@@ -160,7 +162,7 @@ export function RBadge({
     return <span className={cx("rt-badge", `rt-badge--${tone}`)}>{children}</span>;
 }
 
-export function RCallout({ tone = "info", children }: { tone?: "info" | "warning" | "danger"; children: ReactNode }) {
+export function RCallout({ tone = "info", children }: { tone?: "info" | "warning" | "danger" | "success"; children: ReactNode }) {
     return <div className={cx("rt-callout", `rt-callout--${tone}`)}>{children}</div>;
 }
 
@@ -302,6 +304,36 @@ export function RModal({
 
                 {footer && <div className="mt-5 flex justify-end gap-2">{footer}</div>}
             </div>
+        </div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Toast                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Aviso flutuante no canto superior direito, usado nos desfechos de
+ * suspensão e reativação (Figma "Usuário suspenso" / "Usuário reativado").
+ */
+export function RToast({ title, description, onClose }: { title: string; description?: string; onClose: () => void }) {
+    return (
+        <div role="status" aria-live="polite" className="rt-toast">
+            <span className="rt-toast__icon">
+                <IconCheck size={13} />
+            </span>
+            <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-[var(--rt-text)]">{title}</p>
+                {description && <p className="mt-0.5 text-[12px] text-[var(--rt-text-secondary)]">{description}</p>}
+            </div>
+            <button
+                type="button"
+                aria-label="Fechar aviso"
+                onClick={onClose}
+                className="grid size-6 shrink-0 place-items-center rounded-[4px] text-[var(--rt-text-tertiary)] hover:bg-[var(--rt-surface-hover)] hover:text-[var(--rt-text)]"
+            >
+                <IconClose size={14} />
+            </button>
         </div>
     );
 }

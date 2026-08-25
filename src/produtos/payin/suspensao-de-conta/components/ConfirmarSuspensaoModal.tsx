@@ -13,8 +13,6 @@ interface ConfirmarSuspensaoModalProps {
 
 /** Confirmação de suspensão (Figma "Confirmação (modal)"). */
 export function ConfirmarSuspensaoModal({ isOpen, onClose, onConfirmar, conta, motivo, totalCompras }: ConfirmarSuspensaoModalProps) {
-    const imediato = Boolean(motivo.reembolsoImediato);
-
     const resumo = [
         { label: "Motivo", valor: motivo.label },
         { label: "Compras impactadas", valor: `${totalCompras} ${totalCompras === 1 ? "compra" : "compras"}` },
@@ -47,12 +45,11 @@ export function ConfirmarSuspensaoModal({ isOpen, onClose, onConfirmar, conta, m
                 ))}
             </dl>
 
-            <div className={imediato ? "rt-callout rt-callout--danger mt-3" : "rt-callout rt-callout--warning mt-3"}>
+            <div className="rt-callout rt-callout--warning mt-3">
                 <IconAlert className="mt-px shrink-0" />
                 <p>
-                    {imediato
-                        ? "Alta certeza de fraude — o reembolso é feito diretamente, sem janela de validação e sem contato com o usuário."
-                        : "As compras entram em suspensão imediatamente. A conta continua suspensa até a validação — mesmo depois que o prazo das compras expira."}
+                    As compras entram em suspensão imediatamente. A conta continua suspensa até a validação — mesmo depois que o prazo das
+                    compras expira.
                 </p>
             </div>
         </RModal>

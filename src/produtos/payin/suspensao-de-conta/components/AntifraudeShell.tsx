@@ -9,8 +9,15 @@ type ItemRail = "menu" | "apps" | "antifraude" | "consultas";
 interface AntifraudeShellProps {
     children: ReactNode;
     railAtivo?: ItemRail;
-    navAtiva?: "listas" | "monitores";
+    navAtiva?: "listas" | "monitores" | "suspensao";
 }
+
+/** Menus da barra superior — o terceiro só aparece dentro da ferramenta de suspensão. */
+const NAV: { id: "listas" | "monitores" | "suspensao"; label: string; menu: boolean }[] = [
+    { id: "listas", label: "Listas", menu: true },
+    { id: "monitores", label: "Monitores", menu: true },
+    { id: "suspensao", label: "Suspensão de usuário", menu: false },
+];
 
 const RAIL: { id: ItemRail; icon: typeof IconMenu; label: string }[] = [
     { id: "menu", icon: IconMenu, label: "Menu" },
@@ -64,19 +71,19 @@ export function AntifraudeShell({ children, railAtivo = "antifraude", navAtiva =
             <div className="flex min-w-0 flex-1 flex-col">
                 <header className="sticky top-0 z-40 flex h-12 items-center justify-between gap-4 border-b border-[var(--rt-border)] bg-[var(--rt-surface)] px-4">
                     <div className="flex items-center gap-1">
-                        {(["listas", "monitores"] as const).map((item) => (
+                        {NAV.filter((item) => item.menu || navAtiva === item.id).map((item) => (
                             <button
-                                key={item}
+                                key={item.id}
                                 type="button"
                                 className={cx(
-                                    "flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 text-[13px] font-medium capitalize",
-                                    navAtiva === item
+                                    "flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 text-[13px] font-medium",
+                                    navAtiva === item.id
                                         ? "bg-[var(--rt-primary-tint-strong)] text-[var(--rt-primary-hover)]"
                                         : "text-[var(--rt-text-secondary)] hover:bg-[var(--rt-surface-hover)]",
                                 )}
                             >
-                                {item}
-                                <IconChevronDown size={12} />
+                                {item.label}
+                                {item.menu && <IconChevronDown size={12} />}
                             </button>
                         ))}
                     </div>

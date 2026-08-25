@@ -132,18 +132,16 @@ export function comprasDaConta(contaId: string): Compra[] {
 export interface MotivoSuspensao {
     id: string;
     label: string;
-    /** Motivos de alta certeza vão direto para reembolso, sem janela de validação. */
-    reembolsoImediato?: boolean;
 }
 
 export const MOTIVOS: MotivoSuspensao[] = [
     { id: "chargeback", label: "Chargeback" },
-    { id: "fraude-confirmada", label: "Fraude confirmada", reembolsoImediato: true },
-    { id: "cartao-clonado", label: "Cartão clonado", reembolsoImediato: true },
+    { id: "abuso-transferencia", label: "Abuso de transferência" },
+    { id: "fraude-confirmada", label: "Fraude confirmada" },
+    { id: "desacordo-comercial", label: "Desacordo comercial" },
     { id: "determinacao-judicial", label: "Determinação judicial" },
     { id: "revenda-nao-autorizada", label: "Revenda não autorizada" },
     { id: "cadastro-irregular", label: "Cadastro irregular" },
-    { id: "uso-indevido-cortesia", label: "Uso indevido de cortesia" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -353,66 +351,270 @@ export const STATUS_ANALISE: { id: DecisaoTransacao; label: string }[] = [
 export const FERRAMENTAS = ["OASIS", "SIFT", "CAF", "UNICO", "PROCOB", "BACKOFFICE", "BLACKTAG", "TICKETSPORTS"];
 
 /* ------------------------------------------------------------------ */
-/*  Usuários suspensos (histórico / desfechos)                         */
+/*  Usuários suspensos (fila de suspensões + validação)                */
 /* ------------------------------------------------------------------ */
 
-export interface UsuarioSuspenso {
+export type ResultadoValidacao = "aprovada" | "em-validacao" | "reprovada" | "aguardando";
+
+export const VALIDACAO_META: Record<ResultadoValidacao, { label: string; curto: string; tone: "success" | "blue" | "red" | "amber" }> = {
+    aprovada: { label: "Aprovada", curto: "Aprovada", tone: "success" },
+    "em-validacao": { label: "Em validação", curto: "Em validação", tone: "blue" },
+    reprovada: { label: "Reprovada", curto: "Reprovada", tone: "red" },
+    aguardando: { label: "Aguardando validação", curto: "Aguardando", tone: "amber" },
+};
+
+/** Uma ocorrência de suspensão no histórico da conta. */
+export interface Ocorrencia {
+    data: string;
+    /** Se a ocorrência segue valendo ou foi encerrada com as compras canceladas. */
+    situacao: "ativo" | "cancelada";
+    motivo: string;
+    companhia: string;
+    analista: string;
+    comprasImpactadas: string;
+    resultadoValidacao: string;
+    /** Destaca em vermelho quando a validação não aconteceu ou foi reprovada. */
+    validacaoNegativa?: boolean;
+    metodoValidacao: string;
+    resumo: string;
+}
+
+export interface Suspensao {
     contaId: string;
     nome: string;
     email: string;
+    companhia: string;
     motivo: string;
-    /** Ação tomada no desfecho. */
-    acao: "Aguardando validação" | "Reembolso imediato" | "Reembolso após validação";
+    /** Data curta usada na fila (ex.: "11 ago"). */
+    suspensaoEm: string;
+    /** Data completa usada no detalhe (ex.: "11 ago 2026"). */
+    suspensaoEmCompleto: string;
     analista: string;
-    data: string;
-    /** Alta certeza de fraude: reembolso direto, sem janela de validação nem contato. */
-    altaCerteza: boolean;
+    observacao?: string;
+    validacao: ResultadoValidacao;
+    metodoValidacao: string;
+    validacaoEnviadaEm: string;
+    linkValidacao: string;
+    /** Prazo restante das compras ("2 dias", "12h", "Expirado", "—"). */
+    prazo: string;
+    prazoExpirado?: boolean;
     compras: Compra[];
+    historico: Ocorrencia[];
 }
 
-export const USUARIOS_SUSPENSOS: UsuarioSuspenso[] = [
+export const SUSPENSOES: Suspensao[] = [
+    {
+        contaId: "5501234",
+        nome: "Felipe Oliveira",
+        email: "llipe.oliveira@hotmail.com",
+        companhia: "Ingresse",
+        motivo: "Chargeback",
+        suspensaoEm: "11 ago",
+        suspensaoEmCompleto: "11 ago 2026",
+        analista: "Bruno",
+        observacao: "Cartão usado em múltiplos pedidos no fim de semana.",
+        validacao: "aguardando",
+        metodoValidacao: "CAF / Único",
+        validacaoEnviadaEm: "11 ago 2026 16:30",
+        linkValidacao: "validar.ingresse.com/…",
+        prazo: "2 dias",
+        compras: [
+            { id: "#a5f92ee9", evento: "Torcedor Mirante — Palmeiras", dataEvento: "12 ago 2026", status: "suspensa", companhia: "Ingresse" },
+            { id: "#7c41b0a2", evento: "Turnê Dominguinho", dataEvento: "14 ago 2026", status: "suspensa", companhia: "Ingresse" },
+            { id: "#98708fd1", evento: "BBQ SEM FRONTEIRAS", dataEvento: "15 ago 2026", status: "suspensa", companhia: "Ingresse" },
+        ],
+        historico: [
+            {
+                data: "05 fev 2026",
+                situacao: "cancelada",
+                motivo: "Abuso de transferência",
+                companhia: "Ingresse",
+                analista: "Jackson",
+                comprasImpactadas: "2 compras",
+                resultadoValidacao: "Não realizada",
+                validacaoNegativa: true,
+                metodoValidacao: "—",
+                resumo: "Suspenso em 05 fev · prazo expirado em 08 fev · compras canceladas · a conta seguiu suspensa.",
+            },
+            {
+                data: "11 ago 2025",
+                situacao: "ativo",
+                motivo: "Chargeback",
+                companhia: "Ingresse",
+                analista: "Bruno",
+                comprasImpactadas: "3 compras",
+                resultadoValidacao: "Aprovada",
+                metodoValidacao: "Documentoscopia (CAF/Único)",
+                resumo: "Suspenso em 11 ago · validado em 12 ago · reativado em 12 ago.",
+            },
+        ],
+    },
+    {
+        contaId: "5518844",
+        nome: "Karoline Souza",
+        email: "karoline_udi@gmail.com",
+        companhia: "Ingresse",
+        motivo: "Abuso de transferência",
+        suspensaoEm: "10 ago",
+        suspensaoEmCompleto: "10 ago 2026",
+        analista: "Samara",
+        observacao: "Ingressos transferidos em sequência para contas recém-criadas.",
+        validacao: "em-validacao",
+        metodoValidacao: "CAF / Único",
+        validacaoEnviadaEm: "10 ago 2026 09:12",
+        linkValidacao: "validar.ingresse.com/…",
+        prazo: "1 dia",
+        compras: [{ id: "#31b7cc02", evento: "Quartinha 4 anos", dataEvento: "26 ago 2026", status: "suspensa", companhia: "Ingresse" }],
+        historico: [
+            {
+                data: "10 ago 2026",
+                situacao: "ativo",
+                motivo: "Abuso de transferência",
+                companhia: "Ingresse",
+                analista: "Samara",
+                comprasImpactadas: "1 compra",
+                resultadoValidacao: "Em validação",
+                metodoValidacao: "Documentoscopia (CAF/Único)",
+                resumo: "Suspenso em 10 ago · validação enviada em 10 ago · aguardando retorno.",
+            },
+        ],
+    },
+    {
+        contaId: "5521907",
+        nome: "Pablo Carvalho",
+        email: "pablocarvalho@gmail.com",
+        companhia: "Ingresse",
+        motivo: "Fraude confirmada",
+        suspensaoEm: "09 ago",
+        suspensaoEmCompleto: "09 ago 2026",
+        analista: "Jackson",
+        observacao: "Documentos reprovados na documentoscopia.",
+        validacao: "reprovada",
+        metodoValidacao: "CAF / Único",
+        validacaoEnviadaEm: "09 ago 2026 11:40",
+        linkValidacao: "validar.ingresse.com/…",
+        prazo: "Expirado",
+        prazoExpirado: true,
+        compras: [
+            { id: "#c1094ffa", evento: "Camarote Firezone — Botafogo", dataEvento: "24 ago 2026", status: "suspensa", companhia: "Ingresse" },
+            { id: "#4d20aa71", evento: "Quartinha 4 anos", dataEvento: "26 ago 2026", status: "suspensa", companhia: "Ingresse" },
+            { id: "#8fa1c730", evento: "BBQ SEM FRONTEIRAS", dataEvento: "15 ago 2026", status: "suspensa", companhia: "Ingresse" },
+            { id: "#2b60ef19", evento: "Turnê Dominguinho", dataEvento: "14 ago 2026", status: "suspensa", companhia: "Ingresse" },
+            { id: "#77c0da45", evento: "Torcedor Mirante — Palmeiras", dataEvento: "12 ago 2026", status: "suspensa", companhia: "Ingresse" },
+        ],
+        historico: [
+            {
+                data: "09 ago 2026",
+                situacao: "cancelada",
+                motivo: "Fraude confirmada",
+                companhia: "Ingresse",
+                analista: "Jackson",
+                comprasImpactadas: "5 compras",
+                resultadoValidacao: "Reprovada",
+                validacaoNegativa: true,
+                metodoValidacao: "Documentoscopia (CAF/Único)",
+                resumo: "Suspenso em 09 ago · validação reprovada · prazo expirado · compras canceladas.",
+            },
+        ],
+    },
     {
         contaId: "5512045",
         nome: "Lucas Araújo",
         email: "lucasaraujo.ed@gmail.com",
-        motivo: "Fraude confirmada",
-        acao: "Reembolso imediato",
-        analista: "Jackson",
-        data: "11 fev 2026",
-        altaCerteza: true,
-        compras: [
-            { id: "#7ff10c3d", evento: "Corrida Mundo Livre 2026", dataEvento: "08 fev 2026", status: "reembolsada", companhia: "Ticket Sports" },
-            { id: "#0ab93e55", evento: "Fortaleza x São Bernardo", dataEvento: "10 fev 2026", status: "reembolsada", companhia: "Ingresse" },
-        ],
-    },
-    {
-        contaId: "5498120",
-        nome: "Renata Prado",
-        email: "renata.prado@gmail.com",
+        companhia: "Ticket Sports",
         motivo: "Chargeback",
-        acao: "Aguardando validação",
-        analista: "Samara",
-        data: "18 ago 2026",
-        altaCerteza: false,
+        suspensaoEm: "09 ago",
+        suspensaoEmCompleto: "09 ago 2026",
+        analista: "Nicolas",
+        validacao: "aguardando",
+        metodoValidacao: "CAF / Único",
+        validacaoEnviadaEm: "09 ago 2026 18:02",
+        linkValidacao: "validar.ingresse.com/…",
+        prazo: "12h",
         compras: [
-            { id: "#a10f77c2", evento: "Quartinha 4 anos", dataEvento: "26 ago 2026", status: "suspensa", companhia: "Ingresse" },
+            { id: "#7ff10c3d", evento: "Corrida Mundo Livre 2026", dataEvento: "08 fev 2026", status: "suspensa", companhia: "Ticket Sports" },
+            { id: "#0ab93e55", evento: "Fortaleza x São Bernardo", dataEvento: "10 fev 2026", status: "suspensa", companhia: "Ingresse" },
+        ],
+        historico: [
+            {
+                data: "09 ago 2026",
+                situacao: "ativo",
+                motivo: "Chargeback",
+                companhia: "Ticket Sports",
+                analista: "Nicolas",
+                comprasImpactadas: "2 compras",
+                resultadoValidacao: "Aguardando",
+                metodoValidacao: "Documentoscopia (CAF/Único)",
+                resumo: "Suspenso em 09 ago · validação enviada em 09 ago · prazo das compras em 12h.",
+            },
         ],
     },
     {
-        contaId: "5503391",
-        nome: "Diego Martins",
-        email: "diego.martins88@outlook.com",
-        motivo: "Determinação judicial",
-        acao: "Aguardando validação",
-        analista: "Nicolas",
-        data: "20 ago 2026",
-        altaCerteza: false,
+        contaId: "5509912",
+        nome: "Beatriz Gomes",
+        email: "beatriz.35gom@gmail.com",
+        companhia: "Ingresse",
+        motivo: "Desacordo comercial",
+        suspensaoEm: "08 ago",
+        suspensaoEmCompleto: "08 ago 2026",
+        analista: "Jennifer",
+        validacao: "aprovada",
+        metodoValidacao: "CAF / Único",
+        validacaoEnviadaEm: "08 ago 2026 10:25",
+        linkValidacao: "validar.ingresse.com/…",
+        prazo: "—",
+        compras: [{ id: "#4d20aa71", evento: "Quartinha 4 anos", dataEvento: "26 ago 2026", status: "suspensa", companhia: "Ingresse" }],
+        historico: [
+            {
+                data: "08 ago 2026",
+                situacao: "ativo",
+                motivo: "Desacordo comercial",
+                companhia: "Ingresse",
+                analista: "Jennifer",
+                comprasImpactadas: "1 compra",
+                resultadoValidacao: "Aprovada",
+                metodoValidacao: "Documentoscopia (CAF/Único)",
+                resumo: "Suspenso em 08 ago · validado em 09 ago · pronto para reativação.",
+            },
+        ],
+    },
+    {
+        contaId: "5530461",
+        nome: "Thaiana Brazil",
+        email: "thaianabrazil@gmail.com",
+        companhia: "Blacktag",
+        motivo: "Chargeback",
+        suspensaoEm: "08 ago",
+        suspensaoEmCompleto: "08 ago 2026",
+        analista: "Gustavo",
+        validacao: "aguardando",
+        metodoValidacao: "CAF / Único",
+        validacaoEnviadaEm: "08 ago 2026 14:48",
+        linkValidacao: "validar.ingresse.com/…",
+        prazo: "6h",
         compras: [
-            { id: "#bb7710de", evento: "Camarote Firezone — Botafogo x Athlético PR", dataEvento: "24 ago 2026", status: "suspensa", companhia: "Ingresse" },
-            { id: "#5c02f9a1", evento: "BBQ SEM FRONTEIRAS", dataEvento: "15 ago 2026", status: "suspensa", companhia: "Ingresse" },
+            { id: "#a10f77c2", evento: "Camarote Firezone — Botafogo", dataEvento: "24 ago 2026", status: "suspensa", companhia: "Blacktag" },
+            { id: "#bb7710de", evento: "Turnê Dominguinho", dataEvento: "14 ago 2026", status: "suspensa", companhia: "Blacktag" },
+            { id: "#5c02f9a1", evento: "BBQ SEM FRONTEIRAS", dataEvento: "15 ago 2026", status: "suspensa", companhia: "Blacktag" },
+            { id: "#98708fd1", evento: "Quartinha 4 anos", dataEvento: "26 ago 2026", status: "suspensa", companhia: "Blacktag" },
+        ],
+        historico: [
+            {
+                data: "08 ago 2026",
+                situacao: "ativo",
+                motivo: "Chargeback",
+                companhia: "Blacktag",
+                analista: "Gustavo",
+                comprasImpactadas: "4 compras",
+                resultadoValidacao: "Aguardando",
+                metodoValidacao: "Documentoscopia (CAF/Único)",
+                resumo: "Suspenso em 08 ago · validação enviada em 08 ago · prazo das compras em 6h.",
+            },
         ],
     },
 ];
+
+export const COMPANHIAS = ["Ingresse", "Ticket Sports", "Blacktag"];
 
 /* ------------------------------------------------------------------ */
 /*  Formatadores                                                       */

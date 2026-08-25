@@ -18,11 +18,13 @@ interface ResumoPanelProps {
     onRemoveAll: () => void;
     /** Mostra o rodapé com o total a pagar. Default: true. */
     showTotal?: boolean;
+    /** Ação primária do passo — fecha o resumo no desktop. */
+    advanceButton?: React.ReactNode;
     className?: string;
 }
 
 /** Coluna de resumo do passo 2 (desktop) e conteúdo da gaveta de resumo (mobile). */
-export function ResumoPanel({ cart, onRemove, onRemoveAll, showTotal = true, className }: ResumoPanelProps) {
+export function ResumoPanel({ cart, onRemove, onRemoveAll, showTotal = true, advanceButton, className }: ResumoPanelProps) {
     const groups = GROUPS.map((group) => ({ ...group, lines: cartLinesByKind(cart, group.kind) })).filter(
         (group) => group.lines.length > 0,
     );
@@ -62,10 +64,14 @@ export function ResumoPanel({ cart, onRemove, onRemoveAll, showTotal = true, cla
             </div>
 
             {showTotal && (
-                <div className="flex items-center gap-1.5 border-t border-secondary px-4 py-4">
-                    <p className="text-md font-semibold text-primary">{formatBRL(cartTotal(cart))}</p>
-                    <span className="text-sm text-tertiary">+ taxas</span>
-                    <InfoCircle className="size-4 text-fg-quaternary" aria-hidden="true" />
+                <div className="flex flex-col gap-3 border-t border-secondary px-4 py-4">
+                    <div className="flex items-center gap-1.5">
+                        <p className="text-md font-semibold text-primary">{formatBRL(cartTotal(cart))}</p>
+                        <span className="text-sm text-tertiary">+ taxas</span>
+                        <InfoCircle className="size-4 text-fg-quaternary" aria-hidden="true" />
+                    </div>
+                    {/* A ação fica junto do total, onde a decisão de seguir é tomada. */}
+                    {advanceButton && <div className="flex flex-col [&>*]:w-full">{advanceButton}</div>}
                 </div>
             )}
         </div>

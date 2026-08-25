@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Copy01, Download01, Mail01, SearchLg, SlashCircle01, Ticket02, XClose } from "@untitledui/icons";
+import { Copy01, Download01, Mail01, SearchLg, Ticket02, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
 import { BadgeWithDot } from "@/components/base/badges/badges";
@@ -7,8 +7,9 @@ import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { InputBase } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
-import { formatBRL } from "../data/catalogo";
+import { formatBRL, isValidEmail } from "../data/catalogo";
 import { PEDIDO_STATUS_META, PEDIDO_TIPO_LABEL, type Pedido } from "../data/pedidos";
+import { EnviarModal, type CanalEnvio } from "./EnviarModal";
 
 export type ResendChannel = "email" | "whatsapp";
 export type PedidoDownload = "pdf" | "zebra" | "csv";
@@ -16,15 +17,15 @@ export type PedidoDownload = "pdf" | "zebra" | "csv";
 interface PedidoDetailsSlideOutProps {
     pedido: Pedido | null;
     onClose: () => void;
-    onCancelPedido: (pedido: Pedido) => void;
-    onResend: (pedido: Pedido, canal: ResendChannel) => void;
+    onResend: (pedido: Pedido, canal: ResendChannel, destino: string) => void;
     /** Baixa os ingressos do pedido no formato escolhido. */
     onDownload: (pedido: Pedido, formato: PedidoDownload) => void;
 }
 
 /** Slideout de detalhes do pedido, com ações e a lista de itens do pedido. */
-export function PedidoDetailsSlideOut({ pedido, onClose, onCancelPedido, onResend, onDownload }: PedidoDetailsSlideOutProps) {
+export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }: PedidoDetailsSlideOutProps) {
     const [term, setTerm] = useState("");
+    const [canal, setCanal] = useState<CanalEnvio | null>(null);
 
     const itens = useMemo(() => {
         if (!pedido) return [];
@@ -34,9 +35,12 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onCancelPedido, onResen
     }, [pedido, term]);
 
     const isCancelled = pedido?.status === "cancelado";
+    /** Venda sem identificação não tem destino salvo; o modal pergunta. */
+    const emailDoPedido = pedido && isValidEmail(pedido.destinatario) ? pedido.destinatario : undefined;
 
     const close = () => {
         setTerm("");
+        setCanal(null);
         onClose();
     };
 
@@ -120,83 +124,74 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onCancelPedido, onResen
                                     </div>
                                 )}
 
-                                <hr className="border-secondary" />
+                                {/* Pedido cancelado não tem ação possível — o bloco todo sai. */}
+                                {!isCancelled && (
+                                    <>
+                                        <hr className="border-secondary" />
 
-                                <div className="flex flex-col gap-3">
-                                    <h3 className="text-md font-semibold text-primary">Ações</h3>
-                                    <div className="flex flex-wrap gap-3">
-                                        <Button
-                                            size="md"
-                                            color="secondary"
-                                            iconLeading={SlashCircle01}
-                                            isDisabled={isCancelled}
-                                            onClick={() => onCancelPedido(pedido)}
-                                        >
-                                            Cancelar pedido
-                                        </Button>
-                                        {/* Pago pelo saldo: os ingressos já existem, então dá para baixar e reenviar. */}
-                                        {pedido.tipo === "saldo" && !isCancelled && (
-                                            <>
-                                                <Button
-                                                    size="md"
-                                                    color="secondary"
-                                                    iconLeading={Download01}
-                                                    onClick={() => onDownload(pedido, "pdf")}
-                                                >
-                                                    Baixar PDF
-                                                </Button>
-                                                <Button
-                                                    size="md"
-                                                    color="secondary"
-                                                    iconLeading={Ticket02}
-                                                    onClick={() => onDownload(pedido, "zebra")}
-                                                >
-                                                    Baixar Zebra
-                                                </Button>
-                                                <Button
-                                                    size="md"
-                                                    color="secondary"
-                                                    iconLeading={Download01}
-                                                    onClick={() => onDownload(pedido, "csv")}
-                                                >
-                                                    Baixar .csv
-                                                </Button>
-                                                <Button
-                                                    size="md"
-                                                    color="secondary"
-                                                    iconLeading={Mail01}
-                                                    onClick={() => onResend(pedido, "email")}
-                                                >
-                                                    Reenviar por e-mail
-                                                </Button>
-                                            </>
-                                        )}
-                                        {pedido.tipo === "link" && pedido.status === "pendente" && (
-                                            <>
-                                                <Button
-                                                    size="md"
-                                                    color="secondary"
-                                                    iconLeading={Mail01}
-                                                    onClick={() => onResend(pedido, "email")}
-                                                >
-                                                    Reenviar por e-mail
-                                                </Button>
-                                                <Button
-                                                    size="md"
-                                                    color="secondary"
-                                                    iconLeading={<WhatsAppIcon data-icon className="size-5 text-[#25d366]" />}
-                                                    href={`https://wa.me/?text=${encodeURIComponent(pedido.paymentLink)}`}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    onClick={() => onResend(pedido, "whatsapp")}
-                                                >
-                                                    Reenviar por WhatsApp
-                                                </Button>
-                                            </>
-                                        )}
-                                    </div>
-                                    {pedido.resentAt && <p className="text-sm text-tertiary">Último reenvio em {pedido.resentAt}</p>}
-                                </div>
+                                        <div className="flex flex-col gap-3">
+                                            <h3 className="text-md font-semibold text-primary">Ações</h3>
+                                            <div className="flex flex-wrap gap-3">
+                                                {/* Pago pelo saldo: os ingressos já existem, então dá para baixar e imprimir. */}
+                                                {pedido.tipo === "saldo" && (
+                                                    <>
+                                                        <Button
+                                                            size="md"
+                                                            color="secondary"
+                                                            iconLeading={Download01}
+                                                            onClick={() => onDownload(pedido, "pdf")}
+                                                        >
+                                                            Baixar PDF
+                                                        </Button>
+                                                        <Button
+                                                            size="md"
+                                                            color="secondary"
+                                                            iconLeading={Ticket02}
+                                                            onClick={() => onDownload(pedido, "zebra")}
+                                                        >
+                                                            Imprimir na zebra
+                                                        </Button>
+                                                        <Button
+                                                            size="md"
+                                                            color="secondary"
+                                                            iconLeading={Download01}
+                                                            onClick={() => onDownload(pedido, "csv")}
+                                                        >
+                                                            Baixar .csv
+                                                        </Button>
+                                                    </>
+                                                )}
+
+                                                {/*
+                                              O envio passa pelo modal: em venda sem identificação o pedido não
+                                              tem e-mail nem telefone, então o destino é informado na hora.
+                                            */}
+                                                {pedido.status !== "cancelado" && (
+                                                    <>
+                                                        <Button
+                                                            size="md"
+                                                            color="secondary"
+                                                            iconLeading={Mail01}
+                                                            onClick={() => setCanal("email")}
+                                                        >
+                                                            Enviar por e-mail
+                                                        </Button>
+                                                        <Button
+                                                            size="md"
+                                                            color="secondary"
+                                                            iconLeading={<WhatsAppIcon data-icon className="size-5 text-[#25d366]" />}
+                                                            onClick={() => setCanal("whatsapp")}
+                                                        >
+                                                            Enviar por WhatsApp
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {pedido.resentAt && <p className="text-sm text-tertiary">Último reenvio em {pedido.resentAt}</p>}
 
                                 <div className="rounded-xl bg-primary ring-1 ring-border-secondary">
                                     <div className="flex flex-col gap-1.5 border-b border-secondary p-4">
@@ -240,6 +235,19 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onCancelPedido, onResen
                     )}
                 </AriaDialog>
             </AriaModal>
+
+            {pedido && (
+                <EnviarModal
+                    canal={canal}
+                    assunto={pedido.tipo === "saldo" ? "os ingressos" : "o link de pagamento"}
+                    valorInicial={canal === "email" ? emailDoPedido : undefined}
+                    onClose={() => setCanal(null)}
+                    onConfirm={(canalEscolhido, destino) => {
+                        setCanal(null);
+                        onResend(pedido, canalEscolhido, destino);
+                    }}
+                />
+            )}
         </AriaModalOverlay>
     );
 }

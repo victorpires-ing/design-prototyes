@@ -77,42 +77,47 @@ export function PaymentStep({
                         <p className="text-sm text-tertiary">
                             O comprador não paga nada. O débito sai do saldo do produtor pelo valor combinado em contrato.
                         </p>
+                        {/* Aqui o pedido já nasce pago, então os arquivos ficam prontos na mesma hora. */}
+                        <p className="text-sm text-tertiary">
+                            Os ingressos já saem emitidos: dá para baixar o PDF, baixar a planilha ou imprimir na zebra em seguida.
+                        </p>
                     </MethodOption>
                 </RadioGroup>
 
-                <div className="flex items-start gap-2">
-                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-fg-warning-secondary" aria-hidden="true" />
-                    <div className="flex flex-col">
+                {/* No desktop o aviso e a ação dividem a última linha do container. */}
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-start gap-2">
+                        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-fg-warning-secondary" aria-hidden="true" />
                         <p className="text-sm font-medium text-secondary">O pedido será criado antes do pagamento</p>
-                        <p className="text-sm text-tertiary">O comprador realizará o pagamento após a emissão do pedido.</p>
                     </div>
-                </div>
 
-                <Button
-                    size="md"
-                    color="primary"
-                    isDisabled={!method}
-                    onClick={() => method && onSelectMethod(method)}
-                    className="w-full md:hidden"
-                >
-                    Vender ingresso
-                </Button>
+                    <Button
+                        size="md"
+                        color="primary"
+                        isDisabled={!method}
+                        onClick={() => method && onSelectMethod(method)}
+                        className="w-full shrink-0 md:w-auto"
+                    >
+                        Vender ingresso
+                    </Button>
+                </div>
             </section>
 
             <section className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
-                <div className="border-t border-secondary px-4 py-4 md:px-5">
+                <div className="flex flex-col gap-3 border-t border-secondary px-4 py-4 md:px-5">
                     {buyer ? (
                         <BuyerIdentity buyer={buyer} />
                     ) : fallbackEmail ? (
-                        <div className="flex flex-col gap-3">
-                            <BuyerNoAccount email={fallbackEmail} />
-                            <p className="text-sm text-tertiary">
-                                Os ingressos vão para <strong className="font-semibold text-secondary">{fallbackEmail}</strong>. Peça que o
-                                comprador crie uma conta Ingresse com esse mesmo e-mail para acessá-los na carteira.
-                            </p>
-                        </div>
+                        <BuyerNoAccount email={fallbackEmail} />
                     ) : (
                         <p className="text-sm text-tertiary">Venda sem identificação do comprador.</p>
+                    )}
+
+                    {fallbackEmail && (
+                        <p className="text-sm text-tertiary">
+                            Os ingressos vão para <strong className="font-semibold text-secondary">{fallbackEmail}</strong>. Peça que o
+                            comprador crie uma conta Ingresse com esse mesmo e-mail para acessá-los na carteira.
+                        </p>
                     )}
                 </div>
 
@@ -147,12 +152,7 @@ const ItemRow = ({ line, onQuantityChange }: { line: CartLine; onQuantityChange:
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
                     <p className="text-sm font-semibold text-primary">{formatBRL(line.unitPrice)}</p>
-                    <QuantityStepper
-                        label={line.name}
-                        value={line.quantity}
-                        showRemoveAtMin
-                        onChange={(quantity) => onQuantityChange(line.id, quantity)}
-                    />
+                    <QuantityStepper label={line.name} value={line.quantity} onChange={(quantity) => onQuantityChange(line.id, quantity)} />
                 </div>
             </div>
 

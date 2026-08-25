@@ -23,12 +23,12 @@ interface BuyerStepProps {
     onSkip: () => void;
     /** Escolha da conta quando o e-mail pertence a mais de uma. */
     onSelectBuyer: (buyerId: string) => void;
-    /** Botão "Avançar" repetido abaixo do conteúdo no mobile (no desktop ele vive no header). */
-    mobileAdvance?: React.ReactNode;
+    /** Ação primária do passo — fica ao lado de "Pular identificação", junto do resultado da busca. */
+    advanceButton?: React.ReactNode;
 }
 
 /** Passo 1 — identifica o comprador por documento ou e-mail. */
-export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSelectBuyer, mobileAdvance }: BuyerStepProps) {
+export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSelectBuyer, advanceButton }: BuyerStepProps) {
     const isSearching = search.status === "searching";
     const isInvalid = search.status === "invalid-email";
 
@@ -82,32 +82,12 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
                 <p className="text-sm text-tertiary">Se não encontrar o comprador pelo documento, busque pelo e-mail.</p>
             </form>
 
-            {search.status === "found" && <FoundCard buyer={search.buyer} />}
+            {search.status === "found" && (
+                <ContasEncontradas buyers={[search.buyer]} selectedId={search.buyer.id} onSelect={onSelectBuyer} />
+            )}
 
             {search.status === "multiple" && (
-                <div className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
-                    <div className="flex flex-col gap-0.5">
-                        <h2 className="text-md font-semibold text-primary">{search.buyers.length} contas usam esse e-mail</h2>
-                        <p className="text-sm text-tertiary">Escolha para qual delas os ingressos vão.</p>
-                    </div>
-                    <hr className="border-secondary" />
-                    <RadioGroup
-                        aria-label="Conta do comprador"
-                        value={search.selectedId ?? null}
-                        onChange={onSelectBuyer}
-                        className="gap-2"
-                    >
-                        {search.buyers.map((buyer) => (
-                            <label
-                                key={buyer.id}
-                                className="flex cursor-pointer items-center gap-3 rounded-lg bg-secondary p-3 transition duration-100 ease-linear hover:bg-secondary_hover"
-                            >
-                                <RadioButton value={buyer.id} slot={null} aria-label={buyer.name} />
-                                <BuyerIdentity buyer={buyer} />
-                            </label>
-                        ))}
-                    </RadioGroup>
-                </div>
+                <ContasEncontradas buyers={search.buyers} selectedId={search.selectedId} onSelect={onSelectBuyer} />
             )}
 
             {search.status === "email-not-found" && (
@@ -128,12 +108,12 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
                 </ResultCard>
             )}
 
-            {mobileAdvance && <div className="md:hidden">{mobileAdvance}</div>}
-
-            <div className="flex md:justify-end">
-                <Button size="md" color="secondary" onClick={onSkip} className="max-md:w-full">
+            {/* Ação principal junto do resultado — "Pular" é saída secundária, não concorre com ela. */}
+            <div className="flex flex-col-reverse items-stretch gap-3 md:flex-row md:items-center md:justify-end">
+                <Button size="md" color="secondary" onClick={onSkip}>
                     Pular identificação
                 </Button>
+                {advanceButton}
             </div>
         </div>
     );
@@ -168,7 +148,7 @@ export const BuyerIdentity = ({ buyer }: { buyer: Buyer }) => (
 /** Sem conta na Ingresse — mesmo bloco, em tom de atenção. */
 export const BuyerNoAccount = ({ email }: { email: string }) => (
     <div className="flex items-center gap-3">
-        <FeaturedIcon icon={AlertCircle} color="warning" theme="gradient" size="lg" className="shrink-0 rounded-full" />
+        <FeaturedIcon icon={AlertCircle} color="gray" theme="gradient" size="lg" className="shrink-0 rounded-full" />
         <div className="flex min-w-0 flex-col">
             <p className="truncate text-sm font-semibold text-primary">Comprador ainda sem conta</p>
             <p className="truncate text-sm text-tertiary">{email}</p>
@@ -176,16 +156,46 @@ export const BuyerNoAccount = ({ email }: { email: string }) => (
     </div>
 );
 
-const FoundCard = ({ buyer }: { buyer: Buyer }) => (
-    <div className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
-        <div className="flex flex-col gap-0.5">
-            <h2 className="text-md font-semibold text-primary">Conta encontrada</h2>
-            <p className="text-sm text-tertiary">Confira o nome e o e-mail antes de continuar.</p>
+/**
+ * Contas encontradas na busca. Uma ou várias, o padrão é o mesmo: radio por
+ * conta — com uma só, já vem marcada, mas continua explícito para quem confere.
+ */
+const ContasEncontradas = ({
+    buyers,
+    selectedId,
+    onSelect,
+}: {
+    buyers: Buyer[];
+    selectedId?: string;
+    onSelect: (buyerId: string) => void;
+}) => {
+    const varias = buyers.length > 1;
+
+    return (
+        <div className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
+            <div className="flex flex-col gap-0.5">
+                <h2 className="text-md font-semibold text-primary">
+                    {varias ? `${buyers.length} contas usam esse e-mail` : "Conta encontrada"}
+                </h2>
+                <p className="text-sm text-tertiary">
+                    {varias ? "Escolha para qual delas os ingressos vão." : "Confira os dados antes de continuar."}
+                </p>
+            </div>
+            <hr className="border-secondary" />
+            <RadioGroup aria-label="Conta do comprador" value={selectedId ?? null} onChange={onSelect} className="gap-2">
+                {buyers.map((buyer) => (
+                    <label
+                        key={buyer.id}
+                        className="flex cursor-pointer items-center gap-3 rounded-lg bg-secondary p-3 transition duration-100 ease-linear hover:bg-secondary_hover"
+                    >
+                        <RadioButton value={buyer.id} slot={null} aria-label={buyer.name} />
+                        <BuyerIdentity buyer={buyer} />
+                    </label>
+                ))}
+            </RadioGroup>
         </div>
-        <hr className="border-secondary" />
-        <BuyerIdentity buyer={buyer} />
-    </div>
-);
+    );
+};
 
 /** Glifo de marca do WhatsApp — não existe no @untitledui/icons. */
 const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (

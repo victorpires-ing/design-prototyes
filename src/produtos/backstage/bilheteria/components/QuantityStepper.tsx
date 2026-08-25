@@ -1,5 +1,4 @@
-import { Minus, Plus, Trash01 } from "@untitledui/icons";
-import { cx } from "@/utils/cx";
+import { InputNumber } from "@/components/base/input/input-number";
 
 interface QuantityStepperProps {
     value: number;
@@ -7,45 +6,27 @@ interface QuantityStepperProps {
     max?: number;
     isDisabled?: boolean;
     label: string;
-    /** Com quantidade 1, troca o "−" por uma lixeira para deixar claro que o item sai da lista. */
-    showRemoveAtMin?: boolean;
 }
 
-/** Contador de quantidade `− 00 +` usado nas listas de itens e no resumo. */
-export function QuantityStepper({ value, onChange, max = 99, isDisabled, label, showRemoveAtMin }: QuantityStepperProps) {
-    const buttonClass =
-        "flex size-9 shrink-0 items-center justify-center text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary_hover disabled:cursor-not-allowed disabled:opacity-50";
-
-    const removes = showRemoveAtMin && value === 1;
-
+/**
+ * Contador de quantidade do passo 2 e do resumo.
+ *
+ * Usa o `InputNumber` horizontal do DS: além dos botões − e +, dá para digitar
+ * a quantidade direto, o que importa em venda de lote grande.
+ */
+export function QuantityStepper({ value, onChange, max = 99, isDisabled, label }: QuantityStepperProps) {
     return (
-        <div
-            className={cx(
-                "flex items-center rounded-lg bg-primary ring-1 ring-border-primary shadow-xs ring-inset",
-                isDisabled && "cursor-not-allowed opacity-50",
-            )}
-        >
-            <button
-                type="button"
-                aria-label={removes ? `Remover ${label}` : `Remover uma unidade de ${label}`}
-                disabled={isDisabled || value <= 0}
-                onClick={() => onChange(Math.max(0, value - 1))}
-                className={cx(buttonClass, "rounded-l-lg", removes && "hover:text-fg-error-secondary")}
-            >
-                {removes ? <Trash01 className="size-4" aria-hidden="true" /> : <Minus className="size-4" aria-hidden="true" />}
-            </button>
-            <span aria-live="polite" className="min-w-9 text-center text-sm font-medium tabular-nums text-primary">
-                {value.toString().padStart(2, "0")}
-            </span>
-            <button
-                type="button"
-                aria-label={`Adicionar uma unidade de ${label}`}
-                disabled={isDisabled || value >= max}
-                onClick={() => onChange(Math.min(max, value + 1))}
-                className={cx(buttonClass, "rounded-r-lg")}
-            >
-                <Plus className="size-4" aria-hidden="true" />
-            </button>
-        </div>
+        <InputNumber
+            size="sm"
+            orientation="horizontal"
+            value={value}
+            minValue={0}
+            maxValue={max}
+            isDisabled={isDisabled}
+            onChange={(next) => onChange(Number.isNaN(next) ? 0 : next)}
+            aria-label={`Quantidade de ${label}`}
+            inputClassName="text-center tabular-nums"
+            className="w-[120px] shrink-0"
+        />
     );
 }

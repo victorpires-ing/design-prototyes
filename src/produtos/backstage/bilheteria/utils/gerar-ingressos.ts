@@ -179,12 +179,19 @@ export async function gerarIngressosPdf(pedido: Pedido) {
 /*  CSV                                                                */
 /* ------------------------------------------------------------------ */
 
-const CSV_COLUMNS = ["sequência", "código QR", "pedido", "lote"];
+const CSV_COLUMNS = ["sequência", "código QR", "pedido", "item", "lote"];
 
 const escapeCell = (value: string) => (/[";\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
 
 export function gerarIngressosCsv(pedido: Pedido) {
-    const rows = ticketUnits(pedido).map((ticket) => [String(ticket.sequencia), ticket.codigo, pedido.id, ticket.lote ?? "—"]);
+    // "item" junta nome e grupo/sessão — é como o operador reconhece a linha na planilha.
+    const rows = ticketUnits(pedido).map((ticket) => [
+        String(ticket.sequencia),
+        ticket.codigo,
+        pedido.id,
+        [ticket.itemName, ticket.itemSubtitle].filter(Boolean).join(" — "),
+        ticket.lote ?? "—",
+    ]);
 
     // `;` como separador e BOM para o Excel em pt-BR abrir o arquivo corretamente.
     const csv = [CSV_COLUMNS, ...rows].map((row) => row.map(escapeCell).join(";")).join("\r\n");

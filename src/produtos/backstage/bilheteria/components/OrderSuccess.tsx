@@ -5,6 +5,7 @@ import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import type { Buyer } from "../data/catalogo";
 import { BuyerIdentity, BuyerNoAccount } from "./BuyerStep";
+import { EnviarModal, type CanalEnvio } from "./EnviarModal";
 
 export type OrderChannel = "link" | "saldo";
 
@@ -17,8 +18,8 @@ interface OrderSuccessProps {
     onNewSale: () => void;
     onManageOrders: () => void;
     onDownload: (format: "pdf" | "zebra" | "csv") => void;
-    /** Envia o PDF dos ingressos para o e-mail do comprador. */
-    onSendPdf: () => void;
+    /** Envia o link (ou os ingressos) pelo canal escolhido. */
+    onSend: (canal: CanalEnvio, destino: string) => void;
 }
 
 /** Tela final — pedido emitido, com link de pagamento ou download dos QR codes. */
@@ -31,9 +32,11 @@ export function OrderSuccess({
     onNewSale,
     onManageOrders,
     onDownload,
-    onSendPdf,
+    onSend,
 }: OrderSuccessProps) {
     const [copied, setCopied] = useState(false);
+    /** Canal em que o modal de envio está aberto. */
+    const [canal, setCanal] = useState<CanalEnvio | null>(null);
 
     const copyLink = async () => {
         try {
@@ -44,6 +47,8 @@ export function OrderSuccess({
             /* clipboard indisponível — ignora silenciosamente */
         }
     };
+
+    const assunto = channel === "link" ? "o link de pagamento" : "os ingressos";
 
     return (
         <div className="flex w-full max-w-[800px] flex-col items-center gap-6">
@@ -88,18 +93,17 @@ export function OrderSuccess({
                             <Button size="md" color="secondary" iconLeading={Copy01} onClick={copyLink}>
                                 {copied ? "Copiado" : "Copiar"}
                             </Button>
-                            {buyer && (
-                                <Button
-                                    size="md"
-                                    color="secondary"
-                                    iconLeading={<WhatsAppIcon data-icon className="size-5 text-[#25d366]" />}
-                                    href={`https://wa.me/?text=${encodeURIComponent(paymentLink)}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    Enviar por Whatsapp
-                                </Button>
-                            )}
+                            <Button size="md" color="secondary" iconLeading={Mail01} onClick={() => setCanal("email")}>
+                                Enviar por e-mail
+                            </Button>
+                            <Button
+                                size="md"
+                                color="secondary"
+                                iconLeading={<WhatsAppIcon data-icon className="size-5 text-[#25d366]" />}
+                                onClick={() => setCanal("whatsapp")}
+                            >
+                                Enviar por WhatsApp
+                            </Button>
                         </div>
                     </div>
                 ) : (
@@ -107,33 +111,38 @@ export function OrderSuccess({
                         <p className="text-sm font-semibold text-primary">Faça download do código QR dos itens</p>
                         <div className="grid gap-3 md:grid-cols-3">
                             <DownloadCard
-                                label="PDF"
+                                label="Baixar PDF"
                                 icon={<FileIcon type="pdf" variant="solid" className="size-8" />}
                                 onClick={() => onDownload("pdf")}
                             />
                             <DownloadCard
-                                label="Zebra"
+                                label="Imprimir na zebra"
                                 icon={<Ticket02 className="size-6 text-fg-secondary" aria-hidden="true" />}
                                 onClick={() => onDownload("zebra")}
                             />
                             <DownloadCard
-                                label="Planilha .csv"
+                                label="Baixar planilha"
                                 icon={<FileIcon type="csv" variant="solid" className="size-8" />}
                                 onClick={() => onDownload("csv")}
                             />
                         </div>
 
-                        {(buyer?.email ?? fallbackEmail) && (
-                            <div className="flex flex-col gap-2 border-t border-secondary pt-4 md:flex-row md:items-center md:justify-between">
-                                <p className="text-sm text-tertiary">
-                                    Prefere enviar direto para o comprador? Mandamos o PDF para{" "}
-                                    <strong className="font-semibold text-secondary">{buyer?.email ?? fallbackEmail}</strong>.
-                                </p>
-                                <Button size="md" color="secondary" iconLeading={Mail01} onClick={onSendPdf} className="shrink-0">
-                                    Enviar PDF por e-mail
+                        <div className="flex flex-col gap-2 border-t border-secondary pt-4 md:flex-row md:items-center md:justify-between">
+                            <p className="text-sm text-tertiary">Prefere enviar o PDF direto para o comprador?</p>
+                            <div className="flex flex-wrap gap-2">
+                                <Button size="md" color="secondary" iconLeading={Mail01} onClick={() => setCanal("email")}>
+                                    Enviar por e-mail
+                                </Button>
+                                <Button
+                                    size="md"
+                                    color="secondary"
+                                    iconLeading={<WhatsAppIcon data-icon className="size-5 text-[#25d366]" />}
+                                    onClick={() => setCanal("whatsapp")}
+                                >
+                                    Enviar por WhatsApp
                                 </Button>
                             </div>
-                        )}
+                        </div>
                     </div>
                 )}
             </section>
@@ -146,6 +155,18 @@ export function OrderSuccess({
                     Nova venda
                 </Button>
             </div>
+
+            {/* Sem conta vinculada não há telefone nem e-mail no cadastro — o modal pergunta. */}
+            <EnviarModal
+                canal={canal}
+                assunto={assunto}
+                valorInicial={canal === "email" ? (buyer?.email ?? fallbackEmail) : buyer?.phone}
+                onClose={() => setCanal(null)}
+                onConfirm={(canalEscolhido, destino) => {
+                    setCanal(null);
+                    onSend(canalEscolhido, destino);
+                }}
+            />
         </div>
     );
 }

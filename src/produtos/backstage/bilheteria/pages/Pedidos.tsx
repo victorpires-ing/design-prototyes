@@ -95,13 +95,13 @@ export function PedidosBilheteria() {
         toast.success(targets.length === 1 ? "Pedido cancelado" : `${targets.length} pedidos cancelados`);
     };
 
-    const handleResend = (pedido: Pedido, canal: ResendChannel) => {
+    const handleResend = (pedido: Pedido, canal: ResendChannel, destino: string) => {
         const at = formatDateTime(new Date());
         registerResend(pedido.id, at);
         setDetail((current) => (current && current.id === pedido.id ? { ...current, resentAt: at } : current));
-        // Saldo do produtor não tem link: o que vai por e-mail são os próprios ingressos.
-        if (canal === "whatsapp") return toast.success("Link aberto no WhatsApp");
-        toast.success(pedido.tipo === "saldo" ? `Ingressos enviados para ${pedido.destinatario}` : "Link reenviado por e-mail!");
+        // Saldo do produtor não tem link: o que é enviado são os próprios ingressos.
+        const assunto = pedido.tipo === "saldo" ? "Ingressos" : "Link de pagamento";
+        toast.success(canal === "email" ? `${assunto} enviado para ${destino}` : `${assunto} enviado no WhatsApp ${destino}`);
     };
 
     const handleDownload = (pedido: Pedido, formato: PedidoDownload) => {
@@ -387,13 +387,7 @@ export function PedidosBilheteria() {
                 )}
             </div>
 
-            <PedidoDetailsSlideOut
-                pedido={detail}
-                onClose={() => setDetail(null)}
-                onCancelPedido={(pedido) => setPendingCancel([pedido])}
-                onResend={handleResend}
-                onDownload={handleDownload}
-            />
+            <PedidoDetailsSlideOut pedido={detail} onClose={() => setDetail(null)} onResend={handleResend} onDownload={handleDownload} />
 
             <CancelPedidosModal
                 pedidos={pendingCancel}

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Calendar, ChevronDown, FaceId, Package, QrCode01, SearchLg } from "@untitledui/icons";
 import { Tab, TabList, Tabs } from "@/components/application/tabs/tabs";
 import { InputBase } from "@/components/base/input/input";
+import { Badge } from "@/components/base/badges/badges";
 import { cx } from "@/utils/cx";
 import { combos, formatBRL, products, sessions, type ComboItem, type TicketItem } from "../data/catalogo";
 import type { Cart } from "../data/carrinho";
@@ -182,9 +183,15 @@ const SessionAccordion = ({ label, tickets, cart, defaultOpen, facialBlocked, on
                                 isBlocked && "opacity-50",
                             )}
                         >
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <AccessIcon className="size-5 shrink-0 text-fg-brand-primary" aria-hidden="true" />
                                 <p className="text-md font-semibold text-primary">{ticket.name}</p>
+                                {/* Deixa claro na lista por que o item não pode ser vendido. */}
+                                {isBlocked && (
+                                    <Badge size="sm" type="pill-color" color="gray">
+                                        Bloqueado
+                                    </Badge>
+                                )}
                             </div>
                             <p className="text-sm text-tertiary">{ticket.lote}</p>
                             <p className="text-sm text-tertiary">{ticket.description}</p>

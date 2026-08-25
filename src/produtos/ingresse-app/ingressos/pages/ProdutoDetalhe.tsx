@@ -1,13 +1,29 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, InfoCircle, Send01, Wallet02, XClose } from "@untitledui/icons";
+import { ArrowLeft, InfoCircle, Send01, ShoppingBag03, Wallet02, XClose } from "@untitledui/icons";
+import { Badge } from "@/components/base/badges/badges";
 import { AppShell } from "../../components/AppShell";
 import { ActionFab, type FabAction } from "../../components/ActionFab";
 import { FakeQR } from "../../components/FakeQR";
 import { StatusBar } from "../../components/StatusBar";
 import { Zigzag } from "../../components/Zigzag";
 import { getEvento, getItem } from "../data/eventos";
+
+/** Status de retirada exibido como badge no topo do card. */
+const STATUS_RETIRADA = {
+    pendente: { label: "Retirada pendente", color: "warning" as const },
+    retirado: { label: "Retirado", color: "success" as const },
+};
+
+/** Orientações fixas de retirada de produtos no evento. */
+const DETALHES_RETIRADA = [
+    "Apresente seu ingresso na área de retirada de produtos do evento.",
+    "Tenha em mãos um documento oficial com foto.",
+    "Informe o nome do titular da compra, se solicitado.",
+    "A retirada está sujeita aos horários de funcionamento de evento.",
+    "Guarde seu comprovante após a retirada dos itens.",
+];
 
 /** Detalhe de um item de produto/merchandising (QR de retirada). */
 export function ProdutoDetalhe() {
@@ -17,6 +33,7 @@ export function ProdutoDetalhe() {
     const item = getItem(eventId, itemId);
     const title = item?.title ?? "Produto";
     const imagem = item?.imagem;
+    const status = STATUS_RETIRADA[item?.retirada ?? "pendente"];
     const [zoom, setZoom] = useState(false);
 
     const acoes: FabAction[] = [
@@ -25,6 +42,12 @@ export function ProdutoDetalhe() {
             label: "Transferir produto",
             short: "Transferir",
             onClick: () => navigate(`/ingresse-app/ingressos/transferir/${eventoObj.id}/${itemId}`),
+        },
+        {
+            icon: ShoppingBag03,
+            label: "Minhas compras",
+            short: "Minhas compras",
+            onClick: () => navigate("/ingresse-app/ingressos"),
         },
         { icon: InfoCircle, label: "Detalhes do produto", short: "Detalhes" },
         { icon: Wallet02, label: "Adicionar à Carteira", short: "Carteira", dark: true },
@@ -59,17 +82,21 @@ export function ProdutoDetalhe() {
                     <div className="rounded-3xl bg-primary shadow-sm ring-1 ring-border-secondary">
                         {/* Topo: produto + retirada */}
                         <div className="p-5">
-                            <motion.button
-                                type="button"
-                                layoutId="produto-img"
-                                onClick={() => imagem && setZoom(true)}
-                                aria-label="Ampliar imagem do produto"
-                                className="block h-16 w-16 overflow-hidden rounded-xl bg-secondary transition duration-100 ease-linear active:scale-95"
-                            >
-                                {imagem && <img src={imagem} alt="" className="size-full object-cover" />}
-                            </motion.button>
-                            <p className="mt-4 text-sm text-tertiary">Produto</p>
-                            <p className="mt-1 text-2xl leading-tight font-bold text-primary">{title}</p>
+                            <div className="flex items-center justify-between gap-3">
+                                <motion.button
+                                    type="button"
+                                    layoutId="produto-img"
+                                    onClick={() => imagem && setZoom(true)}
+                                    aria-label="Ampliar imagem do produto"
+                                    className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-secondary transition duration-100 ease-linear active:scale-95"
+                                >
+                                    {imagem && <img src={imagem} alt="" className="size-full object-cover" />}
+                                </motion.button>
+                                <Badge size="sm" color={status.color} type="pill-color">
+                                    {status.label}
+                                </Badge>
+                            </div>
+                            <p className="mt-4 text-2xl leading-tight font-bold text-primary">{title}</p>
                             <p className="mt-1.5 text-sm text-tertiary">Retire em: Stand Loja, 23</p>
 
                             <div className="my-4 border-t border-tertiary" />
@@ -104,6 +131,20 @@ export function ProdutoDetalhe() {
                                     Número do pedido: <span className="font-semibold text-primary">82920303</span>
                                 </p>
                                 <p className="mt-2 text-xs text-quaternary">#c31da550-31e1-45e2-85df-001555b4b989</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Detalhes de retirada */}
+                    <div>
+                        <h2 className="pb-3 text-md font-bold text-primary">Detalhes de retirada</h2>
+                        <div className="rounded-2xl bg-primary p-5 shadow-sm ring-1 ring-border-secondary">
+                            <div className="flex flex-col gap-4">
+                                {DETALHES_RETIRADA.map((texto) => (
+                                    <p key={texto} className="text-sm leading-relaxed text-tertiary">
+                                        {texto}
+                                    </p>
+                                ))}
                             </div>
                         </div>
                     </div>

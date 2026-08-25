@@ -99,7 +99,7 @@ export function DetalheGrupoV2() {
                 </header>
 
                 <main className="flex flex-1 flex-col gap-5 px-6 pb-10">
-                    <ResumoPermissoes permissoes={grupo.permissoes} concedidas={concedidas} modo={grupo.modo} itens={grupo.itens} showUso />
+                    <ResumoPermissoes permissoes={grupo.permissoes} concedidas={concedidas} showUso />
 
                     <section className="flex flex-col gap-4 rounded-2xl bg-secondary p-5 ring-1 ring-border-secondary">
                         <span className="text-md font-semibold text-primary">Operadores</span>

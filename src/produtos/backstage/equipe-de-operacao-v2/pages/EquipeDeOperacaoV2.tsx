@@ -12,7 +12,7 @@ import { Toggle } from "@/components/base/toggle/toggle";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { PERMISSAO_META, permissoesDo, useEquipeV2, usoDaCota, type GrupoOperacaoV2 } from "../data/equipe-v2-store";
+import { cotaTotal, PERMISSAO_META, permissoesDo, useEquipeV2, usoDaCota, type GrupoOperacaoV2 } from "../data/equipe-v2-store";
 import { toastSucesso } from "../utils/toast";
 
 const PORTAL_URL = "freepass.ingresse.com/operador";
@@ -283,7 +283,7 @@ const ListaGrupos = ({
                                     <div className="flex items-baseline justify-between gap-2">
                                         <span className="flex items-center gap-1.5 text-sm text-tertiary">{PERMISSAO_META[id].label}</span>
                                         <span className="text-sm font-medium text-secondary tabular-nums">
-                                            {config.usadas} de {config.cota}
+                                            {config.usadas} de {cotaTotal(config)}
                                         </span>
                                     </div>
                                     <div className="h-2 overflow-hidden rounded-full bg-quaternary">

@@ -2,24 +2,29 @@
 /*  Store da Equipe de operação v2 (in-memory, escopo do protótipo).    */
 /*                                                                      */
 /*  Diferença para a v1: o grupo deixa de existir só para cortesia.     */
-/*  Ele ganha uma ou mais PERMISSÕES (cortesia, PDV, bilheteria) e      */
-/*  cada uma tem a própria cota. Os itens liberados e a forma de        */
-/*  dividir a cota são do grupo — é uma decisão só, não uma por         */
-/*  permissão, para a configuração caber numa tela.                     */
+/*  Ele ganha uma ou mais PERMISSÕES (cortesia, PDV, bilheteria), e cada  */
+/*  uma traz o próprio tipo de cota, os próprios itens liberados e os     */
+/*  próprios limites — tudo configurado numa tela só.                     */
 /* ------------------------------------------------------------------ */
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import { CurrencyDollarCircle, Gift01, ShoppingBag01 } from "@untitledui/icons";
+import { CurrencyDollarCircle, Gift01, Phone01 } from "@untitledui/icons";
 import { EVENTO_TEM_ITENS } from "./equipe-data";
 
 export type Permissao = "cortesia" | "pdv" | "bilheteria";
 
-/** Como a cota é dividida entre os operadores do grupo. */
-export type CotaModo = "compartilhada" | "individual";
+/** Onde o limite é aplicado: um número para a permissão inteira ou um por item. */
+export type CotaModo = "grupo" | "item";
 
-/** Cota de uma permissão + quanto dela já foi usado. */
+/** Cota de uma permissão: onde o limite vale, quais itens libera e quanto já foi usado. */
 export interface CotaPermissao {
+    modo: CotaModo;
+    /** Itens que esta permissão libera — cada tipo de envio tem os seus. */
+    itens: string[];
+    /** Limite único da permissão (modo "grupo"). */
     cota: number;
+    /** Limite por item liberado (modo "item") — chave é o id do item. */
+    porItem: Record<string, number>;
     usadas: number;
 }
 
@@ -28,21 +33,15 @@ export interface GrupoOperacaoV2 {
     nome: string;
     ativo: boolean;
     operadores: string[];
-    /** Vale para todas as permissões do grupo. */
-    modo: CotaModo;
-    /** Ids dos itens que o grupo pode operar. */
-    itens: string[];
-    /** Só as permissões concedidas aparecem aqui. */
+    /** Só as permissões concedidas aparecem aqui, cada uma com seus itens. */
     permissoes: Partial<Record<Permissao, CotaPermissao>>;
 }
 
 export interface NovoGrupoV2 {
     nome: string;
     operadores: string[];
-    modo: CotaModo;
-    itens: string[];
-    /** Cota por permissão concedida. */
-    cotas: Partial<Record<Permissao, number>>;
+    /** Modo, itens e limites de cada permissão concedida. */
+    permissoes: Partial<Record<Permissao, Omit<CotaPermissao, "usadas">>>;
 }
 
 export const PERMISSOES: Array<{
@@ -66,7 +65,7 @@ export const PERMISSOES: Array<{
         label: "PDV",
         descricao: "Vender no ponto de venda presencial, com dinheiro, Pix ou cartão.",
         unidade: "ingressos para vender no PDV",
-        icon: ShoppingBag01,
+        icon: Phone01,
     },
     {
         id: "bilheteria",
@@ -79,8 +78,15 @@ export const PERMISSOES: Array<{
 
 export const PERMISSAO_META = Object.fromEntries(PERMISSOES.map((p) => [p.id, p])) as Record<Permissao, (typeof PERMISSOES)[number]>;
 
+/** Limite total: o número único ou a soma dos limites por item. */
+export const cotaTotal = (c: Pick<CotaPermissao, "modo" | "cota" | "porItem" | "itens">) =>
+    c.modo === "item" ? c.itens.reduce((soma, id) => soma + (c.porItem[id] ?? 0), 0) : c.cota;
+
 /** % de uso da cota de uma permissão. */
-export const usoDaCota = (c: CotaPermissao) => (c.cota ? Math.min(100, Math.round((c.usadas / c.cota) * 100)) : 0);
+export const usoDaCota = (c: CotaPermissao) => {
+    const total = cotaTotal(c);
+    return total ? Math.min(100, Math.round((c.usadas / total) * 100)) : 0;
+};
 
 /** Permissões concedidas, na ordem do catálogo. */
 export const permissoesDo = (g: GrupoOperacaoV2): Permissao[] => PERMISSOES.map((p) => p.id).filter((id) => Boolean(g.permissoes[id]));
@@ -118,8 +124,8 @@ export function EquipeV2Provider({ children }: { children: ReactNode }) {
         // Consumo mockado (~40% da cota) para que detalhe e listagem já mostrem
         // barras com progresso; num cenário real começaria em 0.
         const permissoes: GrupoOperacaoV2["permissoes"] = {};
-        for (const [id, cota] of Object.entries(dados.cotas) as Array<[Permissao, number]>) {
-            permissoes[id] = { cota, usadas: Math.round(cota * 0.4) };
+        for (const [id, config] of Object.entries(dados.permissoes) as Array<[Permissao, Omit<CotaPermissao, "usadas">]>) {
+            permissoes[id] = { ...config, usadas: Math.round(cotaTotal(config) * 0.4) };
         }
 
         const novo: GrupoOperacaoV2 = {
@@ -127,8 +133,6 @@ export function EquipeV2Provider({ children }: { children: ReactNode }) {
             nome: dados.nome.trim(),
             ativo: true,
             operadores: dados.operadores,
-            modo: dados.modo,
-            itens: dados.itens,
             permissoes,
         };
         setGrupos((prev) => [novo, ...prev]);

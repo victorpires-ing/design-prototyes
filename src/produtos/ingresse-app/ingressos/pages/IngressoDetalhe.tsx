@@ -13,6 +13,7 @@ import { StatusBar } from "../../components/StatusBar";
 import { Zigzag } from "../../components/Zigzag";
 import { getEvento, getItem } from "../data/eventos";
 import { getDependenteAtribuido, isTransferido } from "../data/transfer-store";
+import { InfoIngressoSheet } from "../components/InfoIngressoSheet";
 
 /** Carinha de reconhecimento facial: toca 2 vezes e congela no último frame. */
 function FaceAnimation() {
@@ -60,6 +61,7 @@ export function IngressoDetalhe() {
 
     const [meuIngresso, setMeuIngresso] = useState(true);
     const [showQR, setShowQR] = useState(false);
+    const [infoAberto, setInfoAberto] = useState(false);
     // Facial pendente começa não cadastrado; "Cadastrar agora" leva ao estado cadastrado.
     const [registered, setRegistered] = useState(item?.facial !== "pendente");
 
@@ -116,6 +118,7 @@ export function IngressoDetalhe() {
                     <button
                         type="button"
                         aria-label="Informações"
+                        onClick={() => setInfoAberto(true)}
                         className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                     >
                         <InfoCircle className="size-5" />
@@ -307,6 +310,15 @@ export function IngressoDetalhe() {
                     </div>
                 </div>
             </div>
+
+            <InfoIngressoSheet
+                isOpen={infoAberto}
+                onClose={() => setInfoAberto(false)}
+                seed={itemId ?? ""}
+                sessao={sessao}
+                descricao={tipo ?? "Ingresso"}
+                variant="ingresso"
+            />
         </AppShell>
     );
 }

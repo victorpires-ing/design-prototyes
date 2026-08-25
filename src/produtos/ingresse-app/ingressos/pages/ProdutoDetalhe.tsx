@@ -9,6 +9,7 @@ import { FakeQR } from "../../components/FakeQR";
 import { StatusBar } from "../../components/StatusBar";
 import { Zigzag } from "../../components/Zigzag";
 import { getEvento, getItem } from "../data/eventos";
+import { InfoIngressoSheet } from "../components/InfoIngressoSheet";
 
 /** Status de retirada exibido como badge no topo do card. */
 const STATUS_RETIRADA = {
@@ -34,7 +35,9 @@ export function ProdutoDetalhe() {
     const title = item?.title ?? "Produto";
     const imagem = item?.imagem;
     const status = STATUS_RETIRADA[item?.retirada ?? "pendente"];
+    const sessao = item?.data ?? eventoObj.sessao;
     const [zoom, setZoom] = useState(false);
+    const [infoAberto, setInfoAberto] = useState(false);
 
     const acoes: FabAction[] = [
         {
@@ -71,6 +74,7 @@ export function ProdutoDetalhe() {
                     <button
                         type="button"
                         aria-label="Informações"
+                        onClick={() => setInfoAberto(true)}
                         className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                     >
                         <InfoCircle className="size-5" />
@@ -182,6 +186,15 @@ export function ProdutoDetalhe() {
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                <InfoIngressoSheet
+                    isOpen={infoAberto}
+                    onClose={() => setInfoAberto(false)}
+                    seed={itemId ?? ""}
+                    sessao={sessao}
+                    descricao={title}
+                    variant="produto"
+                />
             </div>
         </AppShell>
     );

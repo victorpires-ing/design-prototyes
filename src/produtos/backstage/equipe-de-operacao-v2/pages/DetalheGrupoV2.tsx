@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, ChevronRight, HomeLine } from "@untitledui/icons";
+import { ArrowLeft, ChevronRight, Edit01, HomeLine } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -87,14 +87,24 @@ export function DetalheGrupoV2() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <span className="text-sm text-tertiary">{grupo.ativo ? "Grupo ativo" : "Grupo desativado"}</span>
-                        <Toggle
-                            size="sm"
-                            isSelected={grupo.ativo}
-                            onChange={() => toggleAtivo(grupo.id)}
-                            aria-label={`Ativar grupo ${grupo.nome}`}
-                        />
+                    <div className="flex items-center gap-4">
+                        <Button
+                            size="md"
+                            color="secondary"
+                            iconLeading={Edit01}
+                            onClick={() => navigate(`/backstage/equipe-de-operacao/v2/${grupo.id}/editar`)}
+                        >
+                            Editar configuração
+                        </Button>
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm text-tertiary">{grupo.ativo ? "Grupo ativo" : "Grupo desativado"}</span>
+                            <Toggle
+                                size="sm"
+                                isSelected={grupo.ativo}
+                                onChange={() => toggleAtivo(grupo.id)}
+                                aria-label={`Ativar grupo ${grupo.nome}`}
+                            />
+                        </div>
                     </div>
                 </header>
 

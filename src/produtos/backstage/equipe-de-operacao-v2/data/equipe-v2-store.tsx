@@ -47,6 +47,8 @@ export interface NovoGrupoV2 {
 export const PERMISSOES: Array<{
     id: Permissao;
     label: string;
+    /** Rótulo do campo de cota — o artigo muda com o nome da permissão. */
+    cotaLabel: string;
     /** O que o operador passa a poder fazer. */
     descricao: string;
     /** O que a cota limita, no vocabulário daquela permissão. */
@@ -56,22 +58,25 @@ export const PERMISSOES: Array<{
     {
         id: "cortesia",
         label: "Cortesia",
-        descricao: "Emitir cortesias pelo portal do operador, sem cobrança.",
-        unidade: "cortesias para emitir",
+        cotaLabel: "Cota da Cortesia",
+        descricao: "Emitir cortesias pelo portal do operador, sem cobrar de quem recebe.",
+        unidade: "cortesias que o grupo pode emitir",
         icon: Gift01,
     },
     {
         id: "pdv",
         label: "PDV",
-        descricao: "Vender no ponto de venda presencial, com dinheiro, Pix ou cartão.",
-        unidade: "ingressos para vender no PDV",
+        cotaLabel: "Cota do PDV",
+        descricao: "Vender presencialmente, com dinheiro, Pix ou cartão.",
+        unidade: "ingressos que o grupo pode vender no PDV",
         icon: Phone01,
     },
     {
         id: "bilheteria",
         label: "Bilheteria",
+        cotaLabel: "Cota da Bilheteria",
         descricao: "Vender pela bilheteria online, por link de pagamento ou saldo do produtor.",
-        unidade: "ingressos para vender na bilheteria",
+        unidade: "ingressos que o grupo pode vender na bilheteria",
         icon: CurrencyDollarCircle,
     },
 ];
@@ -121,11 +126,10 @@ export function EquipeV2Provider({ children }: { children: ReactNode }) {
     );
 
     const criarGrupo = useCallback((dados: NovoGrupoV2) => {
-        // Consumo mockado (~40% da cota) para que detalhe e listagem já mostrem
-        // barras com progresso; num cenário real começaria em 0.
+        // Grupo novo nasce sem consumo — barra cheia logo após criar confunde.
         const permissoes: GrupoOperacaoV2["permissoes"] = {};
         for (const [id, config] of Object.entries(dados.permissoes) as Array<[Permissao, Omit<CotaPermissao, "usadas">]>) {
-            permissoes[id] = { ...config, usadas: Math.round(cotaTotal(config) * 0.4) };
+            permissoes[id] = { ...config, usadas: 0 };
         }
 
         const novo: GrupoOperacaoV2 = {

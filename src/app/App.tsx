@@ -202,6 +202,7 @@ export default function App() {
         <Route path="/backstage/equipe-de-operacao/v2" element={<EquipeDeOperacaoV2 />} />
         <Route path="/backstage/equipe-de-operacao/v2/criar" element={<CriarGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao/v2/:grupoId" element={<DetalheGrupoV2 />} />
+        <Route path="/backstage/equipe-de-operacao/v2/:grupoId/editar" element={<CriarGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao/criar" element={<CriarGrupoOperacao />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId" element={<DetalheGrupoOperacao />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId/editar-itens" element={<EditarItensCotas />} />

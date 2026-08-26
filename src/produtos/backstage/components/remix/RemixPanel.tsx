@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import {
     ArrowRight,
@@ -43,7 +43,11 @@ export function RemixPanel() {
     const [rascunho, setRascunho] = useState("");
     const [pensando, setPensando] = useState(false);
     const [historicoAberto, setHistoricoAberto] = useState(false);
-    const fimRef = useRef<HTMLDivElement>(null);
+
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const ultimoTurnoRef = useRef<HTMLDivElement>(null);
+    /** Folga abaixo do último turno para que ele consiga subir até o topo. */
+    const folgaRef = useRef<HTMLDivElement>(null);
 
     const novaConversa = () => {
         setTurnos([]);
@@ -73,9 +77,34 @@ export function RemixPanel() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [perguntaPendente]);
 
-    useEffect(() => {
-        fimRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }, [turnos, pensando]);
+    /**
+     * Sem folga abaixo do último turno o container não tem quanto rolar e a
+     * pergunta para no meio. Ajusto no DOM: em estado, o `set` dentro do layout
+     * effect entrava em laço de render.
+     */
+    const ajustarFolga = () => {
+        const container = scrollRef.current;
+        const alvo = ultimoTurnoRef.current;
+        const folga = folgaRef.current;
+        if (!container || !alvo || !folga) return;
+        folga.style.height = `${Math.max(0, container.clientHeight - alvo.offsetHeight - 32)}px`;
+    };
+
+    /**
+     * Mantém a última pergunta encostada no topo — na hora do envio e de novo
+     * quando a resposta chega, senão o balão desce conforme o cartão cresce.
+     */
+    useLayoutEffect(() => {
+        const container = scrollRef.current;
+        const alvo = ultimoTurnoRef.current;
+        if (!container || !alvo) return;
+        ajustarFolga();
+        const delta = alvo.getBoundingClientRect().top - container.getBoundingClientRect().top;
+        if (Math.abs(delta) < 2) return;
+        // Atribuição direta: `scrollTo({behavior:"smooth"})` não se aplica em todo renderizador.
+        container.scrollTop += delta;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [turnos]);
 
     const sugestoes = sugestoesPara(escopo);
 
@@ -121,7 +150,7 @@ export function RemixPanel() {
                                 <CymaticsFill count={4500} dot={1} />
                             </div>
                         )}
-                        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+                        <div ref={scrollRef} className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
                             {turnos.length === 0 && !pensando ? (
                                 <div className="flex flex-1 flex-col justify-end gap-3">
                                     <h2 className="text-center text-display-xs font-bold text-primary">Como você quer começar?</h2>
@@ -139,7 +168,11 @@ export function RemixPanel() {
                                 </div>
                             ) : (
                                 turnos.map((turno) => (
-                                    <div key={turno.id} className="flex flex-col gap-3">
+                                    <div
+                                        key={turno.id}
+                                        ref={turno.id === turnos.at(-1)?.id ? ultimoTurnoRef : undefined}
+                                        className="flex flex-col gap-3"
+                                    >
                                         <p className="ml-auto max-w-[85%] rounded-xl bg-secondary px-4 py-3 text-sm text-primary">
                                             {turno.pergunta}
                                         </p>
@@ -160,7 +193,7 @@ export function RemixPanel() {
                                     </div>
                                 ))
                             )}
-                            <div ref={fimRef} />
+                            <div ref={folgaRef} aria-hidden="true" className="shrink-0" />
                         </div>
                     </div>
 

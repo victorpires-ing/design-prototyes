@@ -199,6 +199,40 @@ const Linha = ({ bloco }: { bloco: Extract<Bloco, { tipo: "linha" }> }) => {
     );
 };
 
+const Barras = ({ bloco }: { bloco: Extract<Bloco, { tipo: "barras" }> }) => {
+    const maximo = Math.max(...bloco.dados.map((d) => d.valor), 1);
+
+    return (
+        <div className="flex flex-col gap-3">
+            <div className="flex h-[180px] items-end gap-4">
+                {bloco.dados.map((item) => (
+                    <div key={item.nome} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
+                        <span className="text-sm font-medium text-secondary tabular-nums">{formatar(item.valor, bloco.formato)}</span>
+                        <span
+                            className="w-full max-w-14 rounded-t-md"
+                            style={{
+                                height: `${Math.max(4, (item.valor / maximo) * 100)}%`,
+                                background: `linear-gradient(180deg, ${item.de} 0%, ${item.para} 100%)`,
+                            }}
+                            aria-hidden="true"
+                        />
+                    </div>
+                ))}
+            </div>
+            <div className="flex gap-4">
+                {bloco.dados.map((item) => (
+                    <span
+                        key={item.nome}
+                        className="line-clamp-2 min-w-0 flex-1 text-center text-sm leading-tight text-balance text-tertiary"
+                    >
+                        {item.nome}
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 /**
  * Rosca de raio variável: cada fatia tem o mesmo ângulo e o raio proporcional
  * ao valor. Recharts não modela isso, então é SVG na mão.

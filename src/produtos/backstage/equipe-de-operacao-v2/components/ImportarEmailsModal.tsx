@@ -159,7 +159,7 @@ export function ImportarEmailsModal({ isOpen, onClose, onConfirm }: Props) {
                                     <span className="font-semibold text-brand-secondary">Clique</span>{" "}
                                     <span className="text-secondary">ou arraste arquivos aqui</span>
                                 </p>
-                                <p className="mt-1 text-xs text-tertiary">
+                                <p className="mt-1 text-sm text-tertiary">
                                     Use um arquivo .CSV ou .XLSX com até 100 contatos. O arquivo deve incluir uma coluna chamada email.
                                 </p>
                             </div>
@@ -177,7 +177,7 @@ export function ImportarEmailsModal({ isOpen, onClose, onConfirm }: Props) {
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex min-w-0 flex-1 flex-col">
                                             <span className="truncate text-sm font-medium text-primary">{file.name}</span>
-                                            <span className="text-xs text-tertiary">
+                                            <span className="text-sm text-tertiary">
                                                 {(file.size / 1024).toFixed(1)} KB
                                                 {erro && (
                                                     <>

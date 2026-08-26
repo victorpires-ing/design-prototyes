@@ -338,8 +338,7 @@ const MobileSummaryBar = ({ cart, total, isOpen, onToggle, onRemove, onRemoveAll
             </div>
         )}
 
-        {/* pb generoso: o switcher flutuante de layout do protótipo ocupa o canto inferior direito. */}
-        <div className="flex items-center justify-between gap-3 px-4 pb-20">
+        <div className="flex items-center justify-between gap-3 px-4 pb-4">
             <p className="flex items-center gap-1.5 whitespace-nowrap text-md font-semibold text-primary">
                 {formatBRL(total)}
                 <span className="text-sm font-normal text-tertiary">+ taxas</span>

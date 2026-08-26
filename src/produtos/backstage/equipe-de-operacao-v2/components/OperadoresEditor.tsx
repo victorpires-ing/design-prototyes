@@ -94,9 +94,7 @@ export function OperadoresEditor({ value, onChange, bloqueados = [], mostrarCont
                         }}
                     />
                 </InputGroup>
-                <p className="text-xs text-tertiary">
-                    Cole ou digite os e-mails separados por espaço ou vírgula para adicionar vários e-mails de uma vez.
-                </p>
+                <p className="text-sm text-tertiary">Cole vários de uma vez, separados por espaço ou vírgula.</p>
             </div>
 
             <OperadoresList value={value} onChange={onChange} bloqueados={bloqueados} mostrarConta={mostrarConta} badgeConta={badgeConta} />
@@ -147,10 +145,10 @@ export function OperadoresList({ value, onChange, bloqueados = [], badgeConta = 
                                 {email}
                             </span>
                             {!badgeConta && st === "invalido" && (
-                                <span className="text-xs font-medium text-error-primary">E-mail inválido</span>
+                                <span className="text-sm font-medium text-error-primary">E-mail inválido</span>
                             )}
                             {!badgeConta && st === "sem-cadastro" && (
-                                <span className="flex items-center gap-1 text-xs font-medium text-warning-primary">
+                                <span className="flex items-center gap-1 text-sm font-medium text-warning-primary">
                                     <AlertTriangle className="size-3" aria-hidden="true" /> Usuário sem conta na Ingresse — será convidado
                                 </span>
                             )}

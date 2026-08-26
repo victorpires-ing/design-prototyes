@@ -148,7 +148,7 @@ const PortalOperador = () => {
     return (
         <section className="flex items-center justify-between gap-4 rounded-xl bg-secondary px-4 py-3 lg:w-[400px] lg:shrink-0">
             <div className="flex min-w-0 flex-col">
-                <span className="text-sm font-medium text-tertiary">Portal do operador</span>
+                <span className="text-sm font-medium text-tertiary">Link de acesso dos operadores</span>
                 <span className="truncate text-sm text-secondary">{PORTAL_URL}</span>
             </div>
             <div className="flex shrink-0 items-center gap-1">
@@ -165,9 +165,9 @@ const EstadoSemItens = ({ onConfigurar }: { onConfigurar: () => void }) => (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
         <FeaturedIcon icon={SlashCircle01} color="gray" theme="modern" size="lg" />
         <div className="flex max-w-md flex-col gap-1">
-            <h2 className="text-lg font-semibold text-primary">Configure algum item antes de gerir operadores</h2>
+            <h2 className="text-lg font-semibold text-primary">Cadastre itens antes de montar a equipe</h2>
             <p className="text-sm text-tertiary">
-                É necessário ter itens cadastrados no evento para configurar as permissões dos operadores.
+                Um grupo de operação trabalha sobre os ingressos, produtos e combos do evento, e este ainda não tem nenhum.
             </p>
         </div>
         <Button size="md" color="primary" iconLeading={ShoppingCart01} onClick={onConfigurar}>
@@ -195,9 +195,10 @@ const EstadoSemGrupos = ({ onCriar }: { onCriar: () => void }) => (
             </EmptyState.Header>
 
             <EmptyState.Content>
-                <EmptyState.Title>Configure grupos de operação</EmptyState.Title>
+                <EmptyState.Title>Nenhum grupo de operação ainda</EmptyState.Title>
                 <EmptyState.Description>
-                    Crie grupos de operadores e defina, para cada permissão — cortesia, PDV e bilheteria —, a cota e os itens liberados.
+                    Um grupo reúne operadores e define o que eles podem fazer: emitir cortesia, vender no PDV, vender na bilheteria. E
+                    quanto de cada um.
                 </EmptyState.Description>
             </EmptyState.Content>
 

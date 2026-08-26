@@ -7,7 +7,6 @@ import { PaginationCardAdvanced } from "@/components/application/pagination/pagi
 import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { InputBase } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
@@ -42,7 +41,6 @@ export function PedidosBilheteria() {
     const [sortAsc, setSortAsc] = useState(false);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [selected, setSelected] = useState<string[]>([]);
     const [detail, setDetail] = useState<Pedido | null>(null);
     const [pendingCancel, setPendingCancel] = useState<Pedido[] | null>(null);
     const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -74,23 +72,9 @@ export function PedidosBilheteria() {
     const safePage = Math.min(page, totalPages);
     const visible = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-    const cancellableVisible = visible.filter((row) => row.status !== "cancelado");
-    const allVisibleSelected = cancellableVisible.length > 0 && cancellableVisible.every((row) => selected.includes(row.id));
-
-    const toggleRow = (id: string) =>
-        setSelected((current) => (current.includes(id) ? current.filter((it) => it !== id) : [...current, id]));
-
-    const toggleAll = () =>
-        setSelected((current) =>
-            allVisibleSelected
-                ? current.filter((id) => !cancellableVisible.some((row) => row.id === id))
-                : [...new Set([...current, ...cancellableVisible.map((row) => row.id)])],
-        );
-
     const applyCancel = (targets: Pedido[]) => {
         const ids = targets.map((row) => row.id);
         cancelPedidos(ids);
-        setSelected((current) => current.filter((id) => !ids.includes(id)));
         setDetail((current) => (current && ids.includes(current.id) ? { ...current, status: "cancelado" } : current));
         toast.success(targets.length === 1 ? "Pedido cancelado" : `${targets.length} pedidos cancelados`);
     };
@@ -219,42 +203,11 @@ export function PedidosBilheteria() {
                                 </div>
                             </div>
 
-                            {/* Barra de seleção */}
-                            <div className="flex flex-wrap items-center justify-between gap-3 border-y border-secondary bg-secondary px-4 py-3">
-                                <p className="text-sm text-tertiary">
-                                    {selected.length === 0
-                                        ? "Nenhum pedido selecionado"
-                                        : `${selected.length} ${selected.length === 1 ? "pedido selecionado" : "pedidos selecionados"}`}
-                                </p>
-                                <div className="flex items-center gap-2">
-                                    <Button size="sm" color="secondary" isDisabled={selected.length === 0} onClick={() => setSelected([])}>
-                                        Limpar seleção
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        color="primary-destructive"
-                                        isDisabled={selected.length === 0}
-                                        onClick={() => setPendingCancel(rows.filter((row) => selected.includes(row.id)))}
-                                    >
-                                        Cancelar pedidos selecionados
-                                    </Button>
-                                </div>
-                            </div>
-
                             {/* Tabela — desktop */}
                             <div className="overflow-x-auto max-md:hidden">
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="border-b border-secondary text-left">
-                                            <th className="w-12 px-4 py-3">
-                                                <Checkbox
-                                                    size="sm"
-                                                    aria-label="Selecionar todos os pedidos da página"
-                                                    isSelected={allVisibleSelected}
-                                                    isDisabled={cancellableVisible.length === 0}
-                                                    onChange={toggleAll}
-                                                />
-                                            </th>
                                             <Th>Pagamento</Th>
                                             <Th>Tipo</Th>
                                             <Th>Pedido</Th>
@@ -283,15 +236,6 @@ export function PedidosBilheteria() {
                                                 key={row.id}
                                                 className="border-b border-secondary transition duration-100 ease-linear hover:bg-primary_hover"
                                             >
-                                                <td className="px-4 py-4">
-                                                    <Checkbox
-                                                        size="sm"
-                                                        aria-label={`Selecionar pedido ${row.id}`}
-                                                        isSelected={selected.includes(row.id)}
-                                                        isDisabled={row.status === "cancelado"}
-                                                        onChange={() => toggleRow(row.id)}
-                                                    />
-                                                </td>
                                                 <td className="px-4 py-4">
                                                     <BadgeWithDot size="sm" type="pill-color" color={PEDIDO_STATUS_META[row.status].color}>
                                                         {PEDIDO_STATUS_META[row.status].label}
@@ -339,14 +283,6 @@ export function PedidosBilheteria() {
                                 </p>
                                 {visible.map((row) => (
                                     <div key={row.id} className="flex items-start gap-3 rounded-xl bg-secondary p-3">
-                                        <Checkbox
-                                            size="sm"
-                                            aria-label={`Selecionar pedido ${row.id}`}
-                                            isSelected={selected.includes(row.id)}
-                                            isDisabled={row.status === "cancelado"}
-                                            onChange={() => toggleRow(row.id)}
-                                            className="mt-1"
-                                        />
                                         <button
                                             type="button"
                                             onClick={() => setDetail(row)}

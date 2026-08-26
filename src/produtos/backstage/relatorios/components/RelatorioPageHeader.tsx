@@ -16,10 +16,14 @@ export const ExportMenu = ({
     onExport,
     formats = ["excel", "csv", "pdf"],
     size = "md",
+    onEditColumnsAndExport,
 }: {
     onExport?: (format: "excel" | "csv" | "pdf") => void;
     formats?: Array<"excel" | "csv" | "pdf">;
     size?: "sm" | "md";
+    /** Quando informado, adiciona a opção "Editar colunas e exportar" — mesmo comportamento
+     * do botão "Editar colunas" da página (abre o modal de gestão de colunas). */
+    onEditColumnsAndExport?: () => void;
 }) => {
     const LABELS: Record<"excel" | "csv" | "pdf", string> = {
         excel: "Arquivo Excel",
@@ -36,6 +40,12 @@ export const ExportMenu = ({
                     {formats.map((f) => (
                         <Dropdown.Item key={f} label={LABELS[f]} onAction={() => onExport?.(f)} />
                     ))}
+                    {onEditColumnsAndExport && (
+                        <>
+                            <Dropdown.Separator />
+                            <Dropdown.Item label="Editar colunas e exportar" onAction={onEditColumnsAndExport} />
+                        </>
+                    )}
                 </Dropdown.Menu>
             </Dropdown.Popover>
         </Dropdown.Root>

@@ -950,6 +950,7 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
                         size="sm"
                         formats={["excel", "csv"]}
                         onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "As transações serão exportadas." })}
+                        onEditColumnsAndExport={() => setIsManageColumnsOpen(true)}
                     />
                 </div>
             </div>

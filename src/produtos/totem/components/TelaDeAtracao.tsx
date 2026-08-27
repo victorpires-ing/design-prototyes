@@ -32,7 +32,7 @@ export function TelaDeAtracao({ evento, logo, onIniciar }: Props) {
             <div className="flex flex-col items-center gap-6">
                 <Ticket02 className="size-20 text-white/30" aria-hidden="true" />
                 <div className="flex flex-col gap-3">
-                    <span className="text-sm font-semibold tracking-[0.25em] text-white/50 uppercase">Ingressos</span>
+                    <span className="text-md font-semibold tracking-[0.25em] text-white/50 uppercase">Ingressos</span>
                     <span className="text-4xl leading-tight font-bold text-balance">{evento}</span>
                 </div>
             </div>
@@ -47,7 +47,7 @@ export function TelaDeAtracao({ evento, logo, onIniciar }: Props) {
                     <span className="absolute inline-flex size-4 animate-ping rounded-full bg-white/40 motion-reduce:hidden" />
                     <span className="relative inline-flex size-3 rounded-full bg-white" />
                 </span>
-                <span className="text-2xl font-semibold">Toque para começar</span>
+                <span className="text-3xl font-semibold">Toque para começar</span>
             </span>
         </button>
     );

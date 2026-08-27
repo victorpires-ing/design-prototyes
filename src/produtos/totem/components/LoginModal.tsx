@@ -89,7 +89,7 @@ export function LoginModal({ isOpen, onClose, logoEvento, onSucesso }: LoginModa
     const cadastroOk = nome.trim() !== "";
 
     const seletorIdioma = (
-        <button type="button" className="mx-auto flex items-center gap-1.5 text-sm font-medium text-secondary transition hover:text-primary">
+        <button type="button" className="mx-auto flex items-center gap-1.5 text-md font-medium text-secondary transition hover:text-primary">
             🇧🇷 Português
             <svg viewBox="0 0 12 8" className="size-2.5" fill="none" aria-hidden="true">
                 <path d="M1 1.5 6 6.5l5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -110,11 +110,11 @@ export function LoginModal({ isOpen, onClose, logoEvento, onSucesso }: LoginModa
                     {etapa === "telefone" && (
                         <div className="flex flex-col gap-5">
                             {seletorIdioma}
-                            <h2 className="text-center text-xl font-bold text-primary">Acesse sua conta</h2>
+                            <h2 className="text-center text-2xl font-bold text-primary">Acesse sua conta</h2>
                             <div className="flex items-end gap-3">
                                 <div className="flex flex-col gap-1.5">
-                                    <span className="text-sm font-medium text-secondary">País</span>
-                                    <div className="flex h-11 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary ring-1 ring-border-primary">
+                                    <span className="text-md font-medium text-secondary">País</span>
+                                    <div className="flex h-11 items-center gap-1.5 rounded-lg bg-primary px-3 text-md font-semibold text-primary ring-1 ring-border-primary">
                                         🇧🇷 +55
                                         <svg viewBox="0 0 12 8" className="size-2.5 text-fg-quaternary" fill="none" aria-hidden="true">
                                             <path d="M1 1.5 6 6.5l5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -122,7 +122,7 @@ export function LoginModal({ isOpen, onClose, logoEvento, onSucesso }: LoginModa
                                     </div>
                                 </div>
                                 <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-                                    <span className="text-sm font-medium text-secondary">Número de telefone</span>
+                                    <span className="text-md font-medium text-secondary">Número de telefone</span>
                                     <input
                                         type="tel"
                                         inputMode="numeric"
@@ -130,36 +130,36 @@ export function LoginModal({ isOpen, onClose, logoEvento, onSucesso }: LoginModa
                                         value={fone}
                                         onChange={(e) => setFone(maskFone(e.target.value))}
                                         onKeyDown={(e) => e.key === "Enter" && foneOk && avancar()}
-                                        className="h-11 w-full rounded-lg bg-primary px-3.5 text-sm text-primary outline-none ring-1 ring-border-primary transition placeholder:text-placeholder focus:ring-2 focus:ring-brand"
+                                        className="h-11 w-full rounded-lg bg-primary px-3.5 text-md text-primary outline-none ring-1 ring-border-primary transition placeholder:text-placeholder focus:ring-2 focus:ring-brand"
                                     />
                                 </label>
                             </div>
                             <Button size="lg" color="primary" className="w-full" isDisabled={!foneOk} onClick={avancar}>
                                 Continuar
                             </Button>
-                            <button type="button" className="text-center text-sm font-bold text-primary underline">Problemas com o login?</button>
+                            <button type="button" className="text-center text-md font-bold text-primary underline">Problemas com o login?</button>
                         </div>
                     )}
 
                     {etapa === "email" && (
                         <div className="flex flex-col gap-5">
                             {seletorIdioma}
-                            <h2 className="text-center text-xl font-bold text-primary">Crie sua conta</h2>
+                            <h2 className="text-center text-2xl font-bold text-primary">Crie sua conta</h2>
                             <label className="flex flex-col gap-1.5">
-                                <span className="text-sm font-medium text-secondary">Endereço de email</span>
+                                <span className="text-md font-medium text-secondary">Endereço de email</span>
                                 <input
                                     type="email"
                                     placeholder="seu@email.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     onKeyDown={(e) => e.key === "Enter" && emailOk && avancar()}
-                                    className="h-11 w-full rounded-lg bg-primary px-3.5 text-sm text-primary outline-none ring-1 ring-border-primary transition placeholder:text-placeholder focus:ring-2 focus:ring-brand"
+                                    className="h-11 w-full rounded-lg bg-primary px-3.5 text-md text-primary outline-none ring-1 ring-border-primary transition placeholder:text-placeholder focus:ring-2 focus:ring-brand"
                                 />
                             </label>
                             <Button size="lg" color="primary" className="w-full" isDisabled={!emailOk} onClick={avancar}>
                                 Continuar
                             </Button>
-                            <button type="button" className="text-center text-sm font-bold text-primary underline">Problemas com o cadastro?</button>
+                            <button type="button" className="text-center text-md font-bold text-primary underline">Problemas com o cadastro?</button>
                         </div>
                     )}
 
@@ -169,24 +169,24 @@ export function LoginModal({ isOpen, onClose, logoEvento, onSucesso }: LoginModa
                                 <button type="button" onClick={voltar} aria-label="Voltar" className="text-fg-secondary transition hover:text-fg-primary">
                                     <ArrowLeft className="size-5" />
                                 </button>
-                                <h2 className="flex-1 text-center text-xl font-bold text-primary">Finalize seu cadastro</h2>
+                                <h2 className="flex-1 text-center text-2xl font-bold text-primary">Finalize seu cadastro</h2>
                                 <span className="size-5" />
                             </div>
                             <label className="flex flex-col gap-1.5">
-                                <span className="text-sm font-medium text-secondary">Nome e sobrenome</span>
+                                <span className="text-md font-medium text-secondary">Nome e sobrenome</span>
                                 <input
                                     placeholder="Digite o seu nome e sobrenome"
                                     value={nome}
                                     onChange={(e) => setNome(e.target.value)}
-                                    className="h-11 w-full rounded-lg bg-primary px-3.5 text-sm text-primary outline-none ring-1 ring-border-primary transition placeholder:text-placeholder focus:ring-2 focus:ring-brand"
+                                    className="h-11 w-full rounded-lg bg-primary px-3.5 text-md text-primary outline-none ring-1 ring-border-primary transition placeholder:text-placeholder focus:ring-2 focus:ring-brand"
                                 />
                             </label>
                             <label className="flex flex-col gap-1.5">
-                                <span className="text-sm font-medium text-secondary">País de nacionalidade</span>
+                                <span className="text-md font-medium text-secondary">País de nacionalidade</span>
                                 <select
                                     value={pais}
                                     onChange={(e) => setPais(e.target.value)}
-                                    className="h-11 w-full rounded-lg bg-primary px-3 text-sm font-medium text-primary ring-1 ring-border-primary outline-none transition focus:ring-2 focus:ring-brand"
+                                    className="h-11 w-full rounded-lg bg-primary px-3 text-md font-medium text-primary ring-1 ring-border-primary outline-none transition focus:ring-2 focus:ring-brand"
                                 >
                                     {PAISES.map((p) => (
                                         <option key={p.code} value={p.code}>
@@ -197,25 +197,25 @@ export function LoginModal({ isOpen, onClose, logoEvento, onSucesso }: LoginModa
                             </label>
                             {pais === "BR" && (
                                 <label className="flex flex-col gap-1.5">
-                                    <span className="text-sm font-medium text-secondary">CPF</span>
+                                    <span className="text-md font-medium text-secondary">CPF</span>
                                     <input
                                         inputMode="numeric"
                                         placeholder="000.000.000-00"
                                         value={cpf}
                                         onChange={(e) => setCpf(maskCPF(e.target.value))}
-                                        className="h-11 w-full rounded-lg bg-primary px-3.5 text-sm text-primary outline-none ring-1 ring-border-primary transition placeholder:text-placeholder focus:ring-2 focus:ring-brand"
+                                        className="h-11 w-full rounded-lg bg-primary px-3.5 text-md text-primary outline-none ring-1 ring-border-primary transition placeholder:text-placeholder focus:ring-2 focus:ring-brand"
                                     />
                                 </label>
                             )}
                             <label className="flex flex-col gap-1.5">
-                                <span className="text-sm font-medium text-secondary">Data de nascimento</span>
+                                <span className="text-md font-medium text-secondary">Data de nascimento</span>
                                 <input
                                     type="text"
                                     inputMode="numeric"
                                     placeholder="DD/MM/AAAA"
                                     value={nascimento}
                                     onChange={(e) => setNascimento(maskData(e.target.value))}
-                                    className="h-11 w-full rounded-lg bg-primary px-3.5 text-sm text-primary outline-none ring-1 ring-border-primary transition placeholder:text-placeholder focus:ring-2 focus:ring-brand"
+                                    className="h-11 w-full rounded-lg bg-primary px-3.5 text-md text-primary outline-none ring-1 ring-border-primary transition placeholder:text-placeholder focus:ring-2 focus:ring-brand"
                                 />
                             </label>
                             <Button size="lg" color="primary" className="w-full" isDisabled={!cadastroOk} onClick={() => onSucesso(nome.trim())}>
@@ -226,15 +226,15 @@ export function LoginModal({ isOpen, onClose, logoEvento, onSucesso }: LoginModa
                 </div>
 
                 <div className="flex flex-col items-center gap-2 text-center">
-                    <span className="text-sm text-tertiary">Ou continue com:</span>
-                    <div className="flex items-center gap-2 text-sm font-bold text-primary">
+                    <span className="text-md text-tertiary">Ou continue com:</span>
+                    <div className="flex items-center gap-2 text-md font-bold text-primary">
                         <span>Termos de Serviço</span>
                         <span className="text-tertiary">•</span>
                         <span>Política de Privacidade</span>
                         <span className="text-tertiary">•</span>
                         <span>Ingresse ↗</span>
                     </div>
-                    <span className="text-sm text-quaternary">Copyright © 2026 Ingresse</span>
+                    <span className="text-md text-quaternary">Copyright © 2026 Ingresse</span>
                 </div>
             </div>
         </div>

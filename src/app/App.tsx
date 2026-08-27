@@ -73,7 +73,6 @@ import { MeiaEntrada as MarketplaceMeiaEntrada } from '../produtos/marketplace/s
 import { SelecaoEAtribuicao as TotemSelecaoEAtribuicao } from '../produtos/totem/selecao-e-atribuicao/pages/SelecaoEAtribuicao';
 import { Config as TotemConfig } from '../produtos/totem/selecao-e-atribuicao/pages/Config';
 import { Sucesso as TotemSucesso } from '../produtos/totem/selecao-e-atribuicao/pages/Sucesso';
-import { Quiosque as TotemQuiosque } from '../produtos/totem/quiosque/pages/Quiosque';
 import { MeiaEntrada as TotemMeiaEntrada } from '../produtos/totem/selecao-e-atribuicao/pages/MeiaEntrada';
 import { Home as IngresseAppHome } from '../produtos/ingresse-app/home/pages/Home';
 import { Carteira as IngresseAppCarteira } from '../produtos/ingresse-app/carteira/pages/Carteira';
@@ -309,7 +308,6 @@ export default function App() {
         <Route path="/marketplace/meia-entrada" element={<MarketplaceMeiaEntrada />} />
         <Route path="/totem" element={<TotemConfig />} />
         <Route path="/totem/event" element={<TotemSelecaoEAtribuicao />} />
-        <Route path="/totem/quiosque" element={<TotemQuiosque />} />
         <Route path="/totem/sucesso" element={<TotemSucesso />} />
         <Route path="/totem/meia-entrada" element={<TotemMeiaEntrada />} />
         <Route path="/novo-site/home" element={<NovoSiteHome />} />

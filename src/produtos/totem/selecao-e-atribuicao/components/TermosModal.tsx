@@ -24,11 +24,11 @@ export function TermosModal({ isOpen, termos, onClose, onConfirmar }: TermosModa
                 <Dialog>
                     <div className="flex max-h-[85dvh] w-full flex-col rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         {/* Topo fixo */}
-                        <h2 className="shrink-0 text-lg font-semibold text-primary">Termos de uso</h2>
-                        <p className="mt-2 shrink-0 text-md text-secondary">Para prosseguir com a compra você deve ler e concordar com os seguintes termos:</p>
+                        <h2 className="shrink-0 text-xl font-semibold text-primary">Termos de uso</h2>
+                        <p className="mt-2 shrink-0 text-lg text-secondary">Para prosseguir com a compra você deve ler e concordar com os seguintes termos:</p>
 
                         {/* Miolo scrollável */}
-                        <div className="mt-4 min-h-0 flex-1 overflow-y-auto rounded-xl bg-secondary px-4 py-3 text-sm whitespace-pre-line text-tertiary ring-1 ring-border-secondary">
+                        <div className="mt-4 min-h-0 flex-1 overflow-y-auto rounded-xl bg-secondary px-4 py-3 text-md whitespace-pre-line text-tertiary ring-1 ring-border-secondary">
                             {termos}
                         </div>
 

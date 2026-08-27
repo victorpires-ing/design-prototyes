@@ -38,7 +38,7 @@ export function Slideout({ isOpen, title, onClose, children, footer }: SlideoutP
             >
                 <AriaDialog className="flex h-full flex-col outline-hidden">
                     <header className="flex shrink-0 items-center justify-between gap-4 border-b border-secondary px-5 py-4">
-                        <h2 className="text-md font-semibold text-primary">{title}</h2>
+                        <h2 className="text-lg font-semibold text-primary">{title}</h2>
                         <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
                     </header>
                     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">{children}</div>

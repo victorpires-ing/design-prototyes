@@ -95,15 +95,15 @@ export function SelecaoItensModal({ combo, onClose, onConfirmar }: SelecaoItensM
                     {it.imagem && <img src={it.imagem} alt="" aria-hidden="true" className="size-16 shrink-0 rounded-lg object-cover ring-1 ring-border-secondary" />}
                     {/* Zona A: identificação (preço desce pra cá abaixo de 360px) */}
                     <div className="flex min-w-0 flex-1 flex-col">
-                        <span className="text-sm font-medium text-primary">{it.nome}</span>
-                        {hierarquia && <span className="text-sm text-tertiary">{hierarquia}</span>}
-                        {it.mostrarPreco && precoLabel && <span className="text-sm font-semibold text-primary min-[360px]:hidden">{precoLabel}</span>}
+                        <span className="text-md font-medium text-primary">{it.nome}</span>
+                        {hierarquia && <span className="text-md text-tertiary">{hierarquia}</span>}
+                        {it.mostrarPreco && precoLabel && <span className="text-md font-semibold text-primary min-[360px]:hidden">{precoLabel}</span>}
                     </div>
                     {/* Zona B: preço/status (some abaixo de 360px) */}
-                    {it.mostrarPreco && precoLabel && <span className="hidden shrink-0 text-sm font-semibold text-primary min-[360px]:block">{precoLabel}</span>}
+                    {it.mostrarPreco && precoLabel && <span className="hidden shrink-0 text-md font-semibold text-primary min-[360px]:block">{precoLabel}</span>}
                     {/* Zona C: controle (texto fixo "Nx" ou stepper) */}
                     {fixa ? (
-                        <span className="shrink-0 text-sm font-semibold text-primary tabular-nums">{q}×</span>
+                        <span className="shrink-0 text-md font-semibold text-primary tabular-nums">{q}×</span>
                     ) : (
                         <Stepper
                             count={q}
@@ -123,7 +123,7 @@ export function SelecaoItensModal({ combo, onClose, onConfirmar }: SelecaoItensM
                             transition={{ duration: 0.18, ease: "easeOut" }}
                             className="overflow-hidden"
                         >
-                            <span className="text-sm text-tertiary">
+                            <span className="text-md text-tertiary">
                                 Você só pode escolher {max} {max === 1 ? "unidade" : "unidades"} desse item
                             </span>
                         </motion.div>
@@ -139,8 +139,8 @@ export function SelecaoItensModal({ combo, onClose, onConfirmar }: SelecaoItensM
         return (
             <div key={s.id} className="flex flex-col">
                 <div className="mb-1 flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-primary">{s.data}</span>
-                    {s.hora && <span className="text-sm text-tertiary">· {s.hora}</span>}
+                    <span className="text-md font-bold text-primary">{s.data}</span>
+                    {s.hora && <span className="text-md text-tertiary">· {s.hora}</span>}
                 </div>
                 {itens.map((it) => renderItem(s, it))}
             </div>
@@ -157,18 +157,18 @@ export function SelecaoItensModal({ combo, onClose, onConfirmar }: SelecaoItensM
                         {/* Header + status dinâmico */}
                         <div className="shrink-0 px-6 pt-5 pb-4">
                             <div className="flex items-start justify-between gap-4">
-                                <h2 className="text-lg font-semibold text-primary">{combo.nome}</h2>
+                                <h2 className="text-xl font-semibold text-primary">{combo.nome}</h2>
                                 <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
                             </div>
                             {temOpcionais ? (
                                 <div className="mt-3 flex flex-col gap-2">
                                     <div className="flex items-center justify-between gap-3">
-                                        <span className="text-sm text-tertiary">
+                                        <span className="text-md text-tertiary">
                                             {combo.minItens === combo.maxItens
                                                 ? `Escolha ${combo.maxItens} ${combo.maxItens === 1 ? "item" : "itens"}`
                                                 : `Escolha entre ${combo.minItens} e ${combo.maxItens} itens`}
                                         </span>
-                                        <span className="shrink-0 text-sm font-medium text-primary tabular-nums">
+                                        <span className="shrink-0 text-md font-medium text-primary tabular-nums">
                                             {total} {total === 1 ? "selecionado" : "selecionados"}
                                         </span>
                                     </div>
@@ -177,7 +177,7 @@ export function SelecaoItensModal({ combo, onClose, onConfirmar }: SelecaoItensM
                                     </div>
                                 </div>
                             ) : (
-                                <p className="mt-3 text-sm text-tertiary">Confira os itens inclusos no seu ingresso</p>
+                                <p className="mt-3 text-md text-tertiary">Confira os itens inclusos no seu ingresso</p>
                             )}
                         </div>
 
@@ -191,7 +191,7 @@ export function SelecaoItensModal({ combo, onClose, onConfirmar }: SelecaoItensM
                                         aria-expanded={inclusosAberto}
                                         className={cx("flex w-full items-center justify-between gap-3 bg-secondary px-4 py-3 text-left hover:bg-secondary_hover", inclusosAberto && "border-b border-secondary")}
                                     >
-                                        <span className="text-sm font-semibold text-primary">Itens inclusos</span>
+                                        <span className="text-md font-semibold text-primary">Itens inclusos</span>
                                         <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition-transform", inclusosAberto && "rotate-180")} />
                                     </button>
                                     <AnimatePresence initial={false}>
@@ -245,7 +245,7 @@ function Stepper({ count, canDec, canInc, onInc, onDec }: { count: number; canDe
             >
                 <Minus className="size-4" />
             </button>
-            <span className="w-9 text-center text-sm font-medium text-primary tabular-nums">{count}</span>
+            <span className="w-9 text-center text-md font-medium text-primary tabular-nums">{count}</span>
             <button
                 type="button"
                 onClick={onInc}

@@ -361,7 +361,7 @@ export function TotemLayout({
                     ) : (
                         <img src={INGRESSE_LOGO} alt="Ingresse" className="h-7 w-auto" />
                     )}
-                    <div className={cx("flex items-center gap-3 text-sm text-white", !frame && "hidden")}>
+                    <div className={cx("flex items-center gap-3 text-md text-white", !frame && "hidden")}>
                         {usuario ? (
                             <button
                                 type="button"
@@ -410,9 +410,9 @@ export function TotemLayout({
                                 </svg>
                             </button>
                         )}
-                        <h1 className="line-clamp-2 text-lg leading-tight font-semibold text-primary">{title}</h1>
+                        <h1 className="line-clamp-2 text-xl leading-tight font-semibold text-primary">{title}</h1>
                         {badge && (
-                            <span className="shrink-0 rounded-md bg-secondary px-2 py-0.5 text-sm font-medium text-tertiary">{badge}</span>
+                            <span className="shrink-0 rounded-md bg-secondary px-2 py-0.5 text-md font-medium text-tertiary">{badge}</span>
                         )}
                     </div>
                     <div className="flex shrink-0 items-center gap-4">
@@ -421,14 +421,14 @@ export function TotemLayout({
                             <button
                                 type="button"
                                 onClick={onRecomecar}
-                                className="flex items-center gap-1.5 text-sm text-secondary transition hover:text-primary"
+                                className="flex items-center gap-1.5 text-md text-secondary transition hover:text-primary"
                             >
                                 <RefreshCcw01 className="size-4" />
                                 Recomeçar
                             </button>
                         )}
                         {frame && (
-                            <button type="button" className="flex items-center gap-1.5 text-sm text-secondary transition hover:text-primary">
+                            <button type="button" className="flex items-center gap-1.5 text-md text-secondary transition hover:text-primary">
                                 <HelpCircle className="size-4" />
                                 Ajuda
                             </button>
@@ -450,15 +450,15 @@ export function TotemLayout({
             {!emRepouso && segundosRestantes !== null && (
                 <div className="absolute inset-0 z-[55] flex flex-col items-center justify-center gap-6 bg-overlay/80 px-10 text-center backdrop-blur-sm">
                     <div className="flex flex-col items-center gap-3 rounded-2xl bg-primary px-8 py-8">
-                        <span className="text-2xl font-bold text-primary">Ainda está por aí?</span>
-                        <p className="text-md text-tertiary">
+                        <span className="text-3xl font-bold text-primary">Ainda está por aí?</span>
+                        <p className="text-lg text-tertiary">
                             A compra vai ser encerrada em <span className="font-semibold text-secondary tabular-nums">{segundosRestantes}s</span>{" "}
                             para liberar o totem.
                         </p>
                         <button
                             type="button"
                             onClick={() => setSegundosRestantes(null)}
-                            className="mt-2 rounded-lg bg-brand-solid px-6 py-3 text-md font-semibold text-white transition hover:bg-brand-solid_hover"
+                            className="mt-2 rounded-lg bg-brand-solid px-6 py-3 text-lg font-semibold text-white transition hover:bg-brand-solid_hover"
                         >
                             Continuar comprando
                         </button>

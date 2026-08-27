@@ -76,8 +76,8 @@ export function Sucesso() {
                 <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
 
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-2xl font-bold text-primary">{primeiroNome ? `Compra concluída, ${primeiroNome}!` : "Compra concluída!"}</h1>
-                    <p className="text-md text-tertiary">
+                    <h1 className="text-3xl font-bold text-primary">{primeiroNome ? `Compra concluída, ${primeiroNome}!` : "Compra concluída!"}</h1>
+                    <p className="text-lg text-tertiary">
                         Seus ingressos de <span className="font-semibold text-secondary">{config.nome}</span> já estão garantidos.
                     </p>
                 </div>
@@ -87,14 +87,14 @@ export function Sucesso() {
                     {entrega === "impresso" ? (
                         <>
                             <Printer className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
-                            <p className="text-sm text-secondary">
+                            <p className="text-md text-secondary">
                                 Retire os ingressos na impressora do totem. Eles também ficam na sua carteira Ingresse e chegam por e-mail.
                             </p>
                         </>
                     ) : (
                         <>
                             <Mail01 className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
-                            <p className="text-sm text-secondary">
+                            <p className="text-md text-secondary">
                                 Enviamos os ingressos por e-mail e eles já estão na carteira Ingresse. Quem foi atribuído recebe o convite no e-mail dele.
                             </p>
                         </>
@@ -104,8 +104,8 @@ export function Sucesso() {
                 {meio && (
                     <div className="flex w-full items-center gap-2 rounded-xl bg-secondary px-4 py-3 text-left">
                         <meio.icon className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                        <span className="text-sm text-tertiary">Pago com</span>
-                        <span className="text-sm font-medium text-secondary">{meio.label}</span>
+                        <span className="text-md text-tertiary">Pago com</span>
+                        <span className="text-md font-medium text-secondary">{meio.label}</span>
                     </div>
                 )}
 

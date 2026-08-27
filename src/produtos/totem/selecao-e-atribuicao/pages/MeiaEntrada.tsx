@@ -51,11 +51,11 @@ function Accordion({ items }: { items: { titulo: string; conteudo: ReactNode }[]
                             onClick={() => setAberto(on ? null : i)}
                             className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition duration-100 ease-linear hover:bg-secondary md:px-5"
                         >
-                            <span className="text-md font-semibold text-primary">{it.titulo}</span>
+                            <span className="text-lg font-semibold text-primary">{it.titulo}</span>
                             <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition duration-200", on && "rotate-180")} />
                         </button>
                         {on && (
-                            <div className="border-t border-border-secondary bg-secondary px-4 pt-6 pb-5 text-sm leading-relaxed text-tertiary md:px-5 md:pb-6">
+                            <div className="border-t border-border-secondary bg-secondary px-4 pt-6 pb-5 text-md leading-relaxed text-tertiary md:px-5 md:pb-6">
                                 {it.conteudo}
                             </div>
                         )}
@@ -90,7 +90,7 @@ function FaqAccordion02({ items }: { items: { titulo: string; conteudo: ReactNod
                                     transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                                 />
                             </span>
-                            <span className="flex-1 text-md font-semibold text-primary">{it.titulo}</span>
+                            <span className="flex-1 text-lg font-semibold text-primary">{it.titulo}</span>
                         </button>
                         <AnimatePresence initial={false}>
                             {on && (
@@ -102,7 +102,7 @@ function FaqAccordion02({ items }: { items: { titulo: string; conteudo: ReactNod
                                     transition={{ height: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }, opacity: { duration: 0.2, ease: "easeOut" } }}
                                     className="overflow-hidden"
                                 >
-                                    <div className="px-4 pb-5 pl-14 text-md leading-relaxed text-tertiary md:px-6 md:pb-6 md:pl-16">{it.conteudo}</div>
+                                    <div className="px-4 pb-5 pl-14 text-lg leading-relaxed text-tertiary md:px-6 md:pb-6 md:pl-16">{it.conteudo}</div>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -133,10 +133,10 @@ function CategoriaItem({
                 <Icon className="size-5" />
             </span>
             <div className="min-w-0">
-                <h3 className="text-lg font-semibold text-primary">{titulo}</h3>
-                <p className="mt-1 text-md leading-relaxed text-tertiary">{descricao}</p>
-                <p className="mt-3 text-md leading-relaxed text-tertiary">{labelDoc}:</p>
-                <p className="mt-0.5 text-md font-medium leading-relaxed text-secondary">{documentos.join(", ")}</p>
+                <h3 className="text-xl font-semibold text-primary">{titulo}</h3>
+                <p className="mt-1 text-lg leading-relaxed text-tertiary">{descricao}</p>
+                <p className="mt-3 text-lg leading-relaxed text-tertiary">{labelDoc}:</p>
+                <p className="mt-0.5 text-lg font-medium leading-relaxed text-secondary">{documentos.join(", ")}</p>
             </div>
         </div>
     );
@@ -209,7 +209,7 @@ export function MeiaEntrada() {
                                     key={s.id}
                                     type="button"
                                     onClick={() => irPara(s.id)}
-                                    className="text-sm font-semibold whitespace-nowrap text-secondary transition duration-100 ease-linear hover:text-primary"
+                                    className="text-md font-semibold whitespace-nowrap text-secondary transition duration-100 ease-linear hover:text-primary"
                                 >
                                     {s.label}
                                 </button>
@@ -235,7 +235,7 @@ export function MeiaEntrada() {
                                     key={s.id}
                                     type="button"
                                     onClick={() => irParaFechando(s.id)}
-                                    className="rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-secondary transition duration-100 ease-linear hover:bg-secondary hover:text-primary"
+                                    className="rounded-lg px-3 py-2.5 text-left text-md font-semibold text-secondary transition duration-100 ease-linear hover:bg-secondary hover:text-primary"
                                 >
                                     {s.label}
                                 </button>
@@ -250,7 +250,7 @@ export function MeiaEntrada() {
                 <div className="mx-auto w-full max-w-container px-6 md:px-8">
                     <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
                         <h1 className="text-display-md font-semibold text-primary md:text-display-lg">Meia-entrada</h1>
-                        <p className="mt-4 max-w-2xl text-lg text-tertiary md:mt-6 md:text-xl">
+                        <p className="mt-4 max-w-2xl text-xl text-tertiary md:mt-6 md:text-2xl">
                             Confira quem tem direito à meia-entrada, quais documentos comprovam o benefício e as regras para utilização no acesso ao evento.
                         </p>
                     </div>
@@ -265,7 +265,7 @@ export function MeiaEntrada() {
                 <div className="mx-auto w-full max-w-container px-6 md:px-8">
                     <div className="max-w-3xl">
                         <h2 className="text-display-sm font-semibold text-primary md:text-display-md">Quem tem direito à meia-entrada?</h2>
-                        <p className="mt-4 text-lg text-tertiary md:mt-5">Confira quem tem direito ao benefício e qual documento deve ser apresentado para comprovação.</p>
+                        <p className="mt-4 text-xl text-tertiary md:mt-5">Confira quem tem direito ao benefício e qual documento deve ser apresentado para comprovação.</p>
                     </div>
 
                     <div className="mt-8 grid grid-cols-1 gap-10 md:mt-12">
@@ -304,14 +304,14 @@ export function MeiaEntrada() {
                         {/* Informações complementares — cards centralizados verticalmente */}
                         <div className="flex flex-col justify-center gap-4">
                             <div className="rounded-2xl bg-primary p-6 ring-1 ring-border-secondary">
-                                <h3 className="text-md font-bold text-primary">Outros benefícios regionais</h3>
-                                <p className="mt-2 text-md leading-relaxed text-tertiary">
+                                <h3 className="text-lg font-bold text-primary">Outros benefícios regionais</h3>
+                                <p className="mt-2 text-lg leading-relaxed text-tertiary">
                                     Estados e municípios podem ter regras próprias de meia-entrada. Consulte as condições do local do evento.
                                 </p>
                             </div>
                             <div className="rounded-2xl bg-primary p-6 ring-1 ring-border-secondary">
-                                <h3 className="text-md font-bold text-primary">Disponibilidade</h3>
-                                <p className="mt-2 text-md leading-relaxed text-tertiary">
+                                <h3 className="text-lg font-bold text-primary">Disponibilidade</h3>
+                                <p className="mt-2 text-lg leading-relaxed text-tertiary">
                                     A legislação destina até 40% dos ingressos de cada evento à meia-entrada. A disponibilidade pode variar por categoria.
                                 </p>
                             </div>
@@ -325,22 +325,22 @@ export function MeiaEntrada() {
                 <div className="mx-auto grid w-full max-w-container grid-cols-1 items-stretch gap-10 px-6 md:px-8">
                     <div className="flex flex-col">
                         <h2 className="text-display-sm font-semibold text-primary md:text-display-md">Como identificar uma CIE válida</h2>
-                        <p className="mt-4 text-lg text-tertiary md:mt-5">
+                        <p className="mt-4 text-xl text-tertiary md:mt-5">
                             Para utilizar a meia-entrada de estudante, é necessário apresentar uma Carteira de Identificação Estudantil (CIE) válida na compra e no
                             acesso ao evento. Confira as informações que devem constar no documento:
                         </p>
                         <ul className="mt-6 flex flex-col gap-3">
                             {elementosCIE.map((el) => (
-                                <li key={el} className="flex items-start gap-3 text-md text-secondary">
+                                <li key={el} className="flex items-start gap-3 text-lg text-secondary">
                                     <CheckCircle className="mt-0.5 size-5 shrink-0 text-fg-success-primary" />
                                     {el}
                                 </li>
                             ))}
                         </ul>
-                        <p className="mt-6 text-md leading-relaxed text-tertiary">
+                        <p className="mt-6 text-lg leading-relaxed text-tertiary">
                             A Carteira de Identificação Estudantil é válida da data de sua emissão até 31 de março do ano seguinte.
                         </p>
-                        <p className="mt-4 text-md leading-relaxed text-tertiary">
+                        <p className="mt-4 text-lg leading-relaxed text-tertiary">
                             Não serão aceitos em nenhuma hipótese boleto bancário, declarações, comprovante de mensalidade, carteirinhas vencidas e/ou quaisquer
                             documentos que não estejam de acordo com a legislação vigente.
                         </p>
@@ -359,7 +359,7 @@ export function MeiaEntrada() {
                                 className="w-full rounded-xl"
                             />
                         </div>
-                        <p className="text-xs text-quaternary">Imagem meramente ilustrativa. O layout da CIE pode variar conforme a entidade emissora.</p>
+                        <p className="text-sm text-quaternary">Imagem meramente ilustrativa. O layout da CIE pode variar conforme a entidade emissora.</p>
                     </div>
                     {/* CTA mobile: depois da imagem de exemplo */}
                     <div className="">
@@ -375,7 +375,7 @@ export function MeiaEntrada() {
                 <div className="mx-auto w-full max-w-container px-6 md:px-8">
                     <div className="max-w-3xl">
                         <h2 className="text-display-sm font-semibold text-primary md:text-display-md">Órgãos de fiscalização</h2>
-                        <p className="mt-4 text-lg text-tertiary md:mt-5">
+                        <p className="mt-4 text-xl text-tertiary md:mt-5">
                             Em caso de dúvidas ou irregularidades relacionadas à meia-entrada, entre em contato com os órgãos públicos responsáveis pela fiscalização.
                         </p>
                     </div>
@@ -383,9 +383,9 @@ export function MeiaEntrada() {
                         {orgaos.map((o) => (
                             <div key={o.nome} className="flex flex-col rounded-2xl bg-primary p-6 ring-1 ring-border-secondary">
                                 <FeaturedIcon icon={Phone01} color="brand" theme="dark" size="lg" className="shrink-0" />
-                                <p className="mt-5 text-md font-bold text-primary">{o.nome}</p>
-                                {o.apoio && <p className="mt-1 text-sm leading-relaxed text-tertiary">{o.apoio}</p>}
-                                <a href={`tel:${o.telefone.replace(/\D/g, "")}`} className="mt-3 text-sm font-semibold text-brand-secondary">
+                                <p className="mt-5 text-lg font-bold text-primary">{o.nome}</p>
+                                {o.apoio && <p className="mt-1 text-md leading-relaxed text-tertiary">{o.apoio}</p>}
+                                <a href={`tel:${o.telefone.replace(/\D/g, "")}`} className="mt-3 text-md font-semibold text-brand-secondary">
                                     {o.telefone}
                                 </a>
                             </div>
@@ -397,7 +397,7 @@ export function MeiaEntrada() {
                         {entidades.map((e) => (
                             <div key={e.nome} className="flex flex-col rounded-2xl bg-primary p-6 ring-1 ring-border-secondary">
                                 <img src={e.logo} alt={e.nome} className="h-24 w-auto max-w-full self-start object-contain" />
-                                <a href={`mailto:${e.email}`} className="mt-6 text-sm font-semibold break-all text-brand-secondary">
+                                <a href={`mailto:${e.email}`} className="mt-6 text-md font-semibold break-all text-brand-secondary">
                                     {e.email}
                                 </a>
                             </div>
@@ -411,7 +411,7 @@ export function MeiaEntrada() {
                 <div className="mx-auto w-full max-w-container px-6 md:px-8">
                     <div className="max-w-3xl">
                         <h2 className="text-display-sm font-semibold text-primary md:text-display-md">O que diz a lei</h2>
-                        <p className="mt-4 text-lg text-tertiary md:mt-5">
+                        <p className="mt-4 text-xl text-tertiary md:mt-5">
                             A meia-entrada possui regras definidas pela legislação federal e pode ser complementada por leis estaduais e municipais. Consulte abaixo as
                             principais normas relacionadas ao benefício.
                         </p>
@@ -457,7 +457,7 @@ export function MeiaEntrada() {
                             ]}
                         />
                         <div className="mt-4 rounded-2xl bg-secondary p-6">
-                            <h3 className="text-md font-semibold text-primary">Outras leis aplicáveis</h3>
+                            <h3 className="text-lg font-semibold text-primary">Outras leis aplicáveis</h3>
                             <ul className="mt-4 flex flex-col divide-y divide-border-secondary">
                                 {[
                                     { nome: "Decreto nº 8.537/2015", desc: "Regulamenta as condições, documentos e procedimentos relacionados à meia-entrada." },
@@ -470,9 +470,9 @@ export function MeiaEntrada() {
                                     <li key={l.nome} className="py-3.5 first:pt-0 last:pb-0">
                                         <div className="flex items-center gap-2">
                                             <Scales02 className="size-4 shrink-0 text-fg-quaternary" />
-                                            <p className="text-sm font-semibold text-primary">{l.nome}</p>
+                                            <p className="text-md font-semibold text-primary">{l.nome}</p>
                                         </div>
-                                        <p className="mt-1 text-sm leading-relaxed text-tertiary">{l.desc}</p>
+                                        <p className="mt-1 text-md leading-relaxed text-tertiary">{l.desc}</p>
                                     </li>
                                 ))}
                             </ul>
@@ -486,7 +486,7 @@ export function MeiaEntrada() {
                 <div className="mx-auto w-full max-w-container px-6 md:px-8">
                     <div className="max-w-3xl">
                         <h2 className="text-display-sm font-semibold text-primary md:text-display-md">Dúvidas frequentes</h2>
-                        <p className="mt-4 text-lg text-tertiary md:mt-5">Tudo o que você precisa saber sobre o uso da meia-entrada.</p>
+                        <p className="mt-4 text-xl text-tertiary md:mt-5">Tudo o que você precisa saber sobre o uso da meia-entrada.</p>
                     </div>
                     <div className="mt-8 md:mt-10">
                         <FaqAccordion02
@@ -555,7 +555,7 @@ export function MeiaEntrada() {
             {/* Footer */}
             <footer className="border-t border-secondary bg-primary py-8">
                 <div className="mx-auto flex w-full max-w-container flex-col-reverse items-center gap-6 px-6 md:flex-row md:justify-between md:px-8">
-                    <p className="text-sm text-tertiary">© 2026 Ingresse. Todos os direitos reservados.</p>
+                    <p className="text-md text-tertiary">© 2026 Ingresse. Todos os direitos reservados.</p>
                     <div className="flex items-center gap-5">
                         {SOCIAIS.map((s) => (
                             <a

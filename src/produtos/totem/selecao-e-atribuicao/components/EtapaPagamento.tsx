@@ -40,17 +40,17 @@ export function EtapaPagamento({ valor, onChange, parcelas, onParcelas, itens, s
     return (
         <div className="flex w-full flex-col gap-5">
             <section className="flex flex-col gap-4 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary">
-                <h2 className="text-xl font-bold text-primary">Resumo do pedido</h2>
+                <h2 className="text-2xl font-bold text-primary">Resumo do pedido</h2>
                 <ul className="flex flex-col gap-3">
                     {itens.map((item, i) => (
                         <li key={i} className="flex items-start justify-between gap-3">
                             <span className="flex min-w-0 flex-col">
-                                <span className="text-sm font-medium text-primary">
+                                <span className="text-md font-medium text-primary">
                                     {item.qtd}× {item.nome}
                                 </span>
-                                {item.sub && <span className="text-sm text-tertiary">{item.sub}</span>}
+                                {item.sub && <span className="text-md text-tertiary">{item.sub}</span>}
                             </span>
-                            <span className="shrink-0 text-sm text-secondary tabular-nums">{brl(item.qtd * item.preco)}</span>
+                            <span className="shrink-0 text-md text-secondary tabular-nums">{brl(item.qtd * item.preco)}</span>
                         </li>
                     ))}
                 </ul>
@@ -58,14 +58,14 @@ export function EtapaPagamento({ valor, onChange, parcelas, onParcelas, itens, s
                     <Linha rotulo="Subtotal" valor={brl(subtotal)} />
                     <Linha rotulo="Taxa de conveniência" valor={brl(taxa)} />
                     <div className="flex items-baseline justify-between gap-3 border-t border-secondary pt-2">
-                        <span className="text-md font-semibold text-primary">Total</span>
-                        <span className="text-xl font-bold text-primary tabular-nums">{brl(total)}</span>
+                        <span className="text-lg font-semibold text-primary">Total</span>
+                        <span className="text-2xl font-bold text-primary tabular-nums">{brl(total)}</span>
                     </div>
                 </div>
             </section>
 
             <section className="flex flex-col gap-4 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary">
-                <h2 className="text-xl font-bold text-primary">Como você quer pagar?</h2>
+                <h2 className="text-2xl font-bold text-primary">Como você quer pagar?</h2>
 
                 <RadioGroup aria-label="Forma de pagamento" value={valor ?? ""} onChange={(v) => onChange(v as Pagamento)} className="gap-3">
                     {OPCOES.map((opcao) => {
@@ -88,9 +88,9 @@ export function EtapaPagamento({ valor, onChange, parcelas, onParcelas, itens, s
                                                 className={cx("size-5 shrink-0", marcada ? "text-fg-brand-primary" : "text-fg-quaternary")}
                                                 aria-hidden="true"
                                             />
-                                            <span className="text-md font-semibold text-primary">{opcao.titulo}</span>
+                                            <span className="text-lg font-semibold text-primary">{opcao.titulo}</span>
                                         </span>
-                                        <span className="text-sm text-tertiary">{opcao.descricao}</span>
+                                        <span className="text-md text-tertiary">{opcao.descricao}</span>
                                     </span>
                                 </span>
 
@@ -119,7 +119,7 @@ export function EtapaPagamento({ valor, onChange, parcelas, onParcelas, itens, s
 
 const Linha = ({ rotulo, valor }: { rotulo: string; valor: string }) => (
     <div className="flex items-baseline justify-between gap-3">
-        <span className="text-sm text-tertiary">{rotulo}</span>
-        <span className="text-sm text-secondary tabular-nums">{valor}</span>
+        <span className="text-md text-tertiary">{rotulo}</span>
+        <span className="text-md text-secondary tabular-nums">{valor}</span>
     </div>
 );

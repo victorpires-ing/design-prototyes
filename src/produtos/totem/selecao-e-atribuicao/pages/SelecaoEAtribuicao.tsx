@@ -469,21 +469,21 @@ export function SelecaoEAtribuicao() {
         <div className="flex flex-wrap gap-3">
             {fixoTabs.map((t) => (
                 <TabButton key={t.id} active={aba === t.id} onClick={() => setAba(t.id)}>
-                    <span className="px-2 text-sm font-semibold text-primary">{t.label}</span>
+                    <span className="px-2 text-md font-semibold text-primary">{t.label}</span>
                 </TabButton>
             ))}
             {temDinamicos && (
                 <TabButton active={aba === "combo"} onClick={() => setAba("combo")}>
-                    <span className="px-2 text-sm font-semibold text-primary">{config.comboTabLabel || "Combo dinâmico"}</span>
+                    <span className="px-2 text-md font-semibold text-primary">{config.comboTabLabel || "Combo dinâmico"}</span>
                 </TabButton>
             )}
             {datasVenda.map((d) => (
                 <TabButton key={d.id} active={aba === d.id} onClick={() => setAba(d.id)}>
-                    <span className="text-sm text-tertiary">{d.diaSemana}</span>
-                    <span className="text-md font-bold text-primary">
+                    <span className="text-md text-tertiary">{d.diaSemana}</span>
+                    <span className="text-lg font-bold text-primary">
                         {d.dia} {d.mes}
                     </span>
-                    <span className="text-sm text-tertiary">{d.ano}</span>
+                    <span className="text-md text-tertiary">{d.ano}</span>
                 </TabButton>
             ))}
         </div>
@@ -505,7 +505,7 @@ export function SelecaoEAtribuicao() {
         </div>
     ) : aba === "combo" ? (
         <div className="mt-6 flex flex-col gap-4">
-            <h2 className="text-sm font-semibold text-primary">Monte seu combo</h2>
+            <h2 className="text-md font-semibold text-primary">Monte seu combo</h2>
             {config.combosDinamicos.map((combo) => (
                 <ComboDinamicoCard key={combo.id} combo={combo} cupomAplicado={!!cupom} onSelecionar={() => setComboSelecao(resolverCombo(combo))} />
             ))}
@@ -513,7 +513,7 @@ export function SelecaoEAtribuicao() {
     ) : dataAtiva ? (
         <ItensPorData data={dataAtiva} itens={itensDaData(dataAtiva)} cart={cart} onInc={(it) => setData(dataAtiva, it, 1)} onDec={(it) => setData(dataAtiva, it, -1)} />
     ) : (
-        <div className="mt-6 flex min-h-[160px] items-center justify-center rounded-xl border border-dashed border-secondary px-6 text-center text-sm text-tertiary">
+        <div className="mt-6 flex min-h-[160px] items-center justify-center rounded-xl border border-dashed border-secondary px-6 text-center text-md text-tertiary">
             Nada configurado para esta aba.
         </div>
     );
@@ -521,7 +521,7 @@ export function SelecaoEAtribuicao() {
     const cupomBlock = cupom ? (
         <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-3 rounded-xl bg-primary px-4 py-3 ring-1 ring-border-secondary">
-                <span className="flex items-center gap-2 text-sm text-secondary">
+                <span className="flex items-center gap-2 text-md text-secondary">
                     <Tag01 className="size-4 text-fg-quaternary" />
                     código/cupom: <span className="font-bold text-brand-secondary">{cupom.codigo}</span>
                 </span>
@@ -529,13 +529,13 @@ export function SelecaoEAtribuicao() {
                     <XClose className="size-4" />
                 </button>
             </div>
-            <p className="px-1 text-sm text-tertiary">{cupom.ajuda}</p>
+            <p className="px-1 text-md text-tertiary">{cupom.ajuda}</p>
         </div>
     ) : (
         <button
             type="button"
             onClick={() => setCupomOpen(true)}
-            className="flex w-fit items-center gap-2 self-start rounded-xl bg-primary px-4 py-3.5 text-sm font-medium text-secondary ring-1 ring-border-secondary transition hover:bg-primary_hover"
+            className="flex w-fit items-center gap-2 self-start rounded-xl bg-primary px-4 py-3.5 text-md font-medium text-secondary ring-1 ring-border-secondary transition hover:bg-primary_hover"
         >
             <Tag01 className="size-4 text-fg-quaternary" />
             Adicionar código ou cupom
@@ -545,13 +545,13 @@ export function SelecaoEAtribuicao() {
     const totalBar = (
         <div className="flex items-center justify-between gap-3 border-t border-secondary px-4 py-4">
             <div className="flex flex-col gap-0.5">
-                <span className="text-md font-bold text-primary tabular-nums">
-                    {brl(totalValor)} <span className="text-sm font-normal text-tertiary">+ taxas</span>
+                <span className="text-lg font-bold text-primary tabular-nums">
+                    {brl(totalValor)} <span className="text-md font-normal text-tertiary">+ taxas</span>
                 </span>
-                <span className="flex items-center gap-2 text-sm text-tertiary tabular-nums">
+                <span className="flex items-center gap-2 text-md text-tertiary tabular-nums">
                     {totalItens} {totalItens === 1 ? "item" : "itens"}
                     {totalItens > 0 && (
-                        <button type="button" onClick={() => setCart({})} className="text-sm text-quaternary underline transition hover:text-tertiary">
+                        <button type="button" onClick={() => setCart({})} className="text-md text-quaternary underline transition hover:text-tertiary">
                             Remover {totalItens === 1 ? "item" : "itens"}
                         </button>
                     )}
@@ -570,8 +570,8 @@ export function SelecaoEAtribuicao() {
 
     const SecaoHeader = ({ titulo, valor, onLimpar }: { titulo: string; valor?: string; onLimpar: () => void }) => (
         <div className="flex items-center gap-3">
-            <span className="shrink-0 text-sm font-semibold text-tertiary">{titulo}</span>
-            {valor && <span className="shrink-0 text-sm font-bold text-primary tabular-nums">{valor}</span>}
+            <span className="shrink-0 text-md font-semibold text-tertiary">{titulo}</span>
+            {valor && <span className="shrink-0 text-md font-bold text-primary tabular-nums">{valor}</span>}
             <span className="flex-1 border-t border-dashed border-secondary" aria-hidden="true" />
             <Button size="sm" color="link-color" onClick={onLimpar}>
                 Limpar tudo
@@ -619,7 +619,7 @@ export function SelecaoEAtribuicao() {
     const resumoCard = (
         <div className="hidden max-h-[660px] flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
             <header className="shrink-0 border-b border-secondary px-4 py-3.5">
-                <h3 className="text-sm font-semibold text-primary">Resumo da compra</h3>
+                <h3 className="text-md font-semibold text-primary">Resumo da compra</h3>
             </header>
             <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-4">{resumoSecoes}</div>
             {totalBar}
@@ -630,11 +630,11 @@ export function SelecaoEAtribuicao() {
     const atribuicaoLayout = (
         <div className="mx-auto flex w-full max-w-[1446px] flex-col gap-6">
             <div className="flex w-full flex-col gap-8 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary">
-                <h2 className="text-lg font-bold text-primary">{unidades.length > 1 ? "Para quem são essas inscrições?" : "Para quem é essa inscrição?"}</h2>
+                <h2 className="text-xl font-bold text-primary">{unidades.length > 1 ? "Para quem são essas inscrições?" : "Para quem é essa inscrição?"}</h2>
 
                 {/* Acessos à página de informações da meia-entrada (âncoras) */}
                 <div className="rounded-2xl bg-secondary p-4 ring-1 ring-border-secondary">
-                    <p className="text-sm font-bold text-primary">Informações da meia-entrada</p>
+                    <p className="text-md font-bold text-primary">Informações da meia-entrada</p>
                     <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                         {[
                             { icon: InfoCircle, label: "Regras da meia-entrada", secao: "quem-tem-direito" },
@@ -650,7 +650,7 @@ export function SelecaoEAtribuicao() {
                                     className="flex items-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
                                 >
                                     <Icon className="size-4 shrink-0 text-fg-quaternary" />
-                                    <span className="flex-1 text-sm font-medium text-primary">{a.label}</span>
+                                    <span className="flex-1 text-md font-medium text-primary">{a.label}</span>
                                     <ChevronRight className="size-4 shrink-0 text-fg-quaternary" />
                                 </button>
                             );
@@ -692,7 +692,7 @@ export function SelecaoEAtribuicao() {
     const soUmaData = datasVenda.length === 1 && fixoTabs.length === 0 && !temDinamicos && !!dataAtiva;
     const dataHeader = dataAtiva ? (
         <div className="flex flex-col gap-1">
-            <span className="text-sm text-tertiary">
+            <span className="text-md text-tertiary">
                 {dataAtiva.diaSemana.toLowerCase()}
                 {/* A janela do dia diz mais que um horário solto: é quando dá para entrar. */}
                 {dataAtiva.abertura && dataAtiva.encerramento
@@ -701,11 +701,11 @@ export function SelecaoEAtribuicao() {
                       ? `, ${dataAtiva.hora}`
                       : ""}
             </span>
-            <h2 className="text-xl font-bold text-primary md:text-2xl">{dataPorExtenso(dataAtiva)}</h2>
+            <h2 className="text-2xl font-bold text-primary md:text-3xl">{dataPorExtenso(dataAtiva)}</h2>
             {dataAtiva.sessoes && dataAtiva.sessoes.length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-1.5">
                     {dataAtiva.sessoes.map((sessao) => (
-                        <span key={sessao.id} className="rounded-md bg-secondary px-2 py-1 text-sm font-medium text-secondary tabular-nums">
+                        <span key={sessao.id} className="rounded-md bg-secondary px-2 py-1 text-md font-medium text-secondary tabular-nums">
                             {sessao.hora}
                         </span>
                     ))}
@@ -762,8 +762,8 @@ export function SelecaoEAtribuicao() {
         <div className="mx-auto flex w-full max-w-[1446px] flex-col gap-6">
             <div className="flex w-full flex-col gap-4 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary">
                 <div className="flex flex-col gap-0.5">
-                    <h2 className="text-xl font-bold text-primary">Leve mais do que o ingresso</h2>
-                    <p className="text-sm text-tertiary">Compre online e retire no dia do evento.</p>
+                    <h2 className="text-2xl font-bold text-primary">Leve mais do que o ingresso</h2>
+                    <p className="text-md text-tertiary">Compre online e retire no dia do evento.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     {config.produtos.map((p) => (
@@ -841,12 +841,12 @@ export function SelecaoEAtribuicao() {
                         {grupos.length > 0 && (
                             <div className="hidden flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
                                 <header className="border-b border-secondary px-4 py-3.5">
-                                    <h3 className="text-sm font-semibold text-primary">Resumo da compra</h3>
+                                    <h3 className="text-md font-semibold text-primary">Resumo da compra</h3>
                                 </header>
 
                                 <div className="flex flex-col gap-4 px-4 py-4">
                                     <div className="flex items-center gap-3">
-                                        <span className="shrink-0 text-sm font-semibold text-tertiary">Ingressos</span>
+                                        <span className="shrink-0 text-md font-semibold text-tertiary">Ingressos</span>
                                         <span className="flex-1 border-t border-dashed border-secondary" aria-hidden="true" />
                                         <Button size="sm" color="link-color" onClick={() => setCart({})}>
                                             Limpar tudo
@@ -890,7 +890,7 @@ export function SelecaoEAtribuicao() {
                             onClick={() => setResumoAberto((o) => !o)}
                             className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-3"
                         >
-                            <span className="text-sm font-semibold text-primary">Resumo da compra</span>
+                            <span className="text-md font-semibold text-primary">Resumo da compra</span>
                             <ChevronDown className={cx("size-5 text-fg-quaternary transition-transform", resumoAberto && "rotate-180")} />
                         </button>
 
@@ -910,10 +910,10 @@ export function SelecaoEAtribuicao() {
 
                         <div className="flex items-center justify-between gap-3 border-t border-secondary px-4 pt-3 pb-4">
                             <div className="flex flex-col">
-                                <span className="text-md font-bold text-primary tabular-nums">
-                                    {brl(totalValor)} <span className="text-sm font-normal text-tertiary">+ taxas</span>
+                                <span className="text-lg font-bold text-primary tabular-nums">
+                                    {brl(totalValor)} <span className="text-md font-normal text-tertiary">+ taxas</span>
                                 </span>
-                                <span className="text-sm text-tertiary tabular-nums">
+                                <span className="text-md text-tertiary tabular-nums">
                                     {totalItens} {totalItens === 1 ? "item" : "itens"}
                                 </span>
                             </div>
@@ -977,8 +977,8 @@ function ConfirmarRecomecoModal({ isOpen, onClose, onConfirmar }: { isOpen: bool
                 <Dialog>
                     <div className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6">
                         <div className="flex flex-col gap-1.5">
-                            <h2 className="text-xl font-bold text-primary">Recomeçar a compra?</h2>
-                            <p className="text-sm text-tertiary">
+                            <h2 className="text-2xl font-bold text-primary">Recomeçar a compra?</h2>
+                            <p className="text-md text-tertiary">
                                 Os ingressos escolhidos e os dados preenchidos até aqui serão apagados.
                             </p>
                         </div>
@@ -1008,7 +1008,7 @@ function OpcaoRadio({ selected, label, onClick, children }: { selected: boolean;
                 <span className={cx("flex size-5 shrink-0 items-center justify-center rounded-full ring-2", selected ? "ring-primary" : "ring-secondary")}>
                     {selected && <span className="size-2.5 rounded-full bg-primary-solid" />}
                 </span>
-                <span className={cx("text-sm font-medium", selected ? "text-primary" : "text-tertiary")}>{label}</span>
+                <span className={cx("text-md font-medium", selected ? "text-primary" : "text-tertiary")}>{label}</span>
             </button>
             {children}
         </div>
@@ -1065,8 +1065,8 @@ function AtribuicaoCard({
                     <QrCode01 className="mt-0.5 size-5 shrink-0 text-fg-brand-primary" />
                 )}
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-sm font-bold text-primary">{unidade.nome}</span>
-                    {unidade.sub && <span className="text-sm text-tertiary">{unidade.sub}</span>}
+                    <span className="text-md font-bold text-primary">{unidade.nome}</span>
+                    {unidade.sub && <span className="text-md text-tertiary">{unidade.sub}</span>}
                 </div>
                 <button type="button" onClick={onRemover} aria-label="Remover" className="shrink-0 text-fg-error-primary transition hover:opacity-80">
                     <Trash01 className="size-5" />
@@ -1089,7 +1089,7 @@ function AtribuicaoCard({
                                             disabled={enviando}
                                             onChange={(e) => onAtrib({ tipo: "outro", email: e.target.value, confirmado: false })}
                                             onKeyDown={(e) => e.key === "Enter" && enviar()}
-                                            className="min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-placeholder disabled:opacity-50"
+                                            className="min-w-0 flex-1 bg-transparent text-md text-primary outline-none placeholder:text-placeholder disabled:opacity-50"
                                         />
                                         <button
                                             type="button"
@@ -1101,7 +1101,7 @@ function AtribuicaoCard({
                                             {enviando ? <span className="size-5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Send01 className="size-5" />}
                                         </button>
                                     </div>
-                                    {emailInvalido && <span className="text-sm text-error-primary">Informe um e-mail válido.</span>}
+                                    {emailInvalido && <span className="text-md text-error-primary">Informe um e-mail válido.</span>}
                                 </div>
                             </motion.div>
                         )}
@@ -1111,8 +1111,8 @@ function AtribuicaoCard({
                                     <div className="flex items-center gap-3 rounded-xl bg-secondary px-3.5 py-2.5">
                                         <Avatar size="sm" initials={(email.trim()[0] ?? "?").toUpperCase()} alt="" />
                                         <div className="flex min-w-0 flex-1 flex-col">
-                                            <span className="truncate text-sm font-semibold text-primary">{email}</span>
-                                            <span className="text-sm text-success-primary">Convite será enviado para este e-mail.</span>
+                                            <span className="truncate text-md font-semibold text-primary">{email}</span>
+                                            <span className="text-md text-success-primary">Convite será enviado para este e-mail.</span>
                                         </div>
                                     </div>
                                     <Button size="md" color="secondary" className="w-full" onClick={() => onAtrib({ tipo: "outro", email, confirmado: false })}>
@@ -1159,7 +1159,7 @@ function FormBadge({ ok }: { ok: boolean }) {
     return (
         <span
             className={cx(
-                "shrink-0 rounded-md px-2 py-0.5 text-sm font-medium",
+                "shrink-0 rounded-md px-2 py-0.5 text-md font-medium",
                 ok ? "bg-success-secondary text-success-primary" : "bg-warning-secondary text-warning-primary",
             )}
         >
@@ -1225,7 +1225,7 @@ function AtribuicaoAccordionCard({
     // Questionário inline + botão "Salvar respostas" (recolhe a linha ao salvar).
     const questionario = perguntas.length > 0 && (
         <div className="flex flex-col gap-4">
-            <span className="text-md font-bold text-primary">Formulário do atleta</span>
+            <span className="text-lg font-bold text-primary">Formulário do atleta</span>
             {perguntas.map((p) => (
                 <CampoPergunta key={p.id} pergunta={p} valor={getResposta(p.id)} onChange={(v) => onResposta(p.id, v)} />
             ))}
@@ -1246,8 +1246,8 @@ function AtribuicaoAccordionCard({
                     <QrCode01 className="mt-0.5 size-5 shrink-0 text-fg-brand-primary" />
                 )}
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-sm font-bold text-primary">{unidade.nome}</span>
-                    {unidade.sub && <span className="text-sm text-tertiary">{unidade.sub}</span>}
+                    <span className="text-md font-bold text-primary">{unidade.nome}</span>
+                    {unidade.sub && <span className="text-md text-tertiary">{unidade.sub}</span>}
                 </div>
                 <button type="button" onClick={onRemover} aria-label="Remover" className="shrink-0 text-fg-error-primary transition hover:opacity-80">
                     <Trash01 className="size-5" />
@@ -1265,7 +1265,7 @@ function AtribuicaoAccordionCard({
                                 <span className={cx("flex size-5 shrink-0 items-center justify-center rounded-full ring-2", selecionado ? "ring-brand" : "ring-secondary")}>
                                     {selecionado && <span className="size-2.5 rounded-full bg-brand-solid" />}
                                 </span>
-                                <span className={cx("min-w-0 flex-1 text-sm font-medium", selecionado ? "text-primary" : "text-tertiary")}>{o.label}</span>
+                                <span className={cx("min-w-0 flex-1 text-md font-medium", selecionado ? "text-primary" : "text-tertiary")}>{o.label}</span>
                                 {mostrarBadge && <FormBadge ok={obrigatoriasOk} />}
                                 <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition duration-200", expandida && "rotate-180")} />
                             </button>
@@ -1287,7 +1287,7 @@ function AtribuicaoAccordionCard({
                                                             disabled={enviando}
                                                             onChange={(e) => onAtrib({ tipo: "outro", email: e.target.value, confirmado: false })}
                                                             onKeyDown={(e) => e.key === "Enter" && enviar()}
-                                                            className="min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-placeholder disabled:opacity-50"
+                                                            className="min-w-0 flex-1 bg-transparent text-md text-primary outline-none placeholder:text-placeholder disabled:opacity-50"
                                                         />
                                                         <button
                                                             type="button"
@@ -1299,7 +1299,7 @@ function AtribuicaoAccordionCard({
                                                             {enviando ? <span className="size-5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Send01 className="size-5" />}
                                                         </button>
                                                     </div>
-                                                    {emailInvalido && <span className="text-sm text-error-primary">Informe um e-mail válido.</span>}
+                                                    {emailInvalido && <span className="text-md text-error-primary">Informe um e-mail válido.</span>}
                                                 </div>
                                             )}
 
@@ -1308,8 +1308,8 @@ function AtribuicaoAccordionCard({
                                                     <div className="flex items-center gap-3 rounded-xl bg-secondary px-3.5 py-2.5">
                                                         <Avatar size="sm" initials={(email.trim()[0] ?? "?").toUpperCase()} alt="" />
                                                         <div className="flex min-w-0 flex-1 flex-col">
-                                                            <span className="truncate text-sm font-semibold text-primary">{email}</span>
-                                                            <span className="text-sm text-success-primary">Convite será enviado para este e-mail.</span>
+                                                            <span className="truncate text-md font-semibold text-primary">{email}</span>
+                                                            <span className="text-md text-success-primary">Convite será enviado para este e-mail.</span>
                                                         </div>
                                                     </div>
                                                     <Button size="md" color="secondary" className="w-full" onClick={() => onAtrib({ tipo: "outro", email, confirmado: false })}>
@@ -1336,7 +1336,7 @@ function StatusBadge({ tone, children }: { tone: "warning" | "success"; children
     const ok = tone === "success";
     const Icon = ok ? CheckCircle : AlertTriangle;
     return (
-        <div className={cx("flex items-start gap-2 rounded-lg px-3 py-2 text-sm font-medium", ok ? "bg-success-secondary text-success-primary" : "bg-warning-secondary text-warning-primary")}>
+        <div className={cx("flex items-start gap-2 rounded-lg px-3 py-2 text-md font-medium", ok ? "bg-success-secondary text-success-primary" : "bg-warning-secondary text-warning-primary")}>
             <Icon className="mt-0.5 size-4 shrink-0" />
             <span>{children}</span>
         </div>
@@ -1357,7 +1357,7 @@ function QtdBar({ qtd, canInc = true, size = "md", onInc, onDec }: { qtd: number
             <button type="button" onClick={onDec} disabled={qtd === 0} aria-label="Diminuir" className={cx(btn, "bg-primary text-fg-secondary ring-1 ring-border-primary hover:bg-primary_hover")}>
                 <Minus className="size-4" />
             </button>
-            <span className="flex-1 text-center text-sm font-semibold text-primary tabular-nums">{qtd}</span>
+            <span className="flex-1 text-center text-md font-semibold text-primary tabular-nums">{qtd}</span>
             <button type="button" onClick={onInc} disabled={!canInc} aria-label="Aumentar" className={cx(btn, "bg-brand-solid text-white hover:bg-brand-solid_hover")}>
                 <Plus className="size-4" />
             </button>
@@ -1378,7 +1378,7 @@ function ResumoQtd({ qtd, onInc, onDec }: { qtd: number; onInc: () => void; onDe
             >
                 {podeMenos ? <Minus className="size-4" /> : <Trash01 className="size-4" />}
             </button>
-            <span className="w-7 text-center text-sm font-semibold text-primary tabular-nums">{qtd}</span>
+            <span className="w-7 text-center text-md font-semibold text-primary tabular-nums">{qtd}</span>
             <button
                 type="button"
                 onClick={onInc}
@@ -1400,9 +1400,9 @@ function ProdutoResumoRow({ nome, sub, preco, imagem, qtd, onSetQtd }: { nome: s
                 <span className="size-11 shrink-0 rounded-md bg-secondary ring-1 ring-border-secondary" />
             )}
             <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-medium text-primary">{nome}</span>
-                {sub && <span className="truncate text-sm text-tertiary">{sub}</span>}
-                <span className="text-sm font-bold text-primary">{brl(preco)}</span>
+                <span className="truncate text-md font-medium text-primary">{nome}</span>
+                {sub && <span className="truncate text-md text-tertiary">{sub}</span>}
+                <span className="text-md font-bold text-primary">{brl(preco)}</span>
             </div>
             <ResumoQtd qtd={qtd} onInc={() => onSetQtd(qtd + 1)} onDec={() => onSetQtd(qtd - 1)} />
         </li>
@@ -1418,20 +1418,20 @@ function ProdutoCard({ produto, qtd, onAbrirVariacao, onSetQtd }: { produto: Pro
             <div className="relative">
                 {produto.imagem && <img src={produto.imagem} alt="" className="aspect-square w-full object-cover" />}
                 {produto.selo && (
-                    <span className="absolute top-3 left-3 rounded-full bg-brand-solid px-2.5 py-1 text-sm font-semibold text-white">{produto.selo}</span>
+                    <span className="absolute top-3 left-3 rounded-full bg-brand-solid px-2.5 py-1 text-md font-semibold text-white">{produto.selo}</span>
                 )}
             </div>
             <div className="flex flex-1 flex-col gap-1 p-3">
-                <span className="text-sm font-semibold text-primary">{produto.nome}</span>
+                <span className="text-md font-semibold text-primary">{produto.nome}</span>
                 {produto.descricao && (
                     <div className="flex flex-col items-start">
-                        <p className={cx("text-sm text-tertiary", !verMais && "line-clamp-2")}>{produto.descricao}</p>
-                        <button type="button" onClick={() => setVerMais((v) => !v)} className="text-sm font-medium text-brand-secondary transition hover:text-brand-secondary_hover">
+                        <p className={cx("text-md text-tertiary", !verMais && "line-clamp-2")}>{produto.descricao}</p>
+                        <button type="button" onClick={() => setVerMais((v) => !v)} className="text-md font-medium text-brand-secondary transition hover:text-brand-secondary_hover">
                             {verMais ? "Ver menos" : "Ver mais"}
                         </button>
                     </div>
                 )}
-                {produto.preco != null && <span className="mt-0.5 text-sm font-bold text-primary">{brl(produto.preco)}</span>}
+                {produto.preco != null && <span className="mt-0.5 text-md font-bold text-primary">{brl(produto.preco)}</span>}
                 <div className="mt-auto pt-2">
                     {temVar ? (
                         <Button size="lg" color="secondary" iconLeading={Plus} className="w-full" onClick={onAbrirVariacao}>
@@ -1481,16 +1481,16 @@ function VariacaoModal({
                         <div className="flex min-h-0 flex-1 flex-col">
                             <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-2">
                                 <div className="flex flex-col gap-0.5">
-                                    <h2 className="text-lg font-semibold text-primary">{produto.nome}</h2>
-                                    {produto.preco != null && <p className="text-md font-bold text-primary">{brl(produto.preco)}</p>}
+                                    <h2 className="text-xl font-semibold text-primary">{produto.nome}</h2>
+                                    {produto.preco != null && <p className="text-lg font-bold text-primary">{brl(produto.preco)}</p>}
                                 </div>
                                 <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
                             </div>
 
                             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-4">
-                                {produto.descricao && <p className="text-sm text-tertiary">{produto.descricao}</p>}
+                                {produto.descricao && <p className="text-md text-tertiary">{produto.descricao}</p>}
                                 <div className="flex flex-col gap-2">
-                                    <span className="text-sm font-medium text-secondary">Selecione o tamanho</span>
+                                    <span className="text-md font-medium text-secondary">Selecione o tamanho</span>
                                     <div className="flex flex-wrap gap-2">
                                         {variacoes.map((v) => (
                                             <button
@@ -1498,7 +1498,7 @@ function VariacaoModal({
                                                 type="button"
                                                 onClick={() => setTam(v)}
                                                 className={cx(
-                                                    "min-w-11 rounded-lg px-3 py-2 text-sm font-semibold ring-1 transition",
+                                                    "min-w-11 rounded-lg px-3 py-2 text-md font-semibold ring-1 transition",
                                                     tam === v ? "bg-brand-primary text-primary ring-brand" : "text-secondary ring-border-secondary hover:bg-primary_hover",
                                                 )}
                                             >
@@ -1515,7 +1515,7 @@ function VariacaoModal({
                                     <div className="flex flex-col gap-2 border-t border-secondary pt-3">
                                         {escolhidas.map((v) => (
                                             <div key={v} className="flex items-center justify-between gap-3">
-                                                <span className="text-sm text-primary">Tamanho {v}</span>
+                                                <span className="text-md text-primary">Tamanho {v}</span>
                                                 <div className="w-[140px]">
                                                     <QtdBar qtd={getQtd(v)} onInc={() => onSetQtd(v, getQtd(v) + 1)} onDec={() => onSetQtd(v, getQtd(v) - 1)} />
                                                 </div>
@@ -1541,7 +1541,7 @@ function VariacaoModal({
 function CampoPergunta({ pergunta, valor, onChange }: { pergunta: PerguntaEvento; valor: string; onChange: (v: string) => void }) {
     const { tipo, titulo, obrigatoria, opcoes = [] } = pergunta;
     const Label = (
-        <span className="text-sm font-medium text-secondary">
+        <span className="text-md font-medium text-secondary">
             {titulo}
             {obrigatoria && <span className="text-brand-secondary"> *</span>}
         </span>
@@ -1556,7 +1556,7 @@ function CampoPergunta({ pergunta, valor, onChange }: { pergunta: PerguntaEvento
                 <select
                     value={valor}
                     onChange={(e) => onChange(e.target.value)}
-                    className="rounded-lg bg-primary px-3 py-2.5 text-sm text-primary ring-1 ring-border-primary outline-hidden focus:ring-2 focus:ring-brand"
+                    className="rounded-lg bg-primary px-3 py-2.5 text-md text-primary ring-1 ring-border-primary outline-hidden focus:ring-2 focus:ring-brand"
                 >
                     <option value="">Selecione</option>
                     {opcoes.map((o) => (
@@ -1572,7 +1572,7 @@ function CampoPergunta({ pergunta, valor, onChange }: { pergunta: PerguntaEvento
             <fieldset className="flex flex-col gap-2">
                 <legend className="mb-1.5">{Label}</legend>
                 {opcoes.map((o) => (
-                    <label key={o} className="flex items-center gap-2.5 text-sm text-primary">
+                    <label key={o} className="flex items-center gap-2.5 text-md text-primary">
                         <input type="radio" name={pergunta.id} checked={valor === o} onChange={() => onChange(o)} className="size-4" style={{ accentColor: "var(--color-bg-brand-solid)" }} />
                         {o}
                     </label>
@@ -1586,7 +1586,7 @@ function CampoPergunta({ pergunta, valor, onChange }: { pergunta: PerguntaEvento
             <fieldset className="flex flex-col gap-2.5">
                 <legend className="mb-1.5">{Label}</legend>
                 {opcoes.map((o) => (
-                    <label key={o} className="flex items-start gap-2.5 text-sm text-primary">
+                    <label key={o} className="flex items-start gap-2.5 text-md text-primary">
                         <Checkbox size="sm" isSelected={sel.includes(o)} onChange={() => toggle(o)} />
                         {o}
                     </label>
@@ -1622,8 +1622,8 @@ function PerguntasModal({
                         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pt-5 pb-2">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex flex-col gap-0.5">
-                                    <h2 className="text-lg font-semibold text-primary">Questionário do atleta</h2>
-                                    <p className="text-sm text-tertiary">{titulo}</p>
+                                    <h2 className="text-xl font-semibold text-primary">Questionário do atleta</h2>
+                                    <p className="text-md text-tertiary">{titulo}</p>
                                 </div>
                                 <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
                             </div>
@@ -1675,7 +1675,7 @@ function Stepper({ qtd, canDec = true, canInc = true, onInc, onDec }: { qtd: num
             >
                 <Minus className="size-4" />
             </button>
-            <span className="w-5 text-center text-sm font-semibold text-primary tabular-nums">{qtd}</span>
+            <span className="w-5 text-center text-md font-semibold text-primary tabular-nums">{qtd}</span>
             <button
                 type="button"
                 onClick={onInc}
@@ -1709,19 +1709,19 @@ function ComboFixoView({
         <div className="flex flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
             <div className="flex items-start justify-between gap-4 px-4 py-4">
                 <div className="flex min-w-0 flex-col gap-2">
-                    <span className="text-md font-bold text-primary">{combo.nome}</span>
+                    <span className="text-lg font-bold text-primary">{combo.nome}</span>
                     {datas.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                             {datas.map((d) => (
-                                <span key={d} className="rounded-md bg-secondary px-2 py-0.5 text-sm font-medium text-tertiary">
+                                <span key={d} className="rounded-md bg-secondary px-2 py-0.5 text-md font-medium text-tertiary">
                                     {d}
                                 </span>
                             ))}
                         </div>
                     )}
-                    {combo.lote && <span className="text-sm text-tertiary">{combo.lote}</span>}
-                    {combo.descricao && <p className="text-sm text-tertiary">{combo.descricao}</p>}
-                    <span className="text-md font-bold text-primary">{brl(combo.preco)}</span>
+                    {combo.lote && <span className="text-md text-tertiary">{combo.lote}</span>}
+                    {combo.descricao && <p className="text-md text-tertiary">{combo.descricao}</p>}
+                    <span className="text-lg font-bold text-primary">{brl(combo.preco)}</span>
                 </div>
                 <Stepper qtd={qtd} onInc={onInc} onDec={onDec} />
             </div>
@@ -1731,18 +1731,18 @@ function ComboFixoView({
                     <div key={i.id} className="flex items-start gap-3 border-t border-secondary px-4 py-3">
                         <Ticket01 className="mt-0.5 size-4 shrink-0 text-fg-brand-primary" />
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
-                            <span className="text-sm font-semibold text-primary">{i.titulo}</span>
-                            {i.sub && <span className="text-sm text-tertiary">{i.sub}</span>}
-                            {i.descricao && <p className="text-sm text-tertiary">{i.descricao}</p>}
+                            <span className="text-md font-semibold text-primary">{i.titulo}</span>
+                            {i.sub && <span className="text-md text-tertiary">{i.sub}</span>}
+                            {i.descricao && <p className="text-md text-tertiary">{i.descricao}</p>}
                         </div>
-                        <span className="shrink-0 text-sm text-tertiary">
+                        <span className="shrink-0 text-md text-tertiary">
                             {i.qtd} {i.qtd === 1 ? "item" : "itens"}
                         </span>
                     </div>
                 ))}
 
             {combo.inclui.length > 0 && (
-                <button type="button" onClick={onToggleDetalhes} className="flex items-center justify-between gap-2 border-t border-secondary px-4 py-3 text-sm font-medium text-secondary transition hover:bg-primary_hover">
+                <button type="button" onClick={onToggleDetalhes} className="flex items-center justify-between gap-2 border-t border-secondary px-4 py-3 text-md font-medium text-secondary transition hover:bg-primary_hover">
                     Detalhes
                     <ChevronDown className={cx("size-4 text-fg-quaternary transition-transform", aberto && "rotate-180")} />
                 </button>
@@ -1756,7 +1756,7 @@ function ComboDinamicoCard({ combo, cupomAplicado, onSelecionar }: { combo: Comb
         <div className="flex items-start justify-between gap-4 rounded-xl bg-primary px-4 py-4 ring-1 ring-border-secondary">
             <div className="flex min-w-0 flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-primary">{combo.nome}</span>
+                    <span className="text-md font-bold text-primary">{combo.nome}</span>
                     {cupomAplicado && combo.desconto && (
                         <Badge size="sm" color="success" type="pill-color">
                             {combo.desconto}
@@ -1764,16 +1764,16 @@ function ComboDinamicoCard({ combo, cupomAplicado, onSelecionar }: { combo: Comb
                     )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    {combo.dataLabel && <span className="rounded-md bg-secondary px-2 py-0.5 text-sm font-medium text-tertiary">{combo.dataLabel}</span>}
-                    {combo.sessoesLabel && <span className="rounded-md bg-secondary px-2 py-0.5 text-sm font-medium text-tertiary">{combo.sessoesLabel}</span>}
+                    {combo.dataLabel && <span className="rounded-md bg-secondary px-2 py-0.5 text-md font-medium text-tertiary">{combo.dataLabel}</span>}
+                    {combo.sessoesLabel && <span className="rounded-md bg-secondary px-2 py-0.5 text-md font-medium text-tertiary">{combo.sessoesLabel}</span>}
                 </div>
                 {combo.tags.map((t) => (
-                    <span key={t} className="text-sm text-tertiary">
+                    <span key={t} className="text-md text-tertiary">
                         {t}
                     </span>
                 ))}
-                {combo.descricao && <p className="text-sm text-tertiary">{combo.descricao}</p>}
-                {combo.exibirPreco && combo.preco != null && <span className="text-md font-bold text-primary">{brl(combo.preco)}</span>}
+                {combo.descricao && <p className="text-md text-tertiary">{combo.descricao}</p>}
+                {combo.exibirPreco && combo.preco != null && <span className="text-lg font-bold text-primary">{brl(combo.preco)}</span>}
             </div>
             <Button size="md" color="secondary" className="shrink-0" onClick={onSelecionar}>
                 Selecionar
@@ -1802,7 +1802,7 @@ function ItensPorData({ data, itens, cart, onInc, onDec }: { data: DataEvento; i
         }
     }
 
-    if (grupos.length === 0) return <p className="mt-6 text-sm text-tertiary">Nenhum ingresso com grupo definido para esta data.</p>;
+    if (grupos.length === 0) return <p className="mt-6 text-md text-tertiary">Nenhum ingresso com grupo definido para esta data.</p>;
 
     // Total já selecionado nesta data — usado para o limite por data.
     const totalData = Object.entries(cart)
@@ -1815,7 +1815,7 @@ function ItensPorData({ data, itens, cart, onInc, onDec }: { data: DataEvento; i
             {/* Quando o portão abre e o que acontece no dia — antes de escolher o ingresso. */}
             <JanelaDoDia data={data} />
             {limiteAtingido && (
-                <p className="text-sm text-tertiary">
+                <p className="text-md text-tertiary">
                     Limite de {data.limite} {data.limite === 1 ? "ingresso" : "ingressos"} por data atingido.
                 </p>
             )}
@@ -1839,7 +1839,7 @@ function JanelaDoDia({ data }: { data: DataEvento }) {
     return (
         <div className="flex flex-col gap-2 rounded-2xl bg-secondary px-4 py-3">
             {data.abertura && data.encerramento && (
-                <span className="flex items-center gap-2 text-sm text-secondary">
+                <span className="flex items-center gap-2 text-md text-secondary">
                     <Clock className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
                     Aberto das <span className="font-semibold tabular-nums">{data.abertura}</span> às{" "}
                     <span className="font-semibold tabular-nums">{data.encerramento}</span>
@@ -1850,7 +1850,7 @@ function JanelaDoDia({ data }: { data: DataEvento }) {
                     {sessoes.map((sessao) => (
                         <span
                             key={sessao.id}
-                            className="rounded-md bg-primary px-2 py-1 text-sm font-semibold text-secondary tabular-nums ring-1 ring-border-secondary"
+                            className="rounded-md bg-primary px-2 py-1 text-md font-semibold text-secondary tabular-nums ring-1 ring-border-secondary"
                         >
                             {sessao.hora}
                         </span>
@@ -1868,7 +1868,7 @@ function GrupoIngressos({ nome, children }: { nome: string; children: React.Reac
         <div className="overflow-clip rounded-2xl ring-1 ring-border-secondary">
             <button type="button" onClick={() => setAberto((v) => !v)} aria-expanded={aberto} className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left transition hover:bg-primary_hover">
                 <QrCode01 className="size-5 shrink-0 text-fg-brand-primary" />
-                <span className="flex-1 text-sm font-bold text-primary">{nome}</span>
+                <span className="flex-1 text-md font-bold text-primary">{nome}</span>
                 <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition-transform", aberto && "rotate-180")} />
             </button>
             {aberto && <div className="border-t border-secondary px-4">{children}</div>}
@@ -1882,15 +1882,15 @@ function IngressoRow({ it, qtd, canInc = true, onInc, onDec }: { it: Item; qtd: 
         <div className="flex items-center gap-4 border-b border-secondary py-4 last:border-b-0">
             {it.imagem && <img src={it.imagem} alt="" aria-hidden="true" className="size-20 shrink-0 self-start rounded-lg object-cover ring-1 ring-border-secondary" />}
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <span className="text-sm font-bold text-primary">{it.nome}</span>
-                {it.lote && <span className="text-sm text-tertiary">{it.lote}</span>}
+                <span className="text-md font-bold text-primary">{it.nome}</span>
+                {it.lote && <span className="text-md text-tertiary">{it.lote}</span>}
                 {it.descricao && (
                     <div
-                        className="text-sm text-tertiary [&_b]:font-semibold [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-4"
+                        className="text-md text-tertiary [&_b]:font-semibold [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-4"
                         dangerouslySetInnerHTML={{ __html: it.descricao }}
                     />
                 )}
-                {it.preco != null && <span className="text-sm font-bold text-primary">{brl(it.preco)}</span>}
+                {it.preco != null && <span className="text-md font-bold text-primary">{brl(it.preco)}</span>}
             </div>
             <div className="self-end">
                 <Stepper qtd={qtd} canInc={canInc} onInc={onInc} onDec={onDec} />
@@ -1904,10 +1904,10 @@ function CartGroupRow({ grupo, onInc, onDec }: { grupo: CartGroup; onInc: () => 
         <li className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-bold text-primary">{grupo.nome}</span>
-                    {grupo.lote && <span className="truncate text-sm text-tertiary">{grupo.lote}</span>}
-                    {grupo.sub && <span className="truncate text-sm text-tertiary">{grupo.sub}</span>}
-                    <span className="text-sm font-bold text-primary tabular-nums">{brl(grupo.precoUnit * grupo.qtd)}</span>
+                    <span className="truncate text-md font-bold text-primary">{grupo.nome}</span>
+                    {grupo.lote && <span className="truncate text-md text-tertiary">{grupo.lote}</span>}
+                    {grupo.sub && <span className="truncate text-md text-tertiary">{grupo.sub}</span>}
+                    <span className="text-md font-bold text-primary tabular-nums">{brl(grupo.precoUnit * grupo.qtd)}</span>
                 </div>
                 <ResumoQtd qtd={grupo.qtd} onInc={onInc} onDec={onDec} />
             </div>
@@ -1915,10 +1915,10 @@ function CartGroupRow({ grupo, onInc, onDec }: { grupo: CartGroup; onInc: () => 
                 <ul className="flex flex-col gap-2 pl-7">
                     {grupo.sublines.map((sl, i) => (
                         <li key={i} className="flex items-start gap-2.5">
-                            <span className="pt-0.5 text-sm text-tertiary tabular-nums">{sl.qtd}</span>
+                            <span className="pt-0.5 text-md text-tertiary tabular-nums">{sl.qtd}</span>
                             <div className="flex min-w-0 flex-col">
-                                <span className="truncate text-sm font-medium text-secondary">{sl.nome}</span>
-                                {sl.sub && <span className="truncate text-sm text-tertiary">{sl.sub}</span>}
+                                <span className="truncate text-md font-medium text-secondary">{sl.nome}</span>
+                                {sl.sub && <span className="truncate text-md text-tertiary">{sl.sub}</span>}
                             </div>
                         </li>
                     ))}

@@ -31,8 +31,8 @@ export function EtapaEntrega({ valor, onChange, email }: Props) {
     return (
         <div className="flex w-full flex-col gap-5 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary">
             <div className="flex flex-col gap-1">
-                <h2 className="text-xl font-bold text-primary">Como você quer receber?</h2>
-                <p className="text-sm text-tertiary">Dá para mudar depois pela carteira Ingresse.</p>
+                <h2 className="text-2xl font-bold text-primary">Como você quer receber?</h2>
+                <p className="text-md text-tertiary">Dá para mudar depois pela carteira Ingresse.</p>
             </div>
 
             <RadioGroup aria-label="Forma de entrega" value={valor} onChange={(v) => onChange(v as Entrega)} className="gap-3">
@@ -52,11 +52,11 @@ export function EtapaEntrega({ valor, onChange, email }: Props) {
                             <span className="flex min-w-0 flex-1 flex-col gap-1">
                                 <span className="flex items-center gap-2">
                                     <Icon className={cx("size-5 shrink-0", marcada ? "text-fg-brand-primary" : "text-fg-quaternary")} aria-hidden="true" />
-                                    <span className="text-md font-semibold text-primary">{opcao.titulo}</span>
+                                    <span className="text-lg font-semibold text-primary">{opcao.titulo}</span>
                                 </span>
-                                <span className="text-sm text-tertiary">{opcao.descricao}</span>
+                                <span className="text-md text-tertiary">{opcao.descricao}</span>
                                 {opcao.id === "digital" && email && (
-                                    <span className="mt-1 truncate rounded-md bg-secondary px-2 py-1 text-sm text-secondary">{email}</span>
+                                    <span className="mt-1 truncate rounded-md bg-secondary px-2 py-1 text-md text-secondary">{email}</span>
                                 )}
                             </span>
                         </label>

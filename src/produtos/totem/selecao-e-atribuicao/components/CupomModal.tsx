@@ -37,8 +37,8 @@ export function CupomModal({ isOpen, onClose, onAplicar }: CupomModalProps) {
                     <div className="w-full rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex flex-col gap-0.5">
-                            <h2 className="text-lg font-semibold text-primary">Adicionar código ou cupom</h2>
-                            <p className="text-sm text-tertiary">Insira um código de desconto ou de desbloqueio de itens exclusivos</p>
+                            <h2 className="text-xl font-semibold text-primary">Adicionar código ou cupom</h2>
+                            <p className="text-md text-tertiary">Insira um código de desconto ou de desbloqueio de itens exclusivos</p>
                         </div>
                         <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
                     </div>
@@ -55,7 +55,7 @@ export function CupomModal({ isOpen, onClose, onAplicar }: CupomModalProps) {
                             }}
                             isInvalid={erro}
                         />
-                        {erro && <span className="text-sm text-error-primary">Cupom inválido ou não encontrado.</span>}
+                        {erro && <span className="text-md text-error-primary">Cupom inválido ou não encontrado.</span>}
                     </div>
 
                     <div className="-mx-6 mt-5 flex items-center gap-3 border-t border-secondary px-6 pt-5">

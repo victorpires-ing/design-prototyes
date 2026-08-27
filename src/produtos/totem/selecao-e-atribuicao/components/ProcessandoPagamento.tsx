@@ -21,8 +21,8 @@ export function ProcessandoPagamento({ metodo, total }: Props) {
                 <>
                     <QrCodeFalso />
                     <div className="flex flex-col gap-2">
-                        <span className="text-2xl font-bold text-primary">Aponte a câmera para o QR Code</span>
-                        <span className="text-md text-tertiary">A confirmação aparece aqui assim que o Pix cair.</span>
+                        <span className="text-3xl font-bold text-primary">Aponte a câmera para o QR Code</span>
+                        <span className="text-lg text-tertiary">A confirmação aparece aqui assim que o Pix cair.</span>
                     </div>
                 </>
             ) : (
@@ -34,13 +34,13 @@ export function ProcessandoPagamento({ metodo, total }: Props) {
                         </span>
                     </span>
                     <div className="flex flex-col gap-2">
-                        <span className="text-2xl font-bold text-primary">Siga as instruções na maquininha</span>
-                        <span className="text-md text-tertiary">Ela está do lado direito do totem.</span>
+                        <span className="text-3xl font-bold text-primary">Siga as instruções na maquininha</span>
+                        <span className="text-lg text-tertiary">Ela está do lado direito do totem.</span>
                     </div>
                 </>
             )}
 
-            <span className="rounded-xl bg-secondary px-5 py-3 text-xl font-bold text-primary tabular-nums">{total}</span>
+            <span className="rounded-xl bg-secondary px-5 py-3 text-2xl font-bold text-primary tabular-nums">{total}</span>
         </div>
     );
 }

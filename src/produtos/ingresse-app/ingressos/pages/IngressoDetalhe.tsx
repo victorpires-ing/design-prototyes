@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import Lottie, { type LottieRefCurrentProps } from "lottie-react";
-import { ArrowLeft, CheckCircle, InfoCircle, Send01, Tag01, UserRight01, UsersPlus } from "@untitledui/icons";
+import { ArrowLeft, CheckCircle, InfoCircle, Send01, SwitchHorizontal01, Tag01, UserRight01, UsersPlus } from "@untitledui/icons";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
 import faceIdSuccess from "../assets/face-id-success.json";
@@ -13,6 +13,7 @@ import { StatusBar } from "../../components/StatusBar";
 import { Zigzag } from "../../components/Zigzag";
 import { getEvento, getItem } from "../data/eventos";
 import { getDependenteAtribuido, isTransferido } from "../data/transfer-store";
+import { InfoIngressoSheet } from "../components/InfoIngressoSheet";
 
 /** Carinha de reconhecimento facial: toca 2 vezes e congela no último frame. */
 function FaceAnimation() {
@@ -60,8 +61,17 @@ export function IngressoDetalhe() {
 
     const [meuIngresso, setMeuIngresso] = useState(true);
     const [showQR, setShowQR] = useState(false);
+    const [infoAberto, setInfoAberto] = useState(false);
     // Facial pendente começa não cadastrado; "Cadastrar agora" leva ao estado cadastrado.
     const [registered, setRegistered] = useState(item?.facial !== "pendente");
+
+    // CTA de troca/upgrade de ingresso — liberado em todos os ingressos.
+    const trocarIngresso: FabAction = {
+        icon: SwitchHorizontal01,
+        label: "Trocar ingresso",
+        short: "Trocar",
+        onClick: () => navigate(`/ingresse-app/ingressos/trocar/${eventoObj.id}/${itemId}`),
+    };
 
     const acoes: FabAction[] = dependente
         ? [
@@ -71,6 +81,7 @@ export function IngressoDetalhe() {
                   short: "Trocar dependente",
                   onClick: () => navigate(`/ingresse-app/ingressos/transferir-dependente/${eventoObj.id}/${itemId}`),
               },
+              trocarIngresso,
           ]
         : [
               {
@@ -86,6 +97,7 @@ export function IngressoDetalhe() {
                   short: "Dependente",
                   onClick: () => navigate(`/ingresse-app/ingressos/transferir-dependente/${eventoObj.id}/${itemId}`),
               },
+              trocarIngresso,
           ];
 
     return (
@@ -106,6 +118,7 @@ export function IngressoDetalhe() {
                     <button
                         type="button"
                         aria-label="Informações"
+                        onClick={() => setInfoAberto(true)}
                         className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                     >
                         <InfoCircle className="size-5" />
@@ -158,13 +171,22 @@ export function IngressoDetalhe() {
                                 <div className="my-4 border-t border-tertiary" />
 
                                 <p className="text-sm text-tertiary">Transferido para</p>
-                                <p className="mt-0.5 text-md font-bold text-primary">Duny Alves da Silva</p>
+                                <p className="mt-0.5 text-md font-bold text-primary">Mariana Costa Lima</p>
                                 <p className="mt-1 text-sm text-tertiary">
-                                    <span>CPF: </span><span className="font-semibold text-secondary">009.789.568-90</span>
+                                    <span>CPF: </span><span className="font-semibold text-secondary">943.039.930-00</span>
                                 </p>
 
                                 <p className="mt-4 text-sm text-tertiary">Data da transferência</p>
                                 <p className="mt-0.5 text-md font-bold text-primary">10 de junho • 12:20</p>
+
+                                {item?.taxaTransferencia ? (
+                                    <>
+                                        <p className="mt-4 text-sm text-tertiary">Taxa de transferência</p>
+                                        <p className="mt-0.5 text-md font-bold text-primary">
+                                            R$ {item.taxaTransferencia.toFixed(2).replace(".", ",")}
+                                        </p>
+                                    </>
+                                ) : null}
                             </div>
                         ) : facial ? (
                             /* Acesso por reconhecimento facial (com troca animada para o QR) */
@@ -288,6 +310,15 @@ export function IngressoDetalhe() {
                     </div>
                 </div>
             </div>
+
+            <InfoIngressoSheet
+                isOpen={infoAberto}
+                onClose={() => setInfoAberto(false)}
+                seed={itemId ?? ""}
+                sessao={sessao}
+                descricao={tipo ?? "Ingresso"}
+                variant="ingresso"
+            />
         </AppShell>
     );
 }

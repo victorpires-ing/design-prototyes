@@ -24,6 +24,8 @@ import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPor
 import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
 import { RelatorioPersonalizado } from '../produtos/backstage/relatorios/pages/RelatorioPersonalizado';
 import { Home as BackstageHome } from '../produtos/backstage/home/pages/Home';
+import { Eventos as BackstageEventos } from '../produtos/backstage/eventos/pages/Eventos';
+import { VisaoGeralEvento } from '../produtos/backstage/eventos/pages/VisaoGeralEvento';
 import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';
 import { NovoGrupoV2 } from '../produtos/backstage/membros-v2/pages/NovoGrupoV2';
 import { EquipeProvider } from '../produtos/backstage/equipe-de-operacao/data/equipe-store';
@@ -32,7 +34,14 @@ import { CriarGrupo as CriarGrupoOperacao } from '../produtos/backstage/equipe-d
 import { DetalheGrupo as DetalheGrupoOperacao } from '../produtos/backstage/equipe-de-operacao/pages/DetalheGrupo';
 import { EditarItensCotas } from '../produtos/backstage/equipe-de-operacao/pages/EditarItensCotas';
 import { EditarOperadores } from '../produtos/backstage/equipe-de-operacao/pages/EditarOperadores';
+import { EquipeV2Provider } from '../produtos/backstage/equipe-de-operacao-v2/data/equipe-v2-store';
+import { EquipeDeOperacaoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/EquipeDeOperacaoV2';
+import { CriarGrupoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/CriarGrupoV2';
+import { DetalheGrupoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/DetalheGrupoV2';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
+import { VenderIngressos } from '../produtos/backstage/bilheteria/pages/VenderIngressos';
+import { IngressoPdf } from '../produtos/backstage/bilheteria/pages/IngressoPdf';
+import { PedidosBilheteria } from '../produtos/backstage/bilheteria/pages/Pedidos';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
 import { SeletorTimes } from '../produtos/futebol/landing-pages/pages/SeletorTimes';
@@ -57,15 +66,32 @@ import { VinculosPergunta } from '../produtos/backstage/pesquisas/pages/Vinculos
 import { SelecaoEAtribuicao } from '../produtos/marketplace/selecao-e-atribuicao/pages/SelecaoEAtribuicao';
 import { Config as MarketplaceConfig } from '../produtos/marketplace/selecao-e-atribuicao/pages/Config';
 import { Sucesso as MarketplaceSucesso } from '../produtos/marketplace/selecao-e-atribuicao/pages/Sucesso';
+import { MeiaEntrada as MarketplaceMeiaEntrada } from '../produtos/marketplace/selecao-e-atribuicao/pages/MeiaEntrada';
+import { SelecaoEAtribuicao as TotemSelecaoEAtribuicao } from '../produtos/totem/selecao-e-atribuicao/pages/SelecaoEAtribuicao';
+import { Config as TotemConfig } from '../produtos/totem/selecao-e-atribuicao/pages/Config';
+import { Sucesso as TotemSucesso } from '../produtos/totem/selecao-e-atribuicao/pages/Sucesso';
+import { Quiosque as TotemQuiosque } from '../produtos/totem/quiosque/pages/Quiosque';
+import { MeiaEntrada as TotemMeiaEntrada } from '../produtos/totem/selecao-e-atribuicao/pages/MeiaEntrada';
 import { Home as IngresseAppHome } from '../produtos/ingresse-app/home/pages/Home';
 import { Carteira as IngresseAppCarteira } from '../produtos/ingresse-app/carteira/pages/Carteira';
 import { Ingressos as IngresseAppIngressos } from '../produtos/ingresse-app/ingressos/pages/Ingressos';
 import { IngressoDetalhe as IngresseAppIngressoDetalhe } from '../produtos/ingresse-app/ingressos/pages/IngressoDetalhe';
+import { TrocarIngresso as IngresseAppTrocarIngresso } from '../produtos/ingresse-app/ingressos/pages/TrocarIngresso';
+import { TrocarPagamento as IngresseAppTrocarPagamento } from '../produtos/ingresse-app/ingressos/pages/TrocarPagamento';
+import { TrocarPagamentoPix as IngresseAppTrocarPagamentoPix } from '../produtos/ingresse-app/ingressos/pages/TrocarPagamentoPix';
+import { TrocarPagamentoCartao as IngresseAppTrocarPagamentoCartao } from '../produtos/ingresse-app/ingressos/pages/TrocarPagamentoCartao';
+import { TrocaProcessando as IngresseAppTrocaProcessando } from '../produtos/ingresse-app/ingressos/pages/TrocaProcessando';
+import { TrocaSucesso as IngresseAppTrocaSucesso } from '../produtos/ingresse-app/ingressos/pages/TrocaSucesso';
 import { ComboDetalhe as IngresseAppComboDetalhe } from '../produtos/ingresse-app/ingressos/pages/ComboDetalhe';
 import { ProdutoDetalhe as IngresseAppProdutoDetalhe } from '../produtos/ingresse-app/ingressos/pages/ProdutoDetalhe';
 import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingresse-app/ingressos/pages/TransferirIngresso';
 import { TransferirDependente as IngresseAppTransferirDependente } from '../produtos/ingresse-app/ingressos/pages/TransferirDependente';
 import { CadastrarDependente as IngresseAppCadastrarDependente } from '../produtos/ingresse-app/ingressos/pages/CadastrarDependente';
+import { TransferenciaPagamento as IngresseAppTransferenciaPagamento } from '../produtos/ingresse-app/ingressos/pages/TransferenciaPagamento';
+import { PagamentoCartao as IngresseAppPagamentoCartao } from '../produtos/ingresse-app/ingressos/pages/PagamentoCartao';
+import { PagamentoPix as IngresseAppPagamentoPix } from '../produtos/ingresse-app/ingressos/pages/PagamentoPix';
+import { TransferenciaSucesso as IngresseAppTransferenciaSucesso } from '../produtos/ingresse-app/ingressos/pages/TransferenciaSucesso';
+import { TransferenciaProcessando as IngresseAppTransferenciaProcessando } from '../produtos/ingresse-app/ingressos/pages/TransferenciaProcessando';
 import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pages/Perfil';
 import { TelaBloqueadaIphone as IngresseAppTelaBloqueadaIphone } from '../produtos/ingresse-app/tela-bloqueada/pages/TelaBloqueadaIphone';
 import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
@@ -120,6 +146,7 @@ import { EditorTeste } from '../produtos/usabilidade/testes/pages/EditorTeste';
 import { Resultados as TesteResultados } from '../produtos/usabilidade/testes/pages/Resultados';
 import { EntradaTeste } from '../produtos/usabilidade/testes/pages/EntradaTeste';
 import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPagesMenu';
+import { Inscricao as TicketSportsInscricao } from '../produtos/ticketsports/inscricao/pages/Inscricao';
 import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
 import { SolicitacaoVagas } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoVagas';
 import { SolicitacaoBeneficioPcd } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoBeneficioPcd';
@@ -134,6 +161,9 @@ import { DistribuicaoCortesias } from '../produtos/freepass/distribuicao-cortesi
 import { CortesiasDoEvento } from '../produtos/freepass/distribuicao-cortesias/pages/cortesias-do-evento';
 import { DetalhesCortesia } from '../produtos/freepass/distribuicao-cortesias/pages/detalhes-cortesia';
 import { EnviarCortesiasFlow, ResgatarCortesiasFlow } from '../produtos/freepass/distribuicao-cortesias/pages/distribuir-cortesias';
+import { Reanalise } from '../produtos/payin/suspensao-de-conta/pages/Reanalise';
+import { SuspenderUsuario } from '../produtos/payin/suspensao-de-conta/pages/SuspenderUsuario';
+import { HistoricoSuspensao } from '../produtos/payin/suspensao-de-conta/pages/HistoricoSuspensao';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -162,18 +192,29 @@ export default function App() {
       <PerguntasProvider>
       <PesquisasProvider>
       <EquipeProvider>
+      <EquipeV2Provider>
       <Routes>
         <Route path="/" element={<ProductSelection />} />
         <Route path="/loading" element={<CymaticsShowcase />} />
-        <Route path="/backstage" element={<RelatorioPedidos />} />
+        <Route path="/backstage" element={<BackstageEventos />} />
+        <Route path="/backstage/eventos" element={<BackstageEventos />} />
+        <Route path="/backstage/evento/visao-geral" element={<VisaoGeralEvento />} />
         <Route path="/backstage/home" element={<BackstageHome />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao" element={<EquipeDeOperacao />} />
+        {/* v2: o grupo ganha permissões de cortesia, PDV e bilheteria, cada uma com sua cota. */}
+        <Route path="/backstage/equipe-de-operacao/v2" element={<EquipeDeOperacaoV2 />} />
+        <Route path="/backstage/equipe-de-operacao/v2/criar" element={<CriarGrupoV2 />} />
+        <Route path="/backstage/equipe-de-operacao/v2/:grupoId" element={<DetalheGrupoV2 />} />
+        <Route path="/backstage/equipe-de-operacao/v2/:grupoId/editar" element={<CriarGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao/criar" element={<CriarGrupoOperacao />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId" element={<DetalheGrupoOperacao />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId/editar-itens" element={<EditarItensCotas />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId/editar-operadores" element={<EditarOperadores />} />
+        <Route path="/backstage/bilheteria" element={<PedidosBilheteria />} />
+        <Route path="/backstage/bilheteria/vender" element={<VenderIngressos />} />
+        <Route path="/backstage/bilheteria/ingresso-pdf" element={<IngressoPdf />} />
         <Route path="/backstage/cortesias" element={<RelatorioPedidos />} />
         <Route path="/backstage/permissao-envio" element={<PermissaoEnvio />} />
         <Route path="/backstage/permissao-envio/nova" element={<NovaPermissao />} />
@@ -259,6 +300,12 @@ export default function App() {
         <Route path="/marketplace" element={<MarketplaceConfig />} />
         <Route path="/marketplace/event" element={<SelecaoEAtribuicao />} />
         <Route path="/marketplace/sucesso" element={<MarketplaceSucesso />} />
+        <Route path="/marketplace/meia-entrada" element={<MarketplaceMeiaEntrada />} />
+        <Route path="/totem" element={<TotemConfig />} />
+        <Route path="/totem/event" element={<TotemSelecaoEAtribuicao />} />
+        <Route path="/totem/quiosque" element={<TotemQuiosque />} />
+        <Route path="/totem/sucesso" element={<TotemSucesso />} />
+        <Route path="/totem/meia-entrada" element={<TotemMeiaEntrada />} />
         <Route path="/novo-site/home" element={<NovoSiteHome />} />
         <Route path="/novo-site/home/busca" element={<NovoSiteBusca />} />
         <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />
@@ -267,11 +314,22 @@ export default function App() {
         <Route path="/ingresse-app/ingressos" element={<IngresseAppCarteira />} />
         <Route path="/ingresse-app/ingressos/evento/:eventId" element={<IngresseAppIngressos />} />
         <Route path="/ingresse-app/ingressos/detalhe/:eventId/:itemId" element={<IngresseAppIngressoDetalhe />} />
+        <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId" element={<IngresseAppTrocarIngresso />} />
+        <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/pagamento" element={<IngresseAppTrocarPagamento />} />
+        <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/pagamento/pix" element={<IngresseAppTrocarPagamentoPix />} />
+        <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/pagamento/cartao" element={<IngresseAppTrocarPagamentoCartao />} />
+        <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/processando" element={<IngresseAppTrocaProcessando />} />
+        <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/sucesso" element={<IngresseAppTrocaSucesso />} />
         <Route path="/ingresse-app/ingressos/combo/:eventId/:comboId" element={<IngresseAppComboDetalhe />} />
         <Route path="/ingresse-app/ingressos/produto/:eventId/:itemId" element={<IngresseAppProdutoDetalhe />} />
         <Route path="/ingresse-app/ingressos/transferir/:eventId/:id" element={<IngresseAppTransferir />} />
         <Route path="/ingresse-app/ingressos/transferir-dependente/:eventId/:id" element={<IngresseAppTransferirDependente />} />
         <Route path="/ingresse-app/ingressos/cadastrar-dependente/:eventId/:id" element={<IngresseAppCadastrarDependente />} />
+        <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id" element={<IngresseAppTransferenciaPagamento />} />
+        <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/cartao" element={<IngresseAppPagamentoCartao />} />
+        <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/pix" element={<IngresseAppPagamentoPix />} />
+        <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/processando" element={<IngresseAppTransferenciaProcessando />} />
+        <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/sucesso" element={<IngresseAppTransferenciaSucesso />} />
         <Route path="/ingresse-app/perfil" element={<IngresseAppPerfil />} />
         <Route path="/ingresse-app/tela-bloqueada/iphone" element={<IngresseAppTelaBloqueadaIphone />} />
         <Route path="/testes" element={<UsabilidadeGate><TestesPainel /></UsabilidadeGate>} />
@@ -280,6 +338,8 @@ export default function App() {
         <Route path="/testes/:id/resultados" element={<UsabilidadeGate><TesteResultados /></UsabilidadeGate>} />
         <Route path="/t/:id" element={<EntradaTeste />} />
         <Route path="/landing-pages" element={<LandingPagesMenu />} />
+        {/* Link separado — não listado na ProductSelection (home) */}
+        <Route path="/ticketsports/inscricao" element={<TicketSportsInscricao />} />
         <Route path="/landing-pages/sao-silvestre" element={<SaoSilvestre />} />
         <Route path="/landing-pages/sao-silvestre/solicitar-vagas" element={<SolicitacaoVagas />} />
         <Route path="/landing-pages/sao-silvestre/solicitar-beneficio-pcd" element={<SolicitacaoBeneficioPcd />} />
@@ -295,8 +355,12 @@ export default function App() {
         <Route path="/freepass/distribuicao-cortesias/:eventoId/enviar" element={<EnviarCortesiasFlow />} />
         <Route path="/freepass/distribuicao-cortesias/:eventoId/resgatar" element={<ResgatarCortesiasFlow />} />
         <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />
+        <Route path="/payin/suspensao-de-conta" element={<Reanalise />} />
+        <Route path="/payin/suspensao-de-conta/suspender-usuario" element={<SuspenderUsuario />} />
+        <Route path="/payin/suspensao-de-conta/historico/:contaId" element={<HistoricoSuspensao />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
+      </EquipeV2Provider>
       </EquipeProvider>
       </PesquisasProvider>
       </PerguntasProvider>

@@ -23,6 +23,14 @@ export interface ItemIngresso {
     imagem?: string;
     /** Status de retirada do produto. */
     retirada?: "pendente" | "retirado";
+    /** Transferência deste ingresso cobra taxa antes de concluir. */
+    transferenciaPaga?: boolean;
+    /** Valor da taxa de transferência (em reais). */
+    taxaTransferencia?: number;
+    /** Exibe o aviso de que a primeira transferência é gratuita (as próximas terão taxa). */
+    primeiraTransferenciaGratis?: boolean;
+    /** Nome de quem transferiu este ingresso ao usuário (cenário de nova transferência com taxa). */
+    recebidoDe?: string;
 }
 
 export type ComboStatus = "finalizado" | "hoje" | "proximo";
@@ -78,10 +86,17 @@ export interface EventoDetalhe {
     sessao: string;
     ingressos?: ItemIngresso[];
     combos?: Combo[];
+    /** Habilita o fluxo de transferência com pagamento (cobra taxa antes de concluir). */
+    transferenciaPaga?: boolean;
+    /** Valor da taxa de transferência (em reais). */
+    taxaTransferencia?: number;
 }
 
 const PORTADOR = "Priscilão Alcantara Raro";
 const CPF = "948.943.130-44";
+// Titular dos ingressos do Gop Tun (conforme referência do fluxo de transferência)
+const TITULAR_GOP = "Duny Alves da Silva";
+const CPF_GOP = "832.840.732-12";
 
 export const EVENTOS: Record<string, EventoDetalhe> = {
     arena: {
@@ -194,6 +209,20 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
                     { pergunta: "Tipo sanguíneo", resposta: "O+" },
                 ],
             },
+        ],
+    },
+    "gop-tun": {
+        id: "gop-tun",
+        title: "Gop Tun Festival 2026",
+        date: "11 de Abr 2026",
+        local: "Audio • São Paulo/SP",
+        gradient: "linear-gradient(160deg,#ef4444 0%,#111827 55%,#0b0b0f 100%)",
+        sessao: "11 de Abr 2026",
+        ingressos: [
+            // 1º ingresso: primeira transferência gratuita (as próximas terão taxa)
+            { id: "inteira", title: "Main Stage (11.04)", tipo: "Inteira", data: "11 de Abr 2026", portador: TITULAR_GOP, cpf: CPF_GOP, primeiraTransferenciaGratis: true },
+            // 2º ingresso: recebido de outra pessoa; nova transferência já com taxa
+            { id: "meia", title: "Club Stage (11.04)", tipo: "Meia-entrada", data: "11 de Abr 2026", portador: TITULAR_GOP, cpf: CPF_GOP, transferenciaPaga: true, taxaTransferencia: 50, recebidoDe: "Duny Alves da Silva" },
         ],
     },
     "samba-independente": {

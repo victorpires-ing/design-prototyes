@@ -5,6 +5,7 @@ import {
     ClockFastForward,
     CreditCard02,
     CurrencyDollarCircle,
+    Edit02,
     RefreshCcw01,
     SearchLg,
     ShoppingCart01,
@@ -12,12 +13,14 @@ import {
 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
+import { Button } from "@/components/base/buttons/button";
 import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { Input } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { DEFAULT_SELECTED, ManageColumnsModal } from "../components/ManageColumnsModal";
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { RelatorioFiltersProvider, matchRow, inDateRange, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
 import { SortableHeader } from "../components/SortableHeader";
@@ -25,6 +28,7 @@ import { TransacionadoChartCard, type ChartPoint } from "../components/Transacio
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
 import { EVENTO, GRUPOS, PERIODO_PADRAO } from "@/reports/event-dataset";
+import { EXPORT_FIELD_GROUPS } from "../data/export-fields";
 
 /* ------------------------------------------------------------------ */
 /*  Status + meios                                                    */
@@ -83,17 +87,21 @@ interface Transacao {
     status: StatusTransacao;
     nomeIngresso: string;
     setor: string;
+    modalidade: string;
     lote: string;
     comprador: string;
+    tipoDocumentoComprador: string;
     cpf: string;
     telefone: string;
     email: string;
+    dataNascimentoComprador: string;
     canal: string;
     tipoPagamento: string;
     estado: string;
     cidade: string;
     operadorVendas: string;
     valor: number;
+    valorUnitario: number;
     cupom: string;
     valorDesconto: number;
     valorFinal: number;
@@ -102,6 +110,54 @@ interface Transacao {
     pdv: boolean;
     bundle: boolean;
     bundleDinamico: boolean;
+    // Dados da inscrição.
+    itemCodigo: string;
+    idInscricao: string;
+    // Dados do atleta — normalmente a mesma pessoa que comprou, mas pode ser outra
+    // (compra feita para terceiros).
+    atletaNome: string;
+    atletaTipoDocumento: string;
+    atletaDocumento: string;
+    atletaEmail: string;
+    atletaTelefone: string;
+    atletaDataNascimento: string;
+    // Compra em grupo — os campos de líder só são preenchidos quando o pedido é de um
+    // grupo ("—" nos demais).
+    grupoCompraEmGrupo: string;
+    grupoNomeGrupo: string;
+    grupoLiderGrupo: string;
+    grupoTelefoneLider: string;
+    grupoEmailLider: string;
+    grupoDocLider: string;
+    grupoNumDocLider: string;
+    grupoDataNascLider: string;
+    // Perguntas (formulário de inscrição) — só existem para poder popular a
+    // tabela quando o usuário marca esses campos na gestão de colunas.
+    perguntaPace: string;
+    perguntaDistanciaProva: string;
+    perguntaTempoEstimado: string;
+    perguntaJaCorreuProva: string;
+    perguntaCategoriaParticipacao: string;
+    perguntaTamanhoCamisa: string;
+    perguntaFaixaEtaria: string;
+    perguntaConvenioMedico: string;
+    perguntaComoConheceuEvento: string;
+    perguntaMetaTempo: string;
+    perguntaAnoInicioCorrida: string;
+    perguntaTermoResponsabilidade: string;
+    perguntaContatoEmergencia: string;
+    perguntaMelhorTempoPessoal: string;
+    perguntaQtdParticipacoes: string;
+    perguntaAssessoriaEsportiva: string;
+    perguntaFederadoCBAt: string;
+    perguntaGrupoPace: string;
+    perguntaEquipeRevezamento: string;
+    perguntaFuncaoRevezamento: string;
+    perguntaRetiradaKitTerceiros: string;
+    perguntaMedicacaoContinua: string;
+    perguntaDoencaPreExistente: string;
+    perguntaPeso: string;
+    perguntaNumeracaoCalcado: string;
 }
 
 // Setores e tipos de ingresso derivados dos grupos do evento (src/reports).
@@ -124,11 +180,43 @@ const LOCAIS = [
     { estado: "DF", cidade: "Brasília", ddd: "61" },
 ];
 const OPERADORES = ["Bilheteria Praia de Carneiros", "Loja Oficial Réveillon Carneiros"];
+const PASSKEYS = ["VIP2027", "EARLYBIRD", "PARCEIRO2027", "IMPRENSA27", "STAFF2027"];
+const MODALIDADE_OPTIONS = ["Corrida", "Caminhada"];
+const LOTE_OPTIONS = [
+    { lote: "1º lote", peso: 0.35 },
+    { lote: "2º lote", peso: 0.3 },
+    { lote: "3º lote", peso: 0.25 },
+    { lote: "4º lote", peso: 0.1 },
+];
 const CUPONS = [
     { cupom: "REVEILLON15", pct: 0.15 },
-    { cupom: "CARNEIROS10", pct: 0.1 },
+    { cupom: "OFF10", pct: 0.1 },
     { cupom: "VIRADA2027", pct: 0.1 },
 ];
+
+// Pools para as "Perguntas" do formulário de inscrição (mock).
+const DISTANCIA_PROVA_OPTIONS = ["5km", "10km", "15km", "21km", "42km"];
+const CATEGORIA_PARTICIPACAO_OPTIONS = ["Geral", "PCD", "Elite", "Master"];
+const CATEGORIA_COMPETICAO_OPTIONS = ["Feminino", "Masculino", "Idosos", "PCD"];
+const CAMISA_TAMANHOS = ["PP", "P", "M", "G", "GG", "XG"];
+const FAIXA_ETARIA_OPTIONS = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
+const CONVENIO_OPTIONS = ["Nenhum", "Unimed", "Bradesco Saúde", "SulAmérica", "Amil", "Hapvida"];
+const COMO_CONHECEU_OPTIONS = ["Instagram", "Indicação de amigos", "Assessoria esportiva", "Site do evento", "Facebook", "Edição anterior"];
+const ASSESSORIA_OPTIONS = ["Não participa", "Bora Correr", "Runners Team", "Ativa Assessoria", "Pró Corrida"];
+const FUNCAO_REVEZAMENTO_OPTIONS = ["Não participa", "1º revezamento", "2º revezamento", "3º revezamento", "4º revezamento"];
+const GRUPO_PACE_OPTIONS = ["Pelotão Azul", "Pelotão Verde", "Pelotão Vermelho", "Pelotão Geral"];
+// Nomes de equipe para pedidos de "Compra em grupo".
+const EQUIPE_PREFIXOS = ["Equipe", "Grupo", "Assessoria"];
+
+/** "H:MM:SS" a partir de um total de minutos (usado por tempos de prova). */
+const formatDuracao = (totalMinutos: number): string => {
+    const totalSegundos = Math.round(totalMinutos * 60);
+    const h = Math.floor(totalSegundos / 3600);
+    const m = Math.floor((totalSegundos % 3600) / 60);
+    const s = totalSegundos % 60;
+    return `${h}:${pad(m)}:${pad(s)}`;
+};
+
 // Meios de pagamento (online), alinhados à distribuição do dataset.
 const MEIOS_PAGAMENTO: { nome: string; peso: number; isento?: boolean }[] = [
     { nome: "Pix", peso: 0.63 },
@@ -145,7 +233,8 @@ const SESSAO_ID = "reveillon-31-12";
 
 const pad = (n: number, size = 2) => String(n).padStart(size, "0");
 const fmtDateTime = (d: Date) =>
-    `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} às ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const fmtDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 
 function mulberry32(seed: number) {
     return function () {
@@ -181,7 +270,7 @@ const transacoes: Transacao[] = (() => {
         }
         const created = new Date(SALES_START_DATE);
         created.setDate(created.getDate() + dayOffset);
-        created.setHours(Math.floor(rng() * 24), Math.floor(rng() * 60));
+        created.setHours(Math.floor(rng() * 24), Math.floor(rng() * 60), Math.floor(rng() * 60));
         const updated = new Date(created.getTime() + Math.floor(rng() * 30) * 60_000);
 
         const statusRoll = rng();
@@ -192,12 +281,14 @@ const transacoes: Transacao[] = (() => {
         const tipo = pick(cat.tipos);
         const qtdItem = rng() < 0.82 ? 1 : rng() < 0.7 ? 2 : rng() < 0.7 ? 3 : 4;
 
-        // Jogo único; vendas majoritariamente online. Offline (bilheteria) usa dinheiro.
+        // Jogo único; vendas majoritariamente online. Bilheteria (PDV) usa dinheiro;
+        // cortesias (isentas) entram como canal próprio.
         const isPdv = rng() < 0.01;
-        const canal = isPdv ? "Offline" : "Online";
         const meio = isPdv ? { nome: "Dinheiro", peso: 1 } : pickWeighted(MEIOS_PAGAMENTO);
         const tipoPagamento = meio.nome;
         const isento = "isento" in meio && meio.isento === true;
+        const canal = isento ? "Cortesia" : isPdv ? "Bilheteria" : "Online";
+        const temPasskey = rng() < 0.08;
 
         const valor = isento ? 0 : tipo.valor * qtdItem;
         const temCupom = !isento && rng() < 0.12;
@@ -210,6 +301,62 @@ const transacoes: Transacao[] = (() => {
         const email = `${emailUser}${Math.floor(rng() * 90 + 10)}@${pick(["gmail.com", "outlook.com", "hotmail.com", "yahoo.com"])}`;
         const cpf = String(Math.floor(rng() * 9e10 + 1e10));
         const telefone = `+55${local.ddd}9${String(Math.floor(rng() * 9e7 + 1e7))}`;
+        const tipoDocumentoComprador = rng() < 0.85 ? "CPF" : "Passaporte";
+        const dataNascimentoComprador = fmtDate(new Date(1955 + Math.floor(rng() * 50), Math.floor(rng() * 12), 1 + Math.floor(rng() * 28)));
+
+        // Dados do atleta — na maioria das vezes é quem comprou; ~15% das compras são
+        // feitas para outra pessoa (ex.: presente, inscrição em nome de terceiros).
+        const compradoParaOutro = rng() < 0.15;
+        const atletaNome = compradoParaOutro ? `${pick(PRIMEIROS)} ${pick(SOBRENOMES)}` : nome;
+        const atletaEmailUser = atletaNome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z]+/g, ".");
+        const atletaEmail = compradoParaOutro
+            ? `${atletaEmailUser}${Math.floor(rng() * 90 + 10)}@${pick(["gmail.com", "outlook.com", "hotmail.com", "yahoo.com"])}`
+            : email;
+        const atletaTipoDocumento = compradoParaOutro ? (rng() < 0.85 ? "CPF" : "Passaporte") : tipoDocumentoComprador;
+        const atletaDocumento = compradoParaOutro ? String(Math.floor(rng() * 9e10 + 1e10)) : cpf;
+        const atletaTelefone = compradoParaOutro ? `+55${local.ddd}9${String(Math.floor(rng() * 9e7 + 1e7))}` : telefone;
+        const atletaDataNascimento = fmtDate(new Date(1955 + Math.floor(rng() * 50), Math.floor(rng() * 12), 1 + Math.floor(rng() * 28)));
+
+        // Compra em grupo — só ~12% dos pedidos são de uma equipe; o comprador é o
+        // responsável pelo pedido nesse modelo (não há sub-registros por integrante).
+        const compraEmGrupo = rng() < 0.12;
+
+        // Perguntas (formulário de inscrição de corrida de rua).
+        const jaCorreuProva = rng() < 0.55;
+        const distanciaProva = pick(DISTANCIA_PROVA_OPTIONS);
+        const distanciaKm = { "5km": 5, "10km": 10, "15km": 15, "21km": 21, "42km": 42 }[distanciaProva] ?? 10;
+        const paceMin = 4 + rng() * 3; // 4:00–7:00 min/km
+        const participaRevezamento = rng() < 0.1;
+        const categoriaCompeticao = pick(CATEGORIA_COMPETICAO_OPTIONS);
+        const modalidade = `${pick(MODALIDADE_OPTIONS)} ${distanciaProva}`;
+        const lote = pickWeighted(LOTE_OPTIONS).lote;
+        const perguntas = {
+            perguntaPace: `${Math.floor(paceMin)}:${pad(Math.round((paceMin % 1) * 60))} min/km`,
+            perguntaDistanciaProva: distanciaProva,
+            perguntaTempoEstimado: formatDuracao(distanciaKm * paceMin),
+            perguntaJaCorreuProva: jaCorreuProva ? "Sim" : "Não",
+            perguntaCategoriaParticipacao: pick(CATEGORIA_PARTICIPACAO_OPTIONS),
+            perguntaTamanhoCamisa: pick(CAMISA_TAMANHOS),
+            perguntaFaixaEtaria: pick(FAIXA_ETARIA_OPTIONS),
+            perguntaConvenioMedico: pick(CONVENIO_OPTIONS),
+            perguntaComoConheceuEvento: pick(COMO_CONHECEU_OPTIONS),
+            perguntaMetaTempo: formatDuracao(distanciaKm * paceMin * 0.95),
+            perguntaAnoInicioCorrida: String(2010 + Math.floor(rng() * 16)),
+            perguntaTermoResponsabilidade: rng() < 0.98 ? "Sim" : "Não",
+            perguntaContatoEmergencia: `${pick(PRIMEIROS)} ${pick(SOBRENOMES)} — +55${pick(LOCAIS).ddd}9${String(Math.floor(rng() * 9e7 + 1e7))}`,
+            perguntaMelhorTempoPessoal: formatDuracao(distanciaKm * Math.max(paceMin - 0.5, 3.5)),
+            perguntaQtdParticipacoes: String(Math.floor(rng() * 10)),
+            perguntaAssessoriaEsportiva: rng() < 0.3 ? pick(ASSESSORIA_OPTIONS.slice(1)) : "Não participa",
+            perguntaFederadoCBAt: rng() < 0.12 ? "Sim" : "Não",
+            perguntaGrupoPace: pick(GRUPO_PACE_OPTIONS),
+            perguntaEquipeRevezamento: participaRevezamento ? "Sim" : "Não",
+            perguntaFuncaoRevezamento: participaRevezamento ? pick(FUNCAO_REVEZAMENTO_OPTIONS.slice(1)) : "Não participa",
+            perguntaRetiradaKitTerceiros: rng() < 0.2 ? "Sim" : "Não",
+            perguntaMedicacaoContinua: rng() < 0.15 ? "Sim" : "Não",
+            perguntaDoencaPreExistente: rng() < 0.08 ? "Sim" : "Não",
+            perguntaPeso: `${Math.floor(rng() * 40 + 50)} kg`,
+            perguntaNumeracaoCalcado: String(Math.floor(rng() * 13 + 34)),
+        };
 
         rows.push({
             id: `${pad(Math.floor(rng() * 9e7), 8)}-${pad(Math.floor(rng() * 9000), 4)}-4${pad(Math.floor(rng() * 900), 3)}-${pad(Math.floor(rng() * 9000), 4)}`,
@@ -217,27 +364,48 @@ const transacoes: Transacao[] = (() => {
             dataCriacao: fmtDateTime(created),
             ultimaAtualizacao: fmtDateTime(updated),
             status,
-            nomeIngresso: tipo.nome,
-            setor: cat.setor,
-            lote: tipo.lote,
+            nomeIngresso: distanciaProva,
+            setor: categoriaCompeticao,
+            modalidade,
+            lote,
             comprador: nome,
+            tipoDocumentoComprador,
             cpf,
             telefone,
             email,
+            dataNascimentoComprador,
             canal,
             tipoPagamento,
             estado: local.estado,
             cidade: local.cidade,
             operadorVendas: isPdv ? pick(OPERADORES) : "—",
             valor,
+            valorUnitario: tipo.valor,
             cupom: cupomDef?.cupom ?? "—",
             valorDesconto,
             valorFinal,
             qtdItem,
-            passkey: "—",
+            passkey: temPasskey ? pick(PASSKEYS) : "—",
             pdv: isPdv,
             bundle: false,
             bundleDinamico: false,
+            itemCodigo: `IT-${pad(Math.floor(rng() * 9999), 4)}`,
+            idInscricao: `INS-${pad(Math.floor(rng() * 999999), 6)}`,
+            atletaNome,
+            atletaTipoDocumento,
+            atletaDocumento,
+            atletaEmail,
+            atletaTelefone,
+            atletaDataNascimento,
+            grupoCompraEmGrupo: compraEmGrupo ? "Sim" : "Não",
+            grupoNomeGrupo: compraEmGrupo ? `${pick(EQUIPE_PREFIXOS)} ${pick(SOBRENOMES)}` : "—",
+            grupoLiderGrupo: compraEmGrupo ? nome : "—",
+            grupoTelefoneLider: compraEmGrupo ? telefone : "—",
+            grupoEmailLider: compraEmGrupo ? email : "—",
+            grupoDocLider: compraEmGrupo ? tipoDocumentoComprador : "—",
+            grupoNumDocLider: compraEmGrupo ? cpf : "—",
+            grupoDataNascLider: compraEmGrupo ? dataNascimentoComprador : "—",
+            ...perguntas,
         });
     }
     // Ordena do mais recente para o mais antigo (como uma lista de transações real).
@@ -245,14 +413,40 @@ const transacoes: Transacao[] = (() => {
     return rows;
 })();
 
+/** Dia (00:00) da transação mais recente do dataset — usado como "hoje" para o filtro
+ * "Aprovados hoje", já que os dados são gerados numa janela fixa que pode não coincidir
+ * com a data real. */
+const ULTIMO_DIA_MS = (() => {
+    const d = parseEventDate(transacoes[0]?.dataCriacao ?? "");
+    return d ? new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() : 0;
+})();
+const isMesmoDia = (dataStr: string, diaMs: number): boolean => {
+    const d = parseEventDate(dataStr);
+    if (!d) return false;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() === diaMs;
+};
+
 /* ------------------------------------------------------------------ */
 /*  Filtros — definição de campos (usada pelo slideout global)         */
 /* ------------------------------------------------------------------ */
 
-const STATUS_OPTIONS = Object.entries(STATUS_META).map(([, m]) => ({ id: m.label, label: m.label }));
+const ULTIMO_DIA_LABEL = (() => {
+    const d = new Date(ULTIMO_DIA_MS);
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+})();
+const STATUS_OPTIONS = [
+    { id: "Aprovados hoje", label: `Aprovados hoje (${ULTIMO_DIA_LABEL})` },
+    ...Object.entries(STATUS_META).map(([, m]) => ({ id: m.label, label: m.label })),
+];
 const CANAL_OPTIONS = [
+    { id: "Bilheteria", label: "Bilheteria" },
+    { id: "Cortesia", label: "Cortesia" },
     { id: "Online", label: "Online" },
-    { id: "Offline", label: "Offline" },
+];
+const TIPO_PRODUTO_OPTIONS = [
+    { id: "Inscrição", label: "Inscrição" },
+    { id: "Produto", label: "Produto" },
+    { id: "Combo", label: "Combo" },
 ];
 const MEIO_PAGAMENTO_OPTIONS = [
     { id: "Pix", label: "Pix" },
@@ -264,27 +458,22 @@ const MEIO_PAGAMENTO_OPTIONS = [
     { id: "Isento", label: "Isento" },
     { id: "Grátis", label: "Grátis" },
 ];
-const SETOR_OPTIONS = CATALOGO.map((c) => ({ id: c.setor, label: c.setor }));
 
 const FILTER_FIELDS: FilterFieldDef[] = [
     { id: "status", label: "Status", multi: { options: STATUS_OPTIONS } },
+    { id: "meioPagamento", label: "Meio de pagamento", multi: { options: MEIO_PAGAMENTO_OPTIONS } },
     { id: "canal", label: "Canal", multi: { options: CANAL_OPTIONS } },
-    { id: "meioPagamento", label: "Meio de Pagamento", multi: { options: MEIO_PAGAMENTO_OPTIONS } },
-    { id: "setor", label: "Setor", multi: { options: SETOR_OPTIONS } },
-    { id: "email", label: "Email" },
-    { id: "cpf", label: "CPF" },
-    { id: "passkey", label: "Passkey" },
-    { id: "nomeComprador", label: "Nome Comprador" },
-    { id: "operador", label: "Operador de Vendas" },
-    { id: "tipoIngresso", label: "Tipo do Ingresso" },
-    { id: "idTransacao", label: "ID Transação" },
-    { id: "cupom", label: "Cupom" },
+    { id: "tipoIngresso", label: "Tipo de produto", multi: { options: TIPO_PRODUTO_OPTIONS } },
+    { id: "cupom", label: "Cupom", placeholder: "Buscar por um cupom específico" },
 ];
 
 function getFieldValue(t: Transacao, field: string): string {
     switch (field) {
-        case "status":
-            return STATUS_META[t.status].label;
+        case "status": {
+            const base = STATUS_META[t.status].label;
+            const aprovadoHoje = t.status === "aprovado" && isMesmoDia(t.dataCriacao, ULTIMO_DIA_MS);
+            return aprovadoHoje ? `${base},Aprovados hoje` : base;
+        }
         case "canal":
             return t.canal;
         case "meioPagamento":
@@ -321,7 +510,7 @@ export function Transacoes() {
         <BackstageLayout activeSection="relatorios" activeItem="transacoes">
             <RelatorioFiltersProvider fields={FILTER_FIELDS} initialDateRange={PERIODO_PADRAO}>
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                    <main className="flex flex-1 flex-col gap-6 py-6 md:px-6">
                         <RelatorioPageHeader title="Transações" />
                         <TransacoesBody />
                     </main>
@@ -421,14 +610,14 @@ const TransacoesBody = () => {
             </div>
             <TransacionadoChartCard
                 data={chartData}
-                title="Total transacionado e número de ingressos"
-                subtitle="Distribuição diária de transações e ingressos vendidos"
+                title="Total transacionado e número de inscrições"
+                subtitle="Distribuição diária de transações e inscrições vendidas"
             />
             <TransacionadoChartCard
                 data={chartData}
                 acumulado
-                title="Total transacionado e número de ingressos acumulados"
-                subtitle="Evolução acumulada de transações e ingressos vendidos"
+                title="Total transacionado e número de inscrições acumuladas"
+                subtitle="Evolução acumulada de transações e inscrições vendidas"
             />
             <ListaTransacoesCard rows={filtered} />
         </>
@@ -458,7 +647,7 @@ const TotalTransacionadoCard = ({ total }: { total: number }) => (
 const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) => {
     if (rows.length === 0) {
         return (
-            <Card title="Quantidade de Ingressos e Valor por status">
+            <Card title="Quantidade de Inscrições e Valor por status">
                 <div className="px-4 py-12 text-center text-sm text-tertiary">Nenhum status corresponde aos filtros.</div>
             </Card>
         );
@@ -466,7 +655,7 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
     const totalValor = rows.reduce((s, r) => s + r.total, 0);
     const pctOf = (v: number) => (totalValor === 0 ? 0 : Math.round((v / totalValor) * 100));
     return (
-        <Card title="Quantidade de Ingressos e Valor por status">
+        <Card title="Quantidade de Inscrições e Valor por status">
             <div className="flex flex-col gap-6 px-4 py-5 md:px-5">
                 {/* Barra horizontal segmentada por status (largura ∝ valor) */}
                 <div className="flex w-full items-start gap-1">
@@ -483,7 +672,7 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
                     <thead>
                         <tr className="border-b border-secondary">
                             <th className="py-2 pr-4 text-left text-sm font-semibold text-tertiary" />
-                            <th className="px-4 py-2 text-right text-sm font-semibold text-tertiary">Total ingressos</th>
+                            <th className="px-4 py-2 text-right text-sm font-semibold text-tertiary">Total inscrições</th>
                             <th className="py-2 pl-4 text-right text-sm font-semibold text-tertiary">Total</th>
                         </tr>
                     </thead>
@@ -547,7 +736,7 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
                     <thead>
                         <tr className="border-b border-secondary">
                             <th className="py-2 pr-4 text-left text-sm font-semibold text-tertiary" />
-                            <th className="px-4 py-2 text-right text-sm font-semibold text-tertiary">Total ingressos</th>
+                            <th className="px-4 py-2 text-right text-sm font-semibold text-tertiary">Total inscrições</th>
                             <th className="py-2 pl-4 text-right text-sm font-semibold text-tertiary">Total</th>
                         </tr>
                     </thead>
@@ -576,33 +765,106 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
 /*  Lista de transações                                               */
 /* ------------------------------------------------------------------ */
 
-const TRANSACAO_COLUMNS: Array<{ key: keyof Transacao | "status"; label: string; align?: "right" }> = [
-    { key: "id", label: "ID" },
-    { key: "dataCriacao", label: "Data de Criação" },
-    { key: "ultimaAtualizacao", label: "Última Atualização" },
-    { key: "status", label: "Status" },
-    { key: "nomeIngresso", label: "Nome do Ingresso" },
-    { key: "setor", label: "Setor" },
-    { key: "lote", label: "Lote" },
-    { key: "comprador", label: "Comprador" },
-    { key: "cpf", label: "CPF do Comprador" },
-    { key: "telefone", label: "Telefone do Comprador" },
-    { key: "email", label: "Email do Comprador" },
-    { key: "canal", label: "Canal" },
-    { key: "tipoPagamento", label: "Tipo de Pagamento" },
-    { key: "estado", label: "Estado" },
-    { key: "cidade", label: "Cidade" },
-    { key: "operadorVendas", label: "Operador de Vendas" },
-    { key: "valor", label: "Valor", align: "right" },
-    { key: "cupom", label: "Cupom" },
-    { key: "valorDesconto", label: "Valor Desconto", align: "right" },
-    { key: "valorFinal", label: "Valor Final", align: "right" },
-    { key: "qtdItem", label: "Qtd. de Itens", align: "right" },
-    { key: "passkey", label: "Passkey" },
-    { key: "pdv", label: "PDV" },
-    { key: "bundle", label: "Bundle" },
-    { key: "bundleDinamico", label: "Bundle Dinâmico" },
-];
+/** Liga cada campo selecionável no modal "Editar colunas" à coluna correspondente da tabela —
+ * a tabela nunca exibe uma coluna que o usuário não possa desmarcar. */
+const COLUMN_FIELD_MAP: Partial<Record<string, keyof Transacao | "status">> = {
+    pedido_id: "id",
+    pedido_dataCriacao: "dataCriacao",
+    pedido_ultimaAtualizacao: "ultimaAtualizacao",
+    pedido_status: "status",
+    pedido_formaPagamento: "tipoPagamento",
+    pedido_canal: "canal",
+    pedido_operadorVendas: "operadorVendas",
+    pedido_comprador: "comprador",
+    pedido_tipoDocumentoComprador: "tipoDocumentoComprador",
+    pedido_documentoComprador: "cpf",
+    pedido_emailComprador: "email",
+    pedido_telefoneComprador: "telefone",
+    pedido_dataNascimentoComprador: "dataNascimentoComprador",
+    inscricao_categoria: "setor",
+    inscricao_modalidade: "modalidade",
+    pedido_idInscricao: "idInscricao",
+    pedido_cupom: "cupom",
+    pedido_passkey: "passkey",
+    pedido_quantidade: "qtdItem",
+    pedido_valorUnitario: "valorUnitario",
+    pedido_valorDesconto: "valorDesconto",
+    pedido_valorTotal: "valorFinal",
+    inscricao_item: "itemCodigo",
+    inscricao_lote: "lote",
+    atleta_nome: "atletaNome",
+    atleta_tipoDocumento: "atletaTipoDocumento",
+    atleta_documento: "atletaDocumento",
+    atleta_email: "atletaEmail",
+    atleta_telefone: "atletaTelefone",
+    atleta_dataNascimento: "atletaDataNascimento",
+    grupo_compraEmGrupo: "grupoCompraEmGrupo",
+    grupo_nomeGrupo: "grupoNomeGrupo",
+    grupo_liderGrupo: "grupoLiderGrupo",
+    grupo_telefoneLider: "grupoTelefoneLider",
+    grupo_emailLider: "grupoEmailLider",
+    grupo_docLider: "grupoDocLider",
+    grupo_numDocLider: "grupoNumDocLider",
+    grupo_dataNascLider: "grupoDataNascLider",
+    pergunta_pace: "perguntaPace",
+    pergunta_distanciaProva: "perguntaDistanciaProva",
+    pergunta_tempoEstimado: "perguntaTempoEstimado",
+    pergunta_jaCorreuProva: "perguntaJaCorreuProva",
+    pergunta_categoriaParticipacao: "perguntaCategoriaParticipacao",
+    pergunta_tamanhoCamisa: "perguntaTamanhoCamisa",
+    pergunta_faixaEtaria: "perguntaFaixaEtaria",
+    pergunta_convenioMedico: "perguntaConvenioMedico",
+    pergunta_comoConheceuEvento: "perguntaComoConheceuEvento",
+    pergunta_metaTempo: "perguntaMetaTempo",
+    pergunta_anoInicioCorrida: "perguntaAnoInicioCorrida",
+    pergunta_termoResponsabilidade: "perguntaTermoResponsabilidade",
+    pergunta_contatoEmergencia: "perguntaContatoEmergencia",
+    pergunta_melhorTempoPessoal: "perguntaMelhorTempoPessoal",
+    pergunta_qtdParticipacoes: "perguntaQtdParticipacoes",
+    pergunta_assessoriaEsportiva: "perguntaAssessoriaEsportiva",
+    pergunta_federadoCBAt: "perguntaFederadoCBAt",
+    pergunta_grupoPace: "perguntaGrupoPace",
+    pergunta_equipeRevezamento: "perguntaEquipeRevezamento",
+    pergunta_funcaoRevezamento: "perguntaFuncaoRevezamento",
+    pergunta_retiradaKitTerceiros: "perguntaRetiradaKitTerceiros",
+    pergunta_medicacaoContinua: "perguntaMedicacaoContinua",
+    pergunta_doencaPreExistente: "perguntaDoencaPreExistente",
+    pergunta_peso: "perguntaPeso",
+    pergunta_numeracaoCalcado: "perguntaNumeracaoCalcado",
+};
+// Rótulos das colunas vêm do próprio export-fields.ts (fonte única de verdade), para
+// nunca divergir do texto mostrado na gestão de colunas.
+const EXPORT_FIELD_LABELS: Record<string, string> = Object.fromEntries(
+    EXPORT_FIELD_GROUPS.flatMap((g) => g.fields.map((f) => [f.id, f.label] as const)),
+);
+const RIGHT_ALIGN_KEYS = new Set<keyof Transacao>(["qtdItem", "valorUnitario", "valorDesconto", "valorFinal"]);
+
+/** Definição de coluna por campo — a ORDEM em que as colunas aparecem na tabela não vem
+ * daqui, e sim da ordem de `selectedFields` (ver `visibleColumns`), que reflete tanto a
+ * ordem canônica de COLUMN_FIELD_MAP quanto qualquer reordenação feita via drag and drop
+ * no modal "Editar colunas". */
+const COLUMN_BY_FIELD_ID = new Map(
+    Object.entries(COLUMN_FIELD_MAP).map(([exportId, colKey]) => [
+        exportId,
+        {
+            key: colKey as keyof Transacao | "status",
+            label: EXPORT_FIELD_LABELS[exportId],
+            align: RIGHT_ALIGN_KEYS.has(colKey as keyof Transacao) ? ("right" as const) : undefined,
+        },
+    ]),
+);
+
+const formatCpf = (cpf: string): string => cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+const formatTelefone = (telefone: string): string => {
+    const match = telefone.match(/^\+55(\d{2})(\d{9})$/);
+    if (!match) return telefone;
+    const [, ddd, numero] = match;
+    return `+55 (${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
+};
+
+const CURRENCY_KEYS = new Set<keyof Transacao>(["valorUnitario", "valorDesconto", "valorFinal"]);
+const DOCUMENTO_KEYS = new Set<keyof Transacao>(["cpf", "atletaDocumento", "grupoNumDocLider"]);
+const TELEFONE_KEYS = new Set<keyof Transacao>(["telefone", "atletaTelefone", "grupoTelefoneLider"]);
 
 const renderTransacaoCell = (row: Transacao, key: keyof Transacao | "status"): ReactNode => {
     if (key === "status") {
@@ -610,9 +872,10 @@ const renderTransacaoCell = (row: Transacao, key: keyof Transacao | "status"): R
         return <span className="font-medium text-primary">{meta.label}</span>;
     }
     const value = row[key];
-    if (typeof value === "boolean") return value ? "Sim" : "Não";
-    if (key === "valor" || key === "valorDesconto" || key === "valorFinal") return currencyFormatter.format(Number(value));
+    if (CURRENCY_KEYS.has(key as keyof Transacao)) return currencyFormatter.format(Number(value));
     if (key === "qtdItem") return numberFormatter.format(Number(value));
+    if (DOCUMENTO_KEYS.has(key as keyof Transacao)) return formatCpf(String(value));
+    if (TELEFONE_KEYS.has(key as keyof Transacao)) return formatTelefone(String(value));
     return String(value);
 };
 
@@ -626,6 +889,13 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(50);
     const [search, setSearch] = useState("");
+    const [isManageColumnsOpen, setIsManageColumnsOpen] = useState(false);
+    const [selectedFields, setSelectedFields] = useState<string[]>(DEFAULT_SELECTED);
+
+    const visibleColumns = useMemo(
+        () => selectedFields.map((fieldId) => COLUMN_BY_FIELD_ID.get(fieldId)).filter((col): col is NonNullable<typeof col> => Boolean(col)),
+        [selectedFields],
+    );
 
     const searched = useMemo(() => {
         const term = search.trim().toLowerCase();
@@ -672,18 +942,32 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
                     onChange={setSearch}
                     className="lg:max-w-xs lg:flex-1"
                 />
-                <ExportMenu
-                    size="sm"
-                    formats={["excel", "csv"]}
-                    onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "As transações serão exportadas." })}
-                />
+                <div className="flex items-center gap-2">
+                    <Button size="sm" color="secondary" iconLeading={Edit02} onClick={() => setIsManageColumnsOpen(true)}>
+                        Editar colunas
+                    </Button>
+                    <ExportMenu
+                        size="sm"
+                        formats={["excel", "csv"]}
+                        onExport={(f) => toast.success(`Exportando ${f.toUpperCase()}`, { description: "As transações serão exportadas." })}
+                        onEditColumnsAndExport={() => setIsManageColumnsOpen(true)}
+                    />
+                </div>
             </div>
 
-            <div className="overflow-x-auto overflow-y-clip">
+            <ManageColumnsModal
+                isOpen={isManageColumnsOpen}
+                onClose={() => setIsManageColumnsOpen(false)}
+                selected={selectedFields}
+                onSelectedChange={setSelectedFields}
+                onExport={(fields) => toast.success("Exportação concluída", { description: `${fields.length} colunas foram exportadas.` })}
+            />
+
+            <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
-                            {TRANSACAO_COLUMNS.map((col) => (
+                            {visibleColumns.map((col) => (
                                 <th key={String(col.key)} className={cx("whitespace-nowrap px-4 py-3 text-sm font-semibold text-tertiary", col.align === "right" && "text-right")}>
                                     <SortableHeader label={col.label} align={col.align} sortKey={String(col.key)} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                                 </th>
@@ -693,14 +977,14 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
                     <tbody>
                         {visibleRows.length === 0 && (
                             <tr>
-                                <td colSpan={TRANSACAO_COLUMNS.length} className="px-4 py-12 text-center text-sm text-tertiary">
+                                <td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-sm text-tertiary">
                                     Nenhuma transação corresponde aos filtros aplicados.
                                 </td>
                             </tr>
                         )}
                         {visibleRows.map((row, i) => (
                             <tr key={row.id} className={cx("transition duration-100 ease-linear hover:bg-primary_hover", i !== visibleRows.length - 1 && "border-b border-secondary")}>
-                                {TRANSACAO_COLUMNS.map((col) => (
+                                {visibleColumns.map((col) => (
                                     <td key={String(col.key)} className={cx("whitespace-nowrap px-4 py-4 text-sm text-tertiary", col.align === "right" && "text-right", col.key === "id" && "font-mono text-sm text-secondary")}>
                                         {renderTransacaoCell(row, col.key)}
                                     </td>

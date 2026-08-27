@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ArrowLeft, ClipboardCheck, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
@@ -11,6 +12,7 @@ import { GradientFill } from "../../components/GradientFill";
 import { Zigzag } from "../../components/Zigzag";
 import { getEvento, type ComboStatus } from "../data/eventos";
 import { isTransferido } from "../data/transfer-store";
+import { InfoIngressoSheet } from "../components/InfoIngressoSheet";
 
 const STATUS: Record<ComboStatus, { label: string; color: "gray" | "brand" | "blue" }> = {
     finalizado: { label: "Finalizado", color: "gray" },
@@ -23,6 +25,7 @@ export function ComboDetalhe() {
     const { eventId, comboId } = useParams();
     const transferido = isTransferido(comboId);
     const evento = getEvento(eventId);
+    const [infoAberto, setInfoAberto] = useState(false);
     const combo = evento.combos?.find((c) => c.id === comboId) ?? evento.combos?.find((c) => c.qr === "unico");
     // Ordem: por status (hoje, próximo, finalizado) e, dentro do mesmo status, o de data mais próxima primeiro.
     const RANK: Record<string, number> = { hoje: 0, proximo: 1, finalizado: 2 };
@@ -65,6 +68,7 @@ export function ComboDetalhe() {
                     <button
                         type="button"
                         aria-label="Informações"
+                        onClick={() => setInfoAberto(true)}
                         className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                     >
                         <InfoCircle className="size-5" />
@@ -265,6 +269,15 @@ export function ComboDetalhe() {
                     )}
                 </div>
             </div>
+
+            <InfoIngressoSheet
+                isOpen={infoAberto}
+                onClose={() => setInfoAberto(false)}
+                seed={combo.id}
+                sessao={combo.dataEvento}
+                descricao={combo.nome}
+                variant="ingresso"
+            />
         </AppShell>
     );
 }

@@ -156,8 +156,19 @@ export const BuyerIdentity = ({ buyer }: { buyer: Buyer }) => (
         <FeaturedIcon icon={CheckCircle} color="success" theme="gradient" size="lg" className="shrink-0 rounded-full" />
         <div className="flex min-w-0 flex-col">
             <p className="truncate text-sm font-semibold text-primary">{buyer.name}</p>
-            {buyer.maskedDocument && <p className="truncate text-sm text-tertiary">{buyer.maskedDocument}</p>}
-            <p className="truncate text-sm text-tertiary">{buyer.email}</p>
+            {/*
+              E-mail primeiro: é ele que identifica a conta e para onde os ingressos
+              vão. O documento vem depois, como confirmação, na mesma linha.
+            */}
+            <p className="truncate text-sm text-tertiary">
+                {buyer.email}
+                {buyer.maskedDocument && (
+                    <>
+                        <span aria-hidden="true"> • </span>
+                        {buyer.maskedDocument}
+                    </>
+                )}
+            </p>
             {buyer.phone && (
                 <p className="flex items-center gap-1.5 truncate text-sm text-tertiary">
                     <WhatsAppIcon aria-hidden="true" className="size-4 shrink-0 text-[#25d366]" />
@@ -205,17 +216,24 @@ const ContasEncontradas = ({
                 </p>
             </div>
             <hr className="border-secondary" />
-            <RadioGroup aria-label="Conta do comprador" value={selectedId ?? null} onChange={onSelect} className="gap-2">
-                {buyers.map((buyer) => (
-                    <label
-                        key={buyer.id}
-                        className="flex cursor-pointer items-center gap-3 rounded-lg bg-secondary p-3 transition duration-100 ease-linear hover:bg-secondary_hover"
-                    >
-                        <RadioButton value={buyer.id} slot={null} aria-label={buyer.name} />
-                        <BuyerIdentity buyer={buyer} />
-                    </label>
-                ))}
-            </RadioGroup>
+
+            {/* Uma conta só não é uma escolha: o radio ali só pedia um clique a mais. */}
+            {varias ? (
+                <RadioGroup aria-label="Conta do comprador" value={selectedId ?? null} onChange={onSelect} className="gap-2">
+                    {buyers.map((buyer) => (
+                        <RadioButton
+                            key={buyer.id}
+                            value={buyer.id}
+                            slot={null}
+                            aria-label={buyer.name}
+                            label={<BuyerIdentity buyer={buyer} />}
+                            className="cursor-pointer items-center gap-3 rounded-lg bg-secondary p-3 transition duration-100 ease-linear hover:bg-secondary_hover"
+                        />
+                    ))}
+                </RadioGroup>
+            ) : (
+                <BuyerIdentity buyer={buyers[0]} />
+            )}
         </div>
     );
 };

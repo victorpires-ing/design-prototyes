@@ -8,3 +8,7 @@ dist
 .env*
 *sandbox*
 src/produtos/playground/
+
+# worktrees, backups e estado local do Claude Code
+.claude/
+.DS_Store

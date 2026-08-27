@@ -32,6 +32,9 @@ import { CriarGrupo as CriarGrupoOperacao } from '../produtos/backstage/equipe-d
 import { DetalheGrupo as DetalheGrupoOperacao } from '../produtos/backstage/equipe-de-operacao/pages/DetalheGrupo';
 import { EditarItensCotas } from '../produtos/backstage/equipe-de-operacao/pages/EditarItensCotas';
 import { EditarOperadores } from '../produtos/backstage/equipe-de-operacao/pages/EditarOperadores';
+import { BilheteriaProvider } from '../produtos/backstage/bilheteria-online/data/bilheteria-store';
+import { BilheteriaOnline } from '../produtos/backstage/bilheteria-online/pages/BilheteriaOnline';
+import { NovaVenda } from '../produtos/backstage/bilheteria-online/pages/NovaVenda';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
@@ -162,6 +165,7 @@ export default function App() {
       <PerguntasProvider>
       <PesquisasProvider>
       <EquipeProvider>
+      <BilheteriaProvider>
       <Routes>
         <Route path="/" element={<ProductSelection />} />
         <Route path="/loading" element={<CymaticsShowcase />} />
@@ -169,6 +173,8 @@ export default function App() {
         <Route path="/backstage/home" element={<BackstageHome />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
+        <Route path="/backstage/bilheteria-online" element={<BilheteriaOnline />} />
+        <Route path="/backstage/bilheteria-online/nova" element={<NovaVenda />} />
         <Route path="/backstage/equipe-de-operacao" element={<EquipeDeOperacao />} />
         <Route path="/backstage/equipe-de-operacao/criar" element={<CriarGrupoOperacao />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId" element={<DetalheGrupoOperacao />} />
@@ -297,6 +303,7 @@ export default function App() {
         <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
+      </BilheteriaProvider>
       </EquipeProvider>
       </PesquisasProvider>
       </PerguntasProvider>

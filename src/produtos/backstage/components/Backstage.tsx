@@ -66,6 +66,7 @@ export type BackstageItem =
     | "catalogo-produtos"
     | "catalogo-aberturas"
     | "emissao-cortesias"
+    | "bilheteria-online"
     | "grupos-operacao"
     | "vendas-por-grupo"
     | "transacoes"
@@ -143,16 +144,15 @@ export function BackstageLayout({
 
     const mobileChrome = (
         <>
-            <MobileTopBar onOpenMenu={() => setIsMobileMenuOpen(true)} />
-            <MobileDrawer isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+            <MobileTopBar onOpenMenu={() => setIsMobileMenuOpen(true)} showEventContext={showEventContext} />
+            <MobileDrawer
+                isOpen={isMobileMenuOpen}
+                onClose={() => setIsMobileMenuOpen(false)}
+                showEventContext={showEventContext}
+                activeSection={activeSection}
+                activeItem={activeItem}
+            />
         </>
-    );
-
-    const mobileContext = showEventContext && (
-        <div className="flex flex-col gap-3 md:hidden">
-            <MobileEventCard />
-            <MobileSectionSelector activeSection={activeSection} activeItem={activeItem} />
-        </div>
     );
 
     if (variant === "topbar") {
@@ -163,8 +163,7 @@ export function BackstageLayout({
             >
                 {mobileChrome}
                 <OrgTopBar activeProducer={activeProducer} />
-                <div className="flex flex-col gap-3 px-3 py-3 md:flex-row md:gap-6 md:px-6 md:py-6">
-                    {mobileContext}
+                <div className="flex flex-col gap-3 px-2 py-3 md:flex-row md:gap-6 md:px-6 md:py-6">
                     {showEventContext && <EventRailTop activeSection={activeSection} activeItem={activeItem} />}
                     <main className="flex min-w-0 flex-1 flex-col">
                         <div className="mx-auto flex w-full max-w-[1088px] flex-1 flex-col">{children}</div>
@@ -178,8 +177,7 @@ export function BackstageLayout({
     return (
         <div className="min-h-screen bg-secondary dark:bg-[#0a0a0a]">
             {mobileChrome}
-            <div className="flex min-h-screen flex-col gap-3 px-3 py-3 md:flex-row md:py-6">
-                {mobileContext}
+            <div className="flex min-h-screen flex-col gap-3 px-2 py-3 md:flex-row md:px-3 md:py-6">
                 <ProducerRail activeProducer={activeProducer} />
                 {showEventContext && <EventRail activeSection={activeSection} activeItem={activeItem} />}
                 {children}
@@ -199,7 +197,7 @@ const LAYOUT_OPTIONS = [
 ] as const;
 
 const LayoutSwitcher = ({ variant, onChange }: { variant: LayoutVariant; onChange: (v: LayoutVariant) => void }) => (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-1 rounded-full bg-primary p-1 shadow-lg ring-1 ring-border-secondary">
+    <div className="fixed bottom-4 right-4 z-50 hidden items-center gap-1 rounded-full bg-primary p-1 shadow-lg ring-1 ring-border-secondary md:flex">
         {LAYOUT_OPTIONS.map((opt) => {
             const active = variant === opt.id;
             return (
@@ -225,17 +223,29 @@ const LayoutSwitcher = ({ variant, onChange }: { variant: LayoutVariant; onChang
 /*  Mobile top bar + drawer                                           */
 /* ------------------------------------------------------------------ */
 
-const MobileTopBar = ({ onOpenMenu }: { onOpenMenu: () => void }) => (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-secondary bg-primary px-4 py-3 md:hidden">
-        <BrandLogo className="h-5" />
-        <button
-            type="button"
-            onClick={onOpenMenu}
-            aria-label="Abrir menu"
-            className="flex size-9 shrink-0 items-center justify-center rounded-md text-fg-secondary transition duration-100 ease-linear hover:bg-secondary"
-        >
-            <Menu02 className="size-5" />
-        </button>
+const MobileTopBar = ({ onOpenMenu, showEventContext }: { onOpenMenu: () => void; showEventContext?: boolean }) => (
+    <header className="sticky top-0 z-30 md:hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-secondary bg-primary px-4 py-3">
+            <BrandLogo className="h-5" />
+            <button
+                type="button"
+                onClick={onOpenMenu}
+                aria-label="Abrir menu"
+                className="flex size-9 shrink-0 items-center justify-center rounded-md text-fg-secondary transition duration-100 ease-linear hover:bg-secondary"
+            >
+                <Menu02 className="size-5" />
+            </button>
+        </div>
+        {showEventContext && (
+            <div className="flex items-center gap-2.5 border-b border-secondary bg-primary px-4 py-2">
+                <img src={eventCover} alt="" className="size-9 shrink-0 rounded-md object-cover" />
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm leading-tight font-semibold text-primary">América x Laguna (5 a 0)</span>
+                    <span className="text-xs text-tertiary">ID: XWNE7K</span>
+                </div>
+                <Badge size="sm" type="pill-color" color="success">Publicado</Badge>
+            </div>
+        )}
     </header>
 );
 
@@ -265,7 +275,7 @@ const SECTION_LABELS: Record<BackstageSection, string> = {
     "informacoes-evento": "Informações do evento",
     itens: "Itens",
     pesquisas: "Coleta de dados",
-    cortesias: "Cortesias",
+    cortesias: "Emissão de ingressos",
     "equipe-de-operacao": "Equipe de operação",
     relatorios: "Relatórios",
     marketing: "Marketing",
@@ -278,7 +288,8 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     "catalogo-combos": "Combos",
     "catalogo-produtos": "Produtos",
     "catalogo-aberturas": "Aberturas de vendas",
-    "emissao-cortesias": "Emissão de cortesias",
+    "emissao-cortesias": "Cortesia",
+    "bilheteria-online": "Bilheteria online",
     "grupos-operacao": "Grupos de operação",
     "vendas-por-grupo": "Vendas",
     transacoes: "Transações",
@@ -344,6 +355,9 @@ const MobileSectionSelector = ({
 interface MobileDrawerProps {
     isOpen: boolean;
     onClose: () => void;
+    showEventContext?: boolean;
+    activeSection?: BackstageSection;
+    activeItem?: BackstageItem;
 }
 
 const PRODUCER_NAV: Array<{
@@ -373,7 +387,131 @@ const PRODUCER_NAV: Array<{
     },
 ];
 
-const MobileDrawer = ({ isOpen, onClose }: MobileDrawerProps) => {
+/* ------------------------------------------------------------------ */
+/*  Menu de funcionalidades — versão MOBILE (accordion touch).         */
+/* ------------------------------------------------------------------ */
+
+interface EventNavItem {
+    id: BackstageItem;
+    label: string;
+    href: string;
+    novo?: boolean;
+    ia?: boolean;
+}
+interface EventNavSection {
+    id: BackstageSection;
+    label: string;
+    icon: ComponentType<{ className?: string }>;
+    novo?: boolean;
+    /** Vazio = seção sem destino (apenas rótulo, desabilitada). */
+    items: EventNavItem[];
+}
+
+const EVENT_NAV: EventNavSection[] = [
+    { id: "informacoes-evento", label: "Informações do evento", icon: InfoCircle, items: [] },
+    { id: "equipe-de-operacao", label: "Equipe de operação", icon: UsersPlus, novo: true, items: [{ id: "grupos-operacao", label: "Grupos de operação", href: "/backstage/equipe-de-operacao" }] },
+    {
+        id: "itens", label: "Itens", icon: ShoppingCart01, items: [
+            { id: "catalogo-ingressos", label: "Ingressos", href: "/backstage/catalogo/ingressos" },
+            { id: "catalogo-combos", label: "Combos", href: "/backstage/catalogo/ingressos" },
+            { id: "catalogo-produtos", label: "Produtos", href: "/backstage/catalogo/ingressos", novo: true },
+        ],
+    },
+    {
+        id: "cortesias", label: "Emissão de ingressos", icon: Ticket01, novo: true, items: [
+            { id: "emissao-cortesias", label: "Cortesia", href: "/backstage/cortesias" },
+            { id: "bilheteria-online", label: "Bilheteria online", href: "/backstage/bilheteria-online" },
+        ],
+    },
+    {
+        id: "relatorios", label: "Relatórios", icon: File03, items: [
+            { id: "vendas-por-grupo", label: "Vendas", href: "/backstage/relatorios/vendas-por-grupo" },
+            { id: "transacoes", label: "Transações", href: "/backstage/relatorios/transacoes" },
+            { id: "acesso", label: "Acesso", href: "/backstage/relatorios/acesso" },
+            { id: "bordero", label: "Borderô", href: "/backstage/relatorios/bordero" },
+            { id: "transferencias", label: "Transferências", href: "/backstage/relatorios/transferencias" },
+            { id: "comparativos", label: "Comparativos", href: "/backstage/relatorios/comparativos", novo: true },
+            { id: "relatorio-questionarios", label: "Questionários", href: "/backstage/relatorios/questionarios" },
+            { id: "relatorio-personalizado", label: "Relatório personalizado", href: "/backstage/relatorios/relatorio-personalizado", ia: true },
+        ],
+    },
+    { id: "marketing", label: "Marketing", icon: Announcement01, items: [{ id: "chave-de-acesso", label: "Chave de acesso", href: "/backstage/marketing/chave-de-acesso" }] },
+];
+
+const ItemBadges = ({ item }: { item: EventNavItem }) => (
+    <>
+        {item.novo && <Badge size="sm" type="pill-color" color="error">Novo</Badge>}
+        {item.ia && <Badge size="sm" type="pill-color" color="brand">IA</Badge>}
+    </>
+);
+
+const MobileEventNav = ({ activeSection, activeItem, onNavigate }: { activeSection?: BackstageSection; activeItem?: BackstageItem; onNavigate: (href: string) => void }) => {
+    const [open, setOpen] = useState<Set<string>>(() => new Set(activeSection ? [activeSection] : []));
+    const toggle = (id: string) => setOpen((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+    const rowBase = "flex items-center gap-3 rounded-lg px-3 py-3 text-left transition duration-100 ease-linear";
+
+    return (
+        <div className="flex flex-col gap-0.5">
+            {EVENT_NAV.map((sec) => {
+                const active = activeSection === sec.id;
+                const rowCls = cx(rowBase, active ? "bg-tertiary text-primary" : "text-secondary hover:bg-tertiary");
+                const badge = sec.novo && <Badge size="sm" type="pill-color" color="error">Novo</Badge>;
+
+                // Sem destino → apenas rótulo (desabilitado).
+                if (sec.items.length === 0) {
+                    return (
+                        <div key={sec.id} className={cx(rowBase, "cursor-not-allowed text-tertiary opacity-60")}>
+                            <sec.icon className="size-5 shrink-0 text-fg-quaternary" />
+                            <span className="flex-1 text-sm font-medium">{sec.label}</span>
+                        </div>
+                    );
+                }
+
+                // Um único destino → a própria seção vira link.
+                if (sec.items.length === 1) {
+                    return (
+                        <button key={sec.id} type="button" onClick={() => onNavigate(sec.items[0].href)} className={rowCls}>
+                            <sec.icon className="size-5 shrink-0 text-fg-secondary" />
+                            <span className="flex-1 text-sm font-medium">{sec.label}</span>
+                            {badge}
+                        </button>
+                    );
+                }
+
+                // Vários destinos → accordion.
+                const isOpen = open.has(sec.id);
+                return (
+                    <div key={sec.id} className="flex flex-col">
+                        <button type="button" onClick={() => toggle(sec.id)} aria-expanded={isOpen} className={rowCls}>
+                            <sec.icon className="size-5 shrink-0 text-fg-secondary" />
+                            <span className="flex-1 text-sm font-medium">{sec.label}</span>
+                            {badge}
+                            <ChevronDown className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", isOpen && "rotate-180")} />
+                        </button>
+                        {isOpen && (
+                            <div className="flex flex-col gap-0.5 py-1 pl-11">
+                                {sec.items.map((it) => (
+                                    <button
+                                        key={it.id}
+                                        type="button"
+                                        onClick={() => onNavigate(it.href)}
+                                        className={cx("flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm transition duration-100 ease-linear", activeItem === it.id ? "bg-tertiary font-medium text-primary" : "text-secondary hover:bg-tertiary")}
+                                    >
+                                        <span className="flex-1">{it.label}</span>
+                                        <ItemBadges item={it} />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+const MobileDrawer = ({ isOpen, onClose, showEventContext, activeSection, activeItem }: MobileDrawerProps) => {
     const navigate = useNavigate();
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     if (!isOpen) return null;
@@ -399,6 +537,20 @@ const MobileDrawer = ({ isOpen, onClose }: MobileDrawerProps) => {
                         <XClose className="size-5" />
                     </button>
                 </div>
+
+                {showEventContext && (
+                    <div className="mb-1 flex flex-col gap-3 border-b border-secondary pb-3">
+                        <MobileEventCard />
+                        <div className="flex flex-col gap-1">
+                            <span className="px-1 text-xs font-semibold tracking-wide text-quaternary uppercase">Funcionalidades do evento</span>
+                            <MobileEventNav
+                                activeSection={activeSection}
+                                activeItem={activeItem}
+                                onNavigate={(href) => { navigate(href); onClose(); }}
+                            />
+                        </div>
+                    </div>
+                )}
 
                 <nav className="flex flex-col gap-0.5">
                     {PRODUCER_NAV.map((entry) => {
@@ -739,10 +891,13 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 </TreeView.Item>
             </TreeView.Item>
 
-            <TreeView.Item id="cortesias" textValue="Cortesias">
-                <TreeView.ItemContent icon={Ticket01}>Cortesias</TreeView.ItemContent>
-                <TreeView.Item id="emissao-cortesias" textValue="Emissão de cortesias" href="/backstage/cortesias">
-                    <TreeView.ItemContent className={itemClass("emissao-cortesias")}>Emissão de cortesias</TreeView.ItemContent>
+            <TreeView.Item id="cortesias" textValue="Emissão de ingressos">
+                <TreeView.ItemContent icon={Ticket01}>Emissão de ingressos</TreeView.ItemContent>
+                <TreeView.Item id="emissao-cortesias" textValue="Cortesia" href="/backstage/cortesias">
+                    <TreeView.ItemContent className={itemClass("emissao-cortesias")}>Cortesia</TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="bilheteria-online" textValue="Bilheteria online" href="/backstage/bilheteria-online">
+                    <TreeView.ItemContent className={itemClass("bilheteria-online")}>Bilheteria online</TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>
 

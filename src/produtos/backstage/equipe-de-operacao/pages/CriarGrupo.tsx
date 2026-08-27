@@ -182,7 +182,7 @@ function Revisao({ nome, onNome, nomeUnico, operadores, onOperadores, itens, cot
                     <span className="text-sm font-semibold text-primary">Itens e cota</span>
                     <span className="text-sm text-tertiary">{modo === "individual" ? "Cota por operador" : "Cota compartilhada pelos operadores"}</span>
                 </div>
-                <div className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary dark:bg-[#0a0a0a]">
+                <div className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
                     {modo !== "individual" && (
                         <>
                             <div className="flex items-baseline justify-between gap-2">

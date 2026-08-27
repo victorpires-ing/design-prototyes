@@ -106,6 +106,13 @@ interface BackstageLayoutProps {
     showEventContext?: boolean;
     /** Mostra o switch flutuante de variante de layout (clássico/topbar). Default: true. */
     showLayoutSwitcher?: boolean;
+    /**
+     * Modo foco: a shell (rails, topo mobile, nav do evento) só aparece a partir
+     * de `xl`. Abaixo disso a página ocupa a tela inteira — é o que permite testar
+     * um fluxo de operação em tablet/totem sem o cromo do Backstage roubando
+     * largura. Default: false.
+     */
+    focusMode?: boolean;
     children: ReactNode;
 }
 
@@ -187,6 +194,7 @@ function BackstageShell({
     activeProducer,
     showEventContext = true,
     showLayoutSwitcher = true,
+    focusMode = false,
     children,
 }: BackstageLayoutProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -207,28 +215,39 @@ function BackstageShell({
         };
     }, [isMobileMenuOpen]);
 
-    const mobileChrome = (
+    // Em modo foco o fluxo tem o próprio header (voltar + ação), então o cromo
+    // mobile some por completo em vez de competir com ele.
+    const mobileChrome = !focusMode && (
         <>
             <MobileTopBar onOpenMenu={() => setIsMobileMenuOpen(true)} />
             <MobileDrawer isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
         </>
     );
 
-    const mobileContext = showEventContext && <MobileEventNav activeSection={activeSection} activeItem={activeItem} />;
+    const mobileContext = showEventContext && !focusMode && <MobileEventNav activeSection={activeSection} activeItem={activeItem} />;
 
     if (variant === "topbar") {
         return (
             <div
                 className={cx(
-                    "min-h-screen bg-secondary md:[--bs-header-offset:64px] dark:bg-[#0a0a0a]",
-                    showEventContext ? "[--bs-header-offset:120px]" : "[--bs-header-offset:56px]",
+                    "min-h-screen bg-secondary dark:bg-[#0a0a0a]",
+                    focusMode
+                        ? "[--bs-header-offset:0px] xl:[--bs-header-offset:64px]"
+                        : cx("md:[--bs-header-offset:64px]", showEventContext ? "[--bs-header-offset:120px]" : "[--bs-header-offset:56px]"),
                 )}
             >
                 {mobileChrome}
-                <OrgTopBar activeProducer={activeProducer} />
+                <OrgTopBar activeProducer={activeProducer} visibleFrom={focusMode ? "xl" : "md"} />
                 {mobileContext}
-                <div className="flex flex-col gap-3 px-3 py-3 md:flex-row md:gap-6 md:px-6 md:py-6">
-                    {showEventContext && <EventRailTop activeSection={activeSection} activeItem={activeItem} />}
+                <div
+                    className={cx(
+                        "flex flex-col gap-3",
+                        focusMode ? "xl:flex-row xl:gap-6 xl:px-6 xl:py-6" : "px-3 py-3 md:flex-row md:gap-6 md:px-6 md:py-6",
+                    )}
+                >
+                    {showEventContext && (
+                        <EventRailTop activeSection={activeSection} activeItem={activeItem} visibleFrom={focusMode ? "xl" : "md"} />
+                    )}
                     <main className="flex min-w-0 flex-1 flex-col">
                         <div className="mx-auto flex w-full max-w-[1088px] flex-1 flex-col">{children}</div>
                     </main>
@@ -244,14 +263,21 @@ function BackstageShell({
         <div
             className={cx(
                 "min-h-screen bg-secondary md:[--bs-header-offset:0px] dark:bg-[#0a0a0a]",
-                showEventContext ? "[--bs-header-offset:120px]" : "[--bs-header-offset:56px]",
+                focusMode ? "[--bs-header-offset:0px]" : showEventContext ? "[--bs-header-offset:120px]" : "[--bs-header-offset:56px]",
             )}
         >
             {mobileChrome}
             {mobileContext}
-            <div className="flex flex-col gap-3 px-3 py-3 md:flex-row md:min-h-screen md:py-6">
-                <ProducerRail activeProducer={activeProducer} />
-                {showEventContext && <EventRail activeSection={activeSection} activeItem={activeItem} />}
+            <div
+                className={cx(
+                    "flex flex-col gap-3",
+                    focusMode ? "xl:min-h-screen xl:flex-row xl:px-3 xl:py-6" : "px-3 py-3 md:flex-row md:min-h-screen md:py-6",
+                )}
+            >
+                <ProducerRail activeProducer={activeProducer} visibleFrom={focusMode ? "xl" : "lg"} />
+                {showEventContext && (
+                    <EventRail activeSection={activeSection} activeItem={activeItem} visibleFrom={focusMode ? "xl" : "md"} />
+                )}
                 {children}
                 <RemixDock />
             </div>
@@ -692,8 +718,13 @@ const ProducerRailItem = ({ icon: Icon, label, isActive, href }: ProducerRailIte
     );
 };
 
-const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
-    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[72px] shrink-0 flex-col items-center justify-between rounded-2xl bg-primary py-4 lg:flex">
+const ProducerRail = ({ activeProducer, visibleFrom = "lg" }: { activeProducer?: string; visibleFrom?: "lg" | "xl" }) => (
+    <aside
+        className={cx(
+            "sticky top-6 hidden h-[calc(100vh-3rem)] w-[72px] shrink-0 flex-col items-center justify-between rounded-2xl bg-primary py-4",
+            visibleFrom === "xl" ? "xl:flex" : "lg:flex",
+        )}
+    >
         <div className="flex flex-col items-center gap-4">
             <div className="relative">
                 <span className="flex size-10 items-center justify-center overflow-hidden rounded-lg bg-secondary-solid text-xs font-bold text-white">
@@ -726,6 +757,8 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
 interface EventRailProps {
     activeSection?: BackstageSection;
     activeItem?: BackstageItem;
+    /** A partir de qual breakpoint o menu do evento aparece. Default: `md`. */
+    visibleFrom?: "md" | "xl";
 }
 
 /** Scrollbar suave (fino, track transparente, thumb em cor de borda) — evita
@@ -733,10 +766,11 @@ interface EventRailProps {
 const SOFT_SCROLLBAR =
     "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--color-border-secondary)] hover:[&::-webkit-scrollbar-thumb]:bg-[var(--color-border-primary)]";
 
-const EventRail = ({ activeSection, activeItem }: EventRailProps) => (
+const EventRail = ({ activeSection, activeItem, visibleFrom = "md" }: EventRailProps) => (
     <aside
         className={cx(
-            "sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex",
+            "sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3",
+            visibleFrom === "xl" ? "xl:flex" : "md:flex",
             SOFT_SCROLLBAR,
         )}
     >
@@ -751,10 +785,15 @@ const EventRail = ({ activeSection, activeItem }: EventRailProps) => (
 
 const ORG_NAV = ORG_SECTIONS;
 
-const OrgTopBar = ({ activeProducer }: { activeProducer?: string }) => {
+const OrgTopBar = ({ activeProducer, visibleFrom = "md" }: { activeProducer?: string; visibleFrom?: "md" | "xl" }) => {
     const navigate = useNavigate();
     return (
-        <header className="sticky top-0 z-30 hidden border-b border-secondary bg-primary md:block">
+        <header
+            className={cx(
+                "sticky top-0 z-30 hidden border-b border-secondary bg-primary",
+                visibleFrom === "xl" ? "xl:block" : "md:block",
+            )}
+        >
             <div className="flex h-16 items-center gap-3 px-4 md:px-6">
                 <BrandLogo className="h-6 shrink-0" />
                 <span className="h-6 w-px shrink-0 bg-border-secondary" aria-hidden="true" />
@@ -799,10 +838,11 @@ const OrgTopBar = ({ activeProducer }: { activeProducer?: string }) => {
 };
 
 /** Menu do evento à esquerda na nova shell (offset abaixo da barra do topo). */
-const EventRailTop = ({ activeSection, activeItem }: EventRailProps) => (
+const EventRailTop = ({ activeSection, activeItem, visibleFrom = "md" }: EventRailProps) => (
     <aside
         className={cx(
-            "sticky top-22 hidden h-[calc(100vh-7rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex",
+            "sticky top-22 hidden h-[calc(100vh-7rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3",
+            visibleFrom === "xl" ? "xl:flex" : "md:flex",
             SOFT_SCROLLBAR,
         )}
     >

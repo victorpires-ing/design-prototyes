@@ -95,19 +95,6 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload, o
                                     <Field label="Data da venda:">{pedido.dataVendaLabel}</Field>
                                     <Field label="Valor:">{formatBRL(pedido.valor)}</Field>
                                     <Field label="Tipo:">{PEDIDO_TIPO_LABEL[pedido.tipo]}</Field>
-                                    {/*
-                                      Sem conta, o ingresso fica em limbo: comprado, pago, mas
-                                      fora da carteira. Quem atende na porta precisa ver isso
-                                      aqui em vez de descobrir com a pessoa na frente.
-                                    */}
-                                    {pedido.contaPendente && (
-                                        <Field label="Cadastro:">
-                                            <span className="text-warning-primary">
-                                                Pendente — o comprador ainda não concluiu o cadastro, então os ingressos não estão na
-                                                carteira dele.
-                                            </span>
-                                        </Field>
-                                    )}
                                 </dl>
 
                                 {pedido.tipo === "link" && !isExpired && (

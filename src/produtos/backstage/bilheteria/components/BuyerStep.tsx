@@ -4,7 +4,7 @@ import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { InputBase } from "@/components/base/input/input";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
-import { EVENTO, type Buyer } from "../data/catalogo";
+import { EVENTO, ingressosPorCpf, type Buyer } from "../data/catalogo";
 
 export type BuyerSearch =
     | { status: "idle" }
@@ -119,12 +119,15 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
                         Este evento exige identificar o comprador — acesso por face ou credenciamento emitem ingresso nominal, então não dá
                         para pular esta etapa.
                     </>
-                ) : (
+                ) : EVENTO.limitePorCpf > 0 ? (
                     <>
-                        Com o comprador identificado, vale o limite de{" "}
-                        <strong className="font-semibold text-secondary">{EVENTO.limitePorCpf} ingressos por CPF</strong> do evento. Pulando
-                        a identificação, a venda não bate nesse limite — é o caminho do pré-impresso, em lote.
+                        Com o comprador identificado, vale o limite do evento:{" "}
+                        <strong className="font-semibold text-secondary">{ingressosPorCpf(EVENTO.limitePorCpf)}</strong>. Sem identificação
+                        não há limite — é assim que se emite pré-impresso em lote.
                     </>
+                ) : (
+                    // Sem limite configurado, anunciar um limite seria mentira: sobra o que a identificação muda.
+                    <>Sem identificar o comprador, o ingresso não fica nominal — é assim que se emite pré-impresso em lote.</>
                 )}
             </p>
 

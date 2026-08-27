@@ -224,7 +224,7 @@ const knownBuyers: Array<Buyer & { document?: string }> = [
 /* ------------------------------------------------------------------ */
 
 export const EVENTO = {
-    /** Limite de ingressos por CPF configurado no evento. */
+    /** Limite de ingressos por CPF configurado no evento. `0` = sem limite. */
     limitePorCpf: 4,
     /**
      * Liga a exigência de identificar o comprador. Fica ativo em eventos com
@@ -234,6 +234,9 @@ export const EVENTO = {
     /** Dias até o link de pagamento expirar. */
     validadeLinkDias: 3,
 };
+
+/** "1 ingresso" / "4 ingressos" — o limite é configurável e chega a valer 1. */
+export const ingressosPorCpf = (limite: number) => `${limite} ${limite === 1 ? "ingresso" : "ingressos"} por CPF`;
 
 export const isEmail = (value: string) => value.includes("@");
 

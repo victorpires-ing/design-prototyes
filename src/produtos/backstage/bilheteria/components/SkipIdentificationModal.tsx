@@ -1,5 +1,5 @@
 import { XClose } from "@untitledui/icons";
-import { EVENTO } from "../data/catalogo";
+import { EVENTO, ingressosPorCpf } from "../data/catalogo";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -32,11 +32,13 @@ export function SkipIdentificationModal({ isOpen, onClose, onConfirm }: SkipIden
                                 não há para onde enviar.
                             </li>
                             {/* O lado bom de pular, que é justamente o caso do pré-impresso em lote. */}
-                            <li>
-                                Em compensação, a venda{" "}
-                                <strong className="font-semibold text-secondary">não bate no limite de {EVENTO.limitePorCpf} por CPF</strong>{" "}
-                                — dá para emitir a quantidade que precisar de uma vez.
-                            </li>
+                            {EVENTO.limitePorCpf > 0 && (
+                                <li>
+                                    Em compensação, o limite de{" "}
+                                    <strong className="font-semibold text-secondary">{ingressosPorCpf(EVENTO.limitePorCpf)}</strong> deixa de
+                                    valer — dá para emitir a quantidade que precisar de uma vez.
+                                </li>
+                            )}
                         </ul>
 
                         <div className="mt-6 flex flex-col-reverse gap-3 md:flex-row">

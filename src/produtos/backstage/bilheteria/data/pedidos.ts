@@ -1,7 +1,7 @@
 /** Mock dos pedidos emitidos pela bilheteria online. */
 
 export type PedidoStatus = "pendente" | "aprovado" | "cancelado";
-export type PedidoTipo = "link" | "saldo" | "externo";
+export type PedidoTipo = "link" | "saldo";
 
 export interface PedidoItem {
     id: string;
@@ -60,8 +60,7 @@ export const PEDIDO_STATUS_META: Record<PedidoStatus, { label: string; color: "w
 
 export const PEDIDO_TIPO_LABEL: Record<PedidoTipo, string> = {
     link: "Link de pagamento",
-    saldo: "Saldo do produtor",
-    externo: "Pagamento por fora",
+    saldo: "Só a taxa da bilheteria",
 };
 
 const PAYMENT_LINK = "cart.ingresse.com/971c14dc-89ba-41dd-a469-cad4a1fde120";

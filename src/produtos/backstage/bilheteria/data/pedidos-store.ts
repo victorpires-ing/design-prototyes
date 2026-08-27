@@ -123,7 +123,7 @@ export function createPedido({ cart, buyer, fallbackEmail, tipo, emissor, paymen
 
     return {
         id: randomId(),
-        // Link de pagamento nasce pendente; saldo do produtor já é aprovado.
+        // Link de pagamento nasce pendente; sem cobrança do comprador já é aprovado.
         status: tipo === "link" ? "pendente" : "aprovado",
         tipo,
         title: lines[0]?.name ?? "Venda na bilheteria",

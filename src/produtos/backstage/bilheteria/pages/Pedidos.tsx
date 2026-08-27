@@ -87,7 +87,7 @@ export function PedidosBilheteria() {
                 ? { ...current, resentAt: at, envios: [...(current.envios ?? []), { canal, destino, at }] }
                 : current,
         );
-        // Saldo do produtor não tem link: o que é enviado são os próprios ingressos.
+        // Sem link de pagamento, o que é enviado são os próprios ingressos.
         const assunto = pedido.tipo === "link" ? "Link de pagamento" : "Ingressos";
         toast.success(canal === "email" ? `${assunto} enviado para ${destino}` : `${assunto} enviado no WhatsApp ${destino}`);
     };

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/base/buttons/button";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
-import { AlertTriangle, BankNote01, ChevronDown, Coins01, Link01 } from "@untitledui/icons";
+import { AlertTriangle, ChevronDown, Coins01, Link01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { cx } from "@/utils/cx";
 import { formatBRL, type Buyer } from "../data/catalogo";
@@ -11,11 +11,11 @@ import { ComboComposition } from "./ItemsStep";
 import { QuantityStepper } from "./QuantityStepper";
 
 /**
- * `externo` nasceu da apresentação do MVP: 90% dos produtores já recebem o
- * valor por fora (Pix, dinheiro, maquininha própria) e usam a plataforma só
- * para emitir. Sem essa opção o fluxo não substitui o legado.
+ * Dois caminhos, não três: ou o comprador paga pelo checkout, ou não paga nada
+ * aqui — e aí tanto faz se ele já pagou por fora ou se a emissão é sem custo,
+ * porque o sistema faz a mesma coisa. A diferença vive no repasse, não na tela.
  */
-export type PaymentMethod = "link" | "saldo" | "externo";
+export type PaymentMethod = "link" | "saldo";
 
 /** Taxa de serviço aplicada sobre o subtotal. */
 const SERVICE_FEE_RATE = 0.1;
@@ -79,32 +79,20 @@ export function PaymentStep({
                     </MethodOption>
 
                     {/*
-                      O caso mais comum hoje, e o que faltava para sair do legado: o
-                      produtor já recebeu por fora e só precisa emitir. Vem antes do
-                      saldo porque é o que a maioria vai escolher.
+                      Um caminho só para tudo que não passa pelo checkout: o produtor
+                      já recebeu por fora, ou é uma emissão sem custo. Na apresentação
+                      do MVP a dúvida foi "o que sairia do saldo?" — o rótulo agora
+                      responde isso, e a descrição diz o que aparece no fechamento.
                     */}
-                    <MethodOption icon={BankNote01} label="Pagamento por fora" value="externo" isSelected={method === "externo"}>
+                    <MethodOption icon={Coins01} label="Cobrar só a taxa da bilheteria do produtor" value="saldo" isSelected={method === "saldo"}>
                         <p className="text-sm text-tertiary">
-                            O produtor já recebeu o valor por fora da Ingresse — Pix, dinheiro ou maquininha própria.
+                            O comprador não paga nada aqui — porque já pagou por fora (Pix, dinheiro, maquininha do produtor) ou porque a
+                            emissão é sem custo.
                         </p>
                         <p className="text-sm text-tertiary">
-                            Nada é cobrado aqui e <strong className="font-semibold text-secondary">nada é descontado no repasse</strong>.
-                            Os ingressos já saem emitidos: dá para baixar o PDF, a planilha ou imprimir na zebra em seguida.
-                        </p>
-                    </MethodOption>
-
-                    <MethodOption icon={Coins01} label="Saldo do produtor" value="saldo" isSelected={method === "saldo"}>
-                        <p className="text-sm text-tertiary">
-                            O comprador não paga nada e o valor do ingresso é abatido do repasse do produtor no fechamento.
-                        </p>
-                        {/*
-                          O nome sozinho gerou confusão na apresentação ("o que sairia do
-                          saldo?"). A frase abaixo diz o que aparece no fechamento, que é
-                          onde a dúvida vira chamado do comercial.
-                        */}
-                        <p className="text-sm text-tertiary">
-                            No relatório de repasse aparece como <strong className="font-semibold text-secondary">venda faturada</strong>,
-                            com a taxa da bilheteria conforme o contrato. Se o produtor já recebeu por fora, use “Pagamento por fora”.
+                            No fechamento, o produtor paga{" "}
+                            <strong className="font-semibold text-secondary">apenas a taxa da bilheteria</strong>. O valor do ingresso não é
+                            descontado do repasse.
                         </p>
                         <p className="text-sm text-tertiary">
                             Os ingressos já saem emitidos: dá para baixar o PDF, a planilha ou imprimir na zebra em seguida.
@@ -114,10 +102,15 @@ export function PaymentStep({
 
                 {/* No desktop o aviso e a ação dividem a última linha do container. */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="flex items-start gap-2">
-                        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-fg-warning-secondary" aria-hidden="true" />
-                        <p className="text-sm font-medium text-secondary">O pedido será criado antes do pagamento</p>
-                    </div>
+                    {/* Sem cobrança do comprador o pedido já nasce pago: o aviso só cabe no link. */}
+                    {method === "link" ? (
+                        <div className="flex items-start gap-2">
+                            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-fg-warning-secondary" aria-hidden="true" />
+                            <p className="text-sm font-medium text-secondary">O pedido será criado antes do pagamento</p>
+                        </div>
+                    ) : (
+                        <span />
+                    )}
 
                     <Button
                         size="md"

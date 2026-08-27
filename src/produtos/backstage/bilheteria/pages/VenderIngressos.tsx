@@ -295,7 +295,7 @@ export function VenderIngressos() {
                     setSkipped(true);
                     setSearch({ status: "idle" });
                     setTerm("");
-                    setMethod("externo");
+                    setMethod("saldo");
                     setStep(1);
                 }}
             />

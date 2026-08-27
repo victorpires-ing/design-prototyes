@@ -12,6 +12,10 @@ export interface PedidoItem {
     subtitle?: string;
     /** Lote do ingresso, quando o item é um ingresso. */
     lote?: string;
+    /** Preço unitário — o total da linha vai na direita do item. */
+    unitPrice?: number;
+    /** Forma de acesso, para o ícone que acompanha o nome. */
+    access?: "qrcode" | "facial";
 }
 
 export interface Pedido {

@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
-import { Copy01, Download01, Mail01, SearchLg, Ticket02, XClose } from "@untitledui/icons";
+import { useState } from "react";
+import { Check, Copy01, Download01, FaceId, Mail01, QrCode01, Send01, SlashCircle01, Ticket02, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
 import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { InputBase } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { formatBRL, isValidEmail } from "../data/catalogo";
 import { PEDIDO_STATUS_META, PEDIDO_TIPO_LABEL, type Pedido } from "../data/pedidos";
@@ -24,19 +23,15 @@ interface PedidoDetailsSlideOutProps {
 
 /** Slideout de detalhes do pedido, com ações e a lista de itens do pedido. */
 export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }: PedidoDetailsSlideOutProps) {
-    const [term, setTerm] = useState("");
     const [canal, setCanal] = useState<CanalEnvio | null>(null);
 
-    const itens = useMemo(() => {
-        if (!pedido) return [];
-        const query = term.trim().toLowerCase();
-        if (!query) return pedido.itens;
-        return pedido.itens.filter((item) => `${item.name} ${item.subtitle ?? ""}`.toLowerCase().includes(query));
-    }, [pedido, term]);
+    const itens = pedido?.itens ?? [];
 
     const isCancelled = pedido?.status === "cancelado";
     /** Venda sem identificação não tem destino salvo; o modal pergunta. */
     const emailDoPedido = pedido && isValidEmail(pedido.destinatario) ? pedido.destinatario : undefined;
+    /** No link o que circula é o link; nos demais, os próprios ingressos. */
+    const assuntoDoPedido = pedido?.tipo === "link" ? "Link de pagamento" : "Ingressos";
 
     const close = () => {
         setTerm("");
@@ -77,7 +72,7 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
                             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 pb-6">
                                 <div className="flex flex-col gap-1">
                                     <p className="text-sm font-semibold text-primary">{pedido.title}</p>
-                                    <p className="text-sm text-secondary">sessions: {pedido.sessions}</p>
+                                    <p className="text-sm text-secondary">Sessões: {pedido.sessions}</p>
                                     <p className="text-sm text-tertiary">{pedido.sessionShort}</p>
                                 </div>
 
@@ -204,59 +199,92 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
                                     </>
                                 )}
 
-                                {/*
-                                  Histórico por canal e data: "foi enviado no seu e-mail dia X"
-                                  é a frase que o atendimento precisa dar ao cliente. E ver que
-                                  já saiu antes evita reenviar/reimprimir e duplicar ingresso na porta.
-                                */}
-                                {pedido.envios && pedido.envios.length > 0 ? (
-                                    <div className="flex flex-col gap-1.5 rounded-xl bg-secondary p-4">
-                                        <p className="text-sm font-semibold text-primary">
-                                            Já enviado {pedido.envios.length}{" "}
-                                            {pedido.envios.length === 1 ? "vez" : "vezes"} — reenviar gera outra cópia do mesmo ingresso.
-                                        </p>
-                                        {pedido.envios.map((envio, indice) => (
-                                            <p key={`${envio.at}-${indice}`} className="text-sm text-tertiary">
-                                                {envio.canal === "email" ? "E-mail" : "WhatsApp"} para{" "}
-                                                <strong className="font-medium text-secondary">{envio.destino}</strong> em {envio.at}
-                                            </p>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    pedido.resentAt && <p className="text-sm text-tertiary">Último reenvio em {pedido.resentAt}</p>
-                                )}
+                                <hr className="border-secondary" />
 
-                                <div className="rounded-xl bg-primary ring-1 ring-border-secondary">
-                                    <div className="flex flex-col gap-1.5 border-b border-secondary p-4">
-                                        <label htmlFor="pedido-item-search" className="text-sm font-medium text-secondary">
-                                            Busca
-                                        </label>
-                                        <InputBase
-                                            id="pedido-item-search"
-                                            size="sm"
-                                            icon={SearchLg}
-                                            value={term}
-                                            onChange={(event) => setTerm(event.target.value)}
-                                            placeholder="Buscar por nome do item"
-                                        />
-                                    </div>
+                                <div className="flex flex-col gap-3">
+                                    <h3 className="text-md font-semibold text-primary">Itens</h3>
+                                    {/*
+                                      A quantidade sai do meio do nome e vira pílula à
+                                      esquerda; o valor da linha ancora à direita. Assim a
+                                      lista é varrida por coluna — quanto, o quê, quanto custa.
+                                    */}
+                                    <ul className="flex flex-col gap-2">
+                                        {itens.map((item) => {
+                                            const AccessIcon = item.access === "facial" ? FaceId : QrCode01;
 
-                                    <p className="border-b border-secondary px-4 py-2.5 text-sm text-tertiary">Item</p>
+                                            return (
+                                                <li key={item.id} className="flex items-start gap-3 rounded-lg bg-secondary p-3">
+                                                    <span className="flex h-7 min-w-9 shrink-0 items-center justify-center rounded-md bg-primary px-1.5 text-sm font-semibold text-secondary tabular-nums ring-1 ring-border-secondary">
+                                                        {item.quantity}
+                                                    </span>
+                                                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                                        <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-primary">
+                                                            {item.access && (
+                                                                <AccessIcon className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                                            )}
+                                                            <span className="truncate">{item.name}</span>
+                                                        </span>
+                                                        {item.subtitle && <span className="truncate text-sm text-tertiary">{item.subtitle}</span>}
+                                                        {item.lote && <span className="truncate text-sm text-tertiary">{item.lote}</span>}
+                                                    </div>
+                                                    {item.unitPrice !== undefined && (
+                                                        <span className="shrink-0 text-sm font-semibold text-primary tabular-nums">
+                                                            {formatBRL(item.unitPrice * item.quantity)}
+                                                        </span>
+                                                    )}
+                                                </li>
+                                            );
+                                        })}
 
-                                    {itens.map((item) => (
-                                        <div key={item.id} className="flex flex-col border-b border-secondary px-4 py-3 last:border-b-0">
-                                            <p className="text-sm text-primary">
-                                                {item.quantity > 1 && <span className="text-tertiary">{item.quantity}x </span>}
-                                                {item.name}
-                                            </p>
-                                            {item.subtitle && <p className="text-sm text-tertiary">{item.subtitle}</p>}
-                                        </div>
-                                    ))}
-
-                                    {itens.length === 0 && (
-                                        <p className="px-4 py-8 text-center text-sm text-tertiary">Nenhum item encontrado para a busca.</p>
-                                    )}
+                                        {itens.length === 0 && (
+                                            <li className="px-4 py-8 text-center text-sm text-tertiary">
+                                                Este pedido não tem itens.
+                                            </li>
+                                        )}
+                                    </ul>
                                 </div>
+
+                                {/*
+                                  Histórico em linha do tempo: "foi enviado no seu e-mail dia X"
+                                  é a frase que o atendimento precisa dar ao cliente, e ver os
+                                  envios anteriores evita reenviar e duplicar ingresso na porta.
+                                  Ordem do mais recente para o mais antigo.
+                                */}
+                                <div className="flex flex-col gap-3">
+                                    <h3 className="text-md font-semibold text-primary">Histórico</h3>
+
+                                    {pedido.envios && pedido.envios.length > 1 && (
+                                        <p className="text-sm text-warning-primary">
+                                            Este pedido já saiu {pedido.envios.length} vezes — cada envio é uma cópia do mesmo ingresso.
+                                        </p>
+                                    )}
+
+                                    <ul className="flex flex-col gap-4">
+                                        {pedido.status === "cancelado" && (
+                                            <HistoricoItem
+                                                icon={SlashCircle01}
+                                                titulo={`Cancelado por ${pedido.emissor}`}
+                                                data={pedido.resentAt ?? pedido.dataVendaLabel}
+                                            />
+                                        )}
+
+                                        {[...(pedido.envios ?? [])].reverse().map((envio, indice) => (
+                                            <HistoricoItem
+                                                key={`${envio.at}-${indice}`}
+                                                icon={Send01}
+                                                titulo={`${assuntoDoPedido} enviado por ${envio.canal === "email" ? "e-mail" : "WhatsApp"} para ${envio.destino}`}
+                                                data={envio.at}
+                                            />
+                                        ))}
+
+                                        <HistoricoItem
+                                            icon={Check}
+                                            titulo={`Pedido emitido por ${pedido.emissor}`}
+                                            data={pedido.dataVendaLabel}
+                                        />
+                                    </ul>
+                                </div>
+
                             </div>
 
                             <div className="flex items-center justify-end border-t border-secondary px-6 py-4">
@@ -284,6 +312,27 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
         </AriaModalOverlay>
     );
 }
+
+/** Linha da timeline: ícone em círculo, o que aconteceu e quando. */
+const HistoricoItem = ({
+    icon: Icon,
+    titulo,
+    data,
+}: {
+    icon: React.FC<{ className?: string }>;
+    titulo: string;
+    data: string;
+}) => (
+    <li className="flex items-start gap-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-fg-secondary ring-1 ring-border-secondary">
+            <Icon className="size-4" aria-hidden="true" />
+        </span>
+        <div className="flex min-w-0 flex-col">
+            <span className="text-sm font-medium text-primary">{titulo}</span>
+            <span className="text-sm text-tertiary tabular-nums">{data}</span>
+        </div>
+    </li>
+);
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <div className="flex flex-col">

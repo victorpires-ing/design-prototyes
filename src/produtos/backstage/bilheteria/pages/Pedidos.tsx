@@ -145,7 +145,13 @@ export function PedidosBilheteria() {
                             <MetricCard label="Pedidos cancelados" value={resumo.cancelados} />
                         </div>
 
-                        <section className="flex flex-col rounded-xl bg-primary_alt ring-1 ring-border-secondary">
+                        {/*
+                          A tabela é a exceção do bg-primary_alt: um grid denso quer chão
+                          escuro e quieto, para o texto e os divisores carregarem a estrutura.
+                          Em neutral-800 o fundo competia com o conteúdo. Containers sobem,
+                          superfícies de dado recuam.
+                        */}
+                        <section className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
                             {/* Filtros */}
                             <div className="flex flex-col gap-3 p-4 md:flex-row md:items-end md:gap-4">
                                 <div className="flex flex-col gap-1.5 md:w-[240px]">

@@ -16,7 +16,7 @@ export function SkipIdentificationModal({ isOpen, onClose, onConfirm }: SkipIden
         <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable>
             <Modal>
                 <Dialog>
-                    <div className="w-full max-w-md rounded-xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                    <div className="w-full max-w-md rounded-xl bg-primary_alt p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex items-start justify-between gap-4">
                             <h2 className="text-lg font-semibold text-primary">Pular identificação</h2>
                             <ButtonUtility size="xs" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />

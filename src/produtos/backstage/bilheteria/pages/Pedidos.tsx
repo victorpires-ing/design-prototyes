@@ -145,7 +145,7 @@ export function PedidosBilheteria() {
                             <MetricCard label="Pedidos cancelados" value={resumo.cancelados} />
                         </div>
 
-                        <section className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
+                        <section className="flex flex-col rounded-xl bg-primary_alt ring-1 ring-border-secondary">
                             {/* Filtros */}
                             <div className="flex flex-col gap-3 p-4 md:flex-row md:items-end md:gap-4">
                                 <div className="flex flex-col gap-1.5 md:w-[240px]">
@@ -346,7 +346,7 @@ const Th = ({ children }: { children: React.ReactNode }) => (
 );
 
 const MetricCard = ({ label, value }: { label: string; value: number }) => (
-    <div className="flex flex-col gap-2 rounded-xl bg-primary p-5 ring-1 ring-border-secondary">
+    <div className="flex flex-col gap-2 rounded-xl bg-primary_alt p-5 ring-1 ring-border-secondary">
         <p className="text-sm text-tertiary">{label}</p>
         <p className="text-display-sm font-bold text-primary">{value}</p>
     </div>

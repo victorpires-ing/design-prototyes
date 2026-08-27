@@ -54,7 +54,7 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
             <AriaModal
                 className={({ isEntering, isExiting }) =>
                     cx(
-                        "h-full w-full max-w-[550px] bg-primary shadow-xl outline-hidden",
+                        "h-full w-full max-w-[550px] bg-primary_alt shadow-xl outline-hidden",
                         isEntering && "duration-300 ease-out animate-in slide-in-from-right",
                         isExiting && "duration-200 ease-in animate-out slide-out-to-right",
                     )
@@ -115,7 +115,7 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
                                             readOnly
                                             value={pedido.paymentLink}
                                             aria-label="Link de pagamento"
-                                            className="min-w-0 flex-1 truncate rounded-lg bg-primary px-3 py-2 text-sm text-tertiary ring-1 ring-border-primary shadow-xs ring-inset"
+                                            className="min-w-0 flex-1 truncate rounded-lg bg-primary_alt px-3 py-2 text-sm text-tertiary ring-1 ring-border-primary shadow-xs ring-inset"
                                         />
                                         <Button
                                             size="md"
@@ -213,7 +213,7 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
 
                                             return (
                                                 <li key={item.id} className="flex items-start gap-3 rounded-lg bg-secondary p-3">
-                                                    <span className="flex h-7 min-w-9 shrink-0 items-center justify-center rounded-md bg-primary px-1.5 text-sm font-semibold text-secondary tabular-nums ring-1 ring-border-secondary">
+                                                    <span className="flex h-7 min-w-9 shrink-0 items-center justify-center rounded-md bg-primary_alt px-1.5 text-sm font-semibold text-secondary tabular-nums ring-1 ring-border-secondary">
                                                         {item.quantity}
                                                     </span>
                                                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">

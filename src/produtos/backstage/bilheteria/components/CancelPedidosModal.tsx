@@ -20,7 +20,7 @@ export function CancelPedidosModal({ pedidos, onClose, onConfirm }: CancelPedido
         <ModalOverlay isOpen={count > 0} onOpenChange={(open) => !open && onClose()} isDismissable>
             <Modal>
                 <Dialog>
-                    <div className="w-full max-w-lg rounded-xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                    <div className="w-full max-w-lg rounded-xl bg-primary_alt p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex items-start gap-4">
                             <div className="flex-1">
                                 <h2 className="text-lg font-semibold text-primary">

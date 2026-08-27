@@ -63,7 +63,7 @@ export function OrderSuccess({
                 </p>
             </div>
 
-            <section className="flex w-full flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
+            <section className="flex w-full flex-col gap-4 rounded-xl bg-primary_alt p-4 ring-1 ring-border-secondary md:p-5">
                 {buyer ? (
                     <BuyerIdentity buyer={buyer} />
                 ) : fallbackEmail ? (
@@ -88,7 +88,7 @@ export function OrderSuccess({
                                 readOnly
                                 value={paymentLink}
                                 aria-label="Link de pagamento"
-                                className="min-w-0 flex-1 truncate rounded-lg bg-primary px-3 py-2 text-sm text-primary ring-1 ring-border-primary shadow-xs ring-inset"
+                                className="min-w-0 flex-1 truncate rounded-lg bg-primary_alt px-3 py-2 text-sm text-primary ring-1 ring-border-primary shadow-xs ring-inset"
                             />
                             {/*
                               Pagar ali na bilheteria, com o vendedor ajudando: no interior
@@ -193,7 +193,7 @@ const DownloadCard = ({ label, icon, onClick }: { label: string; icon: React.Rea
     <button
         type="button"
         onClick={onClick}
-        className="flex items-center gap-3 rounded-lg bg-primary px-4 py-3 text-left ring-1 ring-border-primary shadow-xs transition duration-100 ease-linear hover:bg-primary_hover"
+        className="flex items-center gap-3 rounded-lg bg-primary_alt px-4 py-3 text-left ring-1 ring-border-primary shadow-xs transition duration-100 ease-linear hover:bg-primary_hover"
     >
         <span className="flex size-10 shrink-0 items-center justify-center rounded-md ring-1 ring-border-secondary">{icon}</span>
         <span className="text-md font-medium text-primary">{label}</span>

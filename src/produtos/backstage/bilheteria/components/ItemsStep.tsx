@@ -85,7 +85,7 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked }: ItemsStepPr
             )}
 
             {tab === "produtos" && (
-                <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+                <div className="overflow-hidden rounded-xl bg-primary_alt ring-1 ring-border-secondary">
                     <div className="flex items-center gap-2 border-b border-secondary px-4 py-3">
                         <Package className="size-5 text-fg-quaternary" aria-hidden="true" />
                         <h2 className="text-md font-semibold text-primary">Produtos</h2>
@@ -131,7 +131,7 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked }: ItemsStepPr
 }
 
 const NoResults = () => (
-    <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">
+    <p className="rounded-xl bg-primary_alt px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">
         Nenhum item encontrado para a busca.
     </p>
 );
@@ -149,7 +149,7 @@ const SessionAccordion = ({ label, tickets, cart, defaultOpen, facialBlocked, on
     const [isOpen, setIsOpen] = useState(defaultOpen);
 
     return (
-        <section className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+        <section className="overflow-hidden rounded-xl bg-primary_alt ring-1 ring-border-secondary">
             <button
                 type="button"
                 onClick={() => setIsOpen((open) => !open)}
@@ -225,7 +225,7 @@ const ComboCard = ({ combo, quantity, defaultOpen, onQuantityChange }: ComboCard
     const [isOpen, setIsOpen] = useState(defaultOpen);
 
     return (
-        <section className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+        <section className="overflow-hidden rounded-xl bg-primary_alt ring-1 ring-border-secondary">
             <div className="flex flex-col gap-2 px-4 py-4">
                 <h3 className="text-md font-semibold text-primary">{combo.name}</h3>
                 <div className="flex flex-wrap gap-2">

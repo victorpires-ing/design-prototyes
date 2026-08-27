@@ -254,8 +254,10 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
                                     <h3 className="text-md font-semibold text-primary">Histórico</h3>
 
                                     {pedido.envios && pedido.envios.length > 1 && (
+                                        // A consequência mora na portaria: sem dizer isso, o aviso vira curiosidade.
                                         <p className="text-sm text-warning-primary">
-                                            Este pedido já saiu {pedido.envios.length} vezes — cada envio é uma cópia do mesmo ingresso.
+                                            Enviado {pedido.envios.length} vezes. Todas as cópias têm o mesmo código QR: na portaria, só a
+                                            primeira leitura passa.
                                         </p>
                                     )}
 

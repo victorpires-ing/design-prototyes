@@ -268,8 +268,8 @@ const ComoFunciona = () => {
 
             {aberto && (
                 <p className="pt-2 text-sm text-tertiary">
-                    O produtor paga só a taxa da bilheteria — o valor do ingresso não é descontado do repasse. Serve também quando ele já
-                    recebeu por fora: Pix, dinheiro ou maquininha própria.
+                    No fechamento, o produtor paga só a taxa da bilheteria. O valor do ingresso não é descontado do repasse. Use também
+                    quando ele já recebeu por fora, em Pix, dinheiro ou maquininha própria.
                 </p>
             )}
         </div>

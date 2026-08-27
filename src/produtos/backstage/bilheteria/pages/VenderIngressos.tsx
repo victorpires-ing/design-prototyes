@@ -120,8 +120,14 @@ export function VenderIngressos() {
 
     const handleAdvance = useCallback(() => {
         if (!canAdvance || step >= 2) return;
+        /*
+          Chegando no meio de pagamento, o link já vem marcado: é o caminho que a
+          bilheteria nova quer como padrão. Sem identificação ele não existe, e aí
+          a única opção possível é que assume — o operador não escolhe duas vezes.
+        */
+        if (step === 1) setMethod(skipped ? "saldo" : "link");
         setStep(step + 1);
-    }, [canAdvance, step]);
+    }, [canAdvance, step, skipped]);
 
     /** No passo 3 a escolha do meio de pagamento já conclui a venda. */
     const handleSelectMethod = useCallback(

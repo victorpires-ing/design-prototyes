@@ -420,7 +420,7 @@ const EVENT_NAV: EventNavSection[] = [
     {
         id: "cortesias", label: "Emissão de ingressos", icon: Ticket01, novo: true, items: [
             { id: "emissao-cortesias", label: "Cortesia", href: "/backstage/cortesias" },
-            { id: "bilheteria-online", label: "Bilheteria online", href: "/backstage/bilheteria-online" },
+            { id: "bilheteria-online", label: "Bilheteria online", href: "/backstage/bilheteria" },
         ],
     },
     {
@@ -896,7 +896,7 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 <TreeView.Item id="emissao-cortesias" textValue="Cortesia" href="/backstage/cortesias">
                     <TreeView.ItemContent className={itemClass("emissao-cortesias")}>Cortesia</TreeView.ItemContent>
                 </TreeView.Item>
-                <TreeView.Item id="bilheteria-online" textValue="Bilheteria online" href="/backstage/bilheteria-online">
+                <TreeView.Item id="bilheteria-online" textValue="Bilheteria online" href="/backstage/bilheteria">
                     <TreeView.ItemContent className={itemClass("bilheteria-online")}>Bilheteria online</TreeView.ItemContent>
                 </TreeView.Item>
             </TreeView.Item>

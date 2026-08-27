@@ -39,7 +39,7 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
 
     return (
         <div className="flex w-full max-w-[800px] flex-col gap-4">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-1.5 rounded-xl bg-primary_alt p-4 ring-1 ring-border-secondary md:p-5">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-1.5 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
                 <label htmlFor="bilheteria-buyer" className="text-sm font-medium text-secondary">
                     Quem está comprando?
                 </label>
@@ -144,7 +144,7 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
 
 /** Quando há `identity`, ela ocupa o lugar do título — o comprador é o cabeçalho do card. */
 const ResultCard = ({ title, identity, children }: { title?: string; identity?: React.ReactNode; children: React.ReactNode }) => (
-    <div className="flex flex-col gap-3 rounded-xl bg-primary_alt p-4 ring-1 ring-border-secondary md:p-5">
+    <div className="flex flex-col gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
         {identity ?? <h2 className="text-md font-semibold text-primary">{title}</h2>}
         <div className="flex flex-col gap-0.5 text-sm text-tertiary">{children}</div>
     </div>
@@ -195,7 +195,7 @@ const ContasEncontradas = ({
     const varias = buyers.length > 1;
 
     return (
-        <div className="flex flex-col gap-4 rounded-xl bg-primary_alt p-4 ring-1 ring-border-secondary md:p-5">
+        <div className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
             <div className="flex flex-col gap-0.5">
                 <h2 className="text-md font-semibold text-primary">
                     {varias ? `${buyers.length} contas usam esse e-mail` : "Conta encontrada"}

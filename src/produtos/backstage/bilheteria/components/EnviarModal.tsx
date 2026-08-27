@@ -55,7 +55,7 @@ export function EnviarModal({ canal, assunto, valorInicial, onClose, onConfirm }
             }
         >
             <AriaModal className="w-full max-w-md outline-hidden">
-                <AriaDialog className="flex flex-col gap-5 rounded-xl bg-primary_alt p-6 shadow-xl outline-hidden ring-1 ring-border-secondary">
+                <AriaDialog className="flex flex-col gap-5 rounded-xl bg-primary p-6 shadow-xl outline-hidden ring-1 ring-border-secondary">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex flex-col gap-0.5">
                             <h2 className="text-lg font-semibold text-primary">

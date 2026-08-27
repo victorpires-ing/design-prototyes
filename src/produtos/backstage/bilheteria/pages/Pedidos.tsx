@@ -146,7 +146,7 @@ export function PedidosBilheteria() {
                         </div>
 
                         {/*
-                          A tabela é a exceção do bg-primary_alt: um grid denso quer chão
+                          A tabela é a exceção do bg-primary: um grid denso quer chão
                           escuro e quieto, para o texto e os divisores carregarem a estrutura.
                           Em neutral-800 o fundo competia com o conteúdo. Containers sobem,
                           superfícies de dado recuam.
@@ -352,7 +352,7 @@ const Th = ({ children }: { children: React.ReactNode }) => (
 );
 
 const MetricCard = ({ label, value }: { label: string; value: number }) => (
-    <div className="flex flex-col gap-2 rounded-xl bg-primary_alt p-5 ring-1 ring-border-secondary">
+    <div className="flex flex-col gap-2 rounded-xl bg-primary p-5 ring-1 ring-border-secondary">
         <p className="text-sm text-tertiary">{label}</p>
         <p className="text-display-sm font-bold text-primary">{value}</p>
     </div>

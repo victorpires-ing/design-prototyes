@@ -318,7 +318,7 @@ interface MobileSummaryBarProps {
 }
 
 const MobileSummaryBar = ({ cart, total, isOpen, onToggle, onRemove, onRemoveAll, advanceButton }: MobileSummaryBarProps) => (
-    <div className="sticky bottom-0 z-50 border-t border-secondary bg-primary_alt md:hidden">
+    <div className="sticky bottom-0 z-50 border-t border-secondary bg-primary md:hidden">
         <button
             type="button"
             onClick={onToggle}

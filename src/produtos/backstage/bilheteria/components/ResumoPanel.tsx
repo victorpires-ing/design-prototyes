@@ -33,7 +33,7 @@ export function ResumoPanel({ cart, onRemove, onRemoveAll, showTotal = true, adv
         return (
             <div
                 className={cx(
-                    "flex min-h-[408px] flex-col items-center justify-center gap-4 rounded-xl bg-primary_alt p-6 ring-1 ring-border-secondary",
+                    "flex min-h-[408px] flex-col items-center justify-center gap-4 rounded-xl bg-primary p-6 ring-1 ring-border-secondary",
                     className,
                 )}
             >
@@ -44,7 +44,7 @@ export function ResumoPanel({ cart, onRemove, onRemoveAll, showTotal = true, adv
     }
 
     return (
-        <div className={cx("flex min-h-[408px] flex-col rounded-xl bg-primary_alt ring-1 ring-border-secondary", className)}>
+        <div className={cx("flex min-h-[408px] flex-col rounded-xl bg-primary ring-1 ring-border-secondary", className)}>
             <div className="flex items-center justify-between gap-3 px-4 py-3">
                 <h2 className="text-sm font-semibold text-primary">Resumo</h2>
                 <Button size="sm" color="link-gray" onClick={onRemoveAll}>

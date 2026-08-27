@@ -53,7 +53,7 @@ export function PaymentStep({
 
     return (
         <div className="flex w-full max-w-[800px] flex-col gap-6">
-            <section className="flex flex-col gap-4 rounded-xl bg-primary_alt p-4 ring-1 ring-border-secondary md:p-5">
+            <section className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
                 <h2 className="text-sm font-medium text-secondary">Escolha como vai ser pago</h2>
 
                 <RadioGroup
@@ -131,7 +131,7 @@ export function PaymentStep({
                 </div>
             </section>
 
-            <section className="flex flex-col rounded-xl bg-primary_alt ring-1 ring-border-secondary">
+            <section className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
                 <div className="flex flex-col gap-3 border-t border-secondary px-4 py-4 md:px-5">
                     {buyer ? (
                         <BuyerIdentity buyer={buyer} />

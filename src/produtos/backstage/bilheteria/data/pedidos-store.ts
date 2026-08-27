@@ -109,6 +109,13 @@ interface CreatePedidoInput {
     paymentLink: string;
 }
 
+/**
+ * Atalho de teste: vender para este e-mail cria o pedido já com o link vencido.
+ * A expiração acontece dias depois da venda, fora da tela — sem um gatilho não
+ * dá para exercitar a gestão desse estado.
+ */
+export const EMAIL_TESTE_EXPIRADO = "expirado@mail.com";
+
 export function createPedido({ cart, buyer, fallbackEmail, tipo, emissor, paymentLink }: CreatePedidoInput): Pedido {
     const lines = cartLines(cart);
     const subtotal = cartTotal(cart);
@@ -126,16 +133,19 @@ export function createPedido({ cart, buyer, fallbackEmail, tipo, emissor, paymen
 
     const sessions = [...new Set(lines.map((line) => line.date).filter(Boolean))].join(" | ");
 
+    const destinatario = buyer?.email ?? fallbackEmail ?? "Sem identificação";
+    const testeExpirado = destinatario.trim().toLowerCase() === EMAIL_TESTE_EXPIRADO;
+
     return {
         id: randomId(),
         // Link de pagamento nasce pendente; sem cobrança do comprador já é aprovado.
-        status: tipo === "link" ? "pendente" : "aprovado",
+        status: testeExpirado ? "expirado" : tipo === "link" ? "pendente" : "aprovado",
         tipo,
         title: lines[0]?.name ?? "Venda na bilheteria",
         sessions: sessions || "—",
         sessionShort: lines[0]?.date ?? "—",
         emissor,
-        destinatario: buyer?.email ?? fallbackEmail ?? "Sem identificação",
+        destinatario,
         dataVenda: isoDate(now),
         dataVendaLabel: formatDate(now),
         valor: subtotal * (1 + SERVICE_FEE_RATE),
@@ -143,5 +153,35 @@ export function createPedido({ cart, buyer, fallbackEmail, tipo, emissor, paymen
         itens,
         // Sem conta, o ingresso só chega na carteira depois do cadastro.
         contaPendente: !buyer && Boolean(fallbackEmail),
+    };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Atalhos de teste                                                   */
+/*                                                                     */
+/*  O fluxo de venda só produz pedido pendente ou aprovado. Expirado e  */
+/*  cancelado acontecem depois, fora da tela — e sem um jeito de forçar */
+/*  não dá para testar a gestão desses estados. Só em dev, sem UI.      */
+/* ------------------------------------------------------------------ */
+
+if (import.meta.env.DEV && typeof window !== "undefined") {
+    const mudarStatus = (status: Pedido["status"], id?: string) => {
+        const lista = read();
+        const alvo = id ? lista.find((p) => p.id === id) : lista.find((p) => p.status === "pendente" && p.tipo === "link");
+        if (!alvo) return `Nenhum pedido ${id ? `com id ${id}` : "pendente com link"} para alterar.`;
+        write(lista.map((p) => (p.id === alvo.id ? { ...p, status } : p)));
+        return `Pedido ${alvo.id} agora é ${status}.`;
+    };
+
+    (window as unknown as Record<string, unknown>).bilheteria = {
+        /** Expira o primeiro pendente com link, ou o pedido do id informado. */
+        expirar: (id?: string) => mudarStatus("expirado", id),
+        /** Devolve um pedido para pendente, para repetir o teste. */
+        reabrir: (id?: string) => mudarStatus("pendente", id),
+        /** Volta ao histórico de exemplo. */
+        limpar: () => {
+            window.localStorage.removeItem(STORAGE_KEY);
+            window.location.reload();
+        },
     };
 }

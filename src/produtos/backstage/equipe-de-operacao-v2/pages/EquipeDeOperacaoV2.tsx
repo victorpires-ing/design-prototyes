@@ -195,10 +195,10 @@ const EstadoSemGrupos = ({ onCriar }: { onCriar: () => void }) => (
             </EmptyState.Header>
 
             <EmptyState.Content>
-                <EmptyState.Title>Nenhum grupo de operação ainda</EmptyState.Title>
+                <EmptyState.Title>Defina regras para a distribuição de ingressos</EmptyState.Title>
                 <EmptyState.Description>
-                    Um grupo reúne operadores e define o que eles podem fazer: emitir cortesia, vender no PDV, vender na bilheteria. E
-                    quanto de cada um.
+                    A equipe de operação é dividida em grupos. Cada grupo reúne operadores e controla o que eles podem emitir ou vender, em
+                    quais ingressos e até que limite.
                 </EmptyState.Description>
             </EmptyState.Content>
 

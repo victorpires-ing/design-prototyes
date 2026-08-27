@@ -27,7 +27,7 @@ interface Props {
     configs: Partial<Record<Permissao, RascunhoPermissao>>;
     /** Marca ou desmarca um item dentro de uma permissão. */
     onItem: (permissao: Permissao, itemId: string, liberado: boolean) => void;
-    /** Limite único (modo "grupo"). */
+    /** Limite de usos (modo "uso"). */
     onCota: (permissao: Permissao, cota: number) => void;
     /** Limite daquele item (modo "item"). */
     onCotaPorItem: (permissao: Permissao, itemId: string, cota: number) => void;
@@ -89,9 +89,11 @@ export function ConfiguracaoGrupo({ concedidas, configs, onItem, onCota, onCotaP
                 </div>
 
                 {/* Ensina a mecânica da tabela sem tutorial: cada coluna é uma permissão. */}
-                <p className="text-sm text-tertiary">
-                    Cada coluna é uma permissão. Marque os itens que ela libera e, quando a cota for por item, informe a quantidade na
-                    própria linha.
+                <p className="max-w-[68ch] text-sm text-tertiary">
+                    Cada coluna é uma permissão. Nas de cota <span className="font-medium text-secondary">por uso</span>, marque quais
+                    itens ela libera: o limite total é um só e fica no campo de cota. Nas de cota{" "}
+                    <span className="font-medium text-secondary">por item</span>, digite o limite de cada item: quem fica em zero não
+                    é liberado.
                 </p>
 
                 {sessoesComItens.length === 0 ? (
@@ -187,8 +189,6 @@ interface TabelaProps {
  * permissão junto de cada campo. O wrapper é focável para rolar pelo teclado.
  */
 const TabelaSessao = ({ sessao, concedidas, configs, onItem, onCotaPorItem }: TabelaProps) => {
-    const ids = sessao.itens.map((i) => i.id);
-
     return (
         <div
             role="region"
@@ -196,33 +196,36 @@ const TabelaSessao = ({ sessao, concedidas, configs, onItem, onCotaPorItem }: Ta
             aria-label={`Itens de ${sessao.data}`}
             className="overflow-x-auto p-4 outline-brand max-md:hidden focus-visible:outline-2 focus-visible:-outline-offset-2"
         >
-            <table className="w-full min-w-max border-collapse">
+            {/*
+              table-fixed + coluna do item elástica: nome de combo longo quebra em vez de
+              esticar a tabela. O mínimo acompanha o número de colunas, então só há rolagem
+              quando ela é inevitável.
+            */}
+            <table
+                className="w-full table-fixed border-collapse"
+                style={{ minWidth: 160 + concedidas.reduce((soma, id) => soma + (configs[id]!.modo === "item" ? 156 : 120), 0) }}
+            >
                 <caption className="sr-only">Itens liberados e cotas por permissão em {sessao.data}</caption>
                 <thead>
                     <tr className="border-b border-secondary">
-                        <th scope="col" className="min-w-[150px] py-2 pr-3 text-left align-bottom text-sm font-semibold text-tertiary">
+                        <th scope="col" className="py-2 pr-3 text-left align-bottom text-sm font-semibold text-tertiary">
                             Item
                         </th>
                         {concedidas.map((id) => {
                             const config = configs[id]!;
-                            const naSessao = ids.filter((itemId) => config.itens.includes(itemId));
 
                             return (
                                 <th
                                     key={id}
                                     scope="col"
                                     className={cx(
-                                        "px-1.5 py-2 text-center align-bottom text-sm font-semibold whitespace-nowrap text-tertiary",
+                                        "px-1.5 py-2 text-center align-bottom",
                                         config.modo === "item" ? "w-[156px]" : "w-[120px]",
                                     )}
                                 >
-                                    {PERMISSAO_META[id].label}
-                                    {naSessao.length > 0 && (
-                                        <span className="font-normal text-quaternary tabular-nums">
-                                            {" "}
-                                            {naSessao.length}/{ids.length}
-                                        </span>
-                                    )}
+                                    <span className="text-sm font-semibold whitespace-nowrap text-tertiary">
+                                        {PERMISSAO_META[id].label}
+                                    </span>
                                 </th>
                             );
                         })}
@@ -255,7 +258,7 @@ const TabelaSessao = ({ sessao, concedidas, configs, onItem, onCotaPorItem }: Ta
                                                 <span className="text-tertiary"> · {item.tipo}</span>
                                             </span>
                                             {item.componentes?.length ? (
-                                                <span className="truncate text-sm text-tertiary">
+                                                <span className="line-clamp-2 text-sm text-balance text-tertiary">
                                                     {item.componentes.map((c) => `${c.nome} · ${c.tipo}`).join(" + ")}
                                                 </span>
                                             ) : null}
@@ -325,7 +328,7 @@ const ListaSessaoMobile = ({ sessao, concedidas, configs, onItem, onCotaPorItem 
                                 <span className="text-tertiary"> · {item.tipo}</span>
                             </span>
                             {item.componentes?.length ? (
-                                <span className="truncate text-sm text-tertiary">
+                                <span className="line-clamp-2 text-sm text-tertiary">
                                     {item.componentes.map((c) => `${c.nome} · ${c.tipo}`).join(" + ")}
                                 </span>
                             ) : null}

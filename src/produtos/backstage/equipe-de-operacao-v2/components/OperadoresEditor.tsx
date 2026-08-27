@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { AlertTriangle, Lock01, Plus, Trash01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -37,6 +38,19 @@ export function OperadoresEditor({ value, onChange, bloqueados = [], mostrarCont
     const [entrada, setEntrada] = useState("");
     const [importando, setImportando] = useState(false);
 
+    /**
+     * Limpar é reversível enquanto o grupo não foi salvo, então desfazer serve
+     * melhor que um modal: não interrompe e cobre o clique acidental.
+     */
+    const removerTodos = () => {
+        const antes = value;
+        const removidos = antes.filter((e) => !bloqueados.includes(e));
+        onChange(antes.filter((e) => bloqueados.includes(e)));
+        toast.success(`${removidos.length} ${removidos.length === 1 ? "e-mail removido" : "e-mails removidos"}`, {
+            action: { label: "Desfazer", onClick: () => onChange(antes) },
+        });
+    };
+
     const adicionar = (texto: string) => {
         const novos = separar(texto).filter((e) => !value.includes(e));
         if (novos.length) onChange([...value, ...novos]);
@@ -47,7 +61,7 @@ export function OperadoresEditor({ value, onChange, bloqueados = [], mostrarCont
 
     return (
         <div className="flex flex-col gap-4 rounded-xl bg-secondary p-4">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
                 <Button
                     size="sm"
                     color="secondary"
@@ -56,15 +70,6 @@ export function OperadoresEditor({ value, onChange, bloqueados = [], mostrarCont
                 >
                     Importar e-mails
                 </Button>
-                {temRemoviveis && (
-                    <button
-                        type="button"
-                        onClick={() => onChange(value.filter((e) => bloqueados.includes(e)))}
-                        className="text-sm font-semibold text-brand-secondary transition duration-100 ease-linear hover:text-brand-secondary_hover"
-                    >
-                        Remover e-mails
-                    </button>
-                )}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -98,6 +103,17 @@ export function OperadoresEditor({ value, onChange, bloqueados = [], mostrarCont
             </div>
 
             <OperadoresList value={value} onChange={onChange} bloqueados={bloqueados} mostrarConta={mostrarConta} badgeConta={badgeConta} />
+
+            {/* Ação destrutiva depois da lista e sem cor de marca: longe do caminho principal. */}
+            {temRemoviveis && (
+                <button
+                    type="button"
+                    onClick={removerTodos}
+                    className="self-start text-sm text-tertiary transition duration-100 ease-linear hover:text-error-primary"
+                >
+                    Remover todos os e-mails
+                </button>
+            )}
 
             <ImportarEmailsModal
                 isOpen={importando}

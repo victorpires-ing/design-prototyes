@@ -13,15 +13,15 @@ import { EVENTO_TEM_ITENS } from "./equipe-data";
 
 export type Permissao = "cortesia" | "pdv" | "bilheteria";
 
-/** Onde o limite é aplicado: um número para a permissão inteira ou um por item. */
-export type CotaModo = "grupo" | "item";
+/** Onde o limite é aplicado: um número de usos para a permissão, ou um por item. */
+export type CotaModo = "uso" | "item";
 
 /** Cota de uma permissão: onde o limite vale, quais itens libera e quanto já foi usado. */
 export interface CotaPermissao {
     modo: CotaModo;
     /** Itens que esta permissão libera — cada tipo de envio tem os seus. */
     itens: string[];
-    /** Limite único da permissão (modo "grupo"). */
+    /** Limite de usos da permissão (modo "uso"). */
     cota: number;
     /** Limite por item liberado (modo "item") — chave é o id do item. */
     porItem: Record<string, number>;
@@ -46,7 +46,10 @@ export interface NovoGrupoV2 {
 
 export const PERMISSOES: Array<{
     id: Permissao;
+    /** Nome curto, para colunas e resumos. */
     label: string;
+    /** A ação em si, usada onde a permissão é concedida. */
+    acao: string;
     /** Rótulo do campo de cota — o artigo muda com o nome da permissão. */
     cotaLabel: string;
     /** O que o operador passa a poder fazer. */
@@ -58,24 +61,27 @@ export const PERMISSOES: Array<{
     {
         id: "cortesia",
         label: "Cortesia",
+        acao: "Emitir cortesias",
         cotaLabel: "Cota da Cortesia",
-        descricao: "Emitir cortesias pelo portal do operador, sem cobrar de quem recebe.",
+        descricao: "Pelo portal do operador, sem cobrar de quem recebe.",
         unidade: "cortesias que o grupo pode emitir",
         icon: Gift01,
     },
     {
         id: "pdv",
         label: "PDV",
+        acao: "Vender pelo PDV",
         cotaLabel: "Cota do PDV",
-        descricao: "Vender presencialmente, com dinheiro, Pix ou cartão.",
+        descricao: "Presencialmente, com dinheiro, Pix ou cartão.",
         unidade: "ingressos que o grupo pode vender no PDV",
         icon: Phone01,
     },
     {
         id: "bilheteria",
         label: "Bilheteria",
+        acao: "Vender pela bilheteria",
         cotaLabel: "Cota da Bilheteria",
-        descricao: "Vender pela bilheteria online, por link de pagamento ou saldo do produtor.",
+        descricao: "Online, por link de pagamento ou saldo do produtor.",
         unidade: "ingressos que o grupo pode vender na bilheteria",
         icon: CurrencyDollarCircle,
     },

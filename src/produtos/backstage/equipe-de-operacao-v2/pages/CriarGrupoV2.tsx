@@ -88,8 +88,8 @@ export function CriarGrupoV2() {
     const togglePermissao = (permissao: Permissao, ligada: boolean) =>
         setConfigs((atual) => {
             const proximo = { ...atual };
-            // Ligar já assume a cota por grupo — o caso mais comum.
-            if (ligada) proximo[permissao] = { modo: "grupo", itens: [], cota: 0, porItem: {} };
+            // Ligar já assume a cota por uso, o caso mais comum.
+            if (ligada) proximo[permissao] = { modo: "uso", itens: [], cota: 0, porItem: {} };
             else delete proximo[permissao];
             return proximo;
         });
@@ -148,14 +148,20 @@ export function CriarGrupoV2() {
                     title={emEdicao ? "Editar grupo" : "Criar grupo"}
                     onBack={voltar}
                     actionLabel={
-                        !emWizard || step === 0 ? undefined : step === 2 ? (emEdicao ? "Salvar alterações" : "Criar grupo") : "Revisar"
+                        !emWizard || step === 0
+                            ? undefined
+                            : step === 2
+                              ? emEdicao
+                                  ? "Salvar alterações"
+                                  : "Criar grupo"
+                              : "Próximo: revisão"
                     }
                     onAction={!emWizard || step === 0 ? undefined : avancar}
                 />
 
                 <main className="flex flex-1 flex-col items-center gap-8 px-6 pb-10">
                     {!emWizard ? (
-                        <section className="w-full max-w-[1000px]">
+                        <section className="w-full max-w-3xl">
                             <PermissoesSelector
                                 modos={modos}
                                 onToggle={togglePermissao}
@@ -163,7 +169,7 @@ export function CriarGrupoV2() {
                                 erro={tentou && !permissoesValidas ? "Marque ao menos uma permissão para continuar." : undefined}
                                 advanceButton={
                                     <Button size="md" color="primary" onClick={avancar} className="max-md:w-full">
-                                        Definir cotas e itens
+                                        Próximo: cotas e itens
                                     </Button>
                                 }
                             />
@@ -211,7 +217,7 @@ export function CriarGrupoV2() {
                                         erros={tentou ? problemas : undefined}
                                         advanceButton={
                                             <Button size="md" color="primary" onClick={avancar}>
-                                                Escolher operadores
+                                                Próximo: operadores
                                             </Button>
                                         }
                                     />

@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { FileIcon } from "@untitledui/file-icons";
-import { CheckCircle, Copy01, Mail01, Ticket02 } from "@untitledui/icons";
+import { Check, CheckCircle, Copy01, Mail01, Ticket02 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
+import { InputBase } from "@/components/base/input/input";
+import { InputGroup } from "@/components/base/input/input-group";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { EVENTO, type Buyer } from "../data/catalogo";
 import { QrMock } from "./QrMock";
@@ -35,19 +38,9 @@ export function OrderSuccess({
     onDownload,
     onSend,
 }: OrderSuccessProps) {
-    const [copied, setCopied] = useState(false);
+    const { copy, copied } = useClipboard();
     /** Canal em que o modal de envio está aberto. */
     const [canal, setCanal] = useState<CanalEnvio | null>(null);
-
-    const copyLink = async () => {
-        try {
-            await navigator.clipboard.writeText(paymentLink);
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 2000);
-        } catch {
-            /* clipboard indisponível — ignora silenciosamente */
-        }
-    };
 
     const assunto = channel === "link" ? "o link de pagamento" : "os ingressos";
 
@@ -85,15 +78,21 @@ export function OrderSuccess({
                     <div className="flex flex-col gap-1.5">
                         <p className="text-sm font-medium text-secondary">Link de pagamento</p>
                         <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                            <input
-                                readOnly
-                                value={paymentLink}
+                            <InputGroup
                                 aria-label="Link de pagamento"
-                                className="min-w-0 flex-1 truncate rounded-lg bg-primary px-3 py-2 text-sm text-primary ring-1 ring-border-primary shadow-xs ring-inset"
-                            />
-                            <Button size="md" color="secondary" iconLeading={Copy01} onClick={copyLink}>
-                                {copied ? "Copiado" : "Copiar"}
-                            </Button>
+                                className="min-w-0 flex-1"
+                                trailingAddon={
+                                    <Button
+                                        color="secondary"
+                                        iconLeading={copied ? Check : Copy01}
+                                        onClick={() => copy(`https://${paymentLink}`)}
+                                    >
+                                        {copied ? "Copiado" : "Copiar"}
+                                    </Button>
+                                }
+                            >
+                                <InputBase isReadOnly value={paymentLink} />
+                            </InputGroup>
                             <Button size="md" color="secondary" iconLeading={Mail01} onClick={() => setCanal("email")}>
                                 Enviar por e-mail
                             </Button>

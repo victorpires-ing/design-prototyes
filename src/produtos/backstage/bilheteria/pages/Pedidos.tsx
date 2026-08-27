@@ -22,6 +22,7 @@ const STATUS_OPTIONS = [
     { id: "todos", label: "Todos" },
     { id: "pendente", label: "Pendente" },
     { id: "aprovado", label: "Aprovado" },
+    { id: "expirado", label: "Expirado" },
     { id: "cancelado", label: "Cancelado" },
 ];
 
@@ -63,6 +64,7 @@ export function PedidosBilheteria() {
         () => ({
             aprovados: rows.filter((row) => row.status === "aprovado").length,
             pendentes: rows.filter((row) => row.status === "pendente").length,
+            expirados: rows.filter((row) => row.status === "expirado").length,
             cancelados: rows.filter((row) => row.status === "cancelado").length,
         }),
         [rows],
@@ -139,9 +141,11 @@ export function PedidosBilheteria() {
                     </div>
                 ) : (
                     <>
-                        <div className="grid gap-4 md:grid-cols-3">
+                        {/* Expirado ganha cartão próprio: é venda perdida que dá para recuperar. */}
+                        <div className="grid gap-4 md:grid-cols-4">
                             <MetricCard label="Pedidos aprovados" value={resumo.aprovados} />
                             <MetricCard label="Pedidos pendentes" value={resumo.pendentes} />
+                            <MetricCard label="Links expirados" value={resumo.expirados} />
                             <MetricCard label="Pedidos cancelados" value={resumo.cancelados} />
                         </div>
 
@@ -333,7 +337,13 @@ export function PedidosBilheteria() {
                 )}
             </div>
 
-            <PedidoDetailsSlideOut pedido={detail} onClose={() => setDetail(null)} onResend={handleResend} onDownload={handleDownload} />
+            <PedidoDetailsSlideOut
+                pedido={detail}
+                onClose={() => setDetail(null)}
+                onResend={handleResend}
+                onDownload={handleDownload}
+                onNovaVenda={() => navigate("/backstage/bilheteria/vender")}
+            />
 
             <CancelPedidosModal
                 pedidos={pendingCancel}

@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { cartLines, cartTotal, type Cart } from "./carrinho";
 import type { Buyer } from "./catalogo";
-import type { Pedido, PedidoItem, PedidoTipo } from "./pedidos";
+import { pedidos as PEDIDOS_EXEMPLO, type Pedido, type PedidoItem, type PedidoTipo } from "./pedidos";
 
 /**
  * Persistência local dos pedidos da bilheteria.
@@ -21,9 +21,14 @@ function read(): Pedido[] {
     if (typeof window === "undefined") return EMPTY;
     try {
         const raw = window.localStorage.getItem(STORAGE_KEY);
-        cache = raw ? (JSON.parse(raw) as Pedido[]) : [];
+        /*
+          Sem nada salvo, a gestão nasce com o histórico de exemplo: é onde os
+          estados que a venda não produz sozinha — expirado, cancelado — podem
+          ser vistos. Para cair no estado vazio, limpe a chave `bilheteria-pedidos`.
+        */
+        cache = raw ? (JSON.parse(raw) as Pedido[]) : PEDIDOS_EXEMPLO;
     } catch {
-        cache = [];
+        cache = PEDIDOS_EXEMPLO;
     }
     return cache;
 }

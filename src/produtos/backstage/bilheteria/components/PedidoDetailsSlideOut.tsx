@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { Check, Copy01, Download01, FaceId, Mail01, QrCode01, Send01, SlashCircle01, Ticket02, XClose } from "@untitledui/icons";
+import { Check, Copy01, Download01, FaceId, Mail01, QrCode01, RefreshCcw01, Send01, SlashCircle01, Ticket02, XClose } from "@untitledui/icons";
 import { Dialog as AriaDialog, Modal as AriaModal, ModalOverlay as AriaModalOverlay } from "react-aria-components";
 import { toast } from "sonner";
 import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
+import { InputBase } from "@/components/base/input/input";
+import { InputGroup } from "@/components/base/input/input-group";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
-import { formatBRL, isValidEmail } from "../data/catalogo";
+import { EVENTO, formatBRL, isValidEmail } from "../data/catalogo";
 import { PEDIDO_STATUS_META, PEDIDO_TIPO_LABEL, type Pedido } from "../data/pedidos";
 import { EnviarModal, type CanalEnvio } from "./EnviarModal";
 import { QrMock } from "./QrMock";
@@ -20,15 +23,20 @@ interface PedidoDetailsSlideOutProps {
     onResend: (pedido: Pedido, canal: ResendChannel, destino: string) => void;
     /** Baixa os ingressos do pedido no formato escolhido. */
     onDownload: (pedido: Pedido, formato: PedidoDownload) => void;
+    /** Recomeça a venda de um pedido cujo link expirou. */
+    onNovaVenda?: (pedido: Pedido) => void;
 }
 
 /** Slideout de detalhes do pedido, com ações e a lista de itens do pedido. */
-export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }: PedidoDetailsSlideOutProps) {
+export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload, onNovaVenda }: PedidoDetailsSlideOutProps) {
     const [canal, setCanal] = useState<CanalEnvio | null>(null);
+    const { copy, copied } = useClipboard();
 
     const itens = pedido?.itens ?? [];
 
     const isCancelled = pedido?.status === "cancelado";
+    /** Link vencido sem pagamento: não há o que copiar, enviar ou escanear. */
+    const isExpired = pedido?.status === "expirado";
     /** Venda sem identificação não tem destino salvo; o modal pergunta. */
     const emailDoPedido = pedido && isValidEmail(pedido.destinatario) ? pedido.destinatario : undefined;
     /** No link o que circula é o link; nos demais, os próprios ingressos. */
@@ -102,27 +110,22 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
                                     )}
                                 </dl>
 
-                                {pedido.tipo === "link" && (
+                                {pedido.tipo === "link" && !isExpired && (
                                     <div className="flex flex-col gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            readOnly
-                                            value={pedido.paymentLink}
-                                            aria-label="Link de pagamento"
-                                            className="min-w-0 flex-1 truncate rounded-lg bg-primary px-3 py-2 text-sm text-tertiary ring-1 ring-border-primary shadow-xs ring-inset"
-                                        />
-                                        <Button
-                                            size="md"
-                                            color="secondary"
-                                            iconLeading={Copy01}
-                                            onClick={() => {
-                                                navigator.clipboard?.writeText(pedido.paymentLink);
-                                                toast.success("Link copiado");
-                                            }}
-                                        >
-                                            Copiar
-                                        </Button>
-                                    </div>
+                                    <InputGroup
+                                        aria-label="Link de pagamento"
+                                        trailingAddon={
+                                            <Button
+                                                color="secondary"
+                                                iconLeading={copied ? Check : Copy01}
+                                                onClick={() => copy(`https://${pedido.paymentLink}`)}
+                                            >
+                                                {copied ? "Copiado" : "Copiar"}
+                                            </Button>
+                                        }
+                                    >
+                                        <InputBase isReadOnly value={pedido.paymentLink} />
+                                    </InputGroup>
 
                                     {/*
                                       O comprador volta ao guichê sem ter pago: o QR precisa
@@ -142,8 +145,35 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
                                     </div>
                                 )}
 
-                                {/* Pedido cancelado não tem ação possível — o bloco todo sai. */}
-                                {!isCancelled && (
+                                {isExpired && (
+                                    <div className="flex flex-col gap-3 rounded-xl bg-secondary p-4">
+                                        <div className="flex flex-col gap-1">
+                                            <p className="text-sm font-semibold text-primary">
+                                                O link venceu sem pagamento, {EVENTO.validadeLinkDias} dias depois da venda.
+                                            </p>
+                                            <p className="text-sm text-tertiary">
+                                                Os ingressos voltaram para o estoque e estão à venda de novo. Este pedido fica no histórico
+                                                para conferência, e nada foi cobrado do comprador.
+                                            </p>
+                                        </div>
+                                        {/*
+                                          O caminho de recuperar a venda é refazer, não ressuscitar o link:
+                                          o estoque já voltou e o preço pode estar em outro lote.
+                                        */}
+                                        <Button
+                                            size="md"
+                                            color="secondary"
+                                            iconLeading={RefreshCcw01}
+                                            onClick={() => onNovaVenda?.(pedido)}
+                                            className="w-fit"
+                                        >
+                                            Refazer a venda
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {/* Pedido cancelado ou expirado não tem ação possível — o bloco todo sai. */}
+                                {!isCancelled && !isExpired && (
                                     <>
                                         <hr className="border-secondary" />
 
@@ -272,6 +302,14 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
                                     )}
 
                                     <ul className="flex flex-col gap-4">
+                                        {pedido.status === "expirado" && (
+                                            <HistoricoItem
+                                                icon={SlashCircle01}
+                                                titulo="Link expirado sem pagamento; ingressos devolvidos ao estoque"
+                                                data={pedido.resentAt ?? pedido.dataVendaLabel}
+                                            />
+                                        )}
+
                                         {pedido.status === "cancelado" && (
                                             <HistoricoItem
                                                 icon={SlashCircle01}

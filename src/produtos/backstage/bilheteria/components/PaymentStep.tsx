@@ -74,29 +74,25 @@ export function PaymentStep({
                                 Indisponível: sem identificação do comprador não há e-mail para onde enviar o link e os ingressos.
                             </p>
                         ) : (
-                            <p className="text-sm text-tertiary">O comprador paga {formatBRL(subtotal + fee)}</p>
+                            <p className="text-sm text-tertiary">O comprador paga {formatBRL(subtotal + fee)} pelo link.</p>
                         )}
                     </MethodOption>
 
                     {/*
-                      Um caminho só para tudo que não passa pelo checkout: o produtor
-                      já recebeu por fora, ou é uma emissão sem custo. Na apresentação
-                      do MVP a dúvida foi "o que sairia do saldo?" — o rótulo agora
-                      responde isso, e a descrição diz o que aparece no fechamento.
+                      Uma linha por opção, no mesmo formato: quem lê está atendendo uma
+                      fila e decide por comparação — o comprador paga agora ou não paga.
+                      O que interessa ao fechamento é verdadeiro e precisa estar escrito,
+                      mas não a cada venda: fica recolhido, para o operador novo e para
+                      quando a dúvida aparecer.
                     */}
-                    <MethodOption icon={Coins01} label="Cobrar só a taxa da bilheteria do produtor" value="saldo" isSelected={method === "saldo"}>
-                        <p className="text-sm text-tertiary">
-                            O comprador não paga nada aqui — porque já pagou por fora (Pix, dinheiro, maquininha do produtor) ou porque a
-                            emissão é sem custo.
-                        </p>
-                        <p className="text-sm text-tertiary">
-                            No fechamento, o produtor paga{" "}
-                            <strong className="font-semibold text-secondary">apenas a taxa da bilheteria</strong>. O valor do ingresso não é
-                            descontado do repasse.
-                        </p>
-                        <p className="text-sm text-tertiary">
-                            Os ingressos já saem emitidos: dá para baixar o PDF, a planilha ou imprimir na zebra em seguida.
-                        </p>
+                    <MethodOption
+                        icon={Coins01}
+                        label="Cobrar só a taxa da bilheteria do produtor"
+                        value="saldo"
+                        isSelected={method === "saldo"}
+                        footer={<ComoFunciona />}
+                    >
+                        <p className="text-sm text-tertiary">O comprador não paga nada. Os ingressos saem emitidos na hora.</p>
                     </MethodOption>
                 </RadioGroup>
 
@@ -210,17 +206,20 @@ interface MethodOptionProps {
     isSelected: boolean;
     isDisabled?: boolean;
     children: React.ReactNode;
+    /** Conteúdo abaixo do rótulo, fora do <label> — para não virar alvo do radio. */
+    footer?: React.ReactNode;
 }
 
 /** Cartão de meio de pagamento: radio, título e o resumo da cobrança como descrição. */
-const MethodOption = ({ icon: Icon, label, value, isSelected, isDisabled, children }: MethodOptionProps) => (
-    <label
+const MethodOption = ({ icon: Icon, label, value, isSelected, isDisabled, children, footer }: MethodOptionProps) => (
+    <div
         className={cx(
-            "group flex flex-col gap-3 rounded-lg bg-secondary p-4 ring-1 transition duration-100 ease-linear",
-            isDisabled ? "cursor-not-allowed opacity-50 ring-transparent" : "cursor-pointer hover:bg-secondary_hover",
+            "group flex flex-col rounded-lg bg-secondary ring-1 transition duration-100 ease-linear",
+            isDisabled ? "opacity-50 ring-transparent" : "hover:bg-secondary_hover",
             isSelected ? "ring-brand" : "ring-transparent",
         )}
     >
+        <label className={cx("flex flex-col gap-3 p-4", isDisabled ? "cursor-not-allowed" : "cursor-pointer")}>
         <span className="flex items-center gap-3">
             <RadioButton value={value} slot={null} isDisabled={isDisabled} aria-label={label} />
             <Icon
@@ -233,7 +232,46 @@ const MethodOption = ({ icon: Icon, label, value, isSelected, isDisabled, childr
             />
             <span className="text-sm font-medium text-primary">{label}</span>
         </span>
-        {/* Recuo alinhado ao texto do rótulo, não ao radio. */}
-        <div className="flex flex-col gap-2 pl-8">{children}</div>
-    </label>
+            {/* Recuo alinhado ao texto do rótulo, não ao radio. */}
+            <div className="flex flex-col gap-2 pl-8">{children}</div>
+        </label>
+        {footer}
+    </div>
 );
+
+/**
+ * O que o produtor paga no fechamento — a resposta que a apresentação do MVP
+ * pediu por escrito, sem custar atenção nas 200 vendas seguintes.
+ */
+const ComoFunciona = () => {
+    const [aberto, setAberto] = useState(false);
+
+    return (
+        <div className="flex flex-col px-4 pb-4 pl-12">
+            <button
+                type="button"
+                aria-expanded={aberto}
+                // preventDefault: o botão vive dentro do cartão do radio e sem isso
+                // abrir a explicação também trocava o meio de pagamento.
+                onClick={(event) => {
+                    event.preventDefault();
+                    setAberto((open) => !open);
+                }}
+                className="flex w-fit items-center gap-1 text-sm font-medium text-tertiary transition duration-100 ease-linear hover:text-secondary_hover"
+            >
+                Como isso aparece no fechamento?
+                <ChevronDown
+                    className={cx("size-4 transition-transform duration-100 ease-linear", aberto && "rotate-180")}
+                    aria-hidden="true"
+                />
+            </button>
+
+            {aberto && (
+                <p className="pt-2 text-sm text-tertiary">
+                    O produtor paga só a taxa da bilheteria — o valor do ingresso não é descontado do repasse. Serve também quando ele já
+                    recebeu por fora: Pix, dinheiro ou maquininha própria.
+                </p>
+            )}
+        </div>
+    );
+};

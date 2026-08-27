@@ -34,7 +34,6 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
     const assuntoDoPedido = pedido?.tipo === "link" ? "Link de pagamento" : "Ingressos";
 
     const close = () => {
-        setTerm("");
         setCanal(null);
         onClose();
     };

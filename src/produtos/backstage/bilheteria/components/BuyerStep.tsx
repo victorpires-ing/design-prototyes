@@ -4,7 +4,7 @@ import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { InputBase } from "@/components/base/input/input";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
-import type { Buyer } from "../data/catalogo";
+import { EVENTO, type Buyer } from "../data/catalogo";
 
 export type BuyerSearch =
     | { status: "idle" }
@@ -108,9 +108,29 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
                 </ResultCard>
             )}
 
+            {/*
+              O que muda ao pular fica escrito aqui, não só dentro do modal: é
+              a diferença entre uma venda nominal e um pré-impresso, e foi o
+              ponto que mais gerou dúvida na apresentação.
+            */}
+            <p className="text-sm text-tertiary">
+                {EVENTO.identificacaoObrigatoria ? (
+                    <>
+                        Este evento exige identificar o comprador — acesso por face ou credenciamento emitem ingresso nominal, então não dá
+                        para pular esta etapa.
+                    </>
+                ) : (
+                    <>
+                        Com o comprador identificado, vale o limite de{" "}
+                        <strong className="font-semibold text-secondary">{EVENTO.limitePorCpf} ingressos por CPF</strong> do evento. Pulando
+                        a identificação, a venda não bate nesse limite — é o caminho do pré-impresso, em lote.
+                    </>
+                )}
+            </p>
+
             {/* Ação principal junto do resultado — "Pular" é saída secundária, não concorre com ela. */}
             <div className="flex flex-col-reverse items-stretch gap-3 md:flex-row md:items-center md:justify-end">
-                <Button size="md" color="secondary" onClick={onSkip}>
+                <Button size="md" color="secondary" onClick={onSkip} isDisabled={EVENTO.identificacaoObrigatoria}>
                     Pular identificação
                 </Button>
                 {advanceButton}

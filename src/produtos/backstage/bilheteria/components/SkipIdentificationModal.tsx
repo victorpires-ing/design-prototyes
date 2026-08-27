@@ -1,4 +1,5 @@
 import { XClose } from "@untitledui/icons";
+import { EVENTO } from "../data/catalogo";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -20,10 +21,23 @@ export function SkipIdentificationModal({ isOpen, onClose, onConfirm }: SkipIden
                             <h2 className="text-lg font-semibold text-primary">Pular identificação</h2>
                             <ButtonUtility size="xs" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
                         </div>
-                        <p className="mt-1 text-sm text-tertiary">
-                            Ingressos com acesso por face estarão desabilitados para venda e você não poderá usar o{" "}
-                            <strong className="font-semibold text-secondary">“Link de pagamento”</strong> para concluir a venda.
-                        </p>
+                        <p className="mt-1 text-sm text-tertiary">Sem identificar o comprador, a venda muda de natureza:</p>
+                        <ul className="mt-3 flex flex-col gap-2 text-sm text-tertiary">
+                            <li>
+                                Ingressos com <strong className="font-semibold text-secondary">acesso por face</strong> ficam
+                                indisponíveis, porque dependem de um cadastro Ingresse.
+                            </li>
+                            <li>
+                                Não dá para usar o <strong className="font-semibold text-secondary">link de pagamento</strong>: sem e-mail
+                                não há para onde enviar.
+                            </li>
+                            {/* O lado bom de pular, que é justamente o caso do pré-impresso em lote. */}
+                            <li>
+                                Em compensação, a venda{" "}
+                                <strong className="font-semibold text-secondary">não bate no limite de {EVENTO.limitePorCpf} por CPF</strong>{" "}
+                                — dá para emitir a quantidade que precisar de uma vez.
+                            </li>
+                        </ul>
 
                         <div className="mt-6 flex flex-col-reverse gap-3 md:flex-row">
                             <Button size="md" color="secondary" className="md:flex-1" onClick={onClose}>

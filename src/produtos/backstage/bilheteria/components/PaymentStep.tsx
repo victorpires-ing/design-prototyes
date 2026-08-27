@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/base/buttons/button";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
-import { AlertTriangle, ChevronDown, Coins01, Link01 } from "@untitledui/icons";
+import { AlertTriangle, BankNote01, ChevronDown, Coins01, Link01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { cx } from "@/utils/cx";
 import { formatBRL, type Buyer } from "../data/catalogo";
@@ -10,7 +10,12 @@ import { BuyerIdentity, BuyerNoAccount } from "./BuyerStep";
 import { ComboComposition } from "./ItemsStep";
 import { QuantityStepper } from "./QuantityStepper";
 
-export type PaymentMethod = "link" | "saldo";
+/**
+ * `externo` nasceu da apresentação do MVP: 90% dos produtores já recebem o
+ * valor por fora (Pix, dinheiro, maquininha própria) e usam a plataforma só
+ * para emitir. Sem essa opção o fluxo não substitui o legado.
+ */
+export type PaymentMethod = "link" | "saldo" | "externo";
 
 /** Taxa de serviço aplicada sobre o subtotal. */
 const SERVICE_FEE_RATE = 0.1;
@@ -73,13 +78,36 @@ export function PaymentStep({
                         )}
                     </MethodOption>
 
+                    {/*
+                      O caso mais comum hoje, e o que faltava para sair do legado: o
+                      produtor já recebeu por fora e só precisa emitir. Vem antes do
+                      saldo porque é o que a maioria vai escolher.
+                    */}
+                    <MethodOption icon={BankNote01} label="Pagamento por fora" value="externo" isSelected={method === "externo"}>
+                        <p className="text-sm text-tertiary">
+                            O produtor já recebeu o valor por fora da Ingresse — Pix, dinheiro ou maquininha própria.
+                        </p>
+                        <p className="text-sm text-tertiary">
+                            Nada é cobrado aqui e <strong className="font-semibold text-secondary">nada é descontado no repasse</strong>.
+                            Os ingressos já saem emitidos: dá para baixar o PDF, a planilha ou imprimir na zebra em seguida.
+                        </p>
+                    </MethodOption>
+
                     <MethodOption icon={Coins01} label="Saldo do produtor" value="saldo" isSelected={method === "saldo"}>
                         <p className="text-sm text-tertiary">
-                            O comprador não paga nada. O débito sai do saldo do produtor pelo valor combinado em contrato.
+                            O comprador não paga nada e o valor do ingresso é abatido do repasse do produtor no fechamento.
                         </p>
-                        {/* Aqui o pedido já nasce pago, então os arquivos ficam prontos na mesma hora. */}
+                        {/*
+                          O nome sozinho gerou confusão na apresentação ("o que sairia do
+                          saldo?"). A frase abaixo diz o que aparece no fechamento, que é
+                          onde a dúvida vira chamado do comercial.
+                        */}
                         <p className="text-sm text-tertiary">
-                            Os ingressos já saem emitidos: dá para baixar o PDF, baixar a planilha ou imprimir na zebra em seguida.
+                            No relatório de repasse aparece como <strong className="font-semibold text-secondary">venda faturada</strong>,
+                            com a taxa da bilheteria conforme o contrato. Se o produtor já recebeu por fora, use “Pagamento por fora”.
+                        </p>
+                        <p className="text-sm text-tertiary">
+                            Os ingressos já saem emitidos: dá para baixar o PDF, a planilha ou imprimir na zebra em seguida.
                         </p>
                     </MethodOption>
                 </RadioGroup>

@@ -59,8 +59,18 @@ export function cancelPedidos(ids: string[]) {
     write(read().map((pedido) => (target.has(pedido.id) ? { ...pedido, status: "cancelado" } : pedido)));
 }
 
-export function registerResend(id: string, at: string) {
-    write(read().map((pedido) => (pedido.id === id ? { ...pedido, resentAt: at } : pedido)));
+export function registerResend(id: string, at: string, canal?: "email" | "whatsapp", destino?: string) {
+    write(
+        read().map((pedido) =>
+            pedido.id === id
+                ? {
+                      ...pedido,
+                      resentAt: at,
+                      envios: canal && destino ? [...(pedido.envios ?? []), { canal, destino, at }] : pedido.envios,
+                  }
+                : pedido,
+        ),
+    );
 }
 
 /* ------------------------------------------------------------------ */
@@ -124,5 +134,7 @@ export function createPedido({ cart, buyer, fallbackEmail, tipo, emissor, paymen
         valor: subtotal * (1 + SERVICE_FEE_RATE),
         paymentLink,
         itens,
+        // Sem conta, o ingresso só chega na carteira depois do cadastro.
+        contaPendente: !buyer && Boolean(fallbackEmail),
     };
 }

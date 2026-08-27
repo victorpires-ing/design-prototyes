@@ -100,6 +100,19 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
                                     <Field label="Data da venda:">{pedido.dataVendaLabel}</Field>
                                     <Field label="Valor:">{formatBRL(pedido.valor)}</Field>
                                     <Field label="Tipo:">{PEDIDO_TIPO_LABEL[pedido.tipo]}</Field>
+                                    {/*
+                                      Sem conta, o ingresso fica em limbo: comprado, pago, mas
+                                      fora da carteira. Quem atende na porta precisa ver isso
+                                      aqui em vez de descobrir com a pessoa na frente.
+                                    */}
+                                    {pedido.contaPendente && (
+                                        <Field label="Cadastro:">
+                                            <span className="text-warning-primary">
+                                                Pendente — o comprador ainda não concluiu o cadastro, então os ingressos não estão na
+                                                carteira dele.
+                                            </span>
+                                        </Field>
+                                    )}
                                 </dl>
 
                                 {pedido.tipo === "link" && (
@@ -191,7 +204,27 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
                                     </>
                                 )}
 
-                                {pedido.resentAt && <p className="text-sm text-tertiary">Último reenvio em {pedido.resentAt}</p>}
+                                {/*
+                                  Histórico por canal e data: "foi enviado no seu e-mail dia X"
+                                  é a frase que o atendimento precisa dar ao cliente. E ver que
+                                  já saiu antes evita reenviar/reimprimir e duplicar ingresso na porta.
+                                */}
+                                {pedido.envios && pedido.envios.length > 0 ? (
+                                    <div className="flex flex-col gap-1.5 rounded-xl bg-secondary p-4">
+                                        <p className="text-sm font-semibold text-primary">
+                                            Já enviado {pedido.envios.length}{" "}
+                                            {pedido.envios.length === 1 ? "vez" : "vezes"} — reenviar gera outra cópia do mesmo ingresso.
+                                        </p>
+                                        {pedido.envios.map((envio, indice) => (
+                                            <p key={`${envio.at}-${indice}`} className="text-sm text-tertiary">
+                                                {envio.canal === "email" ? "E-mail" : "WhatsApp"} para{" "}
+                                                <strong className="font-medium text-secondary">{envio.destino}</strong> em {envio.at}
+                                            </p>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    pedido.resentAt && <p className="text-sm text-tertiary">Último reenvio em {pedido.resentAt}</p>
+                                )}
 
                                 <div className="rounded-xl bg-primary ring-1 ring-border-secondary">
                                     <div className="flex flex-col gap-1.5 border-b border-secondary p-4">

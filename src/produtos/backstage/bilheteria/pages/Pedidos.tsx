@@ -81,10 +81,14 @@ export function PedidosBilheteria() {
 
     const handleResend = (pedido: Pedido, canal: ResendChannel, destino: string) => {
         const at = formatDateTime(new Date());
-        registerResend(pedido.id, at);
-        setDetail((current) => (current && current.id === pedido.id ? { ...current, resentAt: at } : current));
+        registerResend(pedido.id, at, canal, destino);
+        setDetail((current) =>
+            current && current.id === pedido.id
+                ? { ...current, resentAt: at, envios: [...(current.envios ?? []), { canal, destino, at }] }
+                : current,
+        );
         // Saldo do produtor não tem link: o que é enviado são os próprios ingressos.
-        const assunto = pedido.tipo === "saldo" ? "Ingressos" : "Link de pagamento";
+        const assunto = pedido.tipo === "link" ? "Link de pagamento" : "Ingressos";
         toast.success(canal === "email" ? `${assunto} enviado para ${destino}` : `${assunto} enviado no WhatsApp ${destino}`);
     };
 

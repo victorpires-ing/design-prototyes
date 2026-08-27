@@ -188,7 +188,7 @@ export function VenderIngressos() {
                     {phase === "success" && (
                         <OrderSuccess
                             orderId={pedido?.id ?? ""}
-                            channel={method === "saldo" ? "saldo" : "link"}
+                            channel={method === "link" ? "link" : "saldo"}
                             buyer={buyer}
                             fallbackEmail={fallbackEmail}
                             paymentLink={PAYMENT_LINK}
@@ -206,8 +206,8 @@ export function VenderIngressos() {
                             onSend={(canal, destino) =>
                                 toast.success(
                                     canal === "email"
-                                        ? `${method === "saldo" ? "Ingressos" : "Link de pagamento"} enviado para ${destino}`
-                                        : `${method === "saldo" ? "Ingressos" : "Link de pagamento"} enviado no WhatsApp ${destino}`,
+                                        ? `${method === "link" ? "Link de pagamento" : "Ingressos"} enviado para ${destino}`
+                                        : `${method === "link" ? "Link de pagamento" : "Ingressos"} enviado no WhatsApp ${destino}`,
                                 )
                             }
                         />
@@ -295,7 +295,7 @@ export function VenderIngressos() {
                     setSkipped(true);
                     setSearch({ status: "idle" });
                     setTerm("");
-                    setMethod("saldo");
+                    setMethod("externo");
                     setStep(1);
                 }}
             />

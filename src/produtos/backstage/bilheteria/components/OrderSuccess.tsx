@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { FileIcon } from "@untitledui/file-icons";
-import { CheckCircle, Copy01, Mail01, Ticket02 } from "@untitledui/icons";
+import { CheckCircle, Copy01, LinkExternal01, Mail01, Ticket02 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import type { Buyer } from "../data/catalogo";
+import { EVENTO, type Buyer } from "../data/catalogo";
 import { BuyerIdentity, BuyerNoAccount } from "./BuyerStep";
 import { EnviarModal, type CanalEnvio } from "./EnviarModal";
 
@@ -90,6 +90,19 @@ export function OrderSuccess({
                                 aria-label="Link de pagamento"
                                 className="min-w-0 flex-1 truncate rounded-lg bg-primary px-3 py-2 text-sm text-primary ring-1 ring-border-primary shadow-xs ring-inset"
                             />
+                            {/*
+                              Pagar ali na bilheteria, com o vendedor ajudando: no interior
+                              muita gente não acessa o e-mail e é por isso que vai ao PDV.
+                              Sem este botão o link só serve para quem já se vira sozinho.
+                            */}
+                            <Button
+                                size="md"
+                                color="primary"
+                                iconLeading={LinkExternal01}
+                                onClick={() => window.open(`https://${paymentLink}`, "_blank", "noopener,noreferrer")}
+                            >
+                                Pagar aqui
+                            </Button>
                             <Button size="md" color="secondary" iconLeading={Copy01} onClick={copyLink}>
                                 {copied ? "Copiado" : "Copiar"}
                             </Button>
@@ -105,6 +118,11 @@ export function OrderSuccess({
                                 Enviar por WhatsApp
                             </Button>
                         </div>
+                        {/* Prazo à vista: o link segura estoque, e quem vende precisa saber até quando. */}
+                        <p className="text-sm text-tertiary">
+                            O link vale por {EVENTO.validadeLinkDias} dias. Enquanto não for pago, os ingressos seguem reservados para este
+                            pedido.
+                        </p>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-3">

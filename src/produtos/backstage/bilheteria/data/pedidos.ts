@@ -1,7 +1,7 @@
 /** Mock dos pedidos emitidos pela bilheteria online. */
 
 export type PedidoStatus = "pendente" | "aprovado" | "cancelado";
-export type PedidoTipo = "link" | "saldo";
+export type PedidoTipo = "link" | "saldo" | "externo";
 
 export interface PedidoItem {
     id: string;
@@ -32,6 +32,20 @@ export interface Pedido {
     itens: PedidoItem[];
     /** Data/hora do último reenvio do link de pagamento. */
     resentAt?: string;
+    /**
+     * Comprador sem conta Ingresse: o ingresso fica preso até ele concluir o
+     * cadastro. Na porta isso vira fila, então precisa aparecer na gestão.
+     */
+    contaPendente?: boolean;
+    /** Por onde e quando cada envio saiu — o suporte precisa poder dizer isso ao cliente. */
+    envios?: EnvioRegistro[];
+}
+
+export interface EnvioRegistro {
+    canal: "email" | "whatsapp";
+    destino: string;
+    /** Data/hora legível do envio. */
+    at: string;
 }
 
 export const PEDIDO_STATUS_META: Record<PedidoStatus, { label: string; color: "warning" | "success" | "gray" }> = {
@@ -43,6 +57,7 @@ export const PEDIDO_STATUS_META: Record<PedidoStatus, { label: string; color: "w
 export const PEDIDO_TIPO_LABEL: Record<PedidoTipo, string> = {
     link: "Link de pagamento",
     saldo: "Saldo do produtor",
+    externo: "Pagamento por fora",
 };
 
 const PAYMENT_LINK = "cart.ingresse.com/971c14dc-89ba-41dd-a469-cad4a1fde120";

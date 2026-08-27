@@ -215,6 +215,26 @@ const knownBuyers: Array<Buyer & { document?: string }> = [
     },
 ];
 
+/* ------------------------------------------------------------------ */
+/*  Configuração do evento                                             */
+/*                                                                     */
+/*  Pontos levantados na apresentação do MVP: o limite por CPF só faz  */
+/*  sentido quando há CPF, e eventos com facial ou credenciamento não  */
+/*  podem admitir venda anônima.                                       */
+/* ------------------------------------------------------------------ */
+
+export const EVENTO = {
+    /** Limite de ingressos por CPF configurado no evento. */
+    limitePorCpf: 4,
+    /**
+     * Liga a exigência de identificar o comprador. Fica ativo em eventos com
+     * acesso por face ou credenciamento, onde o ingresso nasce nominal.
+     */
+    identificacaoObrigatoria: false,
+    /** Dias até o link de pagamento expirar. */
+    validadeLinkDias: 3,
+};
+
 export const isEmail = (value: string) => value.includes("@");
 
 export const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());

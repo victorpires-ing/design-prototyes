@@ -38,6 +38,9 @@ import { EquipeV2Provider } from '../produtos/backstage/equipe-de-operacao-v2/da
 import { EquipeDeOperacaoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/EquipeDeOperacaoV2';
 import { CriarGrupoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/CriarGrupoV2';
 import { DetalheGrupoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/DetalheGrupoV2';
+import { BilheteriaProvider } from '../produtos/backstage/bilheteria-online/data/bilheteria-store';
+import { BilheteriaOnline } from '../produtos/backstage/bilheteria-online/pages/BilheteriaOnline';
+import { NovaVenda } from '../produtos/backstage/bilheteria-online/pages/NovaVenda';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VenderIngressos } from '../produtos/backstage/bilheteria/pages/VenderIngressos';
 import { IngressoPdf } from '../produtos/backstage/bilheteria/pages/IngressoPdf';
@@ -193,6 +196,7 @@ export default function App() {
       <PesquisasProvider>
       <EquipeProvider>
       <EquipeV2Provider>
+      <BilheteriaProvider>
       <Routes>
         <Route path="/" element={<ProductSelection />} />
         <Route path="/loading" element={<CymaticsShowcase />} />
@@ -202,6 +206,8 @@ export default function App() {
         <Route path="/backstage/home" element={<BackstageHome />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
+        <Route path="/backstage/bilheteria-online" element={<BilheteriaOnline />} />
+        <Route path="/backstage/bilheteria-online/nova" element={<NovaVenda />} />
         <Route path="/backstage/equipe-de-operacao" element={<EquipeDeOperacao />} />
         {/* v2: o grupo ganha permissões de cortesia, PDV e bilheteria, cada uma com sua cota. */}
         <Route path="/backstage/equipe-de-operacao/v2" element={<EquipeDeOperacaoV2 />} />
@@ -360,6 +366,7 @@ export default function App() {
         <Route path="/payin/suspensao-de-conta/historico/:contaId" element={<HistoricoSuspensao />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
+      </BilheteriaProvider>
       </EquipeV2Provider>
       </EquipeProvider>
       </PesquisasProvider>

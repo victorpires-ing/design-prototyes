@@ -9,6 +9,7 @@ import { cx } from "@/utils/cx";
 import { formatBRL, isValidEmail } from "../data/catalogo";
 import { PEDIDO_STATUS_META, PEDIDO_TIPO_LABEL, type Pedido } from "../data/pedidos";
 import { EnviarModal, type CanalEnvio } from "./EnviarModal";
+import { QrMock } from "./QrMock";
 
 export type ResendChannel = "email" | "whatsapp";
 export type PedidoDownload = "pdf" | "zebra" | "csv";
@@ -69,14 +70,6 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
                             </div>
 
                             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 pb-6">
-                                <div className="flex flex-col gap-1">
-                                    <p className="text-sm font-semibold text-primary">{pedido.title}</p>
-                                    <p className="text-sm text-secondary">Sessões: {pedido.sessions}</p>
-                                    <p className="text-sm text-tertiary">{pedido.sessionShort}</p>
-                                </div>
-
-                                <hr className="border-secondary" />
-
                                 <dl className="flex flex-col gap-3">
                                     <div className="flex items-center gap-2">
                                         <dt className="text-sm text-tertiary">Status:</dt>
@@ -110,6 +103,7 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
                                 </dl>
 
                                 {pedido.tipo === "link" && (
+                                    <div className="flex flex-col gap-3">
                                     <div className="flex items-center gap-2">
                                         <input
                                             readOnly
@@ -128,6 +122,23 @@ export function PedidoDetailsSlideOut({ pedido, onClose, onResend, onDownload }:
                                         >
                                             Copiar
                                         </Button>
+                                    </div>
+
+                                    {/*
+                                      O comprador volta ao guichê sem ter pago: o QR precisa
+                                      estar aqui também, não só na tela de sucesso da venda.
+                                    */}
+                                    {pedido.status === "pendente" && (
+                                        <div className="flex items-center gap-4 rounded-lg bg-secondary p-4">
+                                            <QrMock value={pedido.paymentLink} className="size-28 shrink-0 rounded-md" />
+                                            <div className="flex min-w-0 flex-col gap-1">
+                                                <p className="text-sm font-semibold text-primary">Mostre este código ao comprador</p>
+                                                <p className="text-sm text-tertiary">
+                                                    Ele aponta a câmera do celular, abre o checkout no próprio aparelho e escolhe como pagar.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                     </div>
                                 )}
 

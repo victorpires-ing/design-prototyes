@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { FileIcon } from "@untitledui/file-icons";
-import { CheckCircle, Copy01, LinkExternal01, Mail01, Ticket02 } from "@untitledui/icons";
+import { CheckCircle, Copy01, Mail01, Ticket02 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { EVENTO, type Buyer } from "../data/catalogo";
+import { QrMock } from "./QrMock";
 import { BuyerIdentity, BuyerNoAccount } from "./BuyerStep";
 import { EnviarModal, type CanalEnvio } from "./EnviarModal";
 
@@ -90,19 +91,6 @@ export function OrderSuccess({
                                 aria-label="Link de pagamento"
                                 className="min-w-0 flex-1 truncate rounded-lg bg-primary px-3 py-2 text-sm text-primary ring-1 ring-border-primary shadow-xs ring-inset"
                             />
-                            {/*
-                              Pagar ali na bilheteria, com o vendedor ajudando: no interior
-                              muita gente não acessa o e-mail e é por isso que vai ao PDV.
-                              Sem este botão o link só serve para quem já se vira sozinho.
-                            */}
-                            <Button
-                                size="md"
-                                color="primary"
-                                iconLeading={LinkExternal01}
-                                onClick={() => window.open(`https://${paymentLink}`, "_blank", "noopener,noreferrer")}
-                            >
-                                Pagar aqui
-                            </Button>
                             <Button size="md" color="secondary" iconLeading={Copy01} onClick={copyLink}>
                                 {copied ? "Copiado" : "Copiar"}
                             </Button>
@@ -118,6 +106,22 @@ export function OrderSuccess({
                                 Enviar por WhatsApp
                             </Button>
                         </div>
+                        {/*
+                          O QR é o caminho mais curto do balcão: quem não acessa e-mail
+                          aponta a câmera e cai no checkout no próprio celular, onde
+                          escolhe como pagar. A fila anda e nenhum dado de cartão passa
+                          pela máquina do operador.
+                        */}
+                        <div className="flex flex-col items-center gap-3 rounded-lg bg-secondary p-4 sm:flex-row sm:items-center sm:gap-4">
+                            <QrMock value={paymentLink} className="size-32 shrink-0 rounded-md" />
+                            <div className="flex min-w-0 flex-col gap-1">
+                                <p className="text-sm font-semibold text-primary">Mostre este código ao comprador</p>
+                                <p className="text-sm text-tertiary">
+                                    Ele aponta a câmera do celular, abre o checkout no próprio aparelho e escolhe como pagar.
+                                </p>
+                            </div>
+                        </div>
+
                         {/* Prazo à vista: o link segura estoque, e quem vende precisa saber até quando. */}
                         <p className="text-sm text-tertiary">
                             O link vale por {EVENTO.validadeLinkDias} dias. Enquanto não for pago, os ingressos seguem reservados para este

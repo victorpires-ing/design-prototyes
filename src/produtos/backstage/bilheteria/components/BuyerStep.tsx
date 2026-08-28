@@ -116,18 +116,18 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
             <p className="text-sm text-tertiary">
                 {EVENTO.identificacaoObrigatoria ? (
                     <>
-                        Este evento exige identificar o comprador — acesso por face ou credenciamento emitem ingresso nominal, então não dá
+                        Este evento exige identificar o comprador. Acesso por face e credenciamento emitem ingresso nominal, então não dá
                         para pular esta etapa.
                     </>
                 ) : EVENTO.limitePorCpf > 0 ? (
                     <>
                         Com o comprador identificado, vale o limite do evento:{" "}
                         <strong className="font-semibold text-secondary">{ingressosPorCpf(EVENTO.limitePorCpf)}</strong>. Sem identificação
-                        não há limite — é assim que se emite pré-impresso em lote.
+                        não há limite, e é assim que se emite pré-impresso em lote.
                     </>
                 ) : (
                     // Sem limite configurado, anunciar um limite seria mentira: sobra o que a identificação muda.
-                    <>Sem identificar o comprador, o ingresso não fica nominal — é assim que se emite pré-impresso em lote.</>
+                    <>Sem identificar o comprador, o ingresso não fica nominal, e é assim que se emite pré-impresso em lote.</>
                 )}
             </p>
 

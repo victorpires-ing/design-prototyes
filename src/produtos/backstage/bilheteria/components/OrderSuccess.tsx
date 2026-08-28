@@ -46,7 +46,9 @@ export function OrderSuccess({
     const assunto = channel === "link" ? "o link de pagamento" : "os ingressos";
 
     return (
-        <div className="flex w-full max-w-[800px] flex-col items-center gap-5">
+        // pt-12: com os 8px que já vinham do header, dá os 56px de respiro
+        // entre o título da página e o check da confirmação.
+        <div className="flex w-full max-w-[800px] flex-col items-center gap-5 pt-12">
             <div className="flex flex-col items-center gap-3">
                 <FeaturedIcon icon={CheckCircle} color="success" theme="dark" size="lg" className="rounded-full" />
                 <h2 className="text-display-xs font-bold text-primary">Pedido emitido!</h2>

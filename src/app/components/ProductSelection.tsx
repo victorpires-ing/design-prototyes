@@ -91,8 +91,8 @@ const PRODUCTS: ProductCardData[] = [
     {
         id: "payout",
         name: "PayOut",
-        description: "Saída de dinheiro: repasses aos organizadores e estornos",
-        to: "/payout",
+        description: "Cashout: associação de contratos a eventos e produtoras",
+        to: "/payout/contrato-quick-win-finance",
         illustration: "payout",
     },
 ];

@@ -159,7 +159,8 @@ import { EnviarCortesiasFlow, ResgatarCortesiasFlow } from '../produtos/freepass
 import { Reanalise } from '../produtos/payin/suspensao-de-conta/pages/Reanalise';
 import { SuspenderUsuario } from '../produtos/payin/suspensao-de-conta/pages/SuspenderUsuario';
 import { HistoricoSuspensao } from '../produtos/payin/suspensao-de-conta/pages/HistoricoSuspensao';
-import { PayOut } from '../produtos/payout/pages/payout';
+import { Eventos as CashoutEventos } from '../produtos/payout/contrato-quick-win-finance/pages/eventos';
+import { Produtoras as CashoutProdutoras } from '../produtos/payout/contrato-quick-win-finance/pages/produtoras';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -349,7 +350,8 @@ export default function App() {
         <Route path="/payin/suspensao-de-conta" element={<Reanalise />} />
         <Route path="/payin/suspensao-de-conta/suspender-usuario" element={<SuspenderUsuario />} />
         <Route path="/payin/suspensao-de-conta/historico/:contaId" element={<HistoricoSuspensao />} />
-        <Route path="/payout" element={<PayOut />} />
+        <Route path="/payout/contrato-quick-win-finance" element={<CashoutEventos />} />
+        <Route path="/payout/contrato-quick-win-finance/produtoras" element={<CashoutProdutoras />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </EquipeV2Provider>

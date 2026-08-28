@@ -3,27 +3,36 @@
 Produto de **saída de dinheiro** — a contraparte do PayIn: repasses aos
 organizadores, estornos e afins.
 
-O produto já está registrado na aplicação:
+A superfície do produto é o painel administrativo **Cashout**. O shell
+compartilhado entre os projetos vive em `components/cashout-shell.tsx`
+(sidebar com Produtoras · Eventos · Inputs · Painel de Controle).
 
-- card na home em `src/app/components/ProductSelection.tsx` (ilustração `payout`)
-- rota `/payout` em `src/app/App.tsx`, apontando para `pages/payout.tsx`
+## Projetos
 
-`pages/payout.tsx` é só a tela de entrada provisória — **ainda não existe
-nenhum projeto**. Para criar o primeiro, duplique `_projeto/` de
-`src/produtos/_template/` aqui dentro e renomeie em `kebab-case`
-(ex: `repasses/`), registre as páginas como rotas em `src/app/App.tsx` e
-aponte o `to` do card do produto para a primeira tela do projeto.
+### `contrato-quick-win-finance/`
+
+Associação de contratos a eventos. Implementa o refinamento do Figma
+(`Contrato - Quick Wins`, section "Refinamento", node `4108:811`):
+
+- **Eventos** (`/payout/contrato-quick-win-finance`) — tabela de eventos com a
+  situação do contrato associado (ativo, em renegociação, ativo por meta de
+  GMV, sem contrato, inativo) e o drawer de associação em 2 steps
+- **Produtoras** (`/payout/contrato-quick-win-finance/produtoras`) — tabela de
+  produtoras com a linha expansível listando os contratos de cada uma
 
 ## Estrutura
 
 ```
 payout/
-├── components/          # componentes compartilhados entre projetos do produto
-├── pages/
-│   └── payout.tsx       # entrada provisória do produto (substituir pelo 1º projeto)
-└── <projeto>/           # a criar
-    ├── pages/
-    ├── components/
-    ├── data/
+├── components/
+│   └── cashout-shell.tsx     # sidebar do Cashout, compartilhada entre projetos
+└── contrato-quick-win-finance/
+    ├── pages/                # eventos.tsx · produtoras.tsx
+    ├── components/           # kit local (ui), drawer, capas, grid de condições
+    ├── data/                 # cashout.ts — mocks e tipos
     └── utils/
 ```
+
+Para criar um projeto novo no PayOut, duplique `_projeto/` de
+`src/produtos/_template/` aqui dentro, reaproveite o `CashoutShell` de
+`components/` e registre as rotas em `src/app/App.tsx`.

@@ -7,7 +7,7 @@ import { cx } from "@/utils/cx";
 /*  Products                                                          */
 /* ------------------------------------------------------------------ */
 
-type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes" | "marketplace" | "carteira-web" | "freepass" | "payin";
+type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes" | "marketplace" | "carteira-web" | "freepass" | "payin" | "payout";
 
 interface ProductCardData {
     id: string;
@@ -88,6 +88,13 @@ const PRODUCTS: ProductCardData[] = [
         to: "/payin/suspensao-de-conta",
         illustration: "payin",
     },
+    {
+        id: "payout",
+        name: "PayOut",
+        description: "Saída de dinheiro: repasses aos organizadores e estornos",
+        to: "/payout",
+        illustration: "payout",
+    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
@@ -101,6 +108,7 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     "carteira-web": CarteiraWebIllustration,
     freepass: FreepassIllustration,
     payin: PayInIllustration,
+    payout: PayOutIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -216,6 +224,51 @@ function PayInIllustration() {
                 <path d="M164 80 L186 80" />
                 <polyline points="180,74 186,80 180,86" />
             </g>
+        </svg>
+    );
+}
+
+function PayOutIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <defs>
+                <linearGradient id="po-bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="160">
+                    <stop offset="0%" stopColor={N100} />
+                    <stop offset="100%" stopColor={N200} />
+                </linearGradient>
+            </defs>
+            <rect width="320" height="160" fill="url(#po-bg)" />
+
+            {/* Saldo a repassar */}
+            <rect x="24" y="36" width="112" height="88" rx="10" fill={N50} stroke={BORDER} />
+            <rect x="24" y="36" width="112" height="16" rx="10" fill={N200} />
+            <rect x="34" y="62" width="58" height="9" rx="4.5" fill={N200} />
+            <rect x="34" y="78" width="82" height="14" rx="4" fill={N300} />
+            <circle cx="116" cy="110" r="10" fill={BRAND_SOFT} />
+            <circle cx="116" cy="110" r="4" fill={BRAND} />
+
+            {/* Saída do dinheiro */}
+            <g stroke={BRAND} strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M146 80 L176 80" />
+                <polyline points="170,74 176,80 170,86" />
+            </g>
+
+            {/* Organizadores recebendo */}
+            <rect x="186" y="48" width="110" height="22" rx="6" fill={BRAND_SOFT} />
+            <rect x="186" y="48" width="4" height="22" rx="2" fill={BRAND} />
+            <circle cx="202" cy="59" r="7" fill={N100} />
+            <rect x="215" y="55" width="42" height="8" rx="4" fill={N400} />
+            <rect x="266" y="55" width="22" height="8" rx="4" fill={BRAND} />
+
+            <rect x="186" y="74" width="110" height="22" rx="6" fill={N50} stroke={BORDER} />
+            <circle cx="202" cy="85" r="7" fill={N100} />
+            <rect x="215" y="81" width="42" height="8" rx="4" fill={N200} />
+            <rect x="266" y="81" width="22" height="8" rx="4" fill={N200} />
+
+            <rect x="186" y="100" width="110" height="22" rx="6" fill={N50} stroke={BORDER} />
+            <circle cx="202" cy="111" r="7" fill={N100} />
+            <rect x="215" y="107" width="42" height="8" rx="4" fill={N200} />
+            <rect x="266" y="107" width="22" height="8" rx="4" fill={N200} />
         </svg>
     );
 }

@@ -121,13 +121,12 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
                     </>
                 ) : EVENTO.limitePorCpf > 0 ? (
                     <>
-                        Com o comprador identificado, vale o limite do evento:{" "}
-                        <strong className="font-semibold text-secondary">{ingressosPorCpf(EVENTO.limitePorCpf)}</strong>. Sem identificação
-                        não há limite, e é assim que se emite pré-impresso em lote.
+                        O limite de <strong className="font-semibold text-secondary">{ingressosPorCpf(EVENTO.limitePorCpf)}</strong> vale
+                        apenas quando o comprador é identificado. Compras sem identificação não têm limite.
                     </>
                 ) : (
                     // Sem limite configurado, anunciar um limite seria mentira: sobra o que a identificação muda.
-                    <>Sem identificar o comprador, o ingresso não fica nominal, e é assim que se emite pré-impresso em lote.</>
+                    <>Compras sem identificação não geram ingresso nominal.</>
                 )}
             </p>
 

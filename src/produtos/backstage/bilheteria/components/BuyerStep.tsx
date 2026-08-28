@@ -152,7 +152,7 @@ const ResultCard = ({ title, identity, children }: { title?: string; identity?: 
 /** Conta encontrada — ícone de sucesso e os dados da conta. */
 export const BuyerIdentity = ({ buyer }: { buyer: Buyer }) => (
     <div className="flex items-center gap-3">
-        <FeaturedIcon icon={CheckCircle} color="success" theme="dark" size="lg" className="shrink-0 rounded-full" />
+        <FeaturedIcon icon={CheckCircle} color="success" theme="dark" size="md" className="shrink-0 rounded-full" />
         <div className="flex min-w-0 flex-col">
             <p className="truncate text-sm font-semibold text-primary">{buyer.name}</p>
             {/*
@@ -175,7 +175,7 @@ export const BuyerIdentity = ({ buyer }: { buyer: Buyer }) => (
 /** Sem conta na Ingresse — mesmo bloco, em tom de atenção. */
 export const BuyerNoAccount = ({ email }: { email: string }) => (
     <div className="flex items-center gap-3">
-        <FeaturedIcon icon={AlertCircle} color="gray" theme="gradient" size="lg" className="shrink-0 rounded-full" />
+        <FeaturedIcon icon={AlertCircle} color="gray" theme="gradient" size="md" className="shrink-0 rounded-full" />
         <div className="flex min-w-0 flex-col">
             <p className="truncate text-sm font-semibold text-primary">Comprador ainda sem conta</p>
             <p className="truncate text-sm text-tertiary">{email}</p>

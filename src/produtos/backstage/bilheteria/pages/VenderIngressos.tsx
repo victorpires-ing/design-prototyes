@@ -15,11 +15,11 @@ import { OrderSuccess } from "../components/OrderSuccess";
 import { PaymentStep, type PaymentMethod } from "../components/PaymentStep";
 import { ResumoPanel } from "../components/ResumoPanel";
 import { SkipIdentificationModal } from "../components/SkipIdentificationModal";
-import { cartCount, cartTotal, type Cart } from "../data/carrinho";
+import { cartCount, cartTicketCount, cartTotal, isTicket, type Cart } from "../data/carrinho";
 import { addPedido, createPedido } from "../data/pedidos-store";
 import { gerarIngressosCsv, gerarIngressosPdf } from "../utils/gerar-ingressos";
 import type { Pedido } from "../data/pedidos";
-import { findBuyers, formatBRL, isEmail, isValidEmail, type Buyer } from "../data/catalogo";
+import { EVENTO, findBuyers, formatBRL, isEmail, isValidEmail, type Buyer } from "../data/catalogo";
 
 type Phase = "flow" | "processing" | "success";
 
@@ -67,6 +67,14 @@ export function VenderIngressos() {
         [step],
     );
 
+    /*
+      O limite do evento é por documento, então só existe quando há documento:
+      venda sem identificação passa direto, que é o caminho do pré-impresso.
+      Ao esgotar, o + dos ingressos trava — nada de deixar somar e acusar depois.
+    */
+    const ingressosRestantes =
+        skipped || EVENTO.limitePorDocumento <= 0 ? undefined : Math.max(0, EVENTO.limitePorDocumento - cartTicketCount(cart));
+
     const canAdvance = useMemo(() => {
         if (step === 0) return skipped || Boolean(buyer) || search.status === "email-not-found";
         if (step === 1) return count > 0;
@@ -109,14 +117,35 @@ export function VenderIngressos() {
         setPedido(null);
     }, []);
 
-    const handleQuantityChange = useCallback((id: string, quantity: number) => {
-        setCart((current) => {
-            const next = { ...current };
-            if (quantity <= 0) delete next[id];
-            else next[id] = quantity;
-            return next;
-        });
-    }, []);
+    const handleQuantityChange = useCallback(
+        (id: string, quantity: number) => {
+            setCart((current) => {
+                const next = { ...current };
+                if (quantity <= 0) {
+                    delete next[id];
+                    return next;
+                }
+
+                /*
+                  A trava mora aqui, não no input: o teto vale para o carrinho
+                  inteiro, e cada campo só conhece a própria linha. Sem isso, o
+                  ingresso que atingiu o limite parava, mas o vizinho continuava
+                  somando por cima.
+                */
+                const limite = skipped ? 0 : EVENTO.limitePorDocumento;
+                if (limite > 0 && isTicket(id)) {
+                    const outros = cartTicketCount(current) - (current[id] ?? 0);
+                    next[id] = Math.max(0, Math.min(quantity, limite - outros));
+                    if (next[id] === 0) delete next[id];
+                    return next;
+                }
+
+                next[id] = quantity;
+                return next;
+            });
+        },
+        [skipped],
+    );
 
     const handleAdvance = useCallback(() => {
         if (!canAdvance || step >= 2) return;
@@ -254,7 +283,12 @@ export function VenderIngressos() {
 
                             {step === 1 && (
                                 <div className="flex w-full max-w-[1024px] gap-4 max-md:pb-28">
-                                    <ItemsStep cart={cart} facialBlocked={skipped} onQuantityChange={handleQuantityChange} />
+                                    <ItemsStep
+                                        cart={cart}
+                                        facialBlocked={skipped}
+                                        onQuantityChange={handleQuantityChange}
+                                        ingressosRestantes={ingressosRestantes}
+                                    />
                                     <ResumoPanel
                                         cart={cart}
                                         onRemove={(id) => handleQuantityChange(id, 0)}

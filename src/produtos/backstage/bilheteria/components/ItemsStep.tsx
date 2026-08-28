@@ -21,6 +21,12 @@ interface ItemsStepProps {
     onQuantityChange: (id: string, quantity: number) => void;
     /** Identificação pulada — ingressos com acesso por face não podem ser vendidos. */
     facialBlocked: boolean;
+    /**
+     * Quantos ingressos ainda cabem no limite do evento. `undefined` quando não
+     * há limite: venda sem identificação, ou evento sem limite configurado.
+     * Ao zerar, o + dos ingressos trava, em vez de deixar passar e acusar depois.
+     */
+    ingressosRestantes?: number;
 }
 
 const matches = (term: string, ...fields: string[]) => {
@@ -29,7 +35,7 @@ const matches = (term: string, ...fields: string[]) => {
     return fields.some((field) => field.toLowerCase().includes(query));
 };
 
-export function ItemsStep({ cart, onQuantityChange, facialBlocked }: ItemsStepProps) {
+export function ItemsStep({ cart, onQuantityChange, facialBlocked, ingressosRestantes }: ItemsStepProps) {
     const [tab, setTab] = useState<ItemsTab>("ingressos");
     const [term, setTerm] = useState("");
 
@@ -77,6 +83,7 @@ export function ItemsStep({ cart, onQuantityChange, facialBlocked }: ItemsStepPr
                             tickets={session.tickets}
                             cart={cart}
                             facialBlocked={facialBlocked}
+                            ingressosRestantes={ingressosRestantes}
                             onQuantityChange={onQuantityChange}
                         />
                     ))}
@@ -142,10 +149,11 @@ interface SessionAccordionProps {
     cart: Cart;
     defaultOpen: boolean;
     facialBlocked: boolean;
+    ingressosRestantes?: number;
     onQuantityChange: (id: string, quantity: number) => void;
 }
 
-const SessionAccordion = ({ label, tickets, cart, defaultOpen, facialBlocked, onQuantityChange }: SessionAccordionProps) => {
+const SessionAccordion = ({ label, tickets, cart, defaultOpen, facialBlocked, ingressosRestantes, onQuantityChange }: SessionAccordionProps) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
 
     return (
@@ -204,6 +212,11 @@ const SessionAccordion = ({ label, tickets, cart, defaultOpen, facialBlocked, on
                                     label={ticket.name}
                                     isDisabled={isBlocked}
                                     value={isBlocked ? 0 : (cart[ticket.id] ?? 0)}
+                                    maxValue={
+                                        ingressosRestantes === undefined
+                                            ? undefined
+                                            : (cart[ticket.id] ?? 0) + ingressosRestantes
+                                    }
                                     onChange={(quantity) => onQuantityChange(ticket.id, quantity)}
                                 />
                             </div>

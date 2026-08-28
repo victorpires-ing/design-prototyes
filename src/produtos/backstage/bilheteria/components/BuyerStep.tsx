@@ -4,7 +4,7 @@ import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { InputBase } from "@/components/base/input/input";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
-import { EVENTO, ingressosPorCpf, type Buyer } from "../data/catalogo";
+import { EVENTO, ingressosPorDocumento, type Buyer } from "../data/catalogo";
 
 export type BuyerSearch =
     | { status: "idle" }
@@ -119,9 +119,10 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
                         Este evento exige identificar o comprador. Acesso por face e credenciamento emitem ingresso nominal, então não dá
                         para pular esta etapa.
                     </>
-                ) : EVENTO.limitePorCpf > 0 ? (
+                ) : EVENTO.limitePorDocumento > 0 ? (
                     <>
-                        O limite de <strong className="font-semibold text-secondary">{ingressosPorCpf(EVENTO.limitePorCpf)}</strong> vale
+                        O limite do evento são{" "}
+                        <strong className="font-semibold text-secondary">{ingressosPorDocumento(EVENTO.limitePorDocumento)}</strong> e vale
                         apenas quando o comprador é identificado. Compras sem identificação não têm limite.
                     </>
                 ) : (

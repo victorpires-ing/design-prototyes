@@ -1,5 +1,5 @@
 import { XClose } from "@untitledui/icons";
-import { EVENTO, ingressosPorCpf } from "../data/catalogo";
+import { EVENTO, ingressosPorDocumento } from "../data/catalogo";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -29,11 +29,11 @@ export function SkipIdentificationModal({ isOpen, onClose, onConfirm }: SkipIden
                         <p className="mt-2 text-sm text-tertiary">
                             Esta venda fica sem <strong className="font-semibold text-secondary">link de pagamento</strong> e sem ingressos
                             com <strong className="font-semibold text-secondary">acesso por face</strong>.
-                            {EVENTO.limitePorCpf > 0 && (
+                            {EVENTO.limitePorDocumento > 0 && (
                                 <>
                                     {" "}
                                     Em troca, o limite de{" "}
-                                    <strong className="font-semibold text-secondary">{ingressosPorCpf(EVENTO.limitePorCpf)}</strong> não
+                                    <strong className="font-semibold text-secondary">{ingressosPorDocumento(EVENTO.limitePorDocumento)}</strong> não
                                     vale, e dá para emitir em lote.
                                 </>
                             )}

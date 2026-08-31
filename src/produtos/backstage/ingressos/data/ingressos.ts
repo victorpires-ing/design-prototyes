@@ -53,11 +53,13 @@ const SESSAO_DEFS = [
     { key: "s3", label: "24/09/2026 às 21:30", diaSemana: "Quinta-feira" },
 ];
 
+// Cada grupo tem um conjunto próprio de tipos de ingresso (composições diferentes),
+// para o teste de "copiar para outros grupos" ter destinos disponíveis e conflitos.
 const GRUPO_DEFS = [
-    { key: "norte", name: "Arquibancada Norte", acesso: "Portão A" },
-    { key: "sul", name: "Arquibancada Sul", acesso: "Portão B" },
-    { key: "cadeira", name: "Cadeira Inferior", acesso: "Portão C" },
-    { key: "premium", name: "Setor Premium", acesso: "Portão VIP" },
+    { key: "norte", name: "Arquibancada Norte", acesso: "Portão A", tipos: ["inteira", "meia", "estudante"] },
+    { key: "sul", name: "Arquibancada Sul", acesso: "Portão B", tipos: ["inteira", "meia"] },
+    { key: "cadeira", name: "Cadeira Inferior", acesso: "Portão C", tipos: ["inteira", "socio", "visitante"] },
+    { key: "premium", name: "Setor Premium", acesso: "Portão VIP", tipos: ["inteira", "visitante"] },
 ];
 
 const TIPO_DEFS = [
@@ -82,8 +84,8 @@ const buildLotes = (prefix: string, base: number): Lote[] =>
         emissoes: `0 de ${100 + i * 20}`,
     }));
 
-const buildIngressos = (prefix: string): Ingresso[] =>
-    TIPO_DEFS.map((t) => {
+const buildIngressos = (prefix: string, tipos: string[]): Ingresso[] =>
+    TIPO_DEFS.filter((t) => tipos.includes(t.key)).map((t) => {
         const id = `${prefix}-${t.key}`;
         return {
             id,
@@ -111,7 +113,7 @@ export const SESSOES: Sessao[] = SESSAO_DEFS.map((s) => ({
             emissoes: "0 de 4.500",
             pendentes: "0",
             acesso: g.acesso,
-            ingressos: buildIngressos(gid),
+            ingressos: buildIngressos(gid, g.tipos),
         };
     }),
 }));

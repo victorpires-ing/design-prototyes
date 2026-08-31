@@ -1,10 +1,10 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { ChevronDown, ChevronLeft, Copy01, InfoCircle, Plus, Trash01, XClose } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
-import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 
@@ -40,19 +40,23 @@ const SESSOES_DEF = [
 const TIPOS = ["Código QR", "Facial", "Código de barras"];
 
 /** Template das colunas da tabela de grupos. */
-const COLS = "grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_11rem_minmax(0,1.4fr)_6rem_2.5rem]";
+const COLS = "grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_11rem_minmax(0,1.4fr)_6rem_5rem]";
 
 export function EditarGrupos() {
     const navigate = useNavigate();
     const seq = useRef(0);
     const nid = () => `g-${(seq.current += 1)}`;
 
+    // Cenário do protótipo: a 1ª sessão já tem grupos; as demais começam vazias.
     const [sessoes, setSessoes] = useState<SessaoGrupos[]>(() =>
-        SESSOES_DEF.map((s) => ({ ...s, grupos: GRUPOS_TPL.map((g) => ({ ...g, id: nid() })) })),
+        SESSOES_DEF.map((s, i) => ({ ...s, grupos: i === 0 ? GRUPOS_TPL.map((g) => ({ ...g, id: nid() })) : [] })),
     );
-    const [confirm, setConfirm] = useState<{ tipo: "duplicar" | "remover"; id: string } | null>(null);
-    // Badge temporária "cópia de grupo" no grupo recém-duplicado.
-    const [flashId, setFlashId] = useState<string | null>(null);
+    const [removerId, setRemoverId] = useState<string | null>(null);
+    // Modal "Copiar para outras sessões": grupoId nulo = copiar todos os grupos da sessão.
+    const [copia, setCopia] = useState<{ sessaoId: string; grupoId: string | null } | null>(null);
+    const [alvos, setAlvos] = useState<Set<string>>(new Set());
+    // Destaque temporário nos grupos recém-copiados.
+    const [flashGrupos, setFlashGrupos] = useState<Set<string>>(new Set());
 
     const removerSessao = (sessaoId: string) => setSessoes((prev) => prev.filter((s) => s.id !== sessaoId));
 
@@ -64,23 +68,83 @@ export function EditarGrupos() {
         );
     const removeGrupo = (sessaoId: string, grupoId: string) =>
         setSessoes((prev) => prev.map((s) => (s.id === sessaoId ? { ...s, grupos: s.grupos.filter((g) => g.id !== grupoId) } : s)));
+    const updateGrupo = (sessaoId: string, grupoId: string, campo: keyof GrupoRow, valor: string) =>
+        setSessoes((prev) =>
+            prev.map((s) => (s.id === sessaoId ? { ...s, grupos: s.grupos.map((g) => (g.id === grupoId ? { ...g, [campo]: valor } : g)) } : s)),
+        );
 
-    // Duplica a sessão (com todos os grupos) logo abaixo, com novos ids + badge temporária.
-    const duplicarSessao = (sessaoId: string) => {
-        const orig = sessoes.find((s) => s.id === sessaoId);
-        if (!orig) return;
-        const copiaId = `s-${(seq.current += 1)}`;
-        const copia: SessaoGrupos = { ...orig, id: copiaId, grupos: orig.grupos.map((g) => ({ ...g, id: nid() })) };
-        setSessoes((prev) => {
-            const idx = prev.findIndex((s) => s.id === sessaoId);
-            if (idx === -1) return prev;
-            const next = [...prev];
-            next.splice(idx + 1, 0, copia);
+    // ---- Copiar para outras sessões (um grupo ou todos os grupos da sessão) ----
+    // Grupos de origem: um único grupo, ou todos os da sessão quando grupoId é nulo.
+    const fonte = useMemo(() => {
+        if (!copia) return null;
+        const sessao = sessoes.find((s) => s.id === copia.sessaoId);
+        if (!sessao) return null;
+        const grupos = copia.grupoId ? sessao.grupos.filter((g) => g.id === copia.grupoId) : sessao.grupos;
+        return { sessao, grupos };
+    }, [copia, sessoes]);
+
+    const copiandoSessao = !!copia && !copia.grupoId;
+    const nomeOrigem = fonte?.grupos[0]?.nome.trim() ?? "";
+    // Nomes (normalizados) dos grupos de origem, usados para detectar equivalência.
+    const nomesOrigem = useMemo(
+        () => (fonte?.grupos ?? []).map((g) => g.nome.trim().toLowerCase()).filter(Boolean),
+        [fonte],
+    );
+
+    // Outras sessões (exceto a de origem). Uma sessão é conflito quando já possui todos os grupos de origem.
+    const outrasSessoes = useMemo(() => {
+        if (!copia) return [];
+        return sessoes
+            .filter((s) => s.id !== copia.sessaoId)
+            .map((s) => {
+                const nomesAlvo = new Set(s.grupos.map((g) => g.nome.trim().toLowerCase()).filter(Boolean));
+                const faltantes = nomesOrigem.filter((n) => !nomesAlvo.has(n));
+                return { id: s.id, label: s.label, dia: s.dia, jaTem: nomesOrigem.length > 0 && faltantes.length === 0 };
+            });
+    }, [copia, sessoes, nomesOrigem]);
+
+    const disponiveis = outrasSessoes.filter((s) => !s.jaTem);
+    const todasSelecionadas = disponiveis.length > 0 && disponiveis.every((s) => alvos.has(s.id));
+    const algumaSelecionada = disponiveis.some((s) => alvos.has(s.id));
+
+    const abrirCopia = (sessaoId: string, grupoId: string | null = null) => {
+        setAlvos(new Set());
+        setCopia({ sessaoId, grupoId });
+    };
+
+    const toggleAlvo = (id: string) =>
+        setAlvos((prev) => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
             return next;
         });
-        // Badge some (com fade) depois de 30s.
-        setFlashId(copiaId);
-        window.setTimeout(() => setFlashId((cur) => (cur === copiaId ? null : cur)), 30000);
+
+    const toggleTodas = () => setAlvos(todasSelecionadas ? new Set() : new Set(disponiveis.map((s) => s.id)));
+
+    const confirmarCopia = () => {
+        if (!fonte || alvos.size === 0) return;
+        // Calcula as cópias fora do updater para manter a cópia independente e o destaque estável.
+        const novosIds: string[] = [];
+        const adicoes: Record<string, GrupoRow[]> = {};
+        sessoes.forEach((s) => {
+            if (!alvos.has(s.id)) return;
+            const nomesAlvo = new Set(s.grupos.map((g) => g.nome.trim().toLowerCase()).filter(Boolean));
+            adicoes[s.id] = fonte.grupos
+                .filter((g) => {
+                    const n = g.nome.trim().toLowerCase();
+                    return n === "" || !nomesAlvo.has(n); // não sobrescreve grupos equivalentes já existentes
+                })
+                .map((g) => {
+                    const id = nid();
+                    novosIds.push(id);
+                    return { ...g, id };
+                });
+        });
+        setSessoes((prev) => prev.map((s) => (adicoes[s.id]?.length ? { ...s, grupos: [...s.grupos, ...adicoes[s.id]] } : s)));
+        const novos = new Set(novosIds);
+        setFlashGrupos(novos);
+        window.setTimeout(() => setFlashGrupos((cur) => (cur === novos ? new Set() : cur)), 4000);
+        setCopia(null);
     };
 
     return (
@@ -125,43 +189,30 @@ export function EditarGrupos() {
                                     <h2 className="text-lg font-semibold text-primary">
                                         {sessao.label} <span className="font-normal text-tertiary">({sessao.dia})</span>
                                     </h2>
-                                    <AnimatePresence>
-                                        {flashId === sessao.id && (
-                                            <motion.span
-                                                initial={{ opacity: 0, scale: 0.8, y: -4 }}
-                                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.6, ease: "easeInOut" } }}
-                                                transition={{ type: "spring", stiffness: 420, damping: 22 }}
-                                            >
-                                                <Badge size="sm" color="blue" type="pill-color">
-                                                    cópia de grupo
-                                                </Badge>
-                                            </motion.span>
-                                        )}
-                                    </AnimatePresence>
                                 </div>
                                 <div className="flex shrink-0 items-center gap-2">
                                     <ButtonUtility
                                         size="sm"
                                         color="tertiary"
                                         icon={Copy01}
-                                        tooltip="Duplicar grupo"
+                                        tooltip="Copiar grupos para outras sessões"
                                         tooltipPlacement="bottom"
-                                        onClick={() => setConfirm({ tipo: "duplicar", id: sessao.id })}
+                                        isDisabled={sessao.grupos.length === 0}
+                                        onClick={() => abrirCopia(sessao.id)}
                                     />
                                     <ButtonUtility
                                         size="sm"
                                         color="tertiary"
                                         icon={Trash01}
-                                        tooltip="Remover grupo"
+                                        tooltip="Remover sessão"
                                         tooltipPlacement="bottom"
-                                        onClick={() => setConfirm({ tipo: "remover", id: sessao.id })}
+                                        onClick={() => setRemoverId(sessao.id)}
                                     />
                                 </div>
                             </div>
 
                             <div className="mt-4 overflow-x-auto">
-                                <div className="min-w-[880px] overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+                                <div className="min-w-[920px] overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
                                     {/* Cabeçalho das colunas */}
                                     <div className={cx("grid gap-3 border-b border-secondary bg-secondary/40 px-4 py-2.5", COLS)}>
                                         <ColHead>Nome do grupo</ColHead>
@@ -177,20 +228,46 @@ export function EditarGrupos() {
                                     {/* Linhas */}
                                     <div className="flex flex-col">
                                         {sessao.grupos.map((g) => (
-                                            <div key={g.id} className={cx("grid items-center gap-3 px-4 py-3", COLS)}>
-                                                <TextInput defaultValue={g.nome} placeholder="Nome do grupo" />
-                                                <TextInput defaultValue={g.acesso} placeholder="Ex.: A,B,C" />
-                                                <TipoSelect defaultValue={g.tipo} />
-                                                <TextInput defaultValue={g.mapping} placeholder="Ex.: ARENA-NORTE-P1, CAM-VIP-LESTE-02…" />
-                                                <TextInput defaultValue={g.estoque} placeholder="0" inputMode="numeric" />
-                                                <button
-                                                    type="button"
-                                                    aria-label="Remover grupo"
-                                                    onClick={() => removeGrupo(sessao.id, g.id)}
-                                                    className="flex size-10 items-center justify-center rounded-lg text-fg-error-secondary transition duration-100 ease-linear hover:bg-error-primary"
-                                                >
-                                                    <Trash01 className="size-5" />
-                                                </button>
+                                            <div
+                                                key={g.id}
+                                                className={cx(
+                                                    "grid items-center gap-3 px-4 py-3 transition-colors duration-500",
+                                                    flashGrupos.has(g.id) && "bg-tertiary",
+                                                    COLS,
+                                                )}
+                                            >
+                                                <TextInput value={g.nome} onChange={(v) => updateGrupo(sessao.id, g.id, "nome", v)} placeholder="Nome do grupo" />
+                                                <TextInput value={g.acesso} onChange={(v) => updateGrupo(sessao.id, g.id, "acesso", v)} placeholder="Ex.: A,B,C" />
+                                                <TipoSelect value={g.tipo} onChange={(v) => updateGrupo(sessao.id, g.id, "tipo", v)} />
+                                                <TextInput
+                                                    value={g.mapping}
+                                                    onChange={(v) => updateGrupo(sessao.id, g.id, "mapping", v)}
+                                                    placeholder="Ex.: ARENA-NORTE-P1, CAM-VIP-LESTE-02…"
+                                                />
+                                                <TextInput
+                                                    value={g.estoque}
+                                                    onChange={(v) => updateGrupo(sessao.id, g.id, "estoque", v)}
+                                                    placeholder="0"
+                                                    inputMode="numeric"
+                                                />
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <ButtonUtility
+                                                        size="sm"
+                                                        color="tertiary"
+                                                        icon={Copy01}
+                                                        tooltip="Copiar para outras sessões"
+                                                        tooltipPlacement="bottom"
+                                                        onClick={() => abrirCopia(sessao.id, g.id)}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        aria-label="Remover grupo"
+                                                        onClick={() => removeGrupo(sessao.id, g.id)}
+                                                        className="flex size-9 items-center justify-center rounded-lg text-fg-error-secondary transition duration-100 ease-linear hover:bg-error-primary"
+                                                    >
+                                                        <Trash01 className="size-5" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -213,44 +290,140 @@ export function EditarGrupos() {
                 </div>
             </div>
 
-            {/* Modal de confirmação: duplicar / remover grupo */}
-            {confirm && (
+            {/* Modal de confirmação: remover sessão */}
+            {removerId && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/60 p-4" role="dialog" aria-modal="true">
                     <div className="w-full max-w-md rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex items-start justify-between gap-3">
-                            <h2 className="text-lg font-bold text-primary">
-                                {confirm.tipo === "duplicar" ? "Duplicar grupo?" : "Remover grupo?"}
-                            </h2>
+                            <h2 className="text-lg font-bold text-primary">Remover sessão?</h2>
                             <button
                                 type="button"
                                 aria-label="Fechar"
-                                onClick={() => setConfirm(null)}
+                                onClick={() => setRemoverId(null)}
                                 className="shrink-0 text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary"
                             >
                                 <XClose className="size-5" />
                             </button>
                         </div>
                         <p className="mt-2 text-sm leading-relaxed text-tertiary">
-                            {confirm.tipo === "duplicar"
-                                ? "Será criado um novo grupo com as mesmas configurações deste. Depois, você poderá revisar e ajustar o que for necessário."
-                                : "O grupo inteiro será removido. Esta ação não poderá ser desfeita."}
+                            A sessão inteira e seus grupos serão removidos. Esta ação não poderá ser desfeita.
                         </p>
                         <div className="mt-6 flex items-center justify-end gap-2">
-                            <Button size="lg" color="link-gray" onClick={() => setConfirm(null)}>
+                            <Button size="lg" color="secondary" onClick={() => setRemoverId(null)}>
                                 Cancelar
                             </Button>
                             <Button
                                 size="lg"
-                                color={confirm.tipo === "duplicar" ? "primary" : "primary-destructive"}
+                                color="primary-destructive"
                                 onClick={() => {
-                                    if (confirm.tipo === "duplicar") duplicarSessao(confirm.id);
-                                    else removerSessao(confirm.id);
-                                    setConfirm(null);
+                                    removerSessao(removerId);
+                                    setRemoverId(null);
                                 }}
                             >
-                                {confirm.tipo === "duplicar" ? "Duplicar grupo" : "Remover grupo"}
+                                Remover sessão
                             </Button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: copiar grupo(s) para outras sessões */}
+            {copia && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/60 p-4" role="dialog" aria-modal="true">
+                    <div className="w-full max-w-lg rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                        {disponiveis.length === 0 ? (
+                            /* Não há sessão de destino: o(s) grupo(s) já existe(m) em todas as outras. */
+                            <>
+                                <div className="flex items-start justify-between gap-3">
+                                    <h2 className="text-lg font-bold text-primary">
+                                        {copiandoSessao ? "Grupos já duplicados" : "Grupo já duplicado"}
+                                    </h2>
+                                    <button
+                                        type="button"
+                                        aria-label="Fechar"
+                                        onClick={() => setCopia(null)}
+                                        className="shrink-0 text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary"
+                                    >
+                                        <XClose className="size-5" />
+                                    </button>
+                                </div>
+                                <p className="mt-2 text-sm leading-relaxed text-tertiary">
+                                    {outrasSessoes.length === 0
+                                        ? "Não há outras sessões para receber a duplicação."
+                                        : copiandoSessao
+                                          ? "Esses grupos já foram duplicados ou já existem em todas as outras sessões."
+                                          : "Esse grupo já foi duplicado ou já existe em todas as outras sessões."}
+                                </p>
+                                <div className="mt-6 flex items-center justify-end">
+                                    <Button size="lg" color="primary" onClick={() => setCopia(null)}>
+                                        Entendi
+                                    </Button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex items-start justify-between gap-3">
+                                    <h2 className="text-lg font-bold text-primary">
+                                        {copiandoSessao ? "Duplicar grupos" : nomeOrigem ? <>Duplicar “{nomeOrigem}”</> : "Duplicar grupo"}
+                                    </h2>
+                                    <button
+                                        type="button"
+                                        aria-label="Fechar"
+                                        onClick={() => setCopia(null)}
+                                        className="shrink-0 text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary"
+                                    >
+                                        <XClose className="size-5" />
+                                    </button>
+                                </div>
+                                <p className="mt-2 text-sm leading-relaxed text-tertiary">
+                                    {copiandoSessao
+                                        ? "Escolha as sessões onde todos os grupos desta sessão serão duplicados. As configurações poderão ser editadas depois."
+                                        : "Escolha as sessões onde este grupo será duplicado. As configurações poderão ser editadas depois."}
+                                </p>
+
+                                <div className="mt-5 flex flex-col gap-3">
+                                    {/* Selecionar todas */}
+                                    <div className="flex items-center gap-2.5">
+                                        <Checkbox
+                                            size="md"
+                                            isSelected={todasSelecionadas}
+                                            isIndeterminate={algumaSelecionada && !todasSelecionadas}
+                                            onChange={toggleTodas}
+                                            label="Selecionar todas"
+                                        />
+                                    </div>
+
+                                    <div className="flex flex-col gap-2">
+                                        {disponiveis.map((s) => (
+                                            <label
+                                                key={s.id}
+                                                className="flex cursor-pointer items-center gap-3 rounded-xl px-3.5 py-3 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
+                                            >
+                                                <Checkbox
+                                                    size="md"
+                                                    isSelected={alvos.has(s.id)}
+                                                    onChange={() => toggleAlvo(s.id)}
+                                                    label={
+                                                        <span className="text-sm font-medium text-primary">
+                                                            {s.label} <span className="font-normal text-tertiary">({s.dia})</span>
+                                                        </span>
+                                                    }
+                                                />
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 flex items-center justify-end gap-2">
+                                    <Button size="lg" color="secondary" onClick={() => setCopia(null)}>
+                                        Cancelar
+                                    </Button>
+                                    <Button size="lg" color="primary" isDisabled={alvos.size === 0} onClick={confirmarCopia}>
+                                        {copiandoSessao ? "Duplicar grupos" : "Duplicar grupo"}
+                                    </Button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
@@ -267,10 +440,21 @@ function ColHead({ children, info }: { children: React.ReactNode; info?: boolean
     );
 }
 
-function TextInput({ defaultValue, placeholder, inputMode }: { defaultValue?: string; placeholder?: string; inputMode?: "numeric" }) {
+function TextInput({
+    value,
+    onChange,
+    placeholder,
+    inputMode,
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    inputMode?: "numeric";
+}) {
     return (
         <input
-            defaultValue={defaultValue}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             inputMode={inputMode}
             className="w-full rounded-lg bg-secondary px-3.5 py-2.5 text-sm text-primary ring-1 ring-border-secondary outline-none placeholder:text-placeholder focus:ring-2 focus:ring-brand"
@@ -278,11 +462,12 @@ function TextInput({ defaultValue, placeholder, inputMode }: { defaultValue?: st
     );
 }
 
-function TipoSelect({ defaultValue }: { defaultValue: string }) {
+function TipoSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
     return (
         <div className="relative">
             <select
-                defaultValue={defaultValue}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
                 className="w-full appearance-none rounded-lg bg-secondary py-2.5 pr-9 pl-3.5 text-sm text-primary ring-1 ring-border-secondary outline-none focus:ring-2 focus:ring-brand"
             >
                 {TIPOS.map((t) => (

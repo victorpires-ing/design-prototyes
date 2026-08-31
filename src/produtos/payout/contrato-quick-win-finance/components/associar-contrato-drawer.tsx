@@ -356,7 +356,12 @@ export function AssociarContratoDrawer({
     const selecionado = CONTRATOS.find((contrato) => contrato.id === selecionadoId);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4" role="dialog" aria-modal="true" aria-label="Associar contrato">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/50 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Associar contrato"
+        >
             <div className="flex max-h-full w-full max-w-[660px] flex-col overflow-hidden rounded-2xl bg-primary shadow-xl">
                 <DrawerHeader evento={evento} step={step} onClose={onFechar} />
 

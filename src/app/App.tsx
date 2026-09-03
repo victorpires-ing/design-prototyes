@@ -20,6 +20,7 @@ import { Bordero } from '../produtos/backstage/relatorios/pages/Bordero';
 import { Comparativos } from '../produtos/backstage/relatorios/pages/Comparativos';
 import { Transacoes } from '../produtos/backstage/relatorios/pages/Transacoes';
 import { Transacoes2 } from '../produtos/backstage/relatorios/pages/Transacoes2';
+import { Transacoes3 } from '../produtos/backstage/relatorios/pages/Transacoes3';
 import { Transferencias } from '../produtos/backstage/relatorios/pages/Transferencias';
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
@@ -226,6 +227,7 @@ export default function App() {
         <Route path="/backstage/relatorios/vendas-por-grupo" element={<VendasPorGrupo />} />
         <Route path="/backstage/relatorios/transacoes" element={<Transacoes />} />
         <Route path="/backstage/relatorios/transacoes2" element={<Transacoes2 />} />
+        <Route path="/backstage/relatorios/transacoes3" element={<Transacoes3 />} />
         <Route path="/backstage/relatorios/acesso" element={<Acesso />} />
         <Route path="/backstage/relatorios/bordero" element={<Bordero />} />
         <Route path="/backstage/relatorios/transferencias" element={<Transferencias />} />

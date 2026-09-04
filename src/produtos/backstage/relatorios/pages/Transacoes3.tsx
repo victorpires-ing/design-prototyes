@@ -3163,24 +3163,50 @@ const SecaoEdicaoRow = ({ titulo, descricao, children }: { titulo: string; descr
 
 /** Opção "Quem pagará?" — ícone + título centralizados, os dois lado a lado ocupando a
  * largura da barra lateral. */
-const ResumoQuemPagaCard = ({ value, icon: Icon, titulo }: { value: "organizacao" | "comprador"; icon: typeof Bank; titulo: string }) => (
-    <AriaRadio
-        value={value}
-        className={({ isSelected, isFocusVisible }) =>
-            cx(
-                "flex flex-1 cursor-pointer flex-col items-center gap-3 rounded-xl bg-primary p-6 text-center ring-1 ring-inset transition duration-100 ease-linear",
-                isSelected ? "ring-2 ring-brand-600" : "ring-border-secondary hover:bg-primary_hover",
-                isFocusVisible && "outline-2 outline-offset-2 outline-focus-ring",
-            )
-        }
+const ResumoQuemPagaCard = ({
+    value,
+    icon: Icon,
+    titulo,
+    selecionadoAtual,
+    onDesmarcar,
+}: {
+    value: "organizacao" | "comprador";
+    icon: typeof Bank;
+    titulo: string;
+    selecionadoAtual: "organizacao" | "comprador" | null;
+    onDesmarcar: () => void;
+}) => (
+    <div
+        className="flex flex-1"
+        onClickCapture={(e) => {
+            // RadioGroup dispara onChange de novo mesmo clicando em quem já está selecionado
+            // (não é um "change" de verdade) — sem isso, esse onChange reaplicaria o mesmo
+            // valor por cima e desfaria o desmarcar. Barra o clique antes de chegar no rádio.
+            if (value === selecionadoAtual) {
+                e.stopPropagation();
+                e.preventDefault();
+                onDesmarcar();
+            }
+        }}
     >
-        {({ isSelected }) => (
-            <>
-                <Icon className={cx("size-6", isSelected ? "text-fg-primary" : "text-fg-quaternary")} aria-hidden="true" />
-                <span className="text-sm font-medium text-secondary">{titulo}</span>
-            </>
-        )}
-    </AriaRadio>
+        <AriaRadio
+            value={value}
+            className={({ isSelected, isFocusVisible }) =>
+                cx(
+                    "flex flex-1 cursor-pointer flex-col items-center gap-3 rounded-xl bg-primary p-6 text-center ring-1 ring-inset transition duration-100 ease-linear",
+                    isSelected ? "ring-2 ring-brand-600" : "ring-border-secondary hover:bg-primary_hover",
+                    isFocusVisible && "outline-2 outline-offset-2 outline-focus-ring",
+                )
+            }
+        >
+            {({ isSelected, isHovered }) => (
+                <>
+                    <Icon className={cx("size-6", isSelected || isHovered ? "text-fg-primary" : "text-fg-quaternary")} aria-hidden="true" />
+                    <span className="text-sm font-medium text-secondary">{titulo}</span>
+                </>
+            )}
+        </AriaRadio>
+    </div>
 );
 
 /** Um item do pedido, em accordion — ao abrir, edita Portador, Item e Questionário lado a
@@ -3463,7 +3489,7 @@ const ItemEdicaoAccordion = ({
              * título e o chevron) que fazem a mesma coisa. */}
             <div
                 className={cx(
-                    "sticky top-[80px] z-30 flex items-center justify-between gap-3 border border-secondary bg-[#0A0A0A] p-4 transition duration-100 ease-linear hover:bg-primary_hover",
+                    "sticky top-[80px] z-30 flex items-center justify-between gap-3 border border-secondary bg-[#171717] p-4 transition duration-100 ease-linear",
                     aberto ? "rounded-t-xl" : "rounded-xl",
                 )}
             >
@@ -3843,11 +3869,37 @@ const EditarPedidoPage = ({
     const [itemAbertoId, setItemAbertoId] = useState<string | null>(itens[0]?.idInscricao ?? null);
     const [quemPaga, setQuemPaga] = useState<"organizacao" | "comprador" | null>(null);
     const [erroQuemPaga, setErroQuemPaga] = useState(false);
+    // Só faz sentido quando o comprador paga — reseta se voltar pra organização ou desmarcar.
+    const [absorverCustoEdicao, setAbsorverCustoEdicao] = useState(false);
+    useEffect(() => {
+        if (quemPaga !== "comprador") setAbsorverCustoEdicao(false);
+    }, [quemPaga]);
     // Só vira true depois do primeiro clique em "Salvar e gerar pagamento" — os campos com
     // estoque esgotado não confirmado só ficam vermelhos a partir daí, nunca antes disso.
     const [tentouSalvar, setTentouSalvar] = useState(false);
     const [salvando, setSalvando] = useState(false);
     const [concluido, setConcluido] = useState(false);
+    // Modal de sucesso ao salvar — o usuário escolhe entre ver a edição já aplicada (fecha o
+    // modal, continua na página) ou voltar pro relatório de transações.
+    const [mostrarModalSucesso, setMostrarModalSucesso] = useState(false);
+    // Cancelar a edição enquanto aguarda pagamento é destrutivo (perde as trocas feitas) — sempre
+    // confirma antes.
+    const [mostrarModalCancelar, setMostrarModalCancelar] = useState(false);
+    // Feedback de 2s ao copiar o link dentro do modal de sucesso (comprador paga).
+    const [copiadoModalSucesso, setCopiadoModalSucesso] = useState(false);
+    const handleCopiarLinkModalSucesso = () => {
+        if (!linkPagamentoGerado) return;
+        navigator.clipboard?.writeText(linkPagamentoGerado);
+        setCopiadoModalSucesso(true);
+        setTimeout(() => setCopiadoModalSucesso(false), 2000);
+    };
+    const handleCancelarEdicao = () => {
+        setLinkPagamentoGerado(null);
+        setPrazoLimiteEdicao(null);
+        setMostrarDetalhesTotal(false);
+        setMostrarModalCancelar(false);
+        onPedidoEmEdicaoChange?.(pedido.id, false);
+    };
     // Quando o comprador paga, a edição não conclui na hora — o resumo vira o card "Aguardando
     // pagamento" (mesmo conteúdo da V2 no slideout) em vez da tela cheia de sucesso.
     const [linkPagamentoGerado, setLinkPagamentoGerado] = useState<string | null>(null);
@@ -3871,7 +3923,12 @@ const EditarPedidoPage = ({
     const custoDeEdicao = estados.reduce((s, e) => s + e.custoTaxa, 0);
     // Simula o produtor ter cadastrado uma taxa própria no produto — só cobrada quando existe.
     const taxaProdutor = PRODUTOR_TEM_TAXA_CADASTRADA ? excedente * TAXA_PRODUTOR_PERCENTUAL : 0;
+    // Com o comprador absorvendo o custo de edição, ele sai da conta do comprador e vira uma
+    // linha à parte, abatida do saldo da organização — daí o total virar dois valores.
+    const absorvendo = quemPaga === "comprador" && absorverCustoEdicao;
     const total = excedente + custoDeEdicao + taxaProdutor;
+    const totalParaComprador = excedente + taxaProdutor;
+    const totalParaOrganizacao = custoDeEdicao;
     const precisaConfirmarEstoque = estados.some((e) => e.precisaConfirmarEstoque);
     const algumaCategoriaEmBranco = estados.some((e) => e.categoriaEmBranco);
     const algumaModalidadeEmBranco = estados.some((e) => e.modalidadeEmBranco);
@@ -3896,6 +3953,7 @@ const EditarPedidoPage = ({
             onPedidoEmEdicaoChange?.(pedido.id, true);
             if (quemPaga === "organizacao") {
                 setConcluido(true);
+                setMostrarModalSucesso(true);
                 toast.success("Edição enviada", { description: "A edição foi aplicada imediatamente ao pedido." });
                 return;
             }
@@ -3903,29 +3961,12 @@ const EditarPedidoPage = ({
             // "Aguardando pagamento" em vez de concluir a edição na hora.
             setLinkPagamentoGerado(`https://cart.ingresse.com/pagamento/${pedido.id}`);
             setPrazoLimiteEdicao(Date.now() + 48 * 60 * 60 * 1000);
+            setMostrarModalSucesso(true);
             toast.success("Link de pagamento gerado", {
-                description: `Um link de pagamento de ${currencyFormatter.format(total)} foi gerado para o comprador.`,
+                description: `Um link de pagamento de ${currencyFormatter.format(absorvendo ? totalParaComprador : total)} foi gerado para o comprador.`,
             });
         }, 3000);
     };
-
-    if (concluido) {
-        return (
-            <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center font-['Elza']">
-                <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="xl" />
-                <div className="flex flex-col gap-1">
-                    <h2 className="text-lg font-semibold text-primary">Edição concluída</h2>
-                    <p className="text-sm text-tertiary">
-                        {quemPaga === "organizacao" ? "A edição já foi aplicada ao pedido " : "Um link de pagamento foi gerado para o pedido "}
-                        <span className="font-medium text-secondary">#{pedido.id}</span>.
-                    </p>
-                </div>
-                <Button size="md" color="primary" onClick={onSair}>
-                    Voltar para Transações
-                </Button>
-            </div>
-        );
-    }
 
     return (
         // -mt-12 cancela os 48px de padding que já existem ACIMA do <main> (24px do wrapper
@@ -3990,7 +4031,9 @@ const EditarPedidoPage = ({
                                         valor={excedente}
                                         tooltip="Diferença entre o valor atual e o valor original — é o que efetivamente entra na conta do total."
                                     />
-                                    <LinhaResumoPreco label="Custo de edição" valor={custoDeEdicao} tooltip="Corresponde a 5% do valor do pedido atualizado." />
+                                    {!absorvendo && (
+                                        <LinhaResumoPreco label="Custo de edição" valor={custoDeEdicao} tooltip="Corresponde a 5% do valor do pedido atualizado." />
+                                    )}
                                     {PRODUTOR_TEM_TAXA_CADASTRADA && (
                                         <LinhaResumoPreco
                                             label="Taxa da organização"
@@ -4006,26 +4049,31 @@ const EditarPedidoPage = ({
                                 className="flex items-center justify-between text-left"
                             >
                                 <span className="flex items-center gap-1 text-sm font-semibold text-primary">
-                                    Total
+                                    {absorvendo ? "Total para o comprador" : "Total"}
                                     {mostrarDetalhesTotal ? (
                                         <ChevronUp className="size-4 text-fg-quaternary" aria-hidden="true" />
                                     ) : (
                                         <ChevronDown className="size-4 text-fg-quaternary" aria-hidden="true" />
                                     )}
                                 </span>
-                                <span className="text-sm font-semibold text-primary">{currencyFormatter.format(total)}</span>
+                                <span className="text-sm font-semibold text-primary">
+                                    {currencyFormatter.format(absorvendo ? totalParaComprador : total)}
+                                </span>
                             </button>
-                            <Button
-                                size="md"
-                                color="secondary"
-                                className="w-full"
-                                onClick={() => {
-                                    setLinkPagamentoGerado(null);
-                                    setPrazoLimiteEdicao(null);
-                                    setMostrarDetalhesTotal(false);
-                                    onPedidoEmEdicaoChange?.(pedido.id, false);
-                                }}
-                            >
+                            {absorvendo && (
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5 text-tertiary">
+                                        <span className="text-sm">Total para organização</span>
+                                        <TooltipFundoEscuro title="Custo de edição absorvido pela organização, abatido do saldo dela.">
+                                            <TooltipTrigger className="flex items-center text-fg-quaternary transition duration-100 ease-linear hover:text-fg-quaternary_hover">
+                                                <HelpCircle className="size-4" aria-hidden="true" />
+                                            </TooltipTrigger>
+                                        </TooltipFundoEscuro>
+                                    </div>
+                                    <span className="text-sm text-tertiary">{currencyFormatter.format(totalParaOrganizacao)}</span>
+                                </div>
+                            )}
+                            <Button size="md" color="secondary" className="w-full" onClick={() => setMostrarModalCancelar(true)}>
                                 Cancelar edição
                             </Button>
                         </div>
@@ -4042,9 +4090,35 @@ const EditarPedidoPage = ({
                                 }}
                                 className="flex flex-row gap-3"
                             >
-                                <ResumoQuemPagaCard value="organizacao" icon={Bank} titulo="A organização" />
-                                <ResumoQuemPagaCard value="comprador" icon={FaceSmile} titulo="O comprador" />
+                                <ResumoQuemPagaCard
+                                    value="organizacao"
+                                    icon={Bank}
+                                    titulo="A organização"
+                                    selecionadoAtual={quemPaga}
+                                    onDesmarcar={() => setQuemPaga(null)}
+                                />
+                                <ResumoQuemPagaCard
+                                    value="comprador"
+                                    icon={FaceSmile}
+                                    titulo="O comprador"
+                                    selecionadoAtual={quemPaga}
+                                    onDesmarcar={() => setQuemPaga(null)}
+                                />
                             </AriaRadioGroup>
+                            {quemPaga === "comprador" && (
+                                <div className="-mt-1 flex items-center gap-1.5">
+                                    <Checkbox
+                                        label="Absorver custo de edição"
+                                        isSelected={absorverCustoEdicao}
+                                        onChange={setAbsorverCustoEdicao}
+                                    />
+                                    <Tooltip title="O custo da edição será abatido do saldo da organização.">
+                                        <TooltipTrigger className="flex items-center text-fg-quaternary transition duration-100 ease-linear hover:text-fg-quaternary_hover">
+                                            <HelpCircle className="size-4" aria-hidden="true" />
+                                        </TooltipTrigger>
+                                    </Tooltip>
+                                </div>
+                            )}
                             {erroQuemPaga && <span className="text-sm text-error-primary">Selecione quem pagará para continuar</span>}
                         </div>
                         <div className="flex flex-col gap-3">
@@ -4060,11 +4134,13 @@ const EditarPedidoPage = ({
                                 valor={excedente}
                                 tooltip="Diferença entre o valor atual e o valor original — é o que efetivamente entra na conta do total."
                             />
-                            <LinhaResumoPreco
-                                label="Custo de edição"
-                                valor={custoDeEdicao}
-                                tooltip="Corresponde a 5% do valor do pedido atualizado."
-                            />
+                            {!absorvendo && (
+                                <LinhaResumoPreco
+                                    label="Custo de edição"
+                                    valor={custoDeEdicao}
+                                    tooltip="Corresponde a 5% do valor do pedido atualizado."
+                                />
+                            )}
                             {PRODUTOR_TEM_TAXA_CADASTRADA && (
                                 <LinhaResumoPreco
                                     label="Taxa da organização"
@@ -4073,10 +4149,30 @@ const EditarPedidoPage = ({
                                 />
                             )}
                             <hr className="border-dashed border-secondary" />
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-semibold text-primary">Total</span>
-                                <span className="text-sm font-semibold text-primary">{currencyFormatter.format(total)}</span>
-                            </div>
+                            {absorvendo ? (
+                                <>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-semibold text-primary">Total para o comprador</span>
+                                        <span className="text-sm font-semibold text-primary">{currencyFormatter.format(totalParaComprador)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5 text-tertiary">
+                                            <span className="text-sm">Total para organização</span>
+                                            <TooltipFundoEscuro title="Custo de edição absorvido pela organização, abatido do saldo dela.">
+                                                <TooltipTrigger className="flex items-center text-fg-quaternary transition duration-100 ease-linear hover:text-fg-quaternary_hover">
+                                                    <HelpCircle className="size-4" aria-hidden="true" />
+                                                </TooltipTrigger>
+                                            </TooltipFundoEscuro>
+                                        </div>
+                                        <span className="text-sm text-tertiary">{currencyFormatter.format(totalParaOrganizacao)}</span>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-primary">Total</span>
+                                    <span className="text-sm font-semibold text-primary">{currencyFormatter.format(total)}</span>
+                                </div>
+                            )}
                         </div>
                         <div className="flex flex-col gap-3">
                             {tentouSalvar &&
@@ -4103,6 +4199,113 @@ const EditarPedidoPage = ({
                     )}
                 </aside>
             </div>
+
+            <ModalOverlay isOpen={mostrarModalSucesso} onOpenChange={setMostrarModalSucesso} isDismissable>
+                <Modal className="sm:max-w-[440px]">
+                    <Dialog>
+                        {concluido ? (
+                            <div className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                                <div className="flex items-start gap-4">
+                                    <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="lg" />
+                                    <div className="flex flex-col gap-1">
+                                        <h2 className="text-lg font-semibold text-primary">Edição enviada</h2>
+                                        <p className="text-sm text-tertiary">
+                                            A edição já foi aplicada ao pedido <span className="font-medium text-secondary">#{pedido.id}</span>.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Button size="md" color="secondary" onClick={() => setMostrarModalSucesso(false)}>
+                                        Ver como ficou a edição
+                                    </Button>
+                                    <Button size="md" color="primary" onClick={onSair}>
+                                        Voltar para Transações
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                                <div className="flex items-start justify-between gap-4">
+                                    <FeaturedIcon icon={ClockFastForward} color="gray" theme="modern" size="lg" />
+                                    <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Fechar" onClick={() => setMostrarModalSucesso(false)} />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <h2 className="text-lg font-semibold text-primary">Aguardando pagamento</h2>
+                                    <p className="text-sm text-tertiary">Agora, basta seguir esses passos:</p>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    {[
+                                        "Envie o link acima ao comprador.",
+                                        "O comprador deve pagar a taxa.",
+                                        "Após a confirmação, as edições serão efetivadas automaticamente.",
+                                    ].map((passo, i) => (
+                                        <div key={passo} className="flex items-start gap-2">
+                                            <Badge size="sm" type="pill-color" color="gray" className="size-[22px] shrink-0 justify-center p-0">
+                                                {i + 1}
+                                            </Badge>
+                                            <span className="text-sm text-primary">{passo}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <InputGroup
+                                    size="sm"
+                                    aria-label="Link de pagamento"
+                                    value={linkPagamentoGerado ?? ""}
+                                    isReadOnly
+                                    onChange={() => {}}
+                                    trailingAddon={
+                                        <Button
+                                            size="sm"
+                                            color="secondary"
+                                            iconLeading={copiadoModalSucesso ? <CheckCircle data-icon className="text-fg-success-secondary" /> : Copy01}
+                                            onClick={handleCopiarLinkModalSucesso}
+                                        >
+                                            {copiadoModalSucesso ? "Copiado" : "Copiar"}
+                                        </Button>
+                                    }
+                                >
+                                    <InputBase />
+                                </InputGroup>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Button size="md" color="secondary" onClick={onSair}>
+                                        Voltar para transações
+                                    </Button>
+                                    <Button size="md" color="primary" onClick={() => setMostrarModalSucesso(false)}>
+                                        Revisar edição
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </Dialog>
+                </Modal>
+            </ModalOverlay>
+
+            <ModalOverlay isOpen={mostrarModalCancelar} onOpenChange={setMostrarModalCancelar} isDismissable>
+                <Modal className="sm:max-w-[440px]">
+                    <Dialog>
+                        <div className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                            <div className="flex items-start gap-4">
+                                <FeaturedIcon icon={SlashCircle01} color="error" theme="light" size="lg" />
+                                <div className="flex flex-col gap-1">
+                                    <h2 className="text-lg font-semibold text-primary">Cancelar edição</h2>
+                                    <p className="text-sm text-tertiary">
+                                        Tem certeza que quer cancelar? O link de pagamento deixará de valer e as alterações feitas neste pedido serão
+                                        perdidas.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Button size="md" color="secondary" onClick={() => setMostrarModalCancelar(false)}>
+                                    Voltar
+                                </Button>
+                                <Button size="md" color="primary-destructive" onClick={handleCancelarEdicao}>
+                                    Cancelar edição
+                                </Button>
+                            </div>
+                        </div>
+                    </Dialog>
+                </Modal>
+            </ModalOverlay>
         </div>
     );
 };

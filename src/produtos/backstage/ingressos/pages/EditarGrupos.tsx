@@ -91,7 +91,7 @@ export function EditarGrupos() {
         [fonte],
     );
 
-    // Outras sessões (exceto a de origem). Uma sessão é conflito quando já possui todos os grupos de origem.
+    // Outras sessões (exceto a de origem). `jaTem` só indica que já possui os grupos — não bloqueia a duplicação.
     const outrasSessoes = useMemo(() => {
         if (!copia) return [];
         return sessoes
@@ -103,7 +103,8 @@ export function EditarGrupos() {
             });
     }, [copia, sessoes, nomesOrigem]);
 
-    const disponiveis = outrasSessoes.filter((s) => !s.jaTem);
+    // Todas as outras sessões são selecionáveis (mesmo as que já têm o(s) grupo(s) — apenas indicamos).
+    const disponiveis = outrasSessoes;
     const todasSelecionadas = disponiveis.length > 0 && disponiveis.every((s) => alvos.has(s.id));
     const algumaSelecionada = disponiveis.some((s) => alvos.has(s.id));
 
@@ -128,23 +129,25 @@ export function EditarGrupos() {
         const adicoes: Record<string, GrupoRow[]> = {};
         sessoes.forEach((s) => {
             if (!alvos.has(s.id)) return;
-            const nomesAlvo = new Set(s.grupos.map((g) => g.nome.trim().toLowerCase()).filter(Boolean));
-            adicoes[s.id] = fonte.grupos
-                .filter((g) => {
-                    const n = g.nome.trim().toLowerCase();
-                    return n === "" || !nomesAlvo.has(n); // não sobrescreve grupos equivalentes já existentes
-                })
-                .map((g) => {
-                    const id = nid();
-                    novosIds.push(id);
-                    return { ...g, id };
-                });
+            // Duplica os grupos de origem mesmo que a sessão já os tenha (cópias independentes).
+            adicoes[s.id] = fonte.grupos.map((g) => {
+                const id = nid();
+                novosIds.push(id);
+                return { ...g, id };
+            });
         });
         setSessoes((prev) => prev.map((s) => (adicoes[s.id]?.length ? { ...s, grupos: [...s.grupos, ...adicoes[s.id]] } : s)));
         const novos = new Set(novosIds);
         setFlashGrupos(novos);
         window.setTimeout(() => setFlashGrupos((cur) => (cur === novos ? new Set() : cur)), 4000);
         setCopia(null);
+        // Rola até o primeiro grupo copiado (após a animação de entrada) para mostrar onde foi incluído.
+        const primeiro = novosIds[0];
+        if (primeiro) {
+            window.setTimeout(() => {
+                document.getElementById(`grupo-${primeiro}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 450);
+        }
     };
 
     return (
@@ -195,7 +198,7 @@ export function EditarGrupos() {
                                         size="sm"
                                         color="tertiary"
                                         icon={Copy01}
-                                        tooltip="Copiar grupos para outras sessões"
+                                        tooltip="Duplicar grupos para outras sessões"
                                         tooltipPlacement="bottom"
                                         isDisabled={sessao.grupos.length === 0}
                                         onClick={() => abrirCopia(sessao.id)}
@@ -228,10 +231,17 @@ export function EditarGrupos() {
                                     {/* Linhas */}
                                     <div className="flex flex-col">
                                         {sessao.grupos.map((g) => (
-                                            <div
+                                            <motion.div
                                                 key={g.id}
+                                                id={`grupo-${g.id}`}
+                                                initial={flashGrupos.has(g.id) ? { opacity: 0, height: 0 } : false}
+                                                animate={{ opacity: 1, height: "auto" }}
+                                                transition={{
+                                                    height: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+                                                    opacity: { duration: 0.3, ease: "easeOut" },
+                                                }}
                                                 className={cx(
-                                                    "grid items-center gap-3 px-4 py-3 transition-colors duration-500",
+                                                    "grid items-center gap-3 overflow-hidden px-4 py-3 transition-colors duration-500",
                                                     flashGrupos.has(g.id) && "bg-tertiary",
                                                     COLS,
                                                 )}
@@ -255,9 +265,10 @@ export function EditarGrupos() {
                                                         size="sm"
                                                         color="tertiary"
                                                         icon={Copy01}
-                                                        tooltip="Copiar para outras sessões"
+                                                        tooltip="Duplicar para outras sessões"
                                                         tooltipPlacement="bottom"
                                                         onClick={() => abrirCopia(sessao.id, g.id)}
+                                                        className="text-white! hover:text-white!"
                                                     />
                                                     <button
                                                         type="button"
@@ -268,7 +279,7 @@ export function EditarGrupos() {
                                                         <Trash01 className="size-5" />
                                                     </button>
                                                 </div>
-                                            </div>
+                                            </motion.div>
                                         ))}
                                     </div>
 
@@ -332,12 +343,10 @@ export function EditarGrupos() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/60 p-4" role="dialog" aria-modal="true">
                     <div className="w-full max-w-lg rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         {disponiveis.length === 0 ? (
-                            /* Não há sessão de destino: o(s) grupo(s) já existe(m) em todas as outras. */
+                            /* Não há outras sessões de destino. */
                             <>
                                 <div className="flex items-start justify-between gap-3">
-                                    <h2 className="text-lg font-bold text-primary">
-                                        {copiandoSessao ? "Grupos já duplicados" : "Grupo já duplicado"}
-                                    </h2>
+                                    <h2 className="text-lg font-bold text-primary">Nenhuma sessão disponível</h2>
                                     <button
                                         type="button"
                                         aria-label="Fechar"
@@ -347,13 +356,7 @@ export function EditarGrupos() {
                                         <XClose className="size-5" />
                                     </button>
                                 </div>
-                                <p className="mt-2 text-sm leading-relaxed text-tertiary">
-                                    {outrasSessoes.length === 0
-                                        ? "Não há outras sessões para receber a duplicação."
-                                        : copiandoSessao
-                                          ? "Esses grupos já foram duplicados ou já existem em todas as outras sessões."
-                                          : "Esse grupo já foi duplicado ou já existe em todas as outras sessões."}
-                                </p>
+                                <p className="mt-2 text-sm leading-relaxed text-tertiary">Não há outras sessões para receber a duplicação.</p>
                                 <div className="mt-6 flex items-center justify-end">
                                     <Button size="lg" color="primary" onClick={() => setCopia(null)}>
                                         Entendi
@@ -389,7 +392,7 @@ export function EditarGrupos() {
                                             isSelected={todasSelecionadas}
                                             isIndeterminate={algumaSelecionada && !todasSelecionadas}
                                             onChange={toggleTodas}
-                                            label="Selecionar todas"
+                                            label="Selecionar todas as sessões"
                                         />
                                     </div>
 
@@ -397,7 +400,7 @@ export function EditarGrupos() {
                                         {disponiveis.map((s) => (
                                             <label
                                                 key={s.id}
-                                                className="flex cursor-pointer items-center gap-3 rounded-xl px-3.5 py-3 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
+                                                className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3.5 py-3 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
                                             >
                                                 <Checkbox
                                                     size="md"
@@ -409,6 +412,11 @@ export function EditarGrupos() {
                                                         </span>
                                                     }
                                                 />
+                                                {s.jaTem && (
+                                                    <span className="shrink-0 text-xs text-quaternary">
+                                                        {copiandoSessao ? "Já possui estes grupos" : "Já possui este grupo"}
+                                                    </span>
+                                                )}
                                             </label>
                                         ))}
                                     </div>

@@ -22,6 +22,8 @@ export interface Ingresso {
     emissoes: string;
     pendente: string;
     lotes: Lote[];
+    /** Presente quando o ingresso é uma cópia: de onde ele foi duplicado. */
+    origem?: { nome: string; grupo: string; sessao: string };
 }
 
 export interface Grupo {

@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router";
-import { Calendar, ChevronDown, ChevronRight, Copy01, Edit01, Key01, Plus, QrCode01, Trash01, XClose, Zap } from "@untitledui/icons";
+import { Calendar, ChevronDown, ChevronRight, Copy01, Edit01, InfoCircle, Key01, Plus, QrCode01, Trash01, XClose, Zap } from "@untitledui/icons";
 import { AnimatePresence, Reorder, motion, useDragControls } from "motion/react";
+import { Button as AriaButton, Tooltip as AriaTooltip, TooltipTrigger as AriaTooltipTrigger } from "react-aria-components";
 import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -142,7 +143,8 @@ export function Ingressos() {
             .filter((s) => s.grupos.length > 0);
     }, [copiaGrupos, sessoes, fonte, nomeIngresso]);
 
-    const idsDisponiveis = destinos.flatMap((s) => s.grupos.filter((g) => !g.jaTem).map((g) => g.id));
+    // Todos os grupos de destino são selecionáveis (mesmo os que já possuem o ingresso — apenas indicamos).
+    const idsDisponiveis = destinos.flatMap((s) => s.grupos.map((g) => g.id));
 
     const abrirCopiaGrupos = (sessaoId: string, grupoId: string, ingressoId: string) => {
         setAlvos(new Set());
@@ -162,15 +164,16 @@ export function Ingressos() {
         const novosIds: string[] = [];
         const adicoes: Record<string, Ingresso> = {};
         let n = 0;
+        const origem = { nome: fonte.ingresso.name, grupo: fonte.grupo.name, sessao: fonte.sessao.label };
         sessoes.forEach((s) =>
             s.grupos.forEach((g) => {
                 if (!alvos.has(g.id)) return;
-                if (g.ingressos.some((i) => i.name === fonte.ingresso.name)) return; // não sobrescreve equivalente
                 const sfx = `-g${base}-${n++}`;
                 const novoId = fonte.ingresso.id + sfx;
                 novosIds.push(novoId);
                 // Cópia independente: configurações + lotes (vínculos externos não são replicados).
-                adicoes[g.id] = { ...fonte.ingresso, id: novoId, lotes: fonte.ingresso.lotes.map((l) => ({ ...l, id: l.id + sfx })) };
+                // Guarda a origem para exibir no hover; permite duplicar mesmo se o grupo já tiver o ingresso.
+                adicoes[g.id] = { ...fonte.ingresso, id: novoId, origem, lotes: fonte.ingresso.lotes.map((l) => ({ ...l, id: l.id + sfx })) };
             }),
         );
         setSessoes((prev) =>
@@ -320,10 +323,10 @@ export function Ingressos() {
             {copiaGrupos && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/60 p-4" role="dialog" aria-modal="true">
                     {idsDisponiveis.length === 0 ? (
-                        /* Ingresso já existe em todos os grupos disponíveis: aviso enxuto. */
+                        /* Não há outros grupos de destino. */
                         <div className="w-full max-w-md rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                             <div className="flex items-start justify-between gap-3">
-                                <h2 className="text-lg font-bold text-primary">Ingresso já duplicado</h2>
+                                <h2 className="text-lg font-bold text-primary">Nenhum grupo disponível</h2>
                                 <button
                                     type="button"
                                     onClick={() => setCopiaGrupos(null)}
@@ -333,11 +336,7 @@ export function Ingressos() {
                                     <XClose className="size-5" aria-hidden="true" />
                                 </button>
                             </div>
-                            <p className="mt-2 text-sm leading-relaxed text-tertiary">
-                                {destinos.length === 0
-                                    ? "Não há outros grupos para receber a duplicação."
-                                    : "Este ingresso já foi duplicado ou já existe em todos os outros grupos."}
-                            </p>
+                            <p className="mt-2 text-sm leading-relaxed text-tertiary">Não há outros grupos para duplicar este ingresso.</p>
                             <div className="mt-6 flex items-center justify-end">
                                 <Button size="lg" color="primary" onClick={() => setCopiaGrupos(null)}>
                                     Entendi
@@ -348,8 +347,13 @@ export function Ingressos() {
                     <div className="flex max-h-[85vh] w-full max-w-xl flex-col rounded-2xl bg-primary shadow-xl ring-1 ring-border-secondary">
                         <div className="flex items-start justify-between gap-3 p-6 pb-4">
                             <div className="min-w-0">
-                                <h2 className="text-lg font-bold text-primary">{nomeIngresso ? <>Duplicar “{nomeIngresso}”</> : "Duplicar ingresso"}</h2>
-                                <p className="mt-1 text-sm leading-relaxed text-tertiary">Escolha os grupos onde este ingresso será duplicado.</p>
+                                <h2 className="text-lg font-bold text-primary">
+                                    {nomeIngresso ? <>Duplicar ingresso “{nomeIngresso}”</> : "Duplicar ingresso"}
+                                </h2>
+                                <p className="mt-1 text-sm leading-relaxed text-tertiary">
+                                    Escolha os grupos que receberão uma cópia deste ingresso. Cada cópia manterá as configurações e os lotes, mas não incluirá
+                                    vínculos específicos.
+                                </p>
                             </div>
                             <button
                                 type="button"
@@ -361,24 +365,15 @@ export function Ingressos() {
                             </button>
                         </div>
 
-                        {/* Contexto: onde o ingresso está hoje (apenas informativo) */}
-                        {fonte && (
-                            <div className="mx-6 mb-4 rounded-lg bg-secondary px-3.5 py-2.5">
-                                <p className="text-xs font-medium text-tertiary">Este ingresso está em</p>
-                                <p className="mt-1 text-sm font-semibold text-primary">{fonte.sessao.label}</p>
-                                <p className="text-sm leading-snug text-tertiary">{fonte.grupo.name}</p>
-                            </div>
-                        )}
-
                         {/* Selecionar todos os disponíveis */}
-                        <div className="mx-6 flex items-center gap-2.5 border-b border-secondary pb-3">
+                        <div className="mx-6 flex items-center gap-2.5">
                             <Checkbox
                                 size="md"
                                 isDisabled={idsDisponiveis.length === 0}
                                 isSelected={idsDisponiveis.length > 0 && idsDisponiveis.every((id) => alvos.has(id))}
                                 isIndeterminate={idsDisponiveis.some((id) => alvos.has(id)) && !idsDisponiveis.every((id) => alvos.has(id))}
                                 onChange={(v) => setVarios(idsDisponiveis, v)}
-                                label={<span className="text-sm font-semibold text-primary">Selecionar todos os disponíveis</span>}
+                                label={<span className="text-sm font-semibold text-primary">Selecionar todos os grupos</span>}
                             />
                         </div>
 
@@ -386,7 +381,7 @@ export function Ingressos() {
                         <div className="mt-3 flex-1 overflow-y-auto px-6 pb-2">
                             <div className="flex flex-col gap-5">
                                 {destinos.map((s) => {
-                                    const disp = s.grupos.filter((g) => !g.jaTem).map((g) => g.id);
+                                    const disp = s.grupos.map((g) => g.id);
                                     const todos = disp.length > 0 && disp.every((id) => alvos.has(id));
                                     const alguns = disp.some((id) => alvos.has(id));
                                     return (
@@ -401,30 +396,21 @@ export function Ingressos() {
                                                     label={<span className="text-sm font-semibold text-primary">{s.label}</span>}
                                                 />
                                             </div>
-                                            <div className="mt-2 flex flex-col gap-1 pl-6">
-                                                {s.grupos.map((g) =>
-                                                    g.jaTem ? (
-                                                        <div key={g.id} className="flex items-center justify-between gap-3 px-3 py-2.5 opacity-60">
-                                                            <span className="flex items-center gap-3">
-                                                                <span className="size-4 shrink-0 rounded bg-tertiary ring-1 ring-border-primary ring-inset" />
-                                                                <span className="text-sm font-medium text-tertiary">{g.name}</span>
-                                                            </span>
-                                                            <span className="text-xs text-quaternary">Já possui este ingresso</span>
-                                                        </div>
-                                                    ) : (
-                                                        <label
-                                                            key={g.id}
-                                                            className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
-                                                        >
-                                                            <Checkbox
-                                                                size="md"
-                                                                isSelected={alvos.has(g.id)}
-                                                                onChange={(v) => setVarios([g.id], v)}
-                                                                label={<span className="text-sm font-medium text-primary">{g.name}</span>}
-                                                            />
-                                                        </label>
-                                                    ),
-                                                )}
+                                            <div className="mt-2 flex flex-col gap-2 pl-6">
+                                                {s.grupos.map((g) => (
+                                                    <label
+                                                        key={g.id}
+                                                        className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2.5 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
+                                                    >
+                                                        <Checkbox
+                                                            size="md"
+                                                            isSelected={alvos.has(g.id)}
+                                                            onChange={(v) => setVarios([g.id], v)}
+                                                            label={<span className="text-sm font-medium text-primary">{g.name}</span>}
+                                                        />
+                                                        {g.jaTem && <span className="shrink-0 text-xs text-quaternary">Já possui este ingresso</span>}
+                                                    </label>
+                                                ))}
                                             </div>
                                         </div>
                                     );
@@ -433,9 +419,6 @@ export function Ingressos() {
                         </div>
 
                         <div className="border-t border-secondary p-6 pt-4">
-                            <p className="mb-3 text-xs leading-relaxed text-tertiary">
-                                Configurações e lotes serão duplicados. Vínculos específicos não serão replicados.
-                            </p>
                             <div className="flex items-center justify-end gap-2">
                                 <Button size="lg" color="secondary" onClick={() => setCopiaGrupos(null)}>
                                     Cancelar
@@ -642,6 +625,29 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
                     <div className="flex min-w-0 flex-col">
                         <span className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-primary">{ingresso.name}</span>
+                            {ingresso.origem && (
+                                <AriaTooltipTrigger delay={300} closeDelay={0}>
+                                    <AriaButton className="flex size-4 shrink-0 items-center justify-center text-fg-quaternary outline-hidden transition duration-100 ease-linear hover:text-fg-secondary">
+                                        <InfoCircle className="size-4" />
+                                    </AriaButton>
+                                    <AriaTooltip
+                                        offset={6}
+                                        placement="top"
+                                        className={({ isEntering, isExiting }) =>
+                                            cx(
+                                                "z-50 rounded-lg bg-primary-solid px-3 py-2 shadow-lg",
+                                                isEntering && "duration-150 ease-out animate-in fade-in zoom-in-95",
+                                                isExiting && "duration-100 ease-in animate-out fade-out zoom-out-95",
+                                            )
+                                        }
+                                    >
+                                        <p className="text-xs font-semibold text-white">Duplicado de</p>
+                                        <p className="whitespace-nowrap text-xs font-medium text-tooltip-supporting-text">
+                                            {`${ingresso.origem.nome} · ${ingresso.origem.grupo} · Sessão ${ingresso.origem.sessao}`}
+                                        </p>
+                                    </AriaTooltip>
+                                </AriaTooltipTrigger>
+                            )}
                             <AnimatePresence>
                                 {isCopia && (
                                     <motion.span

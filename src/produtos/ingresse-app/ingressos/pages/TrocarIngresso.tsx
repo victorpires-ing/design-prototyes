@@ -146,7 +146,7 @@ export function TrocarIngresso() {
                     {/* Card: ingresso atual */}
                     <div className="rounded-2xl bg-primary p-5 shadow-sm ring-1 ring-border-secondary">
                         <p className="text-sm text-tertiary">Detalhes do seu ingresso atual</p>
-                        <div className="mt-3 flex gap-3">
+                        <div className="mt-3 flex items-center gap-3">
                             <div className="h-[96px] w-[72px] shrink-0 overflow-hidden rounded-xl">
                                 <GradientFill gradient={evento.gradient} />
                             </div>

@@ -145,3 +145,8 @@ export const getCatalogoTroca = (eventId?: string, itemId?: string): CatalogoTro
 };
 
 export const brl = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
+
+/** Taxas aplicadas à troca (cobradas mesmo quando a diferença é R$ 0). */
+export const TAXA_SERVICO = 16.9;
+export const TAXA_PROCESSAMENTO = 8.0;
+export const TAXAS_TOTAL = TAXA_SERVICO + TAXA_PROCESSAMENTO;

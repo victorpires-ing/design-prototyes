@@ -105,31 +105,21 @@ export function TrocarIngresso() {
                             </div>
                         )}
 
-                        {/* Barra de ação */}
+                        {/* Barra de ação — mesmo com diferença R$ 0, as taxas de serviço são cobradas. */}
                         <div className="flex items-center justify-between gap-3 border-t border-secondary px-5 pt-3 pb-6">
-                            {diferenca > 0 ? (
-                                <p className="flex min-w-0 items-center gap-1.5 leading-tight">
-                                    <span className="text-lg font-bold text-primary tabular-nums">{brl(diferenca)}</span>
-                                    <span className="text-sm text-tertiary">+ taxas</span>
-                                    <InfoCircle className="size-4 text-blue-500" />
-                                </p>
-                            ) : (
-                                <p className="min-w-0 text-md font-semibold text-primary">Nenhum valor adicional</p>
-                            )}
+                            <p className="flex min-w-0 items-center gap-1.5 leading-tight">
+                                <span className="text-lg font-bold text-primary tabular-nums">{diferencaFmt}</span>
+                                <span className="text-sm text-tertiary">+ taxas</span>
+                                <InfoCircle className="size-4 text-blue-500" />
+                            </p>
                             <Button
                                 size="lg"
                                 color="primary"
                                 className="shrink-0 px-8"
                                 isDisabled={!podeSeguir}
-                                onClick={() =>
-                                    navigate(
-                                        diferenca > 0
-                                            ? `/ingresse-app/ingressos/trocar/${evento.id}/${itemId}/pagamento?opcao=${selecionado.id}`
-                                            : `/ingresse-app/ingressos/trocar/${evento.id}/${itemId}/sucesso`,
-                                    )
-                                }
+                                onClick={() => navigate(`/ingresse-app/ingressos/trocar/${evento.id}/${itemId}/pagamento?opcao=${selecionado.id}`)}
                             >
-                                {diferenca > 0 ? "Continuar" : "Trocar"}
+                                Continuar
                             </Button>
                         </div>
                     </div>
@@ -157,7 +147,7 @@ export function TrocarIngresso() {
                     <div className="rounded-2xl bg-primary p-5 shadow-sm ring-1 ring-border-secondary">
                         <p className="text-sm text-tertiary">Detalhes do seu ingresso atual</p>
                         <div className="mt-3 flex gap-3">
-                            <div className="size-16 shrink-0 overflow-hidden rounded-xl">
+                            <div className="h-[96px] w-[72px] shrink-0 overflow-hidden rounded-xl">
                                 <GradientFill gradient={evento.gradient} />
                             </div>
                             <div className="min-w-0 flex-1 space-y-1">

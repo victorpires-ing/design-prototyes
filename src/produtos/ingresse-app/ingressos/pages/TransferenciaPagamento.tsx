@@ -54,7 +54,7 @@ export function TransferenciaPagamento() {
                 <div className="px-5 pt-4">
                     <div className="rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
                         <div className="flex gap-3">
-                            <div className="size-14 shrink-0 overflow-hidden rounded-xl">
+                            <div className="h-[96px] w-[72px] shrink-0 overflow-hidden rounded-xl">
                                 <GradientFill gradient={evento.gradient} />
                             </div>
                             <div className="min-w-0 flex-1">

@@ -7,7 +7,8 @@ import { AppShell } from "../../components/AppShell";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { getEvento, getItem } from "../data/eventos";
-import { brl, getCatalogoTroca } from "../data/upgrade";
+import { getCatalogoTroca } from "../data/upgrade";
+import { ResumoTaxasTroca } from "../components/ResumoTaxasTroca";
 
 const PIX = "0939394884849448484.PIX28474.instantpayment.br/qr/v2/cobv/8f2a1c9e";
 const TOTAL = 15 * 60 + 30; // 15:30
@@ -38,8 +39,8 @@ export function TrocarPagamentoPix() {
     const copiar = () => {
         navigator.clipboard?.writeText(PIX).catch(() => {});
         setCopiado(true);
-        // Pix leva alguns minutos para confirmar: segue para a tela de processamento da troca.
-        setTimeout(() => navigate(`/ingresse-app/ingressos/trocar/${evento.id}/${itemId}/processando`), 1200);
+        // O pagamento é confirmado rapidamente: segue direto para a troca concluída.
+        setTimeout(() => navigate(`/ingresse-app/ingressos/trocar/${evento.id}/${itemId}/sucesso`), 1200);
     };
 
     return (
@@ -106,7 +107,7 @@ export function TrocarPagamentoPix() {
                     {/* Card do evento */}
                     <section className="rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
                         <div className="flex gap-3">
-                            <div className="size-14 shrink-0 overflow-hidden rounded-xl">
+                            <div className="h-[96px] w-[72px] shrink-0 overflow-hidden rounded-xl">
                                 <GradientFill gradient={evento.gradient} />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -115,9 +116,8 @@ export function TrocarPagamentoPix() {
                                 <p className="truncate text-sm text-tertiary">{opcao?.nome ?? item?.tipo}</p>
                             </div>
                         </div>
-                        <div className="mt-4 flex items-center justify-between border-t border-secondary pt-3">
-                            <span className="text-sm font-semibold text-primary">Diferença a pagar</span>
-                            <span className="text-sm font-semibold text-primary">{brl(diferenca)}</span>
+                        <div className="mt-4 border-t border-secondary pt-3">
+                            <ResumoTaxasTroca diferenca={diferenca} />
                         </div>
                     </section>
                 </div>

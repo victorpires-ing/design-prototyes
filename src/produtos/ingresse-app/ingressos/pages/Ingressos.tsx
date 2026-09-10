@@ -11,7 +11,7 @@ import { BottomSheet } from "../../components/BottomSheet";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { getEvento, type Combo, type EventoDetalhe, type ItemIngresso } from "../data/eventos";
-import { getDependenteAtribuido, isEmTransferencia, isEmTroca, isTransferido, subscribeTicketStore } from "../data/transfer-store";
+import { getDependenteAtribuido, isEmTransferencia, isTransferido, subscribeTicketStore } from "../data/transfer-store";
 import googleMapsLogo from "../assets/google-maps.png";
 import appleMapsLogo from "../assets/apple-maps.png";
 import wazeLogo from "../assets/waze.png";
@@ -89,13 +89,13 @@ export function Ingressos() {
                 {/* Card do evento */}
                 <div className="px-5 pt-5">
                     <div className="flex gap-3 rounded-2xl bg-primary p-3 ring-1 ring-border-secondary">
-                        <div className="size-24 shrink-0 overflow-hidden rounded-xl">
+                        <div className="h-[96px] w-[72px] shrink-0 overflow-hidden rounded-xl">
                             <GradientFill gradient={evento.gradient} />
                         </div>
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
                             <p className="text-sm font-bold text-primary">{evento.title}</p>
                             <p className="text-sm font-medium text-secondary">{evento.date}</p>
-                            <div className="flex items-end justify-between gap-2">
+                            <div className="flex items-center justify-between gap-2">
                                 <p className="text-sm text-tertiary">{evento.local}</p>
                                 <IconButton icon={Map01} label="Ver no mapa" small onClick={() => setMapaOpen(true)} />
                             </div>
@@ -354,17 +354,13 @@ function useLongPress(onLongPress: (rect: DOMRect) => void, onTap: () => void) {
 
 const TicketRow = ({ item, isFirst, onTap, onLongPress }: { item: ItemIngresso; isFirst: boolean; onTap: () => void; onLongPress: (rect: DOMRect) => void }) => {
     const { pressing, handlers } = useLongPress(onLongPress, onTap);
-    // Em troca (pagamento processando): o ingresso não pode ser acessado.
-    const bloqueado = isEmTroca(item.id);
     return (
         <button
             type="button"
-            {...(bloqueado ? {} : handlers)}
-            disabled={bloqueado}
+            {...handlers}
             className={cx(
-                "block w-full select-none transition duration-100 ease-linear",
-                !bloqueado && "active:bg-secondary",
-                pressing && !bloqueado && "scale-[0.98] bg-secondary",
+                "block w-full select-none transition duration-100 ease-linear active:bg-secondary",
+                pressing && "scale-[0.98] bg-secondary",
                 !isFirst && "border-t border-secondary",
             )}
         >
@@ -372,11 +368,6 @@ const TicketRow = ({ item, isFirst, onTap, onLongPress }: { item: ItemIngresso; 
         </button>
     );
 };
-
-/** Spinner âmbar (processando) exibido no lugar da setinha. */
-const Spinner = () => (
-    <span className="mt-0.5 block size-5 shrink-0 animate-spin rounded-full border-2 border-[color:var(--color-bg-warning-solid)]/25 border-t-[color:var(--color-bg-warning-solid)]" />
-);
 
 /** Card de combo (QR único) com o mesmo atalho de pressionar e segurar. */
 const ComboCard = ({ combo, evento, onTap, onLongPress }: { combo: Combo; evento: EventoDetalhe; onTap: () => void; onLongPress: (rect: DOMRect) => void }) => {
@@ -434,7 +425,6 @@ const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
     const Icon = item.acesso === "facial" ? FaceIdSquare : QrCode02;
     const transf = isTransferido(item.id);
     const emTransf = isEmTransferencia(item.id);
-    const emTroca = isEmTroca(item.id);
     const dep = getDependenteAtribuido(item.id);
 
     // Item de produto/merchandising (ex.: camiseta) — visual diferente do ingresso.
@@ -482,7 +472,7 @@ const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-bold text-primary">{item.title}</p>
-                    {emTroca ? <Spinner /> : <ChevronRight className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />}
+                    <ChevronRight className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
                 </div>
                 <p className="flex items-center gap-1.5 text-sm text-secondary">
                     <User01 className="size-4 shrink-0 text-fg-quaternary" />
@@ -492,10 +482,6 @@ const TicketRowContent = ({ item }: { item: ItemIngresso }) => {
                     {transf ? (
                         <Badge size="md" color="blue" type="pill-color">
                             Transferido
-                        </Badge>
-                    ) : emTroca ? (
-                        <Badge size="md" color="warning" type="pill-color">
-                            Processando troca
                         </Badge>
                     ) : emTransf ? (
                         <Badge size="md" color="warning" type="pill-color">

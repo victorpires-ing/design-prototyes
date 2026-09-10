@@ -6,7 +6,7 @@ import { Button } from "@/components/base/buttons/button";
 import { AppShell } from "../../components/AppShell";
 import { StatusBar } from "../../components/StatusBar";
 import { getEvento } from "../data/eventos";
-import { brl, getCatalogoTroca } from "../data/upgrade";
+import { TAXAS_TOTAL, brl, getCatalogoTroca } from "../data/upgrade";
 
 // Juros por nº de parcelas (proporção sobre o valor da diferença).
 const JUROS: Record<number, number> = { 1: 0, 2: 0, 3: 0.06, 4: 0.075, 5: 0.15, 6: 0.18 };
@@ -41,8 +41,10 @@ export function TrocarPagamentoCartao() {
     const catalogo = getCatalogoTroca(eventId, itemId);
     const opcao = catalogo?.grupos.flatMap((g) => g.opcoes).find((o) => o.id === opcaoId);
     const diferenca = Math.max(0, (opcao?.valor ?? 0) - (catalogo?.valorCompraInicial ?? 0));
+    // As taxas são cobradas mesmo quando a diferença é R$ 0.
+    const totalComTaxa = diferenca + TAXAS_TOTAL;
 
-    const parcelas = gerarParcelas(diferenca);
+    const parcelas = gerarParcelas(totalComTaxa);
     const [cartao, setCartao] = useState("1234");
     const [cvc, setCvc] = useState("");
     const [parcela, setParcela] = useState("1");

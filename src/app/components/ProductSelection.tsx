@@ -130,7 +130,7 @@ export function ProductSelection() {
         <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-primary px-4 py-16">
             <Backdrop />
 
-            <div className="relative z-10 flex w-full max-w-3xl flex-col items-center gap-12">
+            <div className="relative z-10 flex w-full max-w-5xl flex-col items-center gap-12">
                 <div className="flex items-center gap-2.5">
                     <span className="flex size-8 items-center justify-center rounded-lg bg-brand-solid text-white">
                         <Ticket01 className="size-5" aria-hidden="true" />
@@ -143,7 +143,7 @@ export function ProductSelection() {
                     Produto
                 </h1>
 
-                <div className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2">
+                <div className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {PRODUCTS.map((product) => (
                         <ProductCard key={product.id} product={product} />
                     ))}

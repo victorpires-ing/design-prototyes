@@ -138,7 +138,7 @@ const IngressoLogo = () => <img src={logoIngresse} alt="Ingresse" className="h-5
 
 /* "Foto" do evento — cor sólida, como nos demais eventos do app. */
 const Poster = () => (
-    <div className="h-[104px] w-[74px] shrink-0 overflow-hidden rounded-xl ring-1 ring-white/10">
+    <div className="h-[96px] w-[72px] shrink-0 overflow-hidden rounded-xl ring-1 ring-white/10">
         <GradientFill gradient="linear-gradient(150deg,#16a34a,#84cc16)" />
     </div>
 );

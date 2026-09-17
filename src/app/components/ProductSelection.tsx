@@ -18,7 +18,8 @@ type IllustrationKind =
     | "carteira-web"
     | "freepass"
     | "payin"
-    | "totem";
+    | "totem"
+    | "payout";
 
 interface ProductCardData {
     id: string;
@@ -106,6 +107,13 @@ const PRODUCTS: ProductCardData[] = [
         to: "/totem",
         illustration: "totem",
     },
+    {
+        id: "payout",
+        name: "PayOut",
+        description: "Cashout: associação de contratos a eventos e produtoras",
+        to: "/payout/contrato-quick-win-finance",
+        illustration: "payout",
+    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
@@ -120,6 +128,7 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     freepass: FreepassIllustration,
     payin: PayInIllustration,
     totem: TotemIllustration,
+    payout: PayOutIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -141,7 +150,7 @@ export function ProductSelection() {
         <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-primary px-4 py-16">
             <Backdrop />
 
-            <div className="relative z-10 flex w-full max-w-3xl flex-col items-center gap-12">
+            <div className="relative z-10 flex w-full max-w-5xl flex-col items-center gap-12">
                 <div className="flex items-center gap-2.5">
                     <span className="flex size-8 items-center justify-center rounded-lg bg-brand-solid text-white">
                         <Ticket01 className="size-5" aria-hidden="true" />
@@ -154,7 +163,7 @@ export function ProductSelection() {
                     Produto
                 </h1>
 
-                <div className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2">
+                <div className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {PRODUCTS.map((product) => (
                         <ProductCard key={product.id} product={product} />
                     ))}
@@ -235,6 +244,51 @@ function PayInIllustration() {
                 <path d="M164 80 L186 80" />
                 <polyline points="180,74 186,80 180,86" />
             </g>
+        </svg>
+    );
+}
+
+function PayOutIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <defs>
+                <linearGradient id="po-bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="160">
+                    <stop offset="0%" stopColor={N100} />
+                    <stop offset="100%" stopColor={N200} />
+                </linearGradient>
+            </defs>
+            <rect width="320" height="160" fill="url(#po-bg)" />
+
+            {/* Saldo a repassar */}
+            <rect x="24" y="36" width="112" height="88" rx="10" fill={N50} stroke={BORDER} />
+            <rect x="24" y="36" width="112" height="16" rx="10" fill={N200} />
+            <rect x="34" y="62" width="58" height="9" rx="4.5" fill={N200} />
+            <rect x="34" y="78" width="82" height="14" rx="4" fill={N300} />
+            <circle cx="116" cy="110" r="10" fill={BRAND_SOFT} />
+            <circle cx="116" cy="110" r="4" fill={BRAND} />
+
+            {/* Saída do dinheiro */}
+            <g stroke={BRAND} strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M146 80 L176 80" />
+                <polyline points="170,74 176,80 170,86" />
+            </g>
+
+            {/* Organizadores recebendo */}
+            <rect x="186" y="48" width="110" height="22" rx="6" fill={BRAND_SOFT} />
+            <rect x="186" y="48" width="4" height="22" rx="2" fill={BRAND} />
+            <circle cx="202" cy="59" r="7" fill={N100} />
+            <rect x="215" y="55" width="42" height="8" rx="4" fill={N400} />
+            <rect x="266" y="55" width="22" height="8" rx="4" fill={BRAND} />
+
+            <rect x="186" y="74" width="110" height="22" rx="6" fill={N50} stroke={BORDER} />
+            <circle cx="202" cy="85" r="7" fill={N100} />
+            <rect x="215" y="81" width="42" height="8" rx="4" fill={N200} />
+            <rect x="266" y="81" width="22" height="8" rx="4" fill={N200} />
+
+            <rect x="186" y="100" width="110" height="22" rx="6" fill={N50} stroke={BORDER} />
+            <circle cx="202" cy="111" r="7" fill={N100} />
+            <rect x="215" y="107" width="42" height="8" rx="4" fill={N200} />
+            <rect x="266" y="107" width="22" height="8" rx="4" fill={N200} />
         </svg>
     );
 }

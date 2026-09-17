@@ -18,6 +18,13 @@ const PAGES: LandingPageItem[] = [
         to: "/landing-pages/sao-silvestre",
         gradient: "linear-gradient(135deg,#FF4D00 0%,#1d4ed8 100%)",
     },
+    {
+        id: "lounge-premium-bahia",
+        name: "Lounge Premium Bahia",
+        description: "Cadastro de beneficiários do Lounge Premium",
+        to: "/landing-pages/lounge-premium-bahia",
+        gradient: "linear-gradient(135deg,#0a1e46 0%,#2f6bff 55%,#c23a2d 100%)",
+    },
 ];
 
 export function LandingPagesMenu() {

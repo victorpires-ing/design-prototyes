@@ -149,18 +149,18 @@ export function Carteira() {
                                         className="flex items-center gap-4 rounded-2xl bg-primary p-3 text-left ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                                     >
                                         {evento.gradient ? (
-                                            <div className="size-24 shrink-0 overflow-hidden rounded-xl">
+                                            <div className="h-[96px] w-[72px] shrink-0 overflow-hidden rounded-xl">
                                                 <GradientFill gradient={evento.gradient} />
                                             </div>
                                         ) : (
-                                            <div className="flex size-24 shrink-0 items-center justify-center rounded-xl bg-secondary text-fg-quaternary">
+                                            <div className="flex h-[96px] w-[72px] shrink-0 items-center justify-center rounded-xl bg-secondary text-fg-quaternary">
                                                 <Ticket01 className="size-8" />
                                             </div>
                                         )}
                                         <div className="flex min-w-0 flex-1 flex-col gap-1">
                                             <p className="truncate text-sm font-bold text-primary">{evento.title}</p>
                                             <p className="text-sm font-medium text-secondary">{evento.date}</p>
-                                            <p className="text-sm text-tertiary">{evento.local}</p>
+                                            <p className="truncate text-sm text-tertiary">{evento.local}</p>
                                             <p className="text-sm text-tertiary">
                                                 {evento.id === "sao-silvestre" ? "1 inscrição" : `${evento.qtd} ${evento.qtd === 1 ? "ingresso" : "ingressos"}`}
                                             </p>

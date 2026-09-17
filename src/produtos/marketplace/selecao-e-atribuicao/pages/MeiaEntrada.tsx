@@ -120,13 +120,17 @@ function CategoriaItem({
     descricao,
     labelDoc,
     documentos,
+    separadorDocumentos = ", ",
 }: {
     icon: FC<{ className?: string }>;
     titulo: string;
-    descricao: string;
+    descricao: string | string[];
     labelDoc: string;
     documentos: string[];
+    /** Separador entre os documentos (ex.: " ou " para combinações alternativas). */
+    separadorDocumentos?: string;
 }) {
+    const paragrafos = Array.isArray(descricao) ? descricao : [descricao];
     return (
         <div className="flex gap-4">
             <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-primary">
@@ -134,9 +138,13 @@ function CategoriaItem({
             </span>
             <div className="min-w-0">
                 <h3 className="text-lg font-semibold text-primary">{titulo}</h3>
-                <p className="mt-1 text-md leading-relaxed text-tertiary">{descricao}</p>
+                {paragrafos.map((p, i) => (
+                    <p key={i} className={cx("text-md leading-relaxed text-tertiary", i === 0 ? "mt-1" : "mt-3")}>
+                        {p}
+                    </p>
+                ))}
                 <p className="mt-3 text-md leading-relaxed text-tertiary">{labelDoc}:</p>
-                <p className="mt-0.5 text-md font-medium leading-relaxed text-secondary">{documentos.join(", ")}</p>
+                <p className="mt-0.5 text-md font-medium leading-relaxed text-secondary">{documentos.join(separadorDocumentos)}</p>
             </div>
         </div>
     );
@@ -270,7 +278,7 @@ export function MeiaEntrada() {
 
                     <div className="mt-8 grid grid-cols-1 gap-10 md:mt-12 lg:grid-cols-[1fr_360px] lg:gap-16">
                         {/* Categorias */}
-                        <div className="flex flex-col gap-8">
+                        <div className="flex flex-col divide-y divide-border-secondary [&>*]:py-12 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
                             <CategoriaItem
                                 icon={GraduationHat01}
                                 titulo="Estudante"
@@ -281,14 +289,21 @@ export function MeiaEntrada() {
                             <CategoriaItem
                                 icon={HeartHand}
                                 titulo="Pessoa com deficiência"
-                                descricao="Pessoas com deficiência têm direito à meia-entrada. Quando houver necessidade de acompanhamento, o acompanhante também tem direito ao benefício."
+                                descricao={[
+                                    "Pessoas com deficiência têm direito à meia-entrada. Quando houver necessidade de acompanhamento, o acompanhante também tem direito ao benefício.",
+                                    "A necessidade de acompanhamento poderá ser declarada pela pessoa com deficiência ou, quando ela não puder fazê-lo, pelo acompanhante.",
+                                ]}
                                 labelDoc="Documentos para comprovação"
-                                documentos={["Cartão do Benefício de Prestação Continuada (BPC)", "Documento do INSS previsto em lei", "Documento oficial com foto"]}
+                                documentos={[
+                                    "Cartão do Benefício de Prestação Continuada (BPC) + Documento oficial com foto",
+                                    "Documento do INSS previsto em lei + Documento oficial com foto",
+                                ]}
+                                separadorDocumentos=" ou "
                             />
                             <CategoriaItem
                                 icon={Wallet02}
                                 titulo="Jovem de baixa renda"
-                                descricao="Jovens de 15 a 29 anos pertencentes a famílias com renda mensal de até dois salários mínimos e inscritos no CadÚnico têm direito à meia-entrada."
+                                descricao="Jovens de 15 a 29 anos pertencentes a famílias com renda mensal de até dois salários mínimos, inscritos no CadÚnico e portadores do ID Jovem têm direito à meia-entrada."
                                 labelDoc="Documentos para comprovação"
                                 documentos={["Identidade Jovem (ID Jovem)", "Documento oficial com foto"]}
                             />
@@ -312,7 +327,12 @@ export function MeiaEntrada() {
                             <div className="rounded-2xl bg-primary p-6 ring-1 ring-border-secondary">
                                 <h3 className="text-md font-bold text-primary">Disponibilidade</h3>
                                 <p className="mt-2 text-md leading-relaxed text-tertiary">
-                                    A legislação destina até 40% dos ingressos de cada evento à meia-entrada. A disponibilidade pode variar por categoria.
+                                    A legislação destina até 40% dos ingressos de cada evento à meia-entrada. A disponibilidade pode variar por categoria e se
+                                    aplica para todas as categorias de meia-entrada apresentadas, com exceção da de pessoa idosa.
+                                </p>
+                                <p className="mt-3 text-md leading-relaxed text-tertiary">
+                                    O benefício destinado às pessoas com 60 anos ou mais não está sujeito à cota federal de 40% aplicável aos beneficiários da Lei
+                                    nº 12.933/2013.
                                 </p>
                             </div>
                         </div>
@@ -504,9 +524,9 @@ export function MeiaEntrada() {
                                     titulo: "Outra pessoa pode usar minha meia-entrada?",
                                     conteudo: (
                                         <p>
-                                            O benefício deve ser utilizado pela pessoa que possui o direito à meia-entrada e deverá ser comprovado com a documentação
-                                            correspondente no acesso ao evento. No caso da pessoa com deficiência que necessite de acompanhamento, o acompanhante
-                                            também pode ter direito ao benefício nos termos da legislação.
+                                            Não. O benefício deve ser utilizado pela pessoa que possui o direito à meia-entrada e deverá ser comprovado com a
+                                            documentação correspondente no acesso ao evento. No caso da pessoa com deficiência que necessite de acompanhamento, o
+                                            acompanhante também pode ter direito ao benefício nos termos da legislação.
                                         </p>
                                     ),
                                 },

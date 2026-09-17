@@ -19,6 +19,8 @@ import { Acesso } from '../produtos/backstage/relatorios/pages/Acesso';
 import { Bordero } from '../produtos/backstage/relatorios/pages/Bordero';
 import { Comparativos } from '../produtos/backstage/relatorios/pages/Comparativos';
 import { Transacoes } from '../produtos/backstage/relatorios/pages/Transacoes';
+import { Transacoes2 } from '../produtos/backstage/relatorios/pages/Transacoes2';
+import { Transacoes3 } from '../produtos/backstage/relatorios/pages/Transacoes3';
 import { Transferencias } from '../produtos/backstage/relatorios/pages/Transferencias';
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
@@ -79,7 +81,6 @@ import { TrocarIngresso as IngresseAppTrocarIngresso } from '../produtos/ingress
 import { TrocarPagamento as IngresseAppTrocarPagamento } from '../produtos/ingresse-app/ingressos/pages/TrocarPagamento';
 import { TrocarPagamentoPix as IngresseAppTrocarPagamentoPix } from '../produtos/ingresse-app/ingressos/pages/TrocarPagamentoPix';
 import { TrocarPagamentoCartao as IngresseAppTrocarPagamentoCartao } from '../produtos/ingresse-app/ingressos/pages/TrocarPagamentoCartao';
-import { TrocaProcessando as IngresseAppTrocaProcessando } from '../produtos/ingresse-app/ingressos/pages/TrocaProcessando';
 import { TrocaSucesso as IngresseAppTrocaSucesso } from '../produtos/ingresse-app/ingressos/pages/TrocaSucesso';
 import { ComboDetalhe as IngresseAppComboDetalhe } from '../produtos/ingresse-app/ingressos/pages/ComboDetalhe';
 import { ProdutoDetalhe as IngresseAppProdutoDetalhe } from '../produtos/ingresse-app/ingressos/pages/ProdutoDetalhe';
@@ -147,6 +148,7 @@ import { EntradaTeste } from '../produtos/usabilidade/testes/pages/EntradaTeste'
 import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPagesMenu';
 import { Inscricao as TicketSportsInscricao } from '../produtos/ticketsports/inscricao/pages/Inscricao';
 import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
+import { LoungePremiumBahia } from '../produtos/landing-pages/lounge-premium-bahia/pages/LoungePremiumBahia';
 import { SolicitacaoVagas } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoVagas';
 import { SolicitacaoBeneficioPcd } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoBeneficioPcd';
 import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
@@ -167,6 +169,8 @@ import { EnviarCortesiasFlow, ResgatarCortesiasFlow } from '../produtos/freepass
 import { Reanalise } from '../produtos/payin/suspensao-de-conta/pages/Reanalise';
 import { SuspenderUsuario } from '../produtos/payin/suspensao-de-conta/pages/SuspenderUsuario';
 import { HistoricoSuspensao } from '../produtos/payin/suspensao-de-conta/pages/HistoricoSuspensao';
+import { Eventos as CashoutEventos } from '../produtos/payout/contrato-quick-win-finance/pages/eventos';
+import { Produtoras as CashoutProdutoras } from '../produtos/payout/contrato-quick-win-finance/pages/produtoras';
 
 function HomeScreen() {
   const [params, setParams] = useState({
@@ -234,6 +238,8 @@ export default function App() {
         <Route path="/backstage/verificacao" element={<VerificacaoFinal />} />
         <Route path="/backstage/relatorios/vendas-por-grupo" element={<VendasPorGrupo />} />
         <Route path="/backstage/relatorios/transacoes" element={<Transacoes />} />
+        <Route path="/backstage/relatorios/transacoes2" element={<Transacoes2 />} />
+        <Route path="/backstage/relatorios/transacoes3" element={<Transacoes3 />} />
         <Route path="/backstage/relatorios/acesso" element={<Acesso />} />
         <Route path="/backstage/relatorios/bordero" element={<Bordero />} />
         <Route path="/backstage/relatorios/transferencias" element={<Transferencias />} />
@@ -324,7 +330,6 @@ export default function App() {
         <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/pagamento" element={<IngresseAppTrocarPagamento />} />
         <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/pagamento/pix" element={<IngresseAppTrocarPagamentoPix />} />
         <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/pagamento/cartao" element={<IngresseAppTrocarPagamentoCartao />} />
-        <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/processando" element={<IngresseAppTrocaProcessando />} />
         <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/sucesso" element={<IngresseAppTrocaSucesso />} />
         <Route path="/ingresse-app/ingressos/combo/:eventId/:comboId" element={<IngresseAppComboDetalhe />} />
         <Route path="/ingresse-app/ingressos/produto/:eventId/:itemId" element={<IngresseAppProdutoDetalhe />} />
@@ -346,6 +351,7 @@ export default function App() {
         <Route path="/landing-pages" element={<LandingPagesMenu />} />
         {/* Link separado — não listado na ProductSelection (home) */}
         <Route path="/ticketsports/inscricao" element={<TicketSportsInscricao />} />
+        <Route path="/landing-pages/lounge-premium-bahia" element={<LoungePremiumBahia />} />
         <Route path="/landing-pages/sao-silvestre" element={<SaoSilvestre />} />
         <Route path="/landing-pages/sao-silvestre/solicitar-vagas" element={<SolicitacaoVagas />} />
         <Route path="/landing-pages/sao-silvestre/solicitar-beneficio-pcd" element={<SolicitacaoBeneficioPcd />} />
@@ -364,6 +370,8 @@ export default function App() {
         <Route path="/payin/suspensao-de-conta" element={<Reanalise />} />
         <Route path="/payin/suspensao-de-conta/suspender-usuario" element={<SuspenderUsuario />} />
         <Route path="/payin/suspensao-de-conta/historico/:contaId" element={<HistoricoSuspensao />} />
+        <Route path="/payout/contrato-quick-win-finance" element={<CashoutEventos />} />
+        <Route path="/payout/contrato-quick-win-finance/produtoras" element={<CashoutProdutoras />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </EquipeV2Provider>

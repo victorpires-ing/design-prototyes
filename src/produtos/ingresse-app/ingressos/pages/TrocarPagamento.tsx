@@ -6,7 +6,8 @@ import { AppShell } from "../../components/AppShell";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { getEvento, getItem } from "../data/eventos";
-import { brl, getCatalogoTroca } from "../data/upgrade";
+import { getCatalogoTroca } from "../data/upgrade";
+import { ResumoTaxasTroca } from "../components/ResumoTaxasTroca";
 
 /** Pagamento da diferença da troca de ingresso.
  *  Mesmo layout/comportamento da tela de transferência paga, com o texto "Diferença a pagar". */
@@ -61,7 +62,7 @@ export function TrocarPagamento() {
                 <div className="px-5 pt-4">
                     <div className="rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
                         <div className="flex gap-3">
-                            <div className="size-14 shrink-0 overflow-hidden rounded-xl">
+                            <div className="h-[96px] w-[72px] shrink-0 overflow-hidden rounded-xl">
                                 <GradientFill gradient={evento.gradient} />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -70,9 +71,8 @@ export function TrocarPagamento() {
                                 <p className="truncate text-sm text-tertiary">{opcao?.nome ?? item?.tipo}</p>
                             </div>
                         </div>
-                        <div className="mt-4 flex items-center justify-between border-t border-secondary pt-3">
-                            <span className="text-sm font-semibold text-primary">Diferença a pagar</span>
-                            <span className="text-sm font-semibold text-primary">{brl(diferenca)}</span>
+                        <div className="mt-4 border-t border-secondary pt-3">
+                            <ResumoTaxasTroca diferenca={diferenca} />
                         </div>
                     </div>
                 </div>

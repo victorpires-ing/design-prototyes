@@ -1,11 +1,13 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router";
-import { Calendar, ChevronDown, ChevronRight, Copy01, Edit01, Key01, Plus, QrCode01, Trash01, XClose, Zap } from "@untitledui/icons";
+import { Calendar, ChevronDown, ChevronRight, Copy01, Edit01, InfoCircle, Key01, Plus, QrCode01, Trash01, XClose, Zap } from "@untitledui/icons";
 import { AnimatePresence, Reorder, motion, useDragControls } from "motion/react";
+import { Button as AriaButton, Tooltip as AriaTooltip, TooltipTrigger as AriaTooltipTrigger } from "react-aria-components";
 import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
@@ -84,9 +86,11 @@ export function Ingressos() {
     );
     const [pending, setPending] = useState<Pending | null>(null);
     const [draggingId, setDraggingId] = useState<string | null>(null);
-    // Duplicação de ingresso: modal de confirmação + badge temporária "cópia de ingresso".
-    const [dupIngresso, setDupIngresso] = useState<{ sessaoId: string; grupoId: string; ingressoId: string; nome: string } | null>(null);
-    const [copiaId, setCopiaId] = useState<string | null>(null);
+    // Badge temporária "cópia de ingresso" nos ingressos recém-copiados.
+    const [copiaIds, setCopiaIds] = useState<Set<string>>(new Set());
+    // "Copiar para outros grupos": referência ao ingresso de origem + grupos alvo selecionados.
+    const [copiaGrupos, setCopiaGrupos] = useState<{ sessaoId: string; grupoId: string; ingressoId: string } | null>(null);
+    const [alvos, setAlvos] = useState<Set<string>>(new Set());
 
     const sessoesRef = useRef(sessoes);
     sessoesRef.current = sessoes;
@@ -105,31 +109,88 @@ export function Ingressos() {
             prev.map((s) => (s.id === sessaoId ? { ...s, grupos: s.grupos.map((g) => (g.id === grupoId ? { ...g, ingressos: next } : g)) } : s)),
         );
 
-    // Duplica o ingresso (com todos os lotes) logo abaixo, com novos ids + badge temporária.
-    const duplicarIngresso = (sessaoId: string, grupoId: string, ingressoId: string) => {
-        const orig = sessoes.find((s) => s.id === sessaoId)?.grupos.find((g) => g.id === grupoId)?.ingressos.find((i) => i.id === ingressoId);
-        if (!orig) return;
-        const sfx = `-c${(dupSeq.current += 1)}`;
-        const novoId = orig.id + sfx;
-        const copia: Ingresso = { ...orig, id: novoId, lotes: orig.lotes.map((l) => ({ ...l, id: l.id + sfx })) };
-        setSessoes((prev) =>
-            prev.map((s) =>
-                s.id !== sessaoId
-                    ? s
-                    : {
-                          ...s,
-                          grupos: s.grupos.map((g) => {
-                              if (g.id !== grupoId) return g;
-                              const idx = g.ingressos.findIndex((i) => i.id === ingressoId);
-                              const ings = [...g.ingressos];
-                              ings.splice(idx + 1, 0, copia);
-                              return { ...g, ingressos: ings };
-                          }),
-                      },
-            ),
+    // Marca ingressos como "cópia" (badge temporária) e limpa depois de 30s.
+    const flashCopia = (ids: string[]) => {
+        const set = new Set(ids);
+        setCopiaIds(set);
+        window.setTimeout(() => setCopiaIds((cur) => (cur === set ? new Set() : cur)), 30000);
+    };
+
+    // ---- Copiar ingresso para outros grupos (inclusive de outras sessões) ----
+    const fonte = useMemo(() => {
+        if (!copiaGrupos) return null;
+        const sessao = sessoes.find((s) => s.id === copiaGrupos.sessaoId);
+        const grupo = sessao?.grupos.find((g) => g.id === copiaGrupos.grupoId);
+        const ingresso = grupo?.ingressos.find((i) => i.id === copiaGrupos.ingressoId);
+        if (!sessao || !grupo || !ingresso) return null;
+        return { sessao, grupo, ingresso };
+    }, [copiaGrupos, sessoes]);
+
+    const nomeIngresso = fonte?.ingresso.name ?? "";
+
+    // Destinos organizados por sessão. Exclui o grupo de origem; marca conflito quando o grupo já tem ingresso equivalente (mesmo nome).
+    const destinos = useMemo(() => {
+        if (!copiaGrupos || !fonte) return [];
+        return sessoes
+            .map((s) => ({
+                id: s.id,
+                label: s.label,
+                diaSemana: s.diaSemana,
+                grupos: s.grupos
+                    .filter((g) => g.id !== copiaGrupos.grupoId)
+                    .map((g) => ({ id: g.id, name: g.name, jaTem: g.ingressos.some((i) => i.name === nomeIngresso) })),
+            }))
+            .filter((s) => s.grupos.length > 0);
+    }, [copiaGrupos, sessoes, fonte, nomeIngresso]);
+
+    // Todos os grupos de destino são selecionáveis (mesmo os que já possuem o ingresso — apenas indicamos).
+    const idsDisponiveis = destinos.flatMap((s) => s.grupos.map((g) => g.id));
+
+    const abrirCopiaGrupos = (sessaoId: string, grupoId: string, ingressoId: string) => {
+        setAlvos(new Set());
+        setCopiaGrupos({ sessaoId, grupoId, ingressoId });
+    };
+
+    const setVarios = (ids: string[], on: boolean) =>
+        setAlvos((prev) => {
+            const next = new Set(prev);
+            ids.forEach((id) => (on ? next.add(id) : next.delete(id)));
+            return next;
+        });
+
+    const copiarParaGrupos = () => {
+        if (!fonte || alvos.size === 0) return;
+        const base = (dupSeq.current += 1);
+        const novosIds: string[] = [];
+        const adicoes: Record<string, Ingresso> = {};
+        let n = 0;
+        const origem = { nome: fonte.ingresso.name, grupo: fonte.grupo.name, sessao: fonte.sessao.label };
+        sessoes.forEach((s) =>
+            s.grupos.forEach((g) => {
+                if (!alvos.has(g.id)) return;
+                const sfx = `-g${base}-${n++}`;
+                const novoId = fonte.ingresso.id + sfx;
+                novosIds.push(novoId);
+                // Cópia independente: configurações + lotes (vínculos externos não são replicados).
+                // Guarda a origem para exibir no hover; permite duplicar mesmo se o grupo já tiver o ingresso.
+                adicoes[g.id] = { ...fonte.ingresso, id: novoId, origem, lotes: fonte.ingresso.lotes.map((l) => ({ ...l, id: l.id + sfx })) };
+            }),
         );
-        setCopiaId(novoId);
-        window.setTimeout(() => setCopiaId((cur) => (cur === novoId ? null : cur)), 30000);
+        setSessoes((prev) =>
+            prev.map((s) => ({ ...s, grupos: s.grupos.map((g) => (adicoes[g.id] ? { ...g, ingressos: [...g.ingressos, adicoes[g.id]] } : g)) })),
+        );
+        setOpenGroups((prev) => new Set([...prev, ...Object.keys(adicoes)]));
+        // Cópias herdam o estado (ativo/inativo) do ingresso de origem.
+        if (active.has(fonte.ingresso.id)) setActive((prev) => new Set([...prev, ...novosIds]));
+        flashCopia(novosIds);
+        setCopiaGrupos(null);
+        // Rola até a primeira cópia (após os grupos-alvo abrirem) para mostrar onde foi incluída.
+        const primeiro = novosIds[0];
+        if (primeiro) {
+            window.setTimeout(() => {
+                document.getElementById(`ingresso-${primeiro}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 480);
+        }
     };
 
     // Ao iniciar o arraste: guarda a ordem anterior (para reverter) + o contexto.
@@ -202,8 +263,8 @@ export function Ingressos() {
                                         active={active}
                                         onToggleActive={toggleActive}
                                         onReorderIngressos={(next) => reorderIngressos(sessao.id, grupo.id, next)}
-                                        onDuplicarIngresso={(ing) => setDupIngresso({ sessaoId: sessao.id, grupoId: grupo.id, ingressoId: ing.id, nome: ing.name })}
-                                        copiaId={copiaId}
+                                        onCopiarIngresso={(ing) => abrirCopiaGrupos(sessao.id, grupo.id, ing.id)}
+                                        copiaIds={copiaIds}
                                         onDragStart={handleDragStart}
                                         onDragEnd={handleDragEnd}
                                         draggingId={draggingId}
@@ -258,41 +319,117 @@ export function Ingressos() {
                 </div>
             )}
 
-            {/* Modal de confirmação: duplicar ingresso */}
-            {dupIngresso && (
+            {/* Modal: copiar ingresso para outros grupos */}
+            {copiaGrupos && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/60 p-4" role="dialog" aria-modal="true">
-                    <div className="w-full max-w-md rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
-                        <div className="flex items-start justify-between gap-3">
-                            <h2 className="text-lg font-bold text-primary">Duplicar ingresso?</h2>
+                    {idsDisponiveis.length === 0 ? (
+                        /* Não há outros grupos de destino. */
+                        <div className="w-full max-w-md rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                            <div className="flex items-start justify-between gap-3">
+                                <h2 className="text-lg font-bold text-primary">Nenhum grupo disponível</h2>
+                                <button
+                                    type="button"
+                                    onClick={() => setCopiaGrupos(null)}
+                                    aria-label="Fechar"
+                                    className="flex size-8 shrink-0 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-secondary"
+                                >
+                                    <XClose className="size-5" aria-hidden="true" />
+                                </button>
+                            </div>
+                            <p className="mt-2 text-sm leading-relaxed text-tertiary">Não há outros grupos para duplicar este ingresso.</p>
+                            <div className="mt-6 flex items-center justify-end">
+                                <Button size="lg" color="primary" onClick={() => setCopiaGrupos(null)}>
+                                    Entendi
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                    <div className="flex max-h-[85vh] w-full max-w-xl flex-col rounded-2xl bg-primary shadow-xl ring-1 ring-border-secondary">
+                        <div className="flex items-start justify-between gap-3 p-6 pb-4">
+                            <div className="min-w-0">
+                                <h2 className="text-lg font-bold text-primary">
+                                    {nomeIngresso ? <>Duplicar ingresso “{nomeIngresso}”</> : "Duplicar ingresso"}
+                                </h2>
+                                <p className="mt-1 text-sm leading-relaxed text-tertiary">
+                                    Escolha os grupos que receberão uma cópia deste ingresso. Cada cópia manterá as configurações e os lotes, mas não incluirá
+                                    vínculos específicos.
+                                </p>
+                            </div>
                             <button
                                 type="button"
-                                onClick={() => setDupIngresso(null)}
+                                onClick={() => setCopiaGrupos(null)}
                                 aria-label="Fechar"
-                                className="flex size-8 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-secondary"
+                                className="flex size-8 shrink-0 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-secondary"
                             >
                                 <XClose className="size-5" aria-hidden="true" />
                             </button>
                         </div>
-                        <p className="mt-2 text-sm leading-relaxed text-tertiary">
-                            Será criado um novo ingresso com as mesmas configurações e lotes deste. Depois, você poderá revisar e ajustar o que for necessário.
-                        </p>
-                        <div className="mt-6 grid grid-cols-2 gap-3">
-                            <Button size="md" color="secondary" onClick={() => setDupIngresso(null)} className="w-full">
-                                Cancelar
-                            </Button>
-                            <Button
+
+                        {/* Selecionar todos os disponíveis */}
+                        <div className="mx-6 flex items-center gap-2.5">
+                            <Checkbox
                                 size="md"
-                                color="primary"
-                                className="w-full"
-                                onClick={() => {
-                                    duplicarIngresso(dupIngresso.sessaoId, dupIngresso.grupoId, dupIngresso.ingressoId);
-                                    setDupIngresso(null);
-                                }}
-                            >
-                                Duplicar ingresso
-                            </Button>
+                                isDisabled={idsDisponiveis.length === 0}
+                                isSelected={idsDisponiveis.length > 0 && idsDisponiveis.every((id) => alvos.has(id))}
+                                isIndeterminate={idsDisponiveis.some((id) => alvos.has(id)) && !idsDisponiveis.every((id) => alvos.has(id))}
+                                onChange={(v) => setVarios(idsDisponiveis, v)}
+                                label={<span className="text-sm font-semibold text-primary">Selecionar todos os grupos</span>}
+                            />
+                        </div>
+
+                        {/* Destinos por sessão (rolável) */}
+                        <div className="mt-3 flex-1 overflow-y-auto px-6 pb-2">
+                            <div className="flex flex-col gap-5">
+                                {destinos.map((s) => {
+                                    const disp = s.grupos.map((g) => g.id);
+                                    const todos = disp.length > 0 && disp.every((id) => alvos.has(id));
+                                    const alguns = disp.some((id) => alvos.has(id));
+                                    return (
+                                        <div key={s.id}>
+                                            <div className="flex items-center gap-2.5">
+                                                <Checkbox
+                                                    size="md"
+                                                    isDisabled={disp.length === 0}
+                                                    isSelected={todos}
+                                                    isIndeterminate={alguns && !todos}
+                                                    onChange={(v) => setVarios(disp, v)}
+                                                    label={<span className="text-sm font-semibold text-primary">{s.label}</span>}
+                                                />
+                                            </div>
+                                            <div className="mt-2 flex flex-col gap-2 pl-6">
+                                                {s.grupos.map((g) => (
+                                                    <label
+                                                        key={g.id}
+                                                        className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2.5 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
+                                                    >
+                                                        <Checkbox
+                                                            size="md"
+                                                            isSelected={alvos.has(g.id)}
+                                                            onChange={(v) => setVarios([g.id], v)}
+                                                            label={<span className="text-sm font-medium text-primary">{g.name}</span>}
+                                                        />
+                                                        {g.jaTem && <span className="shrink-0 text-xs text-quaternary">Já possui este ingresso</span>}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="border-t border-secondary p-6 pt-4">
+                            <div className="flex items-center justify-end gap-2">
+                                <Button size="lg" color="secondary" onClick={() => setCopiaGrupos(null)}>
+                                    Cancelar
+                                </Button>
+                                <Button size="lg" color="primary" isDisabled={alvos.size === 0} onClick={copiarParaGrupos}>
+                                    {alvos.size === 0 ? "Duplicar ingresso" : `Duplicar em ${alvos.size} ${alvos.size === 1 ? "grupo" : "grupos"}`}
+                                </Button>
+                            </div>
                         </div>
                     </div>
+                    )}
                 </div>
             )}
         </BackstageLayout>
@@ -309,15 +446,15 @@ interface GrupoCardProps {
     active: Set<string>;
     onToggleActive: (id: string) => void;
     onReorderIngressos: (next: Ingresso[]) => void;
-    onDuplicarIngresso: (ingresso: Ingresso) => void;
-    copiaId: string | null;
+    onCopiarIngresso: (ingresso: Ingresso) => void;
+    copiaIds: Set<string>;
     onDragStart: (ctx: Pending) => void;
     onDragEnd: () => void;
     draggingId: string | null;
     dropLine: DropSide;
 }
 
-function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggleExpand, active, onToggleActive, onReorderIngressos, onDuplicarIngresso, copiaId, onDragStart, onDragEnd, draggingId, dropLine }: GrupoCardProps) {
+function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggleExpand, active, onToggleActive, onReorderIngressos, onCopiarIngresso, copiaIds, onDragStart, onDragEnd, draggingId, dropLine }: GrupoCardProps) {
     const controls = useDragControls();
     // overflow-hidden só durante a animação de abrir/fechar; quando aberto, "visible"
     // para não cortar o handle de arraste (que fica meio pra fora) nem a linha em drag.
@@ -403,8 +540,8 @@ function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggl
                                     onToggleExpand={() => onToggleExpand(ingresso.id)}
                                     active={active}
                                     onToggleActive={onToggleActive}
-                                    onDuplicar={() => onDuplicarIngresso(ingresso)}
-                                    isCopia={copiaId === ingresso.id}
+                                    onCopiarGrupos={() => onCopiarIngresso(ingresso)}
+                                    isCopia={copiaIds.has(ingresso.id)}
                                     onDragStart={onDragStart}
                                     onDragEnd={onDragEnd}
                                     dropLine={dropLineFor(grupo.ingressos, idx, draggingId)}
@@ -434,14 +571,14 @@ interface IngressoRowProps {
     onToggleExpand: () => void;
     active: Set<string>;
     onToggleActive: (id: string) => void;
-    onDuplicar: () => void;
+    onCopiarGrupos: () => void;
     isCopia: boolean;
     onDragStart: (ctx: Pending) => void;
     onDragEnd: () => void;
     dropLine: DropSide;
 }
 
-function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, onToggleActive, onDuplicar, isCopia, onDragStart, onDragEnd, dropLine }: IngressoRowProps) {
+function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, onToggleActive, onCopiarGrupos, isCopia, onDragStart, onDragEnd, dropLine }: IngressoRowProps) {
     const controls = useDragControls();
 
     return (
@@ -459,8 +596,14 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
 
             {/* Entrada da cópia: só fade (a linha ocupa a altura no fluxo, empurrando apenas o que está abaixo — sem pulo) */}
             <motion.div initial={isCopia ? { opacity: 0 } : false} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: "easeOut" }}>
-            {/* Linha do ingresso */}
-            <div className="group/row relative flex items-center gap-3 border-b border-secondary px-4 py-3.5">
+            {/* Linha do ingresso — fundo de contraste persistente quando é uma cópia recém-criada */}
+            <div
+                id={`ingresso-${ingresso.id}`}
+                className={cx(
+                    "group/row relative flex items-center gap-3 border-b border-secondary px-4 py-3.5 transition-colors duration-500",
+                    isCopia && "bg-secondary",
+                )}
+            >
                 {/* Handle de arraste — aparece no hover, colado na borda esquerda */}
                 <span
                     onPointerDown={(e) => controls.start(e)}
@@ -482,6 +625,29 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
                     <div className="flex min-w-0 flex-col">
                         <span className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-primary">{ingresso.name}</span>
+                            {ingresso.origem && (
+                                <AriaTooltipTrigger delay={300} closeDelay={0}>
+                                    <AriaButton className="flex size-4 shrink-0 items-center justify-center text-fg-quaternary outline-hidden transition duration-100 ease-linear hover:text-fg-secondary">
+                                        <InfoCircle className="size-4" />
+                                    </AriaButton>
+                                    <AriaTooltip
+                                        offset={6}
+                                        placement="top"
+                                        className={({ isEntering, isExiting }) =>
+                                            cx(
+                                                "z-50 rounded-lg bg-primary-solid px-3 py-2 shadow-lg",
+                                                isEntering && "duration-150 ease-out animate-in fade-in zoom-in-95",
+                                                isExiting && "duration-100 ease-in animate-out fade-out zoom-out-95",
+                                            )
+                                        }
+                                    >
+                                        <p className="text-xs font-semibold text-white">Duplicado de</p>
+                                        <p className="whitespace-nowrap text-xs font-medium text-tooltip-supporting-text">
+                                            {`${ingresso.origem.nome} · ${ingresso.origem.grupo} · Sessão ${ingresso.origem.sessao}`}
+                                        </p>
+                                    </AriaTooltip>
+                                </AriaTooltipTrigger>
+                            )}
                             <AnimatePresence>
                                 {isCopia && (
                                     <motion.span
@@ -515,7 +681,7 @@ function IngressoRow({ ingresso, grupoNome, isExpanded, onToggleExpand, active, 
                 </div>
                 <div className={cx("flex shrink-0 items-center justify-end gap-0.5", COL.acoes)}>
                     <ActionIcon icon={Edit01} label="Editar" />
-                    <ActionIcon icon={Copy01} label="Duplicar" onClick={onDuplicar} />
+                    <ActionIcon icon={Copy01} label="Duplicar" onClick={onCopiarGrupos} />
                     <ActionIcon icon={Key01} label="Vincular códigos" />
                     <ActionIcon icon={Trash01} label="Excluir" />
                 </div>

@@ -12,7 +12,7 @@ import { InputBase } from "@/components/base/input/input";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { Aviso, EtapaCompacta, FOCO, ItensSelecionados, Regra, ResumoFinanceiro, Stepper, useRolou } from "../components/pos-compra-ui";
+import { Aviso, EtapaCompacta, FOCO, ItensSelecionados, Miniatura, Regra, ResumoFinanceiro, Stepper, useRolou } from "../components/pos-compra-ui";
 import { EditorResposta } from "../components/respostas-ui";
 import {
     SESSOES,
@@ -111,13 +111,9 @@ export function TrocarItens() {
     /*  O que entra                                                        */
     /* ------------------------------------------------------------------ */
 
-    /* O destino segue o que saiu: quem tirou ingresso escolhe ingresso, quem tirou produto escolhe produto. */
-    const tiposSelecionados = new Set(linhasSaem.map((l) => getItem(l.itemId)?.tipo).filter(Boolean) as TipoItem[]);
+    /* A troca vale entre qualquer combinação de tipos — ingresso por produto, produto por ingresso etc. */
     const candidatos = catalogo.filter(
-        (i) =>
-            i.eventoId === pedido.eventoId &&
-            (tiposSelecionados.size === 0 || tiposSelecionados.has(i.tipo)) &&
-            combina(termo, i.nome, i.grupo, i.lote, i.descricao, sessaoLabel(i)),
+        (i) => i.eventoId === pedido.eventoId && combina(termo, i.nome, i.grupo, i.lote, i.descricao, sessaoLabel(i)),
     );
     const sessoes = SESSOES.filter((s) => s.eventoId === pedido.eventoId)
         .sort((a, b) => a.inicio - b.inicio)
@@ -132,12 +128,15 @@ export function TrocarItens() {
     const produtos = candidatos.filter((i) => !i.sessaoId && i.tipo === "produto");
     const combos = candidatos.filter((i) => !i.sessaoId && i.tipo === "combo");
 
-    /* Primeira linha de cada tipo: valida o catálogo tipo a tipo. */
+    /* Referência para validar o catálogo: prefere uma linha do mesmo tipo (compara lote, sessão etc. com
+       mais sentido); sem uma do mesmo tipo, cai em qualquer linha que esteja saindo — a troca vale entre
+       tipos diferentes, então o catálogo não pode ficar sem validação nesse caso. */
     const referenciaPorTipo = new Map<TipoItem, PedidoItem>();
     linhasSaem.forEach((l) => {
         const tipo = getItem(l.itemId)?.tipo;
         if (tipo && !referenciaPorTipo.has(tipo)) referenciaPorTipo.set(tipo, l);
     });
+    const referenciaDoItem = (item: CatalogoItem) => referenciaPorTipo.get(item.tipo) ?? linhasSaem[0];
 
     /* Para o cartão dizer "já no pedido" e mostrar a diferença por unidade. */
     const noPedidoPorItem = new Map<string, number>();
@@ -220,7 +219,7 @@ export function TrocarItens() {
             key={item.id}
             item={item}
             pedido={pedido}
-            linhaReferencia={referenciaPorTipo.get(item.tipo)}
+            linhaReferencia={referenciaDoItem(item)}
             quantidade={entram[item.id] ?? 0}
             restante={totalSaem - totalEntram}
             totalSaem={totalSaem}
@@ -231,22 +230,13 @@ export function TrocarItens() {
         />
     );
 
-    const itemBloqueado = (item: CatalogoItem) => {
-        const referencia = referenciaPorTipo.get(item.tipo);
-        const impedimento = referencia ? validarTrocaItem(pedido, referencia, item) : null;
-        return Boolean(impedimento) && impedimento?.curto !== "Item atual";
-    };
-    /* Sessões sem nenhum item aproveitável ficam recolhidas no fim: o que dá para escolher vem primeiro. */
-    const sessoesDisponiveis = sessoes.filter((s) => s.grupos.some(([, itens]) => itens.some((i) => !itemBloqueado(i))));
-    const sessoesIndisponiveis = sessoes.filter((s) => !sessoesDisponiveis.includes(s));
-
-    const renderSessao = ({ sessao, grupos }: (typeof sessoes)[number], abrirPrimeiro: boolean) => (
+    const renderSessao = ({ sessao, grupos }: (typeof sessoes)[number], primeiraSessao: boolean) => (
         <div key={sessao.id} className="flex flex-col gap-2">
             <CabecalhoSessao sessao={sessao} />
             {grupos.map(([grupo, itens], posicao) => (
                 <Accordion
                     key={grupo}
-                    defaultOpen={(abrirPrimeiro && posicao === 0) || Boolean(termo.trim())}
+                    defaultOpen={(primeiraSessao && posicao === 0) || Boolean(termo.trim())}
                     cabecalho={
                         <span className="flex min-w-0 flex-1 items-baseline gap-2">
                             <span className="truncate text-sm font-semibold text-primary">{grupo}</span>
@@ -428,7 +418,7 @@ export function TrocarItens() {
                                     value={termo}
                                     aria-label="Buscar item"
                                     onChange={(evento) => setTermo(evento.target.value)}
-                                    placeholder={tiposSelecionados.has("ingresso") ? "Busque por sessão, grupo, lote ou item" : "Busque por item"}
+                                    placeholder="Busque por sessão, grupo, lote ou item"
                                 />
 
                                 {selecaoIgual && (
@@ -442,22 +432,7 @@ export function TrocarItens() {
                                 {sessoes.length > 0 && (
                                     <div className="flex flex-col gap-2">
                                         {(produtos.length > 0 || combos.length > 0) && <p className="px-1 text-sm font-semibold text-secondary">Ingressos</p>}
-                                        {sessoesDisponiveis.map((entrada) => renderSessao(entrada, true))}
-                                        {sessoesIndisponiveis.length > 0 && (
-                                            <Accordion
-                                                defaultOpen={false}
-                                                cabecalho={
-                                                    <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                                                        <span className="truncate text-sm font-semibold text-primary">Fora do prazo ou já realizadas</span>
-                                                        <span className="shrink-0 text-sm text-tertiary">
-                                                            {sessoesIndisponiveis.length === 1 ? "1 sessão" : `${sessoesIndisponiveis.length} sessões`}
-                                                        </span>
-                                                    </span>
-                                                }
-                                            >
-                                                <div className="flex flex-col gap-2 p-3">{sessoesIndisponiveis.map((entrada) => renderSessao(entrada, false))}</div>
-                                            </Accordion>
-                                        )}
+                                        {sessoes.map((entrada, indice) => renderSessao(entrada, indice === 0))}
                                     </div>
                                 )}
 
@@ -487,8 +462,9 @@ export function TrocarItens() {
                                             key={formulario.itemId}
                                             defaultOpen={posicao === 0}
                                             cabecalho={
-                                                <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                                                    <span className="block truncate text-sm font-semibold text-primary">
+                                                <span className="flex min-w-0 flex-1 items-center gap-3">
+                                                    {formulario.item && <Miniatura item={formulario.item} />}
+                                                    <span className="block min-w-0 flex-1 truncate text-sm font-semibold text-primary">
                                                         {formulario.quantidade}x {formulario.item?.nome}
                                                     </span>
                                                     <span className={cx("shrink-0 text-sm", completo ? "text-success-primary" : "text-warning-primary")}>

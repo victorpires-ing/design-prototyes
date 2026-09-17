@@ -11,10 +11,8 @@ import {
     DotsHorizontal,
     Mail01,
     MessageChatCircle,
-    Package,
     RefreshCcw01,
     SwitchVertical01,
-    Ticket01,
 } from "@untitledui/icons";
 import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -24,14 +22,13 @@ import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { InputBase } from "@/components/base/input/input";
 import { InputGroup } from "@/components/base/input/input-group";
 import { ProgressBarBase } from "@/components/base/progress-indicators/progress-indicators";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { AlterarRespostasModal } from "../components/AlterarRespostasModal";
 import { EnviarModal, type CanalEnvio } from "../components/EnviarModal";
-import { FOCO, FOCO_ESCOPO, StatusBadge, TextoAnimado, formatarContagem, useContagem } from "../components/pos-compra-ui";
+import { FOCO, FOCO_ESCOPO, Miniatura, StatusBadge, TextoAnimado, formatarContagem, useContagem } from "../components/pos-compra-ui";
 import {
     SESSOES,
     expirarSolicitacao,
@@ -509,11 +506,17 @@ const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExp
     });
     const resumoEstados = [...contagem.entries()].map(([estado, n]) => `${n} ${ROTULO_ESTADO[estado].toLowerCase()}`).join(" · ");
 
-    /* Cabeçalho segue a convenção de accordion: abre e fecha. Selecionar é papel do checkbox — mas a área
-       de clique dele se estende até a miniatura, já que ela não tem função própria. */
-    const expandirPeloCabecalho = (event: MouseEvent<HTMLDivElement>) => {
-        if (!varias || !event.currentTarget.contains(event.target as Node)) return;
-        onExpandir();
+    /* Com várias unidades, o cabeçalho segue a convenção de accordion: abre e fecha, e só o checkbox
+       (estendido até a miniatura) seleciona. Com uma unidade só não há o que expandir, então o
+       cabeçalho inteiro vira o alvo de seleção — como já é a sub-linha da unidade. */
+    const clicarNoCabecalho = (event: MouseEvent<HTMLDivElement>) => {
+        if (!event.currentTarget.contains(event.target as Node)) return;
+        if ((event.target as HTMLElement).closest("label")) return; // o checkbox cuida do próprio clique
+        if (varias) {
+            onExpandir();
+            return;
+        }
+        if (idsLivres.length > 0) onAlternar(idsLivres, !todas);
     };
 
     const clicarNoSeletor = (event: MouseEvent<HTMLDivElement>) => {
@@ -529,10 +532,10 @@ const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExp
             <div
                 className={cx(
                     "flex items-start gap-3 rounded-t-xl p-4 transition duration-100 ease-linear",
-                    varias && "cursor-pointer hover:bg-secondary_hover",
+                    (varias || idsLivres.length > 0) && "cursor-pointer hover:bg-secondary_hover",
                     !mostrarUnidades && "rounded-b-xl",
                 )}
-                onClick={expandirPeloCabecalho}
+                onClick={clicarNoCabecalho}
             >
                 <div
                     className={cx("-m-1 flex items-center gap-3 rounded-lg p-1", idsLivres.length > 0 && "cursor-pointer")}
@@ -751,11 +754,6 @@ const MenuAcoes = ({ rotulo, encerrado, onTransferir, onTrocar }: { rotulo: stri
         </Dropdown.Popover>
     </Dropdown.Root>
 );
-
-const Miniatura = ({ item }: { item: CatalogoItem }) => {
-    if (item.foto) return <img src={item.foto} alt="" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-border-primary" />;
-    return <FeaturedIcon icon={item.tipo === "ingresso" ? Ticket01 : Package} color="gray" theme="modern" size="md" className="shrink-0" />;
-};
 
 /* ------------------------------------------------------------------ */
 /*  Histórico e apoio                                                  */

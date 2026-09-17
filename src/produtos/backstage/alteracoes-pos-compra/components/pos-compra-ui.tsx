@@ -1,12 +1,23 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ChevronDown, HelpCircle, InfoCircle } from "@untitledui/icons";
+import { AlertTriangle, ChevronDown, HelpCircle, InfoCircle, Package, Ticket01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { InputNumber } from "@/components/base/input/input-number";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx } from "@/utils/cx";
-import { STATUS_LABEL, formatarMoeda, getItem, sessaoDoItem, sessaoLabel, type LinhaCobranca, type PedidoItem, type StatusPedido } from "../data/pos-compra-store";
+import {
+    STATUS_LABEL,
+    formatarMoeda,
+    getItem,
+    sessaoDoItem,
+    sessaoLabel,
+    type CatalogoItem,
+    type LinhaCobranca,
+    type PedidoItem,
+    type StatusPedido,
+} from "../data/pos-compra-store";
 
 /* O token `border-brand` que o design system usa no foco resolve para cinza neste tema, o que deixa
    o anel quase invisível. Aqui o foco usa o coral da marca, que tem contraste em claro e escuro. */
@@ -330,4 +341,10 @@ export const useRolou = (limiar = 4) => {
         return () => window.removeEventListener("scroll", aoRolar);
     }, [limiar]);
     return rolou;
+};
+
+/** Foto do produto quando existe; ingresso e combo usam um ícone — não têm imagem própria no catálogo. */
+export const Miniatura = ({ item }: { item: CatalogoItem }) => {
+    if (item.foto) return <img src={item.foto} alt="" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-border-primary" />;
+    return <FeaturedIcon icon={item.tipo === "ingresso" ? Ticket01 : Package} color="gray" theme="modern" size="md" className="shrink-0" />;
 };

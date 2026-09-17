@@ -121,20 +121,20 @@
     --color-alpha-white: rgb(255 255 255);
     --color-alpha-black: rgb(0 0 0);
 
-    /* Brand scale derived from base #ff271a (brand-600). Anchors confirmed in Figma:
-       50 #fff1f0 · 200 #ffc4c0 · 500 #ff4a40 (focus ring) · 600 #ff271a · 700 #c81f14 */
+    /* Escala de marca sincronizada com a coleção Style do AFTER DS (2.0) v8.0 no Figma.
+       O tom 25 não existe no Figma e segue derivado aqui. */
     --color-brand-25: rgb(255 248 247);
     --color-brand-50: rgb(255 241 240);
-    --color-brand-100: rgb(255 225 222);
+    --color-brand-100: rgb(255 223 221);
     --color-brand-200: rgb(255 196 192);
-    --color-brand-300: rgb(255 153 145);
-    --color-brand-400: rgb(255 110 100);
+    --color-brand-300: rgb(255 154 148);
+    --color-brand-400: rgb(255 97 87);
     --color-brand-500: rgb(255 74 64);
     --color-brand-600: rgb(255 39 26);
     --color-brand-700: rgb(200 31 20);
-    --color-brand-800: rgb(156 24 16);
-    --color-brand-900: rgb(117 19 12);
-    --color-brand-950: rgb(74 10 8);
+    --color-brand-800: rgb(168 24 16);
+    --color-brand-900: rgb(127 18 12);
+    --color-brand-950: rgb(80 5 0);
 
     /* LIGHT MODE VARIABLES */
 
@@ -370,7 +370,8 @@
     --color-bg-secondary: var(--color-neutral-50);
     /* quaternary mais escuro que o tertiary (neutral-200) no modo claro */
     --color-bg-quaternary: var(--color-neutral-300);
-    --color-bg-primary_alt: var(--color-white);
+    /* Fundo da aplicação: sempre um degrau atrás do bg-primary, que é a superfície. */
+    --color-bg-primary_alt: var(--color-neutral-50);
     --color-bg-brand-primary_alt: var(--color-brand-50);
     --color-bg-secondary_alt: var(--color-neutral-200);
     --color-bg-overlay: var(--color-neutral-950);
@@ -709,8 +710,8 @@
         --color-fg-brand-secondary_alt: var(--color-neutral-600);
         --color-fg-brand-secondary_hover: var(--color-neutral-500);
 
-        --color-bg-primary: var(--color-neutral-950);
-        --color-bg-tertiary: var(--color-neutral-800);
+        --color-bg-primary: var(--color-neutral-900);
+        --color-bg-tertiary: var(--color-neutral-700);
         --color-bg-brand-primary: var(--color-brand-500);
         --color-bg-error-secondary: var(--color-red-600);
         --color-bg-warning-primary: var(--color-yellow-950);
@@ -723,15 +724,15 @@
         --color-bg-warning-solid: var(--color-yellow-600);
         --color-bg-success-solid: var(--color-green-600);
         --color-bg-secondary_hover: var(--color-neutral-600);
-        --color-bg-primary_hover: var(--color-neutral-700);
+        --color-bg-primary_hover: var(--color-neutral-800);
         --color-bg-active: var(--color-neutral-800);
         --color-bg-brand-solid_hover: var(--color-brand-500);
         --color-bg-error-primary: var(--color-red-950);
         --color-bg-brand-secondary: var(--color-brand-600);
-        --color-bg-secondary: var(--color-neutral-900);
+        --color-bg-secondary: var(--color-neutral-800);
         /* quaternary mais claro que o tertiary (neutral-600) no modo escuro */
         --color-bg-quaternary: var(--color-neutral-500);
-        --color-bg-primary_alt: var(--color-bg-tertiary);
+        --color-bg-primary_alt: var(--color-neutral-950);
         --color-bg-brand-primary_alt: var(--color-bg-secondary);
         --color-bg-secondary_alt: var(--color-neutral-700);
         --color-bg-overlay: var(--color-neutral-800);

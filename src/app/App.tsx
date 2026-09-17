@@ -153,6 +153,10 @@ import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira
 import { TransferirInscricao as CarteiraWebTransferir } from '../produtos/carteira-web/pages/TransferirInscricao';
 import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/SolicitacoesInbox';
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
+import { Pedidos as PedidosPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/Pedidos';
+import { DetalhePedido as DetalhePedidoPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/DetalhePedido';
+import { TransferirTitularidade } from '../produtos/backstage/alteracoes-pos-compra/pages/TransferirTitularidade';
+import { TrocarItens } from '../produtos/backstage/alteracoes-pos-compra/pages/TrocarItens';
 import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
 import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
 import { PreVenda } from '../produtos/backstage/marketing/pages/PreVenda';
@@ -199,6 +203,10 @@ export default function App() {
         <Route path="/backstage/eventos" element={<BackstageEventos />} />
         <Route path="/backstage/evento/visao-geral" element={<VisaoGeralEvento />} />
         <Route path="/backstage/home" element={<BackstageHome />} />
+        <Route path="/backstage/pedidos" element={<PedidosPosCompra />} />
+        <Route path="/backstage/pedidos/:pedidoId" element={<DetalhePedidoPosCompra />} />
+        <Route path="/backstage/pedidos/:pedidoId/transferir" element={<TransferirTitularidade />} />
+        <Route path="/backstage/pedidos/:pedidoId/trocar" element={<TrocarItens />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao" element={<EquipeDeOperacao />} />

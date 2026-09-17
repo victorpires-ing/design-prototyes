@@ -149,6 +149,7 @@ export function BackstageLayout({
                 isOpen={isMobileMenuOpen}
                 onClose={() => setIsMobileMenuOpen(false)}
                 showEventContext={showEventContext}
+                activeProducer={activeProducer}
                 activeSection={activeSection}
                 activeItem={activeItem}
             />
@@ -158,7 +159,7 @@ export function BackstageLayout({
     if (variant === "topbar") {
         return (
             <div
-                className="min-h-screen bg-secondary dark:bg-[#0a0a0a]"
+                className="min-h-screen bg-primary_alt"
                 style={{ "--bs-header-offset": "64px" } as CSSProperties}
             >
                 {mobileChrome}
@@ -175,7 +176,7 @@ export function BackstageLayout({
     }
 
     return (
-        <div className="min-h-screen bg-secondary dark:bg-[#0a0a0a]">
+        <div className="min-h-screen bg-primary_alt">
             {mobileChrome}
             <div className="flex min-h-screen flex-col gap-3 px-2 py-3 md:flex-row md:px-3 md:py-6">
                 <ProducerRail activeProducer={activeProducer} />
@@ -358,6 +359,7 @@ interface MobileDrawerProps {
     showEventContext?: boolean;
     activeSection?: BackstageSection;
     activeItem?: BackstageItem;
+    activeProducer?: string;
 }
 
 const PRODUCER_NAV: Array<{
@@ -368,6 +370,7 @@ const PRODUCER_NAV: Array<{
     children?: Array<{ id: string; label: string }>;
 }> = [
     { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
+    { id: "pedidos", icon: ShoppingCart01, label: "Pedidos", href: "/backstage/pedidos" },
     { id: "permissao", icon: UsersPlus, label: "Permissão", href: "/backstage/permissao-envio" },
     { id: "produtos", icon: Package, label: "Produtos" },
     {
@@ -511,7 +514,7 @@ const MobileEventNav = ({ activeSection, activeItem, onNavigate }: { activeSecti
     );
 };
 
-const MobileDrawer = ({ isOpen, onClose, showEventContext, activeSection, activeItem }: MobileDrawerProps) => {
+const MobileDrawer = ({ isOpen, onClose, showEventContext, activeSection, activeItem, activeProducer }: MobileDrawerProps) => {
     const navigate = useNavigate();
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     if (!isOpen) return null;
@@ -554,7 +557,7 @@ const MobileDrawer = ({ isOpen, onClose, showEventContext, activeSection, active
 
                 <nav className="flex flex-col gap-0.5">
                     {PRODUCER_NAV.map((entry) => {
-                        const isActive = entry.id === "eventos";
+                        const isActive = entry.id === (activeProducer ?? "eventos");
                         const isExpanded = expanded.has(entry.id);
                         const hasChildren = !!entry.children?.length;
                         return (
@@ -704,6 +707,12 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
                 <ProducerRailItem icon={Calendar} label="Eventos" href="/backstage/" isActive={activeProducer === "eventos" || !activeProducer} />
                 <ProducerRailItem icon={UsersPlus} label="Equipe" />
                 <ProducerRailItem icon={Bank} label="Finanças" />
+                <ProducerRailItem
+                    icon={ShoppingCart01}
+                    label="Pedidos"
+                    href="/backstage/pedidos"
+                    isActive={activeProducer === "pedidos"}
+                />
                 <ProducerRailItem icon={Users01} label="Público" href="/backstage/publico" isActive={activeProducer === "publico"} />
                 <ProducerRailItem icon={Settings01} label="Ajustes" />
             </nav>
@@ -737,6 +746,7 @@ const ORG_NAV: Array<{ id: string; icon: ComponentType<{ className?: string }>; 
     { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
     { id: "equipe", icon: UsersPlus, label: "Equipe" },
     { id: "financas", icon: Bank, label: "Finanças" },
+    { id: "pedidos", icon: ShoppingCart01, label: "Pedidos", href: "/backstage/pedidos" },
     { id: "publico", icon: Users01, label: "Público" },
     { id: "ajustes", icon: Settings01, label: "Ajustes" },
 ];

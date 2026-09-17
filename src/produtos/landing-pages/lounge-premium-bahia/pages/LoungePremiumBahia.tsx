@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { AlertCircle, CheckCircle, Plus, UserPlus01 } from "@untitledui/icons";
+import { AlertCircle, CheckCircle, Plus, SearchLg } from "@untitledui/icons";
 import { AlertFloating } from "@/components/application/alerts/alerts";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
@@ -28,6 +28,8 @@ const AZUL = "#2f6bff"; // acento vibrante (botões, escudo, destaques)
 const VERMELHO_CLARO = "#c23a2d"; // faixa superior do header (tricolor Bahia)
 const VERMELHO_ESCURO = "#9f2a20"; // faixa inferior do header
 const AMARELO = "#ffd23f"; // amarelo/dourado do Bahia (destaques pontuais)
+const BORDA_CARD = "#3560b8"; // stroke azul do card principal e dos cards de pessoa
+const VERMELHO_ERRO = "#e5342b"; // badge de número em estado de erro
 const BAHIA_DARK = {
     // superfícies navy
     "--background-color-primary": "#102a54",
@@ -150,6 +152,8 @@ export function LoungePremiumBahia() {
         .filter((x) => x.r?.status === "ok")
         .map((x) => criar(x.cpf));
     const podeSalvar = novos.length >= 1;
+    // Contagem exibida "X de 5": cadastrados + válidos preenchidos em andamento.
+    const contagem = beneficiarios.length + novos.length;
 
     // Salva a lista inteira: adiciona todos os CPFs válidos e fecha os campos.
     const salvarLista = () => {
@@ -204,30 +208,33 @@ export function LoungePremiumBahia() {
             <main className="mx-auto w-full max-w-3xl px-5 py-8 md:py-10">
                 {/* Título da página */}
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-primary md:text-3xl">Beneficiários da temporada {TEMPORADA}</h1>
+                    <h1 className="text-2xl font-bold text-primary md:text-3xl">Compartilhe seus ingressos na temporada {TEMPORADA}</h1>
                     <p className="mt-1.5 text-sm text-tertiary">
-                        Escolha quem poderá receber suas transferências durante a temporada.
+                        Escolha <span className="font-semibold text-secondary">até {MAX_BENEFICIARIOS} pessoas</span> para receber suas transferências ao longo da
+                        temporada.
                         <span className="mt-2 block font-semibold" style={{ color: AMARELO }}>
-                            Você pode adicionar as pessoas até {DATA_LIMITE}.
+                            Adicione pessoas até {DATA_LIMITE}.
                         </span>
                     </p>
                 </div>
 
-                <section className="rounded-2xl bg-primary p-6 shadow-sm ring-1 ring-border-secondary md:p-7">
+                <section className="rounded-2xl border p-6 shadow-sm md:p-7" style={{ borderColor: BORDA_CARD, backgroundColor: "#0b1f45" }}>
                     {/* Cabeçalho da seção + botão de cadastrar */}
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h2 className="text-lg font-bold text-primary">
-                                Você tem {beneficiarios.length} {beneficiarios.length === 1 ? "beneficiário cadastrado" : "beneficiários cadastrados"}
+                                Sua lista ({contagem} de {MAX_BENEFICIARIOS})
                             </h2>
-                            <p className="mt-0.5 text-sm text-tertiary">
-                                {completo
-                                    ? "Sua lista está completa."
-                                    : `Você ainda pode cadastrar mais ${vagas} ${vagas === 1 ? "pessoa" : "pessoas"}.`}
-                            </p>
+                            {!completo && (
+                                <p className="mt-0.5 text-sm text-tertiary">
+                                    {cadastrando || beneficiarios.length === 0
+                                        ? "Você pode completar a lista aos poucos."
+                                        : `Você ainda pode cadastrar mais ${vagas} ${vagas === 1 ? "pessoa" : "pessoas"}.`}
+                                </p>
+                            )}
                         </div>
-                        {!cadastrando && podeAdicionar && (
-                            <Button size="md" color="primary" iconLeading={Plus} className="shrink-0" onClick={abrirCampos}>
+                        {!cadastrando && (
+                            <Button size="md" color="primary" iconLeading={Plus} className="shrink-0" isDisabled={!podeAdicionar} onClick={abrirCampos}>
                                 Cadastrar nova pessoa
                             </Button>
                         )}
@@ -237,7 +244,7 @@ export function LoungePremiumBahia() {
                     <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-secondary">
                         <div
                             className="h-full rounded-full transition-all duration-300"
-                            style={{ width: `${(beneficiarios.length / MAX_BENEFICIARIOS) * 100}%`, backgroundColor: AMARELO }}
+                            style={{ width: `${(contagem / MAX_BENEFICIARIOS) * 100}%`, backgroundColor: AMARELO }}
                         />
                     </div>
 
@@ -246,16 +253,17 @@ export function LoungePremiumBahia() {
                         <div className="mt-5 flex flex-col gap-4">
                             {linhas.map((cpf, i) => {
                                 const r = resultados[i];
-                                const erro = r.status !== "ok" && r.status !== "vazio";
+                                // Enquanto digita (vazio/incompleto) o campo fica em estado normal; só vira erro num CPF completo inválido.
+                                const erro = r.status !== "ok" && r.status !== "vazio" && r.status !== "incompleto";
                                 const ok = r.status === "ok";
                                 return (
                                     <div key={i} className="flex gap-3">
                                         <span
                                             className={cx(
-                                                "mt-1.5 flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-1 transition duration-100",
-                                                ok ? "text-white ring-transparent" : "text-tertiary ring-border-secondary",
+                                                "mt-1.5 flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white transition duration-100",
+                                                !ok && !erro && "ring-1 ring-[#33538f]",
                                             )}
-                                            style={ok ? { backgroundColor: AZUL } : undefined}
+                                            style={{ backgroundColor: ok ? AZUL : erro ? VERMELHO_ERRO : "#122a58" }}
                                         >
                                             {beneficiarios.length + i + 1}
                                         </span>
@@ -268,7 +276,7 @@ export function LoungePremiumBahia() {
                                                     autoFocus={i === 0}
                                                     placeholder="000.000.000-00"
                                                     aria-label={`CPF do beneficiário ${beneficiarios.length + i + 1}`}
-                                                    style={{ backgroundColor: "rgba(255,255,255,0.9)" }}
+                                                    style={{ backgroundColor: "#ffffff" }}
                                                     className={cx(
                                                         "w-full rounded-lg px-3.5 py-2.5 pr-10 text-sm text-gray-900 ring-1 outline-none transition duration-100 placeholder:text-gray-400",
                                                         erro ? "ring-error focus:ring-2 focus:ring-error" : "ring-transparent focus:ring-2 focus:ring-brand",
@@ -295,31 +303,24 @@ export function LoungePremiumBahia() {
                     {beneficiarios.length > 0 && (
                         <ul className="mt-5 flex flex-col gap-3">
                             {beneficiarios.map((b) => (
-                                <li key={b.cpf} className="flex items-start gap-3 rounded-xl border bg-secondary p-4" style={{ borderColor: "#4f74c4" }}>
+                                <li key={b.cpf} className="flex items-center gap-3 rounded-xl border p-4" style={{ borderColor: BORDA_CARD, backgroundColor: "#001235" }}>
                                     <Avatar size="md" initials={iniciais(b.nome)} />
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <p className="text-sm font-bold text-primary">{b.nome}</p>
                                             {b.ativo ? (
                                                 <Badge size="sm" color="success" type="pill-color">
-                                                    Ativo
+                                                    Plano ativo
                                                 </Badge>
                                             ) : (
-                                                <Badge size="sm" color="gray" type="pill-color">
+                                                <Badge size="sm" color="error" type="pill-color">
                                                     Plano inativo
                                                 </Badge>
                                             )}
                                         </div>
-                                        <p className="mt-0.5 text-sm text-tertiary">
-                                            {b.plano} · CPF {formatarCpf(b.cpf)}
+                                        <p className="mt-1 text-sm text-tertiary">
+                                            CPF {formatarCpf(b.cpf)} · {b.plano}
                                         </p>
-                                        {!b.ativo && (
-                                            <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-tertiary px-3 py-2 text-xs leading-relaxed text-tertiary">
-                                                <AlertCircle className="mt-px size-3.5 shrink-0 text-fg-warning-primary" />
-                                                Enquanto o plano estiver inativo, esta pessoa não poderá receber transferências. Ela permanece na sua lista e não
-                                                pode ser substituída durante a temporada.
-                                            </p>
-                                        )}
                                     </div>
                                 </li>
                             ))}
@@ -332,7 +333,9 @@ export function LoungePremiumBahia() {
                             <EmptyState size="lg" className="max-w-3xl">
                                 <EmptyState.Header pattern="none">
                                     <EmptyState.AvatarRadius avatars={AVATARES} />
-                                    <EmptyState.FeaturedIcon icon={UserPlus01} color="gray" theme="modern" />
+                                    <span className="relative z-10 flex size-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+                                        <SearchLg className="size-6 text-gray-700" />
+                                    </span>
                                 </EmptyState.Header>
                                 <EmptyState.Content className="max-w-3xl" style={{ marginTop: 72 }}>
                                     <EmptyState.Title>Nenhum beneficiário cadastrado</EmptyState.Title>
@@ -347,7 +350,7 @@ export function LoungePremiumBahia() {
                     {/* Alert informativo — regra de imutabilidade (só quando há cadastro em andamento ou pessoas na lista) */}
                     {(linhas.length > 0 || beneficiarios.length > 0) && (
                         <div
-                            className="mt-8"
+                            className="mt-6"
                             style={{ "--background-color-primary_alt": "transparent", "--border-color-primary": "#4f74c4" } as CSSProperties}
                         >
                             <AlertFloating
@@ -356,7 +359,7 @@ export function LoungePremiumBahia() {
                                 confirmLabel=""
                                 description={
                                     <span className="block whitespace-normal">
-                                        Após confirmar, os beneficiários não poderão ser editados ou removidos até {DATA_LIBERACAO}.
+                                        {cadastrando ? "Após confirmar, os" : "Os"} beneficiários não poderão ser editados ou removidos até {DATA_LIBERACAO}.
                                     </span>
                                 }
                             />
@@ -383,10 +386,10 @@ export function LoungePremiumBahia() {
 /* ------------------------ Mensagens de validação ------------------------ */
 
 const MENSAGENS: Record<string, string> = {
-    incompleto: "CPF incompleto.",
-    invalido: "CPF inválido.",
-    "nao-encontrado": "CPF não encontrado. Verifique o número.",
-    inativo: "Apenas sócios com plano ativo podem ser cadastrados.",
-    duplicado: "Este CPF já foi adicionado.",
+    incompleto: "CPF incompleto",
+    invalido: "CPF inválido",
+    "nao-encontrado": "CPF não encontrado",
+    inativo: "Sócio com plano inativo",
+    duplicado: "Este CPF já foi adicionado",
 };
 

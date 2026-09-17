@@ -69,6 +69,10 @@ import { SelecaoEAtribuicao } from '../produtos/marketplace/selecao-e-atribuicao
 import { Config as MarketplaceConfig } from '../produtos/marketplace/selecao-e-atribuicao/pages/Config';
 import { Sucesso as MarketplaceSucesso } from '../produtos/marketplace/selecao-e-atribuicao/pages/Sucesso';
 import { MeiaEntrada as MarketplaceMeiaEntrada } from '../produtos/marketplace/selecao-e-atribuicao/pages/MeiaEntrada';
+import { SelecaoEAtribuicao as TotemSelecaoEAtribuicao } from '../produtos/totem/selecao-e-atribuicao/pages/SelecaoEAtribuicao';
+import { Config as TotemConfig } from '../produtos/totem/selecao-e-atribuicao/pages/Config';
+import { Sucesso as TotemSucesso } from '../produtos/totem/selecao-e-atribuicao/pages/Sucesso';
+import { MeiaEntrada as TotemMeiaEntrada } from '../produtos/totem/selecao-e-atribuicao/pages/MeiaEntrada';
 import { Home as IngresseAppHome } from '../produtos/ingresse-app/home/pages/Home';
 import { Carteira as IngresseAppCarteira } from '../produtos/ingresse-app/carteira/pages/Carteira';
 import { Ingressos as IngresseAppIngressos } from '../produtos/ingresse-app/ingressos/pages/Ingressos';
@@ -151,6 +155,10 @@ import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira
 import { TransferirInscricao as CarteiraWebTransferir } from '../produtos/carteira-web/pages/TransferirInscricao';
 import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/SolicitacoesInbox';
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
+import { Pedidos as PedidosPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/Pedidos';
+import { DetalhePedido as DetalhePedidoPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/DetalhePedido';
+import { TransferirTitularidade } from '../produtos/backstage/alteracoes-pos-compra/pages/TransferirTitularidade';
+import { TrocarItens } from '../produtos/backstage/alteracoes-pos-compra/pages/TrocarItens';
 import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
 import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
 import { PreVenda } from '../produtos/backstage/marketing/pages/PreVenda';
@@ -199,6 +207,10 @@ export default function App() {
         <Route path="/backstage/eventos" element={<BackstageEventos />} />
         <Route path="/backstage/evento/visao-geral" element={<VisaoGeralEvento />} />
         <Route path="/backstage/home" element={<BackstageHome />} />
+        <Route path="/backstage/pedidos" element={<PedidosPosCompra />} />
+        <Route path="/backstage/pedidos/:pedidoId" element={<DetalhePedidoPosCompra />} />
+        <Route path="/backstage/pedidos/:pedidoId/transferir" element={<TransferirTitularidade />} />
+        <Route path="/backstage/pedidos/:pedidoId/trocar" element={<TrocarItens />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao" element={<EquipeDeOperacao />} />
@@ -302,6 +314,10 @@ export default function App() {
         <Route path="/marketplace/event" element={<SelecaoEAtribuicao />} />
         <Route path="/marketplace/sucesso" element={<MarketplaceSucesso />} />
         <Route path="/marketplace/meia-entrada" element={<MarketplaceMeiaEntrada />} />
+        <Route path="/totem" element={<TotemConfig />} />
+        <Route path="/totem/event" element={<TotemSelecaoEAtribuicao />} />
+        <Route path="/totem/sucesso" element={<TotemSucesso />} />
+        <Route path="/totem/meia-entrada" element={<TotemMeiaEntrada />} />
         <Route path="/novo-site/home" element={<NovoSiteHome />} />
         <Route path="/novo-site/home/busca" element={<NovoSiteBusca />} />
         <Route path="/novo-site/home/event-details" element={<PasswordGate><EventDetails /></PasswordGate>} />

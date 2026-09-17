@@ -12,6 +12,7 @@ import { Toggle } from "@/components/base/toggle/toggle";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { TotemIllustration } from "../../components/TotemIllustration";
 import { cotaTotal, PERMISSAO_META, permissoesDo, useEquipeV2, usoDaCota, type GrupoOperacaoV2 } from "../data/equipe-v2-store";
 import { toastSucesso } from "../utils/toast";
 
@@ -88,7 +89,10 @@ export function EquipeDeOperacaoV2() {
                                         aria-label="Buscar grupo"
                                     />
                                 </div>
-                                <PortalOperador />
+                                <div className="flex flex-col gap-3 xl:shrink-0 xl:flex-row">
+                                    <PortalOperador />
+                                    <AtalhoTotem />
+                                </div>
                             </div>
 
                             <ListaGrupos
@@ -159,6 +163,32 @@ const PortalOperador = () => {
     );
 };
 
+/* ------------------------------ Totem ---------------------------- */
+
+/**
+ * A outra ponta do que o grupo configura: o totem de autoatendimento. Fica ao
+ * lado do link do operador porque é a mesma natureza — uma superfície de
+ * operação que abre num aparelho, não dentro do Backstage.
+ */
+const AtalhoTotem = () => {
+    const navigate = useNavigate();
+
+    return (
+        <button
+            type="button"
+            onClick={() => navigate("/totem")}
+            className="flex items-center gap-3 rounded-xl bg-secondary px-4 py-3 text-left ring-1 ring-transparent transition duration-100 ease-linear hover:ring-brand xl:w-[260px] xl:shrink-0"
+        >
+            <TotemIllustration className="h-12 w-8 shrink-0 text-fg-quaternary" />
+            <span className="flex min-w-0 flex-col">
+                <span className="text-sm font-medium text-tertiary">Totem</span>
+                <span className="truncate text-sm text-secondary">Configurar o evento e simular a compra</span>
+            </span>
+            <ChevronRight className="ml-auto size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+        </button>
+    );
+};
+
 /* --------------------------- Estados vazios ---------------------- */
 
 const EstadoSemItens = ({ onConfigurar }: { onConfigurar: () => void }) => (
@@ -195,10 +225,10 @@ const EstadoSemGrupos = ({ onCriar }: { onCriar: () => void }) => (
             </EmptyState.Header>
 
             <EmptyState.Content>
-                <EmptyState.Title>Nenhum grupo de operação ainda</EmptyState.Title>
+                <EmptyState.Title>Defina regras para a distribuição de ingressos</EmptyState.Title>
                 <EmptyState.Description>
-                    Um grupo reúne operadores e define o que eles podem fazer: emitir cortesia, vender no PDV, vender na bilheteria. E
-                    quanto de cada um.
+                    A equipe de operação é dividida em grupos. Cada grupo reúne operadores e controla o que eles podem emitir ou vender, em
+                    quais ingressos e até que limite.
                 </EmptyState.Description>
             </EmptyState.Content>
 

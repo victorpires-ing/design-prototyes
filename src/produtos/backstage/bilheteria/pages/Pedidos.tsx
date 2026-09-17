@@ -22,6 +22,7 @@ const STATUS_OPTIONS = [
     { id: "todos", label: "Todos" },
     { id: "pendente", label: "Pendente" },
     { id: "aprovado", label: "Aprovado" },
+    { id: "expirado", label: "Expirado" },
     { id: "cancelado", label: "Cancelado" },
 ];
 
@@ -63,6 +64,7 @@ export function PedidosBilheteria() {
         () => ({
             aprovados: rows.filter((row) => row.status === "aprovado").length,
             pendentes: rows.filter((row) => row.status === "pendente").length,
+            expirados: rows.filter((row) => row.status === "expirado").length,
             cancelados: rows.filter((row) => row.status === "cancelado").length,
         }),
         [rows],
@@ -81,10 +83,14 @@ export function PedidosBilheteria() {
 
     const handleResend = (pedido: Pedido, canal: ResendChannel, destino: string) => {
         const at = formatDateTime(new Date());
-        registerResend(pedido.id, at);
-        setDetail((current) => (current && current.id === pedido.id ? { ...current, resentAt: at } : current));
-        // Saldo do produtor não tem link: o que é enviado são os próprios ingressos.
-        const assunto = pedido.tipo === "saldo" ? "Ingressos" : "Link de pagamento";
+        registerResend(pedido.id, at, canal, destino);
+        setDetail((current) =>
+            current && current.id === pedido.id
+                ? { ...current, resentAt: at, envios: [...(current.envios ?? []), { canal, destino, at }] }
+                : current,
+        );
+        // Sem link de pagamento, o que é enviado são os próprios ingressos.
+        const assunto = pedido.tipo === "link" ? "Link de pagamento" : "Ingressos";
         toast.success(canal === "email" ? `${assunto} enviado para ${destino}` : `${assunto} enviado no WhatsApp ${destino}`);
     };
 
@@ -135,12 +141,20 @@ export function PedidosBilheteria() {
                     </div>
                 ) : (
                     <>
-                        <div className="grid gap-4 md:grid-cols-3">
+                        {/* Expirado ganha cartão próprio: é venda perdida que dá para recuperar. */}
+                        <div className="grid gap-4 md:grid-cols-4">
                             <MetricCard label="Pedidos aprovados" value={resumo.aprovados} />
                             <MetricCard label="Pedidos pendentes" value={resumo.pendentes} />
+                            <MetricCard label="Links expirados" value={resumo.expirados} />
                             <MetricCard label="Pedidos cancelados" value={resumo.cancelados} />
                         </div>
 
+                        {/*
+                          A tabela é a exceção do bg-primary: um grid denso quer chão
+                          escuro e quieto, para o texto e os divisores carregarem a estrutura.
+                          Em neutral-800 o fundo competia com o conteúdo. Containers sobem,
+                          superfícies de dado recuam.
+                        */}
                         <section className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
                             {/* Filtros */}
                             <div className="flex flex-col gap-3 p-4 md:flex-row md:items-end md:gap-4">
@@ -323,7 +337,13 @@ export function PedidosBilheteria() {
                 )}
             </div>
 
-            <PedidoDetailsSlideOut pedido={detail} onClose={() => setDetail(null)} onResend={handleResend} onDownload={handleDownload} />
+            <PedidoDetailsSlideOut
+                pedido={detail}
+                onClose={() => setDetail(null)}
+                onResend={handleResend}
+                onDownload={handleDownload}
+                onNovaVenda={() => navigate("/backstage/bilheteria/vender")}
+            />
 
             <CancelPedidosModal
                 pedidos={pendingCancel}

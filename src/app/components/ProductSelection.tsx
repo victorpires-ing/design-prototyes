@@ -7,7 +7,19 @@ import { cx } from "@/utils/cx";
 /*  Products                                                          */
 /* ------------------------------------------------------------------ */
 
-type IllustrationKind = "backstage" | "futebol" | "novo-site" | "ingresse-app" | "landing-pages" | "testes" | "marketplace" | "carteira-web" | "freepass" | "payin" | "payout";
+type IllustrationKind =
+    | "backstage"
+    | "futebol"
+    | "novo-site"
+    | "ingresse-app"
+    | "landing-pages"
+    | "testes"
+    | "marketplace"
+    | "carteira-web"
+    | "freepass"
+    | "payin"
+    | "totem"
+    | "payout";
 
 interface ProductCardData {
     id: string;
@@ -89,6 +101,13 @@ const PRODUCTS: ProductCardData[] = [
         illustration: "payin",
     },
     {
+        id: "totem",
+        name: "Totem",
+        description: "Configure o evento e siga a jornada de compra do totem",
+        to: "/totem",
+        illustration: "totem",
+    },
+    {
         id: "payout",
         name: "PayOut",
         description: "Cashout: associação de contratos a eventos e produtoras",
@@ -108,6 +127,7 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     "carteira-web": CarteiraWebIllustration,
     freepass: FreepassIllustration,
     payin: PayInIllustration,
+    totem: TotemIllustration,
     payout: PayOutIllustration,
 };
 
@@ -485,6 +505,50 @@ function CarteiraWebIllustration() {
                 <rect x="204" y="78" width="62" height="52" rx="6" fill={N300} />
                 <rect x="212" y="112" width="46" height="12" rx="3" fill={N400} />
             </g>
+        </svg>
+    );
+}
+
+function TotemIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <rect width="320" height="160" fill={N100} />
+            {/* piso */}
+            <rect x="0" y="140" width="320" height="20" fill={N200} />
+
+            {/* corpo do totem */}
+            <rect x="112" y="14" width="96" height="122" rx="12" fill={N50} stroke={BORDER} />
+            {/* base */}
+            <path d="M136 136v8h48v-8" fill={N200} />
+            <rect x="122" y="144" width="76" height="4" rx="2" fill={N300} />
+
+            {/* tela: seleção de ingressos */}
+            <rect x="124" y="26" width="72" height="76" rx="6" fill={BRAND_SOFT} />
+            <rect x="132" y="34" width="30" height="5" rx="2.5" fill={BRAND} />
+            {/* abas de sessão */}
+            <rect x="132" y="45" width="18" height="4" rx="2" fill={BRAND} />
+            <rect x="154" y="45" width="18" height="4" rx="2" fill={N300} />
+            <rect x="176" y="45" width="12" height="4" rx="2" fill={N300} />
+            {/* linhas de item */}
+            <rect x="132" y="55" width="56" height="12" rx="3" fill={N50} />
+            <rect x="132" y="71" width="56" height="12" rx="3" fill={N50} />
+            <rect x="132" y="87" width="56" height="9" rx="3" fill={BRAND} />
+
+            {/* leitor de cartão e impressora */}
+            <rect x="136" y="110" width="48" height="4" rx="2" fill={N300} />
+            <rect x="146" y="120" width="28" height="8" rx="2" fill={N50} stroke={BORDER} />
+
+            {/* ingresso saindo da impressora */}
+            <g transform="rotate(-8 216 96)">
+                <rect x="214" y="88" width="46" height="30" rx="4" fill={N50} stroke={BORDER} />
+                <rect x="220" y="96" width="22" height="4" rx="2" fill={BRAND} />
+                <rect x="220" y="104" width="30" height="3" rx="1.5" fill={N300} />
+                <rect x="220" y="110" width="16" height="3" rx="1.5" fill={N300} />
+            </g>
+
+            {/* pessoa usando o totem */}
+            <circle cx="72" cy="72" r="12" fill={N300} />
+            <path d="M50 136c0-14 10-24 22-24s22 10 22 24z" fill={N400} />
         </svg>
     );
 }

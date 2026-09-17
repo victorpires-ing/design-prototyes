@@ -4,7 +4,7 @@ import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { InputBase } from "@/components/base/input/input";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
-import type { Buyer } from "../data/catalogo";
+import { EVENTO, ingressosPorDocumento, type Buyer } from "../data/catalogo";
 
 export type BuyerSearch =
     | { status: "idle" }
@@ -108,9 +108,32 @@ export function BuyerStep({ term, onTermChange, search, onSearch, onSkip, onSele
                 </ResultCard>
             )}
 
+            {/*
+              O que muda ao pular fica escrito aqui, não só dentro do modal: é
+              a diferença entre uma venda nominal e um pré-impresso, e foi o
+              ponto que mais gerou dúvida na apresentação.
+            */}
+            <p className="text-sm text-tertiary">
+                {EVENTO.identificacaoObrigatoria ? (
+                    <>
+                        Este evento exige identificar o comprador. Acesso por face e credenciamento emitem ingresso nominal, então não dá
+                        para pular esta etapa.
+                    </>
+                ) : EVENTO.limitePorDocumento > 0 ? (
+                    <>
+                        O limite do evento são{" "}
+                        <strong className="font-semibold text-secondary">{ingressosPorDocumento(EVENTO.limitePorDocumento)}</strong> e vale
+                        apenas quando o comprador é identificado. Compras sem identificação não têm limite.
+                    </>
+                ) : (
+                    // Sem limite configurado, anunciar um limite seria mentira: sobra o que a identificação muda.
+                    <>Compras sem identificação não geram ingresso nominal.</>
+                )}
+            </p>
+
             {/* Ação principal junto do resultado — "Pular" é saída secundária, não concorre com ela. */}
             <div className="flex flex-col-reverse items-stretch gap-3 md:flex-row md:items-center md:justify-end">
-                <Button size="md" color="secondary" onClick={onSkip}>
+                <Button size="md" color="secondary" onClick={onSkip} isDisabled={EVENTO.identificacaoObrigatoria}>
                     Pular identificação
                 </Button>
                 {advanceButton}
@@ -130,17 +153,22 @@ const ResultCard = ({ title, identity, children }: { title?: string; identity?: 
 /** Conta encontrada — ícone de sucesso e os dados da conta. */
 export const BuyerIdentity = ({ buyer }: { buyer: Buyer }) => (
     <div className="flex items-center gap-3">
-        <FeaturedIcon icon={CheckCircle} color="success" theme="gradient" size="lg" className="shrink-0 rounded-full" />
+        <FeaturedIcon icon={CheckCircle} color="success" theme="dark" size="md" className="shrink-0 rounded-full" />
         <div className="flex min-w-0 flex-col">
             <p className="truncate text-sm font-semibold text-primary">{buyer.name}</p>
-            {buyer.maskedDocument && <p className="truncate text-sm text-tertiary">{buyer.maskedDocument}</p>}
-            <p className="truncate text-sm text-tertiary">{buyer.email}</p>
-            {buyer.phone && (
-                <p className="flex items-center gap-1.5 truncate text-sm text-tertiary">
-                    <WhatsAppIcon aria-hidden="true" className="size-4 shrink-0 text-[#25d366]" />
-                    {buyer.phone}
-                </p>
-            )}
+            {/*
+              E-mail primeiro: é ele que identifica a conta e para onde os ingressos
+              vão. O documento vem depois, como confirmação, na mesma linha.
+            */}
+            <p className="truncate text-sm text-tertiary">
+                {buyer.email}
+                {buyer.maskedDocument && (
+                    <>
+                        <span aria-hidden="true"> • </span>
+                        {buyer.maskedDocument}
+                    </>
+                )}
+            </p>
         </div>
     </div>
 );
@@ -148,7 +176,7 @@ export const BuyerIdentity = ({ buyer }: { buyer: Buyer }) => (
 /** Sem conta na Ingresse — mesmo bloco, em tom de atenção. */
 export const BuyerNoAccount = ({ email }: { email: string }) => (
     <div className="flex items-center gap-3">
-        <FeaturedIcon icon={AlertCircle} color="gray" theme="gradient" size="lg" className="shrink-0 rounded-full" />
+        <FeaturedIcon icon={AlertCircle} color="gray" theme="gradient" size="md" className="shrink-0 rounded-full" />
         <div className="flex min-w-0 flex-col">
             <p className="truncate text-sm font-semibold text-primary">Comprador ainda sem conta</p>
             <p className="truncate text-sm text-tertiary">{email}</p>
@@ -182,24 +210,25 @@ const ContasEncontradas = ({
                 </p>
             </div>
             <hr className="border-secondary" />
-            <RadioGroup aria-label="Conta do comprador" value={selectedId ?? null} onChange={onSelect} className="gap-2">
-                {buyers.map((buyer) => (
-                    <label
-                        key={buyer.id}
-                        className="flex cursor-pointer items-center gap-3 rounded-lg bg-secondary p-3 transition duration-100 ease-linear hover:bg-secondary_hover"
-                    >
-                        <RadioButton value={buyer.id} slot={null} aria-label={buyer.name} />
-                        <BuyerIdentity buyer={buyer} />
-                    </label>
-                ))}
-            </RadioGroup>
+
+            {/* Uma conta só não é uma escolha: o radio ali só pedia um clique a mais. */}
+            {varias ? (
+                <RadioGroup aria-label="Conta do comprador" value={selectedId ?? null} onChange={onSelect} className="gap-2">
+                    {buyers.map((buyer) => (
+                        <RadioButton
+                            key={buyer.id}
+                            value={buyer.id}
+                            slot={null}
+                            aria-label={buyer.name}
+                            label={<BuyerIdentity buyer={buyer} />}
+                            className="cursor-pointer items-center gap-3 rounded-lg bg-secondary p-3 transition duration-100 ease-linear hover:bg-secondary_hover"
+                        />
+                    ))}
+                </RadioGroup>
+            ) : (
+                <BuyerIdentity buyer={buyers[0]} />
+            )}
         </div>
     );
 };
 
-/** Glifo de marca do WhatsApp — não existe no @untitledui/icons. */
-const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-        <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 18.15h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.16 8.16 0 0 1-1.25-4.38c0-4.54 3.7-8.24 8.24-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.25 8.23Zm4.52-6.17c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.25-.64.8-.79.97-.14.16-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.13-.15.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.13-.56-1.35-.77-1.84-.2-.49-.4-.42-.56-.43h-.47c-.17 0-.43.06-.66.31-.23.25-.86.85-.86 2.06 0 1.21.89 2.39 1.01 2.55.12.17 1.75 2.67 4.24 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.22-.17-.47-.29Z" />
-    </svg>
-);

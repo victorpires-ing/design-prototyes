@@ -215,6 +215,35 @@ const knownBuyers: Array<Buyer & { document?: string }> = [
     },
 ];
 
+/* ------------------------------------------------------------------ */
+/*  Configuração do evento                                             */
+/*                                                                     */
+/*  Pontos levantados na apresentação do MVP: o limite por documento só */
+/*  faz sentido quando há documento, e eventos com facial ou            */
+/*  credenciamento não                                                  */
+/*  podem admitir venda anônima.                                       */
+/* ------------------------------------------------------------------ */
+
+export const EVENTO = {
+    /** Limite de ingressos por documento configurado no evento. `0` = sem limite. */
+    limitePorDocumento: 4,
+    /**
+     * Liga a exigência de identificar o comprador. Fica ativo em eventos com
+     * acesso por face ou credenciamento, onde o ingresso nasce nominal.
+     */
+    identificacaoObrigatoria: false,
+    /** Dias até o link de pagamento expirar. */
+    validadeLinkDias: 3,
+};
+
+/*
+ * "1 ingresso" / "4 ingressos": o limite é configurável e chega a valer 1.
+ * Documento, não CPF: quem compra pode se identificar por passaporte, e a
+ * busca do passo 1 já fala em documento.
+ */
+export const ingressosPorDocumento = (limite: number) =>
+    `${limite} ${limite === 1 ? "ingresso" : "ingressos"} por documento`;
+
 export const isEmail = (value: string) => value.includes("@");
 
 export const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());

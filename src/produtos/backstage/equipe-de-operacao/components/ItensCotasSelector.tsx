@@ -310,7 +310,7 @@ function ResumoPanel({ itens, showCota, onRemover, onRemoverTodos }: ResumoProps
                                                         animate={{ opacity: 1, scale: 1 }}
                                                         exit={{ opacity: 0, scale: 0.85 }}
                                                         transition={{ type: "spring", stiffness: 420, damping: 30 }}
-                                                        className="flex items-start gap-3 rounded-lg bg-primary p-3 ring-1 ring-border-secondary dark:bg-[#0a0a0a]"
+                                                        className="flex items-start gap-3 rounded-lg bg-primary p-3 ring-1 ring-border-secondary"
                                                     >
                                                         {showCota && <span className="flex h-7 min-w-9 shrink-0 items-center justify-center rounded-md bg-secondary px-1.5 text-xs font-semibold text-secondary tabular-nums ring-1 ring-border-secondary">{v.cota}</span>}
                                                         <div className="flex min-w-0 flex-1 flex-col gap-0.5">

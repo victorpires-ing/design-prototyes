@@ -83,3 +83,15 @@ export function cartLinesByKind(cart: Cart, kind: CartKind): CartLine[] {
 export const cartTotal = (cart: Cart) => cartLines(cart).reduce((total, line) => total + line.unitPrice * line.quantity, 0);
 
 export const cartCount = (cart: Cart) => cartLines(cart).reduce((total, line) => total + line.quantity, 0);
+
+/** `true` quando o id é de ingresso; produto e combo não contam para o limite. */
+export const isTicket = (id: string) => INDEX[id]?.kind === "ingresso";
+
+/**
+ * Só os ingressos. O limite do evento é por ingresso: produto e combo entram no
+ * carrinho mas não contam para ele.
+ */
+export const cartTicketCount = (cart: Cart) =>
+    cartLines(cart)
+        .filter((line) => line.kind === "ingresso")
+        .reduce((total, line) => total + line.quantity, 0);

@@ -8,11 +8,11 @@ import {
     Receipt,
     SearchLg,
     SlashCircle01,
+    ShoppingBag01,
     Ticket01,
     TrendUp01,
 } from "@untitledui/icons";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
-import { MetricsIcon03 } from "@/components/application/metrics/metrics";
 import { Badge } from "@/components/base/badges/badges";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
@@ -20,9 +20,20 @@ import { InputBase } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { CartaoMetrica } from "../components/CartaoMetrica";
 import { Sparkline } from "../components/Sparkline";
 import { EVENTO_STATUS_LABEL, setEventoAtual, type Evento } from "../data/eventos";
-import { alertasPorEvento, brl, brlCompacto, numero, precisaAtencao, resumos, type Alerta, type ResumoEvento } from "../data/vendas";
+import {
+    alertasPorEvento,
+    brl,
+    brlCompacto,
+    numero,
+    precisaAtencao,
+    resumos,
+    ritmoDaOrganizacao,
+    type Alerta,
+    type ResumoEvento,
+} from "../data/vendas";
 
 const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
@@ -57,20 +68,17 @@ export function Eventos() {
 
     const ativos = todos.filter((r) => r.evento.status === "publicado");
 
-    const totais = useMemo(
-        () => ({
-            faturamento: ativos.reduce((total, r) => total + r.faturamento, 0),
-            ingressos: ativos.reduce((total, r) => total + r.vendidos, 0),
-            ticket:
-                ativos.reduce((t, r) => t + r.faturamento, 0) /
-                Math.max(
-                    1,
-                    ativos.reduce((t, r) => t + r.vendidos, 0),
-                ),
-            ritmo: ativos.reduce((total, r) => total + r.ritmo7, 0),
-        }),
-        [ativos],
-    );
+    const totais = useMemo(() => {
+        const faturamento = ativos.reduce((total, r) => total + r.faturamento, 0);
+        const ingressos = ativos.reduce((total, r) => total + r.vendidos, 0);
+        const itens = ativos.reduce(
+            (total, r) => total + (r.vendas?.serie ?? []).reduce((t, d) => t + d.ingressos + d.produtos, 0),
+            0,
+        );
+        return { faturamento, ingressos, itens, ticket: faturamento / Math.max(1, ingressos) };
+    }, [ativos]);
+
+    const ritmo = useMemo(() => ritmoDaOrganizacao(ativos), [ativos]);
 
     const visiveis = useMemo(() => {
         const query = term.trim().toLowerCase();
@@ -114,44 +122,55 @@ export function Eventos() {
                 </header>
 
                 {/* Resumo da organização */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <MetricsIcon03
-                        icon={CurrencyDollarCircle}
-                        subtitle="Faturamento confirmado"
-                        title={brl(totais.faturamento)}
-                        change={null}
-                        changeTrend="positive"
-                        actions={false}
-                        className={HIDE_TREND_AND_MENU}
-                    />
-                    <MetricsIcon03
-                        icon={Ticket01}
-                        subtitle="Ingressos vendidos"
-                        title={numero(totais.ingressos)}
-                        change={null}
-                        changeTrend="positive"
-                        actions={false}
-                        className={HIDE_TREND_AND_MENU}
-                    />
-                    <MetricsIcon03
-                        icon={Receipt}
-                        subtitle="Ticket médio"
-                        title={brl(totais.ticket)}
-                        change={null}
-                        changeTrend="positive"
-                        actions={false}
-                        className={HIDE_TREND_AND_MENU}
-                    />
-                    <MetricsIcon03
-                        icon={TrendUp01}
-                        subtitle="Ritmo atual"
-                        title={`${numero(totais.ritmo)}/dia`}
-                        change={null}
-                        changeTrend="positive"
-                        actions={false}
-                        className={HIDE_TREND_AND_MENU}
-                    />
-                </div>
+                <section className="flex flex-col gap-3">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                        <h2 className="text-md font-semibold text-primary">Eventos ativos</h2>
+                        {/*
+                          "Ritmo" é o termo da casa, mas sozinho não diz de que janela
+                          se fala. A definição fica escrita uma vez, no topo, em vez de
+                          repetida em cada cartão.
+                        */}
+                        <p className="text-sm text-tertiary">
+                            Abaixo do total, o <strong className="font-semibold text-secondary">ritmo</strong>: média por dia dos últimos 7
+                            dias, comparada com os 7 anteriores. A curva mostra os últimos 30 dias.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <CartaoMetrica
+                            icon={CurrencyDollarCircle}
+                            label="GMV confirmado"
+                            valor={brl(totais.faturamento)}
+                            ritmo={ritmo.gmv}
+                            ritmoLabel={brlCompacto(ritmo.gmv.porDia)}
+                            ritmoSufixo="por dia"
+                        />
+                        <CartaoMetrica
+                            icon={ShoppingBag01}
+                            label="Itens vendidos"
+                            valor={numero(totais.itens)}
+                            ritmo={ritmo.itens}
+                            ritmoLabel={numero(ritmo.itens.porDia)}
+                            ritmoSufixo="itens por dia"
+                        />
+                        <CartaoMetrica
+                            icon={Ticket01}
+                            label="Ingressos vendidos"
+                            valor={numero(totais.ingressos)}
+                            ritmo={ritmo.ingressos}
+                            ritmoLabel={numero(ritmo.ingressos.porDia)}
+                            ritmoSufixo="ingressos por dia"
+                        />
+                        <CartaoMetrica
+                            icon={Receipt}
+                            label="Ticket médio"
+                            valor={brl(totais.ticket)}
+                            ritmo={ritmo.ticket}
+                            ritmoLabel={brl(ritmo.ticket.porDia)}
+                            ritmoSufixo="por ingresso, nos últimos 7 dias"
+                        />
+                    </div>
+                </section>
 
                 {/* Filtros da listagem */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

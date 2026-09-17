@@ -1,4 +1,5 @@
 import { XClose } from "@untitledui/icons";
+import { EVENTO, ingressosPorDocumento } from "../data/catalogo";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -17,17 +18,30 @@ export function SkipIdentificationModal({ isOpen, onClose, onConfirm }: SkipIden
                 <Dialog>
                     <div className="w-full max-w-md rounded-xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex items-start justify-between gap-4">
-                            <h2 className="text-lg font-semibold text-primary">Pular identificação</h2>
+                            <h2 className="text-lg font-semibold text-primary">Vender sem identificar o comprador?</h2>
                             <ButtonUtility size="xs" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
                         </div>
-                        <p className="mt-1 text-sm text-tertiary">
-                            Ingressos com acesso por face estarão desabilitados para venda e você não poderá usar o{" "}
-                            <strong className="font-semibold text-secondary">“Link de pagamento”</strong> para concluir a venda.
+                        {/*
+                          O modal confirma; quem ensina é o passo 1, que já explica o
+                          trade-off antes de este abrir. Primeira frase o que se perde,
+                          segunda o que se ganha — a estrutura aparece antes da leitura.
+                        */}
+                        <p className="mt-2 text-sm text-tertiary">
+                            Esta venda fica sem <strong className="font-semibold text-secondary">link de pagamento</strong> e sem ingressos
+                            com <strong className="font-semibold text-secondary">acesso por face</strong>.
+                            {EVENTO.limitePorDocumento > 0 && (
+                                <>
+                                    {" "}
+                                    Em troca, o limite de{" "}
+                                    <strong className="font-semibold text-secondary">{ingressosPorDocumento(EVENTO.limitePorDocumento)}</strong> não
+                                    vale, e dá para emitir em lote.
+                                </>
+                            )}
                         </p>
 
                         <div className="mt-6 flex flex-col-reverse gap-3 md:flex-row">
                             <Button size="md" color="secondary" className="md:flex-1" onClick={onClose}>
-                                Cancelar
+                                Voltar
                             </Button>
                             <Button
                                 size="md"
@@ -38,7 +52,7 @@ export function SkipIdentificationModal({ isOpen, onClose, onConfirm }: SkipIden
                                     onClose();
                                 }}
                             >
-                                Continuar
+                                Pular identificação
                             </Button>
                         </div>
                     </div>

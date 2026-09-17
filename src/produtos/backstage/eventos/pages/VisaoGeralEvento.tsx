@@ -100,7 +100,7 @@ export function VisaoGeralEvento() {
 
                     <p className="text-sm text-tertiary">
                         No ritmo atual, a projeção para o dia do evento é{" "}
-                        <strong className="font-semibold text-secondary">{brlCompacto(resumo.projecao)}</strong> —{" "}
+                        <strong className="font-semibold text-secondary">{brlCompacto(resumo.projecao)}</strong>,{" "}
                         {Math.round((resumo.projecao / resumo.meta) * 100)}% da meta.
                     </p>
                 </section>
@@ -207,7 +207,7 @@ export function VisaoGeralEvento() {
                     <div className="flex flex-col gap-0.5">
                         <h2 className="text-md font-semibold text-primary">Marcos & anotações</h2>
                         <p className="text-sm text-tertiary">
-                            Registre o que causou cada pico ou queda — virada de lote, anúncio de atração, ação de marketing, evento
+                            Registre o que causou cada pico ou queda: virada de lote, anúncio de atração, ação de marketing, evento
                             externo.
                         </p>
                     </div>

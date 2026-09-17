@@ -1,6 +1,10 @@
 /** Mock dos pedidos emitidos pela bilheteria online. */
 
-export type PedidoStatus = "pendente" | "aprovado" | "cancelado";
+/**
+ * `expirado`: o link de pagamento venceu sem ser pago. Diferente de cancelado,
+ * que é ato de alguém — aqui ninguém fez nada, e o estoque voltou sozinho.
+ */
+export type PedidoStatus = "pendente" | "aprovado" | "cancelado" | "expirado";
 export type PedidoTipo = "link" | "saldo";
 
 export interface PedidoItem {
@@ -12,6 +16,10 @@ export interface PedidoItem {
     subtitle?: string;
     /** Lote do ingresso, quando o item é um ingresso. */
     lote?: string;
+    /** Preço unitário — o total da linha vai na direita do item. */
+    unitPrice?: number;
+    /** Forma de acesso, para o ícone que acompanha o nome. */
+    access?: "qrcode" | "facial";
 }
 
 export interface Pedido {
@@ -32,17 +40,33 @@ export interface Pedido {
     itens: PedidoItem[];
     /** Data/hora do último reenvio do link de pagamento. */
     resentAt?: string;
+    /**
+     * Comprador sem conta Ingresse: o ingresso fica preso até ele concluir o
+     * cadastro. Na porta isso vira fila, então precisa aparecer na gestão.
+     */
+    contaPendente?: boolean;
+    /** Por onde e quando cada envio saiu — o suporte precisa poder dizer isso ao cliente. */
+    envios?: EnvioRegistro[];
 }
 
-export const PEDIDO_STATUS_META: Record<PedidoStatus, { label: string; color: "warning" | "success" | "gray" }> = {
+export interface EnvioRegistro {
+    canal: "email" | "whatsapp";
+    destino: string;
+    /** Data/hora legível do envio. */
+    at: string;
+}
+
+export const PEDIDO_STATUS_META: Record<PedidoStatus, { label: string; color: "warning" | "success" | "gray" | "error" }> = {
     pendente: { label: "Pendente", color: "warning" },
     aprovado: { label: "Aprovado", color: "success" },
     cancelado: { label: "Cancelado", color: "gray" },
+    // Vermelho porque é o estado que custa dinheiro: ninguém pagou e o ingresso voltou.
+    expirado: { label: "Expirado", color: "error" },
 };
 
 export const PEDIDO_TIPO_LABEL: Record<PedidoTipo, string> = {
     link: "Link de pagamento",
-    saldo: "Saldo do produtor",
+    saldo: "Só a taxa da bilheteria",
 };
 
 const PAYMENT_LINK = "cart.ingresse.com/971c14dc-89ba-41dd-a469-cad4a1fde120";
@@ -66,7 +90,7 @@ const EMISSORES = ["nome@exemplo.com", "operacao@exemplo.com", "bilheteria@exemp
 function buildPedidos(): Pedido[] {
     const rows: Array<[PedidoStatus, PedidoTipo, string, number]> = [
         ["pendente", "link", "26/05/2026", 198.0],
-        ["pendente", "link", "26/05/2026", 198.0],
+        ["expirado", "link", "26/05/2026", 198.0],
         ["pendente", "saldo", "26/05/2026", 220.0],
         ["aprovado", "saldo", "25/05/2026", 89.0],
         ["aprovado", "link", "25/05/2026", 340.0],
@@ -75,10 +99,11 @@ function buildPedidos(): Pedido[] {
         ["cancelado", "saldo", "23/05/2026", 49.0],
         ["cancelado", "saldo", "22/05/2026", 115.0],
         ["cancelado", "saldo", "22/05/2026", 1500.0],
+        ["expirado", "link", "22/05/2026", 780.0],
         ["aprovado", "link", "21/05/2026", 430.0],
         ["pendente", "link", "21/05/2026", 76.5],
         ["aprovado", "saldo", "20/05/2026", 610.0],
-        ["cancelado", "link", "19/05/2026", 92.0],
+        ["expirado", "link", "19/05/2026", 92.0],
         ["aprovado", "saldo", "19/05/2026", 1230.9],
         ["pendente", "saldo", "18/05/2026", 310.0],
         ["aprovado", "link", "18/05/2026", 145.0],

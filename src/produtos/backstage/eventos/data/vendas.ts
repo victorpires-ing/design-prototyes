@@ -38,6 +38,8 @@ export interface DiaVenda {
     dia: number;
     dataISO: string;
     ingressos: number;
+    /** Produtos e combos vendidos no dia — camiseta, copo, consumação. */
+    produtos: number;
     faturamento: number;
 }
 
@@ -187,10 +189,14 @@ function build(spec: Spec, evento: Evento): VendasEvento {
         const ingressos = Math.round((peso / somaPesos) * ingressosVendidos);
         acumulado += ingressos;
         const ticket = spec.ticketBase * (0.85 + (dia / Math.max(1, diasCorridos)) * 0.45);
+        // Produto acompanha o ingresso e cresce perto do evento, quando a compra
+        // vira expectativa: camiseta e copo vendem mais na última semana.
+        const apeteceProduto = 0.1 + (dia / Math.max(1, diasCorridos)) * 0.28;
         return {
             dia,
             dataISO: addDias(abertura, dia).toISOString().slice(0, 10),
             ingressos,
+            produtos: Math.round(ingressos * apeteceProduto),
             faturamento: Math.round(ingressos * ticket),
         };
     });
@@ -465,3 +471,74 @@ export const brlCompacto = (valor: number) =>
           : brl(valor);
 
 export const numero = (valor: number) => Math.round(valor).toLocaleString("pt-BR");
+
+/* ------------------------------------------------------------------ */
+/*  Ritmo da organização                                               */
+/*                                                                     */
+/*  Ritmo é a média por dia dos últimos 7 dias, comparada com os 7     */
+/*  anteriores. Total responde "quanto já vendi"; ritmo responde "como */
+/*  estou vendendo agora", que é a pergunta que muda decisão.          */
+/* ------------------------------------------------------------------ */
+
+export interface Ritmo {
+    /** Média por dia nos últimos 7 dias. */
+    porDia: number;
+    /** Variação contra os 7 dias anteriores. `null` quando não há base de comparação. */
+    variacao: number | null;
+    /** Últimos 30 dias, para o minigráfico. */
+    serie: number[];
+}
+
+export interface RitmoOrganizacao {
+    gmv: Ritmo;
+    itens: Ritmo;
+    ingressos: Ritmo;
+    ticket: Ritmo;
+}
+
+const JANELA = 7;
+const JANELA_GRAFICO = 30;
+
+const media = (valores: number[]) => (valores.length ? valores.reduce((t, v) => t + v, 0) / valores.length : 0);
+
+const montaRitmo = (serie: number[]): Ritmo => {
+    const recentes = serie.slice(-JANELA);
+    const anteriores = serie.slice(-JANELA * 2, -JANELA);
+    const porDia = media(recentes);
+    const base = media(anteriores);
+    return {
+        porDia,
+        variacao: base > 0 ? porDia / base - 1 : null,
+        serie: serie.slice(-JANELA_GRAFICO),
+    };
+};
+
+/**
+ * Soma o dia a dia de todos os eventos numa linha só. Eventos abrem vendas em
+ * datas diferentes, então a chave é a data do calendário, não o dia de venda.
+ */
+export function ritmoDaOrganizacao(lista: ResumoEvento[]): RitmoOrganizacao {
+    const porData = new Map<string, { gmv: number; ingressos: number; itens: number }>();
+
+    for (const resumo of lista) {
+        for (const dia of resumo.vendas?.serie ?? []) {
+            const atual = porData.get(dia.dataISO) ?? { gmv: 0, ingressos: 0, itens: 0 };
+            atual.gmv += dia.faturamento;
+            atual.ingressos += dia.ingressos;
+            atual.itens += dia.ingressos + dia.produtos;
+            porData.set(dia.dataISO, atual);
+        }
+    }
+
+    const dias = [...porData.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, valores]) => valores);
+
+    /* Ticket médio do dia, não média dos tickets: dia sem venda distorceria. */
+    const serieTicket = dias.map((d) => (d.ingressos ? d.gmv / d.ingressos : 0));
+
+    return {
+        gmv: montaRitmo(dias.map((d) => d.gmv)),
+        itens: montaRitmo(dias.map((d) => d.itens)),
+        ingressos: montaRitmo(dias.map((d) => d.ingressos)),
+        ticket: montaRitmo(serieTicket),
+    };
+}

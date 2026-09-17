@@ -14,6 +14,7 @@ import {
     RefreshCcw01,
     SwitchVertical01,
 } from "@untitledui/icons";
+import { Avatar } from "@/components/base/avatar/avatar";
 import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -26,9 +27,8 @@ import { Tabs } from "@/components/application/tabs/tabs";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { AlterarRespostasModal } from "../components/AlterarRespostasModal";
 import { EnviarModal, type CanalEnvio } from "../components/EnviarModal";
-import { FOCO, FOCO_ESCOPO, Miniatura, StatusBadge, TextoAnimado, formatarContagem, useContagem } from "../components/pos-compra-ui";
+import { FOCO, FOCO_ESCOPO, Miniatura, StatusBadge, TextoAnimado, formatarContagem, iniciaisDe, useContagem } from "../components/pos-compra-ui";
 import {
     SESSOES,
     expirarSolicitacao,
@@ -126,8 +126,6 @@ export function DetalhePedido() {
     const navigate = useNavigate();
     const pedidos = usePedidos();
     const pedido = pedidos.find((p) => p.id === pedidoId);
-    const [fluxo, setFluxo] = useState<TipoOperacao | null>(null);
-    const [itemDoFormulario, setItemDoFormulario] = useState<string | undefined>();
     const [aba, setAba] = useState<"detalhes" | "historico">("detalhes");
     const [selecao, setSelecao] = useState<Record<string, boolean>>({});
     const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
@@ -202,18 +200,12 @@ export function DetalhePedido() {
 
     const abrirFormulario = (linhaId: string) => {
         retomarSePreciso();
-        setItemDoFormulario(linhaId);
-        setFluxo("alterar-respostas");
+        navigate(`/backstage/pedidos/${pedido.id}/formulario`, { state: { linha: linhaId } });
     };
 
     const irParaTransferir = (ids: string[]) => {
         retomarSePreciso();
         navigate(`/backstage/pedidos/${pedido.id}/transferir`, { state: { linhas: ids } });
-    };
-
-    const fecharFluxo = () => {
-        setFluxo(null);
-        setItemDoFormulario(undefined);
     };
 
     const cartao = ({ item, linhas }: ItemDoPedido) => (
@@ -281,9 +273,20 @@ export function DetalhePedido() {
                 ) : (
                     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
                         <div className="flex min-w-0 flex-col gap-5">
-                            {pedido.solicitacoes.map((solicitacao) => (
-                                <CartaoDeOperacao key={solicitacao.id} pedido={pedido} solicitacao={solicitacao} />
-                            ))}
+                            <AnimatePresence initial={false}>
+                                {pedido.solicitacoes.map((solicitacao) => (
+                                    <motion.div
+                                        key={solicitacao.id}
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2, ease: "easeOut" }}
+                                        className="overflow-hidden"
+                                    >
+                                        <CartaoDeOperacao pedido={pedido} solicitacao={solicitacao} />
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
 
                             <section className="rounded-2xl bg-primary ring-1 ring-border-secondary">
                                 <div className="flex flex-col gap-4 p-5">
@@ -377,7 +380,6 @@ export function DetalhePedido() {
                     </div>
                 )}
 
-                {fluxo === "alterar-respostas" && itemDoFormulario && <AlterarRespostasModal isOpen pedido={pedido} linhaId={itemDoFormulario} onClose={fecharFluxo} />}
             </motion.div>
         </BackstageLayout>
     );
@@ -391,6 +393,8 @@ const CartaoDeOperacao = ({ pedido, solicitacao }: { pedido: Pedido; solicitacao
     const { copied, copy } = useClipboard();
     const restante = useContagem(solicitacao.expiraEm, () => expirarSolicitacao(pedido.id, solicitacao.id));
     const duracao = solicitacao.expiraEm - solicitacao.criadoEm;
+    const percentualRestante = duracao > 0 ? (restante / duracao) * 100 : 0;
+    const corBarra = percentualRestante <= 25 ? "bg-error-solid" : percentualRestante <= 60 ? "bg-warning-solid" : "bg-success-solid";
     const processando = solicitacao.estado === "processando";
     const comprador = getConta(pedido.compradorId);
     const [canalEnvio, setCanalEnvio] = useState<CanalEnvio | null>(null);
@@ -409,7 +413,7 @@ const CartaoDeOperacao = ({ pedido, solicitacao }: { pedido: Pedido; solicitacao
                         <p className="text-sm text-tertiary">
                             essa operação expira em: <span className="font-semibold text-primary tabular-nums">{formatarContagem(restante)}</span>
                         </p>
-                        <ProgressBarBase className="mt-2" value={duracao > 0 ? (restante / duracao) * 100 : 0} />
+                        <ProgressBarBase className="mt-2" value={percentualRestante} progressClassName={corBarra} />
                     </div>
                 )}
             </div>
@@ -532,7 +536,11 @@ const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExp
             <div
                 className={cx(
                     "flex items-start gap-3 rounded-t-xl p-4 transition duration-100 ease-linear",
-                    (varias || idsLivres.length > 0) && "cursor-pointer hover:bg-secondary_hover",
+                    /* O hover de fundo só entra quando o cabeçalho é o cartão inteiro (colapsado) — com a
+                       lista de unidades visível embaixo, colorir só o cabeçalho faz o cartão parecer duas
+                       caixas empilhadas em vez de uma. O cursor continua indicando que dá pra clicar. */
+                    (varias || idsLivres.length > 0) && "cursor-pointer",
+                    (varias || idsLivres.length > 0) && !mostrarUnidades && "hover:bg-secondary_hover",
                     !mostrarUnidades && "rounded-b-xl",
                 )}
                 onClick={clicarNoCabecalho}
@@ -778,15 +786,18 @@ const EntradaDoHistorico = ({ entrada, ultima }: { entrada: EntradaHistorico; ul
                 {!ultima && <span className="mt-1 w-px flex-1 bg-border-secondary" />}
             </div>
 
-            <div className="min-w-0 flex-1 pb-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div className="min-w-0 flex-1 pb-5">
+                <div className="flex items-center gap-2">
+                    <Avatar size="xs" initials={iniciaisDe(entrada.responsavel)} alt={entrada.responsavel} />
+                    <p className="min-w-0 truncate text-sm font-medium text-secondary">{entrada.responsavel}</p>
+                    <span className="shrink-0 text-sm text-quaternary">· {entrada.dataLabel}</span>
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-baseline justify-between gap-2">
                     <p className="text-sm font-semibold text-primary">{entrada.titulo}</p>
                     {typeof entrada.valor === "number" && entrada.valor > 0 && <p className="text-sm text-tertiary tabular-nums">{formatarMoeda(entrada.valor)}</p>}
                 </div>
                 <p className="text-sm text-tertiary">{entrada.descricao}</p>
-                <p className="mt-0.5 text-sm text-quaternary">
-                    {entrada.dataLabel} | {entrada.responsavel}
-                </p>
 
                 {temDetalhes && (
                     <>

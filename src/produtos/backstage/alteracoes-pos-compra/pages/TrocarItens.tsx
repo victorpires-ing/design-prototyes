@@ -1,7 +1,8 @@
 import { useState, type MouseEvent, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { Calendar, ChevronDown, ChevronLeft, RefreshCcw01, SearchLg } from "@untitledui/icons";
+import { ArrowDown, Calendar, ChevronDown, ChevronLeft, SearchLg } from "@untitledui/icons";
+import { toast } from "sonner";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressIconType } from "@/components/application/progress-steps/progress-types";
 import { Badge } from "@/components/base/badges/badges";
@@ -12,7 +13,18 @@ import { InputBase } from "@/components/base/input/input";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { Aviso, EtapaCompacta, FOCO, ItensSelecionados, Miniatura, Regra, ResumoFinanceiro, Stepper, useRolou } from "../components/pos-compra-ui";
+import {
+    Aviso,
+    EtapaCompacta,
+    EtapaJustificativa,
+    FOCO,
+    ItensSelecionados,
+    Miniatura,
+    Regra,
+    ResumoFinanceiro,
+    Stepper,
+    useRolou,
+} from "../components/pos-compra-ui";
 import { EditorResposta } from "../components/respostas-ui";
 import {
     SESSOES,
@@ -38,12 +50,13 @@ import {
     type TipoItem,
 } from "../data/pos-compra-store";
 
-type Etapa = "saem" | "entram" | "formularios" | "revisao";
+type Etapa = "saem" | "entram" | "formularios" | "justificativa" | "revisao";
 
 const TITULO_ETAPA: Record<Etapa, string> = {
     saem: "Itens que saem",
     entram: "Itens que entram",
     formularios: "Formulários",
+    justificativa: "Justificativa",
     revisao: "Revisão",
 };
 
@@ -70,6 +83,7 @@ export function TrocarItens() {
 
     const [indice, setIndice] = useState(0);
     const [termo, setTermo] = useState("");
+    const [justificativa, setJustificativa] = useState("");
     /** Linhas do pedido que saem. Chegam marcadas quando a escolha foi feita na lista do pedido. */
     const [saem, setSaem] = useState<Record<string, boolean>>(() => Object.fromEntries(linhasIniciais.map((id) => [id, true])));
     /** Quantas unidades de cada item do catálogo entram no lugar. */
@@ -156,6 +170,26 @@ export function TrocarItens() {
         .map((linha, i) => ({ linha, novoItem: destinos[i] }))
         .filter((p): p is { linha: PedidoItem; novoItem: CatalogoItem } => Boolean(p.novoItem));
     const calculo = pares.length > 0 ? calcularTrocaItens(pares) : null;
+    /* Agrupa os pares 1:1 pelo par de itens (origem, destino): quem troca 3 unidades do mesmo item pelo
+       mesmo item de destino vê uma linha só, com a quantidade somada, em vez de 3 linhas repetidas. */
+    const paresAgrupados = [
+        ...pares
+            .reduce((mapa, { linha, novoItem }) => {
+                const itemSai = getItem(linha.itemId);
+                const chave = `${linha.itemId}→${novoItem.id}`;
+                const atual = mapa.get(chave) ?? {
+                    chave,
+                    saiNome: itemSai?.nome ?? "",
+                    saiDetalhe: sessaoLabel(itemSai),
+                    entraNome: novoItem.nome,
+                    entraDetalhe: sessaoLabel(novoItem),
+                    quantidade: 0,
+                };
+                atual.quantidade++;
+                return mapa.set(chave, atual);
+            }, new Map<string, { chave: string; saiNome: string; saiDetalhe?: string; entraNome: string; entraDetalhe?: string; quantidade: number }>())
+            .values(),
+    ];
     /* Sair e entrar com exatamente os mesmos itens não é troca: seria só cobrar taxa. */
     const selecaoIgual =
         totalSaem > 0 &&
@@ -192,6 +226,7 @@ export function TrocarItens() {
         ...(selecaoPrevia ? [] : (["saem"] as Etapa[])),
         "entram",
         ...(formularios.length > 0 ? (["formularios"] as Etapa[]) : []),
+        "justificativa",
         "revisao",
     ];
     const etapa = etapas[Math.min(indice, etapas.length - 1)];
@@ -208,9 +243,18 @@ export function TrocarItens() {
               ? totalSaem > 0 && totalEntram === totalSaem && !selecaoIgual
               : etapa === "formularios"
                 ? formulariosCompletos
-                : Boolean(calculo);
+                : etapa === "justificativa"
+                  ? justificativa.trim().length > 0
+                  : Boolean(calculo);
 
-    const rotuloAvancar = etapa === "saem" ? "Escolher o que entra" : etapa === "entram" && formularios.length > 0 ? "Preencher formulários" : "Revisar troca";
+    const rotuloAvancar =
+        etapa === "saem"
+            ? "Escolher o que entra"
+            : etapa === "entram" && formularios.length > 0
+              ? "Preencher formulários"
+              : etapa === "justificativa"
+                ? "Revisar troca"
+                : "Justificar";
 
     const voltar = () => (indice === 0 ? voltarAoPedido() : setIndice((i) => i - 1));
 
@@ -226,7 +270,12 @@ export function TrocarItens() {
             precoSaida={precoSaida}
             noPedido={noPedidoPorItem.get(item.id) ?? 0}
             saindo={saindoPorItem.get(item.id) ?? 0}
-            onChange={(valor) => setEntram((atual) => ({ ...atual, [item.id]: valor }))}
+            onChange={(valor) =>
+                setEntram((atual) =>
+                    /* 1 unidade saindo é escolha única: marcar outro item desmarca o anterior, nunca soma. */
+                    totalSaem === 1 ? (valor > 0 ? { [item.id]: valor } : {}) : { ...atual, [item.id]: valor },
+                )
+            }
         />
     );
 
@@ -270,6 +319,7 @@ export function TrocarItens() {
                     .filter(([, valor]) => valor)
                     .map(([perguntaId, valor]) => `${getItem(itemId)?.nome} | ${perguntas.find((p) => p.id === perguntaId)?.label}: ${valor}`),
             ),
+            `Justificativa: ${justificativa.trim()}`,
         ];
 
         /* Uma resposta por item que entra, aplicada a todas as unidades pareadas dele. */
@@ -290,6 +340,7 @@ export function TrocarItens() {
             },
             reservas: pares.map(({ novoItem }) => ({ tipo: "item" as const, itemId: novoItem.id })),
         });
+        toast.success("Cobrança de troca gerada com sucesso.");
         voltarAoPedido();
     };
 
@@ -316,7 +367,7 @@ export function TrocarItens() {
                             </Button>
                         ) : (
                             <Button size="md" isDisabled={!calculo} onClick={confirmar}>
-                                Gerar link de {formatarMoeda(calculo?.total ?? 0)}
+                                Cobrar troca de {formatarMoeda(calculo?.total ?? 0)}
                             </Button>
                         )}
                     </div>
@@ -384,17 +435,13 @@ export function TrocarItens() {
                             <>
                                 <ItensSelecionados
                                     linhas={linhasSaem}
-                                    titulo={`Saem (${totalSaem})`}
+                                    titulo={`Trocando (${totalSaem})`}
                                     acao={
                                         <Button size="sm" color="link-color" onClick={selecaoPrevia ? voltarAoPedido : () => setIndice(0)}>
                                             Alterar
                                         </Button>
                                     }
                                 />
-
-                                <div className="flex justify-center">
-                                    <IconeTroca />
-                                </div>
 
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <Regra>{totalSaem === 1 ? "Escolha o item que entra no lugar." : "Distribua as unidades que saem entre os itens que entram."}</Regra>
@@ -495,29 +542,45 @@ export function TrocarItens() {
                             </>
                         )}
 
+                        {etapa === "justificativa" && (
+                            <EtapaJustificativa
+                                descricao="Explique por que essa troca está sendo feita. Isso fica registrado no histórico do pedido."
+                                valor={justificativa}
+                                onChange={setJustificativa}
+                            />
+                        )}
+
                         {etapa === "revisao" && calculo && (
                             <>
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                    <Coluna
-                                        titulo={`Saem (${totalSaem})`}
-                                        linhas={[...linhasSaem.reduce((mapa, l) => {
-                                            const item = getItem(l.itemId);
-                                            const atual = mapa.get(l.itemId) ?? { id: l.itemId, nome: item?.nome ?? "", detalhe: sessaoLabel(item), unitario: l.valorPago, quantidade: 0 };
-                                            atual.quantidade++;
-                                            return mapa.set(l.itemId, atual);
-                                        }, new Map<string, { id: string; nome: string; detalhe?: string; unitario: number; quantidade: number }>()).values()]}
-                                    />
-                                    <Coluna
-                                        titulo={`Entram (${totalEntram})`}
-                                        destaque
-                                        linhas={itensQueEntram.map(([itemId, quantidade]) => {
-                                            const item = getItem(itemId);
-                                            return { id: itemId, quantidade, nome: item?.nome ?? "", detalhe: sessaoLabel(item), unitario: item?.precoIntegral ?? 0 };
-                                        })}
-                                    />
+                                <div className="w-full overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+                                    <p className="border-b border-secondary px-4 py-3 text-sm font-semibold text-primary">Trocando</p>
+                                    <ul className="flex flex-col divide-y divide-border-secondary">
+                                        {paresAgrupados.map((par) => (
+                                            <li key={par.chave} className="flex flex-col gap-2 p-4">
+                                                <div className="min-w-0">
+                                                    <p className="text-sm text-tertiary line-through">
+                                                        {par.quantidade}x {par.saiNome}
+                                                    </p>
+                                                    {par.saiDetalhe && <p className="text-sm text-tertiary line-through">{par.saiDetalhe}</p>}
+                                                </div>
+                                                <ArrowDown className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-primary">
+                                                        {par.quantidade}x {par.entraNome}
+                                                    </p>
+                                                    {par.entraDetalhe && <p className="text-sm text-tertiary">{par.entraDetalhe}</p>}
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
                                 </div>
 
                                 {calculo.semCredito && <Aviso tom="warning" titulo="Há itens mais baratos na troca. A diferença deles não gera crédito nem reembolso." />}
+
+                                <div className="w-full rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
+                                    <p className="mb-1 text-sm font-semibold text-primary">Justificativa</p>
+                                    <p className="text-sm text-tertiary">{justificativa.trim()}</p>
+                                </div>
 
                                 <ResumoFinanceiro linhas={calculo.linhas} />
                                 <Regra>As vagas ficam reservadas por 1 hora. Nada é aplicado antes do pagamento.</Regra>
@@ -634,39 +697,6 @@ const LinhaCatalogo = ({
         </li>
     );
 };
-
-const IconeTroca = () => (
-    <span className="flex size-11 items-center justify-center rounded-full bg-primary shadow-xs ring-1 ring-border-secondary" aria-hidden="true">
-        <RefreshCcw01 className="size-5 text-fg-secondary" />
-    </span>
-);
-
-const Coluna = ({
-    titulo,
-    linhas,
-    destaque,
-}: {
-    titulo: string;
-    destaque?: boolean;
-    linhas: Array<{ id: string; quantidade: number; nome: string; detalhe?: string; unitario: number }>;
-}) => (
-    <div className="rounded-xl bg-primary ring-1 ring-border-secondary">
-        <p className="border-b border-secondary px-4 py-3 text-sm font-semibold text-primary">{titulo}</p>
-        <ul className="flex max-h-56 flex-col divide-y divide-border-secondary overflow-y-auto">
-            {linhas.map((linha) => (
-                <li key={linha.id} className="flex items-baseline justify-between gap-3 px-4 py-3">
-                    <span className="min-w-0">
-                        <span className={cx("block text-sm", destaque ? "font-semibold text-utility-blue-600" : "text-primary")}>
-                            {linha.quantidade}x {linha.nome}
-                        </span>
-                        {linha.detalhe && <span className="block text-sm text-tertiary">{linha.detalhe}</span>}
-                    </span>
-                    <span className="shrink-0 text-sm text-tertiary tabular-nums">{formatarMoeda(linha.unitario)} cada</span>
-                </li>
-            ))}
-        </ul>
-    </div>
-);
 
 const CabecalhoSessao = ({ sessao }: { sessao: Sessao }) => (
     <div className="flex items-center gap-2 px-1 pt-1">

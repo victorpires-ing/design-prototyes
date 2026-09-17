@@ -171,7 +171,7 @@ export const ComparativoResposta = ({ pergunta, de, para }: { pergunta?: Pergunt
                 {mudou && (
                     <>
                         <span className="text-sm text-fg-quaternary" aria-hidden="true">
-                            {empilhado ? "passa a ser" : "->"}
+                            {empilhado ? "passa a ser" : "→"}
                         </span>
                         <span className="text-sm font-semibold text-brand-secondary">{para || "Sem resposta"}</span>
                     </>

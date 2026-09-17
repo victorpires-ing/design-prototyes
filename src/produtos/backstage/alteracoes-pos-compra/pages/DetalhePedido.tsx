@@ -126,7 +126,7 @@ export function DetalhePedido() {
     const navigate = useNavigate();
     const pedidos = usePedidos();
     const pedido = pedidos.find((p) => p.id === pedidoId);
-    const [aba, setAba] = useState<"detalhes" | "historico">("detalhes");
+    const [aba, setAba] = useState<"itens" | "historico">("itens");
     const [selecao, setSelecao] = useState<Record<string, boolean>>({});
     const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
     const { copied, copy } = useClipboard();
@@ -255,54 +255,55 @@ export function DetalhePedido() {
                     </div>
                 </header>
 
-                <Tabs selectedKey={aba} onSelectionChange={(key) => setAba(key as "detalhes" | "historico")}>
-                    <Tabs.List type="underline" size="sm">
-                        <Tabs.Item id="detalhes">Detalhes</Tabs.Item>
-                        <Tabs.Item id="historico">Histórico</Tabs.Item>
-                    </Tabs.List>
-                </Tabs>
+                <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+                    <div className="flex min-w-0 flex-col gap-5">
+                        <Tabs selectedKey={aba} onSelectionChange={(key) => setAba(key as "itens" | "historico")}>
+                            <Tabs.List type="underline" size="sm">
+                                <Tabs.Item id="itens">Itens</Tabs.Item>
+                                <Tabs.Item id="historico">Histórico</Tabs.Item>
+                            </Tabs.List>
+                        </Tabs>
 
-                {aba === "historico" ? (
-                    <section className="rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
-                        <ol className="flex flex-col">
-                            {[...pedido.historico].reverse().map((entrada, indice, lista) => (
-                                <EntradaDoHistorico key={entrada.id} entrada={entrada} ultima={indice === lista.length - 1} />
-                            ))}
-                        </ol>
-                    </section>
-                ) : (
-                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-                        <div className="flex min-w-0 flex-col gap-5">
-                            <AnimatePresence initial={false}>
-                                {pedido.solicitacoes.map((solicitacao) => (
-                                    <motion.div
-                                        key={solicitacao.id}
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: "auto", opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.2, ease: "easeOut" }}
-                                        className="overflow-hidden"
-                                    >
-                                        <CartaoDeOperacao pedido={pedido} solicitacao={solicitacao} />
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
+                        {aba === "historico" ? (
+                            <section className="rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
+                                <ol className="flex flex-col">
+                                    {[...pedido.historico].reverse().map((entrada, indice, lista) => (
+                                        <EntradaDoHistorico key={entrada.id} entrada={entrada} ultima={indice === lista.length - 1} />
+                                    ))}
+                                </ol>
+                            </section>
+                        ) : (
+                            <>
+                                <AnimatePresence initial={false}>
+                                    {pedido.solicitacoes.map((solicitacao) => (
+                                        <motion.div
+                                            key={solicitacao.id}
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.2, ease: "easeOut" }}
+                                            className="overflow-hidden"
+                                        >
+                                            <CartaoDeOperacao pedido={pedido} solicitacao={solicitacao} />
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
 
-                            <section className="rounded-2xl bg-primary ring-1 ring-border-secondary">
-                                <div className="flex flex-col gap-4 p-5">
-                                    <div className="flex flex-col gap-0.5">
-                                        <h2 className="text-base font-semibold text-primary">Itens ({pedido.itens.length})</h2>
-                                        {indisponiveis > 0 && (
-                                            <p className="text-sm text-tertiary">
-                                                {plural(idsSelecionaveis.length, "unidade disponível", "unidades disponíveis")} para alteração.{" "}
-                                                {plural(indisponiveis, "unidade já está", "unidades já estão")} em outra operação ou com outro titular.
-                                            </p>
-                                        )}
-                                        {encerrado && <p className="text-sm text-tertiary">As sessões deste pedido já aconteceram: só a transferência continua disponível.</p>}
-                                    </div>
+                                <div className="flex flex-col gap-4">
+                                    {(indisponiveis > 0 || encerrado) && (
+                                        <div className="flex flex-col gap-0.5">
+                                            {indisponiveis > 0 && (
+                                                <p className="text-sm text-tertiary">
+                                                    {plural(idsSelecionaveis.length, "unidade disponível", "unidades disponíveis")} para alteração.{" "}
+                                                    {plural(indisponiveis, "unidade já está", "unidades já estão")} em outra operação ou com outro titular.
+                                                </p>
+                                            )}
+                                            {encerrado && <p className="text-sm text-tertiary">As sessões deste pedido já aconteceram: só a transferência continua disponível.</p>}
+                                        </div>
+                                    )}
 
                                     {/* Barra de seleção: acompanha a rolagem para a ação ficar sempre à mão. */}
-                                    <div className="sticky top-[61px] z-10 -mx-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-secondary bg-primary px-5 py-3 md:top-[var(--bs-header-offset,0px)]">
+                                    <div className="sticky top-[61px] z-10 flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-secondary bg-primary px-5 py-3 md:top-[var(--bs-header-offset,0px)]">
                                         <Checkbox
                                             size="sm"
                                             isSelected={todosSelecionados}
@@ -324,10 +325,22 @@ export function DetalhePedido() {
                                         )}
                                         <div className="flex w-full gap-2 sm:ml-auto sm:w-auto">
                                             <Button size="sm" color="secondary" className="flex-1 sm:flex-none" isDisabled={nSelecionados === 0} onClick={() => irParaTransferir(idsSelecionados)}>
-                                                Transferir itens ({nSelecionados})
+                                                {nSelecionados > 0 ? (
+                                                    <>
+                                                        Transferir <ContadorSelecao n={nSelecionados} /> itens
+                                                    </>
+                                                ) : (
+                                                    "Transferir itens"
+                                                )}
                                             </Button>
                                             <Button size="sm" color="secondary" className="flex-1 sm:flex-none" isDisabled={nSelecionados === 0 || encerrado} onClick={() => abrirTroca(idsSelecionados)}>
-                                                Trocar itens ({nSelecionados})
+                                                {nSelecionados > 0 ? (
+                                                    <>
+                                                        Trocar <ContadorSelecao n={nSelecionados} /> itens
+                                                    </>
+                                                ) : (
+                                                    "Trocar itens"
+                                                )}
                                             </Button>
                                         </div>
                                     </div>
@@ -342,43 +355,43 @@ export function DetalhePedido() {
                                         {estrutura.combos.length > 0 && <Secao titulo="Combos">{estrutura.combos.map(cartao)}</Secao>}
                                     </div>
                                 </div>
-                            </section>
-                        </div>
-
-                        <aside className="flex min-w-0 flex-col gap-5 xl:sticky xl:top-6">
-                            <section className="rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
-                                <h2 className="mb-4 text-base font-semibold text-primary">Comprador</h2>
-                                <p className="text-sm font-semibold text-primary">{comprador?.nome}</p>
-                                <p className="text-sm text-tertiary">{comprador?.email}</p>
-                                <dl className="mt-3 flex flex-col gap-2">
-                                    <Linha rotulo="Documento" valor={comprador?.cpf ?? ""} />
-                                    <Linha rotulo="Nascimento" valor={comprador?.nascimento ?? ""} />
-                                    <Linha rotulo="Celular" valor={comprador?.celular ?? ""} />
-                                </dl>
-
-                                <dl className="mt-4 flex flex-col gap-2 border-t border-secondary pt-4">
-                                    <Linha rotulo="Valor original" valor={formatarMoeda(totais.original)} />
-                                    <Linha rotulo="Desconto" valor={formatarMoeda(-totais.desconto)} />
-                                    <div className="flex items-baseline justify-between gap-3 border-t border-secondary pt-2">
-                                        <dt className="text-sm font-semibold text-primary">Valor final</dt>
-                                        <dd className="text-sm font-semibold text-primary tabular-nums">{formatarMoeda(totais.final)}</dd>
-                                    </div>
-                                </dl>
-                            </section>
-
-                            <Disclosure titulo="Dados da compra" aberta>
-                                <dl className="flex flex-col gap-2">
-                                    <Linha rotulo="Quantidade de itens" valor={String(pedido.itens.length)} />
-                                    <Linha rotulo="Canal" valor={pedido.canal} />
-                                    <Linha rotulo="Meio de pagamento" valor={pedido.meioPagamento} />
-                                    <Linha rotulo="Cupom ou passkey" valor={pedido.cupom ?? "-"} />
-                                    <Linha rotulo="Criado em" valor={pedido.criadoEmLabel} />
-                                    <Linha rotulo="Atualizado em" valor={pedido.atualizadoEmLabel} />
-                                </dl>
-                            </Disclosure>
-                        </aside>
+                            </>
+                        )}
                     </div>
-                )}
+
+                    <aside className="flex min-w-0 flex-col gap-5 xl:sticky xl:top-6">
+                        <section className="rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
+                            <h2 className="mb-4 text-base font-semibold text-primary">Comprador</h2>
+                            <p className="text-sm font-semibold text-primary">{comprador?.nome}</p>
+                            <p className="text-sm text-tertiary">{comprador?.email}</p>
+                            <dl className="mt-3 flex flex-col gap-2">
+                                <Linha rotulo="Documento" valor={comprador?.cpf ?? ""} />
+                                <Linha rotulo="Nascimento" valor={comprador?.nascimento ?? ""} />
+                                <Linha rotulo="Celular" valor={comprador?.celular ?? ""} />
+                            </dl>
+
+                            <dl className="mt-4 flex flex-col gap-2 border-t border-secondary pt-4">
+                                <Linha rotulo="Valor original" valor={formatarMoeda(totais.original)} />
+                                <Linha rotulo="Desconto" valor={formatarMoeda(-totais.desconto)} />
+                                <div className="flex items-baseline justify-between gap-3 border-t border-secondary pt-2">
+                                    <dt className="text-sm font-semibold text-primary">Valor final</dt>
+                                    <dd className="text-sm font-semibold text-primary tabular-nums">{formatarMoeda(totais.final)}</dd>
+                                </div>
+                            </dl>
+                        </section>
+
+                        <Disclosure titulo="Dados da compra" aberta>
+                            <dl className="flex flex-col gap-2">
+                                <Linha rotulo="Quantidade de itens" valor={String(pedido.itens.length)} />
+                                <Linha rotulo="Canal" valor={pedido.canal} />
+                                <Linha rotulo="Meio de pagamento" valor={pedido.meioPagamento} />
+                                <Linha rotulo="Cupom ou passkey" valor={pedido.cupom ?? "-"} />
+                                <Linha rotulo="Criado em" valor={pedido.criadoEmLabel} />
+                                <Linha rotulo="Atualizado em" valor={pedido.atualizadoEmLabel} />
+                            </dl>
+                        </Disclosure>
+                    </aside>
+                </div>
 
             </motion.div>
         </BackstageLayout>
@@ -472,6 +485,13 @@ const CartaoDeOperacao = ({ pedido, solicitacao }: { pedido: Pedido; solicitacao
 /*  Lista de itens                                                     */
 /* ------------------------------------------------------------------ */
 
+/** Contagem da seleção, em uma caixa própria em vez de parênteses coladas no texto do botão. */
+const ContadorSelecao = ({ n }: { n: number }) => (
+    <span className="inline-flex min-w-5 items-center justify-center rounded-md px-1.5 py-0.5 text-xs font-semibold text-tertiary ring-1 ring-border-secondary tabular-nums">
+        {n}
+    </span>
+);
+
 const Secao = ({ titulo, icone: Icone, children }: { titulo: string; icone?: typeof Calendar; children: ReactNode }) => (
     <div className="flex flex-col gap-3">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-primary">
@@ -532,7 +552,7 @@ const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExp
     };
 
     return (
-        <div className={cx("rounded-xl bg-secondary ring-1 ring-border-secondary", todas && "ring-border-brand")}>
+        <div className={cx("rounded-xl bg-primary ring-1 ring-border-secondary", todas && "ring-border-brand")}>
             <div
                 className={cx(
                     "flex items-start gap-3 rounded-t-xl p-4 transition duration-100 ease-linear",
@@ -540,7 +560,7 @@ const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExp
                        lista de unidades visível embaixo, colorir só o cabeçalho faz o cartão parecer duas
                        caixas empilhadas em vez de uma. O cursor continua indicando que dá pra clicar. */
                     (varias || idsLivres.length > 0) && "cursor-pointer",
-                    (varias || idsLivres.length > 0) && !mostrarUnidades && "hover:bg-secondary_hover",
+                    (varias || idsLivres.length > 0) && !mostrarUnidades && "hover:bg-primary_hover",
                     !mostrarUnidades && "rounded-b-xl",
                 )}
                 onClick={clicarNoCabecalho}
@@ -662,7 +682,7 @@ const Unidade = ({ pedido, linha, numero, unica, selecionada, encerrado, onAlter
         <li
             className={cx(
                 "flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 transition duration-100 ease-linear",
-                livre && "cursor-pointer hover:bg-secondary_hover",
+                livre && "cursor-pointer",
                 estado === "transferida" && "opacity-70",
                 unica && "rounded-b-xl",
             )}

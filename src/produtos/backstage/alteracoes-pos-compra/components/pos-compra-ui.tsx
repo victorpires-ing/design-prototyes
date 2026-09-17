@@ -5,6 +5,7 @@ import { Badge } from "@/components/base/badges/badges";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { InputNumber } from "@/components/base/input/input-number";
+import { TextArea } from "@/components/base/textarea/textarea";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx } from "@/utils/cx";
 import {
@@ -119,7 +120,7 @@ export const CampoComparativo = ({ label, de, para }: { label: string; de: strin
                 {mudou && (
                     <>
                         <span className="text-sm text-fg-quaternary" aria-hidden="true">
-                            {"->"}
+                            {"→"}
                         </span>
                         <span className="text-sm font-semibold text-brand-secondary">{para}</span>
                     </>
@@ -128,6 +129,36 @@ export const CampoComparativo = ({ label, de, para }: { label: string; de: strin
         </div>
     );
 };
+
+export const iniciaisDe = (nome: string) =>
+    nome
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((parte) => parte[0]?.toUpperCase() ?? "")
+        .join("");
+
+/** Etapa comum aos três fluxos: exige um motivo antes de seguir para a revisão. */
+export const EtapaJustificativa = ({
+    descricao,
+    valor,
+    onChange,
+}: {
+    descricao: string;
+    valor: string;
+    onChange: (valor: string) => void;
+}) => (
+    <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
+        <Regra>{descricao}</Regra>
+        <TextArea
+            label="Justificativa"
+            placeholder="Explique o motivo dessa alteração para o comprador."
+            value={valor}
+            onChange={onChange}
+            rows={4}
+        />
+    </div>
+);
 
 /** Contagem regressiva acelerada da cobrança pendente. */
 export const useContagem = (expiraEm: number | undefined, aoExpirar: () => void) => {

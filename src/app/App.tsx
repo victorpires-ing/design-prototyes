@@ -159,6 +159,7 @@ import { Pedidos as PedidosPosCompra } from '../produtos/backstage/alteracoes-po
 import { DetalhePedido as DetalhePedidoPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/DetalhePedido';
 import { TransferirTitularidade } from '../produtos/backstage/alteracoes-pos-compra/pages/TransferirTitularidade';
 import { TrocarItens } from '../produtos/backstage/alteracoes-pos-compra/pages/TrocarItens';
+import { EditarFormulario } from '../produtos/backstage/alteracoes-pos-compra/pages/EditarFormulario';
 import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
 import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
 import { PreVenda } from '../produtos/backstage/marketing/pages/PreVenda';
@@ -211,6 +212,7 @@ export default function App() {
         <Route path="/backstage/pedidos/:pedidoId" element={<DetalhePedidoPosCompra />} />
         <Route path="/backstage/pedidos/:pedidoId/transferir" element={<TransferirTitularidade />} />
         <Route path="/backstage/pedidos/:pedidoId/trocar" element={<TrocarItens />} />
+        <Route path="/backstage/pedidos/:pedidoId/formulario" element={<EditarFormulario />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao" element={<EquipeDeOperacao />} />

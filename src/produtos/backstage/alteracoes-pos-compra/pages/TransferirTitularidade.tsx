@@ -2,6 +2,7 @@ import { useState, type MouseEvent, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { ArrowDown, ChevronDown, ChevronLeft, Copy01, SearchLg } from "@untitledui/icons";
+import { toast } from "sonner";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressIconType } from "@/components/application/progress-steps/progress-types";
 import { Avatar } from "@/components/base/avatar/avatar";
@@ -12,7 +13,17 @@ import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { Aviso, EtapaCompacta, FOCO, Miniatura, Regra, ResumoFinanceiro, useRolou } from "../components/pos-compra-ui";
+import {
+    Aviso,
+    EtapaCompacta,
+    EtapaJustificativa,
+    FOCO,
+    Miniatura,
+    Regra,
+    ResumoFinanceiro,
+    iniciaisDe,
+    useRolou,
+} from "../components/pos-compra-ui";
 import { ComparativoResposta, EditorResposta } from "../components/respostas-ui";
 import {
     CONTAS,
@@ -37,24 +48,17 @@ import {
     type Pergunta,
 } from "../data/pos-compra-store";
 
-type Etapa = "itens" | "destinatario" | "formularios" | "revisao";
+type Etapa = "itens" | "destinatario" | "formularios" | "justificativa" | "revisao";
 
 const TITULO_ETAPA: Record<Etapa, string> = {
     itens: "Itens",
     destinatario: "Destinatário",
     formularios: "Formulários",
+    justificativa: "Justificativa",
     revisao: "Revisão",
 };
 
 const soDigitos = (texto: string) => texto.replace(/\D/g, "");
-
-const iniciaisDe = (nome: string) =>
-    nome
-        .trim()
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((parte) => parte[0]?.toUpperCase() ?? "")
-        .join("");
 
 const detalheDoItem = (item?: CatalogoItem) => [item?.lote, sessaoDoItem(item) ? sessaoLabel(item) : null].filter(Boolean).join(" | ");
 
@@ -70,6 +74,7 @@ export function TransferirTitularidade() {
 
     const [indice, setIndice] = useState(0);
     const [busca, setBusca] = useState("");
+    const [justificativa, setJustificativa] = useState("");
     const [selecionada, setSelecionada] = useState<Conta | null>(null);
     /** Linhas que vão mudar de titular. Chegam marcadas quando a escolha foi feita na lista do pedido. */
     const [selecao, setSelecao] = useState<Record<string, boolean>>(() => Object.fromEntries(linhasIniciais.map((id) => [id, true])));
@@ -181,6 +186,7 @@ export function TransferirTitularidade() {
         ...(selecaoPrevia ? [] : (["itens"] as Etapa[])),
         "destinatario",
         ...(comFormulario.length > 0 ? (["formularios"] as Etapa[]) : []),
+        "justificativa",
         "revisao",
     ];
     const etapa = etapas[Math.min(indice, etapas.length - 1)];
@@ -197,22 +203,18 @@ export function TransferirTitularidade() {
               ? Boolean(selecionada) && !bloqueioDaConta && restritas.length === 0
               : etapa === "formularios"
                 ? formularioCompleto
-                : true;
+                : etapa === "justificativa"
+                  ? justificativa.trim().length > 0
+                  : true;
 
     const rotuloAvancar =
-        etapa === "itens" ? "Escolher destinatário" : etapa === "destinatario" && comFormulario.length > 0 ? "Preencher formulários" : "Ver resumo";
-
-    /* O motivo de o botão estar travado fica ao lado dele. */
-    const motivoBloqueio =
-        etapa === "itens" && linhas.length === 0
-            ? "Marque pelo menos um item."
-            : etapa === "destinatario" && !selecionada
-              ? "Escolha quem vai receber."
-              : etapa === "destinatario" && bloqueioDaConta
-                ? "Essa conta já é a compradora do pedido."
-                : etapa === "destinatario" && restritas.length > 0
-                  ? `${restritas.length} ${restritas.length === 1 ? "item não pode" : "itens não podem"} ir para essa conta.`
-                  : null;
+        etapa === "itens"
+            ? "Escolher destinatário"
+            : etapa === "destinatario" && comFormulario.length > 0
+              ? "Preencher formulários"
+              : etapa === "justificativa"
+                ? "Ver resumo"
+                : "Justificar";
 
     const voltar = () => (indice === 0 ? voltarAoPedido() : setIndice((i) => i - 1));
     const alterarItens = () => (selecaoPrevia ? voltarAoPedido() : setIndice(etapas.indexOf("itens")));
@@ -240,6 +242,7 @@ export function TransferirTitularidade() {
                     return `${prefixo} | ${pergunta?.label}: ${linha.respostas[id] || "sem resposta"} para ${valoresDaLinha(linha)[id]}`;
                 });
             }),
+            `Justificativa: ${justificativa.trim()}`,
         ];
 
         criarSolicitacao({
@@ -256,6 +259,7 @@ export function TransferirTitularidade() {
             reservas: [],
         });
 
+        toast.success("Cobrança de transferência gerada com sucesso.");
         voltarAoPedido();
     };
 
@@ -278,14 +282,13 @@ export function TransferirTitularidade() {
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        {motivoBloqueio && <p className="max-w-[220px] text-right text-sm text-tertiary">{motivoBloqueio}</p>}
                         {etapa !== "revisao" ? (
                             <Button size="md" isDisabled={!podeAvancar} onClick={() => setIndice((i) => i + 1)}>
                                 {rotuloAvancar}
                             </Button>
                         ) : (
                             <Button size="md" onClick={confirmar}>
-                                Gerar link de {formatarMoeda(calculo.total)}
+                                Cobrar transferência de {formatarMoeda(calculo.total)}
                             </Button>
                         )}
                     </div>
@@ -532,6 +535,14 @@ export function TransferirTitularidade() {
                             </>
                         )}
 
+                        {etapa === "justificativa" && (
+                            <EtapaJustificativa
+                                descricao="Explique por que essa transferência está sendo feita. Isso fica registrado no histórico do pedido."
+                                valor={justificativa}
+                                onChange={setJustificativa}
+                            />
+                        )}
+
                         {etapa === "revisao" && selecionada && (
                             <>
                                 <CartaoItens pedido={pedido} linhas={linhas} />
@@ -580,6 +591,11 @@ export function TransferirTitularidade() {
                                                 })}
                                         </div>
                                     )}
+                                </div>
+
+                                <div className="w-full rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
+                                    <p className="mb-1 text-sm font-semibold text-primary">Justificativa</p>
+                                    <p className="text-sm text-tertiary">{justificativa.trim()}</p>
                                 </div>
 
                                 <div className="w-full">

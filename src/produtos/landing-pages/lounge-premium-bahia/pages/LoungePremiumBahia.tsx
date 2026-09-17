@@ -7,6 +7,7 @@ import { Button } from "@/components/base/buttons/button";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { cx } from "@/utils/cx";
 import { useTheme } from "@/providers/theme-provider";
+import patternBahia from "../assets/Pattern-Bahia.png";
 import {
     DATA_LIBERACAO,
     DATA_LIMITE,
@@ -27,7 +28,6 @@ const AZUL = "#2f6bff"; // acento vibrante (botões, escudo, destaques)
 const VERMELHO_CLARO = "#c23a2d"; // faixa superior do header (tricolor Bahia)
 const VERMELHO_ESCURO = "#9f2a20"; // faixa inferior do header
 const AMARELO = "#ffd23f"; // amarelo/dourado do Bahia (destaques pontuais)
-const NAVY_BG = "linear-gradient(180deg, #040e28 0%, #01060f 100%)";
 const BAHIA_DARK = {
     // superfícies navy
     "--background-color-primary": "#102a54",
@@ -159,7 +159,17 @@ export function LoungePremiumBahia() {
     };
 
     return (
-        <div style={{ ...BAHIA_DARK, background: NAVY_BG }} className="min-h-screen text-primary">
+        <div
+            style={{
+                ...BAHIA_DARK,
+                backgroundColor: "#040e28",
+                backgroundImage: `linear-gradient(180deg, rgba(4,14,40,0.45) 0%, rgba(2,8,20,0.60) 100%), url(${patternBahia})`,
+                backgroundSize: "auto, 420px",
+                backgroundRepeat: "no-repeat, repeat",
+                backgroundAttachment: "fixed, fixed",
+            }}
+            className="min-h-screen text-primary"
+        >
             {/* Cabeçalho — duas faixas vermelhas (tricolor Bahia) */}
             <header className="sticky top-0 z-20">
                 {/* Faixa superior (vermelho mais claro) */}

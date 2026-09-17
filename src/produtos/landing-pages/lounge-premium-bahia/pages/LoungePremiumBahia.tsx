@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { AlertCircle, CheckCircle, Plus, SearchLg } from "@untitledui/icons";
+import { AlertCircle, CheckCircle, Monitor01, Phone01, Plus, SearchLg } from "@untitledui/icons";
 import { AlertFloating } from "@/components/application/alerts/alerts";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
@@ -8,11 +8,11 @@ import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { cx } from "@/utils/cx";
 import { useTheme } from "@/providers/theme-provider";
 import patternBahia from "../assets/Pattern-Bahia.png";
+import escudoBahia from "../assets/Escudo-Bahia-848x1024.png";
 import {
     DATA_LIBERACAO,
     DATA_LIMITE,
     MAX_BENEFICIARIOS,
-    SOCIO_LOGADO,
     TEMPORADA,
     formatarCpf,
     resolverSocio,
@@ -105,12 +105,25 @@ const iniciais = (nome: string) =>
         .join("")
         .toUpperCase();
 
-function Escudo({ className }: { className?: string }) {
+/* Alterna a pré-visualização entre Desktop e Mobile. */
+function PreviewToggle({ preview, onChange }: { preview: "desktop" | "mobile"; onChange: (v: "desktop" | "mobile") => void }) {
     return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-            <path d="M12 2.2 20 5v6.2c0 4.9-3.4 8.6-8 10.6-4.6-2-8-5.7-8-10.6V5l8-2.8Z" fill="currentColor" />
-            <path d="M8.5 9.2h7M8.5 12h7M9.7 14.8h4.6" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" />
-        </svg>
+        <div className="fixed right-4 bottom-4 z-[60] flex items-center gap-1 rounded-full bg-black/70 p-1 shadow-lg ring-1 ring-white/15 backdrop-blur">
+            {(["desktop", "mobile"] as const).map((v) => (
+                <button
+                    key={v}
+                    type="button"
+                    onClick={() => onChange(v)}
+                    className={cx(
+                        "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition duration-100 ease-linear",
+                        preview === v ? "bg-white text-gray-900" : "text-white/70 hover:text-white",
+                    )}
+                >
+                    {v === "desktop" ? <Monitor01 className="size-4" /> : <Phone01 className="size-4" />}
+                    {v === "desktop" ? "Desktop" : "Mobile"}
+                </button>
+            ))}
+        </div>
     );
 }
 
@@ -162,6 +175,22 @@ export function LoungePremiumBahia() {
         setLinhas([]);
     };
 
+    // Pré-visualização Desktop/Mobile. Dentro do iframe (?frame=1) não mostra o toggle.
+    const emFrame = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("frame") === "1";
+    const [preview, setPreview] = useState<"desktop" | "mobile">("desktop");
+
+    // Modo mobile: renderiza a própria página dentro de um "celular" (iframe), com viewport estreita real.
+    if (preview === "mobile" && !emFrame) {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#05070d] p-6">
+                <PreviewToggle preview={preview} onChange={setPreview} />
+                <div className="h-[844px] w-[390px] max-w-full overflow-hidden rounded-[2.5rem] shadow-2xl ring-8 ring-black/60">
+                    <iframe src={`${window.location.pathname}?frame=1`} title="Pré-visualização mobile" className="size-full border-0" />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div
             style={{
@@ -172,35 +201,33 @@ export function LoungePremiumBahia() {
                 backgroundRepeat: "no-repeat, repeat",
                 backgroundAttachment: "fixed, fixed",
             }}
-            className="min-h-screen text-primary"
+            className="min-h-screen overflow-x-hidden text-primary"
         >
-            {/* Cabeçalho — duas faixas vermelhas (tricolor Bahia) */}
+            {emFrame && (
+                <style>{`html,body{scrollbar-width:none;-ms-overflow-style:none}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none;width:0;height:0}`}</style>
+            )}
+            {!emFrame && <PreviewToggle preview={preview} onChange={setPreview} />}
+            {/* Cabeçalho — duas faixas vermelhas (tricolor Bahia), escudo atravessa ambas */}
             <header className="sticky top-0 z-20">
                 {/* Faixa superior (vermelho mais claro) */}
                 <div style={{ backgroundColor: VERMELHO_CLARO }}>
-                    <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-5">
-                        <div className="flex items-center gap-3">
-                            <span className="flex size-9 items-center justify-center" style={{ color: AZUL }}>
-                                <Escudo className="size-9" />
-                            </span>
-                            <div className="leading-tight">
-                                <p className="text-sm font-bold text-white">Esporte Clube Bahia</p>
-                                <p className="text-xs font-semibold text-white/80">Lounge Premium</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2.5">
-                            <div className="hidden text-right leading-tight sm:block">
-                                <p className="text-sm font-semibold text-white">{SOCIO_LOGADO.nome}</p>
-                                <p className="text-xs text-white/70">Sócio desde {SOCIO_LOGADO.desde}</p>
-                            </div>
-                            <Avatar size="sm" initials={iniciais(SOCIO_LOGADO.nome)} />
+                    <div className="mx-auto flex h-16 w-full max-w-3xl items-center px-5">
+                        <div className="leading-tight pl-[108px] lg:pl-0">
+                            <p className="text-sm font-bold text-white">Esporte Clube Bahia</p>
+                            <p className="text-xs font-semibold text-white/80">Lounge Premium</p>
                         </div>
                     </div>
                 </div>
                 {/* Faixa inferior (vermelho mais escuro) */}
                 <div style={{ backgroundColor: VERMELHO_ESCURO }}>
-                    <div className="mx-auto flex h-10 w-full max-w-5xl items-center px-5">
-                        <p className="text-xs font-semibold tracking-wide text-white/85 uppercase">Meus beneficiários</p>
+                    <div className="mx-auto flex h-10 w-full max-w-3xl items-center px-5">
+                        <p className="pl-[108px] lg:pl-0 text-xs font-semibold tracking-wide text-white/85 uppercase">Meus beneficiários</p>
+                    </div>
+                </div>
+                {/* Escudo sobre as duas faixas: topo com respiro, base ultrapassando pro navy (como no print) */}
+                <div className="pointer-events-none absolute inset-0">
+                    <div className="mx-auto flex h-full w-full max-w-5xl items-start px-5 pt-1.5">
+                        <img src={escudoBahia} alt="Escudo do Esporte Clube Bahia" className="h-[120px] w-auto" />
                     </div>
                 </div>
             </header>
@@ -218,7 +245,7 @@ export function LoungePremiumBahia() {
                     </p>
                 </div>
 
-                <section className="rounded-2xl border p-6 shadow-sm md:p-7" style={{ borderColor: BORDA_CARD, backgroundColor: "#0b1f45" }}>
+                <section className="overflow-hidden rounded-2xl border p-6 shadow-sm md:p-7" style={{ borderColor: BORDA_CARD, backgroundColor: "#0b1f45" }}>
                     {/* Cabeçalho da seção + botão de cadastrar */}
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -234,19 +261,40 @@ export function LoungePremiumBahia() {
                             )}
                         </div>
                         {!cadastrando && (
-                            <Button size="md" color="primary" iconLeading={Plus} className="shrink-0" isDisabled={!podeAdicionar} onClick={abrirCampos}>
+                            <Button
+                                size="md"
+                                color="primary"
+                                iconLeading={Plus}
+                                className="hidden shrink-0 sm:inline-flex"
+                                isDisabled={!podeAdicionar}
+                                onClick={abrirCampos}
+                            >
                                 Cadastrar nova pessoa
                             </Button>
                         )}
                     </div>
 
                     {/* Progresso */}
-                    <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-secondary">
+                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary sm:mt-4">
                         <div
                             className="h-full rounded-full transition-all duration-300"
                             style={{ width: `${(contagem / MAX_BENEFICIARIOS) * 100}%`, backgroundColor: AMARELO }}
                         />
                     </div>
+
+                    {/* Botão de cadastrar no mobile (abaixo da progress bar, full-width) */}
+                    {!cadastrando && (
+                        <Button
+                            size="md"
+                            color="primary"
+                            iconLeading={Plus}
+                            className={cx("relative z-10 w-full sm:hidden", beneficiarios.length > 0 ? "mt-6" : "mt-2")}
+                            isDisabled={!podeAdicionar}
+                            onClick={abrirCampos}
+                        >
+                            Cadastrar nova pessoa
+                        </Button>
+                    )}
 
                     {/* Campos das vagas (abertos de uma vez ao clicar em cadastrar) */}
                     {cadastrando && (
@@ -286,9 +334,8 @@ export function LoungePremiumBahia() {
                                                 {erro && <AlertCircle className="absolute top-1/2 right-3 size-5 -translate-y-1/2 text-fg-error-secondary" />}
                                             </div>
                                             {ok && "socio" in r && (
-                                                <p className="mt-1.5 flex items-center gap-1.5 pl-1 text-sm text-secondary">
-                                                    <span className="font-semibold text-primary">{r.socio.nome}</span>
-                                                    <span className="text-tertiary">· {r.socio.plano}</span>
+                                                <p className="mt-1.5 pl-1 text-sm text-tertiary">
+                                                    <span className="font-semibold text-primary">{r.socio.nome}</span> · {r.socio.plano}
                                                 </p>
                                             )}
                                             {erro && MENSAGENS[r.status] && <p className="mt-1.5 pl-1 text-sm text-error-primary">{MENSAGENS[r.status]}</p>}
@@ -329,17 +376,20 @@ export function LoungePremiumBahia() {
 
                     {/* Estado vazio — nenhum cadastrado e nenhuma linha aberta */}
                     {beneficiarios.length === 0 && linhas.length === 0 && (
-                        <div className="mt-4 flex justify-center pt-40">
+                        <div className="mt-4 -mb-8 flex justify-center pt-20 sm:mt-4 sm:mb-0 sm:pt-40">
                             <EmptyState size="lg" className="max-w-3xl">
-                                <EmptyState.Header pattern="none">
+                                <EmptyState.Header pattern="none" className="scale-[0.86] sm:scale-100">
                                     <EmptyState.AvatarRadius avatars={AVATARES} />
-                                    <span className="relative z-10 flex size-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
-                                        <SearchLg className="size-6 text-gray-700" />
+                                    <span
+                                        className="relative z-10 flex size-14 items-center justify-center rounded-2xl shadow-sm ring-1 ring-white/10"
+                                        style={{ backgroundColor: "#081228" }}
+                                    >
+                                        <SearchLg className="size-6 text-white" />
                                     </span>
                                 </EmptyState.Header>
                                 <EmptyState.Content className="max-w-3xl" style={{ marginTop: 72 }}>
                                     <EmptyState.Title>Nenhum beneficiário cadastrado</EmptyState.Title>
-                                    <EmptyState.Description className="whitespace-nowrap">
+                                    <EmptyState.Description className="sm:whitespace-nowrap">
                                         Clique em “Cadastrar nova pessoa” para adicionar o primeiro CPF.
                                     </EmptyState.Description>
                                 </EmptyState.Content>

@@ -12,7 +12,7 @@ import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { Aviso, EtapaCompacta, FOCO, Regra, ResumoFinanceiro, useRolou } from "../components/pos-compra-ui";
+import { Aviso, EtapaCompacta, FOCO, Miniatura, Regra, ResumoFinanceiro, useRolou } from "../components/pos-compra-ui";
 import { ComparativoResposta, EditorResposta } from "../components/respostas-ui";
 import {
     CONTAS,
@@ -445,6 +445,7 @@ export function TransferirTitularidade() {
                                 <ul className="flex flex-col gap-2">
                                     {comFormulario.map((linha, posicao) => {
                                         const rotulo = rotuloDaLinha(linha);
+                                        const item = getItem(linha.itemId);
                                         const perguntasDoItem = perguntasDaLinha(linha);
                                         const abertoId = aberta ?? comFormulario[0].id;
                                         const aberto = abertoId === linha.id;
@@ -465,6 +466,7 @@ export function TransferirTitularidade() {
                                                         FOCO,
                                                     )}
                                                 >
+                                                    {item && <Miniatura item={item} />}
                                                     <span className="min-w-0 flex-1">
                                                         <span className="block text-sm font-semibold text-primary">
                                                             {rotulo.nome}

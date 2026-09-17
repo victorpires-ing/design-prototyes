@@ -95,12 +95,6 @@ export interface Sessao {
 /** Um pedido pode misturar ingresso, produto e combo, como na bilheteria. */
 export type TipoItem = "ingresso" | "produto" | "combo";
 
-export const TIPO_ITEM_LABEL: Record<TipoItem, string> = {
-    ingresso: "Ingresso",
-    produto: "Produto",
-    combo: "Combo",
-};
-
 export interface CatalogoItem {
     id: string;
     tipo: TipoItem;
@@ -122,7 +116,13 @@ export interface CatalogoItem {
     foto?: string;
     /** Datas cobertas por um combo. */
     datasCombo?: string[];
+    /** Controle de nominalidade: uma unidade por documento/conta. Sem valor explícito, segue o padrão do tipo
+        (ingresso é nominal, produto e combo não são). */
+    nominal?: boolean;
 }
+
+/** Se o item exige uma unidade por participante — ingresso é nominal por padrão, salvo override explícito. */
+export const nominalDoItem = (item: CatalogoItem) => item.nominal ?? item.tipo === "ingresso";
 
 /** Uma linha do pedido: o mesmo pedido pode ter várias. */
 export interface PedidoItem {
@@ -258,7 +258,6 @@ export const EVENTOS: EventoOrg[] = [
 /** Nível 2 e 3: cada item pertence a um grupo dentro de uma sessão. */
 const GRUPO_RUA = "Provas de rua";
 const GRUPO_LONGAS = "Provas longas";
-const GRUPO_SEGMENTADOS = "Lotes segmentados";
 const GRUPO_TRAIL = "Trail";
 const GRUPO_INDIVIDUAL = "Provas individuais";
 const GRUPO_EQUIPE = "Provas em equipe";
@@ -383,7 +382,7 @@ export const CATALOGO: CatalogoItem[] = [
         tipo: "ingresso",
         eventoId: "ev-maratona",
         sessaoId: "s-mar-d1",
-        grupo: GRUPO_SEGMENTADOS,
+        grupo: GRUPO_RUA,
         lote: "Lote único",
         nome: "Corrida 10 km feminina",
         modalidade: "10 km",
@@ -399,7 +398,7 @@ export const CATALOGO: CatalogoItem[] = [
         tipo: "ingresso",
         eventoId: "ev-maratona",
         sessaoId: "s-mar-d2",
-        grupo: GRUPO_SEGMENTADOS,
+        grupo: GRUPO_LONGAS,
         lote: "Lote único",
         nome: "Meia maratona sócio clube",
         modalidade: "21 km",
@@ -423,59 +422,7 @@ export const CATALOGO: CatalogoItem[] = [
     { id: "pr-trail-transfer", tipo: "produto", eventoId: "ev-trail", foto: FOTO_KIT, nome: "Transfer para a largada", modalidade: "Ida e volta", descricao: "Saída de Natal às 4h.", precoIntegral: 55, estoque: 24 },
     { id: "pr-tri-aluguel", tipo: "produto", eventoId: "ev-triathlon", foto: FOTO_SACOCHILA, nome: "Aluguel de roupa de neoprene", modalidade: "Unidade", descricao: "Retirada na véspera, na arena de transição.", precoIntegral: 110, estoque: 9 },
 
-    /* Combos: pacote de ingresso mais produtos. */
-    {
-        id: "cb-mar-completo",
-        tipo: "combo",
-        eventoId: "ev-maratona",
-        grupo: "Pacotes",
-        nome: "Combo maratona completa",
-        modalidade: "42 km + extras",
-        descricao: "Maratona 42 km, camiseta extra e pacote de fotos.",
-        datasCombo: ["13 de out., 05:00"],
-        precoIntegral: 430,
-        estoque: 7,
-        formularioId: "f-completo",
-    },
-    {
-        id: "cb-mar-dupla",
-        tipo: "combo",
-        eventoId: "ev-maratona",
-        grupo: "Pacotes",
-        nome: "Combo duas provas",
-        modalidade: "5 km + 10 km",
-        descricao: "Corrida 5 km e corrida 10 km no mesmo dia, com kit único.",
-        datasCombo: ["12 de out., 06:00"],
-        precoIntegral: 270,
-        estoque: 0,
-        formularioId: "f-completo",
-    },
-    {
-        id: "cb-trail-fds",
-        tipo: "combo",
-        eventoId: "ev-trail",
-        grupo: "Pacotes",
-        nome: "Combo fim de semana trail",
-        modalidade: "12 km + 24 km",
-        descricao: "As duas provas do fim de semana, com transfer incluído.",
-        datasCombo: ["23 de nov., 07:00", "24 de nov., 04:30"],
-        precoIntegral: 340,
-        estoque: 5,
-        formularioId: "f-completo",
-    },
-    {
-        id: "cb-tri-premium",
-        tipo: "combo",
-        eventoId: "ev-triathlon",
-        grupo: "Pacotes",
-        nome: "Combo triathlon premium",
-        modalidade: "Olímpico + extras",
-        descricao: "Triathlon olímpico, aluguel de neoprene e pacote de fotos.",
-        datasCombo: ["07 de dez., 06:00"],
-        precoIntegral: 520,
-        estoque: 4,
-        formularioId: "f-completo",
-    },
+    /* Combos removidos por hora — "combo" segue existindo em TipoItem para religar rápido depois. */
 ];
 
 export const CONTAS: Conta[] = [
@@ -758,37 +705,6 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 titulo: "Pedido criado",
                 descricao: "Revezamento em dupla no lote 1 e aluguel de neoprene.",
                 valor: 440,
-                estado: "concluido",
-            },
-        ],
-    },
-    {
-        id: uuidDeterministico(7),
-        eventoId: "ev-maratona",
-        compradorId: "c-paulo",
-        dataCompraLabel: "30 ago 2026",
-        canal: "Online",
-        meioPagamento: "Cartão de crédito (6x)",
-        cupom: "ASSESSORIA",
-        criadoEmLabel: "30 ago 2026, 09:16:33",
-        atualizadoEmLabel: "30 ago 2026, 09:45:33",
-        itens: [
-            {
-                id: "li-7a",
-                itemId: "cb-mar-completo",
-                valorPago: 387,
-                respostas: { ...respostasCompletas("cb-mar-completo"), "p-camiseta": "G", "p-kit": "Arena das Dunas", "p-equipe": "Run Potiguar" },
-            },
-        ],
-        status: "ativo",
-        historico: [
-            {
-                id: "h-7",
-                dataLabel: "30 ago 2026, 11:26",
-                responsavel: "Paulo Henrique Braga",
-                titulo: "Pedido criado",
-                descricao: "Combo maratona completa com cupom de assessoria.",
-                valor: 387,
                 estado: "concluido",
             },
         ],
@@ -1280,16 +1196,22 @@ export const titularesDoPedido = (pedido: Pedido) => {
 
 /** Regras de segmentação, estoque e agenda que impedem a troca para um item. */
 export const validarTrocaItem = (pedido: Pedido, linha: PedidoItem, novoItem: CatalogoItem): Bloqueio | null => {
-    const itemAtual = getItem(linha.itemId);
-    if (itemAtual && novoItem.tipo !== itemAtual.tipo) {
-        return {
-            curto: "Outro tipo",
-            titulo: "Tipos diferentes",
-            descricao: `${TIPO_ITEM_LABEL[itemAtual.tipo]} só pode ser trocado por outro ${TIPO_ITEM_LABEL[itemAtual.tipo].toLowerCase()}.`,
-        };
-    }
     if (novoItem.id === linha.itemId) {
         return { curto: "Item atual", titulo: "Item igual ao atual", descricao: "Selecione um item diferente do que está no pedido." };
+    }
+    /* Nominal: uma unidade por participante. A própria linha sendo substituída não conta como duplicidade —
+       é ela que vai deixar de existir com o item antigo. */
+    if (nominalDoItem(novoItem)) {
+        const titularId = linha.titularId ?? pedido.compradorId;
+        const duplicado = pedido.itens.some((l) => l.id !== linha.id && l.itemId === novoItem.id && (l.titularId ?? pedido.compradorId) === titularId);
+        if (duplicado) {
+            const titular = getConta(titularId);
+            return {
+                curto: "Já vinculado",
+                titulo: "Item já vinculado a este participante",
+                descricao: `${titular?.nome ?? "Este participante"} já tem uma unidade de ${novoItem.nome} neste pedido.`,
+            };
+        }
     }
     if (novoItem.estoque <= 0) {
         return {

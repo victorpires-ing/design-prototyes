@@ -376,7 +376,7 @@ export function alertas(): Alerta[] {
                 tom: "error",
                 titulo: "Ainda em rascunho",
                 detalhe: `Faltam ${diasParaEvento} dias e as vendas ainda não estão ligadas. Nenhum ingresso pode ser vendido.`,
-                acao: "Ligar vendas",
+                acao: "Alterar status",
                 href: "/backstage/informacoes-evento",
                 pergunta: "O que falta para ligar as vendas deste evento?",
             });

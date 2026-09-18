@@ -34,13 +34,13 @@ function descreverMudanca(atual: EventoStatus, alvo: EventoStatus): { tom: "dang
     if (!vendiaAntes && vendeDepois) partes.push("ligar a venda de ingressos");
     if (vendiaAntes && !vendeDepois) partes.push("desligar a venda de ingressos");
     if (atual !== "publicado" && alvo === "publicado") partes.push("abrir o acesso para qualquer pessoa comprar, não só quem tem o link");
-    if (atual === "publicado" && alvo !== "publicado") partes.push("restringir o acesso a só quem tem o link");
+    if (atual === "publicado" && alvo !== "publicado") partes.push("restringir o acesso a quem tem o link");
 
-    return { tom: "warning", texto: `Essa mudança só vai ${partes.join(" e ")}.` };
+    return { tom: "warning", texto: `Essa mudança vai ${partes.join(" e ")}.` };
 }
 
 function labelConfirmar(alvo: EventoStatus): string {
-    if (alvo === "publicado") return "Publicar evento";
+    if (alvo === "publicado") return "Abrir para todo mundo";
     if (alvo === "privado") return "Tornar privado";
     if (alvo === "rascunho") return "Voltar para rascunho";
     return "Encerrar evento";
@@ -90,7 +90,7 @@ export function AlterarStatusModal({ isOpen, onClose, statusAtual, onConfirm, st
                                 <h2 className="text-lg font-semibold text-primary">Alterar status do evento</h2>
                                 {!statusInicial && (
                                     <p className="mt-1 text-sm text-tertiary">
-                                        Cada opção muda se as vendas estão ligadas e quem consegue acessar o link de compra.
+                                        Cada opção liga ou desliga as vendas e define quem acessa o link de compra.
                                     </p>
                                 )}
                             </div>

@@ -46,7 +46,7 @@ const StatusSection = ({ evento }: { evento: Evento }) => {
         <section className="flex flex-col gap-4 rounded-xl bg-primary p-5 ring-1 ring-border-secondary">
             <div className="flex flex-col gap-0.5">
                 <h2 className="text-md font-semibold text-primary">Status do evento</h2>
-                <p className="text-sm text-tertiary">Controla se as vendas estão ligadas e quem consegue acessar o link de compra.</p>
+                <p className="text-sm text-tertiary">Controla se as vendas estão ligadas e define quem acessa o link de compra.</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">

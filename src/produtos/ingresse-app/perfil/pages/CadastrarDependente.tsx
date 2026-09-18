@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { AlertTriangle, ArrowLeft, Calendar, CheckCircle, UserPlus01, XClose } from "@untitledui/icons";
+import { useNavigate } from "react-router";
+import { AlertTriangle, ArrowLeft, Calendar, UserPlus01, XClose } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
@@ -9,7 +9,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { AppShell } from "../../components/AppShell";
 import { BottomSheet } from "../../components/BottomSheet";
 import { StatusBar } from "../../components/StatusBar";
-import { addDependente } from "../data/dependentes-store";
+import { addDependente } from "../data/dependentes";
 
 const ANO_ATUAL = 2026;
 
@@ -60,8 +60,7 @@ const iniciaisDe = (nome: string) =>
 
 export function CadastrarDependente() {
     const navigate = useNavigate();
-    const { eventId, id } = useParams();
-    const voltar = () => navigate(`/ingresse-app/ingressos/transferir-dependente/${eventId}/${id}`);
+    const voltar = () => navigate("/ingresse-app/perfil/dependentes");
 
     const [tipoDoc, setTipoDoc] = useState<string | null>(null);
     const [documento, setDocumento] = useState("");
@@ -100,11 +99,13 @@ export function CadastrarDependente() {
         const nomeFinal = nome.trim() || NOMES_BUREAU[somaDigitos % NOMES_BUREAU.length];
         addDependente({
             nome: nomeFinal,
+            nascimento: dataNasc,
             cpf: formatDoc(digits),
+            parentesco: VINCULOS.find((v) => v.id === vinculo)?.label ?? "Dependente",
             iniciais: iniciaisDe(nomeFinal),
-            vinculo: VINCULOS.find((v) => v.id === vinculo)?.label,
         });
-        setFeedback("sucesso");
+        // Sem confirmação: volta direto pra lista, com o novo dependente no topo.
+        voltar();
     };
 
     return (
@@ -221,28 +222,6 @@ export function CadastrarDependente() {
                     </div>
                 </div>
             </div>
-
-            {/* Feedback de sucesso */}
-            <BottomSheet isOpen={feedback === "sucesso"} onClose={voltar}>
-                <div className="flex items-start gap-3">
-                    <FeaturedIcon icon={CheckCircle} color="success" theme="modern" size="lg" />
-                    <div className="min-w-0 flex-1">
-                        <h2 className="text-lg font-bold text-primary">Dependente cadastrado com sucesso</h2>
-                        <p className="mt-1 text-sm text-tertiary">A pessoa já está vinculada à sua conta e disponível para receber ingressos.</p>
-                    </div>
-                    <button
-                        type="button"
-                        aria-label="Fechar"
-                        onClick={voltar}
-                        className="text-fg-quaternary transition duration-100 ease-linear active:text-fg-secondary"
-                    >
-                        <XClose className="size-6" />
-                    </button>
-                </div>
-                <Button size="lg" color="primary" className="mt-5 w-full rounded-full" onClick={voltar}>
-                    Concluir
-                </Button>
-            </BottomSheet>
 
             {/* Erro geral */}
             <BottomSheet isOpen={feedback === "erro"} onClose={() => setFeedback(null)}>

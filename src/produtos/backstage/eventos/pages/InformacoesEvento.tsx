@@ -59,7 +59,7 @@ const StatusSection = ({ evento }: { evento: Evento }) => {
             {encerrado ? (
                 <p className="text-sm text-tertiary">Evento encerrado. O status não pode mais ser alterado.</p>
             ) : (
-                <Button size="sm" color="secondary" className="w-fit" iconTrailing={ChevronDown} onClick={abrirModalDeStatus}>
+                <Button size="sm" color="secondary" className="w-fit" iconTrailing={ChevronDown} onClick={() => abrirModalDeStatus()}>
                     Alterar status
                 </Button>
             )}

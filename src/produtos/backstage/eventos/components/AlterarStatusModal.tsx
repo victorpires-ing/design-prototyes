@@ -8,7 +8,7 @@ import { RadioGroupRadioButton } from "@/components/base/radio-groups/radio-grou
 import { cx } from "@/utils/cx";
 import { EVENTO_STATUS_DESCRICAO, EVENTO_STATUS_LABEL, vendasHabilitadas, type EventoStatus } from "../data/eventos";
 
-const ORDEM_STATUS: EventoStatus[] = ["rascunho", "privado", "publicado", "encerrado"];
+export const ORDEM_STATUS: EventoStatus[] = ["rascunho", "privado", "publicado", "encerrado"];
 
 const STATUS_ICON: Record<EventoStatus, FC<{ className?: string }>> = {
     rascunho: File03,
@@ -51,17 +51,21 @@ interface AlterarStatusModalProps {
     onClose: () => void;
     statusAtual: EventoStatus;
     onConfirm: (novoStatus: EventoStatus) => void;
+    /** Pré-seleciona uma opção diferente da atual — quem abre o modal já sabendo o que
+     *  quer (ex.: escolheu num atalho) não deveria escolher a mesma coisa duas vezes. */
+    statusInicial?: EventoStatus;
 }
 
 /** Modal de troca de status — reúne escolha e confirmação num só passo, com o efeito
  *  de cada opção explicado antes de aplicar (habilita venda, publica no site, etc.). */
-export function AlterarStatusModal({ isOpen, onClose, statusAtual, onConfirm }: AlterarStatusModalProps) {
-    const [selecionado, setSelecionado] = useState<EventoStatus>(statusAtual);
+export function AlterarStatusModal({ isOpen, onClose, statusAtual, onConfirm, statusInicial }: AlterarStatusModalProps) {
+    const [selecionado, setSelecionado] = useState<EventoStatus>(statusInicial ?? statusAtual);
     const [cienteDoEncerramento, setCienteDoEncerramento] = useState(false);
 
     useEffect(() => {
-        if (isOpen) setSelecionado(statusAtual);
-    }, [isOpen, statusAtual]);
+        if (isOpen) setSelecionado(statusInicial ?? statusAtual);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
 
     useEffect(() => {
         setCienteDoEncerramento(false);
@@ -76,7 +80,6 @@ export function AlterarStatusModal({ isOpen, onClose, statusAtual, onConfirm }: 
         description: EVENTO_STATUS_DESCRICAO[status],
         icon: STATUS_ICON[status],
     }));
-
     return (
         <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable>
             <Modal>
@@ -85,26 +88,35 @@ export function AlterarStatusModal({ isOpen, onClose, statusAtual, onConfirm }: 
                         <div className="flex items-start gap-4">
                             <div className="flex-1">
                                 <h2 className="text-lg font-semibold text-primary">Alterar status do evento</h2>
-                                <p className="mt-1 text-sm text-tertiary">Cada opção muda se as vendas estão habilitadas e se o evento aparece no site da Ingresse.</p>
+                                {!statusInicial && (
+                                    <p className="mt-1 text-sm text-tertiary">
+                                        Cada opção muda se as vendas estão habilitadas e se o evento aparece no site da Ingresse.
+                                    </p>
+                                )}
                             </div>
                             <ButtonUtility size="xs" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
                         </div>
 
-                        <RadioGroupRadioButton className="mt-5" items={items} value={selecionado} onChange={(value) => setSelecionado(value as EventoStatus)} />
-
-                        {mudanca && (
-                            <div
-                                className={cx(
-                                    "mt-4 flex items-start gap-3 rounded-lg p-3 ring-1",
-                                    mudanca.tom === "danger" ? "bg-error-primary ring-error_subtle" : "bg-warning-primary ring-border-secondary",
+                        {statusInicial ? (
+                            <p className={cx("mt-4 text-sm", mudanca ? "text-primary" : "text-tertiary")}>{mudanca ? mudanca.texto : EVENTO_STATUS_DESCRICAO[selecionado]}</p>
+                        ) : (
+                            <>
+                                <RadioGroupRadioButton className="mt-5" items={items} value={selecionado} onChange={(value) => setSelecionado(value as EventoStatus)} />
+                                {mudanca && (
+                                    <div
+                                        className={cx(
+                                            "mt-4 flex items-start gap-3 rounded-lg p-3 ring-1",
+                                            mudanca.tom === "danger" ? "bg-error-primary ring-error_subtle" : "bg-warning-primary ring-border-secondary",
+                                        )}
+                                    >
+                                        <AlertTriangle
+                                            className={cx("mt-0.5 size-4 shrink-0", mudanca.tom === "danger" ? "text-fg-error-secondary" : "text-fg-warning-secondary")}
+                                            aria-hidden="true"
+                                        />
+                                        <p className="text-sm text-primary">{mudanca.texto}</p>
+                                    </div>
                                 )}
-                            >
-                                <AlertTriangle
-                                    className={cx("mt-0.5 size-4 shrink-0", mudanca.tom === "danger" ? "text-fg-error-secondary" : "text-fg-warning-secondary")}
-                                    aria-hidden="true"
-                                />
-                                <p className={cx("text-sm", mudanca.tom === "danger" ? "text-error-primary" : "text-warning-primary")}>{mudanca.texto}</p>
-                            </div>
+                            </>
                         )}
 
                         {precisaConfirmarEncerramento && (

@@ -1,8 +1,9 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type FC, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ChevronDown, HelpCircle, InfoCircle, Package, Ticket01 } from "@untitledui/icons";
-import { Badge } from "@/components/base/badges/badges";
+import { AlertTriangle, ChevronDown, HelpCircle, InfoCircle, Package, RefreshCcw01, Ticket01, UserSquare } from "@untitledui/icons";
+import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
+import { ProgressBarBase } from "@/components/base/progress-indicators/progress-indicators";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { InputNumber } from "@/components/base/input/input-number";
 import { TextArea } from "@/components/base/textarea/textarea";
@@ -18,6 +19,7 @@ import {
     type LinhaCobranca,
     type PedidoItem,
     type StatusPedido,
+    type TipoOperacao,
 } from "../data/pos-compra-store";
 
 /* O token `border-brand` que o design system usa no foco resolve para cinza neste tema, o que deixa
@@ -48,6 +50,34 @@ export const StatusBadge = ({ status, size = "sm" }: { status: StatusPedido; siz
         {STATUS_LABEL[status]}
     </Badge>
 );
+
+/* Par ícone + cor consistente por tipo de operação — o mesmo em toda a superfície (lista de
+   pedidos, cartão de operação, histórico), para reconhecimento visual em vez de leitura de texto. */
+export const TIPO_OPERACAO_ICONE: Record<TipoOperacao, FC<{ className?: string }>> = {
+    "troca-item": RefreshCcw01,
+    "troca-titularidade": UserSquare,
+    "alterar-respostas": InfoCircle,
+};
+
+export const TIPO_OPERACAO_COR: Record<TipoOperacao, "blue" | "purple" | "gray"> = {
+    "troca-item": "blue",
+    "troca-titularidade": "purple",
+    "alterar-respostas": "gray",
+};
+
+export const BadgeTipoOperacao = ({ tipo, texto, size = "sm" }: { tipo: TipoOperacao; texto: string; size?: "sm" | "md" | "lg" }) => (
+    <BadgeWithIcon color={TIPO_OPERACAO_COR[tipo]} type="pill-color" size={size} iconLeading={TIPO_OPERACAO_ICONE[tipo]}>
+        {texto}
+    </BadgeWithIcon>
+);
+
+/** Cor da barra de prazo por faixa restante: acima de 50% do prazo, entre 20% e 50%, abaixo de 20%. */
+export const corDaBarraDePrazo = (restanteMs: number, totalMs: number) => {
+    const fracao = totalMs > 0 ? restanteMs / totalMs : 0;
+    if (fracao > 0.5) return "bg-fg-brand-primary";
+    if (fracao > 0.2) return "bg-fg-warning-primary";
+    return "bg-fg-error-primary";
+};
 
 /** Nota curta de regra. Use só quando a informação não cabe em um rótulo ou em um estado visual. */
 export const Regra = ({ children, className }: { children: ReactNode; className?: string }) => (
@@ -143,16 +173,19 @@ export const EtapaJustificativa = ({
     descricao,
     valor,
     onChange,
+    destinatario = "comprador",
 }: {
     descricao: string;
     valor: string;
     onChange: (valor: string) => void;
+    /** Quem lê essa justificativa: o comprador original numa troca, o novo titular numa transferência. */
+    destinatario?: string;
 }) => (
     <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
         <Regra>{descricao}</Regra>
         <TextArea
             label="Justificativa"
-            placeholder="Explique o motivo dessa alteração para o comprador."
+            placeholder={`Explique o motivo dessa alteração para o ${destinatario}.`}
             value={valor}
             onChange={onChange}
             rows={4}

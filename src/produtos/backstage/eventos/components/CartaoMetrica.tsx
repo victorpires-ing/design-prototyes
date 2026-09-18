@@ -17,6 +17,12 @@ interface CartaoMetricaProps {
      * ticket médio é um valor por ingresso, e dizer "R$ 271/dia" seria mentira.
      */
     ritmoSufixo: string;
+    /**
+     * Cartão "de gráfico": quase quadrado, com a curva ocupando a maior parte
+     * da altura em vez de ser uma linha fina no rodapé. Mesmos dados, só o
+     * gráfico vira o elemento dominante em vez de um apoio discreto.
+     */
+    grafico?: boolean;
 }
 
 /**
@@ -26,13 +32,13 @@ interface CartaoMetricaProps {
  * faturamento podem estar um acelerando e o outro parando. A curva dos 30 dias
  * mostra a forma, e a variação contra a semana anterior põe número nela.
  */
-export function CartaoMetrica({ icon: Icon, label, valor, ritmo, ritmoLabel, ritmoSufixo }: CartaoMetricaProps) {
+export function CartaoMetrica({ icon: Icon, label, valor, ritmo, ritmoLabel, ritmoSufixo, grafico = false }: CartaoMetricaProps) {
     /* Oscilação de menos de 3% é ruído de série diária, não tendência. */
     const relevante = ritmo.variacao !== null && Math.abs(ritmo.variacao) >= 0.03;
     const subindo = (ritmo.variacao ?? 0) > 0;
 
     return (
-        <section className="flex flex-col gap-4 rounded-xl bg-primary p-5 ring-1 ring-border-secondary">
+        <section className={cx("flex flex-col gap-4 rounded-xl bg-primary p-5 ring-1 ring-border-secondary", grafico && "aspect-square")}>
             <div className="flex items-center gap-2">
                 <Icon className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
                 <h3 className="text-sm font-medium text-tertiary">{label}</h3>
@@ -43,9 +49,10 @@ export function CartaoMetrica({ icon: Icon, label, valor, ritmo, ritmoLabel, rit
             <Sparkline
                 values={ritmo.serie}
                 stroke={relevante && !subindo ? "var(--color-fg-error-secondary)" : "var(--color-fg-success-secondary)"}
+                className={grafico ? "h-auto min-h-0 flex-1" : undefined}
             />
 
-            <div className="flex flex-col gap-1 border-t border-secondary pt-3">
+            <div className={cx("flex flex-col gap-1 border-t border-secondary pt-3", grafico && "shrink-0")}>
                 <span className="text-sm font-semibold text-primary tabular-nums">
                     {ritmoLabel}
                     <span className="font-normal text-tertiary"> {ritmoSufixo}</span>

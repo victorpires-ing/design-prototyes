@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router";
-import type { Key } from "react-aria-components";
+import { MenuItem as AriaMenuItem, type Key } from "react-aria-components";
 import {
     Announcement01,
     Bank,
@@ -22,14 +22,18 @@ import {
     UsersPlus,
     XClose,
 } from "@untitledui/icons";
-import { Button } from "@/components/base/buttons/button";
 import { Badge } from "@/components/base/badges/badges";
+import { Button } from "@/components/base/buttons/button";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { NavButton } from "@/components/application/app-navigation/base-components/nav-button";
 import { TreeView } from "@/components/application/tree-view/tree-view";
+import { Dot } from "@/components/foundations/dot-icon";
 import { cx } from "@/utils/cx";
 import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
-const eventCover = "https://casadeapostasarenadasdunas.com.br/wp-content/uploads/2026/05/AMERICAXLAGUNA.png";
+import { AlterarStatusModal, ORDEM_STATUS } from "../eventos/components/AlterarStatusModal";
+import { EVENTO_STATUS_BADGE_COLOR, EVENTO_STATUS_LABEL, setEventoStatus, useEventoAtual, type EventoStatus } from "../eventos/data/eventos";
 
 /** Logo da Ingresse — clicável, leva para a home do Backstage. */
 const BrandLogo = ({ className }: { className?: string }) => {
@@ -47,6 +51,7 @@ const BrandLogo = ({ className }: { className?: string }) => {
     );
 };
 import { ThemeToggle } from "./ThemeToggle";
+import { RemixDock } from "./remix/RemixShell";
 
 export type BackstageSection =
     | "equipe-e-permissoes"
@@ -59,6 +64,7 @@ export type BackstageSection =
     | "marketing";
 
 export type BackstageItem =
+    | "informacoes-gerais"
     | "permissao-envio"
     | "catalogo-itens"
     | "catalogo-ingressos"
@@ -79,7 +85,14 @@ export type BackstageItem =
     | "chave-de-acesso"
     | "formularios-compra";
 
-const DISABLED_KEYS: Key[] = ["informacoes-evento", "catalogo-combos", "catalogo-produtos"];
+const DISABLED_KEYS: Key[] = ["catalogo-combos", "catalogo-produtos"];
+
+/** Uma única instância do modal de status vive no BackstageLayout — qualquer
+ *  gatilho dentro do contexto do evento (card desktop, topo mobile, drawer
+ *  mobile, ou uma página inteira como "Informações do evento") abre essa
+ *  mesma instância em vez de criar a sua própria. */
+const EventStatusModalContext = createContext<(statusInicial?: EventoStatus) => void>(() => {});
+export const useAbrirModalDeStatus = () => useContext(EventStatusModalContext);
 
 interface BackstageLayoutProps {
     activeSection?: BackstageSection;
@@ -127,6 +140,14 @@ export function BackstageLayout({
 }: BackstageLayoutProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [variant, setVariant] = useLayoutVariant();
+    const [statusModalOpen, setStatusModalOpen] = useState(false);
+    const [statusInicial, setStatusInicial] = useState<EventoStatus | undefined>(undefined);
+    const eventoAtual = useEventoAtual();
+
+    const abrirModalDeStatus = useCallback((status?: EventoStatus) => {
+        setStatusInicial(status);
+        setStatusModalOpen(true);
+    }, []);
 
     useEffect(() => {
         if (!isMobileMenuOpen) return;
@@ -156,35 +177,53 @@ export function BackstageLayout({
         </>
     );
 
+    const statusModal = showEventContext && (
+        <AlterarStatusModal
+            isOpen={statusModalOpen}
+            onClose={() => setStatusModalOpen(false)}
+            statusAtual={eventoAtual.status}
+            statusInicial={statusInicial}
+            onConfirm={(novoStatus) => setEventoStatus(eventoAtual.id, novoStatus)}
+        />
+    );
+
     if (variant === "topbar") {
         return (
-            <div
-                className="min-h-screen bg-primary_alt"
-                style={{ "--bs-header-offset": "64px" } as CSSProperties}
-            >
-                {mobileChrome}
-                <OrgTopBar activeProducer={activeProducer} />
-                <div className="flex flex-col gap-3 px-2 py-3 md:flex-row md:gap-6 md:px-6 md:py-6">
-                    {showEventContext && <EventRailTop activeSection={activeSection} activeItem={activeItem} />}
-                    <main className="flex min-w-0 flex-1 flex-col">
-                        <div className="mx-auto flex w-full max-w-[1088px] flex-1 flex-col">{children}</div>
-                    </main>
+            <EventStatusModalContext.Provider value={abrirModalDeStatus}>
+                <div
+                    className="min-h-screen bg-primary_alt"
+                    style={{ "--bs-header-offset": "64px" } as CSSProperties}
+                >
+                    {mobileChrome}
+                    <OrgTopBar activeProducer={activeProducer} />
+                    <div className="flex flex-col gap-3 px-2 py-3 md:flex-row md:gap-6 md:px-6 md:py-6">
+                        {showEventContext && <EventRailTop activeSection={activeSection} activeItem={activeItem} />}
+                        <main className="flex min-w-0 flex-1 flex-col">
+                            <div className="mx-auto flex w-full max-w-[1088px] flex-1 flex-col">{children}</div>
+                        </main>
+                        <RemixDock />
+                    </div>
+                    {showLayoutSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
+                    {statusModal}
                 </div>
-                {showLayoutSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
-            </div>
+            </EventStatusModalContext.Provider>
         );
     }
 
     return (
-        <div className="min-h-screen bg-primary_alt">
-            {mobileChrome}
-            <div className="flex min-h-screen flex-col gap-3 px-2 py-3 md:flex-row md:px-3 md:py-6">
-                <ProducerRail activeProducer={activeProducer} />
-                {showEventContext && <EventRail activeSection={activeSection} activeItem={activeItem} />}
-                {children}
+        <EventStatusModalContext.Provider value={abrirModalDeStatus}>
+            <div className="min-h-screen bg-primary_alt">
+                {mobileChrome}
+                <div className="flex min-h-screen flex-col gap-3 px-2 py-3 md:flex-row md:px-3 md:py-6">
+                    <ProducerRail activeProducer={activeProducer} />
+                    {showEventContext && <EventRail activeSection={activeSection} activeItem={activeItem} />}
+                    {children}
+                    <RemixDock />
+                </div>
+                {showLayoutSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
+                {statusModal}
             </div>
-            {showLayoutSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
-        </div>
+        </EventStatusModalContext.Provider>
     );
 }
 
@@ -224,52 +263,76 @@ const LayoutSwitcher = ({ variant, onChange }: { variant: LayoutVariant; onChang
 /*  Mobile top bar + drawer                                           */
 /* ------------------------------------------------------------------ */
 
-const MobileTopBar = ({ onOpenMenu, showEventContext }: { onOpenMenu: () => void; showEventContext?: boolean }) => (
-    <header className="sticky top-0 z-30 md:hidden">
-        <div className="flex items-center justify-between gap-3 border-b border-secondary bg-primary px-4 py-3">
-            <BrandLogo className="h-5" />
-            <button
-                type="button"
-                onClick={onOpenMenu}
-                aria-label="Abrir menu"
-                className="flex size-9 shrink-0 items-center justify-center rounded-md text-fg-secondary transition duration-100 ease-linear hover:bg-secondary"
-            >
-                <Menu02 className="size-5" />
-            </button>
-        </div>
-        {showEventContext && (
-            <div className="flex items-center gap-2.5 border-b border-secondary bg-primary px-4 py-2">
-                <img src={eventCover} alt="" className="size-9 shrink-0 rounded-md object-cover" />
-                <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm leading-tight font-semibold text-primary">América x Laguna (5 a 0)</span>
-                    <span className="text-xs text-tertiary">ID: XWNE7K</span>
+const MobileTopBar = ({ onOpenMenu, showEventContext }: { onOpenMenu: () => void; showEventContext?: boolean }) => {
+    const evento = useEventoAtual();
+    const abrirModalDeStatus = useAbrirModalDeStatus();
+    return (
+        <header className="sticky top-0 z-30 md:hidden">
+            <div className="flex items-center justify-between gap-3 border-b border-secondary bg-primary px-4 py-3">
+                <BrandLogo className="h-5" />
+                <button
+                    type="button"
+                    onClick={onOpenMenu}
+                    aria-label="Abrir menu"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-md text-fg-secondary transition duration-100 ease-linear hover:bg-secondary"
+                >
+                    <Menu02 className="size-5" />
+                </button>
+            </div>
+            {showEventContext && (
+                <div className="flex items-center gap-2.5 border-b border-secondary bg-primary px-4 py-2">
+                    <img src={evento.cover} alt="" className="size-9 shrink-0 rounded-md object-cover" />
+                    <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-sm leading-tight font-semibold text-primary">{evento.nome}</span>
+                        <span className="text-sm text-tertiary">ID: {evento.id}</span>
+                    </div>
+                    <Badge size="sm" type="pill-color" color={EVENTO_STATUS_BADGE_COLOR[evento.status]}>
+                        {EVENTO_STATUS_LABEL[evento.status]}
+                    </Badge>
+                    {evento.status !== "encerrado" && (
+                        <ButtonUtility
+                            className="size-11"
+                            color="tertiary"
+                            icon={ChevronDown}
+                            tooltip="Alterar status do evento"
+                            onClick={() => abrirModalDeStatus()}
+                        />
+                    )}
                 </div>
-                <Badge size="sm" type="pill-color" color="success">Publicado</Badge>
-            </div>
-        )}
-    </header>
-);
+            )}
+        </header>
+    );
+};
 
-const MobileEventCard = () => (
-    <div className="flex items-start gap-3 rounded-xl bg-secondary p-3">
-        <img
-            src={eventCover}
-            alt="América x Laguna (5 a 0)"
-            className="size-16 shrink-0 rounded-lg object-cover"
-        />
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <div className="flex items-start justify-between gap-2">
-                <span className="text-xs text-tertiary">ID: XWNE7K</span>
-                <Badge size="sm" type="pill-color" color="success">
-                    Publicado
-                </Badge>
+const MobileEventCard = () => {
+    const evento = useEventoAtual();
+    const abrirModalDeStatus = useAbrirModalDeStatus();
+    return (
+        <div className="flex items-start gap-3 rounded-xl bg-secondary p-3">
+            <img src={evento.cover} alt={evento.nome} className="size-16 shrink-0 rounded-lg object-cover" />
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm text-tertiary">ID: {evento.id}</span>
+                    <div className="flex items-center gap-1">
+                        <Badge size="sm" type="pill-color" color={EVENTO_STATUS_BADGE_COLOR[evento.status]}>
+                            {EVENTO_STATUS_LABEL[evento.status]}
+                        </Badge>
+                        {evento.status !== "encerrado" && (
+                            <ButtonUtility
+                                className="size-11"
+                                color="tertiary"
+                                icon={ChevronDown}
+                                tooltip="Alterar status do evento"
+                                onClick={() => abrirModalDeStatus()}
+                            />
+                        )}
+                    </div>
+                </div>
+                <p className="text-sm font-semibold leading-snug text-primary line-clamp-2">{evento.nome}</p>
             </div>
-            <p className="text-sm font-semibold leading-snug text-primary line-clamp-2">
-                América x Laguna (5 a 0)
-            </p>
         </div>
-    </div>
-);
+    );
+};
 
 const SECTION_LABELS: Record<BackstageSection, string> = {
     "equipe-e-permissoes": "Equipe e Permissões",
@@ -411,7 +474,11 @@ interface EventNavSection {
 }
 
 const EVENT_NAV: EventNavSection[] = [
-    { id: "informacoes-evento", label: "Informações do evento", icon: InfoCircle, items: [] },
+    {
+        id: "informacoes-evento", label: "Informações do evento", icon: InfoCircle, items: [
+            { id: "informacoes-gerais", label: "Informações do evento", href: "/backstage/informacoes-evento" },
+        ],
+    },
     { id: "equipe-de-operacao", label: "Equipe de operação", icon: UsersPlus, novo: true, items: [{ id: "grupos-operacao", label: "Grupos de operação", href: "/backstage/equipe-de-operacao" }] },
     {
         id: "itens", label: "Itens", icon: ShoppingCart01, items: [
@@ -806,42 +873,120 @@ const EventRailTop = ({ activeSection, activeItem }: EventRailProps) => (
     </aside>
 );
 
-const EventDetailsCard = () => (
-    <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-3">
-        <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-secondary">
-            <img
-                src={eventCover}
-                alt="América x Laguna (5 a 0)"
-                className="size-full object-cover"
-            />
-            <span className="absolute top-3 left-3 rounded-xl bg-white/50 px-3 py-1 text-[12px] font-medium tracking-wide text-primary uppercase backdrop-blur-md">
-                Rascunho
-            </span>
-            <div className="absolute bottom-3 right-3 flex w-12 flex-col items-center rounded-xl bg-white/50 px-2 py-3 text-primary backdrop-blur-md">
-                <span className="text-[10px] font-medium tracking-wide uppercase">Dom</span>
-                <span className="text-base font-bold leading-tight">21</span>
-                <span className="text-[10px] font-medium tracking-wide uppercase">Jun</span>
+/* Mesma paleta que BadgeWithDot usa por trás do badge de status (ver
+   colors.styles[cor].addon em badges.tsx) — o ponto ao lado do nome do status
+   lê como a mesma cor do badge em qualquer lugar do produto, não uma nova. */
+const STATUS_DOT_COR: Record<EventoStatus, string> = {
+    rascunho: "text-utility-yellow-500",
+    privado: "text-utility-blue-500",
+    publicado: "text-utility-green-500",
+    encerrado: "text-utility-neutral-500",
+};
+
+/** Legenda curta por opção — versão enxuta da explicação mais longa que já existe em
+ *  EVENTO_STATUS_DESCRICAO (usada no modal): aqui é só um lembrete de uma linha ao lado
+ *  do nome, o modal continua sendo o lugar com a explicação completa antes de confirmar. */
+const STATUS_DESCRICAO_CURTA: Record<EventoStatus, string> = {
+    rascunho: "Vendas desligadas",
+    privado: "Ligadas, só com o link",
+    publicado: "Ligadas, sem restrição",
+    encerrado: "Vendas encerradas",
+};
+
+const EventDetailsCard = () => {
+    const evento = useEventoAtual();
+    const abrirModalDeStatus = useAbrirModalDeStatus();
+    const encerrado = evento.status === "encerrado";
+
+    return (
+        <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-3">
+            <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-secondary">
+                <img src={evento.cover} alt={evento.nome} className="size-full object-cover" />
+                <Badge size="sm" type="pill-color" color={EVENTO_STATUS_BADGE_COLOR[evento.status]} className="absolute top-3 left-3">
+                    {EVENTO_STATUS_LABEL[evento.status]}
+                </Badge>
+                <div className="absolute bottom-3 right-3 flex w-12 flex-col items-center rounded-xl bg-white/50 px-2 py-3 text-primary backdrop-blur-md">
+                    <span className="text-[10px] font-medium tracking-wide uppercase">{evento.weekday}</span>
+                    <span className="text-base font-bold leading-tight">{evento.day}</span>
+                    <span className="text-[10px] font-medium tracking-wide uppercase">{evento.month}</span>
+                </div>
+            </div>
+            <div className="flex flex-col gap-0.5 px-1">
+                <span className="text-sm text-tertiary">ID: {evento.id}</span>
+                <h3 className="text-md font-bold text-primary">{evento.nome}</h3>
+                <p className="text-sm text-tertiary">{evento.produtor}</p>
+            </div>
+            <div className="flex flex-col gap-1.5 px-1">
+                <span className="text-sm text-quaternary">Status do evento</span>
+                <div className="flex items-center gap-2">
+                    {/* Teste: dropdown real em vez do botão que só abria o modal direto — a
+                        seta agora tem uma função de verdade (abre a lista aqui do lado) e o
+                        ponto de cor dá o mesmo sinal do badge sem precisar ler o texto. Cada
+                        opção já pré-seleciona a escolha no modal em vez de aplicar na hora:
+                        a lista fica rápida para escolher, mas quem confirma — com o texto de
+                        apoio de cada status e o aviso de "não pode ser desfeito" — continua
+                        sendo só o modal, não dois lugares reimplementando a mesma coisa. */}
+                    <Dropdown.Root>
+                        <Button size="sm" color="secondary" className="flex-1 justify-between" iconTrailing={encerrado ? undefined : ChevronDown} isDisabled={encerrado}>
+                            <span className="flex min-w-0 items-center gap-1.5">
+                                <Dot size="sm" className={STATUS_DOT_COR[evento.status]} aria-hidden="true" />
+                                <span className="truncate">{EVENTO_STATUS_LABEL[evento.status]}</span>
+                            </span>
+                        </Button>
+                        <Dropdown.Popover className="w-64" placement="bottom start">
+                            <Dropdown.Menu>
+                                {/* Dropdown.Item só tem uma linha de texto (label) — o rótulo
+                                    curto sozinho não deixa espaço pra legenda de apoio, então
+                                    o item aqui é montado na mão com o MenuItem do React Aria
+                                    por baixo do Dropdown, reaproveitando as mesmas classes de
+                                    hover/foco do item padrão, só com duas linhas em vez de uma. */}
+                                {ORDEM_STATUS.map((status) => {
+                                    const isAtual = status === evento.status;
+                                    return (
+                                        <AriaMenuItem
+                                            key={status}
+                                            id={status}
+                                            isDisabled={isAtual}
+                                            textValue={EVENTO_STATUS_LABEL[status]}
+                                            onAction={() => abrirModalDeStatus(status)}
+                                            className={(state) => cx("group block cursor-pointer px-1.5 py-px outline-hidden", state.isDisabled && "cursor-not-allowed opacity-50")}
+                                        >
+                                            {(state) => (
+                                                <div
+                                                    className={cx(
+                                                        "relative flex items-start gap-2 rounded-md px-2.5 py-2 outline-focus-ring transition duration-100 ease-linear",
+                                                        !state.isDisabled && "group-hover:bg-primary_hover",
+                                                        state.isFocused && "bg-primary_hover",
+                                                        state.isFocusVisible && "outline-2 -outline-offset-2",
+                                                    )}
+                                                >
+                                                    <Dot size="sm" className={cx("mt-1 shrink-0 size-2", STATUS_DOT_COR[status])} aria-hidden="true" />
+                                                    <span className="flex min-w-0 flex-col">
+                                                        <span className="truncate text-sm font-semibold text-secondary">{EVENTO_STATUS_LABEL[status]}</span>
+                                                        <span className="truncate text-sm text-tertiary">{isAtual ? "Status atual" : STATUS_DESCRICAO_CURTA[status]}</span>
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </AriaMenuItem>
+                                    );
+                                })}
+                            </Dropdown.Menu>
+                        </Dropdown.Popover>
+                    </Dropdown.Root>
+                    <button
+                        type="button"
+                        disabled
+                        aria-label="Pré-visualizar evento (em breve)"
+                        className="flex size-9 shrink-0 cursor-not-allowed items-center justify-center rounded-md bg-primary text-fg-secondary opacity-50 ring-1 ring-border-primary shadow-xs"
+                    >
+                        <Eye className="size-4" />
+                    </button>
+                </div>
+                {encerrado && <p className="px-1 text-sm text-tertiary">Evento encerrado. O status não pode mais ser alterado.</p>}
             </div>
         </div>
-        <div className="flex flex-col gap-0.5 px-1">
-            <span className="text-xs text-tertiary">ID: 1234</span>
-            <h3 className="text-md font-bold text-primary">América x Laguna (5 a 0)</h3>
-            <p className="text-sm text-tertiary">Ingresse</p>
-        </div>
-        <div className="flex items-center gap-2 px-1">
-            <button
-                type="button"
-                className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-fg-secondary ring-1 ring-border-primary shadow-xs transition duration-100 ease-linear hover:bg-primary_hover"
-                aria-label="Pré-visualizar evento"
-            >
-                <Eye className="size-4" />
-            </button>
-            <Button size="sm" color="primary" className="flex-1">
-                Publicar evento
-            </Button>
-        </div>
-    </div>
-);
+    );
+};
 
 interface EventFunctionalitiesListProps {
     activeSection?: BackstageSection;
@@ -872,8 +1017,10 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
             expandedKeys={expandedKeys}
             onExpandedChange={(keys: Set<Key>) => setExpandedKeys(new Set(keys))}
         >
-            <TreeView.Item id="informacoes-evento" textValue="Informações do evento">
-                <TreeView.ItemContent icon={InfoCircle}>Informações do evento</TreeView.ItemContent>
+            <TreeView.Item id="informacoes-evento" textValue="Informações do evento" href="/backstage/informacoes-evento">
+                <TreeView.ItemContent icon={InfoCircle} className={activeSection === "informacoes-evento" ? ACTIVE_CLASS : undefined}>
+                    Informações do evento
+                </TreeView.ItemContent>
             </TreeView.Item>
 
             <TreeView.Item id="equipe-de-operacao" textValue="Equipe de operação" href="/backstage/equipe-de-operacao">

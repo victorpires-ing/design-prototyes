@@ -1,28 +1,28 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import {
-    AlertTriangle,
-    CheckCircle,
     CurrencyDollarCircle,
+    DotsVertical,
     Plus,
-    Receipt,
     SearchLg,
-    SlashCircle01,
     ShoppingBag01,
     Ticket01,
-    TrendUp01,
 } from "@untitledui/icons";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Badge } from "@/components/base/badges/badges";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { InputBase } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
-import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { RemixMark } from "../../components/remix/RemixPanel";
+import { useRemix } from "../../components/remix/remix-context";
+import { CriarEventoModal } from "../../components/CriarEventoModal";
 import { CartaoMetrica } from "../components/CartaoMetrica";
-import { Sparkline } from "../components/Sparkline";
-import { EVENTO_STATUS_LABEL, setEventoAtual, type Evento } from "../data/eventos";
+import { EVENTO_STATUS_BADGE_COLOR, EVENTO_STATUS_LABEL, setEventoAtual, useEventosVersao, vendasHabilitadas, type Evento } from "../data/eventos";
 import {
     alertasPorEvento,
     brl,
@@ -31,11 +31,8 @@ import {
     precisaAtencao,
     resumos,
     ritmoDaOrganizacao,
-    type Alerta,
     type ResumoEvento,
 } from "../data/vendas";
-
-const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
 type Filtro = "atencao" | "ativos" | "rascunhos" | "encerrados" | "todos";
 type Ordem = "data" | "ocupacao" | "faturamento" | "ritmo";
@@ -58,15 +55,21 @@ const ORDENS = [
 /** Camada 1 — painel da organização: como estão os eventos e onde agir hoje. */
 export function Eventos() {
     const navigate = useNavigate();
+    const { abrir: abrirRemix } = useRemix();
     const [term, setTerm] = useState("");
     const [filtro, setFiltro] = useState<Filtro>("ativos");
     const [ordem, setOrdem] = useState<Ordem>("data");
+    const [criarAberto, setCriarAberto] = useState(false);
 
-    const todos = useMemo(resumos, []);
+    /* Toda mudança de status vem do modal global (aberto por evento na sidebar ou por
+       aqui, sempre depois de setEventoAtual) — a listagem precisa recalcular ao vivo em
+       vez de ficar presa ao snapshot do primeiro render. */
+    const versaoEventos = useEventosVersao();
+    const todos = useMemo(resumos, [versaoEventos]);
     const porEvento = useMemo(alertasPorEvento, []);
     const comAtencao = todos.filter((r) => precisaAtencao(porEvento.get(r.evento.id)));
 
-    const ativos = todos.filter((r) => r.evento.status === "publicado");
+    const ativos = todos.filter((r) => vendasHabilitadas(r.evento.status));
 
     const totais = useMemo(() => {
         const faturamento = ativos.reduce((total, r) => total + r.faturamento, 0);
@@ -84,7 +87,7 @@ export function Eventos() {
         const query = term.trim().toLowerCase();
         const porFiltro = todos.filter((r) => {
             if (filtro === "atencao") return precisaAtencao(porEvento.get(r.evento.id));
-            if (filtro === "ativos") return r.evento.status === "publicado";
+            if (filtro === "ativos") return vendasHabilitadas(r.evento.status);
             if (filtro === "rascunhos") return r.evento.status === "rascunho";
             if (filtro === "encerrados") return r.evento.status === "encerrado";
             return true;
@@ -106,6 +109,11 @@ export function Eventos() {
         navigate(href);
     };
 
+    const editar = (evento: Evento) => {
+        setEventoAtual(evento.id);
+        navigate("/backstage/informacoes-evento");
+    };
+
     return (
         <BackstageLayout activeProducer="eventos" showEventContext={false}>
             <div className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-6">
@@ -116,10 +124,19 @@ export function Eventos() {
                             {ativos.length} {ativos.length === 1 ? "evento ativo" : "eventos ativos"}
                         </p>
                     </div>
-                    <Button size="md" color="primary" iconLeading={Plus}>
+                    <Button size="md" color="primary" iconLeading={Plus} onClick={() => setCriarAberto(true)}>
                         Criar evento
                     </Button>
                 </header>
+
+                <CriarEventoModal
+                    isOpen={criarAberto}
+                    onClose={() => setCriarAberto(false)}
+                    onCriado={() => {
+                        toast.success("Evento criado como rascunho.");
+                        navigate("/backstage/informacoes-evento");
+                    }}
+                />
 
                 {/* Resumo da organização */}
                 <section className="flex flex-col gap-3">
@@ -138,6 +155,7 @@ export function Eventos() {
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                         <CartaoMetrica
+                            grafico
                             icon={CurrencyDollarCircle}
                             label="GMV confirmado"
                             valor={brl(totais.faturamento)}
@@ -146,6 +164,7 @@ export function Eventos() {
                             ritmoSufixo="por dia"
                         />
                         <CartaoMetrica
+                            grafico
                             icon={ShoppingBag01}
                             label="Itens vendidos"
                             valor={numero(totais.itens)}
@@ -154,6 +173,7 @@ export function Eventos() {
                             ritmoSufixo="itens por dia"
                         />
                         <CartaoMetrica
+                            grafico
                             icon={Ticket01}
                             label="Ingressos vendidos"
                             valor={numero(totais.ingressos)}
@@ -161,193 +181,164 @@ export function Eventos() {
                             ritmoLabel={numero(ritmo.ingressos.porDia)}
                             ritmoSufixo="ingressos por dia"
                         />
-                        <CartaoMetrica
-                            icon={Receipt}
-                            label="Ticket médio"
-                            valor={brl(totais.ticket)}
-                            ritmo={ritmo.ticket}
-                            ritmoLabel={brl(ritmo.ticket.porDia)}
-                            ritmoSufixo="por ingresso, nos últimos 7 dias"
-                        />
+                        {/* Quarto lugar da fileira: em vez de repetir mais um número (ticket
+                            médio já cabe dentro dos outros três em espírito), um convite
+                            direto para perguntar — o Remix já existe no produto e sabe
+                            responder sobre os eventos da organização; só faltava um ponto
+                            de entrada aqui. */}
+                        <button
+                            type="button"
+                            onClick={() => abrirRemix()}
+                            className="group flex aspect-square flex-col items-center justify-center gap-3 rounded-xl bg-brand-solid p-5 text-center transition duration-100 ease-linear hover:bg-brand-solid_hover"
+                        >
+                            <RemixMark className="size-8 text-white" />
+                            <span className="flex flex-col gap-1">
+                                <span className="text-sm font-semibold text-white">Pergunte ao Remix</span>
+                                <span className="text-sm text-white/80">Tire dúvidas sobre o desempenho dos eventos</span>
+                            </span>
+                        </button>
                     </div>
                 </section>
 
-                {/* Filtros da listagem */}
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    {/* Rolagem lateral no mobile: quatro filtros não cabem em 375px. */}
-                    <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-                        <ButtonGroup
-                            size="sm"
-                            selectedKeys={[filtro]}
-                            disallowEmptySelection
-                            onSelectionChange={(keys) => {
-                                const next = [...keys][0];
-                                if (next) setFiltro(next as Filtro);
-                            }}
-                        >
-                            {FILTROS.map((item) => (
-                                <ButtonGroupItem key={item.id} id={item.id}>
-                                    {item.id === "atencao" ? `Atenção (${comAtencao.length})` : item.label}
-                                </ButtonGroupItem>
-                            ))}
-                        </ButtonGroup>
-                    </div>
-
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                        <div className="md:w-[260px]">
-                            <InputBase
+                {/* Listagem: filtros, busca e ordenação vivem dentro do mesmo cartão dos
+                    eventos, sempre presente (mesmo vazio), para o contêiner não aparecer e
+                    desaparecer conforme o resultado da busca. */}
+                <div className="flex flex-col gap-4 rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        {/* Rolagem lateral no mobile: quatro filtros não cabem em 375px. */}
+                        <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+                            <ButtonGroup
                                 size="sm"
-                                icon={SearchLg}
-                                value={term}
-                                aria-label="Buscar evento"
-                                onChange={(event) => setTerm(event.target.value)}
-                                placeholder="Buscar por nome, produtor ou local"
-                            />
-                        </div>
-                        <div className="md:w-[190px]">
-                            <Select
-                                aria-label="Ordenar por"
-                                size="sm"
-                                selectedKey={ordem}
-                                onSelectionChange={(key) => setOrdem(String(key) as Ordem)}
-                                items={ORDENS}
+                                selectedKeys={[filtro]}
+                                disallowEmptySelection
+                                onSelectionChange={(keys) => {
+                                    const next = [...keys][0];
+                                    if (next) setFiltro(next as Filtro);
+                                }}
                             >
-                                {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-                            </Select>
+                                {FILTROS.map((item) => (
+                                    <ButtonGroupItem key={item.id} id={item.id}>
+                                        {item.id === "atencao" ? `Atenção (${comAtencao.length})` : item.label}
+                                    </ButtonGroupItem>
+                                ))}
+                            </ButtonGroup>
+                        </div>
+
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                            <div className="md:w-[260px]">
+                                <InputBase
+                                    size="sm"
+                                    icon={SearchLg}
+                                    value={term}
+                                    aria-label="Buscar evento"
+                                    onChange={(event) => setTerm(event.target.value)}
+                                    placeholder="Buscar por nome, produtor ou local"
+                                />
+                            </div>
+                            <div className="md:w-[190px]">
+                                <Select
+                                    aria-label="Ordenar por"
+                                    size="sm"
+                                    selectedKey={ordem}
+                                    onSelectionChange={(key) => setOrdem(String(key) as Ordem)}
+                                    items={ORDENS}
+                                >
+                                    {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                                </Select>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Listagem */}
-                {visiveis.length === 0 ? (
-                    <div className="flex flex-1 items-center justify-center py-16">
-                        <EmptyState size="sm">
-                            <EmptyState.Header>
-                                <EmptyState.FeaturedIcon icon={SearchLg} color="gray" theme="modern" />
-                            </EmptyState.Header>
-                            <EmptyState.Content>
-                                <EmptyState.Title>Nenhum evento encontrado</EmptyState.Title>
-                                <EmptyState.Description>Tente outro filtro, nome, produtor ou local.</EmptyState.Description>
-                            </EmptyState.Content>
-                        </EmptyState>
-                    </div>
-                ) : (
-                    <div className="@container flex flex-col divide-y divide-secondary border-b border-secondary">
-                        {visiveis.map((resumo) => (
-                            <EventoLinha
-                                key={resumo.evento.id}
-                                resumo={resumo}
-                                alertas={porEvento.get(resumo.evento.id) ?? []}
-                                onOpen={(href) => abrir(resumo.evento, href)}
-                            />
-                        ))}
-                    </div>
-                )}
+                    {/* Listagem */}
+                    {visiveis.length === 0 ? (
+                        <div className="flex flex-1 items-center justify-center py-16">
+                            <EmptyState size="sm">
+                                <EmptyState.Header>
+                                    <EmptyState.FeaturedIcon icon={SearchLg} color="gray" theme="modern" />
+                                </EmptyState.Header>
+                                <EmptyState.Content>
+                                    <EmptyState.Title>Nenhum evento encontrado</EmptyState.Title>
+                                    <EmptyState.Description>Tente outro filtro, nome, produtor ou local.</EmptyState.Description>
+                                </EmptyState.Content>
+                            </EmptyState>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                            {visiveis.map((resumo) => (
+                                <EventoCard
+                                    key={resumo.evento.id}
+                                    resumo={resumo}
+                                    onOpen={(href) => abrir(resumo.evento, href)}
+                                    onEditar={() => editar(resumo.evento)}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </BackstageLayout>
     );
 }
 
-const TOM_ICONE = {
-    error: SlashCircle01,
-    warning: AlertTriangle,
-    success: CheckCircle,
-} as const;
-
-const TOM_COR = {
-    error: "text-fg-error-secondary",
-    warning: "text-fg-warning-secondary",
-    success: "text-fg-success-secondary",
-} as const;
-
-const EventoLinha = ({ resumo, alertas, onOpen }: { resumo: ResumoEvento; alertas: Alerta[]; onOpen: (href?: string) => void }) => {
-    const { evento, faturamento, meta, ritmo7, variacaoRitmo, diasParaEvento } = resumo;
-    const encerrado = evento.status === "encerrado";
+const EventoCard = ({
+    resumo,
+    onOpen,
+    onEditar,
+}: {
+    resumo: ResumoEvento;
+    onOpen: (href?: string) => void;
+    onEditar: () => void;
+}) => {
+    const { evento } = resumo;
+    const dataCurta = `${evento.day} ${evento.month} ${new Date(evento.data).getFullYear()}`;
 
     return (
-        <article className="relative flex flex-col transition duration-100 ease-linear hover:bg-primary_hover">
-            {/* O botão principal cobre a linha inteira; os avisos ficam acima dele. */}
-            <button
-                type="button"
-                onClick={() => onOpen()}
-                className="flex flex-col gap-4 px-3 py-4 text-left outline-hidden after:absolute after:inset-0 @3xl:flex-row @3xl:items-center"
-            >
-                <span className="flex min-w-0 flex-1 items-center gap-3">
-                    <img src={evento.cover} alt="" className="size-14 shrink-0 rounded-lg object-cover" />
-                    <span className="flex min-w-0 flex-col gap-0.5">
-                        <span className="flex flex-wrap items-center gap-2">
-                            <h3 className="truncate text-sm font-semibold text-primary">{evento.nome}</h3>
-                            <Badge
-                                size="sm"
-                                type="pill-color"
-                                color={evento.status === "publicado" ? "success" : evento.status === "rascunho" ? "warning" : "gray"}
-                            >
-                                {EVENTO_STATUS_LABEL[evento.status]}
-                            </Badge>
-                        </span>
-                        <span className="truncate text-sm text-tertiary">{evento.dataLabel}</span>
-                        <span className="text-sm text-quaternary">
-                            {encerrado ? "Evento realizado" : diasParaEvento >= 0 ? `Faltam ${diasParaEvento} dias` : "Em andamento"}
-                        </span>
-                    </span>
-                </span>
-
-                <span className="flex w-full flex-col gap-0.5 @3xl:w-[200px]">
-                    <span className="text-sm text-tertiary">Faturamento</span>
-                    <span className="text-sm font-semibold text-primary tabular-nums">{brlCompacto(faturamento)}</span>
-                    {meta > 0 && (
-                        <span className="text-sm text-quaternary tabular-nums">
-                            {Math.round((faturamento / meta) * 100)}% da meta de {brlCompacto(meta)}
-                        </span>
-                    )}
-                </span>
-
-                <span className="flex w-full flex-col gap-0.5 @3xl:w-[150px]">
-                    <span className="text-sm text-tertiary">Ritmo (7 dias)</span>
-                    <span className="flex items-baseline gap-2">
-                        <span className="text-sm font-semibold text-primary tabular-nums">{numero(ritmo7)}/dia</span>
-                        {!encerrado && Math.abs(variacaoRitmo) >= 0.05 && (
-                            <span
-                                className={cx(
-                                    "text-sm font-medium tabular-nums",
-                                    variacaoRitmo > 0 ? "text-success-primary" : "text-error-primary",
-                                )}
-                            >
-                                {variacaoRitmo > 0 ? "+" : "−"}
-                                {Math.round(Math.abs(variacaoRitmo) * 100)}%
-                            </span>
-                        )}
-                    </span>
-                    <Sparkline
-                        values={resumo.sparkline}
-                        stroke={variacaoRitmo < 0 ? "var(--color-fg-error-secondary)" : "var(--color-fg-success-secondary)"}
+        <article className="group relative flex flex-col overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary transition duration-100 ease-linear hover:ring-brand">
+            {/* O botão principal cobre o cartão inteiro; o menu "..." escapa dele como irmão
+                posterior no DOM (fica por cima na pintura) e para a propagação do clique,
+                então nunca dispara a navegação do cartão. */}
+            <button type="button" onClick={() => onOpen()} className="flex flex-col text-left outline-hidden after:absolute after:inset-0">
+                <div className="aspect-[3/4] w-full overflow-hidden bg-secondary">
+                    <img
+                        src={evento.cover}
+                        alt=""
+                        aria-hidden="true"
+                        className="size-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
                     />
-                </span>
+                </div>
+
+                <div className="flex flex-col gap-1.5 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm text-tertiary">{dataCurta}</span>
+                        <Badge size="sm" type="pill-color" color={EVENTO_STATUS_BADGE_COLOR[evento.status]}>
+                            {EVENTO_STATUS_LABEL[evento.status]}
+                        </Badge>
+                    </div>
+                    <h3 className="line-clamp-3 text-sm font-semibold text-primary">{evento.nome}</h3>
+                </div>
             </button>
 
-            {alertas.length > 0 && (
-                <ul className="flex flex-col gap-1 px-3 pb-3">
-                    {alertas.map((alerta) => {
-                        const Icone = TOM_ICONE[alerta.tom];
-                        return (
-                            <li key={alerta.id} className="flex items-start gap-2">
-                                <Icone className={cx("mt-0.5 size-4 shrink-0", TOM_COR[alerta.tom])} aria-hidden="true" />
-                                <p className="text-sm text-tertiary">
-                                    <span className="font-medium text-secondary">{alerta.titulo}</span> {alerta.detalhe}{" "}
-                                    {/* z-10 para escapar do after:inset-0 do botão principal. */}
-                                    <button
-                                        type="button"
-                                        onClick={() => onOpen(alerta.href)}
-                                        className="relative z-10 font-semibold text-brand-secondary underline-offset-2 transition duration-100 ease-linear hover:text-brand-secondary_hover hover:underline"
-                                    >
-                                        {alerta.acao}
-                                    </button>
-                                </p>
-                            </li>
-                        );
-                    })}
-                </ul>
-            )}
+            <div className="absolute top-3 right-3 z-10">
+                <Dropdown.Root>
+                    <ButtonUtility
+                        size="sm"
+                        color="secondary"
+                        icon={DotsVertical}
+                        tooltip={`Mais ações para ${evento.nome}`}
+                        className="bg-primary/70 backdrop-blur-md"
+                    />
+                    <Dropdown.Popover className="w-40" placement="bottom end">
+                        <Dropdown.Menu>
+                            <Dropdown.Item id="editar" label="Editar" onAction={onEditar} />
+                            <Dropdown.Item
+                                id="excluir"
+                                label="Excluir"
+                                onAction={() => toast.error("Exclusão de evento ainda não está disponível neste protótipo.")}
+                            />
+                        </Dropdown.Menu>
+                    </Dropdown.Popover>
+                </Dropdown.Root>
+            </div>
         </article>
     );
 };

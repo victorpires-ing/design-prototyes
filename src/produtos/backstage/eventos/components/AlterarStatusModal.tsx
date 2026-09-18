@@ -34,9 +34,9 @@ function descreverMudanca(atual: EventoStatus, alvo: EventoStatus): { tom: "dang
     if (!vendiaAntes && vendeDepois) partes.push("ligar a venda de ingressos");
     if (vendiaAntes && !vendeDepois) partes.push("desligar a venda de ingressos");
     if (atual !== "publicado" && alvo === "publicado") partes.push("abrir o acesso para qualquer pessoa comprar, não só quem tem o link");
-    if (atual === "publicado" && alvo !== "publicado") partes.push("restringir o acesso só a quem tem o link");
+    if (atual === "publicado" && alvo !== "publicado") partes.push("restringir o acesso a só quem tem o link");
 
-    return { tom: "warning", texto: `Essa mudança vai ${partes.join(" e ")}.` };
+    return { tom: "warning", texto: `Essa mudança só vai ${partes.join(" e ")}.` };
 }
 
 function labelConfirmar(alvo: EventoStatus): string {

@@ -1,37 +1,24 @@
 import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
-import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
-import {
-    ArrowLeft,
-    Calendar,
-    Check,
-    ChevronDown,
-    Copy01,
-    DotsHorizontal,
-    Mail01,
-    MessageChatCircle,
-    RefreshCcw01,
-    SwitchVertical01,
-} from "@untitledui/icons";
+import { ArrowLeft, Calendar, Check, ChevronDown, Copy01, DotsHorizontal } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
-import { InputBase } from "@/components/base/input/input";
-import { InputGroup } from "@/components/base/input/input-group";
-import { ProgressBarBase } from "@/components/base/progress-indicators/progress-indicators";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { EnviarModal, type CanalEnvio } from "../components/EnviarModal";
-import { FOCO, FOCO_ESCOPO, Miniatura, StatusBadge, TextoAnimado, formatarContagem, iniciaisDe, useContagem } from "../components/pos-compra-ui";
+import { CartaoOperacao } from "../components/CartaoOperacao";
+import { FaixaRascunhos } from "../components/FaixaRascunhos";
+import { FOCO, FOCO_ESCOPO, Miniatura, TextoAnimado, iniciaisDe } from "../components/pos-compra-ui";
+import { TrocarItensWizard } from "../components/wizard/TrocarItensWizard";
+import { TransferirTitularidadeWizard } from "../components/wizard/TransferirTitularidadeWizard";
 import {
     SESSOES,
-    expirarSolicitacao,
     formatarMoeda,
     getConta,
     getEvento,
@@ -48,30 +35,10 @@ import {
     type EntradaHistorico,
     type Pedido,
     type PedidoItem,
+    type Rascunho,
     type Sessao,
-    type Solicitacao,
     type TipoOperacao,
 } from "../data/pos-compra-store";
-
-const TITULO_OPERACAO: Record<TipoOperacao, string> = {
-    "troca-item": "Troca em andamento",
-    "troca-titularidade": "Transferência em andamento",
-    "alterar-respostas": "Edição de formulário em andamento",
-};
-
-const DESCRICAO_OPERACAO: Record<TipoOperacao, (solicitacao: Solicitacao) => string> = {
-    "troca-item": () => "A troca dos itens será concluída assim que o pagamento for confirmado.",
-    "troca-titularidade": (s) => {
-        const conta = s.aplicar.titularPorLinha ? Object.values(s.aplicar.titularPorLinha)[0] : undefined;
-        const destino = conta ? (getConta(conta)?.email ?? "o destinatário") : "o destinatário";
-        return `${destino} receberá os itens assim que o pagamento for confirmado.`;
-    },
-    "alterar-respostas": () => "As novas respostas entram no formulário assim que o pagamento for confirmado.",
-};
-
-/* ------------------------------------------------------------------ */
-/*  Estado de cada unidade do pedido                                   */
-/* ------------------------------------------------------------------ */
 
 type EstadoLinha = "livre" | "trocando" | "transferindo" | "editando" | "transferida" | "encerrada";
 
@@ -106,11 +73,8 @@ const mascararCPF = (cpf: string) => {
     return d.length === 11 ? `***.${d.slice(3, 6)}.${d.slice(6, 9)}-**` : cpf;
 };
 
-/** Formato curto do Figma: ter, 13 de out., 06h00. */
 const tituloDaSessao = (sessao: Sessao) => `${sessao.dataLabel}, ${sessao.horaLabel.replace(":", "h")}`;
-
 const rotuloDoLote = (lote: string) => (lote.toLowerCase().startsWith("lote") ? lote : `Lote ${lote}`);
-
 const plural = (n: number, singular: string, plural: string) => `${n} ${n === 1 ? singular : plural}`;
 
 interface ItemDoPedido {
@@ -118,17 +82,25 @@ interface ItemDoPedido {
     linhas: PedidoItem[];
 }
 
-/* Evita que o clique no checkbox, no menu ou em um botão também dispare o clique da linha. */
 const interromper = (event: MouseEvent) => event.stopPropagation();
+
+type Aba = "itens" | "operacoes" | "historico";
+
+interface WizardAberto {
+    tipo: "troca-item" | "troca-titularidade";
+    linhas: string[];
+    rascunho?: Rascunho;
+}
 
 export function DetalhePedido() {
     const { pedidoId } = useParams();
     const navigate = useNavigate();
     const pedidos = usePedidos();
     const pedido = pedidos.find((p) => p.id === pedidoId);
-    const [aba, setAba] = useState<"itens" | "historico">("itens");
+    const [aba, setAba] = useState<Aba>(() => (pedido && pedido.solicitacoes.length > 0 ? "operacoes" : "itens"));
     const [selecao, setSelecao] = useState<Record<string, boolean>>({});
     const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
+    const [wizardAberto, setWizardAberto] = useState<WizardAberto | null>(null);
     const { copied, copy } = useClipboard();
 
     /* Sessão > item > unidades, na mesma hierarquia da bilheteria e da etapa de troca. */
@@ -147,11 +119,7 @@ export function DetalhePedido() {
             .sort((a, b) => a.inicio - b.inicio)
             .map((sessao) => ({ sessao, itens: todos.filter((g) => g.item.tipo === "ingresso" && g.item.sessaoId === sessao.id) }))
             .filter((s) => s.itens.length > 0);
-        return {
-            sessoes,
-            produtos: todos.filter((g) => g.item.tipo === "produto"),
-            combos: todos.filter((g) => g.item.tipo === "combo"),
-        };
+        return { sessoes, produtos: todos.filter((g) => g.item.tipo === "produto"), combos: todos.filter((g) => g.item.tipo === "combo") };
     }, [pedido]);
 
     const idsSelecionaveis = useMemo(() => (pedido ? pedido.itens.filter((l) => selecionavel(pedido, l)).map((l) => l.id) : []), [pedido]);
@@ -189,13 +157,28 @@ export function DetalhePedido() {
             return proximo;
         });
 
+    /* "Falha" agora vive na própria Solicitação, nunca em baseStatus — abrir uma operação numa
+       linha qualquer não apaga mais silenciosamente um incidente financeiro em outra linha. Só
+       "expirado" ainda precisa desse destravamento manual. */
     const retomarSePreciso = () => {
-        if (pedido.status === "expirado" || pedido.status === "falha") retomarPedido(pedido.id);
+        if (pedido.status === "expirado") retomarPedido(pedido.id);
+    };
+
+    const fecharWizard = () => {
+        setWizardAberto(null);
+        setAba("operacoes");
     };
 
     const abrirTroca = (ids: string[]) => {
         retomarSePreciso();
-        navigate(`/backstage/pedidos/${pedido.id}/trocar`, { state: { linhas: ids } });
+        setSelecao({});
+        setWizardAberto({ tipo: "troca-item", linhas: ids });
+    };
+
+    const irParaTransferir = (ids: string[]) => {
+        retomarSePreciso();
+        setSelecao({});
+        setWizardAberto({ tipo: "troca-titularidade", linhas: ids });
     };
 
     const abrirFormulario = (linhaId: string) => {
@@ -203,10 +186,7 @@ export function DetalhePedido() {
         navigate(`/backstage/pedidos/${pedido.id}/formulario`, { state: { linha: linhaId } });
     };
 
-    const irParaTransferir = (ids: string[]) => {
-        retomarSePreciso();
-        navigate(`/backstage/pedidos/${pedido.id}/transferir`, { state: { linhas: ids } });
-    };
+    const continuarRascunho = (rascunho: Rascunho) => setWizardAberto({ tipo: rascunho.tipo, linhas: rascunho.linhasSelecionadas, rascunho });
 
     const cartao = ({ item, linhas }: ItemDoPedido) => (
         <CartaoItem
@@ -227,12 +207,7 @@ export function DetalhePedido() {
 
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
-            <motion.div
-                className={cx("flex min-w-0 flex-1 flex-col gap-5 p-4 md:p-6", FOCO_ESCOPO)}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.28, ease: "easeOut" }}
-            >
+            <motion.div className={cx("flex min-w-0 flex-1 flex-col gap-5 p-4 md:p-6", FOCO_ESCOPO)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: "easeOut" }}>
                 <div>
                     <Button size="sm" color="link-gray" iconLeading={ArrowLeft} onClick={() => navigate("/backstage/pedidos")}>
                         Detalhes do pedido
@@ -242,10 +217,7 @@ export function DetalhePedido() {
                 <header className="flex items-center gap-3">
                     {evento?.capa && <img src={evento.capa} alt="" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-border-secondary" />}
                     <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <h1 className="text-xl font-semibold text-primary md:text-2xl">{evento?.nome}</h1>
-                            <StatusBadge status={pedido.status} size="md" />
-                        </div>
+                        <h1 className="text-xl font-semibold text-primary md:text-2xl">{evento?.nome}</h1>
                         <div className="mt-0.5 flex flex-wrap items-center gap-1">
                             <span className="font-mono text-sm text-tertiary">{pedido.id}</span>
                             <Button size="sm" color="link-gray" iconLeading={copied ? Check : Copy01} onClick={() => copy(pedido.id)}>
@@ -257,14 +229,17 @@ export function DetalhePedido() {
 
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
                     <div className="flex min-w-0 flex-col gap-5">
-                        <Tabs selectedKey={aba} onSelectionChange={(key) => setAba(key as "itens" | "historico")}>
+                        <FaixaRascunhos pedido={pedido} onContinuar={continuarRascunho} />
+
+                        <Tabs selectedKey={aba} onSelectionChange={(key) => setAba(key as Aba)}>
                             <Tabs.List type="underline" size="sm">
                                 <Tabs.Item id="itens">Itens</Tabs.Item>
+                                <Tabs.Item id="operacoes">{pedido.solicitacoes.length > 0 ? `Operações em andamento (${pedido.solicitacoes.length})` : "Operações em andamento"}</Tabs.Item>
                                 <Tabs.Item id="historico">Histórico</Tabs.Item>
                             </Tabs.List>
                         </Tabs>
 
-                        {aba === "historico" ? (
+                        {aba === "historico" && (
                             <section className="rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
                                 <ol className="flex flex-col">
                                     {[...pedido.historico].reverse().map((entrada, indice, lista) => (
@@ -272,51 +247,46 @@ export function DetalhePedido() {
                                     ))}
                                 </ol>
                             </section>
-                        ) : (
-                            <>
-                                <AnimatePresence initial={false}>
-                                    {pedido.solicitacoes.map((solicitacao) => (
-                                        <motion.div
-                                            key={solicitacao.id}
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: "auto", opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.2, ease: "easeOut" }}
-                                            className="overflow-hidden"
-                                        >
-                                            <CartaoDeOperacao pedido={pedido} solicitacao={solicitacao} />
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
+                        )}
 
-                                <div className="flex flex-col gap-4">
-                                    {(indisponiveis > 0 || encerrado) && (
-                                        <div className="flex flex-col gap-0.5">
-                                            {indisponiveis > 0 && (
-                                                <p className="text-sm text-tertiary">
-                                                    {plural(idsSelecionaveis.length, "unidade disponível", "unidades disponíveis")} para alteração.{" "}
-                                                    {plural(indisponiveis, "unidade já está", "unidades já estão")} em outra operação ou com outro titular.
-                                                </p>
-                                            )}
-                                            {encerrado && <p className="text-sm text-tertiary">As sessões deste pedido já aconteceram: só a transferência continua disponível.</p>}
-                                        </div>
-                                    )}
+                        {aba === "operacoes" && (
+                            <div className="flex flex-col gap-4">
+                                {pedido.solicitacoes.length === 0 ? (
+                                    <p className="rounded-2xl bg-primary px-5 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">Nenhuma operação em andamento neste pedido.</p>
+                                ) : (
+                                    <AnimatePresence initial={false}>
+                                        {pedido.solicitacoes.map((solicitacao) => (
+                                            <motion.div key={solicitacao.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">
+                                                <CartaoOperacao pedido={pedido} solicitacao={solicitacao} />
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
+                                )}
+                            </div>
+                        )}
 
-                                    {/* Barra de seleção: acompanha a rolagem para a ação ficar sempre à mão. */}
-                                    <div className="sticky top-[61px] z-10 flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-secondary bg-primary px-5 py-3 md:top-[var(--bs-header-offset,0px)]">
+                        {aba === "itens" && (
+                            <div className="flex flex-col gap-4">
+                                {(indisponiveis > 0 || encerrado) && (
+                                    <div className="flex flex-col gap-0.5">
+                                        {indisponiveis > 0 && (
+                                            <p className="text-sm text-tertiary">
+                                                {plural(idsSelecionaveis.length, "unidade disponível", "unidades disponíveis")} para alteração. {plural(indisponiveis, "unidade já está", "unidades já estão")} em outra operação ou com outro titular.
+                                            </p>
+                                        )}
+                                        {encerrado && <p className="text-sm text-tertiary">As sessões deste pedido já aconteceram: só a transferência continua disponível.</p>}
+                                    </div>
+                                )}
+
+                                <section className="rounded-2xl bg-primary ring-1 ring-border-secondary">
+                                    <div className="sticky top-[61px] z-10 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-2xl border-b border-secondary bg-primary px-5 py-3 md:top-[var(--bs-header-offset,0px)]">
                                         <Checkbox
                                             size="sm"
                                             isSelected={todosSelecionados}
                                             isIndeterminate={algunsSelecionados}
                                             isDisabled={idsSelecionaveis.length === 0}
                                             onChange={(marcar) => alternar(idsSelecionaveis, marcar)}
-                                            label={
-                                                <TextoAnimado>
-                                                    {nSelecionados > 0
-                                                        ? `${nSelecionados} de ${idsSelecionaveis.length} selecionados`
-                                                        : `Selecionar todos (${idsSelecionaveis.length})`}
-                                                </TextoAnimado>
-                                            }
+                                            label={<TextoAnimado>{nSelecionados > 0 ? `${nSelecionados} de ${idsSelecionaveis.length} selecionados` : `Selecionar todos (${idsSelecionaveis.length})`}</TextoAnimado>}
                                         />
                                         {nSelecionados > 0 && (
                                             <Button size="sm" color="link-gray" onClick={() => setSelecao({})}>
@@ -325,27 +295,15 @@ export function DetalhePedido() {
                                         )}
                                         <div className="flex w-full gap-2 sm:ml-auto sm:w-auto">
                                             <Button size="sm" color="secondary" className="flex-1 sm:flex-none" isDisabled={nSelecionados === 0} onClick={() => irParaTransferir(idsSelecionados)}>
-                                                {nSelecionados > 0 ? (
-                                                    <>
-                                                        Transferir <ContadorSelecao n={nSelecionados} /> itens
-                                                    </>
-                                                ) : (
-                                                    "Transferir itens"
-                                                )}
+                                                {nSelecionados > 0 ? <>Transferir <ContadorSelecao n={nSelecionados} /> itens</> : "Transferir itens"}
                                             </Button>
                                             <Button size="sm" color="secondary" className="flex-1 sm:flex-none" isDisabled={nSelecionados === 0 || encerrado} onClick={() => abrirTroca(idsSelecionados)}>
-                                                {nSelecionados > 0 ? (
-                                                    <>
-                                                        Trocar <ContadorSelecao n={nSelecionados} /> itens
-                                                    </>
-                                                ) : (
-                                                    "Trocar itens"
-                                                )}
+                                                {nSelecionados > 0 ? <>Trocar <ContadorSelecao n={nSelecionados} /> itens</> : "Trocar itens"}
                                             </Button>
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col gap-6">
+                                    <div className="flex flex-col gap-6 rounded-b-2xl p-5">
                                         {estrutura.sessoes.map(({ sessao, itens }) => (
                                             <Secao key={sessao.id} titulo={tituloDaSessao(sessao)} icone={Calendar}>
                                                 {itens.map(cartao)}
@@ -354,8 +312,8 @@ export function DetalhePedido() {
                                         {estrutura.produtos.length > 0 && <Secao titulo="Produtos">{estrutura.produtos.map(cartao)}</Secao>}
                                         {estrutura.combos.length > 0 && <Secao titulo="Combos">{estrutura.combos.map(cartao)}</Secao>}
                                     </div>
-                                </div>
-                            </>
+                                </section>
+                            </div>
                         )}
                     </div>
 
@@ -369,7 +327,6 @@ export function DetalhePedido() {
                                 <Linha rotulo="Nascimento" valor={comprador?.nascimento ?? ""} />
                                 <Linha rotulo="Celular" valor={comprador?.celular ?? ""} />
                             </dl>
-
                             <dl className="mt-4 flex flex-col gap-2 border-t border-secondary pt-4">
                                 <Linha rotulo="Valor original" valor={formatarMoeda(totais.original)} />
                                 <Linha rotulo="Desconto" valor={formatarMoeda(-totais.desconto)} />
@@ -392,104 +349,20 @@ export function DetalhePedido() {
                         </Disclosure>
                     </aside>
                 </div>
-
             </motion.div>
+
+            {wizardAberto?.tipo === "troca-item" && <TrocarItensWizard pedido={pedido} linhasIniciais={wizardAberto.linhas} rascunhoInicial={wizardAberto.rascunho} onFechar={fecharWizard} />}
+            {wizardAberto?.tipo === "troca-titularidade" && <TransferirTitularidadeWizard pedido={pedido} linhasIniciais={wizardAberto.linhas} rascunhoInicial={wizardAberto.rascunho} onFechar={fecharWizard} />}
         </BackstageLayout>
     );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Operação aberta                                                    */
-/* ------------------------------------------------------------------ */
-
-const CartaoDeOperacao = ({ pedido, solicitacao }: { pedido: Pedido; solicitacao: Solicitacao }) => {
-    const { copied, copy } = useClipboard();
-    const restante = useContagem(solicitacao.expiraEm, () => expirarSolicitacao(pedido.id, solicitacao.id));
-    const duracao = solicitacao.expiraEm - solicitacao.criadoEm;
-    const percentualRestante = duracao > 0 ? (restante / duracao) * 100 : 0;
-    const corBarra = percentualRestante <= 25 ? "bg-error-solid" : percentualRestante <= 60 ? "bg-warning-solid" : "bg-success-solid";
-    const processando = solicitacao.estado === "processando";
-    const comprador = getConta(pedido.compradorId);
-    const [canalEnvio, setCanalEnvio] = useState<CanalEnvio | null>(null);
-
-    return (
-        <section className="flex flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                    <p className="text-base font-semibold text-primary">{TITULO_OPERACAO[solicitacao.tipo]}</p>
-                    <p className="mt-0.5 text-sm text-tertiary">
-                        {processando ? "Pagamento confirmado. Aplicando a alteração nos itens." : DESCRICAO_OPERACAO[solicitacao.tipo](solicitacao)}
-                    </p>
-                </div>
-                {!processando && (
-                    <div className="w-full shrink-0 sm:w-[200px]">
-                        <p className="text-sm text-tertiary">
-                            essa operação expira em: <span className="font-semibold text-primary tabular-nums">{formatarContagem(restante)}</span>
-                        </p>
-                        <ProgressBarBase className="mt-2" value={percentualRestante} progressClassName={corBarra} />
-                    </div>
-                )}
-            </div>
-
-            {!processando && (
-                <div className="flex flex-col gap-1.5">
-                    <p className="text-sm font-medium text-secondary">Link de pagamento</p>
-                    <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
-                        <InputGroup
-                            aria-label="Link de pagamento da alteração"
-                            className="min-w-0 flex-1"
-                            trailingAddon={
-                                <Button color="secondary" iconLeading={copied ? Check : Copy01} onClick={() => copy(`https://${solicitacao.linkPagamento}`)}>
-                                    {copied ? "Copiado" : "Copiar"}
-                                </Button>
-                            }
-                        >
-                            <InputBase isReadOnly value={solicitacao.linkPagamento} />
-                        </InputGroup>
-                        <div className="flex gap-2">
-                            <Button color="secondary" iconLeading={MessageChatCircle} className="max-lg:flex-1" onClick={() => setCanalEnvio("whatsapp")}>
-                                Enviar por Whatsapp
-                            </Button>
-                            <Button color="secondary" iconLeading={Mail01} className="max-lg:flex-1" onClick={() => setCanalEnvio("email")}>
-                                Enviar por e-mail
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <dl className="flex flex-col divide-y divide-border-secondary border-t border-secondary pt-1">
-                {solicitacao.linhas.map((linha) => (
-                    <div key={linha.label} className="flex items-baseline justify-between gap-4 py-2.5">
-                        <dt className={cx("text-sm", linha.destaque ? "font-semibold text-primary" : "text-tertiary")}>{linha.label}</dt>
-                        <dd className={cx("text-sm tabular-nums", linha.destaque ? "font-semibold text-primary" : "text-primary")}>{formatarMoeda(linha.valor)}</dd>
-                    </div>
-                ))}
-            </dl>
-
-            <EnviarModal
-                canal={canalEnvio}
-                assunto="o link de pagamento"
-                valorInicial={canalEnvio === "email" ? comprador?.email : comprador?.celular}
-                onClose={() => setCanalEnvio(null)}
-                onConfirm={(canal, destino) => {
-                    setCanalEnvio(null);
-                    toast.success(`Link enviado por ${canal === "email" ? "e-mail" : "WhatsApp"} para ${destino}`);
-                }}
-            />
-        </section>
-    );
-};
-
-/* ------------------------------------------------------------------ */
 /*  Lista de itens                                                     */
 /* ------------------------------------------------------------------ */
 
-/** Contagem da seleção, em uma caixa própria em vez de parênteses coladas no texto do botão. */
 const ContadorSelecao = ({ n }: { n: number }) => (
-    <span className="inline-flex min-w-5 items-center justify-center rounded-md px-1.5 py-0.5 text-xs font-semibold text-tertiary ring-1 ring-border-secondary tabular-nums">
-        {n}
-    </span>
+    <span className="inline-flex min-w-5 items-center justify-center rounded-md px-1.5 py-0.5 text-xs font-semibold text-tertiary ring-1 ring-border-secondary tabular-nums">{n}</span>
 );
 
 const Secao = ({ titulo, icone: Icone, children }: { titulo: string; icone?: typeof Calendar; children: ReactNode }) => (
@@ -514,7 +387,9 @@ interface CartaoItemProps extends ItemDoPedido {
     onTransferir: (ids: string[]) => void;
 }
 
-/** Um item do catálogo com suas unidades: o cabeçalho resume, as unidades mostram titular e situação. */
+/** Um item do catálogo com suas unidades: o cabeçalho resume, as unidades mostram titular e situação.
+ *  Três alvos de clique, nunca sobrepostos: o cabeçalho SÓ expande (nunca seleciona, mesmo com uma
+ *  unidade só); o checkbox SÓ seleciona; o botão de ação SÓ inicia uma operação. */
 const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExpandir, onAlternar, onEditarFormulario, onTrocar, onTransferir }: CartaoItemProps) => {
     const idsLivres = linhas.filter((l) => selecionavel(pedido, l)).map((l) => l.id);
     const nMarcadas = idsLivres.filter((id) => selecao[id]).length;
@@ -530,22 +405,17 @@ const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExp
     });
     const resumoEstados = [...contagem.entries()].map(([estado, n]) => `${n} ${ROTULO_ESTADO[estado].toLowerCase()}`).join(" · ");
 
-    /* Com várias unidades, o cabeçalho segue a convenção de accordion: abre e fecha, e só o checkbox
-       (estendido até a miniatura) seleciona. Com uma unidade só não há o que expandir, então o
-       cabeçalho inteiro vira o alvo de seleção — como já é a sub-linha da unidade. */
+    /* O cabeçalho SEMPRE só expande — nunca seleciona, mesmo quando há uma unidade só, onde antes
+       o clique no cabeçalho também alternava a seleção (o mesmo alvo visual fazendo duas coisas
+       diferentes dependendo de um estado invisível). Seleção é sempre o checkbox, ponto. */
     const clicarNoCabecalho = (event: MouseEvent<HTMLDivElement>) => {
         if (!event.currentTarget.contains(event.target as Node)) return;
-        if ((event.target as HTMLElement).closest("label")) return; // o checkbox cuida do próprio clique
-        if (varias) {
-            onExpandir();
-            return;
-        }
-        if (idsLivres.length > 0) onAlternar(idsLivres, !todas);
+        if ((event.target as HTMLElement).closest("label")) return;
+        if (varias) onExpandir();
     };
 
     const clicarNoSeletor = (event: MouseEvent<HTMLDivElement>) => {
         if (idsLivres.length === 0) return;
-        /* O próprio checkbox já cuida do seu clique (React Aria); aqui só tratamos o espaço ao redor dele. */
         if ((event.target as HTMLElement).closest("label")) return;
         event.stopPropagation();
         onAlternar(idsLivres, !todas);
@@ -556,27 +426,14 @@ const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExp
             <div
                 className={cx(
                     "flex items-start gap-3 rounded-t-xl p-4 transition duration-100 ease-linear",
-                    /* O hover de fundo só entra quando o cabeçalho é o cartão inteiro (colapsado) — com a
-                       lista de unidades visível embaixo, colorir só o cabeçalho faz o cartão parecer duas
-                       caixas empilhadas em vez de uma. O cursor continua indicando que dá pra clicar. */
-                    (varias || idsLivres.length > 0) && "cursor-pointer",
-                    (varias || idsLivres.length > 0) && !mostrarUnidades && "hover:bg-primary_hover",
+                    varias && "cursor-pointer",
+                    varias && !mostrarUnidades && "hover:bg-primary_hover",
                     !mostrarUnidades && "rounded-b-xl",
                 )}
                 onClick={clicarNoCabecalho}
             >
-                <div
-                    className={cx("-m-1 flex items-center gap-3 rounded-lg p-1", idsLivres.length > 0 && "cursor-pointer")}
-                    onClick={clicarNoSeletor}
-                >
-                    <Checkbox
-                        size="md"
-                        aria-label={`Selecionar todas as unidades de ${item.nome}`}
-                        isSelected={todas}
-                        isIndeterminate={nMarcadas > 0 && !todas}
-                        isDisabled={idsLivres.length === 0}
-                        onChange={(marcar) => onAlternar(idsLivres, marcar)}
-                    />
+                <div className={cx("-m-1 flex items-center gap-3 rounded-lg p-1", idsLivres.length > 0 && "cursor-pointer")} onClick={clicarNoSeletor}>
+                    <Checkbox size="md" aria-label={`Selecionar todas as unidades de ${item.nome}`} isSelected={todas} isIndeterminate={nMarcadas > 0 && !todas} isDisabled={idsLivres.length === 0} onChange={(marcar) => onAlternar(idsLivres, marcar)} />
                     <Miniatura item={item} />
                 </div>
 
@@ -587,15 +444,6 @@ const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExp
                         {item.lote && <span className="font-normal text-tertiary"> | {rotuloDoLote(item.lote)}</span>}
                     </p>
                     {item.tipo !== "ingresso" && item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
-                    {item.datasCombo && (
-                        <span className="mt-1 flex flex-wrap gap-1.5">
-                            {item.datasCombo.map((data) => (
-                                <span key={data} className="rounded-full px-2 py-0.5 text-sm text-tertiary ring-1 ring-border-secondary">
-                                    {data}
-                                </span>
-                            ))}
-                        </span>
-                    )}
                     {varias && resumoEstados && <p className="mt-1 text-sm text-tertiary">{resumoEstados}</p>}
                 </div>
 
@@ -606,30 +454,16 @@ const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExp
 
                 {varias && (
                     <motion.span layout transition={{ duration: 0.2, ease: "easeOut" }} className="shrink-0 overflow-hidden pt-0.5" onClick={interromper}>
-                        <Button
-                            size="sm"
-                            color="secondary"
-                            aria-expanded={expandido}
-                            onClick={onExpandir}
-                            iconTrailing={<ChevronDown data-icon className={cx("transition-transform duration-100 ease-linear", expandido && "rotate-180")} />}
-                        >
+                        <Button size="sm" color="secondary" aria-expanded={expandido} onClick={onExpandir} iconTrailing={<ChevronDown data-icon className={cx("transition-transform duration-100 ease-linear", expandido && "rotate-180")} />}>
                             <TextoAnimado>{expandido ? `Ocultar ${linhas.length} unidades` : `Ver ${linhas.length} unidades`}</TextoAnimado>
                         </Button>
                     </motion.span>
                 )}
-
             </div>
 
             <AnimatePresence initial={false}>
                 {mostrarUnidades && (
-                    <motion.ul
-                        key="unidades"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="flex flex-col divide-y divide-border-secondary overflow-hidden border-t border-secondary"
-                    >
+                    <motion.ul key="unidades" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex flex-col divide-y divide-border-secondary overflow-hidden border-t border-secondary">
                         {linhas.map((linha, indice) => (
                             <Unidade
                                 key={linha.id}
@@ -665,14 +499,16 @@ interface UnidadeProps {
     onTransferir: () => void;
 }
 
-/** Uma unidade do pedido: quem é o titular, o que está acontecendo com ela e o que dá para fazer. */
 const Unidade = ({ pedido, linha, numero, unica, selecionada, encerrado, onAlternar, onEditarFormulario, onTrocar, onTransferir }: UnidadeProps) => {
     const estado = estadoDaLinha(pedido, linha);
     const livre = selecionavel(pedido, linha);
     const titular = getConta(linha.titularId ?? pedido.compradorId);
-    const temFormulario = Boolean(getFormulario(getItem(linha.itemId)?.formularioId)?.perguntaIds.length);
-    const inscricaoPreenchida = Object.keys(linha.respostas).length > 0;
+    const item = getItem(linha.itemId);
+    const temFormulario = Boolean(getFormulario(item?.formularioId)?.perguntaIds.length);
 
+    /* Sem ambiguidade aqui: a unidade não tem "expandir", então clicar na linha sempre e só
+       alterna a seleção — comportamento consistente em qualquer contexto, diferente do cabeçalho
+       do card acima (que só expande). */
     const alternarLinha = (event: MouseEvent<HTMLLIElement>) => {
         if (!event.currentTarget.contains(event.target as Node) || !livre) return;
         onAlternar(!selecionada);
@@ -680,48 +516,34 @@ const Unidade = ({ pedido, linha, numero, unica, selecionada, encerrado, onAlter
 
     return (
         <li
-            className={cx(
-                "flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 transition duration-100 ease-linear",
-                livre && "cursor-pointer",
-                estado === "transferida" && "opacity-70",
-                unica && "rounded-b-xl",
-            )}
-            onClick={alternarLinha}
+            className={cx("flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 transition duration-100 ease-linear", livre && !unica && "cursor-pointer", estado === "transferida" && "opacity-70", unica && "rounded-b-xl")}
+            onClick={unica ? undefined : alternarLinha}
         >
             {unica ? (
                 <span className="w-5" aria-hidden="true" />
             ) : (
                 <span onClick={interromper}>
-                    <Checkbox
-                        size="md"
-                        aria-label={`Selecionar unidade ${numero}${titular ? ` de ${titular.nome}` : ""}`}
-                        isSelected={selecionada}
-                        isDisabled={!livre}
-                        onChange={onAlternar}
-                    />
+                    <Checkbox size="md" aria-label={`Selecionar unidade ${numero}${titular ? ` de ${titular.nome}` : ""}`} isSelected={selecionada} isDisabled={!livre} onChange={onAlternar} />
                 </span>
             )}
             {!unica && <span className="w-7 shrink-0 text-sm text-tertiary tabular-nums">#{numero}</span>}
 
             <div className="flex min-w-[12rem] flex-1 flex-col gap-0.5">
                 <p className="truncate text-sm font-medium text-primary">{titular?.nome ?? "Participante"}</p>
-                <p className="text-sm text-tertiary">
-                    {titular?.cpf ? `CPF ${mascararCPF(titular.cpf)}` : titular?.email}
-                    {inscricaoPreenchida && " · Inscrição preenchida"}
-                </p>
+                <p className="text-sm text-tertiary">{titular?.cpf ? `CPF ${mascararCPF(titular.cpf)}` : titular?.email}</p>
                 <Pendencia pedido={pedido} linha={linha} />
             </div>
 
             <div className="ml-auto flex items-center gap-2">
                 {estado === "transferida" && <BadgeTransferido />}
                 {livre && (
-                    <span className="flex items-center gap-1" onClick={interromper}>
+                    <span className="flex items-center gap-1">
                         {temFormulario && (
                             <Button size="sm" color="link-gray" onClick={onEditarFormulario}>
                                 Editar formulário
                             </Button>
                         )}
-                        <MenuAcoes rotulo={`Mais ações da unidade ${numero}`} encerrado={encerrado} onTransferir={onTransferir} onTrocar={onTrocar} />
+                        <MenuAcoes rotulo={`Mais ações da unidade ${numero}`} ehIngresso={item?.tipo === "ingresso"} encerrado={encerrado} onTransferir={onTransferir} onTrocar={onTrocar} />
                     </span>
                 )}
             </div>
@@ -729,7 +551,6 @@ const Unidade = ({ pedido, linha, numero, unica, selecionada, encerrado, onAlter
     );
 };
 
-/** O que está acontecendo com a unidade agora. Quem está livre não precisa de aviso. */
 const Pendencia = ({ pedido, linha }: { pedido: Pedido; linha: PedidoItem }) => {
     const estado = estadoDaLinha(pedido, linha);
     if (estado === "livre" || estado === "encerrada") return null;
@@ -741,20 +562,14 @@ const Pendencia = ({ pedido, linha }: { pedido: Pedido; linha: PedidoItem }) => 
 
     if (estado === "trocando") {
         return (
-            <p className="flex items-center gap-1.5 text-sm font-medium text-utility-blue-600">
-                <RefreshCcw01 className="size-4 shrink-0" aria-hidden="true" />
+            <p className="text-sm font-medium text-utility-blue-600">
                 Trocando por {novoItem?.nome ?? "outro item"}
                 {novoItem?.lote && ` | ${rotuloDoLote(novoItem.lote)}`}
             </p>
         );
     }
     if (estado === "transferindo") {
-        return (
-            <p className="flex items-center gap-1.5 text-sm font-medium text-utility-blue-600">
-                <SwitchVertical01 className="size-4 shrink-0" aria-hidden="true" />
-                Transferindo para {contaDestino?.email ?? "novo titular"}
-            </p>
-        );
+        return <p className="text-sm font-medium text-utility-blue-600">Transferindo para {contaDestino?.email ?? "novo titular"}</p>;
     }
     if (estado === "editando") return <p className="text-sm font-medium text-utility-blue-600">Formulário em edição</p>;
     return (
@@ -771,13 +586,27 @@ const BadgeTransferido = () => (
     </BadgeWithDot>
 );
 
-const MenuAcoes = ({ rotulo, encerrado, onTransferir, onTrocar }: { rotulo: string; encerrado: boolean; onTransferir: () => void; onTrocar: () => void }) => (
+/** Verbos ancorados na fala real do cliente ("trocar o nome de quem vai" = transferir, não trocar
+ *  item) em vez de rótulos técnicos, com uma explicação de uma frase para "titularidade". */
+const MenuAcoes = ({
+    rotulo,
+    ehIngresso,
+    encerrado,
+    onTransferir,
+    onTrocar,
+}: {
+    rotulo: string;
+    ehIngresso: boolean;
+    encerrado: boolean;
+    onTransferir: () => void;
+    onTrocar: () => void;
+}) => (
     <Dropdown.Root>
         <ButtonUtility size="sm" color="tertiary" icon={DotsHorizontal} aria-label={rotulo} className="!text-fg-tertiary hover:!text-fg-secondary" />
-        <Dropdown.Popover className="w-56">
+        <Dropdown.Popover className="w-64">
             <Dropdown.Menu>
-                <Dropdown.Item id="transferir" label="Transferir titular" onAction={onTransferir} />
-                <Dropdown.Item id="trocar" label="Trocar item" isDisabled={encerrado} onAction={onTrocar} />
+                <Dropdown.Item id="transferir" label="Transferir para outra pessoa" onAction={onTransferir} />
+                <Dropdown.Item id="trocar" label={ehIngresso ? "Trocar este ingresso" : "Trocar este item"} isDisabled={encerrado} onAction={onTrocar} />
             </Dropdown.Menu>
         </Dropdown.Popover>
     </Dropdown.Root>
@@ -825,24 +654,14 @@ const EntradaDoHistorico = ({ entrada, ultima }: { entrada: EntradaHistorico; ul
                             type="button"
                             onClick={() => setAberto((atual) => !atual)}
                             aria-expanded={aberto}
-                            className={cx(
-                                "mt-1 flex items-center gap-1 rounded-md text-sm font-semibold text-brand-secondary transition duration-100 ease-linear hover:text-brand-secondary_hover",
-                                FOCO,
-                            )}
+                            className={cx("mt-1 flex items-center gap-1 rounded-md text-sm font-semibold text-brand-secondary transition duration-100 ease-linear hover:text-brand-secondary_hover", FOCO)}
                         >
                             {aberto ? "Ocultar detalhes" : "Ver detalhes"}
                             <ChevronDown className={cx("size-4 transition-transform duration-100 ease-linear", aberto && "rotate-180")} aria-hidden="true" />
                         </button>
                         <AnimatePresence initial={false}>
                             {aberto && (
-                                <motion.div
-                                    key="detalhes"
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: "auto", opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.2, ease: "easeOut" }}
-                                    className="overflow-hidden"
-                                >
+                                <motion.div key="detalhes" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">
                                     <ul className="mt-2 flex flex-col gap-1 rounded-lg bg-secondary px-3 py-2">
                                         {entrada.detalhes!.map((detalhe) => (
                                             <li key={detalhe} className="text-sm text-secondary">
@@ -864,25 +683,13 @@ const Disclosure = ({ titulo, aberta = false, children }: { titulo: string; aber
     const [aberto, setAberto] = useState(aberta);
     return (
         <section className="rounded-2xl bg-primary ring-1 ring-border-secondary">
-            <button
-                type="button"
-                onClick={() => setAberto((atual) => !atual)}
-                aria-expanded={aberto}
-                className={cx("flex w-full items-center justify-between gap-3 rounded-2xl px-5 py-4 text-left transition duration-100 ease-linear hover:bg-primary_hover", FOCO)}
-            >
+            <button type="button" onClick={() => setAberto((atual) => !atual)} aria-expanded={aberto} className={cx("flex w-full items-center justify-between gap-3 rounded-2xl px-5 py-4 text-left transition duration-100 ease-linear hover:bg-primary_hover", FOCO)}>
                 <span className="text-base font-semibold text-primary">{titulo}</span>
                 <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear", aberto && "rotate-180")} aria-hidden="true" />
             </button>
             <AnimatePresence initial={false}>
                 {aberto && (
-                    <motion.div
-                        key="content"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="overflow-hidden"
-                    >
+                    <motion.div key="content" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">
                         <div className="border-t border-secondary px-5 py-4">{children}</div>
                     </motion.div>
                 )}

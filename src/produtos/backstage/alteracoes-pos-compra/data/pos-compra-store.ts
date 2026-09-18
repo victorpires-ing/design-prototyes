@@ -43,6 +43,9 @@ export type StatusPedido =
 
 export type TipoOperacao = "troca-item" | "troca-titularidade" | "alterar-respostas";
 
+/** Únicos dois canais para entregar o link de pagamento — escolhidos e disparados pelo operador. */
+export type CanalEnvio = "email" | "whatsapp";
+
 export interface Conta {
     id: string;
     nome: string;
@@ -175,11 +178,29 @@ export interface Solicitacao {
     expiraEm: number;
     /** Link de checkout enviado ao participante, no mesmo formato da bilheteria. */
     linkPagamento: string;
+    /** Canal e destino escolhidos ao enviar a cobrança — fica registrado para "Reenviar link" e auditoria. */
+    canalEnvio: CanalEnvio;
+    destinatarioEnvio: string;
     detalhes?: string[];
     /** Linhas presas nesta operação: elas não entram em outra enquanto isso não resolver. */
     linhasAfetadas: string[];
-    /** Aguardando o pagamento ou já pago e sendo aplicado. */
-    estado: "aguardando" | "processando";
+    /**
+     * aguardando: cobrança pendente. processando: pagamento confirmado, aplicando.
+     * falha: pagamento confirmado, mas a revalidação das regras de negócio não passou mais
+     * no momento de aplicar — nada é revertido automaticamente. aguardando-financeiro: o
+     * operador já escalou o incidente; fica como registro somente leitura.
+     */
+    estado: "aguardando" | "processando" | "falha" | "aguardando-financeiro";
+    /** Por que a aplicação falhou, quando estado é "falha". */
+    motivoFalha?: string;
+    /** Referência que o operador digitou ao marcar como pago (não é validação de gateway). */
+    referenciaPagamento?: string;
+    /** Preenchido ao notificar o financeiro — nunca reverte a operação sozinho. */
+    escalonamento?: {
+        cenario: "falha-aplicacao" | "pagamento-indevido";
+        relato: string;
+        dataLabel: string;
+    };
     /** Payload aplicado apenas quando o pagamento é confirmado. */
     aplicar: {
         /** Trocas em lote: cada linha do pedido vira o item de destino indicado. */
@@ -191,6 +212,33 @@ export interface Solicitacao {
     };
     /** Reservas de estoque a liberar caso a solicitação expire. */
     reservas: Array<{ tipo: "item"; itemId: string } | { tipo: "resposta"; perguntaId: string; valor: string }>;
+}
+
+export type TipoRascunho = "troca-item" | "troca-titularidade";
+
+/**
+ * Uma operação em montagem, ainda sem cobrança gerada — não reserva estoque nem trava linha.
+ * Vive no store (não em local/sessionStorage) para sobreviver a F5, fechar a aba, ou ser
+ * retomada por qualquer operador que reabrir o pedido depois, inclusive dias depois.
+ */
+export interface Rascunho {
+    id: string;
+    pedidoId: string;
+    tipo: TipoRascunho;
+    /** Etapa em que o operador parou, para o wizard retomar exatamente ali. */
+    etapa: string;
+    linhasSelecionadas: string[];
+    /** Troca: item de destino escolhido por linha. */
+    destinoPorLinha?: Record<string, string>;
+    /** Transferência: novo titular escolhido por linha. */
+    titularPorLinha?: Record<string, string>;
+    respostasPorLinha?: Record<string, Record<string, string>>;
+    motivo?: { categoria: string; detalhe: string };
+    /** Nome de quem o operador está tentando cadastrar, quando o novo titular ainda não tem conta. */
+    aguardandoCadastroDe?: string;
+    atualizadoEmLabel: string;
+    /** Último operador a tocar o rascunho — alimenta o indicador leve de concorrência. */
+    operador: string;
 }
 
 export interface Pedido {
@@ -661,7 +709,7 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 respostas: { ...respostasCompletas("it-tri-sprint"), "p-camiseta": "M", "p-kit": "Arena das Dunas", "p-emergencia": "Amigo" },
             },
         ],
-        status: "falha",
+        status: "ativo",
         historico: [
             {
                 id: "h-5a",
@@ -806,6 +854,48 @@ PEDIDOS_INICIAIS.push({
     ],
 });
 
+/* Pedido para testar o cartão de item com uma unidade só ao lado de várias — em ingresso e em
+   produto ao mesmo tempo, pra ver o cartão de 1 unidade (sem "ver unidades") ao lado do de 3
+   (que já nasce expandido, por ter 4 unidades ou menos). */
+PEDIDOS_INICIAIS.push({
+    id: uuidDeterministico(10),
+    eventoId: "ev-maratona",
+    compradorId: "c-leticia",
+    dataCompraLabel: "10 set 2026",
+    canal: "Online",
+    meioPagamento: "Cartão de crédito (3x)",
+    criadoEmLabel: "10 set 2026, 10:22:15",
+    atualizadoEmLabel: "10 set 2026, 10:22:15",
+    itens: [
+        ...gerarLinhas("li-10a", "it-mar-5k", 3, 120, () => ({
+            ...respostasCompletas("it-mar-5k"),
+            "p-camiseta": TAMANHOS[Math.floor(Math.random() * TAMANHOS.length)],
+            "p-kit": "Arena das Dunas",
+            "p-equipe": "Sem equipe",
+        })),
+        ...gerarLinhas("li-10b", "it-mar-10k", 1, 180, () => ({
+            ...respostasCompletas("it-mar-10k"),
+            "p-camiseta": "M",
+            "p-kit": "Praia de Ponta Negra",
+            "p-equipe": "Sem equipe",
+        })),
+        ...gerarLinhas("li-10c", "pr-camiseta-extra", 3, 80, () => ({})),
+        ...gerarLinhas("li-10d", "pr-foto", 1, 45, () => ({})),
+    ],
+    status: "ativo",
+    historico: [
+        {
+            id: "h-10",
+            dataLabel: "10 set 2026, 10:22",
+            responsavel: "Letícia Amaral",
+            titulo: "Pedido criado",
+            descricao: "3x Corrida 5 km, 1x Corrida 10 km, 3x camiseta extra do evento e 1x pacote de fotos.",
+            valor: 825,
+            estado: "concluido",
+        },
+    ],
+});
+
 
 /* ------------------------------------------------------------------ */
 /*  Volume: a lista precisa ser exercitada com o tamanho real          */
@@ -820,7 +910,9 @@ const NOMES_EXTRA = [
     "Patrícia Fontenele", "Rodrigo Aguiar", "Simone Vasconcelos", "Thiago Marinho", "Vanessa Caldas",
 ];
 
-const STATUS_EXTRA: StatusPedido[] = ["ativo", "ativo", "ativo", "ativo", "alteracao-concluida", "expirado", "falha"];
+/* "falha" fica fora do sorteio: é um estado derivado de uma solicitação aberta (comStatus),
+   nunca um estado de repouso — um pedido semente nasce sempre sem solicitações. */
+const STATUS_EXTRA: StatusPedido[] = ["ativo", "ativo", "ativo", "ativo", "alteracao-concluida", "expirado"];
 
 const gerarPedidosExtra = (quantidade: number): PedidoSemente[] =>
     Array.from({ length: quantidade }, (_, indice) => {
@@ -841,7 +933,10 @@ const gerarPedidosExtra = (quantidade: number): PedidoSemente[] =>
             nome,
             nascimento: `${String(1 + Math.floor(aleatorio() * 28)).padStart(2, "0")}/${String(1 + Math.floor(aleatorio() * 12)).padStart(2, "0")}/19${70 + Math.floor(aleatorio() * 30)}`,
             celular: `+55 (84) 9${String(Math.floor(aleatorio() * 9000) + 1000)}-${String(Math.floor(aleatorio() * 9000) + 1000)}`,
-            email: `${nome.toLowerCase().normalize("NFD").replace(/[^a-z ]/g, "").replace(/ /g, ".")}@email.com`,
+            /* O nome se repete a cada 20 pedidos (NOMES_EXTRA), então o índice entra no e-mail:
+               sem ele, contas de pessoas diferentes cairiam no mesmo endereço e o "confira o
+               nome e o e-mail" da busca de transferência perderia sentido. */
+            email: `${nome.toLowerCase().normalize("NFD").replace(/[^a-z ]/g, "").replace(/ /g, ".")}.${indice}@email.com`,
         };
         CONTAS_EXTRA.push(contaSintetica);
 
@@ -912,12 +1007,14 @@ interface Estado {
     pedidos: Pedido[];
     catalogo: CatalogoItem[];
     perguntas: Pergunta[];
+    rascunhos: Rascunho[];
 }
 
 let estado: Estado = {
     pedidos: PEDIDOS_INICIAIS.map((pedido) => ({ ...pedido, baseStatus: pedido.status, solicitacoes: [] })),
     catalogo: CATALOGO,
     perguntas: PERGUNTAS,
+    rascunhos: [],
 };
 
 const listeners = new Set<() => void>();
@@ -939,6 +1036,50 @@ export const usePerguntas = () => useSyncExternalStore(subscribe, () => estado.p
 export const getPedido = (id: string) => estado.pedidos.find((p) => p.id === id);
 export const getItem = (id: string) => estado.catalogo.find((i) => i.id === id);
 export const getConta = (id: string) => CONTAS.find((c) => c.id === id) ?? CONTAS_EXTRA.find((c) => c.id === id);
+
+const soDigitos = (texto: string) => texto.replace(/\D/g, "");
+
+/** Busca por nome, e-mail ou CPF contra TODA a base de contas — inclui CONTAS_EXTRA (as contas dos
+ *  pedidos gerados dinamicamente, a maioria da base real), não só a lista fixa de exemplo. Antes,
+ *  a busca de destinatário só olhava CONTAS e só reconhecia e-mail exato ou CPF por dígitos, então
+ *  o dado mais natural que um operador tem numa ligação — o nome de quem vai receber — nunca
+ *  encontrava ninguém. */
+export const buscarContas = (termo: string, limite = 8): Conta[] => {
+    const busca = termo.trim().toLowerCase();
+    if (!busca) return [];
+    const digitos = soDigitos(busca);
+    return [...CONTAS, ...CONTAS_EXTRA]
+        .filter((c) => c.nome.toLowerCase().includes(busca) || c.email.toLowerCase().includes(busca) || (digitos.length >= 3 && soDigitos(c.cpf).includes(digitos)))
+        .slice(0, limite);
+};
+
+export interface NovaContaInput {
+    nome: string;
+    email: string;
+    celular: string;
+    cpf?: string;
+    genero?: "F" | "M" | "outro";
+    socio?: boolean;
+}
+
+/** Cadastra uma conta nova sem sair do wizard — o caso mais comum de transferência é o novo
+ *  titular ainda não ter conta na plataforma. Não contorna a regra de segmentação: os campos que
+ *  ela exige (gênero, sócio) continuam sendo checados normalmente contra a conta recém-criada. */
+export const criarConta = (input: NovaContaInput): Conta => {
+    const conta: Conta = {
+        id: novoId("c-novo"),
+        nome: input.nome,
+        email: input.email,
+        celular: input.celular,
+        cpf: input.cpf ?? "",
+        nascimento: "",
+        genero: input.genero ?? "outro",
+        socio: input.socio ?? false,
+    };
+    CONTAS_EXTRA.push(conta);
+    notificar();
+    return conta;
+};
 export const getEvento = (id: string) => EVENTOS.find((e) => e.id === id);
 export const getPergunta = (id: string) => estado.perguntas.find((p) => p.id === id);
 export const getFormulario = (id?: string) => (id ? FORMULARIOS.find((f) => f.id === id) : undefined);
@@ -975,14 +1116,18 @@ const novoLinkPagamento = (pedidoId: string) => `pay.ingresse.com/alteracao/${uu
 const statusBase = (p: Pedido): StatusPedido =>
     p.historico.some((h) => h.estado === "concluido" && h.titulo.includes("concluída")) ? "alteracao-concluida" : "ativo";
 
-/* A situação do pedido é sempre derivada: com operação aberta ela manda, sem operação vale o fundo. */
+/* A situação do pedido é sempre derivada. Uma falha nunca fica escondida atrás de outra
+   operação aberta na mesma linha ou em outra: ela manda sobre qualquer outro estado
+   transitório até ser resolvida deliberadamente (Notificar financeiro). */
 const comStatus = (p: Pedido): Pedido => ({
     ...p,
-    status: p.solicitacoes.some((s) => s.estado === "processando")
-        ? "pago-processando"
-        : p.solicitacoes.length > 0
-          ? "aguardando-pagamento"
-          : p.baseStatus,
+    status: p.solicitacoes.some((s) => s.estado === "falha" || s.estado === "aguardando-financeiro")
+        ? "falha"
+        : p.solicitacoes.some((s) => s.estado === "processando")
+          ? "pago-processando"
+          : p.solicitacoes.length > 0
+            ? "aguardando-pagamento"
+            : p.baseStatus,
 });
 
 /* Os rótulos são os mesmos do filtro de situação: quem filtra por "Alteração em andamento"
@@ -1252,12 +1397,16 @@ export const validarTrocaItem = (pedido: Pedido, linha: PedidoItem, novoItem: Ca
     return null;
 };
 
-export const validarNovoTitular = (pedido: Pedido, conta: Conta): Bloqueio | null => {
-    if (conta.id === pedido.compradorId) {
-        return { curto: "Titular atual", titulo: "Conta já é a titular", descricao: "Selecione outra conta para a troca." };
+/** Valida a transferência de uma linha específica — cada linha pode ter titular e item
+ *  diferentes, então a restrição de segmentação precisa olhar o item DESSA linha, nunca
+ *  "o primeiro item segmentado do pedido inteiro" (isso bloqueava ou liberava transferências
+ *  com base num item que não tinha nada a ver com a linha sendo transferida). */
+export const validarNovoTitular = (pedido: Pedido, linha: PedidoItem, conta: Conta): Bloqueio | null => {
+    const titularAtual = linha.titularId ?? pedido.compradorId;
+    if (conta.id === titularAtual) {
+        return { curto: "Titular atual", titulo: "Conta já é a titular", descricao: "Selecione outra conta para a transferência." };
     }
-    /* Basta um item restrito no pedido para travar a transferência inteira. */
-    const item = pedido.itens.map((l) => getItem(l.itemId)).find((i) => i?.segmentacao);
+    const item = getItem(linha.itemId);
     if (item?.segmentacao === "feminino" && conta.genero !== "F") {
         return {
             curto: "Restrito",
@@ -1333,12 +1482,17 @@ export interface CriarSolicitacaoInput {
     calculo: Calculo;
     aplicar: Solicitacao["aplicar"];
     reservas: Solicitacao["reservas"];
+    /** Canal e destino escolhidos na etapa "Enviar cobrança" — sempre grava rastro no histórico. */
+    canalEnvio: CanalEnvio;
+    destinatarioEnvio: string;
 }
 
-/** Cria a cobrança pendente e reserva o estoque. Nada é aplicado ainda. */
-export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfetadas, calculo, aplicar, reservas }: CriarSolicitacaoInput) => {
+/** Cria a cobrança pendente, reserva o estoque e já registra o envio — nunca existe uma
+ *  solicitação "criada mas não enviada" sem rastro de canal/destino/horário. */
+export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfetadas, calculo, aplicar, reservas, canalEnvio, destinatarioEnvio }: CriarSolicitacaoInput) => {
     const agora = Date.now();
     reservas.forEach((r) => (r.tipo === "item" ? ajustarEstoqueItem(r.itemId, -1) : ajustarEstoqueResposta(r.perguntaId, r.valor, -1)));
+    const canalLabel = canalEnvio === "email" ? "e-mail" : "WhatsApp";
     atualizarPedido(pedidoId, (p) =>
         comStatus({
             ...p,
@@ -1353,6 +1507,8 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfeta
                     criadoEm: agora,
                     expiraEm: agora + PRAZO_DEMO_SEGUNDOS * 1000,
                     linkPagamento: novoLinkPagamento(p.id),
+                    canalEnvio,
+                    destinatarioEnvio,
                     detalhes,
                     linhasAfetadas,
                     estado: "aguardando",
@@ -1367,7 +1523,7 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfeta
                     dataLabel: agoraLabel(),
                     responsavel: "Operador do backoffice",
                     titulo: `${TIPO_OPERACAO_LABEL[tipo]} solicitada`,
-                    descricao: `${resumo} Aguardando pagamento, prazo de ${PRAZO_REAL_LABEL}.`,
+                    descricao: `${resumo} Link enviado por ${canalLabel} para ${destinatarioEnvio}. Aguardando pagamento, prazo de ${PRAZO_REAL_LABEL}.`,
                     detalhes,
                     valor: calculo.total,
                     estado: "pendente",
@@ -1376,6 +1532,31 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfeta
         }),
     );
 };
+
+/** Reenvia o mesmo link (prazo real de 1h contado da criação, não reinicia) — usado quando o
+ *  comprador diz que não recebeu ou perguntou de novo. Sempre grava rastro no histórico. */
+export const reenviarLink = (pedidoId: string, solicitacaoId: string, canal: CanalEnvio, destinatario: string) =>
+    atualizarPedido(pedidoId, (p) => {
+        const atual = p.solicitacoes.find((s) => s.id === solicitacaoId);
+        if (!atual) return p;
+        const canalLabel = canal === "email" ? "e-mail" : "WhatsApp";
+        return comStatus({
+            ...p,
+            solicitacoes: p.solicitacoes.map((s) => (s.id === solicitacaoId ? { ...s, canalEnvio: canal, destinatarioEnvio: destinatario } : s)),
+            historico: [
+                ...p.historico,
+                {
+                    id: novoId("h"),
+                    dataLabel: agoraLabel(),
+                    responsavel: "Operador do backoffice",
+                    titulo: "Link reenviado",
+                    descricao: `Reenviado por ${canalLabel} para ${destinatario}.`,
+                    valor: atual.total,
+                    estado: "pendente",
+                },
+            ],
+        });
+    });
 
 /** Aplica o que a solicitação prometeu e tira ela da lista de operações abertas. */
 const aplicarSolicitacao = (p: Pedido, solicitacao: Solicitacao): Pedido => {
@@ -1427,12 +1608,33 @@ const aplicarSolicitacao = (p: Pedido, solicitacao: Solicitacao): Pedido => {
     });
 };
 
-/** Marca a cobrança como paga. O processamento acontece em seguida. */
-export const confirmarPagamento = (pedidoId: string, solicitacaoId: string) => {
+/** Confere, no momento de aplicar, se as regras de negócio ainda valem — o estoque ou a
+ *  segmentação podem ter mudado entre a criação da cobrança e o pagamento confirmado. */
+const revalidarSolicitacao = (pedido: Pedido, solicitacao: Solicitacao): Bloqueio | null => {
+    for (const troca of solicitacao.aplicar.trocas ?? []) {
+        const linha = pedido.itens.find((l) => l.id === troca.pedidoItemId);
+        const novoItem = getItem(troca.novoItemId);
+        if (!linha || !novoItem) continue;
+        const bloqueio = validarTrocaItem(pedido, linha, novoItem);
+        if (bloqueio) return bloqueio;
+    }
+    for (const [linhaId, contaId] of Object.entries(solicitacao.aplicar.titularPorLinha ?? {})) {
+        const linha = pedido.itens.find((l) => l.id === linhaId);
+        const conta = getConta(contaId);
+        if (!linha || !conta) continue;
+        const bloqueio = validarNovoTitular(pedido, linha, conta);
+        if (bloqueio) return bloqueio;
+    }
+    return null;
+};
+
+/** Marca a cobrança como paga — confirmação manual do operador, nunca uma validação
+ *  automática de gateway. O processamento (revalidação + aplicação) acontece em seguida. */
+export const confirmarPagamento = (pedidoId: string, solicitacaoId: string, referenciaPagamento?: string) => {
     atualizarPedido(pedidoId, (p) =>
         comStatus({
             ...p,
-            solicitacoes: p.solicitacoes.map((s) => (s.id === solicitacaoId ? { ...s, estado: "processando" } : s)),
+            solicitacoes: p.solicitacoes.map((s) => (s.id === solicitacaoId ? { ...s, estado: "processando", referenciaPagamento } : s)),
         }),
     );
 
@@ -1440,6 +1642,37 @@ export const confirmarPagamento = (pedidoId: string, solicitacaoId: string) => {
         const pedido = getPedido(pedidoId);
         const solicitacao = pedido?.solicitacoes.find((s) => s.id === solicitacaoId);
         if (!pedido || !solicitacao) return;
+
+        const bloqueio = revalidarSolicitacao(pedido, solicitacao);
+        if (bloqueio) {
+            /* Nada é revertido: a origem continua com a linha, o destino segue reservado.
+               Só o financeiro, fora deste sistema, decide o que fazer com o pagamento já feito. */
+            atualizarPedido(pedidoId, (p) => {
+                const atual = p.solicitacoes.find((s) => s.id === solicitacaoId);
+                if (!atual) return p;
+                return comStatus({
+                    ...p,
+                    solicitacoes: p.solicitacoes.map((s) =>
+                        s.id === solicitacaoId ? { ...s, estado: "falha", motivoFalha: bloqueio.descricao } : s,
+                    ),
+                    historico: [
+                        ...p.historico,
+                        {
+                            id: novoId("h"),
+                            dataLabel: agoraLabel(),
+                            responsavel: "Sistema",
+                            titulo: `${TIPO_OPERACAO_LABEL[atual.tipo]} paga, não aplicada`,
+                            descricao: bloqueio.descricao,
+                            detalhes: atual.detalhes,
+                            valor: atual.total,
+                            estado: "falha",
+                        },
+                    ],
+                });
+            });
+            return;
+        }
+
         const { aplicar, reservas } = solicitacao;
 
         /* O destino já foi reservado ao criar a solicitação: aqui devolve o estoque das origens. */
@@ -1517,3 +1750,61 @@ export const cancelarSolicitacao = (pedidoId: string, solicitacaoId: string) =>
 /** Volta o pedido de falha ou expirado para o estado operável. */
 export const retomarPedido = (pedidoId: string) =>
     atualizarPedido(pedidoId, (p) => comStatus({ ...p, baseStatus: statusBase(p) }));
+
+export interface NotificarFinanceiroInput {
+    pedidoId: string;
+    solicitacaoId: string;
+    cenario: "falha-aplicacao" | "pagamento-indevido";
+    relato: string;
+}
+
+/** Escalona um incidente financeiro de forma honesta: registra o relato e deixa a operação
+ *  como leitura, sem fingir que o Backstage consegue reverter dinheiro sozinho. */
+export const notificarFinanceiro = ({ pedidoId, solicitacaoId, cenario, relato }: NotificarFinanceiroInput) =>
+    atualizarPedido(pedidoId, (p) => {
+        const atual = p.solicitacoes.find((s) => s.id === solicitacaoId);
+        if (!atual) return p;
+        const dataLabel = agoraLabel();
+        return comStatus({
+            ...p,
+            solicitacoes: p.solicitacoes.map((s) =>
+                s.id === solicitacaoId ? { ...s, estado: "aguardando-financeiro", escalonamento: { cenario, relato, dataLabel } } : s,
+            ),
+            historico: [
+                ...p.historico,
+                {
+                    id: novoId("h"),
+                    dataLabel,
+                    responsavel: "Operador do backoffice",
+                    titulo: "Financeiro notificado",
+                    descricao: relato,
+                    valor: atual.total,
+                    estado: "falha",
+                },
+            ],
+        });
+    });
+
+/* ------------------------------------------------------------------ */
+/*  Rascunhos — operação em montagem, sem cobrança gerada ainda         */
+/* ------------------------------------------------------------------ */
+
+/** Rascunhos do pedido, mais recentes primeiro — alimenta a Faixa de Rascunhos do hub. */
+export const useRascunhos = (pedidoId: string) => {
+    const todos = useSyncExternalStore(subscribe, () => estado.rascunhos);
+    return todos.filter((r) => r.pedidoId === pedidoId);
+};
+
+export const getRascunho = (id: string) => estado.rascunhos.find((r) => r.id === id);
+
+export const novoRascunhoId = () => novoId("rasc");
+
+/** Grava (cria ou atualiza) um rascunho — chamado a cada etapa confirmada do wizard. */
+export const salvarRascunho = (rascunho: Omit<Rascunho, "atualizadoEmLabel">) =>
+    setEstado((atual) => ({
+        ...atual,
+        rascunhos: [...atual.rascunhos.filter((r) => r.id !== rascunho.id), { ...rascunho, atualizadoEmLabel: agoraLabel() }],
+    }));
+
+/** Remove o rascunho — ao enviar a cobrança (ele vira Solicitacao) ou ao descartar deliberadamente. */
+export const removerRascunho = (id: string) => setEstado((atual) => ({ ...atual, rascunhos: atual.rascunhos.filter((r) => r.id !== id) }));

@@ -40,7 +40,7 @@ export const EVENTO_STATUS_LABEL: Record<EventoStatus, string> = {
 /** Explica a diferença entre os status — usado como texto de apoio no seletor. */
 export const EVENTO_STATUS_DESCRICAO: Record<EventoStatus, string> = {
     rascunho: "Vendas ainda desligadas",
-    privado: "Vendas ligadas, só quem tem o link acessa",
+    privado: "Vendas ligadas, acessíveis só por quem tem o link",
     publicado: "Vendas ligadas, sem restrição de acesso",
     encerrado: "Vendas encerradas",
 };

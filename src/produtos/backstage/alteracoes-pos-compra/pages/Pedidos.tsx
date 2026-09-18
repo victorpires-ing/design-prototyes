@@ -8,7 +8,8 @@ import { Select } from "@/components/base/select/select";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { FOCO, FOCO_ESCOPO, StatusBadge } from "../components/pos-compra-ui";
+import { FaixaAtencaoPedidos } from "../components/FaixaAtencaoPedidos";
+import { FOCO, FOCO_ESCOPO } from "../components/pos-compra-ui";
 import {
     EVENTOS,
     formatarMoeda,
@@ -90,6 +91,8 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                     </p>
                 </header>
 
+                <FaixaAtencaoPedidos pedidos={pedidos} onAbrir={(pedidoId) => navigate(`/backstage/pedidos/${pedidoId}`)} />
+
                 <section className="rounded-2xl bg-primary ring-1 ring-border-secondary">
                     <div className="flex flex-col gap-3 border-b border-secondary p-4 md:flex-row md:items-end">
                         <div className="md:max-w-sm md:flex-1">
@@ -151,10 +154,7 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                                 FOCO,
                                             )}
                                         >
-                                            <span className="flex flex-wrap items-center justify-between gap-2">
-                                                <span className="font-mono text-sm font-semibold break-all text-primary">{pedido.id}</span>
-                                                <StatusBadge status={pedido.status} />
-                                            </span>
+                                            <span className="font-mono text-sm font-semibold break-all text-primary">{pedido.id}</span>
                                             <span className="block text-sm font-medium text-primary">{comprador?.nome}</span>
                                             <span className="block text-sm text-tertiary">{comprador?.email}</span>
                                             <span className="block text-sm text-tertiary">{getEvento(pedido.eventoId)?.nome}</span>
@@ -181,7 +181,6 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                         <Th>Evento</Th>
                                         <Th>Itens</Th>
                                         <Th>Total pago</Th>
-                                        <Th>Situação</Th>
                                         <th className="w-24 px-4 py-3" />
                                     </tr>
                                 </thead>
@@ -205,9 +204,6 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                                 <td className="px-4 py-4 text-sm text-tertiary tabular-nums">{pedido.itens.length}</td>
                                                 <td className="px-4 py-4 text-sm whitespace-nowrap text-primary tabular-nums">
                                                     {formatarMoeda(totalPago(pedido))}
-                                                </td>
-                                                <td className="px-4 py-4">
-                                                    <StatusBadge status={pedido.status} />
                                                 </td>
                                                 <td className="px-4 py-4 text-right">
                                                     <Button

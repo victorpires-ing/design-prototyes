@@ -375,9 +375,9 @@ export function alertas(): Alerta[] {
                 evento,
                 tom: "error",
                 titulo: "Ainda em rascunho",
-                detalhe: `Faltam ${diasParaEvento} dias e o evento não está publicado — nenhum ingresso pode ser vendido.`,
+                detalhe: `Faltam ${diasParaEvento} dias e o evento não está publicado. Nenhum ingresso pode ser vendido.`,
                 acao: "Publicar evento",
-                href: "/backstage/catalogo/ingressos",
+                href: "/backstage/informacoes-evento",
                 pergunta: "O que falta para publicar este evento?",
             });
             continue;

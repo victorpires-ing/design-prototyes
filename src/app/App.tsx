@@ -7,6 +7,7 @@ import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
 import { ProductSelection } from '../app/components/ProductSelection';
 import { CymaticsShowcase } from '../app/components/CymaticsShowcase';
 import { CortesiasProvider } from '../produtos/backstage/cortesias/data/cortesias-store';
+import { RemixProvider } from '../produtos/backstage/components/remix/remix-context';
 import { EmissaoCortesias } from '../produtos/backstage/cortesias/pages/EmissaoCortesias';
 import { PermissaoEnvio } from '../produtos/backstage/permissao-envio/pages/PermissaoEnvio';
 import { NovaPermissao } from '../produtos/backstage/permissao-envio/pages/NovaPermissao';
@@ -28,6 +29,7 @@ import { RelatorioPersonalizado } from '../produtos/backstage/relatorios/pages/R
 import { Home as BackstageHome } from '../produtos/backstage/home/pages/Home';
 import { Eventos as BackstageEventos } from '../produtos/backstage/eventos/pages/Eventos';
 import { VisaoGeralEvento } from '../produtos/backstage/eventos/pages/VisaoGeralEvento';
+import { InformacoesEvento } from '../produtos/backstage/eventos/pages/InformacoesEvento';
 import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';
 import { NovoGrupoV2 } from '../produtos/backstage/membros-v2/pages/NovoGrupoV2';
 import { EquipeProvider } from '../produtos/backstage/equipe-de-operacao/data/equipe-store';
@@ -157,8 +159,6 @@ import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/Sol
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
 import { Pedidos as PedidosPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/Pedidos';
 import { DetalhePedido as DetalhePedidoPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/DetalhePedido';
-import { TransferirTitularidade } from '../produtos/backstage/alteracoes-pos-compra/pages/TransferirTitularidade';
-import { TrocarItens } from '../produtos/backstage/alteracoes-pos-compra/pages/TrocarItens';
 import { EditarFormulario } from '../produtos/backstage/alteracoes-pos-compra/pages/EditarFormulario';
 import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
 import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
@@ -196,6 +196,7 @@ function HomeScreen() {
 export default function App() {
   const { theme } = useTheme();
   return (
+    <RemixProvider>
     <CortesiasProvider>
       <PerguntasProvider>
       <PesquisasProvider>
@@ -207,11 +208,10 @@ export default function App() {
         <Route path="/backstage" element={<BackstageEventos />} />
         <Route path="/backstage/eventos" element={<BackstageEventos />} />
         <Route path="/backstage/evento/visao-geral" element={<VisaoGeralEvento />} />
+        <Route path="/backstage/informacoes-evento" element={<InformacoesEvento />} />
         <Route path="/backstage/home" element={<BackstageHome />} />
         <Route path="/backstage/pedidos" element={<PedidosPosCompra />} />
         <Route path="/backstage/pedidos/:pedidoId" element={<DetalhePedidoPosCompra />} />
-        <Route path="/backstage/pedidos/:pedidoId/transferir" element={<TransferirTitularidade />} />
-        <Route path="/backstage/pedidos/:pedidoId/trocar" element={<TrocarItens />} />
         <Route path="/backstage/pedidos/:pedidoId/formulario" element={<EditarFormulario />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
@@ -381,5 +381,6 @@ export default function App() {
       </PesquisasProvider>
       </PerguntasProvider>
     </CortesiasProvider>
+    </RemixProvider>
   );
 }

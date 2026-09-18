@@ -39,9 +39,9 @@ export const EVENTO_STATUS_LABEL: Record<EventoStatus, string> = {
 
 /** Explica a diferença entre os status — usado como texto de apoio no seletor. */
 export const EVENTO_STATUS_DESCRICAO: Record<EventoStatus, string> = {
-    rascunho: "Vendas ainda não habilitadas",
-    privado: "Vendas habilitadas, visível só com o link",
-    publicado: "Vendas habilitadas, visível no site",
+    rascunho: "Vendas ainda desligadas",
+    privado: "Vendas ligadas, só quem tem o link acessa",
+    publicado: "Vendas ligadas, sem restrição de acesso",
     encerrado: "Vendas encerradas",
 };
 
@@ -53,7 +53,8 @@ export const EVENTO_STATUS_BADGE_COLOR: Record<EventoStatus, "warning" | "blue" 
     encerrado: "gray",
 };
 
-/** Privado e publicado habilitam vendas — só muda a visibilidade no site. */
+/** Privado e publicado ligam a venda — hoje a diferença é só quem acessa o link, não uma
+ *  publicação separada em algum site. */
 export function vendasHabilitadas(status: EventoStatus): boolean {
     return status === "privado" || status === "publicado";
 }

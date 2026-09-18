@@ -887,9 +887,9 @@ const STATUS_DOT_COR: Record<EventoStatus, string> = {
  *  EVENTO_STATUS_DESCRICAO (usada no modal): aqui é só um lembrete de uma linha ao lado
  *  do nome, o modal continua sendo o lugar com a explicação completa antes de confirmar. */
 const STATUS_DESCRICAO_CURTA: Record<EventoStatus, string> = {
-    rascunho: "Vendas desabilitadas",
-    privado: "Visível só com link",
-    publicado: "Visível no site da Ingresse",
+    rascunho: "Vendas desligadas",
+    privado: "Ligadas, só com o link",
+    publicado: "Ligadas, sem restrição",
     encerrado: "Vendas encerradas",
 };
 

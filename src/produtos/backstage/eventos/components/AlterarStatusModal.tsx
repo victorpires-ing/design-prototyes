@@ -31,10 +31,10 @@ function descreverMudanca(atual: EventoStatus, alvo: EventoStatus): { tom: "dang
     const partes: string[] = [];
     const vendiaAntes = vendasHabilitadas(atual);
     const vendeDepois = vendasHabilitadas(alvo);
-    if (!vendiaAntes && vendeDepois) partes.push("habilitar a venda de ingressos");
-    if (vendiaAntes && !vendeDepois) partes.push("interromper a venda de ingressos");
-    if (atual !== "publicado" && alvo === "publicado") partes.push("publicar o evento no site da Ingresse");
-    if (atual === "publicado" && alvo !== "publicado") partes.push("remover o evento do site da Ingresse");
+    if (!vendiaAntes && vendeDepois) partes.push("ligar a venda de ingressos");
+    if (vendiaAntes && !vendeDepois) partes.push("desligar a venda de ingressos");
+    if (atual !== "publicado" && alvo === "publicado") partes.push("abrir o acesso para qualquer pessoa comprar, não só quem tem o link");
+    if (atual === "publicado" && alvo !== "publicado") partes.push("restringir o acesso só a quem tem o link");
 
     return { tom: "warning", texto: `Essa mudança vai ${partes.join(" e ")}.` };
 }
@@ -57,7 +57,7 @@ interface AlterarStatusModalProps {
 }
 
 /** Modal de troca de status — reúne escolha e confirmação num só passo, com o efeito
- *  de cada opção explicado antes de aplicar (habilita venda, publica no site, etc.). */
+ *  de cada opção explicado antes de aplicar (liga a venda, restringe o acesso, etc.). */
 export function AlterarStatusModal({ isOpen, onClose, statusAtual, onConfirm, statusInicial }: AlterarStatusModalProps) {
     const [selecionado, setSelecionado] = useState<EventoStatus>(statusInicial ?? statusAtual);
     const [cienteDoEncerramento, setCienteDoEncerramento] = useState(false);
@@ -90,7 +90,7 @@ export function AlterarStatusModal({ isOpen, onClose, statusAtual, onConfirm, st
                                 <h2 className="text-lg font-semibold text-primary">Alterar status do evento</h2>
                                 {!statusInicial && (
                                     <p className="mt-1 text-sm text-tertiary">
-                                        Cada opção muda se as vendas estão habilitadas e se o evento aparece no site da Ingresse.
+                                        Cada opção muda se as vendas estão ligadas e quem consegue acessar o link de compra.
                                     </p>
                                 )}
                             </div>

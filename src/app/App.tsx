@@ -172,6 +172,8 @@ import { EnviarCortesiasFlow, ResgatarCortesiasFlow } from '../produtos/freepass
 import { Reanalise } from '../produtos/payin/suspensao-de-conta/pages/Reanalise';
 import { SuspenderUsuario } from '../produtos/payin/suspensao-de-conta/pages/SuspenderUsuario';
 import { HistoricoSuspensao } from '../produtos/payin/suspensao-de-conta/pages/HistoricoSuspensao';
+import { PayInMenu } from '../produtos/payin/menu/pages/PayInMenu';
+import { Checkout as PayInCheckout } from '../produtos/payin/checkout/pages/Checkout';
 import { Eventos as CashoutEventos } from '../produtos/payout/contrato-quick-win-finance/pages/eventos';
 import { Produtoras as CashoutProdutoras } from '../produtos/payout/contrato-quick-win-finance/pages/produtoras';
 
@@ -373,6 +375,8 @@ export default function App() {
         <Route path="/freepass/distribuicao-cortesias/:eventoId/enviar" element={<EnviarCortesiasFlow />} />
         <Route path="/freepass/distribuicao-cortesias/:eventoId/resgatar" element={<ResgatarCortesiasFlow />} />
         <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />
+        <Route path="/payin" element={<PayInMenu />} />
+        <Route path="/payin/checkout" element={<PayInCheckout />} />
         <Route path="/payin/suspensao-de-conta" element={<Reanalise />} />
         <Route path="/payin/suspensao-de-conta/suspender-usuario" element={<SuspenderUsuario />} />
         <Route path="/payin/suspensao-de-conta/historico/:contaId" element={<HistoricoSuspensao />} />

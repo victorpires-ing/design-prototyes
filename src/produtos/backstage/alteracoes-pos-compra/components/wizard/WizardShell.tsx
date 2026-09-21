@@ -1,11 +1,11 @@
 import { type ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { ChevronLeft, XClose } from "@untitledui/icons";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressIconType } from "@/components/application/progress-steps/progress-types";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
-import { cx } from "@/utils/cx";
 import { EtapaCompacta } from "../pos-compra-ui";
 
 /**
@@ -29,6 +29,7 @@ export function WizardShell({
     onAvancar,
     onConfirmar,
     onMinimizar,
+    ocultarRodape = false,
     children,
 }: {
     isOpen: boolean;
@@ -46,6 +47,9 @@ export function WizardShell({
     onConfirmar: () => void;
     /** Ausente = a primeira etapa não pode ser minimizada, só descartada. */
     onMinimizar?: () => void;
+    /** Esconde o rodapé fixo — para etapas onde a própria escolha já avança (ex.: clicar num
+     *  card de destinatário), sem precisar de um "Avançar" redundante embaixo. */
+    ocultarRodape?: boolean;
     children: ReactNode;
 }) {
     const progressItems: ProgressIconType[] = etapas.map((titulo, i) => ({
@@ -81,17 +85,27 @@ export function WizardShell({
                             <section className="flex w-full max-w-2xl flex-col gap-5 pb-6">{children}</section>
                         </div>
 
-                        <footer className={cx("flex shrink-0 items-center justify-end gap-3 border-t border-secondary px-4 py-4 md:px-6")}>
-                            {ultimaEtapa ? (
-                                <Button size="md" isDisabled={!podeAvancar} onClick={onConfirmar}>
-                                    {rotuloConfirmar}
-                                </Button>
-                            ) : (
-                                <Button size="md" isDisabled={!podeAvancar} onClick={onAvancar}>
-                                    {rotuloAvancar}
-                                </Button>
+                        <AnimatePresence>
+                            {!ocultarRodape && (
+                                <motion.footer
+                                    initial={{ y: "100%", opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    exit={{ y: "100%", opacity: 0 }}
+                                    transition={{ duration: 0.25, ease: "easeOut" }}
+                                    className="flex shrink-0 items-center justify-end gap-3 border-t border-secondary px-4 py-4 md:px-6"
+                                >
+                                    {ultimaEtapa ? (
+                                        <Button size="md" isDisabled={!podeAvancar} onClick={onConfirmar}>
+                                            {rotuloConfirmar}
+                                        </Button>
+                                    ) : (
+                                        <Button size="md" isDisabled={!podeAvancar} onClick={onAvancar}>
+                                            {rotuloAvancar}
+                                        </Button>
+                                    )}
+                                </motion.footer>
                             )}
-                        </footer>
+                        </AnimatePresence>
                     </div>
                 </Dialog>
             </Modal>

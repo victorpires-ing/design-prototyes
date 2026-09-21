@@ -2,7 +2,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, Check, Copy01, Mail01, MessageChatCircle, RefreshCcw01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
-import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Input, InputBase } from "@/components/base/input/input";
 import { InputGroup } from "@/components/base/input/input-group";
 import { ProgressBarBase } from "@/components/base/progress-indicators/progress-indicators";
@@ -19,10 +18,33 @@ import {
     getConta,
     notificarFinanceiro,
     reenviarLink,
-    type CanalEnvio,
+    type Conta,
     type Pedido,
     type Solicitacao,
+    type TipoOperacao,
 } from "../data/pos-compra-store";
+
+/** Quem recebe o link — o novo titular numa transferência, o próprio comprador nas demais
+ *  operações (troca de item, edição de respostas: ninguém mais entra no pedido). */
+const contaDestino = (pedido: Pedido, solicitacao: Solicitacao): Conta | undefined => {
+    if (solicitacao.tipo === "troca-titularidade") {
+        const novoTitularId = Object.values(solicitacao.aplicar.titularPorLinha ?? {})[0];
+        return novoTitularId ? getConta(novoTitularId) : undefined;
+    }
+    return getConta(pedido.compradorId);
+};
+
+const DescricaoOperacao = ({ tipo, conta }: { tipo: TipoOperacao; conta?: Conta }) => {
+    if (tipo === "troca-titularidade") {
+        return (
+            <>
+                <span className="font-semibold text-primary">{conta?.email ?? "O novo titular"}</span> receberá os itens assim que o pagamento for confirmado.
+            </>
+        );
+    }
+    if (tipo === "troca-item") return <>Os novos itens ficam reservados e a troca é aplicada assim que o pagamento for confirmado.</>;
+    return <>As respostas ficam registradas e são aplicadas assim que o pagamento for confirmado.</>;
+};
 
 export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solicitacao: Solicitacao }) {
     const restante = useContagem(solicitacao.estado === "aguardando" ? solicitacao.expiraEm : undefined, () => expirarSolicitacao(pedido.id, solicitacao.id));
@@ -30,12 +52,33 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
     const [marcarPagoAberto, setMarcarPagoAberto] = useState(false);
     const [cancelarAberto, setCancelarAberto] = useState(false);
     const [notificarAberto, setNotificarAberto] = useState(false);
-    const [reenviarAberto, setReenviarAberto] = useState(false);
+    const { copied, copy } = useClipboard();
 
     const aguardando = solicitacao.estado === "aguardando";
     const processando = solicitacao.estado === "processando";
     const falha = solicitacao.estado === "falha";
     const aguardandoFinanceiro = solicitacao.estado === "aguardando-financeiro";
+    const destino = contaDestino(pedido, solicitacao);
+
+    const enviarPorWhatsapp = () => {
+        const contato = destino?.celular || (solicitacao.canalEnvio === "whatsapp" ? solicitacao.destinatarioEnvio : "");
+        if (!contato) {
+            toast.error("Nenhum WhatsApp cadastrado para enviar.");
+            return;
+        }
+        reenviarLink(pedido.id, solicitacao.id, "whatsapp", contato);
+        toast.success("Link enviado por WhatsApp.");
+    };
+
+    const enviarPorEmail = () => {
+        const contato = destino?.email || (solicitacao.canalEnvio === "email" ? solicitacao.destinatarioEnvio : "");
+        if (!contato) {
+            toast.error("Nenhum e-mail disponível para enviar.");
+            return;
+        }
+        reenviarLink(pedido.id, solicitacao.id, "email", contato);
+        toast.success("Link enviado por e-mail.");
+    };
 
     return (
         <section className={cxTom(falha || aguardandoFinanceiro)}>
@@ -62,6 +105,12 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
                     </div>
                 )}
             </div>
+
+            {aguardando && (
+                <p className="text-sm text-tertiary">
+                    <DescricaoOperacao tipo={solicitacao.tipo} conta={destino} />
+                </p>
+            )}
 
             {processando && (
                 <p className="flex items-center gap-2 text-sm font-medium text-secondary">
@@ -91,6 +140,31 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
                 </div>
             )}
 
+            {aguardando && (
+                <div className="flex flex-col gap-2">
+                    <p className="text-sm font-semibold text-primary">Link de pagamento</p>
+                    <div className="flex flex-col flex-wrap gap-2 sm:flex-row">
+                        <InputGroup
+                            aria-label="Link de pagamento"
+                            className="min-w-0 flex-1"
+                            trailingAddon={
+                                <Button size="sm" color="secondary" iconLeading={copied ? Check : Copy01} onClick={() => copy(`https://${solicitacao.linkPagamento}`)}>
+                                    {copied ? "Copiado" : "Copiar"}
+                                </Button>
+                            }
+                        >
+                            <InputBase isReadOnly value={solicitacao.linkPagamento} />
+                        </InputGroup>
+                        <Button size="sm" color="secondary" iconLeading={MessageChatCircle} onClick={enviarPorWhatsapp}>
+                            Enviar por Whatsapp
+                        </Button>
+                        <Button size="sm" color="secondary" iconLeading={Mail01} onClick={enviarPorEmail}>
+                            Enviar por e-mail
+                        </Button>
+                    </div>
+                </div>
+            )}
+
             <ResumoFinanceiro linhas={solicitacao.linhas} titulo="Cobrança" />
 
             {(aguardando || falha) && (
@@ -103,14 +177,6 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
                             <Button size="sm" color="secondary" onClick={() => setCancelarAberto(true)}>
                                 Cancelar operação
                             </Button>
-                            <Dropdown.Root>
-                                <Dropdown.DotsButton />
-                                <Dropdown.Popover className="w-56">
-                                    <Dropdown.Menu>
-                                        <Dropdown.Item id="reenviar" label="Reenviar link" onAction={() => setReenviarAberto(true)} />
-                                    </Dropdown.Menu>
-                                </Dropdown.Popover>
-                            </Dropdown.Root>
                         </>
                     )}
                     {falha && (
@@ -124,7 +190,6 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
             <ModalMarcarComoPago isOpen={marcarPagoAberto} onClose={() => setMarcarPagoAberto(false)} pedidoId={pedido.id} solicitacao={solicitacao} />
             <ModalCancelarOperacao isOpen={cancelarAberto} onClose={() => setCancelarAberto(false)} pedidoId={pedido.id} solicitacaoId={solicitacao.id} />
             <ModalNotificarFinanceiro isOpen={notificarAberto} onClose={() => setNotificarAberto(false)} pedidoId={pedido.id} solicitacao={solicitacao} />
-            <ModalReenviarLink isOpen={reenviarAberto} onClose={() => setReenviarAberto(false)} pedido={pedido} solicitacao={solicitacao} />
         </section>
     );
 }
@@ -263,61 +328,3 @@ function ModalNotificarFinanceiro({ isOpen, onClose, pedidoId, solicitacao }: { 
     );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Reenviar link                                                      */
-/* ------------------------------------------------------------------ */
-
-function ModalReenviarLink({ isOpen, onClose, pedido, solicitacao }: { isOpen: boolean; onClose: () => void; pedido: Pedido; solicitacao: Solicitacao }) {
-    const { copied, copy } = useClipboard();
-    const [canal, setCanal] = useState<CanalEnvio>(solicitacao.canalEnvio);
-    const [destino, setDestino] = useState(solicitacao.destinatarioEnvio);
-    const comprador = getConta(pedido.compradorId);
-
-    return (
-        <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable>
-            <Modal className="sm:max-w-md">
-                <Dialog>
-                    <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
-                        <div>
-                            <h2 className="text-lg font-semibold text-primary">Reenviar link de pagamento</h2>
-                            <p className="mt-1 text-sm text-tertiary">O prazo não muda: continua valendo a partir de quando a cobrança foi criada.</p>
-                        </div>
-
-                        <InputGroup aria-label="Link de pagamento" trailingAddon={<Button color="secondary" iconLeading={copied ? Check : Copy01} onClick={() => copy(`https://${solicitacao.linkPagamento}`)}>{copied ? "Copiado" : "Copiar"}</Button>}>
-                            <InputBase isReadOnly value={solicitacao.linkPagamento} />
-                        </InputGroup>
-
-                        <div className="flex gap-2">
-                            <Button size="sm" color={canal === "whatsapp" ? "primary" : "secondary"} iconLeading={MessageChatCircle} className="flex-1" onClick={() => setCanal("whatsapp")}>
-                                WhatsApp
-                            </Button>
-                            <Button size="sm" color={canal === "email" ? "primary" : "secondary"} iconLeading={Mail01} className="flex-1" onClick={() => setCanal("email")}>
-                                E-mail
-                            </Button>
-                        </div>
-
-                        <Input label={canal === "email" ? "E-mail" : "WhatsApp"} value={destino} onChange={setDestino} placeholder={canal === "email" ? comprador?.email : comprador?.celular} />
-
-                        <div className="mt-2 flex justify-end gap-3">
-                            <Button size="md" color="secondary" onClick={onClose}>
-                                Cancelar
-                            </Button>
-                            <Button
-                                size="md"
-                                color="primary"
-                                isDisabled={destino.trim().length === 0}
-                                onClick={() => {
-                                    reenviarLink(pedido.id, solicitacao.id, canal, destino.trim());
-                                    toast.success("Link reenviado.");
-                                    onClose();
-                                }}
-                            >
-                                Reenviar
-                            </Button>
-                        </div>
-                    </div>
-                </Dialog>
-            </Modal>
-        </ModalOverlay>
-    );
-}

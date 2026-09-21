@@ -279,14 +279,18 @@ export function DetalhePedido() {
                                 )}
 
                                 <section className="rounded-2xl bg-primary ring-1 ring-border-secondary">
-                                    <div className="sticky top-[61px] z-10 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-2xl border-b border-secondary bg-primary px-5 py-3 md:top-[var(--bs-header-offset,0px)]">
+                                    <div className="sticky top-[61px] z-10 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-2xl border-b border-secondary bg-secondary px-6 py-3 md:top-[var(--bs-header-offset,0px)]">
                                         <Checkbox
-                                            size="sm"
+                                            size="md"
                                             isSelected={todosSelecionados}
                                             isIndeterminate={algunsSelecionados}
                                             isDisabled={idsSelecionaveis.length === 0}
                                             onChange={(marcar) => alternar(idsSelecionaveis, marcar)}
-                                            label={<TextoAnimado>{nSelecionados > 0 ? `${nSelecionados} de ${idsSelecionaveis.length} selecionados` : `Selecionar todos (${idsSelecionaveis.length})`}</TextoAnimado>}
+                                            label={
+                                                <span className="text-xs font-semibold text-quaternary">
+                                                    <TextoAnimado>{nSelecionados > 0 ? `${nSelecionados} de ${idsSelecionaveis.length} selecionados` : "Selecionar todos"}</TextoAnimado>
+                                                </span>
+                                            }
                                         />
                                         {nSelecionados > 0 && (
                                             <Button size="sm" color="link-gray" onClick={() => setSelecao({})}>
@@ -294,23 +298,40 @@ export function DetalhePedido() {
                                             </Button>
                                         )}
                                         <div className="flex w-full gap-2 sm:ml-auto sm:w-auto">
-                                            <Button size="sm" color="secondary" className="flex-1 sm:flex-none" isDisabled={nSelecionados === 0} onClick={() => irParaTransferir(idsSelecionados)}>
-                                                {nSelecionados > 0 ? <>Transferir <ContadorSelecao n={nSelecionados} /> itens</> : "Transferir itens"}
-                                            </Button>
                                             <Button size="sm" color="secondary" className="flex-1 sm:flex-none" isDisabled={nSelecionados === 0 || encerrado} onClick={() => abrirTroca(idsSelecionados)}>
-                                                {nSelecionados > 0 ? <>Trocar <ContadorSelecao n={nSelecionados} /> itens</> : "Trocar itens"}
+                                                {nSelecionados > 0 ? `Trocar ${nSelecionados} itens` : "Trocar itens"}
+                                            </Button>
+                                            <Button size="sm" color="secondary" className="flex-1 sm:flex-none" isDisabled={nSelecionados === 0} onClick={() => irParaTransferir(idsSelecionados)}>
+                                                {nSelecionados > 0 ? `Transferir ${nSelecionados} itens` : "Transferir itens"}
                                             </Button>
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col gap-6 rounded-b-2xl p-5">
-                                        {estrutura.sessoes.map(({ sessao, itens }) => (
-                                            <Secao key={sessao.id} titulo={tituloDaSessao(sessao)} icone={Calendar}>
-                                                {itens.map(cartao)}
-                                            </Secao>
-                                        ))}
-                                        {estrutura.produtos.length > 0 && <Secao titulo="Produtos">{estrutura.produtos.map(cartao)}</Secao>}
-                                        {estrutura.combos.length > 0 && <Secao titulo="Combos">{estrutura.combos.map(cartao)}</Secao>}
+                                    <div className="flex flex-col gap-5 rounded-b-2xl p-4">
+                                        {estrutura.sessoes.length > 0 && (
+                                            <div className="flex flex-col gap-3">
+                                                <p className="text-md font-bold text-primary">Ingressos</p>
+                                                <div className="flex flex-col gap-5">
+                                                    {estrutura.sessoes.map(({ sessao, itens }) => (
+                                                        <Secao key={sessao.id} titulo={tituloDaSessao(sessao)} icone={Calendar}>
+                                                            {itens.map(cartao)}
+                                                        </Secao>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {estrutura.produtos.length > 0 && (
+                                            <div className="flex flex-col gap-3">
+                                                <p className="text-md font-bold text-primary">Produtos</p>
+                                                <div className="flex flex-col divide-y divide-border-secondary">{estrutura.produtos.map(cartao)}</div>
+                                            </div>
+                                        )}
+                                        {estrutura.combos.length > 0 && (
+                                            <div className="flex flex-col gap-3">
+                                                <p className="text-md font-bold text-primary">Combos</p>
+                                                <div className="flex flex-col divide-y divide-border-secondary">{estrutura.combos.map(cartao)}</div>
+                                            </div>
+                                        )}
                                     </div>
                                 </section>
                             </div>
@@ -361,17 +382,13 @@ export function DetalhePedido() {
 /*  Lista de itens                                                     */
 /* ------------------------------------------------------------------ */
 
-const ContadorSelecao = ({ n }: { n: number }) => (
-    <span className="inline-flex min-w-5 items-center justify-center rounded-md px-1.5 py-0.5 text-xs font-semibold text-tertiary ring-1 ring-border-secondary tabular-nums">{n}</span>
-);
-
 const Secao = ({ titulo, icone: Icone, children }: { titulo: string; icone?: typeof Calendar; children: ReactNode }) => (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-primary">
             {Icone && <Icone className="size-4 text-fg-quaternary" aria-hidden="true" />}
             <span className="first-letter:uppercase">{titulo}</span>
         </h3>
-        <div className="flex flex-col gap-3">{children}</div>
+        <div className="flex flex-col divide-y divide-border-secondary">{children}</div>
     </div>
 );
 
@@ -389,14 +406,24 @@ interface CartaoItemProps extends ItemDoPedido {
 
 /** Um item do catálogo com suas unidades: o cabeçalho resume, as unidades mostram titular e situação.
  *  Três alvos de clique, nunca sobrepostos: o cabeçalho SÓ expande (nunca seleciona, mesmo com uma
- *  unidade só); o checkbox SÓ seleciona; o botão de ação SÓ inicia uma operação. */
+ *  unidade só); o checkbox SÓ seleciona; o botão de ação SÓ inicia uma operação.
+ *  Sem card próprio: os itens só se separam por um divisor (ver <Secao>) — o destaque de "tudo
+ *  selecionado" vira um tingimento de fundo em vez de um anel, já que não há mais borda para colorir. */
 const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExpandir, onAlternar, onEditarFormulario, onTrocar, onTransferir }: CartaoItemProps) => {
     const idsLivres = linhas.filter((l) => selecionavel(pedido, l)).map((l) => l.id);
     const nMarcadas = idsLivres.filter((id) => selecao[id]).length;
     const todas = nMarcadas > 0 && nMarcadas === idsLivres.length;
     const total = linhas.reduce((soma, l) => soma + l.valorPago, 0);
     const varias = linhas.length > 1;
-    const mostrarUnidades = !varias || expandido;
+    const mostrarUnidades = varias && expandido;
+
+    /* Com uma unidade só, não existe uma segunda linha de "unidade" — o detalhe do portador entra
+       alinhado com o título do item, no mesmo cabeçalho, em vez de repetir a linha embaixo. */
+    const linhaUnica = linhas[0];
+    const estadoUnico = !varias ? estadoDaLinha(pedido, linhaUnica) : undefined;
+    const titularUnico = !varias ? getConta(linhaUnica.titularId ?? pedido.compradorId) : undefined;
+    const livreUnico = !varias && selecionavel(pedido, linhaUnica);
+    const temFormularioUnico = !varias && Boolean(getFormulario(item.formularioId)?.perguntaIds.length);
 
     const contagem = new Map<EstadoLinha, number>();
     linhas.forEach((l) => {
@@ -422,34 +449,53 @@ const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExp
     };
 
     return (
-        <div className={cx("rounded-xl bg-primary ring-1 ring-border-secondary", todas && "ring-border-brand")}>
-            <div
-                className={cx(
-                    "flex items-start gap-3 rounded-t-xl p-4 transition duration-100 ease-linear",
-                    varias && "cursor-pointer",
-                    varias && !mostrarUnidades && "hover:bg-primary_hover",
-                    !mostrarUnidades && "rounded-b-xl",
-                )}
-                onClick={clicarNoCabecalho}
-            >
+        <div className={cx("transition duration-100 ease-linear", todas && "bg-secondary")}>
+            <div className={cx("flex items-start gap-3 py-4 transition duration-100 ease-linear", varias && "cursor-pointer hover:bg-primary_hover")} onClick={clicarNoCabecalho}>
                 <div className={cx("-m-1 flex items-center gap-3 rounded-lg p-1", idsLivres.length > 0 && "cursor-pointer")} onClick={clicarNoSeletor}>
                     <Checkbox size="md" aria-label={`Selecionar todas as unidades de ${item.nome}`} isSelected={todas} isIndeterminate={nMarcadas > 0 && !todas} isDisabled={idsLivres.length === 0} onChange={(marcar) => onAlternar(idsLivres, marcar)} />
                     <Miniatura item={item} />
                 </div>
 
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className={cx("flex min-w-0 flex-1 flex-col gap-0.5", estadoUnico === "transferida" && "opacity-70")}>
                     {item.grupo && <p className="text-sm text-tertiary">{item.grupo}</p>}
                     <p className="text-sm font-semibold text-primary">
                         {item.nome}
                         {item.lote && <span className="font-normal text-tertiary"> | {rotuloDoLote(item.lote)}</span>}
                     </p>
                     {item.tipo !== "ingresso" && item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
-                    {varias && resumoEstados && <p className="mt-1 text-sm text-tertiary">{resumoEstados}</p>}
+                    {varias ? (
+                        resumoEstados && <p className="mt-1 text-sm text-tertiary">{resumoEstados}</p>
+                    ) : (
+                        <>
+                            <p className="text-sm text-tertiary">
+                                {titularUnico?.nome ?? "Participante"}
+                                {titularUnico?.cpf ? ` · CPF ${mascararCPF(titularUnico.cpf)}` : titularUnico?.email ? ` · ${titularUnico.email}` : ""}
+                            </p>
+                            <Pendencia pedido={pedido} linha={linhaUnica} />
+                        </>
+                    )}
                 </div>
 
-                <div className="shrink-0 text-right">
-                    <p className="text-sm font-semibold text-primary tabular-nums">{formatarMoeda(total)}</p>
-                    <p className="text-sm text-tertiary">{plural(linhas.length, "unidade", "unidades")}</p>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                    <div className="text-right">
+                        <p className="text-sm font-semibold text-primary tabular-nums">{formatarMoeda(total)}</p>
+                        <p className="text-sm text-tertiary">{plural(linhas.length, "unidade", "unidades")}</p>
+                    </div>
+                    {!varias && (estadoUnico === "transferida" || livreUnico) && (
+                        <span className="flex items-center gap-1">
+                            {estadoUnico === "transferida" && <BadgeTransferido />}
+                            {livreUnico && (
+                                <>
+                                    {temFormularioUnico && (
+                                        <Button size="sm" color="link-gray" onClick={() => onEditarFormulario(linhaUnica.id)}>
+                                            Editar formulário
+                                        </Button>
+                                    )}
+                                    <MenuAcoes rotulo={`Mais ações de ${item.nome}`} ehIngresso={item.tipo === "ingresso"} encerrado={encerrado} onTransferir={() => onTransferir([linhaUnica.id])} onTrocar={() => onTrocar([linhaUnica.id])} />
+                                </>
+                            )}
+                        </span>
+                    )}
                 </div>
 
                 {varias && (
@@ -470,7 +516,6 @@ const CartaoItem = ({ pedido, item, linhas, selecao, encerrado, expandido, onExp
                                 pedido={pedido}
                                 linha={linha}
                                 numero={indice + 1}
-                                unica={!varias}
                                 selecionada={Boolean(selecao[linha.id])}
                                 encerrado={encerrado}
                                 onAlternar={(marcar) => onAlternar([linha.id], marcar)}
@@ -490,7 +535,6 @@ interface UnidadeProps {
     pedido: Pedido;
     linha: PedidoItem;
     numero: number;
-    unica: boolean;
     selecionada: boolean;
     encerrado: boolean;
     onAlternar: (marcar: boolean) => void;
@@ -499,34 +543,26 @@ interface UnidadeProps {
     onTransferir: () => void;
 }
 
-const Unidade = ({ pedido, linha, numero, unica, selecionada, encerrado, onAlternar, onEditarFormulario, onTrocar, onTransferir }: UnidadeProps) => {
+const Unidade = ({ pedido, linha, numero, selecionada, encerrado, onAlternar, onEditarFormulario, onTrocar, onTransferir }: UnidadeProps) => {
     const estado = estadoDaLinha(pedido, linha);
     const livre = selecionavel(pedido, linha);
     const titular = getConta(linha.titularId ?? pedido.compradorId);
     const item = getItem(linha.itemId);
     const temFormulario = Boolean(getFormulario(item?.formularioId)?.perguntaIds.length);
 
-    /* Sem ambiguidade aqui: a unidade não tem "expandir", então clicar na linha sempre e só
-       alterna a seleção — comportamento consistente em qualquer contexto, diferente do cabeçalho
-       do card acima (que só expande). */
+    /* A unidade não tem "expandir" — clicar na linha sempre e só alterna a seleção, diferente do
+       cabeçalho do item acima (que só expande). */
     const alternarLinha = (event: MouseEvent<HTMLLIElement>) => {
         if (!event.currentTarget.contains(event.target as Node) || !livre) return;
         onAlternar(!selecionada);
     };
 
     return (
-        <li
-            className={cx("flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 transition duration-100 ease-linear", livre && !unica && "cursor-pointer", estado === "transferida" && "opacity-70", unica && "rounded-b-xl")}
-            onClick={unica ? undefined : alternarLinha}
-        >
-            {unica ? (
-                <span className="w-5" aria-hidden="true" />
-            ) : (
-                <span onClick={interromper}>
-                    <Checkbox size="md" aria-label={`Selecionar unidade ${numero}${titular ? ` de ${titular.nome}` : ""}`} isSelected={selecionada} isDisabled={!livre} onChange={onAlternar} />
-                </span>
-            )}
-            {!unica && <span className="w-7 shrink-0 text-sm text-tertiary tabular-nums">#{numero}</span>}
+        <li className={cx("flex flex-wrap items-center gap-x-3 gap-y-2 py-3 transition duration-100 ease-linear", livre && "cursor-pointer", estado === "transferida" && "opacity-70")} onClick={alternarLinha}>
+            <span onClick={interromper}>
+                <Checkbox size="md" aria-label={`Selecionar unidade ${numero}${titular ? ` de ${titular.nome}` : ""}`} isSelected={selecionada} isDisabled={!livre} onChange={onAlternar} />
+            </span>
+            <span className="w-7 shrink-0 text-sm text-tertiary tabular-nums">#{numero}</span>
 
             <div className="flex min-w-[12rem] flex-1 flex-col gap-0.5">
                 <p className="truncate text-sm font-medium text-primary">{titular?.nome ?? "Participante"}</p>

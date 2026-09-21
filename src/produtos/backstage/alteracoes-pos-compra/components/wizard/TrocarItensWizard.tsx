@@ -37,7 +37,7 @@ import {
     type TipoItem,
 } from "../../data/pos-compra-store";
 import { WizardShell } from "./WizardShell";
-import { EtapaEnvio, isEmailValido, isTelefoneValido } from "./EtapaEnvio";
+import { isEmailValido, isTelefoneValido } from "./EtapaEnvio";
 
 type Etapa = "saem" | "entram" | "formularios" | "revisao";
 
@@ -88,8 +88,9 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
         return contagem;
     });
     const [respostasEntram, setRespostasEntram] = useState<Record<string, Record<string, string>>>({});
-    const [canal, setCanal] = useState<CanalEnvio>("email");
-    const [destino, setDestino] = useState("");
+    const [canal] = useState<CanalEnvio>("email");
+    /* Sem campo próprio pra isso — a cobrança vai direto pro e-mail do comprador do pedido. */
+    const [destino] = useState(() => getConta(pedido.compradorId)?.email ?? "");
 
     /* ------------------------------------------------------------------ */
     /*  O que sai                                                          */
@@ -494,16 +495,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
 
                     <ResumoFinanceiro linhas={calculo.linhas} />
                     <Regra>As vagas ficam reservadas por 1 hora. Nada é aplicado antes do pagamento.</Regra>
-
-                    <EtapaEnvio
-                        destinatarioSugerido={comprador}
-                        resumo={`sua troca de itens no pedido foi registrada.`}
-                        total={calculo.total}
-                        canal={canal}
-                        destino={destino}
-                        onCanalChange={setCanal}
-                        onDestinoChange={setDestino}
-                    />
                 </>
             )}
         </WizardShell>

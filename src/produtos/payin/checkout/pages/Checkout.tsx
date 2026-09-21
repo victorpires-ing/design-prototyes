@@ -381,7 +381,7 @@ export function Checkout() {
                 )}
 
                 {/* Duas colunas */}
-                <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
+                <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
                     {/* Coluna principal */}
                     <div>
                         {/* Proteção */}
@@ -532,33 +532,41 @@ export function Checkout() {
                 </div>
             )}
 
-            {/* Contador da análise — teste de usabilidade (ao zerar, vai pro formulário) */}
+            {/* CTA da análise — teste de usabilidade (clicável; ao zerar, vai pro formulário) */}
             {isMobile ? (
                 <div className="fixed inset-x-0 bottom-0 z-40 bg-primary px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] ring-1 ring-border-secondary">
-                    <div
+                    <button
+                        type="button"
+                        onClick={() => navigate("/payin/checkout/analise")}
                         className={cx(
-                            "flex h-12 w-full items-center justify-center gap-3 rounded-lg bg-black px-4 text-white",
+                            "flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-brand-solid px-4 text-md font-semibold text-white transition duration-100 ease-linear active:opacity-90",
                             analiseRestante <= 10 && "animate-pulse",
                         )}
                     >
-                        <Clock className="size-5 shrink-0 text-white/70" />
-                        <span className="text-sm font-medium text-white/80">Tempo de análise</span>
-                        <span className="ml-auto text-lg font-bold tabular-nums">{analiseRelogio}</span>
-                    </div>
+                        <CheckCircle className="size-5 shrink-0" />
+                        Terminei minha análise
+                        <span className="ml-auto flex items-center gap-1.5 border-l border-white/25 pl-3 text-sm font-bold tabular-nums">
+                            <Clock className="size-4 text-white/70" />
+                            {analiseRelogio}
+                        </span>
+                    </button>
                 </div>
             ) : (
-                <div
+                <button
+                    type="button"
+                    onClick={() => navigate("/payin/checkout/analise")}
                     className={cx(
-                        "fixed right-6 bottom-6 z-40 flex items-center gap-3 rounded-xl bg-black px-5 py-3.5 text-white shadow-lg",
+                        "fixed right-6 bottom-6 z-40 flex items-center gap-3 rounded-xl bg-brand-solid px-5 py-3.5 text-md font-semibold text-white shadow-lg transition duration-100 ease-linear hover:bg-brand-solid_hover active:opacity-90",
                         analiseRestante <= 10 && "animate-pulse",
                     )}
                 >
-                    <Clock className="size-5 shrink-0 text-white/70" />
-                    <div className="flex flex-col leading-tight">
-                        <span className="text-xs font-medium text-white/60">Tempo de análise</span>
-                        <span className="text-xl font-bold tabular-nums">{analiseRelogio}</span>
-                    </div>
-                </div>
+                    <CheckCircle className="size-5 shrink-0" />
+                    Terminei minha análise
+                    <span className="flex items-center gap-1.5 border-l border-white/25 pl-3 text-sm font-bold tabular-nums">
+                        <Clock className="size-4 text-white/70" />
+                        {analiseRelogio}
+                    </span>
+                </button>
             )}
         </div>
     );

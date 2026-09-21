@@ -1,11 +1,10 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { ArrowDown, ChevronDown, Copy01, SearchLg } from "@untitledui/icons";
+import { ArrowDown, ChevronDown, ChevronRight, Copy01, SearchLg } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { Aviso, EtapaJustificativa, FOCO, Miniatura, Regra, ResumoFinanceiro, iniciaisDe } from "../pos-compra-ui";
@@ -35,7 +34,7 @@ import {
     type Rascunho,
 } from "../../data/pos-compra-store";
 import { WizardShell } from "./WizardShell";
-import { EtapaEnvio, isEmailValido, isTelefoneValido } from "./EtapaEnvio";
+import { isEmailValido, isTelefoneValido } from "./EtapaEnvio";
 import { CadastroContaInline } from "./CadastroContaInline";
 
 type Etapa = "itens" | "destinatario" | "formularios" | "revisao";
@@ -97,9 +96,11 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
     const termo = busca.trim();
     const encontradas = buscarContas(termo);
 
+    const bloqueiosDaConta = (conta: Conta) => linhas.map((linha) => ({ linha, bloqueio: validarNovoTitular(pedido, linha, conta) })).filter((b) => b.bloqueio);
+
     /* Restrição validada LINHA A LINHA contra o item daquela linha específica — nunca mais "o
        primeiro item segmentado do pedido inteiro" travando ou liberando transferências por engano. */
-    const bloqueiosPorLinha = selecionada ? linhas.map((linha) => ({ linha, bloqueio: validarNovoTitular(pedido, linha, selecionada) })).filter((b) => b.bloqueio) : [];
+    const bloqueiosPorLinha = selecionada ? bloqueiosDaConta(selecionada) : [];
 
     /* ------------------------------------------------------------------ */
     /*  Formulários                                                        */
@@ -157,19 +158,24 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
     const rotuloAvancar = etapa === "itens" ? "Escolher destinatário" : etapa === "destinatario" && comFormulario.length > 0 ? "Preencher formulários" : "Ver resumo";
 
-    const salvarProgresso = (proximaEtapa: string) =>
+    /* `destinatarioEscolhido` existe porque clicar num card de conta escolhe e avança no mesmo
+       clique — sem isso, o rascunho salvo levaria o `selecionada` de ANTES do clique, já que o
+       estado só é atualizado no próximo render. */
+    const salvarProgresso = (proximaEtapa: string, destinatarioEscolhido?: Conta) => {
+        const destinatario = destinatarioEscolhido ?? selecionada;
         salvarRascunho({
             id: rascunhoId,
             pedidoId: pedido.id,
             tipo: "troca-titularidade",
             etapa: proximaEtapa,
             linhasSelecionadas: linhas.map((l) => l.id),
-            titularPorLinha: selecionada ? Object.fromEntries(linhas.map((l) => [l.id, selecionada.id])) : undefined,
+            titularPorLinha: destinatario ? Object.fromEntries(linhas.map((l) => [l.id, destinatario.id])) : undefined,
             respostasPorLinha,
             motivo: justificativa ? { categoria: "outro", detalhe: justificativa } : undefined,
             aguardandoCadastroDe: cadastrando ? busca : undefined,
             operador: "Operador do backoffice",
         });
+    };
 
     const avancar = () => {
         salvarProgresso(etapas[Math.min(indice + 1, etapas.length - 1)]);
@@ -182,6 +188,20 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
         onFechar();
     };
     const alterarItens = () => (selecaoPrevia ? onFechar() : setIndice(etapas.indexOf("itens")));
+
+    /* Clicar no card já escolhe E avança — sem passar pelo rodapé. Só não avança quando a conta
+       está bloqueada para algum item ou já é a titular atual: aí fica na etapa, e os avisos que
+       já existiam (abaixo da lista) continuam explicando o motivo.
+       O destino da cobrança não tem mais campo próprio — vai direto para o e-mail da pessoa
+       escolhida, sem precisar perguntar de novo algo que a etapa anterior já respondeu. */
+    const escolherDestinatario = (conta: Conta) => {
+        setSelecionada(conta);
+        setDestino(conta.email);
+        const jaEhTitular = conta.id === (linhas[0]?.titularId ?? pedido.compradorId);
+        if (jaEhTitular || bloqueiosDaConta(conta).length > 0) return;
+        salvarProgresso(etapas[Math.min(indice + 1, etapas.length - 1)], conta);
+        setIndice((i) => i + 1);
+    };
 
     const confirmar = () => {
         if (!selecionada) return;
@@ -217,7 +237,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
         onFechar();
     };
 
-    const colunaEstreita = etapa === "destinatario";
+    const colunaEstreita = etapa === "destinatario" || etapa === "revisao";
 
     return (
         <WizardShell
@@ -228,6 +248,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
             etapas={etapas.map((e) => TITULO_ETAPA[e])}
             indiceAtual={indice}
             podeAvancar={podeAvancar}
+            ocultarRodape={etapa === "destinatario"}
             rotuloAvancar={rotuloAvancar}
             ultimaEtapa={etapa === "revisao"}
             rotuloConfirmar="Enviar cobrança"
@@ -285,8 +306,8 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                 nomeInicial={busca}
                                 linhas={linhas}
                                 onCriada={(conta) => {
-                                    setSelecionada(conta);
                                     setCadastrando(false);
+                                    escolherDestinatario(conta);
                                 }}
                                 onCancelar={() => setCadastrando(false)}
                             />
@@ -322,7 +343,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                     <div className="w-full rounded-2xl bg-primary ring-1 ring-border-secondary">
                                         <div className="px-5 pt-5 pb-3">
                                             <p className="text-base font-semibold text-primary">{encontradas.length === 1 ? "Conta encontrada" : "Contas encontradas"}</p>
-                                            <p className="text-sm text-tertiary">Confira o nome e o e-mail antes de continuar.</p>
+                                            <p className="text-sm text-tertiary">Confira o nome e o e-mail antes de continuar. Clicar escolhe a pessoa e já avança.</p>
                                         </div>
                                         <ul className="flex flex-col divide-y divide-border-secondary border-t border-secondary">
                                             {encontradas.map((conta) => {
@@ -331,7 +352,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                                     <li key={conta.id}>
                                                         <button
                                                             type="button"
-                                                            onClick={() => setSelecionada(conta)}
+                                                            onClick={() => escolherDestinatario(conta)}
                                                             aria-pressed={ativa}
                                                             className={cx("flex w-full items-center gap-3 px-5 py-4 text-left transition duration-100 ease-linear last:rounded-b-2xl hover:bg-primary_hover", ativa && "bg-secondary", FOCO)}
                                                         >
@@ -340,7 +361,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                                                 <span className="block text-sm font-semibold text-primary">{conta.nome}</span>
                                                                 <span className="block truncate text-sm text-tertiary">{conta.email} | CPF {conta.cpf}</span>
                                                             </span>
-                                                            <RadioButtonBase size="sm" isSelected={ativa} className="shrink-0" />
+                                                            <ChevronRight className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
                                                         </button>
                                                     </li>
                                                 );
@@ -450,7 +471,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                 <p className="text-base font-semibold text-primary">Tudo certo para transferir?</p>
                                 <p className="mt-1 text-sm text-tertiary">
                                     {linhas.length === 1 ? "Este item passa" : `Estes ${linhas.length} itens passam`} de <span className="font-medium text-primary">{titularDaLinha(pedido, linhas[0])?.nome}</span> para{" "}
-                                    <span className="font-medium text-primary">{selecionada.nome}</span> assim que o link for pago.
+                                    <span className="font-medium text-primary">{selecionada.nome}</span> assim que a taxa de transferência for paga.
                                 </p>
                             </div>
 
@@ -492,16 +513,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                         <div className="w-full">
                             <ResumoFinanceiro linhas={calculo.linhas} />
                         </div>
-
-                        <EtapaEnvio
-                            destinatarioSugerido={selecionada ?? undefined}
-                            resumo={`${selecionada?.nome ?? "quem vai receber"} vai receber ${linhas.length === 1 ? "1 item" : `${linhas.length} itens`} do seu pedido.`}
-                            total={calculo.total}
-                            canal={canal}
-                            destino={destino}
-                            onCanalChange={setCanal}
-                            onDestinoChange={setDestino}
-                        />
                     </>
                 )}
             </div>

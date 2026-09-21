@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { AlertCircle, CheckCircle, Monitor01, Phone01, Plus, SearchLg } from "@untitledui/icons";
+import { AlertCircle, CheckCircle, Monitor01, Phone01, Plus, SearchLg, XClose } from "@untitledui/icons";
 import { AlertFloating } from "@/components/application/alerts/alerts";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
@@ -168,11 +168,19 @@ export function LoungePremiumBahia() {
     // Contagem exibida "X de 5": cadastrados + válidos preenchidos em andamento.
     const contagem = beneficiarios.length + novos.length;
 
-    // Salva a lista inteira: adiciona todos os CPFs válidos e fecha os campos.
+    const [confirmando, setConfirmando] = useState(false);
+
+    // Abre o modal de confirmação antes de salvar de fato.
     const salvarLista = () => {
         if (!podeSalvar) return;
+        setConfirmando(true);
+    };
+
+    // Confirma: adiciona todos os CPFs válidos, fecha campos e modal.
+    const confirmarCadastro = () => {
         setBeneficiarios((prev) => [...prev, ...novos]);
         setLinhas([]);
+        setConfirmando(false);
     };
 
     // Pré-visualização Desktop/Mobile. Dentro do iframe (?frame=1) não mostra o toggle.
@@ -313,7 +321,7 @@ export function LoungePremiumBahia() {
                                             )}
                                             style={{ backgroundColor: ok ? AZUL : erro ? VERMELHO_ERRO : "#122a58" }}
                                         >
-                                            {beneficiarios.length + i + 1}
+                                            {i + 1}
                                         </span>
                                         <div className="min-w-0 flex-1">
                                             <div className="relative">
@@ -323,7 +331,7 @@ export function LoungePremiumBahia() {
                                                     inputMode="numeric"
                                                     autoFocus={i === 0}
                                                     placeholder="000.000.000-00"
-                                                    aria-label={`CPF do beneficiário ${beneficiarios.length + i + 1}`}
+                                                    aria-label={`CPF do beneficiário ${i + 1}`}
                                                     style={{ backgroundColor: "#ffffff" }}
                                                     className={cx(
                                                         "w-full rounded-lg px-3.5 py-2.5 pr-10 text-sm text-gray-900 ring-1 outline-none transition duration-100 placeholder:text-gray-400",
@@ -429,6 +437,66 @@ export function LoungePremiumBahia() {
                     )}
                 </section>
             </main>
+
+            {/* Modal de confirmação de cadastro */}
+            {confirmando && (
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-overlay/60 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true">
+                    <div
+                        className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl shadow-xl ring-1 ring-border-secondary sm:rounded-2xl"
+                        style={{ background: "linear-gradient(180deg, #040e28 0%, #01060f 100%)" }}
+                    >
+                        <div className="flex items-start justify-between gap-3 p-6 pb-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-primary">
+                                    Adicionar {novos.length === 1 ? novos[0].nome : `${novos.length} pessoas`} à sua lista?
+                                </h2>
+                                <p className="mt-1 text-sm leading-relaxed text-secondary">
+                                    {novos.length === 1
+                                        ? `Depois de confirmar, ${novos[0].nome.split(" ")[0]} será uma das suas beneficiárias da temporada e não poderá ser removida ou substituída até ${DATA_LIBERACAO}.`
+                                        : `Depois de confirmar, essas pessoas serão suas beneficiárias da temporada e não poderão ser removidas ou substituídas até ${DATA_LIBERACAO}.`}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                aria-label="Fechar"
+                                onClick={() => setConfirmando(false)}
+                                className="-mt-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary"
+                            >
+                                <XClose className="size-5" />
+                            </button>
+                        </div>
+
+                        <ul className="flex-1 space-y-2 overflow-y-auto px-6 pb-2">
+                            {novos.map((b) => (
+                                <li key={b.cpf} className="flex items-center gap-3 rounded-xl border p-3.5" style={{ borderColor: BORDA_CARD, backgroundColor: "#001235" }}>
+                                    <Avatar size="sm" initials={iniciais(b.nome)} />
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-semibold text-primary">{b.nome}</p>
+                                        <p className="truncate text-xs text-tertiary">
+                                            CPF {formatarCpf(b.cpf)} · {b.plano}
+                                        </p>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+
+                        <div className="flex flex-col-reverse gap-3 p-6 pt-4 sm:flex-row sm:justify-end sm:gap-2">
+                            <Button
+                                size="lg"
+                                color="secondary"
+                                className="w-full bg-white text-gray-900 ring-transparent hover:bg-gray-100 sm:w-auto"
+                                style={{ backgroundColor: "#ffffff", color: "#111827" }}
+                                onClick={() => setConfirmando(false)}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button size="lg" color="primary" className="w-full sm:w-auto" onClick={confirmarCadastro}>
+                                Confirmar cadastro
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

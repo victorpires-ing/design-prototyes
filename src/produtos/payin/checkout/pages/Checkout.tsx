@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, Copy01, HelpCircle, InfoCircle, Lock01, MarkerPin01, Ticket01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
+import { useTheme } from "@/providers/theme-provider";
 import icPix from "../assets/ic-pix.svg";
 
 /* Vermelho Ingresse (brand-600 do DS). */
@@ -78,6 +79,14 @@ const LinhaResumo = ({ label, valor, bold }: { label: ReactNode; valor: string; 
 );
 
 export function Checkout() {
+    // Checkout sempre em light mode; restaura o tema anterior ao sair.
+    const { theme, setTheme } = useTheme();
+    const temaAnterior = useRef(theme);
+    useEffect(() => {
+        setTheme("light");
+        return () => setTheme(temaAnterior.current);
+    }, [setTheme]);
+
     const [protecao, setProtecao] = useState<"com" | "sem">("com");
     const [taxasAbertas, setTaxasAbertas] = useState(true);
 

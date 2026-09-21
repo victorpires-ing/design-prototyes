@@ -1,27 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
-import { ArrowLeft, CheckCircle } from "@untitledui/icons";
+import { AnimatePresence, motion } from "motion/react";
+import { CheckCircle } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
-import { PERGUNTAS, salvarResposta } from "../data/feedback-store";
-
-const RASCUNHO_KEY = "checkout-feedback:rascunho";
-
-function lerRascunho(): string[] {
-    try {
-        const raw = localStorage.getItem(RASCUNHO_KEY);
-        const arr = raw ? JSON.parse(raw) : null;
-        if (Array.isArray(arr) && arr.length === PERGUNTAS.length) return arr.map((x) => (typeof x === "string" ? x : ""));
-    } catch {
-        /* ignore */
-    }
-    return PERGUNTAS.map(() => "");
-}
+import { PERGUNTAS, PERGUNTA_DISPOSITIVO, salvarResposta } from "../data/feedback-store";
 
 export function AnaliseFeedback() {
-    const navigate = useNavigate();
     const { theme, setTheme } = useTheme();
     const temaAnterior = useRef(theme);
     useEffect(() => {
@@ -29,32 +15,19 @@ export function AnaliseFeedback() {
         return () => setTheme(temaAnterior.current);
     }, [setTheme]);
 
-    const [respostas, setRespostas] = useState<string[]>(lerRascunho);
+    // Começa sempre do zero: atualizar a tela reseta todas as respostas.
+    const [dispositivo, setDispositivo] = useState<string>("");
+    const [respostas, setRespostas] = useState<string[]>(() => PERGUNTAS.map(() => ""));
     const [enviando, setEnviando] = useState(false);
     const [enviado, setEnviado] = useState(false);
-
-    // Guarda o rascunho a cada alteração pra o usuário poder continuar depois.
-    useEffect(() => {
-        if (enviado) return;
-        try {
-            localStorage.setItem(RASCUNHO_KEY, JSON.stringify(respostas));
-        } catch {
-            /* ignore */
-        }
-    }, [respostas, enviado]);
 
     const alterar = (i: number, v: string) => setRespostas((r) => r.map((x, idx) => (idx === i ? v : x)));
 
     const enviar = async () => {
         setEnviando(true);
-        await salvarResposta(respostas);
+        await salvarResposta(dispositivo, respostas);
         setEnviando(false);
         setEnviado(true);
-        try {
-            localStorage.removeItem(RASCUNHO_KEY);
-        } catch {
-            /* ignore */
-        }
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
@@ -69,22 +42,52 @@ export function AnaliseFeedback() {
                     </div>
                 ) : (
                     <>
-                        <button
-                            type="button"
-                            onClick={() => navigate("/payin/checkout")}
-                            className="flex items-center gap-1.5 text-sm font-semibold text-secondary transition duration-100 ease-linear hover:text-primary"
-                        >
-                            <ArrowLeft className="size-4" />
-                            Voltar
-                        </button>
-
-                        <h1 className="mt-5 text-2xl font-bold text-primary">Sobre o protótipo</h1>
+                        <h1 className="text-2xl font-bold text-primary">Sobre o protótipo</h1>
                         <p className="mt-1.5 text-sm text-tertiary">
                             Responda com o que vier à cabeça — não há certo ou errado. Queremos entender como você percebe essa tela de pagamento.
                         </p>
 
-                        <form
-                            className="mt-8 flex flex-col gap-6"
+                        {/* Pergunta isolada — não entra na numeração do formulário */}
+                        <div className="mt-6 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
+                            <p className="text-sm font-semibold text-secondary">{PERGUNTA_DISPOSITIVO.texto}</p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {PERGUNTA_DISPOSITIVO.opcoes.map((op) => {
+                                    const selecionado = dispositivo === op;
+                                    return (
+                                        <button
+                                            key={op}
+                                            type="button"
+                                            aria-pressed={selecionado}
+                                            onClick={() => setDispositivo(op)}
+                                            className={cx(
+                                                "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold outline-none transition duration-100 ease-linear focus:outline-none focus-visible:outline-none",
+                                                selecionado
+                                                    ? "bg-brand-solid text-white ring-2 ring-brand"
+                                                    : "bg-primary text-secondary ring-1 ring-border-primary hover:ring-border-brand",
+                                            )}
+                                        >
+                                            <span
+                                                className={cx(
+                                                    "flex size-4 items-center justify-center rounded-full ring-2 transition",
+                                                    selecionado ? "ring-white" : "ring-border-primary",
+                                                )}
+                                            >
+                                                {selecionado && <span className="size-2 rounded-full bg-white" />}
+                                            </span>
+                                            {op}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <AnimatePresence>
+                        {dispositivo !== "" && (
+                        <motion.form
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.25, ease: "easeOut" }}
+                            className="mt-6 flex flex-col gap-6"
                             onSubmit={(e) => {
                                 e.preventDefault();
                                 void enviar();
@@ -132,7 +135,9 @@ export function AnaliseFeedback() {
                             <Button type="submit" size="lg" color="primary" className="mt-2 w-full" isLoading={enviando} showTextWhileLoading>
                                 Enviar respostas
                             </Button>
-                        </form>
+                        </motion.form>
+                        )}
+                        </AnimatePresence>
                     </>
                 )}
             </div>

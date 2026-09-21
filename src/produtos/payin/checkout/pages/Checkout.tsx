@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { CheckCircle, ChevronDown, Copy01, HelpCircle, InfoCircle, Lock01, MarkerPin01, QrCode01, Ticket01, XClose } from "@untitledui/icons";
+import { CheckCircle, ChevronDown, Clock, Copy01, HelpCircle, InfoCircle, Lock01, MarkerPin01, QrCode01, Ticket01, XClose } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import { useTheme } from "@/providers/theme-provider";
@@ -119,7 +119,7 @@ export function Checkout() {
     };
 
     // Valores do resumo — o total muda com a seleção da proteção de compra.
-    const PRECO_ITENS = 140;
+    const PRECO_ITENS = 80;
     const PRECO_PROTECAO = 10;
     const PRECO_TAXAS = 45;
     const brl = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -133,8 +133,8 @@ export function Checkout() {
     }, []);
     const tempo = `${String(Math.floor(restante / 60)).padStart(2, "0")}m${String(restante % 60).padStart(2, "0")}s`;
 
-    // QR do Pix: ciclo de 1 min. Ao zerar, gera um novo QR e reinicia a contagem.
-    const QR_TOTAL = 60;
+    // QR do Pix: ciclo de 5 min. Ao zerar, gera um novo QR e reinicia a contagem.
+    const QR_TOTAL = 5 * 60;
     const [qrRestante, setQrRestante] = useState(QR_TOTAL);
     const [qrSeed, setQrSeed] = useState(1);
     useEffect(() => {
@@ -151,8 +151,20 @@ export function Checkout() {
     }, []);
     const relogio = `${String(Math.floor(qrRestante / 60)).padStart(2, "0")}:${String(qrRestante % 60).padStart(2, "0")}s`;
     const larguraTempo = (qrRestante / QR_TOTAL) * 100;
-    const urgente = qrRestante <= 20; // últimos 20s: amarelo
-    const piscando = qrRestante <= 10; // últimos 10s: QR piscando
+    const urgente = qrRestante <= 60; // último minuto: amarelo
+    const piscando = qrRestante <= 30; // últimos 30s: QR piscando
+
+    // Contagem da análise: 1 min pra observar a tela; ao zerar, vai pro formulário.
+    const ANALISE_TOTAL = 60;
+    const [analiseRestante, setAnaliseRestante] = useState(ANALISE_TOTAL);
+    useEffect(() => {
+        const t = window.setInterval(() => setAnaliseRestante((r) => (r > 0 ? r - 1 : 0)), 1000);
+        return () => window.clearInterval(t);
+    }, []);
+    useEffect(() => {
+        if (analiseRestante === 0) navigate("/payin/checkout/analise");
+    }, [analiseRestante, navigate]);
+    const analiseRelogio = `${String(Math.floor(analiseRestante / 60)).padStart(2, "0")}:${String(analiseRestante % 60).padStart(2, "0")}`;
 
     const thumbEvento = (cls: string) => (
         <div className={cx("shrink-0 overflow-hidden rounded-lg", cls)} style={{ background: "linear-gradient(135deg,#f59e0b 0%,#db2777 55%,#7c3aed 100%)" }} />
@@ -384,7 +396,7 @@ export function Checkout() {
                                 <span className="absolute -top-3 right-5 rounded-full bg-gray-900 px-3 py-1 text-xs font-semibold text-white">Recomendado</span>
                                 <RadioDot selected={protecao === "com"} />
                                 <div>
-                                    <p className="text-md font-bold text-primary">Compra protegida por R$ 23,90</p>
+                                    <p className="text-md font-bold text-primary">Compra protegida por R$ 10,00</p>
                                     <p className="mt-0.5 text-sm text-tertiary">Quero meu dinheiro de volta nos casos previstos</p>
                                     <span className="mt-1 inline-block text-sm font-semibold underline" style={{ color: VERMELHO }}>
                                         Ver coberturas
@@ -520,29 +532,33 @@ export function Checkout() {
                 </div>
             )}
 
-            {/* Botão flutuante — teste de usabilidade */}
+            {/* Contador da análise — teste de usabilidade (ao zerar, vai pro formulário) */}
             {isMobile ? (
                 <div className="fixed inset-x-0 bottom-0 z-40 bg-primary px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] ring-1 ring-border-secondary">
-                    <Button
-                        size="lg"
-                        color="primary"
-                        iconLeading={CheckCircle}
-                        className="w-full"
-                        onClick={() => navigate("/payin/checkout/analise")}
+                    <div
+                        className={cx(
+                            "flex h-12 w-full items-center justify-center gap-3 rounded-lg bg-black px-4 text-white",
+                            analiseRestante <= 10 && "animate-pulse",
+                        )}
                     >
-                        Terminei minha análise
-                    </Button>
+                        <Clock className="size-5 shrink-0 text-white/70" />
+                        <span className="text-sm font-medium text-white/80">Tempo de análise</span>
+                        <span className="ml-auto text-lg font-bold tabular-nums">{analiseRelogio}</span>
+                    </div>
                 </div>
             ) : (
-                <Button
-                    size="lg"
-                    color="primary"
-                    iconLeading={CheckCircle}
-                    className="fixed right-6 bottom-6 z-40 shadow-lg"
-                    onClick={() => navigate("/payin/checkout/analise")}
+                <div
+                    className={cx(
+                        "fixed right-6 bottom-6 z-40 flex items-center gap-3 rounded-xl bg-black px-5 py-3.5 text-white shadow-lg",
+                        analiseRestante <= 10 && "animate-pulse",
+                    )}
                 >
-                    Terminei minha análise
-                </Button>
+                    <Clock className="size-5 shrink-0 text-white/70" />
+                    <div className="flex flex-col leading-tight">
+                        <span className="text-xs font-medium text-white/60">Tempo de análise</span>
+                        <span className="text-xl font-bold tabular-nums">{analiseRelogio}</span>
+                    </div>
+                </div>
             )}
         </div>
     );

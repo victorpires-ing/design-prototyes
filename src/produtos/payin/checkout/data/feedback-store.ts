@@ -4,21 +4,22 @@
 
 export type Pergunta = { texto: string; tipo: "texto" | "escala" };
 
+// Pergunta isolada, fora da numeração do formulário.
+export const PERGUNTA_DISPOSITIVO = { texto: "Por onde você testou?", opcoes: ["Computador", "Celular"] };
+
 export const PERGUNTAS: Pergunta[] = [
-    { texto: "Olhando essa tela, o que dá pra fazer aqui?", tipo: "texto" },
-    { texto: "O que chamou sua atenção primeiro?", tipo: "texto" },
+    { texto: "Ao entrar na tela de pagamentos como você se sentiu?", tipo: "texto" },
+    { texto: "Na opção de pagamento com o PIX, quais informações e ações haviam disponíveis?", tipo: "texto" },
     { texto: "Se fosse pagar agora, o que você faria?", tipo: "texto" },
-    { texto: "Esse código que aparece na tela — o que você faria com ele?", tipo: "texto" },
-    { texto: 'Tem um "Mostrar QR Code" na tela. Em que situação você usaria isso?', tipo: "texto" },
-    { texto: "Pagando pelo celular, faz mais sentido copiar o código ou escanear o QR? Por quê?", tipo: "texto" },
-    { texto: "Fora o Pix, quais outras formas de pagar você viu nessa tela?", tipo: "texto" },
-    { texto: "De 0 a 10, quanta confiança essa tela te passa pra pagar? Sendo 0 nada confiável e 10 muito confiável.", tipo: "escala" },
-    { texto: "Teve algo que gerou dúvida ou que você não entendeu?", tipo: "texto" },
+    { texto: "Em um cenário de compra como esse, por quê você usaria o PIX como meio de pagamento?", tipo: "texto" },
+    { texto: "Se você NÃO quisesse pagar com PIX, o que faria?", tipo: "texto" },
+    { texto: "Tem algo que você melhoraria nessa tela?", tipo: "texto" },
 ];
 
 export type RespostaFeedback = {
     id: string;
     criadoEm: string;
+    dispositivo: string;
     respostas: string[];
 };
 
@@ -40,8 +41,8 @@ function lerLocal(): RespostaFeedback[] {
     }
 }
 
-export async function salvarResposta(respostas: string[]): Promise<void> {
-    const resposta: RespostaFeedback = { id: gerarId(), criadoEm: new Date().toISOString(), respostas };
+export async function salvarResposta(dispositivo: string, respostas: string[]): Promise<void> {
+    const resposta: RespostaFeedback = { id: gerarId(), criadoEm: new Date().toISOString(), dispositivo, respostas };
     try {
         const r = await fetch(ENDPOINT, {
             method: "POST",
@@ -52,6 +53,24 @@ export async function salvarResposta(respostas: string[]): Promise<void> {
     } catch {
         const arr = lerLocal();
         arr.push(resposta);
+        try {
+            localStorage.setItem(LS_KEY, JSON.stringify(arr));
+        } catch {
+            /* ignore */
+        }
+    }
+}
+
+export async function apagarResposta(id: string): Promise<void> {
+    try {
+        const r = await fetch(ENDPOINT, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ action: "delete", id }),
+        });
+        if (!r.ok) throw new Error(String(r.status));
+    } catch {
+        const arr = lerLocal().filter((x) => x.id !== id);
         try {
             localStorage.setItem(LS_KEY, JSON.stringify(arr));
         } catch {

@@ -50,6 +50,13 @@ export default async function handler(req: Request): Promise<Response> {
             return json(resposta, 201);
         }
 
+        if (body.action === "delete") {
+            const id = body.id as string;
+            await redis.del(respostaKey(id));
+            await redis.srem(idsKey, id);
+            return json({ ok: true });
+        }
+
         return new Response("Unknown action", { status: 400 });
     } catch (err) {
         console.error("Checkout feedback API error:", err);

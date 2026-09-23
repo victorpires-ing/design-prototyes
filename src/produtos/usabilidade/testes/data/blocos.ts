@@ -1,8 +1,8 @@
 /** Fábricas de blocos e catálogo do "Adicionar bloco" do editor. */
 
-import { Beaker02, MessageTextSquare02, Speedometer03, Star06, Trophy01 } from "@untitledui/icons";
+import { Announcement02, Beaker02, ClockStopwatch, MessageTextSquare02, Speedometer03, Star06, Trophy01 } from "@untitledui/icons";
 import { gerarId } from "@/lib/usability";
-import type { Bloco, BlocoAtividade, BlocoObrigado, BlocoPergunta, BlocoSus, BlocoWelcome, PerguntaFormato, Teste } from "@/lib/usability";
+import type { Bloco, BlocoAtividade, BlocoComunicacao, BlocoExposicao, BlocoObrigado, BlocoPergunta, BlocoSus, BlocoWelcome, PerguntaFormato, Teste } from "@/lib/usability";
 
 export function blocoWelcome(): BlocoWelcome {
     return {
@@ -43,6 +43,27 @@ export function blocoSus(): BlocoSus {
         tipo: "sus",
         titulo: "Escala de usabilidade (SUS)",
         enunciado: "Para cada afirmação, indique o quanto você concorda.",
+    };
+}
+
+export function blocoExposicao(): BlocoExposicao {
+    return {
+        id: gerarId(),
+        tipo: "exposicao",
+        titulo: "Teste de 5 segundos",
+        origem: "rota",
+        rotaInicial: "/",
+        duracaoSegundos: 5,
+    };
+}
+
+export function blocoComunicacao(): BlocoComunicacao {
+    return {
+        id: gerarId(),
+        tipo: "comunicacao",
+        titulo: "Aviso",
+        texto: "",
+        textoBotao: "Continuar",
     };
 }
 
@@ -128,6 +149,30 @@ export const CATALOGO: { grupo: string; itens: ItemCatalogo[] }[] = [
             },
         ],
     },
+    {
+        grupo: "Primeira impressão",
+        itens: [
+            {
+                id: "exposicao",
+                label: "Teste de X segundos",
+                descricao: "Mostra uma tela do protótipo ou uma imagem por alguns segundos.",
+                icon: ClockStopwatch,
+                criar: () => blocoExposicao(),
+            },
+        ],
+    },
+    {
+        grupo: "Comunicação",
+        itens: [
+            {
+                id: "comunicacao",
+                label: "Comunicação",
+                descricao: "Título, descrição e um botão para avançar.",
+                icon: Announcement02,
+                criar: () => blocoComunicacao(),
+            },
+        ],
+    },
 ];
 
 export const ICONE_BLOCO: Record<Bloco["tipo"], typeof Beaker02> = {
@@ -135,6 +180,8 @@ export const ICONE_BLOCO: Record<Bloco["tipo"], typeof Beaker02> = {
     atividade: Beaker02,
     pergunta: MessageTextSquare02,
     sus: Speedometer03,
+    exposicao: ClockStopwatch,
+    comunicacao: Announcement02,
     obrigado: Trophy01,
 };
 
@@ -148,6 +195,10 @@ export function rotuloTipo(bloco: Bloco): string {
             return "Teste de site";
         case "sus":
             return "Escala SUS";
+        case "exposicao":
+            return `Teste de ${bloco.duracaoSegundos} segundos`;
+        case "comunicacao":
+            return "Comunicação";
         case "pergunta":
             return bloco.formato === "aberta" ? "Pergunta aberta" : bloco.formato === "unica" ? "Escolha única" : "Múltipla escolha";
     }

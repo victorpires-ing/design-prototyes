@@ -7,6 +7,8 @@ export interface InteressadoListaEspera {
     id: string;
     nome: string;
     email: string;
+    /** Celular com DDD, formatado (ex.: (21) 98765-4321). */
+    telefone: string;
     /** Data/hora do clique em "Tenho interesse". */
     dataInteresse: Date;
 }
@@ -23,6 +25,8 @@ const SOBRENOMES = [
 ];
 
 const PROVEDORES = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com.br", "icloud.com"];
+
+const DDDS = ["21", "21", "21", "11", "31", "49", "24", "22"];
 
 const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -57,6 +61,7 @@ const build = (): InteressadoListaEspera[] => {
             id: `le-${String(i + 1).padStart(4, "0")}`,
             nome: nomeCompleto,
             email: `${usuario}@${pick(PROVEDORES)}`,
+            telefone: `(${pick(DDDS)}) 9${String(Math.floor(rand() * 10_000)).padStart(4, "0")}-${String(Math.floor(rand() * 10_000)).padStart(4, "0")}`,
             dataInteresse: new Date(Math.round(t / 60_000) * 60_000),
         });
     }

@@ -41,8 +41,8 @@ const getInitials = (name: string) => {
 const baixarCsv = (rows: InteressadoListaEspera[]) => {
     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
     const linhas = [
-        ["Nome", "E-mail", "Data de interesse"].map(escape).join(";"),
-        ...rows.map((r) => [r.nome, r.email, dataHoraFormatter.format(r.dataInteresse)].map(escape).join(";")),
+        ["Nome", "E-mail", "Telefone", "Data de interesse"].map(escape).join(";"),
+        ...rows.map((r) => [r.nome, r.email, r.telefone, dataHoraFormatter.format(r.dataInteresse)].map(escape).join(";")),
     ];
     // BOM para o Excel abrir acentos corretamente.
     const blob = new Blob(["﻿" + linhas.join("\n")], { type: "text/csv;charset=utf-8" });
@@ -81,7 +81,10 @@ const ListaDeEsperaBody = () => {
     const rows = useMemo(() => {
         const term = search.trim().toLowerCase();
         if (!term) return noPeriodo;
-        return noPeriodo.filter((r) => `${r.nome} ${r.email}`.toLowerCase().includes(term));
+        const digits = search.replace(/\D/g, "");
+        return noPeriodo.filter(
+            (r) => `${r.nome} ${r.email}`.toLowerCase().includes(term) || (digits.length > 0 && r.telefone.replace(/\D/g, "").includes(digits)),
+        );
     }, [noPeriodo, search]);
 
     const onExport = (format: "excel" | "csv" | "pdf") => {
@@ -126,6 +129,7 @@ const ListaDeEsperaBody = () => {
 const SORT_ACCESSORS: Partial<Record<string, (r: InteressadoListaEspera) => string | number>> = {
     nome: (r) => r.nome,
     email: (r) => r.email,
+    telefone: (r) => r.telefone,
     dataInteresse: (r) => r.dataInteresse.getTime(),
 };
 
@@ -159,7 +163,7 @@ const ListaCard = ({ rows, search, onSearch }: { rows: InteressadoListaEspera[];
                     size="sm"
                     icon={SearchLg}
                     aria-label="Buscar na lista de espera"
-                    placeholder="Buscar por nome ou e-mail"
+                    placeholder="Buscar por nome, e-mail ou telefone"
                     value={search}
                     onChange={(v) => {
                         onSearch(v);
@@ -180,6 +184,9 @@ const ListaCard = ({ rows, search, onSearch }: { rows: InteressadoListaEspera[];
                                 <SortableHeader label="E-mail" sortKey="email" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                             </th>
                             <th className="px-4 py-3 text-sm font-semibold text-tertiary">
+                                <SortableHeader label="Telefone" sortKey="telefone" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                            </th>
+                            <th className="px-4 py-3 text-sm font-semibold text-tertiary">
                                 <SortableHeader label="Data de interesse" sortKey="dataInteresse" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                             </th>
                         </tr>
@@ -187,7 +194,7 @@ const ListaCard = ({ rows, search, onSearch }: { rows: InteressadoListaEspera[];
                     <tbody>
                         {pageRows.length === 0 && (
                             <tr>
-                                <td colSpan={3} className="px-4 py-12 text-center text-sm text-tertiary">
+                                <td colSpan={4} className="px-4 py-12 text-center text-sm text-tertiary">
                                     Ninguém na lista de espera corresponde à busca.
                                 </td>
                             </tr>
@@ -204,6 +211,7 @@ const ListaCard = ({ rows, search, onSearch }: { rows: InteressadoListaEspera[];
                                     </div>
                                 </td>
                                 <td className="hidden px-4 py-3 text-sm text-tertiary md:table-cell">{r.email}</td>
+                                <td className="whitespace-nowrap px-4 py-3 text-sm text-tertiary tabular-nums">{r.telefone}</td>
                                 <td className="px-4 py-3 text-sm text-secondary tabular-nums">{dataHoraFormatter.format(r.dataInteresse)}</td>
                             </tr>
                         ))}

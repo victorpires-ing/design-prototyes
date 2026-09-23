@@ -27,7 +27,7 @@ import { carregarClarity, clarityIdentify, clarityTag, pararClarity } from "./cl
 import { gravarRun, gravarSessao, lerRun, lerSessao, ouvirRun } from "./run";
 import { marcarFeito, usabilityStore } from "./store";
 import { ESCALA_SUS, PERGUNTAS_SUS } from "./sus";
-import type { Bloco, BlocoAtividade, BlocoPergunta, BlocoSus, CriterioTipo, EventoBloco, ResultadoTarefa, RunAtivo, SessaoTeste } from "./types";
+import type { Bloco, BlocoAtividade, BlocoComunicacao, BlocoExposicao, BlocoPergunta, BlocoSus, CriterioTipo, EventoBloco, ResultadoTarefa, RunAtivo, SessaoTeste } from "./types";
 
 export function TestRunnerLayer() {
     const [run, setRun] = useState<RunAtivo | null>(() => lerRun());
@@ -39,6 +39,7 @@ export function TestRunnerLayer() {
     const [direcao, setDirecao] = useState(1); // 1 = avançar (sobe), -1 = voltar (desce)
     const [briefingAberto, setBriefingAberto] = useState(true);
     const [declaracaoVisivel, setDeclaracaoVisivel] = useState(false);
+    const [restanteExposicao, setRestanteExposicao] = useState(0);
     const location = useLocation();
     const navigate = useNavigate();
     const finalizadaRef = useRef(false);
@@ -120,6 +121,32 @@ export function TestRunnerLayer() {
         gravarRun(atualizado);
         if (blocoProx.tipo === "atividade") navigate(blocoProx.rotaInicial);
     }, [navigate]);
+
+    /* --------------------------- exposição (N segundos) --------------------------- */
+
+    // Conta a exibição da tela e, ao fim, registra o evento e avança direto para o próximo bloco.
+    useEffect(() => {
+        if (bloco?.tipo !== "exposicao") return;
+        const duracaoMs = bloco.duracaoSegundos * 1000;
+        setRestanteExposicao(bloco.duracaoSegundos);
+        const inicio = Date.now();
+        const tick = setInterval(() => {
+            const restante = Math.max(0, Math.ceil((duracaoMs - (Date.now() - inicio)) / 1000));
+            setRestanteExposicao(restante);
+        }, 200);
+        const fim = setTimeout(() => {
+            const atual = lerRun();
+            const blocoAtual = atual?.teste.blocos[atual.blocoIndex];
+            if (!atual || blocoAtual?.tipo !== "exposicao") return;
+            registrarEvento({ blocoId: blocoAtual.id, tipo: "exposicao", iniciadaEm: atual.iniciadaEmBloco, concluidaEm: new Date().toISOString(), duracaoMs });
+            avancarBloco();
+        }, duracaoMs);
+        return () => {
+            clearInterval(tick);
+            clearTimeout(fim);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bloco]);
 
     useEffect(() => {
         if (bloco?.tipo === "obrigado") finalizar();
@@ -247,7 +274,7 @@ export function TestRunnerLayer() {
     // Progresso (0–100) pela posição entre os blocos de conteúdo (missões + perguntas + SUS).
     const progressoPct = useMemo(() => {
         if (!run || !bloco) return 0;
-        const passos = run.teste.blocos.filter((b) => b.tipo === "atividade" || b.tipo === "pergunta" || b.tipo === "sus");
+        const passos = run.teste.blocos.filter((b) => b.tipo === "atividade" || b.tipo === "pergunta" || b.tipo === "sus" || b.tipo === "exposicao");
         const idx = passos.findIndex((b) => b.id === bloco.id);
         return passos.length ? Math.round(((idx + 1) / passos.length) * 100) : 0;
     }, [run, bloco]);
@@ -293,6 +320,35 @@ export function TestRunnerLayer() {
                     )}
                 </AnimatePresence>
                 {bloco.tipo === "pergunta" && <NavSetas onVoltar={voltarBloco} podeVoltar={podeVoltar} onAvancar={responder} />}
+            </TopLayer>
+        );
+    }
+
+    if (bloco.tipo === "exposicao") {
+        return (
+            <TopLayer>
+                <div className="fixed inset-0 z-[9997] bg-primary" />
+                <TelaExibicaoExposicao bloco={bloco} restante={restanteExposicao} />
+            </TopLayer>
+        );
+    }
+
+    if (bloco.tipo === "comunicacao") {
+        return (
+            <TopLayer>
+                <div className="fixed inset-0 z-[9997] bg-primary" />
+                <LogoTopo logoParceira={run.teste.logoParceira} />
+                <AnimatePresence custom={direcao} initial={false}>
+                    <TelaComunicacao
+                        key={bloco.id}
+                        direcao={direcao}
+                        bloco={bloco}
+                        onProximo={() => {
+                            registrarEvento({ blocoId: bloco.id, tipo: "comunicacao", iniciadaEm: run.iniciadaEmBloco, concluidaEm: new Date().toISOString() });
+                            avancarBloco();
+                        }}
+                    />
+                </AnimatePresence>
             </TopLayer>
         );
     }
@@ -622,6 +678,47 @@ function TelaSus({
                     </div>
                     {aviso && <span className="text-sm font-medium text-error-primary">Responda as afirmações desta página antes de continuar.</span>}
                 </div>
+            </div>
+        </Fundo>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tela de exposição (teste de N segundos)                            */
+/* ------------------------------------------------------------------ */
+
+function TelaExibicaoExposicao({ bloco, restante }: { bloco: BlocoExposicao; restante: number }) {
+    const ehMobile = typeof window !== "undefined" && window.innerWidth < 640;
+    const imagem = ehMobile ? (bloco.imagemMobile ?? bloco.imagemDesktop) : bloco.imagemDesktop;
+    return (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9999] flex items-center justify-center bg-primary">
+            {bloco.origem === "rota" ? (
+                <iframe src={bloco.rotaInicial || "/"} title="Tela" className="h-full w-full border-0" />
+            ) : imagem ? (
+                <img src={imagem} alt="" className="h-full w-full object-contain" />
+            ) : (
+                <p className="text-sm text-tertiary">Nenhuma tela configurada.</p>
+            )}
+            <span className="fixed top-5 right-5 z-[10001] flex size-12 items-center justify-center rounded-full bg-primary-solid text-lg font-semibold text-white shadow-lg tabular-nums">
+                {restante}
+            </span>
+        </motion.div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tela de comunicação (título + descrição + botão)                   */
+/* ------------------------------------------------------------------ */
+
+function TelaComunicacao({ bloco, direcao, onProximo }: { bloco: BlocoComunicacao; direcao: number; onProximo: () => void }) {
+    return (
+        <Fundo direcao={direcao}>
+            <div className="flex max-w-md flex-col items-center gap-4 text-center">
+                <h2 className="text-2xl font-semibold text-primary">{bloco.titulo}</h2>
+                {bloco.texto && <RichTextView html={bloco.texto} className="text-base text-tertiary" />}
+                <Button size="xl" color="primary" onClick={onProximo} className="w-full sm:w-auto">
+                    {bloco.textoBotao?.trim() || "Continuar"}
+                </Button>
             </div>
         </Fundo>
     );

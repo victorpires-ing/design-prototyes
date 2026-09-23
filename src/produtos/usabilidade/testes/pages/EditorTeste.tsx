@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+    Announcement02,
     ArrowLeft,
     CheckCircle,
+    ClockStopwatch,
     CursorClick01,
     DotsGrid,
     Eye,
@@ -11,6 +13,7 @@ import {
     Plus,
     Star06,
     Trash02,
+    UploadCloud02,
 } from "@untitledui/icons";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
@@ -23,7 +26,7 @@ import { Label } from "@/components/base/input/label";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
 import { gerarId, PERGUNTAS_SUS, usabilityStore } from "@/lib/usability";
-import type { Bloco, BlocoAtividade, BlocoPergunta, BlocoSus, Criterio, CriterioTipo, Teste } from "@/lib/usability";
+import type { Bloco, BlocoAtividade, BlocoComunicacao, BlocoExposicao, BlocoPergunta, BlocoSus, Criterio, CriterioTipo, Teste } from "@/lib/usability";
 import { CATALOGO, ICONE_BLOCO, novoTeste, rotuloTipo } from "../data/blocos";
 import { RichText } from "../../components/RichText";
 import { RichTextView } from "@/lib/usability/branding";
@@ -197,6 +200,7 @@ export function EditorTeste() {
         return teste.blocos.every((b) => {
             if (b.tipo === "atividade") return b.enunciado.trim() && b.rotaInicial.trim();
             if (b.tipo === "pergunta") return b.enunciado.trim() && (b.formato === "aberta" || b.opcoes.filter((o) => o.trim()).length >= 2);
+            if (b.tipo === "exposicao") return b.origem === "rota" ? Boolean(b.rotaInicial.trim()) : Boolean(b.imagemDesktop);
             return true;
         });
     }, [teste]);
@@ -335,6 +339,19 @@ export function EditorTeste() {
 
                             {selecionado.tipo === "sus" && <ConfigSus bloco={selecionado} patch={(p) => patchBloco(selecionado.id, p as Partial<Bloco>)} />}
 
+                            {selecionado.tipo === "exposicao" && (
+                                <ConfigExposicao
+                                    bloco={selecionado}
+                                    patch={(p) => patchBloco(selecionado.id, p as Partial<Bloco>)}
+                                    iframeRota={iframeRota}
+                                    onUsarRotaAtual={() => patchBloco(selecionado.id, { rotaInicial: iframeRota } as Partial<Bloco>)}
+                                />
+                            )}
+
+                            {selecionado.tipo === "comunicacao" && (
+                                <ConfigComunicacao bloco={selecionado} patch={(p) => patchBloco(selecionado.id, p as Partial<Bloco>)} />
+                            )}
+
                             {selecionado.tipo === "atividade" && (
                                 <ConfigAtividade
                                     bloco={selecionado}
@@ -381,13 +398,19 @@ export function EditorTeste() {
                         </div>
                     </div>
                     <div className="relative min-h-0 flex-1 overflow-hidden p-4">
-                        {selecionado?.tipo === "atividade" ? (
-                            <PrototipoCaptura bloco={selecionado} iframeRef={iframeRef} iframeRota={iframeRota} selecionandoElemento={selElemento === selecionado.id} dispositivo={dispositivo} />
+                        {selecionado?.tipo === "atividade" || (selecionado?.tipo === "exposicao" && selecionado.origem === "rota") ? (
+                            <PrototipoCaptura
+                                bloco={selecionado as { id: string; rotaInicial: string }}
+                                iframeRef={iframeRef}
+                                iframeRota={iframeRota}
+                                selecionandoElemento={selElemento === selecionado.id}
+                                dispositivo={dispositivo}
+                            />
                         ) : (
                             <PreviewParticipante
                                 bloco={selecionado}
                                 dispositivo={dispositivo}
-                                etapas={teste.blocos.filter((b) => b.tipo === "atividade" || b.tipo === "pergunta" || b.tipo === "sus").length}
+                                etapas={teste.blocos.filter((b) => b.tipo === "atividade" || b.tipo === "pergunta" || b.tipo === "sus" || b.tipo === "exposicao").length}
                             />
                         )}
                     </div>
@@ -398,7 +421,7 @@ export function EditorTeste() {
 }
 
 function tituloBloco(bloco: Bloco): string {
-    if (bloco.tipo === "welcome" || bloco.tipo === "obrigado") return bloco.titulo;
+    if (bloco.tipo === "welcome" || bloco.tipo === "obrigado" || bloco.tipo === "exposicao" || bloco.tipo === "comunicacao") return bloco.titulo;
     return bloco.enunciado.trim() || bloco.titulo;
 }
 
@@ -626,12 +649,155 @@ function ConfigSus({ bloco, patch }: { bloco: BlocoSus; patch: (p: Partial<Bloco
 }
 
 /* ------------------------------------------------------------------ */
+/*  Config: comunicação (título + descrição + botão)                   */
+/* ------------------------------------------------------------------ */
+
+function ConfigComunicacao({ bloco, patch }: { bloco: BlocoComunicacao; patch: (p: Partial<BlocoComunicacao>) => void }) {
+    return (
+        <>
+            <Input label="Título" value={bloco.titulo} onChange={(v) => patch({ titulo: v })} />
+            <div className="flex flex-col gap-1.5">
+                <Label>Descrição (opcional)</Label>
+                <RichText value={bloco.texto} onChange={(v) => patch({ texto: v })} placeholder="Mensagem exibida abaixo do título" />
+            </div>
+            <Input label="Texto do botão" placeholder="Continuar" value={bloco.textoBotao ?? ""} onChange={(v) => patch({ textoBotao: v || undefined })} />
+        </>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Config: exposição (teste de N segundos)                            */
+/* ------------------------------------------------------------------ */
+
+function ConfigExposicao({
+    bloco,
+    patch,
+    iframeRota,
+    onUsarRotaAtual,
+}: {
+    bloco: BlocoExposicao;
+    patch: (p: Partial<BlocoExposicao>) => void;
+    iframeRota: string;
+    onUsarRotaAtual: () => void;
+}) {
+    const lerArquivo = (file: File, campo: "imagemDesktop" | "imagemMobile") => {
+        const reader = new FileReader();
+        reader.onload = () => patch({ [campo]: reader.result as string } as Partial<BlocoExposicao>);
+        reader.readAsDataURL(file);
+    };
+
+    return (
+        <>
+            <Input label="Título" value={bloco.titulo} onChange={(v) => patch({ titulo: v })} />
+
+            <div className="flex flex-col gap-2">
+                <Label>Duração da exibição</Label>
+                <div className="flex items-center gap-2">
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        value={String(bloco.duracaoSegundos)}
+                        onChange={(e) => patch({ duracaoSegundos: Math.max(1, Math.min(60, Number(e.target.value.replace(/\D/g, "")) || 1)) })}
+                        className="w-20 rounded-lg bg-primary px-3 py-2 text-sm text-primary ring-1 ring-border-primary outline-none focus:ring-2 focus:ring-brand"
+                    />
+                    <span className="text-sm text-tertiary">segundos (a tela some sozinha ao fim)</span>
+                </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+                <Label>Tela exibida</Label>
+                <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={() => patch({ origem: "rota" })}
+                        className={cx(
+                            "flex-1 rounded-lg p-2 text-xs font-semibold ring-1 ring-inset transition-colors",
+                            bloco.origem === "rota" ? "bg-secondary text-primary ring-brand" : "text-secondary ring-border-secondary hover:bg-primary_hover",
+                        )}
+                    >
+                        Rota do protótipo
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => patch({ origem: "imagem" })}
+                        className={cx(
+                            "flex-1 rounded-lg p-2 text-xs font-semibold ring-1 ring-inset transition-colors",
+                            bloco.origem === "imagem" ? "bg-secondary text-primary ring-brand" : "text-secondary ring-border-secondary hover:bg-primary_hover",
+                        )}
+                    >
+                        Imagem
+                    </button>
+                </div>
+
+                {bloco.origem === "rota" ? (
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                            <Input size="sm" placeholder="/backstage/cortesias" value={bloco.rotaInicial} onChange={(v) => patch({ rotaInicial: paraRotaInterna(v) })} className="flex-1" />
+                            <Button size="sm" color="secondary" iconLeading={Flag05} onClick={onUsarRotaAtual}>
+                                Usar essa tela
+                            </Button>
+                        </div>
+                        <span className="text-xs text-tertiary">Navegue o protótipo ao lado e use “Usar essa tela” para fixar a rota atual ({iframeRota}).</span>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                        <UploadImagem label="Desktop" imagem={bloco.imagemDesktop} onArquivo={(f) => lerArquivo(f, "imagemDesktop")} onRemover={() => patch({ imagemDesktop: undefined })} />
+                        <UploadImagem label="Mobile" imagem={bloco.imagemMobile} onArquivo={(f) => lerArquivo(f, "imagemMobile")} onRemover={() => patch({ imagemMobile: undefined })} />
+                    </div>
+                )}
+            </div>
+        </>
+    );
+}
+
+function UploadImagem({ label, imagem, onArquivo, onRemover }: { label: string; imagem?: string; onArquivo: (f: File) => void; onRemover: () => void }) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    return (
+        <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-secondary">{label}</span>
+            {imagem ? (
+                <div className="group relative overflow-hidden rounded-lg ring-1 ring-border-secondary">
+                    <img src={imagem} alt="" className="h-32 w-full object-cover" />
+                    <button
+                        type="button"
+                        onClick={onRemover}
+                        className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-md bg-primary-solid/80 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                        <Trash02 className="size-3.5" aria-hidden="true" />
+                    </button>
+                </div>
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => inputRef.current?.click()}
+                    className="flex h-32 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-secondary text-tertiary transition-colors hover:bg-primary_hover"
+                >
+                    <UploadCloud02 className="size-5" aria-hidden="true" />
+                    <span className="text-xs font-medium">Enviar imagem</span>
+                </button>
+            )}
+            <input
+                ref={inputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) onArquivo(f);
+                    e.target.value = "";
+                }}
+            />
+        </div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Preview: card do participante (welcome / obrigado / pergunta)      */
 /* ------------------------------------------------------------------ */
 
 function PreviewParticipante({ bloco, dispositivo, etapas }: { bloco: Bloco | null; dispositivo: "desktop" | "mobile"; etapas: number }) {
     if (!bloco) return null;
-    const card = <CardParticipante bloco={bloco} etapas={etapas} />;
+    const card = <CardParticipante bloco={bloco} etapas={etapas} dispositivo={dispositivo} />;
     if (dispositivo === "mobile") {
         return (
             <div className="flex h-full items-center justify-center">
@@ -655,7 +821,7 @@ function PreviewParticipante({ bloco, dispositivo, etapas }: { bloco: Bloco | nu
     );
 }
 
-function CardParticipante({ bloco, etapas }: { bloco: Bloco; etapas: number }) {
+function CardParticipante({ bloco, etapas, dispositivo }: { bloco: Bloco; etapas: number; dispositivo: "desktop" | "mobile" }) {
     if (bloco.tipo === "welcome" || bloco.tipo === "obrigado") {
         const ehWelcome = bloco.tipo === "welcome";
         return (
@@ -723,6 +889,31 @@ function CardParticipante({ bloco, etapas }: { bloco: Bloco; etapas: number }) {
             </div>
         );
     }
+    if (bloco.tipo === "exposicao") {
+        const imagem = dispositivo === "mobile" ? (bloco.imagemMobile ?? bloco.imagemDesktop) : bloco.imagemDesktop;
+        return (
+            <div className="flex w-full max-w-sm flex-col items-center gap-4 text-center">
+                <FeaturedIcon icon={ClockStopwatch} color="brand" theme="light" size="xl" />
+                <h3 className="text-xl font-semibold text-primary">{bloco.titulo || "Teste de 5 segundos"}</h3>
+                {imagem ? (
+                    <img src={imagem} alt="" className="max-h-64 w-full rounded-lg object-contain ring-1 ring-border-secondary" />
+                ) : (
+                    <div className="flex h-40 w-full items-center justify-center rounded-lg bg-secondary text-xs text-tertiary">Nenhuma imagem enviada</div>
+                )}
+                <span className="text-xs text-quaternary">Exibida por {bloco.duracaoSegundos}s</span>
+            </div>
+        );
+    }
+    if (bloco.tipo === "comunicacao") {
+        return (
+            <div className="flex w-full max-w-sm flex-col items-center gap-4 text-center">
+                <FeaturedIcon icon={Announcement02} color="brand" theme="light" size="xl" />
+                <h3 className="text-xl font-semibold text-primary">{bloco.titulo || "Aviso"}</h3>
+                {bloco.texto && <RichTextView html={bloco.texto} className="text-sm text-tertiary" />}
+                <div className="mt-1 w-full rounded-lg bg-brand-solid py-2.5 text-center text-sm font-semibold text-white">{bloco.textoBotao?.trim() || "Continuar"}</div>
+            </div>
+        );
+    }
     return null;
 }
 
@@ -737,7 +928,7 @@ function PrototipoCaptura({
     selecionandoElemento,
     dispositivo,
 }: {
-    bloco: BlocoAtividade;
+    bloco: { id: string; rotaInicial: string };
     iframeRef: React.RefObject<HTMLIFrameElement | null>;
     iframeRota: string;
     selecionandoElemento: boolean;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { AlertTriangle, ArrowLeft, Calendar, CheckCircle, InfoCircle, UserPlus01, XClose } from "@untitledui/icons";
+import { AlertTriangle, ArrowLeft, Calendar, CheckCircle, UserPlus01, XClose } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
@@ -113,7 +113,7 @@ export function CadastrarDependente() {
                 <StatusBar tone="dark" />
 
                 {/* Top bar */}
-                <div className="flex items-center justify-between px-5 pt-2">
+                <div className="px-5 pt-2">
                     <button
                         type="button"
                         aria-label="Voltar"
@@ -121,13 +121,6 @@ export function CadastrarDependente() {
                         className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                     >
                         <ArrowLeft className="size-5" />
-                    </button>
-                    <button
-                        type="button"
-                        aria-label="Informações"
-                        className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
-                    >
-                        <InfoCircle className="size-5" />
                     </button>
                 </div>
                 <div className="px-5 pt-4">

@@ -96,6 +96,8 @@ import { PagamentoPix as IngresseAppPagamentoPix } from '../produtos/ingresse-ap
 import { TransferenciaSucesso as IngresseAppTransferenciaSucesso } from '../produtos/ingresse-app/ingressos/pages/TransferenciaSucesso';
 import { TransferenciaProcessando as IngresseAppTransferenciaProcessando } from '../produtos/ingresse-app/ingressos/pages/TransferenciaProcessando';
 import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pages/Perfil';
+import { Dependentes as IngresseAppDependentes } from '../produtos/ingresse-app/perfil/pages/Dependentes';
+import { CadastrarDependente as PerfilCadastrarDependente } from '../produtos/ingresse-app/perfil/pages/CadastrarDependente';
 import { TelaBloqueadaIphone as IngresseAppTelaBloqueadaIphone } from '../produtos/ingresse-app/tela-bloqueada/pages/TelaBloqueadaIphone';
 import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
 import { MeusIngressosWeb } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressosWeb';
@@ -171,6 +173,10 @@ import { EnviarCortesiasFlow, ResgatarCortesiasFlow } from '../produtos/freepass
 import { Reanalise } from '../produtos/payin/suspensao-de-conta/pages/Reanalise';
 import { SuspenderUsuario } from '../produtos/payin/suspensao-de-conta/pages/SuspenderUsuario';
 import { HistoricoSuspensao } from '../produtos/payin/suspensao-de-conta/pages/HistoricoSuspensao';
+import { PayInMenu } from '../produtos/payin/menu/pages/PayInMenu';
+import { Checkout as PayInCheckout } from '../produtos/payin/checkout/pages/Checkout';
+import { AnaliseFeedback as PayInAnaliseFeedback } from '../produtos/payin/checkout/pages/AnaliseFeedback';
+import { AnaliseResultados as PayInAnaliseResultados } from '../produtos/payin/checkout/pages/AnaliseResultados';
 import { Eventos as CashoutEventos } from '../produtos/payout/contrato-quick-win-finance/pages/eventos';
 import { Produtoras as CashoutProdutoras } from '../produtos/payout/contrato-quick-win-finance/pages/produtoras';
 
@@ -346,6 +352,8 @@ export default function App() {
         <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/processando" element={<IngresseAppTransferenciaProcessando />} />
         <Route path="/ingresse-app/ingressos/transferir-pagamento/:eventId/:id/sucesso" element={<IngresseAppTransferenciaSucesso />} />
         <Route path="/ingresse-app/perfil" element={<IngresseAppPerfil />} />
+        <Route path="/ingresse-app/perfil/dependentes" element={<IngresseAppDependentes />} />
+        <Route path="/ingresse-app/perfil/dependentes/cadastrar" element={<PerfilCadastrarDependente />} />
         <Route path="/ingresse-app/tela-bloqueada/iphone" element={<IngresseAppTelaBloqueadaIphone />} />
         <Route path="/testes" element={<UsabilidadeGate><TestesPainel /></UsabilidadeGate>} />
         <Route path="/testes/novo" element={<UsabilidadeGate><EditorTeste /></UsabilidadeGate>} />
@@ -371,6 +379,10 @@ export default function App() {
         <Route path="/freepass/distribuicao-cortesias/:eventoId/enviar" element={<EnviarCortesiasFlow />} />
         <Route path="/freepass/distribuicao-cortesias/:eventoId/resgatar" element={<ResgatarCortesiasFlow />} />
         <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />
+        <Route path="/payin" element={<PayInMenu />} />
+        <Route path="/payin/checkout" element={<PayInCheckout />} />
+        <Route path="/payin/checkout/analise" element={<PayInAnaliseFeedback />} />
+        <Route path="/payin/checkout/analise/resultados" element={<PayInAnaliseResultados />} />
         <Route path="/payin/suspensao-de-conta" element={<Reanalise />} />
         <Route path="/payin/suspensao-de-conta/suspender-usuario" element={<SuspenderUsuario />} />
         <Route path="/payin/suspensao-de-conta/historico/:contaId" element={<HistoricoSuspensao />} />

@@ -96,8 +96,8 @@ const PRODUCTS: ProductCardData[] = [
     {
         id: "payin",
         name: "PayIn",
-        description: "Antifraude: fila de análise e suspensão de conta",
-        to: "/payin/suspensao-de-conta",
+        description: "Antifraude, checkout e mais",
+        to: "/payin",
         illustration: "payin",
     },
     {

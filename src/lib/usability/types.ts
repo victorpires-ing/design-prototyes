@@ -25,7 +25,7 @@ export interface Criterio {
     rotulo?: string;
 }
 
-export type BlocoTipo = "welcome" | "atividade" | "pergunta" | "sus" | "obrigado";
+export type BlocoTipo = "welcome" | "atividade" | "pergunta" | "sus" | "exposicao" | "comunicacao" | "obrigado";
 
 interface BlocoBase {
     id: string;
@@ -88,7 +88,35 @@ export interface BlocoSus extends BlocoBase {
     enunciado: string;
 }
 
-export type Bloco = BlocoWelcome | BlocoObrigado | BlocoAtividade | BlocoPergunta | BlocoSus;
+export type OrigemTela = "rota" | "imagem";
+
+export interface BlocoExposicao extends BlocoBase {
+    tipo: "exposicao";
+    /** Título curto do bloco (lista lateral). */
+    titulo: string;
+    /** Origem da tela exibida: rota real do protótipo ou imagem enviada. */
+    origem: OrigemTela;
+    /** Rota exibida quando `origem` é "rota". */
+    rotaInicial: string;
+    /** Imagem exibida em telas largas quando `origem` é "imagem" (data URL). */
+    imagemDesktop?: string;
+    /** Imagem exibida em telas estreitas quando `origem` é "imagem" (data URL); usa a desktop se ausente. */
+    imagemMobile?: string;
+    /** Quantos segundos a tela fica visível antes de sumir sozinha (padrão: 5). */
+    duracaoSegundos: number;
+}
+
+export interface BlocoComunicacao extends BlocoBase {
+    tipo: "comunicacao";
+    /** Título curto do bloco (lista lateral) e headline da tela. */
+    titulo: string;
+    /** Descrição exibida abaixo do título (opcional). */
+    texto: string;
+    /** Texto do botão de avanço (padrão: "Continuar"). */
+    textoBotao?: string;
+}
+
+export type Bloco = BlocoWelcome | BlocoObrigado | BlocoAtividade | BlocoPergunta | BlocoSus | BlocoExposicao | BlocoComunicacao;
 
 export type TesteStatus = "rascunho" | "ativo" | "encerrado";
 

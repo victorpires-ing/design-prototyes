@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { calcularSus, classificarSus, clarityDashboardURL, usabilityStore } from "@/lib/usability";
-import type { BlocoAtividade, BlocoPergunta, BlocoSus, EventoBloco, SessaoTeste, Teste } from "@/lib/usability";
+import type { BlocoAtividade, BlocoExposicao, BlocoPergunta, BlocoSus, EventoBloco, SessaoTeste, Teste } from "@/lib/usability";
 
 function fmtDuracao(ms: number): string {
     const s = Math.round(ms / 1000);
@@ -38,6 +38,7 @@ export function Resultados() {
     const atividades = teste.blocos.filter((b): b is BlocoAtividade => b.tipo === "atividade");
     const perguntas = teste.blocos.filter((b): b is BlocoPergunta => b.tipo === "pergunta");
     const susBlocos = teste.blocos.filter((b): b is BlocoSus => b.tipo === "sus");
+    const exposicoes = teste.blocos.filter((b): b is BlocoExposicao => b.tipo === "exposicao");
 
     return (
         <div className="min-h-screen bg-primary text-primary">
@@ -85,6 +86,16 @@ export function Resultados() {
                         <h2 className="text-sm font-semibold tracking-wide text-tertiary uppercase">Escala de usabilidade (SUS)</h2>
                         {susBlocos.map((bloco) => (
                             <ResultadoSus key={bloco.id} bloco={bloco} eventos={todosEventos.filter((e) => e.blocoId === bloco.id && e.resposta)} />
+                        ))}
+                    </div>
+                )}
+
+                {/* Teste de N segundos */}
+                {exposicoes.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                        <h2 className="text-sm font-semibold tracking-wide text-tertiary uppercase">Teste de N segundos</h2>
+                        {exposicoes.map((bloco) => (
+                            <ResultadoExposicao key={bloco.id} bloco={bloco} eventos={todosEventos.filter((e) => e.blocoId === bloco.id)} />
                         ))}
                     </div>
                 )}
@@ -169,6 +180,17 @@ function ResultadoSus({ bloco, eventos }: { bloco: BlocoSus; eventos: EventoBloc
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+function ResultadoExposicao({ bloco, eventos }: { bloco: BlocoExposicao; eventos: EventoBloco[] }) {
+    return (
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
+            <span className="text-sm font-medium text-primary">{bloco.titulo}</span>
+            <Badge size="sm" type="pill-color" color="gray">
+                {eventos.length} {eventos.length === 1 ? "visualização" : "visualizações"} · {bloco.duracaoSegundos}s
+            </Badge>
         </div>
     );
 }

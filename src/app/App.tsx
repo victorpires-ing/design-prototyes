@@ -25,6 +25,7 @@ import { Transacoes3 } from '../produtos/backstage/relatorios/pages/Transacoes3'
 import { Transferencias } from '../produtos/backstage/relatorios/pages/Transferencias';
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
+import { ListaDeEspera } from '../produtos/backstage/relatorios/pages/ListaDeEspera';
 import { RelatorioPersonalizado } from '../produtos/backstage/relatorios/pages/RelatorioPersonalizado';
 import { Home as BackstageHome } from '../produtos/backstage/home/pages/Home';
 import { Eventos as BackstageEventos } from '../produtos/backstage/eventos/pages/Eventos';
@@ -247,6 +248,7 @@ export default function App() {
         <Route path="/backstage/relatorios/transferencias" element={<Transferencias />} />
         <Route path="/backstage/relatorios/comparativos" element={<Comparativos />} />
         <Route path="/backstage/relatorios/questionarios" element={<Questionarios />} />
+        <Route path="/backstage/relatorios/lista-de-espera" element={<ListaDeEspera />} />
         <Route path="/backstage/relatorios/relatorio-personalizado" element={<RelatorioPersonalizado />} />
         <Route path="/backstage/marketing/chave-de-acesso" element={<ChaveDeAcesso />} />
         <Route path="/backstage/marketing/chave-de-acesso/vincular-itens" element={<VincularItens />} />

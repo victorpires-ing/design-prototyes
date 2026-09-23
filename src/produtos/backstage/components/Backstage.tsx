@@ -32,8 +32,8 @@ import { Dot } from "@/components/foundations/dot-icon";
 import { cx } from "@/utils/cx";
 import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
-import { AlterarStatusModal, ORDEM_STATUS } from "../eventos/components/AlterarStatusModal";
-import { EVENTO_STATUS_BADGE_COLOR, EVENTO_STATUS_LABEL, setEventoStatus, useEventoAtual, type EventoStatus } from "../eventos/data/eventos";
+import { AlterarStatusModal } from "../eventos/components/AlterarStatusModal";
+import { EVENTO_STATUS_BADGE_COLOR, EVENTO_STATUS_LABEL, PROXIMOS_STATUS, STATUS_SIMPLES, setEventoStatus, useEventoAtual, type EventoStatus } from "../eventos/data/eventos";
 
 /** Logo da Ingresse — clicável, leva para a home do Backstage. */
 const BrandLogo = ({ className }: { className?: string }) => {
@@ -82,6 +82,7 @@ export type BackstageItem =
     | "comparativos"
     | "relatorio-personalizado"
     | "relatorio-questionarios"
+    | "lista-de-espera"
     | "chave-de-acesso"
     | "formularios-compra";
 
@@ -363,6 +364,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     comparativos: "Comparativos",
     "relatorio-personalizado": "Relatório personalizado",
     "relatorio-questionarios": "Questionários",
+    "lista-de-espera": "Lista de espera",
     "chave-de-acesso": "Chave de acesso",
     "formularios-compra": "Perguntas por ingresso",
 };
@@ -502,6 +504,7 @@ const EVENT_NAV: EventNavSection[] = [
             { id: "transferencias", label: "Transferências", href: "/backstage/relatorios/transferencias" },
             { id: "comparativos", label: "Comparativos", href: "/backstage/relatorios/comparativos", novo: true },
             { id: "relatorio-questionarios", label: "Questionários", href: "/backstage/relatorios/questionarios" },
+            { id: "lista-de-espera", label: "Lista de espera", href: "/backstage/relatorios/lista-de-espera" },
             { id: "relatorio-personalizado", label: "Relatório personalizado", href: "/backstage/relatorios/relatorio-personalizado", ia: true },
         ],
     },
@@ -880,6 +883,7 @@ const STATUS_DOT_COR: Record<EventoStatus, string> = {
     rascunho: "text-utility-yellow-500",
     privado: "text-utility-blue-500",
     publicado: "text-utility-green-500",
+    suspenso: "text-utility-orange-500",
     encerrado: "text-utility-neutral-500",
 };
 
@@ -888,8 +892,9 @@ const STATUS_DOT_COR: Record<EventoStatus, string> = {
  *  do nome, o modal continua sendo o lugar com a explicação completa antes de confirmar. */
 const STATUS_DESCRICAO_CURTA: Record<EventoStatus, string> = {
     rascunho: "Vendas desligadas",
-    privado: "Ligadas, só com o link",
-    publicado: "Ligadas, sem restrição",
+    privado: "Venda habilitada, só com o link",
+    publicado: "Venda habilitada, sem restrição",
+    suspenso: "Desligadas de novo",
     encerrado: "Vendas encerradas",
 };
 
@@ -897,6 +902,7 @@ const EventDetailsCard = () => {
     const evento = useEventoAtual();
     const abrirModalDeStatus = useAbrirModalDeStatus();
     const encerrado = evento.status === "encerrado";
+    const alcancaveis = PROXIMOS_STATUS[evento.status];
 
     return (
         <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-3">
@@ -939,31 +945,37 @@ const EventDetailsCard = () => {
                                     curto sozinho não deixa espaço pra legenda de apoio, então
                                     o item aqui é montado na mão com o MenuItem do React Aria
                                     por baixo do Dropdown, reaproveitando as mesmas classes de
-                                    hover/foco do item padrão, só com duas linhas em vez de uma. */}
-                                {ORDEM_STATUS.map((status) => {
-                                    const isAtual = status === evento.status;
+                                    hover/foco do item padrão, só com duas linhas em vez de uma.
+                                    STATUS_SIMPLES sempre entra inteiro, na mesma ordem — o
+                                    status atual (e qualquer um fora do alcance a partir dele,
+                                    como Suspenso vindo de Rascunho) só fica desabilitado no
+                                    próprio lugar, nunca pulando pra frente da lista: assim a
+                                    posição de cada opção não muda a cada status de partida. */}
+                                {STATUS_SIMPLES.map((status) => {
+                                    const atual = status === evento.status;
+                                    const desabilitado = atual || !alcancaveis.includes(status);
                                     return (
                                         <AriaMenuItem
                                             key={status}
                                             id={status}
-                                            isDisabled={isAtual}
+                                            isDisabled={desabilitado}
                                             textValue={EVENTO_STATUS_LABEL[status]}
                                             onAction={() => abrirModalDeStatus(status)}
-                                            className={(state) => cx("group block cursor-pointer px-1.5 py-px outline-hidden", state.isDisabled && "cursor-not-allowed opacity-50")}
+                                            className={cx("group block px-1.5 py-px outline-hidden", desabilitado ? "cursor-not-allowed" : "cursor-pointer")}
                                         >
                                             {(state) => (
                                                 <div
                                                     className={cx(
                                                         "relative flex items-start gap-2 rounded-md px-2.5 py-2 outline-focus-ring transition duration-100 ease-linear",
-                                                        !state.isDisabled && "group-hover:bg-primary_hover",
-                                                        state.isFocused && "bg-primary_hover",
+                                                        desabilitado ? "opacity-50" : "group-hover:bg-primary_hover",
+                                                        state.isFocused && !desabilitado && "bg-primary_hover",
                                                         state.isFocusVisible && "outline-2 -outline-offset-2",
                                                     )}
                                                 >
                                                     <Dot size="sm" className={cx("mt-1 shrink-0 size-2", STATUS_DOT_COR[status])} aria-hidden="true" />
                                                     <span className="flex min-w-0 flex-col">
                                                         <span className="truncate text-sm font-semibold text-secondary">{EVENTO_STATUS_LABEL[status]}</span>
-                                                        <span className="truncate text-sm text-tertiary">{isAtual ? "Status atual" : STATUS_DESCRICAO_CURTA[status]}</span>
+                                                        <span className="truncate text-sm text-tertiary">{atual ? "Status atual" : STATUS_DESCRICAO_CURTA[status]}</span>
                                                     </span>
                                                 </div>
                                             )}
@@ -1080,6 +1092,9 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
                 </TreeView.Item>
                 <TreeView.Item id="relatorio-questionarios" textValue="Questionários" href="/backstage/relatorios/questionarios">
                     <TreeView.ItemContent className={itemClass("relatorio-questionarios")}>Questionários</TreeView.ItemContent>
+                </TreeView.Item>
+                <TreeView.Item id="lista-de-espera" textValue="Lista de espera" href="/backstage/relatorios/lista-de-espera">
+                    <TreeView.ItemContent className={itemClass("lista-de-espera")}>Lista de espera</TreeView.ItemContent>
                 </TreeView.Item>
                 <TreeView.Item id="relatorio-personalizado" textValue="Relatório personalizado" href="/backstage/relatorios/relatorio-personalizado">
                     <TreeView.ItemContent

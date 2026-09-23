@@ -1,13 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { AlertTriangle, ArrowLeft, Calendar, UserPlus01, XClose } from "@untitledui/icons";
+import { ArrowLeft, Calendar, UserPlus01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
-import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
 import { Select } from "@/components/base/select/select";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { AppShell } from "../../components/AppShell";
-import { BottomSheet } from "../../components/BottomSheet";
 import { StatusBar } from "../../components/StatusBar";
 import { addDependente } from "../data/dependentes";
 
@@ -24,13 +21,20 @@ const VINCULOS = [
     { id: "outro", label: "Outro" },
 ];
 
-const NOMES_BUREAU = ["Lucas Andrade", "Beatriz Nogueira", "Rafael Mendes", "Camila Duarte", "Thiago Barros"];
-
 const maskDate = (v: string) => {
     const d = v.replace(/\D/g, "").slice(0, 8);
     let out = d.slice(0, 2);
     if (d.length > 2) out += "/" + d.slice(2, 4);
     if (d.length > 4) out += "/" + d.slice(4, 8);
+    return out;
+};
+
+const maskCpf = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 11);
+    let out = d.slice(0, 3);
+    if (d.length > 3) out += "." + d.slice(3, 6);
+    if (d.length > 6) out += "." + d.slice(6, 9);
+    if (d.length > 9) out += "-" + d.slice(9, 11);
     return out;
 };
 
@@ -44,10 +48,20 @@ const parseNasc = (s: string) => {
     return { dia, mes, ano };
 };
 
-const formatDoc = (digits: string) => {
-    if (digits.length === 11) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
-    if (digits.length === 14) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
-    return digits;
+// Validação de CPF (dígitos verificadores).
+const cpfValido = (v: string) => {
+    const d = v.replace(/\D/g, "");
+    if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+    let soma = 0;
+    for (let i = 0; i < 9; i++) soma += +d[i] * (10 - i);
+    let resto = (soma * 10) % 11;
+    if (resto === 10) resto = 0;
+    if (resto !== +d[9]) return false;
+    soma = 0;
+    for (let i = 0; i < 10; i++) soma += +d[i] * (11 - i);
+    resto = (soma * 10) % 11;
+    if (resto === 10) resto = 0;
+    return resto === +d[10];
 };
 
 const iniciaisDe = (nome: string) =>
@@ -62,54 +76,63 @@ export function CadastrarDependente() {
     const navigate = useNavigate();
     const voltar = () => navigate("/ingresse-app/perfil/dependentes");
 
-    const [tipoDoc, setTipoDoc] = useState<string | null>(null);
-    const [documento, setDocumento] = useState("");
-    const [dataNasc, setDataNasc] = useState("");
     const [nome, setNome] = useState("");
+    const [cpf, setCpf] = useState("");
+    const [dataNasc, setDataNasc] = useState("");
     const [vinculo, setVinculo] = useState<string | null>(null);
-    const [errors, setErrors] = useState<{ tipo?: string; doc?: string; data?: string; nome?: string; vinculo?: string }>({});
-    const [feedback, setFeedback] = useState<"sucesso" | "erro" | null>(null);
+    const [erroCpf, setErroCpf] = useState<string | undefined>(undefined);
+    const [enviando, setEnviando] = useState(false);
 
-    const nascInfo = parseNasc(dataNasc);
-    const isMenor = nascInfo ? ANO_ATUAL - nascInfo.ano < 18 : false;
-
-    const maxDoc = tipoDoc === "cpf" ? 11 : 14;
+    // Botão só habilita quando todos os campos estão preenchidos.
+    const formValido = nome.trim().length > 0 && cpf.replace(/\D/g, "").length === 11 && !!parseNasc(dataNasc) && !!vinculo;
 
     const cadastrar = () => {
-        const digits = documento.replace(/\D/g, "");
-        const e: typeof errors = {};
+        const digits = cpf.replace(/\D/g, "");
 
-        if (!tipoDoc) e.tipo = "Selecione o tipo de documento.";
-        const tamOk = tipoDoc === "cpf" ? digits.length === 11 : tipoDoc === "cnpj" ? digits.length === 14 : digits.length === 11 || digits.length === 14;
-        if (!tamOk) e.doc = "Documento inválido. Verifique os dados e tente novamente.";
-        if (!nascInfo) e.data = "A data de nascimento não corresponde aos dados encontrados.";
-        if (isMenor && !nome.trim()) e.nome = "Não conseguimos identificar o nome. Informe o nome completo do dependente.";
-        if (!vinculo) e.vinculo = "Selecione o vínculo com essa pessoa.";
-
-        setErrors(e);
-        if (Object.keys(e).length > 0) return;
-
-        // Cenário de erro geral (demo): documento com todos os dígitos iguais.
-        if (/^(\d)\1+$/.test(digits)) {
-            setFeedback("erro");
+        // Único erro possível no formulário: CPF inválido.
+        if (!cpfValido(digits)) {
+            setErroCpf("CPF inválido. Verifique os dados e tente novamente.");
             return;
         }
 
-        const somaDigitos = digits.split("").reduce((a, c) => a + Number(c), 0);
-        const nomeFinal = nome.trim() || NOMES_BUREAU[somaDigitos % NOMES_BUREAU.length];
-        addDependente({
-            nome: nomeFinal,
-            nascimento: dataNasc,
-            cpf: formatDoc(digits),
-            parentesco: VINCULOS.find((v) => v.id === vinculo)?.label ?? "Dependente",
-            iniciais: iniciaisDe(nomeFinal),
-        });
-        // Sem confirmação: volta direto pra lista, com o novo dependente no topo.
-        voltar();
+        // Loading no botão + interação bloqueada enquanto processa.
+        setEnviando(true);
+        window.setTimeout(() => {
+            const nomeFinal = nome.trim();
+            addDependente({
+                nome: nomeFinal,
+                nascimento: dataNasc,
+                cpf: maskCpf(digits),
+                parentesco: VINCULOS.find((v) => v.id === vinculo)?.label ?? "Dependente",
+                iniciais: iniciaisDe(nomeFinal),
+            });
+            // Sem confirmação: volta direto pra lista, com o novo dependente no topo.
+            voltar();
+        }, 1000);
     };
 
     return (
-        <AppShell showTabBar={false}>
+        <AppShell
+            showTabBar={false}
+            bottomBar={
+                <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col gap-3 border-t border-secondary bg-primary px-5 pt-3 pb-6">
+                    <Button
+                        size="lg"
+                        color="primary"
+                        className="w-full"
+                        iconLeading={UserPlus01}
+                        isLoading={enviando}
+                        isDisabled={!formValido}
+                        onClick={cadastrar}
+                    >
+                        Cadastrar dependente
+                    </Button>
+                    <Button size="lg" color="secondary" className="w-full" isDisabled={enviando} onClick={voltar}>
+                        Cancelar
+                    </Button>
+                </div>
+            }
+        >
             <div className="flex min-h-full flex-col bg-secondary">
                 <StatusBar tone="dark" />
 
@@ -118,8 +141,9 @@ export function CadastrarDependente() {
                     <button
                         type="button"
                         aria-label="Voltar"
+                        disabled={enviando}
                         onClick={voltar}
-                        className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
+                        className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary disabled:opacity-50"
                     >
                         <ArrowLeft className="size-5" />
                     </button>
@@ -130,120 +154,57 @@ export function CadastrarDependente() {
                 </div>
 
                 {/* Formulário */}
-                <div className="flex flex-1 flex-col px-5 pt-6 pb-8">
+                <div className="flex flex-1 flex-col px-5 pt-6 pb-40">
                     <div className="flex flex-col gap-5 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
-                        {/* Tipo de documento */}
-                        <div>
-                            <p className="text-sm font-semibold text-secondary">Tipo de documento</p>
-                            <RadioGroup
-                                value={tipoDoc ?? ""}
-                                onChange={(v) => {
-                                    setTipoDoc(v);
-                                    setDocumento((d) => d.slice(0, v === "cpf" ? 11 : 14));
-                                    setErrors((p) => ({ ...p, tipo: undefined, doc: undefined }));
-                                }}
-                                className="mt-3 gap-3"
-                            >
-                                <RadioButton value="cpf" label="CPF" />
-                                <RadioButton value="cnpj" label="CNPJ" />
-                            </RadioGroup>
-                            {errors.tipo && <p className="mt-2 text-sm text-error-primary">{errors.tipo}</p>}
-                        </div>
-
                         <Input
                             isRequired
-                            label="Número do documento"
-                            placeholder="Apenas números"
-                            inputMode="numeric"
-                            value={documento}
-                            onChange={(v) => {
-                                setDocumento(v.replace(/\D/g, "").slice(0, maxDoc));
-                                setErrors((p) => ({ ...p, doc: undefined }));
-                            }}
-                            isInvalid={!!errors.doc}
-                            hint={errors.doc}
+                            isDisabled={enviando}
+                            label="Nome completo"
+                            placeholder="Digite o nome completo"
+                            value={nome}
+                            onChange={setNome}
                         />
 
                         <Input
                             isRequired
+                            isDisabled={enviando}
+                            label="CPF"
+                            placeholder="Apenas números"
+                            inputMode="numeric"
+                            value={cpf}
+                            onChange={(v) => {
+                                setCpf(maskCpf(v));
+                                setErroCpf(undefined);
+                            }}
+                            isInvalid={!!erroCpf}
+                            hint={erroCpf}
+                        />
+
+                        <Input
+                            isRequired
+                            isDisabled={enviando}
                             icon={Calendar}
                             label="Data de nascimento"
                             placeholder="DD/MM/AAAA"
                             inputMode="numeric"
                             value={dataNasc}
-                            onChange={(v) => {
-                                setDataNasc(maskDate(v));
-                                setErrors((p) => ({ ...p, data: undefined }));
-                            }}
-                            isInvalid={!!errors.data}
-                            hint={errors.data}
+                            onChange={(v) => setDataNasc(maskDate(v))}
                         />
-
-                        {/* Nome só aparece quando o Bureau não identifica (menores) */}
-                        {isMenor && (
-                            <Input
-                                isRequired
-                                label="Nome completo"
-                                placeholder="Digite o nome completo"
-                                value={nome}
-                                onChange={(v) => {
-                                    setNome(v);
-                                    setErrors((p) => ({ ...p, nome: undefined }));
-                                }}
-                                isInvalid={!!errors.nome}
-                                hint={errors.nome ?? "Não conseguimos identificar o nome. Informe o nome completo do dependente."}
-                            />
-                        )}
 
                         <Select
                             isRequired
+                            isDisabled={enviando}
                             label="Qual é o vínculo com essa pessoa?"
                             placeholder="Escolha o vínculo"
                             selectedKey={vinculo}
-                            onSelectionChange={(k) => {
-                                setVinculo(String(k));
-                                setErrors((p) => ({ ...p, vinculo: undefined }));
-                            }}
-                            isInvalid={!!errors.vinculo}
-                            hint={errors.vinculo}
+                            onSelectionChange={(k) => setVinculo(String(k))}
                             items={VINCULOS}
                         >
                             {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
                         </Select>
                     </div>
-
-                    <div className="mt-auto flex flex-col gap-3 pt-8">
-                        <Button size="lg" color="primary" className="w-full" iconLeading={UserPlus01} onClick={cadastrar}>
-                            Cadastrar dependente
-                        </Button>
-                        <Button size="lg" color="secondary" className="w-full" onClick={voltar}>
-                            Cancelar
-                        </Button>
-                    </div>
                 </div>
             </div>
-
-            {/* Erro geral */}
-            <BottomSheet isOpen={feedback === "erro"} onClose={() => setFeedback(null)}>
-                <div className="flex items-start gap-3">
-                    <FeaturedIcon icon={AlertTriangle} color="error" theme="modern" size="lg" />
-                    <div className="min-w-0 flex-1">
-                        <h2 className="text-lg font-bold text-primary">Não foi possível cadastrar o dependente</h2>
-                        <p className="mt-1 text-sm text-tertiary">Verifique os dados informados e tente novamente.</p>
-                    </div>
-                    <button
-                        type="button"
-                        aria-label="Fechar"
-                        onClick={() => setFeedback(null)}
-                        className="text-fg-quaternary transition duration-100 ease-linear active:text-fg-secondary"
-                    >
-                        <XClose className="size-6" />
-                    </button>
-                </div>
-                <Button size="lg" color="primary" className="mt-5 w-full rounded-full" onClick={() => setFeedback(null)}>
-                    Tentar novamente
-                </Button>
-            </BottomSheet>
         </AppShell>
     );
 }

@@ -19,7 +19,6 @@ export function Dependentes() {
     const [aExcluir, setAExcluir] = useState<Dependente | null>(null);
     const [removendo, setRemovendo] = useState(false);
     const [pressionado, setPressionado] = useState<string | null>(null);
-    const [indoCadastrar, setIndoCadastrar] = useState(false);
     // Id do dependente recém-cadastrado, para animar a entrada + destaque temporário.
     const [novoId] = useState<string | null>(() => consumirUltimoAdicionado());
     const [destacado, setDestacado] = useState<string | null>(null);
@@ -64,15 +63,11 @@ export function Dependentes() {
         setRemovendo(true);
         window.setTimeout(() => {
             removeDependente(id);
-            setLista([...getDependentes()]);
             setRemovendo(false);
             setAExcluir(null);
+            // Sucesso: recarrega a lista usando o skeleton.
+            carregar();
         }, 900);
-    };
-
-    const irParaCadastro = () => {
-        setIndoCadastrar(true);
-        window.setTimeout(() => navigate("/ingresse-app/perfil/dependentes/cadastrar"), 450);
     };
 
     // Barra inferior muda conforme o estado (some no carregamento, vira "Tentar novamente" no erro).
@@ -84,7 +79,13 @@ export function Dependentes() {
                         Tentar novamente
                     </Button>
                 ) : (
-                    <Button size="lg" color="primary" iconLeading={UserPlus01} className="w-full" isLoading={indoCadastrar} onClick={irParaCadastro}>
+                    <Button
+                        size="lg"
+                        color="primary"
+                        iconLeading={UserPlus01}
+                        className="w-full"
+                        onClick={() => navigate("/ingresse-app/perfil/dependentes/cadastrar")}
+                    >
                         Cadastrar dependente
                     </Button>
                 )}

@@ -131,8 +131,8 @@ export function CriarCargo() {
                                     {/* Feature Table */}
                                     {isExpanded && (
                                         <div>
-                                            {/* Sticky Table Header with Feature-level Permissions */}
-                                            <div className="sticky top-0 z-10 flex border-b border-secondary bg-secondary_subtle px-6 py-4">
+                                            {/* Feature-level Header with General Permissions */}
+                                            <div className="flex border-b border-secondary bg-secondary px-6 py-4">
                                                 <div className="flex-1 flex items-center gap-2">
                                                     <span className="text-sm font-semibold text-primary">{feature.nome}</span>
                                                     <button className="text-xs text-brand-secondary hover:text-brand-tertiary transition-colors">
@@ -172,7 +172,7 @@ export function CriarCargo() {
                                             </div>
 
                                             {/* Subitem Headers */}
-                                            <div className="flex border-b border-secondary bg-secondary px-6 py-3">
+                                            <div className="flex border-b border-secondary bg-secondary_subtle px-6 py-3">
                                                 <div className="flex-1 text-xs font-semibold text-secondary">Permissão</div>
                                                 <div className="flex w-56 items-center justify-around text-xs font-semibold text-secondary">
                                                     <span>Visualizar</span>

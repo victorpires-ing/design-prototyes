@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTheme } from "@/providers/theme-provider";
 
 /** Viewport de celular (< lg = 1024px). */
@@ -24,41 +24,59 @@ export function useTemaClaro() {
     }, [setTheme]);
 }
 
-/* A reserva dos ingressos é uma só para o fluxo inteiro: o prazo é fixado na primeira tela. */
-const RESERVA_SEGUNDOS = 9 * 60 + 15;
+/*
+ * Reserva dos ingressos: uma contagem só para o fluxo inteiro, que começa em 10 min na
+ * primeira tela do checkout. O "Tempo restante" do topo e o do Pix leem este mesmo relógio,
+ * então mudam juntos e seguem contando ao navegar entre Pix, cartão e recusa.
+ */
+export const RESERVA_SEGUNDOS = 10 * 60;
 let reservaFim: number | null = null;
+let restanteAtual = RESERVA_SEGUNDOS;
+let intervalo: number | null = null;
+const ouvintes = new Set<() => void>();
 
-export function useTempoReserva() {
+const calcularRestante = () => (reservaFim === null ? RESERVA_SEGUNDOS : Math.max(0, Math.ceil((reservaFim - Date.now()) / 1000)));
+
+function assinarRelogio(ouvinte: () => void) {
     if (reservaFim === null) reservaFim = Date.now() + RESERVA_SEGUNDOS * 1000;
-    const calc = () => Math.max(0, Math.round(((reservaFim as number) - Date.now()) / 1000));
-    const [restante, setRestante] = useState(calc);
-    useEffect(() => {
-        const t = window.setInterval(() => setRestante(calc()), 1000);
-        return () => window.clearInterval(t);
-    }, []);
-    return `${String(Math.floor(restante / 60)).padStart(2, "0")}m${String(restante % 60).padStart(2, "0")}s`;
+    ouvintes.add(ouvinte);
+    if (intervalo === null) {
+        intervalo = window.setInterval(() => {
+            const r = calcularRestante();
+            if (r === restanteAtual) return;
+            restanteAtual = r;
+            ouvintes.forEach((o) => o());
+        }, 250);
+    }
+    return () => {
+        ouvintes.delete(ouvinte);
+        if (ouvintes.size === 0 && intervalo !== null) {
+            window.clearInterval(intervalo);
+            intervalo = null;
+        }
+    };
 }
 
-/** Validade do QR do Pix: ao zerar, um novo código é gerado e a contagem recomeça. */
-export function useValidadePix(total = 10 * 60, inicial = 9 * 60 + 15) {
-    const [restante, setRestante] = useState(inicial);
-    const [seed, setSeed] = useState(1);
-    useEffect(() => {
-        const t = window.setInterval(() => {
-            setRestante((r) => {
-                if (r <= 1) {
-                    setSeed((s) => s + 1);
-                    return total;
-                }
-                return r - 1;
-            });
-        }, 1000);
-        return () => window.clearInterval(t);
-    }, [total]);
+/** Segundos que faltam na reserva (mesmo valor para todos os componentes). */
+function useRestanteReserva() {
+    return useSyncExternalStore(assinarRelogio, () => restanteAtual);
+}
+
+const doisDigitos = (n: number) => String(n).padStart(2, "0");
+
+/** "Tempo restante: 09m59s" do topo. */
+export function useTempoReserva() {
+    const restante = useRestanteReserva();
+    return `${doisDigitos(Math.floor(restante / 60))}m${doisDigitos(restante % 60)}s`;
+}
+
+/** Validade do Pix = tempo da reserva: o código vale enquanto os ingressos estiverem reservados. */
+export function useValidadePix() {
+    const restante = useRestanteReserva();
     return {
-        seed,
-        relogio: `${String(Math.floor(restante / 60)).padStart(2, "0")}:${String(restante % 60).padStart(2, "0")}s`,
-        progresso: (restante / total) * 100,
+        seed: 1,
+        relogio: `${doisDigitos(Math.floor(restante / 60))}:${doisDigitos(restante % 60)}s`,
+        progresso: (restante / RESERVA_SEGUNDOS) * 100,
         urgente: restante <= 60,
     };
 }

@@ -19,7 +19,8 @@ type IllustrationKind =
     | "freepass"
     | "payin"
     | "totem"
-    | "payout";
+    | "payout"
+    | "checkout";
 
 interface ProductCardData {
     id: string;
@@ -114,6 +115,13 @@ const PRODUCTS: ProductCardData[] = [
         to: "/payout/contrato-quick-win-finance",
         illustration: "payout",
     },
+    {
+        id: "checkout",
+        name: "Checkout - Melhorias de compra",
+        description: "Pix copy-first, formulário de cartão e recuperação da compra recusada",
+        to: "/checkout/melhorias-de-compra",
+        illustration: "checkout",
+    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
@@ -129,6 +137,7 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     payin: PayInIllustration,
     totem: TotemIllustration,
     payout: PayOutIllustration,
+    checkout: CheckoutIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -244,6 +253,44 @@ function PayInIllustration() {
                 <path d="M164 80 L186 80" />
                 <polyline points="180,74 186,80 180,86" />
             </g>
+        </svg>
+    );
+}
+
+function CheckoutIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <defs>
+                <linearGradient id="ck-bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="160">
+                    <stop offset="0%" stopColor={N100} />
+                    <stop offset="100%" stopColor={N200} />
+                </linearGradient>
+            </defs>
+            <rect width="320" height="160" fill="url(#ck-bg)" />
+
+            {/* Pix aberto: código + tempo + QR */}
+            <rect x="24" y="24" width="176" height="76" rx="10" fill={N50} stroke={BORDER} />
+            <rect x="36" y="36" width="70" height="8" rx="4" fill={N300} />
+            <rect x="36" y="52" width="100" height="14" rx="4" fill={N200} />
+            <rect x="36" y="78" width="100" height="5" rx="2.5" fill={N200} />
+            <rect x="36" y="78" width="78" height="5" rx="2.5" fill={BRAND} />
+            <rect x="150" y="36" width="38" height="38" rx="3" fill={N100} stroke={BORDER} />
+            <rect x="155" y="41" width="10" height="10" fill={N400} />
+            <rect x="173" y="41" width="10" height="10" fill={N400} />
+            <rect x="155" y="59" width="10" height="10" fill={N400} />
+            <rect x="173" y="59" width="10" height="10" fill={BRAND_SOFT} />
+
+            {/* Outros métodos recolhidos */}
+            <rect x="24" y="108" width="176" height="14" rx="5" fill={N50} stroke={BORDER} />
+            <rect x="24" y="128" width="176" height="14" rx="5" fill={N50} stroke={BORDER} />
+
+            {/* Resumo do pedido */}
+            <rect x="212" y="24" width="84" height="118" rx="10" fill={N50} stroke={BORDER} />
+            <rect x="222" y="34" width="22" height="22" rx="4" fill={BRAND_SOFT} />
+            <rect x="222" y="66" width="64" height="6" rx="3" fill={N200} />
+            <rect x="222" y="80" width="50" height="6" rx="3" fill={N200} />
+            <rect x="222" y="94" width="58" height="6" rx="3" fill={N200} />
+            <rect x="222" y="120" width="64" height="12" rx="4" fill={BRAND} />
         </svg>
     );
 }

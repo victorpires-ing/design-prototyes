@@ -39,7 +39,7 @@ function OpcaoCartao({ value, children }: { value: string; children: ReactNode }
             className={({ isSelected }) =>
                 cx(
                     "flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 shadow-xs transition duration-100 ease-linear",
-                    isSelected ? "bg-brand-primary" : "bg-primary hover:bg-primary_hover",
+                    isSelected ? "bg-brand-primary ring-1 ring-error ring-inset" : "bg-primary hover:bg-primary_hover",
                 )
             }
         >

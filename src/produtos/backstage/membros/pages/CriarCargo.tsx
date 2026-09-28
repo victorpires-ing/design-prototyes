@@ -116,7 +116,7 @@ export function CriarCargo() {
 
                             return (
                                 <div key={feature.featureId} className="overflow-hidden rounded-lg border border-secondary bg-primary">
-                                    {/* Feature Header - Accordion Toggle */}
+                                    {/* Feature Header - Accordion Toggle with Controls */}
                                     <button
                                         onClick={() => toggleFeature(feature.featureId)}
                                         className="w-full flex items-center gap-4 border-b border-secondary bg-secondary_subtle px-6 py-4 hover:bg-secondary transition-colors"
@@ -125,52 +125,52 @@ export function CriarCargo() {
                                             className={cx("size-5 text-fg-quaternary transition-transform", isExpanded && "rotate-180")}
                                             aria-hidden="true"
                                         />
-                                        <h3 className="flex-1 text-left text-sm font-semibold text-primary">{feature.nome}</h3>
+                                        <div className="flex-1 flex items-center gap-2">
+                                            <h3 className="text-sm font-semibold text-primary">{feature.nome}</h3>
+                                            <button
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="text-xs text-brand-secondary hover:text-brand-tertiary transition-colors"
+                                            >
+                                                Detalhar permissão
+                                            </button>
+                                        </div>
+                                        {isExpanded && (
+                                            <div className="flex w-56 items-center justify-around gap-2" onClick={(e) => e.stopPropagation()}>
+                                                <Checkbox
+                                                    size="sm"
+                                                    isSelected={allViewer}
+                                                    onChange={(isSelected) =>
+                                                        handleFeaturePermissionChange(feature.featureId, isSelected ? "viewer" : "none")
+                                                    }
+                                                    aria-label={`${feature.nome} - Visualizar (geral)`}
+                                                    title="Visualizar (Geral)"
+                                                />
+                                                <Checkbox
+                                                    size="sm"
+                                                    isSelected={allEditor}
+                                                    onChange={(isSelected) =>
+                                                        handleFeaturePermissionChange(feature.featureId, isSelected ? "editor" : "none")
+                                                    }
+                                                    aria-label={`${feature.nome} - Editor (geral)`}
+                                                    title="Editor (Geral)"
+                                                />
+                                                <Checkbox
+                                                    size="sm"
+                                                    isSelected={allAdmin}
+                                                    onChange={(isSelected) =>
+                                                        handleFeaturePermissionChange(feature.featureId, isSelected ? "admin" : "none")
+                                                    }
+                                                    aria-label={`${feature.nome} - Admin (geral)`}
+                                                    title="Admin (Geral)"
+                                                />
+                                                <div className="w-8" />
+                                            </div>
+                                        )}
                                     </button>
 
                                     {/* Feature Table */}
                                     {isExpanded && (
                                         <div>
-                                            {/* Feature-level Header with General Permissions */}
-                                            <div className="flex border-b border-secondary bg-secondary px-6 py-4">
-                                                <div className="flex-1 flex items-center gap-2">
-                                                    <span className="text-sm font-semibold text-primary">{feature.nome}</span>
-                                                    <button className="text-xs text-brand-secondary hover:text-brand-tertiary transition-colors">
-                                                        Detalhar permissão
-                                                    </button>
-                                                </div>
-                                                <div className="flex w-56 items-center justify-around gap-2">
-                                                    <Checkbox
-                                                        size="sm"
-                                                        isSelected={allViewer}
-                                                        onChange={(isSelected) =>
-                                                            handleFeaturePermissionChange(feature.featureId, isSelected ? "viewer" : "none")
-                                                        }
-                                                        aria-label={`${feature.nome} - Visualizar (geral)`}
-                                                        title="Visualizar (Geral)"
-                                                    />
-                                                    <Checkbox
-                                                        size="sm"
-                                                        isSelected={allEditor}
-                                                        onChange={(isSelected) =>
-                                                            handleFeaturePermissionChange(feature.featureId, isSelected ? "editor" : "none")
-                                                        }
-                                                        aria-label={`${feature.nome} - Editor (geral)`}
-                                                        title="Editor (Geral)"
-                                                    />
-                                                    <Checkbox
-                                                        size="sm"
-                                                        isSelected={allAdmin}
-                                                        onChange={(isSelected) =>
-                                                            handleFeaturePermissionChange(feature.featureId, isSelected ? "admin" : "none")
-                                                        }
-                                                        aria-label={`${feature.nome} - Admin (geral)`}
-                                                        title="Admin (Geral)"
-                                                    />
-                                                    <div className="w-8" />
-                                                </div>
-                                            </div>
-
                                             {/* Subitem Headers */}
                                             <div className="flex border-b border-secondary bg-secondary_subtle px-6 py-3">
                                                 <div className="flex-1 text-xs font-semibold text-secondary">Permissão</div>

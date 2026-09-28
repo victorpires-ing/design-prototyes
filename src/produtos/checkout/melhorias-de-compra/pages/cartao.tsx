@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Radio as AriaRadio, RadioGroup as AriaRadioGroup } from "react-aria-components";
-import { ChevronDown, InfoCircle, Plus, Trash01 } from "@untitledui/icons";
+import { CheckCircle, ChevronDown, InfoCircle, Plus, Trash01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { HintText } from "@/components/base/input/hint-text";
@@ -83,6 +83,8 @@ export function Cartao() {
     const erro = (k: keyof CamposCartao) => (tocados[k] ? errosVisiveis[k] : undefined);
 
     const bandeira = detectarBandeira(campos.numero);
+    // Número completo e válido: a bandeira detectada vai para dentro do input como confirmação.
+    const BandeiraValidada = bandeira && !erros.numero ? BANDEIRAS[bandeira].Icon : null;
     const tamanhoCvv = (cartaoSalvo?.bandeira ?? bandeira) === "amex" ? 4 : 3;
 
     const atualizar = (k: keyof CamposCartao, v: string) => setCampos((c) => ({ ...c, [k]: v }));
@@ -158,14 +160,33 @@ export function Cartao() {
                             >
                                 <Label>Número do cartão</Label>
                                 <div className="relative w-full">
-                                    <InputBase size="lg" inputMode="numeric" autoComplete="cc-number" placeholder="0000 0000 0000 0000" inputClassName="pr-32" />
-                                    <div className={cx("pointer-events-none absolute top-1/2 flex -translate-y-1/2 gap-1", erro("numero") ? "right-10" : "right-3")}>
-                                        {(["visa", "mastercard", "amex", "diners"] as const).map((b) => {
-                                            const { Icon } = BANDEIRAS[b];
-                                            return <Icon key={b} className={cx("h-4 w-auto transition-opacity", bandeira && bandeira !== b && "opacity-30")} />;
-                                        })}
-                                    </div>
+                                    {BandeiraValidada && (
+                                        <BandeiraValidada
+                                            aria-hidden="true"
+                                            className="pointer-events-none absolute top-1/2 left-3 z-10 h-6 w-auto -translate-y-1/2"
+                                        />
+                                    )}
+                                    <InputBase
+                                        size="lg"
+                                        inputMode="numeric"
+                                        autoComplete="cc-number"
+                                        placeholder="0000 0000 0000 0000"
+                                        inputClassName={BandeiraValidada ? "pl-14 pr-10" : "pr-32"}
+                                    />
+                                    {BandeiraValidada ? (
+                                        <CheckCircle aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3 size-5 -translate-y-1/2 text-fg-success-primary" />
+                                    ) : (
+                                        <div className={cx("pointer-events-none absolute top-1/2 flex -translate-y-1/2 gap-1", erro("numero") ? "right-10" : "right-3")}>
+                                            {(["visa", "mastercard", "amex", "diners"] as const).map((b) => {
+                                                const { Icon } = BANDEIRAS[b];
+                                                return <Icon key={b} className={cx("h-4 w-auto transition-opacity", bandeira && bandeira !== b && "opacity-30")} />;
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
+                                <span role="status" className="sr-only">
+                                    {BandeiraValidada && bandeira ? `Cartão ${BANDEIRAS[bandeira].nome} validado` : ""}
+                                </span>
                                 {erro("numero") && <HintText isInvalid>{erro("numero")}</HintText>}
                             </TextField>
 

@@ -32,6 +32,8 @@ import { VisaoGeralEvento } from '../produtos/backstage/eventos/pages/VisaoGeral
 import { InformacoesEvento } from '../produtos/backstage/eventos/pages/InformacoesEvento';
 import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';
 import { NovoGrupoV2 } from '../produtos/backstage/membros-v2/pages/NovoGrupoV2';
+import { Membros } from '../produtos/backstage/membros/pages/Membros';
+import { CriarCargo } from '../produtos/backstage/membros/pages/CriarCargo';
 import { EquipeProvider } from '../produtos/backstage/equipe-de-operacao/data/equipe-store';
 import { EquipeDeOperacao } from '../produtos/backstage/equipe-de-operacao/pages/EquipeDeOperacao';
 import { CriarGrupo as CriarGrupoOperacao } from '../produtos/backstage/equipe-de-operacao/pages/CriarGrupo';
@@ -219,6 +221,8 @@ export default function App() {
         <Route path="/backstage/pedidos" element={<PedidosPosCompra />} />
         <Route path="/backstage/pedidos/:pedidoId" element={<DetalhePedidoPosCompra />} />
         <Route path="/backstage/pedidos/:pedidoId/formulario" element={<EditarFormulario />} />
+        <Route path="/backstage/membros" element={<Membros />} />
+        <Route path="/backstage/membros/criar-cargo" element={<CriarCargo />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao" element={<EquipeDeOperacao />} />

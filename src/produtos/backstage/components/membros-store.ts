@@ -6,10 +6,22 @@ import { useSyncExternalStore } from "react";
 /*  Via sancionada de compartilhamento entre projetos: components/.    */
 /* ------------------------------------------------------------------ */
 
+export type PermissionLevel = "none" | "viewer" | "editor" | "admin";
+
+export interface FeaturePermission {
+    featureId: string;
+    nome: string;
+    level: PermissionLevel;
+    /** Subitems com permissões granulares (ex: tipos de relatórios). */
+    subitens?: { id: string; nome: string; level: PermissionLevel }[];
+}
+
 export interface Cargo {
     id: string;
     nome: string;
     descricao: string;
+    /** Permissões granulares por funcionalidade. */
+    permissions?: FeaturePermission[];
     /** Cargo sem permissão explícita — configurado por feature (ex: Cortesias). */
     porFeature?: boolean;
 }
@@ -70,6 +82,69 @@ export const EVENTOS: EventoRef[] = [
 export function eventoById(id: string) {
     return EVENTOS.find((e) => e.id === id);
 }
+
+/* ---- Funcionalidades do sistema (para construtor de cargos) ---- */
+export const FEATURES: { id: string; nome: string; subitens: { id: string; nome: string }[] }[] = [
+    {
+        id: "eventos",
+        nome: "Eventos",
+        subitens: [
+            { id: "info-evento", nome: "Informações do evento" },
+            { id: "gestao-cotas", nome: "Gerenciamento de cotas (cortesia, bilheteria e PDV)" },
+            { id: "itens", nome: "Itens" },
+            { id: "ingressos", nome: "Ingressos" },
+            { id: "combos", nome: "Combos" },
+            { id: "produtos", nome: "Produtos" },
+            { id: "abertura-vendas", nome: "Abertura de vendas" },
+            { id: "estrategia-vendas", nome: "Estratégia de vendas" },
+            { id: "lotes-sincronizados", nome: "Lotes sincronizados" },
+            { id: "compras-grupo", nome: "Compras em grupo" },
+            { id: "cortesias", nome: "Cortesias" },
+            { id: "emissao-cortesias", nome: "Emissão de cortesias" },
+            { id: "relatorios", nome: "Relatórios" },
+            { id: "vendas", nome: "Vendas" },
+            { id: "transacoes", nome: "Transações" },
+            { id: "acesso", nome: "Acesso" },
+            { id: "bordero", nome: "Borderô" },
+            { id: "transferencias", nome: "Transferências" },
+            { id: "questionarios", nome: "Questionários" },
+            { id: "marketing", nome: "Marketing" },
+            { id: "passkey", nome: "Passkey" },
+            { id: "cupom-desconto", nome: "Cupom de desconto" },
+            { id: "etiquetas", nome: "Etiquetas" },
+            { id: "pixel-rastreamento", nome: "Pixel de rastreamento" },
+            { id: "coleta-dados", nome: "Coleta de dados" },
+            { id: "perguntas-ingresso", nome: "Perguntas por ingresso" },
+        ],
+    },
+    {
+        id: "financeiro",
+        nome: "Financeiro",
+        subitens: [
+            { id: "saldos", nome: "Saldos" },
+            { id: "repasses", nome: "Repasses" },
+            { id: "operacoes", nome: "Operações" },
+        ],
+    },
+    {
+        id: "membros",
+        nome: "Membros",
+        subitens: [
+            { id: "listar-membros", nome: "Listar membros" },
+            { id: "criar-membros", nome: "Criar membros" },
+            { id: "gerenciar-permissoes", nome: "Gerenciar permissões" },
+        ],
+    },
+    {
+        id: "relatorios-geral",
+        nome: "Relatórios",
+        subitens: [
+            { id: "vendas-geral", nome: "Vendas" },
+            { id: "financeiro-geral", nome: "Financeiro" },
+            { id: "audience", nome: "Audience" },
+        ],
+    },
+];
 
 /* ------------------------------------------------------------------ */
 /*  Store reativo                                                      */
@@ -144,4 +219,32 @@ export function removeGrupos(ids: Set<string>) {
 /** Sincroniza os grupos de um membro recém-criado (adiciona o id do membro aos grupos). */
 function _sincronizarGrupos(m: Membro) {
     _grupos = _grupos.map((g) => (m.grupoIds.includes(g.id) ? { ...g, membroIds: [...new Set([...g.membroIds, m.id])] } : g));
+}
+
+/* ---- cargos customizados (por-criar) ---- */
+let _cargosCustom: Cargo[] = [];
+
+export function useCargos() {
+    // Por enquanto, apenas retorna CARGOS combinado com customizados
+    // TODO: implementar com useSyncExternalStore quando resolver o infinite loop
+    return [...CARGOS, ..._cargosCustom];
+}
+
+export function addCargo(c: Cargo) {
+    _cargosCustom = [c, ..._cargosCustom];
+}
+
+export function updateCargo(id: string, patch: Partial<Cargo>) {
+    const idx = _cargosCustom.findIndex((c) => c.id === id);
+    if (idx !== -1) {
+        _cargosCustom = [
+            ..._cargosCustom.slice(0, idx),
+            { ..._cargosCustom[idx], ...patch },
+            ..._cargosCustom.slice(idx + 1),
+        ];
+    }
+}
+
+export function removeCargo(id: string) {
+    _cargosCustom = _cargosCustom.filter((c) => c.id !== id);
 }

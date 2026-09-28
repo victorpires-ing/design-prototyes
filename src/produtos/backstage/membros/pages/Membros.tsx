@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import type { Key } from "react-aria-components";
 import { LinkExternal01, Plus, SearchLg, Trash01, Users01 } from "@untitledui/icons";
 import { toast } from "sonner";
@@ -14,7 +15,7 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { CriarGrupoModal } from "../../components/CriarGrupoModal";
 import { CriarMembroModal } from "../../components/CriarMembroModal";
-import { CARGOS, cargoById, eventoById, removeGrupos, removeMembros, useGrupos, useMembros, type Grupo, type Membro } from "../../components/membros-store";
+import { cargoById, eventoById, removeGrupos, removeMembros, useCargos, useGrupos, useMembros, type Grupo, type Membro } from "../../components/membros-store";
 
 type TabKey = "membros" | "grupos" | "cargos";
 
@@ -25,8 +26,10 @@ const PLACEHOLDERS: Record<TabKey, string> = {
 };
 
 export function Membros() {
+    const navigate = useNavigate();
     const membros = useMembros();
     const grupos = useGrupos();
+    const cargos = useCargos();
     const [tab, setTab] = useState<TabKey>("membros");
     const [busca, setBusca] = useState("");
     const [membroModalOpen, setMembroModalOpen] = useState(false);
@@ -47,7 +50,7 @@ export function Membros() {
             (g) => g.nome.toLowerCase().includes(termo) || g.eventoIds.some((id) => (eventoById(id)?.nome ?? "").toLowerCase().includes(termo)),
         );
     }, [grupos, termo]);
-    const cargosFiltrados = useMemo(() => (termo ? CARGOS.filter((c) => c.nome.toLowerCase().includes(termo)) : CARGOS), [termo]);
+    const cargosFiltrados = useMemo(() => (termo ? cargos.filter((c) => c.nome.toLowerCase().includes(termo)) : cargos), [cargos, termo]);
 
     const changeTab = (key: TabKey) => {
         setTab(key);
@@ -88,6 +91,11 @@ export function Membros() {
                                 Novo grupo
                             </Button>
                         )}
+                        {tab === "cargos" && (
+                            <Button size="md" color="primary" iconLeading={Plus} onClick={() => navigate("/backstage/membros/criar-cargo")}>
+                                Novo cargo
+                            </Button>
+                        )}
                     </div>
                 </header>
 
@@ -99,7 +107,7 @@ export function Membros() {
                                 <Tabs.List type="button-border" size="sm">
                                     <Tabs.Item id="membros">{`Membros (${membros.length})`}</Tabs.Item>
                                     <Tabs.Item id="grupos">{`Grupos (${grupos.length})`}</Tabs.Item>
-                                    <Tabs.Item id="cargos">{`Cargos (${CARGOS.length})`}</Tabs.Item>
+                                    <Tabs.Item id="cargos">{`Cargos (${cargos.length})`}</Tabs.Item>
                                 </Tabs.List>
                             </Tabs>
                             <div className="flex items-center gap-3">
@@ -300,24 +308,43 @@ function CargosTable({ rows }: { rows: typeof CARGOS }) {
         <>
             <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)] border-b border-secondary bg-secondary_subtle md:grid">
                 <span className={HEADER_CELL}>Nome do cargo</span>
-                <span className={HEADER_CELL}>Permissões</span>
+                <span className={HEADER_CELL}>Informações</span>
             </div>
-            {rows.map((c, i) => (
-                <div
-                    key={c.id}
-                    className={cx("flex flex-col gap-2 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-0", i !== rows.length - 1 && "border-b border-secondary")}
-                >
-                    <div className={cx(CELL, "flex flex-wrap items-center gap-2")}>
-                        <span className="text-sm font-semibold text-primary">{c.nome}</span>
-                        {c.porFeature && (
-                            <Badge size="sm" type="pill-color" color="blue">
-                                Por feature
-                            </Badge>
-                        )}
+            {rows.map((c, i) => {
+                const hasPermissions = c.permissions && c.permissions.some((p) => p.level !== "none");
+                const permissionsSummary = hasPermissions
+                    ? c.permissions
+                        ?.filter((p) => p.level !== "none")
+                        .map((p) => `${p.nome}: ${p.level === "admin" ? "Admin" : p.level === "editor" ? "Editor" : "Visualizador"}`)
+                        .join(", ")
+                    : null;
+
+                return (
+                    <div
+                        key={c.id}
+                        className={cx("flex flex-col gap-2 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-0", i !== rows.length - 1 && "border-b border-secondary")}
+                    >
+                        <div className={cx(CELL, "flex flex-wrap items-center gap-2")}>
+                            <span className="text-sm font-semibold text-primary">{c.nome}</span>
+                            {c.porFeature && (
+                                <Badge size="sm" type="pill-color" color="blue">
+                                    Por feature
+                                </Badge>
+                            )}
+                        </div>
+                        <div className={cx(CELL, "text-sm text-tertiary")}>
+                            {permissionsSummary ? (
+                                <div className="space-y-1">
+                                    <div className="font-medium text-secondary">Permissões:</div>
+                                    <div>{permissionsSummary}</div>
+                                </div>
+                            ) : (
+                                c.descricao
+                            )}
+                        </div>
                     </div>
-                    <div className={cx(CELL, "text-sm text-tertiary")}>{c.descricao}</div>
-                </div>
-            ))}
+                );
+            })}
         </>
     );
 }

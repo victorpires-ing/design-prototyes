@@ -25,6 +25,13 @@ const PAGES: LandingPageItem[] = [
         to: "/landing-pages/lounge-premium-bahia",
         gradient: "linear-gradient(135deg,#0a1e46 0%,#2f6bff 55%,#c23a2d 100%)",
     },
+    {
+        id: "meia-entrada",
+        name: "Meia-entrada",
+        description: "Informações sobre meia-entrada",
+        to: "/marketplace/meia-entrada",
+        gradient: "linear-gradient(135deg,#15BE78 0%,#2A89EF 100%)",
+    },
 ];
 
 export function LandingPagesMenu() {

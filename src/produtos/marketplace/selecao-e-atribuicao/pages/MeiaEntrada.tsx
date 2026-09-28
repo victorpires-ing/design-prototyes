@@ -1,7 +1,7 @@
 import { useEffect, useState, type FC, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useSearchParams } from "react-router";
-import { CheckCircle, ChevronDown, GraduationHat01, HeartHand, Menu01, Phone01, Scales02, User01, Wallet02, XClose } from "@untitledui/icons";
+import { CheckCircle, ChevronDown, LinkExternal01, GraduationHat01, HeartHand, Menu01, Phone01, Scales02, User01, Wallet02, XClose } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -11,8 +11,9 @@ import cieFoto from "../assets/carteirinha-1.png";
 import logoUne from "../assets/logo-ube.png";
 import logoUbes from "../assets/logo-ubes.png";
 import logoAnpg from "../assets/logo-anpg.png";
+import ingresseLogo from "../assets/ingresse-logo.svg";
 
-const INGRESSE_LOGO = "https://auth.prod.ingresse.com/resources/2ibrw/login/custom/img/ingresse-light.svg";
+const INGRESSE_LOGO = ingresseLogo;
 
 const SECOES = [
     { id: "quem-tem-direito", label: "Quem tem direito" },
@@ -37,34 +38,6 @@ const SOCIAIS: { label: string; href: string; path: string }[] = [
 /* ------------------------------------------------------------------ */
 /*  Blocos                                                             */
 /* ------------------------------------------------------------------ */
-
-function Accordion({ items }: { items: { titulo: string; conteudo: ReactNode }[] }) {
-    const [aberto, setAberto] = useState<number | null>(null);
-    return (
-        <div className="divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
-            {items.map((it, i) => {
-                const on = aberto === i;
-                return (
-                    <div key={i}>
-                        <button
-                            type="button"
-                            onClick={() => setAberto(on ? null : i)}
-                            className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition duration-100 ease-linear hover:bg-secondary md:px-5"
-                        >
-                            <span className="text-md font-semibold text-primary">{it.titulo}</span>
-                            <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition duration-200", on && "rotate-180")} />
-                        </button>
-                        {on && (
-                            <div className="border-t border-border-secondary bg-secondary px-4 pt-6 pb-5 text-sm leading-relaxed text-tertiary md:px-5 md:pb-6">
-                                {it.conteudo}
-                            </div>
-                        )}
-                    </div>
-                );
-            })}
-        </div>
-    );
-}
 
 /* FAQ no estilo "Accordion 02" do DS: ícone ＋/－ à esquerda, item aberto com fundo. */
 function FaqAccordion02({ items }: { items: { titulo: string; conteudo: ReactNode }[] }) {
@@ -121,6 +94,7 @@ function CategoriaItem({
     labelDoc,
     documentos,
     separadorDocumentos = ", ",
+    cta,
 }: {
     icon: FC<{ className?: string }>;
     titulo: string;
@@ -129,6 +103,8 @@ function CategoriaItem({
     documentos: string[];
     /** Separador entre os documentos (ex.: " ou " para combinações alternativas). */
     separadorDocumentos?: string;
+    /** CTA opcional exibido abaixo dos documentos (ex.: solicitar DNE). */
+    cta?: { label: string; href: string };
 }) {
     const paragrafos = Array.isArray(descricao) ? descricao : [descricao];
     return (
@@ -145,6 +121,11 @@ function CategoriaItem({
                 ))}
                 <p className="mt-3 text-md leading-relaxed text-tertiary">{labelDoc}:</p>
                 <p className="mt-0.5 text-md font-medium leading-relaxed text-secondary">{documentos.join(separadorDocumentos)}</p>
+                {cta && (
+                    <Button color="secondary" size="md" href={cta.href} target="_blank" rel="noopener noreferrer" className="mt-4">
+                        {cta.label}
+                    </Button>
+                )}
             </div>
         </div>
     );
@@ -191,7 +172,7 @@ export function MeiaEntrada() {
     // (órgãos, UFs e telefones) deve ser validada pelo Jurídico.
     const orgaos = [
         { nome: "PROCON-SP", telefone: "151", apoio: "Atendimento telefônico para chamadas originadas no município de São Paulo." },
-        { nome: "Secretaria Nacional do Consumidor — Senacon", telefone: "(61) 2025-3112", apoio: "Atendimento ao consumidor em âmbito nacional." },
+        { nome: "Secretaria Nacional do Consumidor — Senacon", telefone: "(61) 2025-3112", apoio: "Atendimento e orientação sobre direitos do consumidor em âmbito nacional." },
     ];
 
     // Entidades emissoras da CIE (contatos de referência — validar com Jurídico).
@@ -208,7 +189,7 @@ export function MeiaEntrada() {
                 <div className="mx-auto w-full max-w-container">
                     <div className="flex h-16 items-center justify-between gap-8 rounded-2xl bg-primary px-5 shadow-sm ring-1 ring-border-secondary md:px-6">
                         <a href="#" onClick={(e) => e.preventDefault()} className="flex shrink-0 items-center">
-                            <img src={INGRESSE_LOGO} alt="Ingresse" className="h-6 w-auto md:h-7" style={{ filter: "invert(1)" }} />
+                            <img src={INGRESSE_LOGO} alt="Ingresse" className="h-6 w-auto md:h-7" />
                         </a>
                         {/* Nav desktop */}
                         <nav className="hidden items-center gap-6 md:flex">
@@ -282,9 +263,10 @@ export function MeiaEntrada() {
                             <CategoriaItem
                                 icon={GraduationHat01}
                                 titulo="Estudante"
-                                descricao="Estudantes regularmente matriculados nos níveis e modalidades de ensino previstos em lei têm direito à meia-entrada."
+                                descricao="Estudantes regularmente matriculados nos níveis e modalidades de ensino previstos na Lei nº 12.933/2013 têm direito à meia-entrada."
                                 labelDoc="Documento para comprovação"
-                                documentos={["Carteira de Identificação Estudantil (CIE) válida"]}
+                                documentos={["Carteira de Identificação Estudantil (CIE), como o Documento Nacional do Estudante (DNE), válida"]}
+                                cta={{ label: "Solicitar meu DNE", href: "https://www.documentodoestudante.com.br/" }}
                             />
                             <CategoriaItem
                                 icon={HeartHand}
@@ -327,12 +309,19 @@ export function MeiaEntrada() {
                             <div className="rounded-2xl bg-primary p-6 ring-1 ring-border-secondary">
                                 <h3 className="text-md font-bold text-primary">Disponibilidade</h3>
                                 <p className="mt-2 text-md leading-relaxed text-tertiary">
-                                    A legislação destina até 40% dos ingressos de cada evento à meia-entrada. A disponibilidade pode variar por categoria e se
-                                    aplica para todas as categorias de meia-entrada apresentadas, com exceção da de pessoa idosa.
+                                    A meia-entrada é garantida em até 40% dos ingressos disponíveis para cada evento. Quando essa quantidade for atingida, a cota de
+                                    meia-entrada poderá ficar esgotada.
                                 </p>
                                 <p className="mt-3 text-md leading-relaxed text-tertiary">
                                     O benefício destinado às pessoas com 60 anos ou mais não está sujeito à cota federal de 40% aplicável aos beneficiários da Lei
                                     nº 12.933/2013.
+                                </p>
+                            </div>
+                            <div className="rounded-2xl bg-primary p-6 ring-1 ring-border-secondary">
+                                <h3 className="text-md font-bold text-primary">Onde a meia-entrada se aplica</h3>
+                                <p className="mt-2 text-md leading-relaxed text-tertiary">
+                                    A meia-entrada se aplica a eventos artístico-culturais, esportivos, educativos, de lazer e de entretenimento, realizados em
+                                    espaços públicos ou privados mediante cobrança de ingresso.
                                 </p>
                             </div>
                         </div>
@@ -346,8 +335,12 @@ export function MeiaEntrada() {
                     <div className="flex flex-col">
                         <h2 className="text-display-sm font-semibold text-primary md:text-display-md">Como identificar uma CIE válida</h2>
                         <p className="mt-4 text-lg text-tertiary md:mt-5">
-                            Para utilizar a meia-entrada de estudante, é necessário apresentar uma Carteira de Identificação Estudantil (CIE) válida na compra e no
-                            acesso ao evento. Confira as informações que devem constar no documento:
+                            Para comprovar a meia-entrada estudantil, apresente uma Carteira de Identificação Estudantil (CIE) válida. O Documento Nacional do
+                            Estudante (DNE), emitido por UNE, UBES e ANPG, é uma das formas de CIE.
+                        </p>
+                        <p className="mt-4 text-md leading-relaxed text-tertiary">
+                            A CIE pode ser emitida por UNE, UBES, ANPG, entidades estudantis estaduais e municipais filiadas, Diretórios Centrais dos Estudantes
+                            (DCEs) e Centros ou Diretórios Acadêmicos.
                         </p>
                         <ul className="mt-6 flex flex-col gap-3">
                             {elementosCIE.map((el) => (
@@ -358,7 +351,7 @@ export function MeiaEntrada() {
                             ))}
                         </ul>
                         <p className="mt-6 text-md leading-relaxed text-tertiary">
-                            A Carteira de Identificação Estudantil é válida da data de sua emissão até 31 de março do ano seguinte.
+                            A CIE é válida da data de sua emissão até 31 de março do ano seguinte.
                         </p>
                         <p className="mt-4 text-md leading-relaxed text-tertiary">
                             Não serão aceitos em nenhuma hipótese boleto bancário, declarações, comprovante de mensalidade, carteirinhas vencidas e/ou quaisquer
@@ -437,46 +430,34 @@ export function MeiaEntrada() {
                         </p>
                     </div>
                     <div className="mt-8 md:mt-10">
-                        <Accordion
-                            items={[
-                                {
-                                    titulo: "Entenda a legislação da meia-entrada",
-                                    conteudo: (
-                                        <div className="flex flex-col gap-4">
-                                            <p>
-                                                Em 05 de agosto de 2013, foi publicada a Lei Federal nº 12.852/2013 que cria o “Estatuto da Juventude”, dispondo sobre
-                                                os direitos dos jovens e os princípios das políticas públicas de juventude, garantindo o acesso à cultura como uma de
-                                                suas diretrizes fundamentais. Para proporcionar tal acesso, a lei assegura o direito à meia-entrada, possibilitando aos
-                                                estudantes o pagamento do ingresso pela metade de seu valor, mediante a apresentação da Carteira de Identificação
-                                                Estudantil (CIE).
-                                            </p>
-                                            <p>
-                                                Neste contexto, a Lei Federal nº 12.933/2013 trata especificamente sobre o benefício ao pagamento de meia-entrada em
-                                                espetáculos artísticos, culturais e esportivos, trazendo outras regras para o exercício regular e efetivo do direito. A
-                                                lei reitera o direito à meia-entrada mediante a apresentação da Carteira de Identificação Estudantil (CIE), emitida
-                                                conforme modelo único nacionalmente padronizado e publicamente disponibilizado pela Associação Nacional de
-                                                Pós-Graduandos (ANPG), pela União Nacional dos Estudantes (UNE), pela União Brasileira dos Estudantes Secundaristas
-                                                (UBES) e pelo Instituto Nacional de Tecnologia da Informação (ITI), este último responsável pela definição dos
-                                                parâmetros da certificação digital da carteira.
-                                            </p>
-                                            <p>
-                                                Regulamentando ambas as leis, o decreto federal nº 8.537/2015 reafirma a necessidade de emissão da Carteira de
-                                                Identificação Estudantil (CIE) conforme modelo único nacionalmente padronizado e com certificação digital, visando
-                                                evitar a criação de documentos falsos, a emissão por entidades não autorizadas e fraudes.
-                                            </p>
-                                            <p>
-                                                Mais do que simplesmente padronizar a Carteira de Identificação Estudantil (CIE), as normas em vigor exigem dos
-                                                estabelecimentos responsáveis pelos eventos a necessidade de comunicação, de forma clara e ostensiva, sobre quais são os
-                                                requisitos para a concessão do benefício da meia-entrada, e o exijam para que o estudante faça jus ao citado benefício.
-                                                A Lei nº 13.179/2015, por sua vez, estende este dever de comunicação a todas as formas de comercialização de ingressos
-                                                on-line.
-                                            </p>
-                                        </div>
-                                    ),
-                                },
-                            ]}
-                        />
-                        <div className="mt-4 rounded-2xl bg-secondary p-6">
+                        <div className="flex flex-col gap-4 rounded-2xl bg-primary p-6 text-md leading-relaxed text-tertiary shadow-sm ring-1 ring-border-secondary md:p-8">
+                            <p>
+                                Em 05 de agosto de 2013, foi publicada a Lei Federal nº 12.852/2013 que cria o “Estatuto da Juventude”, dispondo sobre os direitos
+                                dos jovens e os princípios das políticas públicas de juventude, garantindo o acesso à cultura como uma de suas diretrizes
+                                fundamentais. Para proporcionar tal acesso, a lei assegura o direito à meia-entrada, possibilitando aos estudantes o pagamento do
+                                ingresso pela metade de seu valor, mediante a apresentação da Carteira de Identificação Estudantil (CIE).
+                            </p>
+                            <p>
+                                Neste contexto, a Lei Federal nº 12.933/2013 trata especificamente sobre o benefício ao pagamento de meia-entrada em espetáculos
+                                artísticos, culturais e esportivos, trazendo outras regras para o exercício regular e efetivo do direito. A lei reitera o direito à
+                                meia-entrada mediante a apresentação da Carteira de Identificação Estudantil (CIE), emitida conforme modelo único nacionalmente
+                                padronizado e publicamente disponibilizado pela Associação Nacional de Pós-Graduandos (ANPG), pela União Nacional dos Estudantes
+                                (UNE), pela União Brasileira dos Estudantes Secundaristas (UBES) e pelo Instituto Nacional de Tecnologia da Informação (ITI), este
+                                último responsável pela definição dos parâmetros da certificação digital da carteira.
+                            </p>
+                            <p>
+                                Regulamentando ambas as leis, o decreto federal nº 8.537/2015 reafirma a necessidade de emissão da Carteira de Identificação
+                                Estudantil (CIE) conforme modelo único nacionalmente padronizado e com certificação digital, visando evitar a criação de documentos
+                                falsos, a emissão por entidades não autorizadas e fraudes.
+                            </p>
+                            <p>
+                                Mais do que simplesmente padronizar a Carteira de Identificação Estudantil (CIE), as normas em vigor exigem dos estabelecimentos
+                                responsáveis pelos eventos a necessidade de comunicação, de forma clara e ostensiva, sobre quais são os requisitos para a concessão
+                                do benefício da meia-entrada, e o exijam para que o estudante faça jus ao citado benefício. A Lei nº 13.179/2015, por sua vez,
+                                estende este dever de comunicação a todas as formas de comercialização de ingressos on-line.
+                            </p>
+                        </div>
+                        <div className="mt-6 rounded-2xl bg-secondary p-6">
                             <h3 className="text-md font-semibold text-primary">Outras leis aplicáveis</h3>
                             <ul className="mt-4 flex flex-col divide-y divide-border-secondary">
                                 {[
@@ -521,6 +502,37 @@ export function MeiaEntrada() {
                                     ),
                                 },
                                 {
+                                    titulo: "Minha instituição de ensino pode emitir a CIE?",
+                                    conteudo: (
+                                        <p>
+                                            Não necessariamente. Carteirinhas da instituição e comprovantes de matrícula não substituem, por si só, a CIE. Para a
+                                            meia-entrada, o documento deve seguir o padrão previsto em lei e ser emitido por entidade habilitada.
+                                        </p>
+                                    ),
+                                },
+                                {
+                                    titulo: "Onde posso solicitar minha carteirinha estudantil?",
+                                    conteudo: (
+                                        <div>
+                                            <p>
+                                                O Documento Nacional do Estudante (DNE) pode ser solicitado online pelo portal oficial das entidades estudantis UNE,
+                                                UBES e ANPG.
+                                            </p>
+                                            <Button
+                                                color="secondary"
+                                                size="md"
+                                                href="https://www.documentodoestudante.com.br/"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                iconTrailing={LinkExternal01}
+                                                className="mt-4"
+                                            >
+                                                Solicitar DNE
+                                            </Button>
+                                        </div>
+                                    ),
+                                },
+                                {
                                     titulo: "Outra pessoa pode usar minha meia-entrada?",
                                     conteudo: (
                                         <p>
@@ -545,6 +557,15 @@ export function MeiaEntrada() {
                                         <p>
                                             Sim. Apresente a documentação válida exigida para sua categoria de meia-entrada no acesso ao evento. No caso da CIE, a
                                             validade vai até 31 de março do ano seguinte ao de sua emissão.
+                                        </p>
+                                    ),
+                                },
+                                {
+                                    titulo: "O que acontece quando a cota de meia-entrada esgota?",
+                                    conteudo: (
+                                        <p>
+                                            Quando os ingressos destinados à meia-entrada atingem o limite previsto em lei, novas compras com o benefício podem ficar
+                                            indisponíveis para aquele evento ou categoria. O ponto de venda deve informar quando a cota estiver esgotada.
                                         </p>
                                     ),
                                 },

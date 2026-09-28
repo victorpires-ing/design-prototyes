@@ -71,9 +71,6 @@ export function PixCard({ isMobile, variante = "padrao" }: PixCardProps) {
         </div>
     );
 
-    // Na recusa o Pix é a saída da compra: sombra maior para destacá-lo (shadow-md no Figma).
-    const sombra = variante === "fallback" ? "shadow-md" : "shadow-xs";
-
     const selo =
         variante === "fallback" ? (
             <span className="absolute -top-2.5 right-3 rounded-full bg-success-solid px-2.5 py-0.5 text-xs font-medium text-white">Aprovação imediata</span>
@@ -81,7 +78,7 @@ export function PixCard({ isMobile, variante = "padrao" }: PixCardProps) {
 
     if (isMobile) {
         return (
-            <div className={cx("relative rounded-2xl bg-primary p-4", sombra)}>
+            <div className="relative rounded-2xl bg-primary p-4 shadow-md">
                 {selo}
                 {cabecalho}
                 {variante === "padrao" && <p className="mt-4 text-sm text-tertiary">Copie o código e cole no app do seu banco para pagar.</p>}
@@ -118,7 +115,7 @@ export function PixCard({ isMobile, variante = "padrao" }: PixCardProps) {
     }
 
     return (
-        <div className={cx("relative flex items-center gap-8 rounded-2xl bg-primary px-5 py-6", sombra)}>
+        <div className="relative flex items-center gap-8 rounded-2xl bg-primary px-5 py-6 shadow-md">
             {selo}
             <div className="flex min-w-0 flex-1 flex-col gap-6">
                 {cabecalho}

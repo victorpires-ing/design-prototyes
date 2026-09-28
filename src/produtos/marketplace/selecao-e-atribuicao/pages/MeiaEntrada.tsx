@@ -1,7 +1,7 @@
 import { useEffect, useState, type FC, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useSearchParams } from "react-router";
-import { CheckCircle, ChevronDown, GraduationHat01, HeartHand, Menu01, Phone01, Scales02, User01, Wallet02, XClose } from "@untitledui/icons";
+import { CheckCircle, ChevronDown, GraduationHat01, HeartHand, Menu01, Phone01, Scales02, Share03, User01, Wallet02, XClose } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -122,7 +122,7 @@ function CategoriaItem({
                 <p className="mt-3 text-md leading-relaxed text-tertiary">{labelDoc}:</p>
                 <p className="mt-0.5 text-md font-medium leading-relaxed text-secondary">{documentos.join(separadorDocumentos)}</p>
                 {cta && (
-                    <Button color="secondary" size="lg" href={cta.href} target="_blank" rel="noopener noreferrer" className="mt-4">
+                    <Button color="secondary" size="lg" href={cta.href} target="_blank" rel="noopener noreferrer" iconTrailing={Share03} className="mt-4">
                         {cta.label}
                     </Button>
                 )}
@@ -139,7 +139,7 @@ const DNE_URL = "https://www.documentodoestudante.com.br/";
 
 /* Botão único do DNE — usado igual em todos os pontos da página (Estudante, CIE e FAQ). */
 const SolicitarDneButton = ({ className }: { className?: string }) => (
-    <Button color="secondary" size="lg" href={DNE_URL} target="_blank" rel="noopener noreferrer" className={className}>
+    <Button color="secondary" size="lg" href={DNE_URL} target="_blank" rel="noopener noreferrer" iconTrailing={Share03} className={className}>
         Solicitar meu DNE
     </Button>
 );
@@ -368,7 +368,7 @@ export function MeiaEntrada() {
                         </p>
                         {/* CTAs desktop: sob o texto, na coluna esquerda */}
                         <div className="mt-6 hidden gap-3 lg:flex">
-                            <Button color="secondary" size="lg" onClick={() => irPara("faq")}>
+                            <Button color="secondary" size="lg" iconTrailing={Share03} onClick={() => irPara("faq")}>
                                 Verificar carteirinha
                             </Button>
                             <SolicitarDneButton />
@@ -386,7 +386,7 @@ export function MeiaEntrada() {
                     </div>
                     {/* CTAs mobile: depois da imagem de exemplo */}
                     <div className="flex flex-col gap-3 lg:hidden">
-                        <Button color="secondary" size="lg" className="w-full" onClick={() => irPara("faq")}>
+                        <Button color="secondary" size="lg" className="w-full" iconTrailing={Share03} onClick={() => irPara("faq")}>
                             Verificar carteirinha
                         </Button>
                         <SolicitarDneButton className="w-full" />

@@ -39,12 +39,6 @@ export function Eventos() {
 
     const ativos = todos.filter((r) => vendasHabilitadas(r.evento.status));
 
-    const totais = useMemo(() => {
-        const faturamento = ativos.reduce((total, r) => total + r.faturamento, 0);
-        const ingressos = ativos.reduce((total, r) => total + r.vendidos, 0);
-        const produtos = ativos.reduce((total, r) => total + (r.vendas?.serie ?? []).reduce((t, d) => t + d.produtos, 0), 0);
-        return { faturamento, ingressos, produtos, ticket: faturamento / Math.max(1, ingressos) };
-    }, [ativos]);
 
     const ritmo = useMemo(() => ritmoDaOrganizacao(ativos), [ativos]);
 
@@ -102,7 +96,7 @@ export function Eventos() {
                             icon={CurrencyDollarCircle}
                             label="GMV confirmado"
                             formatarDia={brl}
-                            valor={brl(totais.faturamento)}
+                            valor={brl(ritmo.gmv.total)}
                             ritmo={ritmo.gmv}
                             ritmoLabel={brlCompacto(ritmo.gmv.porDia)}
                             ritmoSufixo="por dia"
@@ -112,7 +106,7 @@ export function Eventos() {
                             icon={ShoppingBag01}
                             label="Produtos vendidos"
                             formatarDia={numero}
-                            valor={numero(totais.produtos)}
+                            valor={numero(ritmo.produtos.total)}
                             ritmo={ritmo.produtos}
                             ritmoLabel={numero(ritmo.produtos.porDia)}
                             ritmoSufixo="produtos por dia"
@@ -122,7 +116,7 @@ export function Eventos() {
                             icon={Ticket01}
                             label="Ingressos vendidos"
                             formatarDia={numero}
-                            valor={numero(totais.ingressos)}
+                            valor={numero(ritmo.ingressos.total)}
                             ritmo={ritmo.ingressos}
                             ritmoLabel={numero(ritmo.ingressos.porDia)}
                             ritmoSufixo="ingressos por dia"

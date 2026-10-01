@@ -26,9 +26,8 @@ interface CartaoMetricaProps {
 /**
  * Big number com a leitura de tendência junto.
  *
- * O total sozinho diz o tamanho, não a direção: dois eventos com o mesmo
- * faturamento podem estar um acelerando e o outro parando. A curva dos 30 dias
- * mostra a forma, e a variação contra a semana anterior põe número nela.
+ * Tudo no cartão olha os últimos 7 dias: o total, a curva dia a dia e a
+ * média por dia, comparada com os 7 dias anteriores.
  */
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const dataCurta = (iso: string) => {
@@ -36,10 +35,13 @@ const dataCurta = (iso: string) => {
     return `${Number(dia)} ${MESES[Number(mes) - 1]}`;
 };
 
-/** "17 a 23 ago" no mesmo mês; "28 jul a 3 ago" quando atravessa o mês. */
+/** "17 a 23 ago"; "28 jul a 3 ago"; com ano quando atravessa a virada: "8 dez 2025 a 1 out 2026". */
 const intervalo = (de: string, ate: string) => {
     const [diaDe, mesDe] = dataCurta(de).split(" ");
     const [diaAte, mesAte] = dataCurta(ate).split(" ");
+    const anoDe = de.slice(0, 4);
+    const anoAte = ate.slice(0, 4);
+    if (anoDe !== anoAte) return `${diaDe} ${mesDe} ${anoDe} a ${diaAte} ${mesAte} ${anoAte}`;
     return mesDe === mesAte ? `${diaDe} a ${diaAte} ${mesAte}` : `${diaDe} ${mesDe} a ${diaAte} ${mesAte}`;
 };
 
@@ -113,8 +115,9 @@ export function CartaoMetrica({ icon: Icon, label, valor, ritmo, ritmoLabel, rit
 
     const { datas } = ritmo;
     const fim = datas.at(-1);
-    const semana = datas.length >= 7 ? intervalo(datas[datas.length - 7], datas[datas.length - 1]) : null;
-    const semanaAnterior = datas.length >= 14 ? intervalo(datas[datas.length - 14], datas[datas.length - 8]) : null;
+    const periodo = fim ? intervalo(datas[0], fim) : null;
+    const anteriores = ritmo.datasAnteriores;
+    const semanaAnterior = anteriores.length ? intervalo(anteriores[0], anteriores[anteriores.length - 1]) : null;
 
     return (
         <section className={cx("flex flex-col gap-4 rounded-xl bg-primary p-5 ring-1 ring-border-secondary")}>
@@ -125,7 +128,7 @@ export function CartaoMetrica({ icon: Icon, label, valor, ritmo, ritmoLabel, rit
 
             <div className="flex flex-col gap-1">
                 <p className="text-display-sm font-bold text-primary tabular-nums">{valor}</p>
-                {ritmo.inicio && fim && <p className="text-sm text-tertiary">Acumulado de {intervalo(ritmo.inicio, fim)}</p>}
+                {periodo && <p className="text-sm text-tertiary">De {periodo}</p>}
             </div>
 
             {grafico && ritmo.serie.length > 1 ? (
@@ -140,11 +143,6 @@ export function CartaoMetrica({ icon: Icon, label, valor, ritmo, ritmoLabel, rit
                     <span className="font-normal text-tertiary">
                         {" "}
                         {ritmoSufixo}
-                        {semana && (
-                            <>
-                                , <span className="whitespace-nowrap">de {semana}</span>
-                            </>
-                        )}
                     </span>
                 </span>
 

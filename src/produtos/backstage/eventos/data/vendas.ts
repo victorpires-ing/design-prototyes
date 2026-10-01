@@ -8,7 +8,9 @@ import { eventos, type Evento } from "./eventos";
  */
 
 /** Hoje fixo, para o protótipo não mudar de comportamento com o passar dos dias. */
-export const HOJE = new Date("2026-10-01T12:00:00");
+// Meio-dia de hoje: evita que fuso horário empurre a data para o dia vizinho.
+const agora = new Date();
+export const HOJE = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 12);
 
 export type Canal = "ingresse" | "parceiro" | "cortesia";
 
@@ -474,12 +476,14 @@ export interface Ritmo {
     porDia: number;
     /** Variação contra os 7 dias anteriores. `null` quando não há base de comparação. */
     variacao: number | null;
-    /** Últimos 30 dias, para o minigráfico. */
+    /** Últimos 7 dias, para o gráfico. */
     serie: number[];
     /** Data ISO de cada ponto de `serie`, para o eixo x. */
     datas: string[];
-    /** Primeiro dia com venda: início do período do total acumulado. */
-    inicio: string;
+    /** Soma dos últimos 7 dias, o período analisado no cartão. */
+    total: number;
+    /** Datas dos 7 dias anteriores, a base da comparação. */
+    datasAnteriores: string[];
 }
 
 export interface RitmoOrganizacao {
@@ -490,7 +494,6 @@ export interface RitmoOrganizacao {
 }
 
 const JANELA = 7;
-const JANELA_GRAFICO = 30;
 
 const media = (valores: number[]) => (valores.length ? valores.reduce((t, v) => t + v, 0) / valores.length : 0);
 
@@ -502,9 +505,10 @@ const montaRitmo = (serie: number[], datas: string[]): Ritmo => {
     return {
         porDia,
         variacao: base > 0 ? porDia / base - 1 : null,
-        serie: serie.slice(-JANELA_GRAFICO),
-        datas: datas.slice(-JANELA_GRAFICO),
-        inicio: datas[0] ?? "",
+        serie: recentes,
+        datas: datas.slice(-JANELA),
+        total: recentes.reduce((t, v) => t + v, 0),
+        datasAnteriores: datas.slice(-JANELA * 2, -JANELA),
     };
 };
 

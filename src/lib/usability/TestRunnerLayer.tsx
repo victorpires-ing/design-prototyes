@@ -26,12 +26,17 @@ import { LogoTopo, RichTextView } from "./branding";
 import { carregarClarity, clarityIdentify, clarityTag, pararClarity } from "./clarity";
 import { gravarRun, gravarSessao, lerRun, lerSessao, ouvirRun } from "./run";
 import { marcarFeito, usabilityStore } from "./store";
+import { elementoCasaCriterio } from "./selector";
 import { ESCALA_SUS, PERGUNTAS_SUS } from "./sus";
 import type { Bloco, BlocoAtividade, BlocoComunicacao, BlocoExposicao, BlocoPergunta, BlocoSus, CriterioTipo, EventoBloco, ResultadoTarefa, RunAtivo, SessaoTeste } from "./types";
+
+const ATRASO_SUCESSO_MS = 5000;
 
 export function TestRunnerLayer() {
     const [run, setRun] = useState<RunAtivo | null>(() => lerRun());
     const [mostrandoSucesso, setMostrandoSucesso] = useState(false);
+    // Conclusão automática (rota/clique) já registrada, aguardando o atraso para mostrar o sucesso.
+    const [sucessoPendente, setSucessoPendente] = useState(false);
     // Respostas guardadas POR BLOCO (sobrevivem ao voltar/avançar entre perguntas).
     const [respostasPorBloco, setRespostasPorBloco] = useState<Record<string, string[]>>({});
     const [susPorBloco, setSusPorBloco] = useState<Record<string, number[]>>({});
@@ -57,6 +62,7 @@ export function TestRunnerLayer() {
     // Reset (estados de UI) ao trocar de bloco — respostas NÃO resetam (ficam no mapa).
     useEffect(() => {
         setMostrandoSucesso(false);
+        setSucessoPendente(false);
         setBriefingAberto(true);
         setDeclaracaoVisivel(false);
         setAviso(false);
@@ -200,13 +206,24 @@ export function TestRunnerLayer() {
                 justificativa: justif,
                 duracaoMs: new Date(agora).getTime() - new Date(atual.iniciadaEmBloco).getTime(),
             });
-            if (resultado === "sucesso") setMostrandoSucesso(true);
-            else avancarBloco();
+            if (resultado !== "sucesso") avancarBloco();
+            else if (comoConcluiu === "rota" || comoConcluiu === "clique") setSucessoPendente(true);
+            else setMostrandoSucesso(true);
         },
         [registrarEvento, avancarBloco],
     );
 
-    const ativaDeteccao = bloco?.tipo === "atividade" && !mostrandoSucesso && !briefingAberto;
+    // Deixa o participante ver o resultado da própria ação antes da mensagem cobrir a tela.
+    useEffect(() => {
+        if (!sucessoPendente) return;
+        const t = setTimeout(() => {
+            setSucessoPendente(false);
+            setMostrandoSucesso(true);
+        }, ATRASO_SUCESSO_MS);
+        return () => clearTimeout(t);
+    }, [sucessoPendente]);
+
+    const ativaDeteccao = bloco?.tipo === "atividade" && !mostrandoSucesso && !sucessoPendente && !briefingAberto;
 
     useEffect(() => {
         if (!ativaDeteccao || bloco?.tipo !== "atividade") return;
@@ -222,7 +239,8 @@ export function TestRunnerLayer() {
         if (!crit?.valor) return;
         const seletor = crit.valor;
         const onClick = (e: MouseEvent) => {
-            if ((e.target as Element | null)?.closest?.(seletor)) concluirAtividade("sucesso", "clique");
+            const alvo = e.target as Element | null;
+            if (alvo && elementoCasaCriterio(alvo, seletor)) concluirAtividade("sucesso", "clique");
         };
         document.addEventListener("click", onClick, true);
         return () => document.removeEventListener("click", onClick, true);
@@ -377,7 +395,7 @@ export function TestRunnerLayer() {
             </AnimatePresence>
 
             {/* Barra única no topo: tarefa à esquerda, "Concluir tarefa" à direita */}
-            {!briefingAberto && declaracaoVisivel && !mostrandoSucesso && bloco.criterios.some((c) => c.tipo === "auto") && (
+            {!briefingAberto && declaracaoVisivel && !mostrandoSucesso && !sucessoPendente && bloco.criterios.some((c) => c.tipo === "auto") && (
                 <BarraTarefa enunciado={bloco.enunciado} onConcluir={() => concluirAtividade("sucesso", "auto")} />
             )}
         </TopLayer>

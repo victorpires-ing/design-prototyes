@@ -178,6 +178,9 @@ import { PayInMenu } from '../produtos/payin/menu/pages/PayInMenu';
 import { Checkout as PayInCheckout } from '../produtos/payin/checkout/pages/Checkout';
 import { AnaliseFeedback as PayInAnaliseFeedback } from '../produtos/payin/checkout/pages/AnaliseFeedback';
 import { AnaliseResultados as PayInAnaliseResultados } from '../produtos/payin/checkout/pages/AnaliseResultados';
+import { Pagamento as CheckoutPagamento } from '../produtos/checkout/melhorias-de-compra/pages/pagamento';
+import { Cartao as CheckoutCartao } from '../produtos/checkout/melhorias-de-compra/pages/cartao';
+import { NaoAutorizado as CheckoutNaoAutorizado } from '../produtos/checkout/melhorias-de-compra/pages/nao-autorizado';
 import { Eventos as CashoutEventos } from '../produtos/payout/contrato-quick-win-finance/pages/eventos';
 import { Produtoras as CashoutProdutoras } from '../produtos/payout/contrato-quick-win-finance/pages/produtoras';
 
@@ -391,6 +394,9 @@ export default function App() {
         <Route path="/payin/suspensao-de-conta/historico/:contaId" element={<HistoricoSuspensao />} />
         <Route path="/payout/contrato-quick-win-finance" element={<CashoutEventos />} />
         <Route path="/payout/contrato-quick-win-finance/produtoras" element={<CashoutProdutoras />} />
+        <Route path="/checkout/melhorias-de-compra" element={<CheckoutPagamento />} />
+        <Route path="/checkout/melhorias-de-compra/cartao" element={<CheckoutCartao />} />
+        <Route path="/checkout/melhorias-de-compra/nao-autorizado" element={<CheckoutNaoAutorizado />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </EquipeV2Provider>

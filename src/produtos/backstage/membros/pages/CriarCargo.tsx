@@ -61,8 +61,8 @@ export function CriarCargo() {
     }
 
     const handleSalvar = () => {
-        if (!nome.trim()) {
-            toast.error("Informe o nome do cargo");
+        if (!nome.trim() || !descricao.trim()) {
+            toast.error(!nome.trim() ? "Informe o nome do cargo" : "Informe a descrição do cargo");
             return;
         }
         if (cargo) {
@@ -102,6 +102,7 @@ export function CriarCargo() {
                             hint="Ajuda quem for convidar membros a escolher o cargo certo."
                             rows={3}
                             value={descricao}
+                            isRequired
                             onChange={setDescricao}
                         />
                     </div>
@@ -121,7 +122,7 @@ export function CriarCargo() {
                         <Button size="md" color="secondary" onClick={() => navigate("/backstage/membros")}>
                             Cancelar
                         </Button>
-                        <Button size="md" color="primary" onClick={handleSalvar} isDisabled={!nome.trim()}>
+                        <Button size="md" color="primary" onClick={handleSalvar} isDisabled={!nome.trim() || !descricao.trim()}>
                             {editando ? "Salvar alterações" : "Criar cargo"}
                         </Button>
                     </div>
@@ -169,8 +170,8 @@ function SecaoTabela({ secao, selecionadas, onSet }: SecaoTabelaProps) {
     const chavesDaColuna = (acao: AcaoBase) => secao.recursos.filter((r) => r.base.includes(acao)).map((r) => chavePermissao(r.id, acao));
 
     return (
-        <section className="rounded-xl bg-primary ring-1 ring-secondary">
-            <div className="sticky top-0 z-10 grid items-center rounded-t-xl border-b border-secondary bg-secondary" style={gridStyle(colunas.length)}>
+        <section className="overflow-clip rounded-xl bg-primary ring-1 ring-secondary">
+            <div className="sticky top-0 z-10 grid items-center border-b border-secondary bg-secondary" style={gridStyle(colunas.length)}>
                 <div className="flex flex-col items-start gap-1 px-5 py-4">
                     <h2 className="text-md font-semibold text-primary">{secao.nome}</h2>
                     <Button

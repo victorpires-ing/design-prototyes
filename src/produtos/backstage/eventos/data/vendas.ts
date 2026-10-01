@@ -8,7 +8,7 @@ import { eventos, type Evento } from "./eventos";
  */
 
 /** Hoje fixo, para o protótipo não mudar de comportamento com o passar dos dias. */
-export const HOJE = new Date("2026-08-24T12:00:00");
+export const HOJE = new Date("2026-10-01T12:00:00");
 
 export type Canal = "ingresse" | "parceiro" | "cortesia";
 

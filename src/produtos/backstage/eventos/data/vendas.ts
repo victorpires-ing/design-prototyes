@@ -93,13 +93,13 @@ const SPECS: Spec[] = [
         janelaDias: 300,
         capacidadePorSessao: 3200,
         sessoes: [
-            { nome: "AURA", ambiente: "Night Celebrations", peso: 1 },
-            { nome: "LUAU", ambiente: "Night Celebrations", peso: 0.96 },
-            { nome: "AQUA", ambiente: "Night Celebrations", peso: 0.92 },
-            { nome: "Réveillon", ambiente: "Night Celebrations", peso: 1.08 },
-            { nome: "FLORA", ambiente: "Night Celebrations", peso: 0.74 },
-            { nome: "Beach Day 30/12", ambiente: "Mouton Beach Club", peso: 0.61 },
-            { nome: "Beach Day 02/01", ambiente: "Mouton Beach Club", peso: 0.48 },
+            { nome: "Pista", ambiente: "Mochakk Calling", peso: 1.08 },
+            { nome: "Pista Premium", ambiente: "Mochakk Calling", peso: 1 },
+            { nome: "Front Stage", ambiente: "Mochakk Calling", peso: 0.96 },
+            { nome: "Área VIP", ambiente: "Mochakk Calling", peso: 0.92 },
+            { nome: "Camarote", ambiente: "Mochakk Calling", peso: 0.74 },
+            { nome: "Backstage", ambiente: "Mochakk Calling", peso: 0.61 },
+            { nome: "Open Bar", ambiente: "Mochakk Calling", peso: 0.48 },
         ],
         ticketBase: 780,
         ocupacaoAlvo: 0.63,
@@ -112,24 +112,24 @@ const SPECS: Spec[] = [
     {
         eventoId: "2871",
         janelaDias: 60,
-        capacidadePorSessao: 55_000,
-        sessoes: [{ nome: "Gre-Nal 445", ambiente: "Arena do Grêmio", peso: 1 }],
-        ticketBase: 180,
+        capacidadePorSessao: 12_000,
+        sessoes: [{ nome: "RAVE THE WORLD by Alok", ambiente: "Laroc Club", peso: 1 }],
+        ticketBase: 260,
         ocupacaoAlvo: 0.71,
-        metaFaturamento: 12_000_000,
+        metaFaturamento: 2_800_000,
         ritmoRecente: 1.45,
         parceiroPct: 0.05,
-        cortesias: 1400,
+        cortesias: 300,
         seed: 7,
     },
     {
         eventoId: "3390",
         janelaDias: 90,
-        capacidadePorSessao: 420,
-        sessoes: [{ nome: "Tour + Museu", ambiente: "Arena do Grêmio", peso: 1 }],
-        ticketBase: 95,
-        ocupacaoAlvo: 0.28,
-        metaFaturamento: 42_000,
+        capacidadePorSessao: 900,
+        sessoes: [{ nome: "IN DA CLUB W/ JUICCE", ambiente: "D-EDGE Rio", peso: 1 }],
+        ticketBase: 80,
+        ocupacaoAlvo: 0.62,
+        metaFaturamento: 60_000,
         ritmoRecente: 0.42,
         parceiroPct: 0.22,
         cortesias: 12,
@@ -138,33 +138,22 @@ const SPECS: Spec[] = [
     {
         eventoId: "5518",
         janelaDias: 70,
-        capacidadePorSessao: 90,
-        sessoes: [{ nome: "Book no gramado", ambiente: "Arena do Grêmio", peso: 1 }],
-        ticketBase: 640,
+        capacidadePorSessao: 1500,
+        sessoes: [{ nome: "FREAK CHIC", ambiente: "D-EDGE São Paulo", peso: 1 }],
+        ticketBase: 110,
         ocupacaoAlvo: 0.44,
-        metaFaturamento: 60_000,
+        metaFaturamento: 120_000,
         ritmoRecente: 0.88,
         parceiroPct: 0,
         cortesias: 4,
         seed: 63,
     },
-    {
-        eventoId: "1234",
-        janelaDias: 45,
-        capacidadePorSessao: 31_000,
-        sessoes: [{ nome: "América x Laguna", ambiente: "Arena das Dunas", peso: 1 }],
-        ticketBase: 70,
-        ocupacaoAlvo: 0.93,
-        metaFaturamento: 1_900_000,
-        ritmoRecente: 1,
-        parceiroPct: 0.03,
-        cortesias: 900,
-        seed: 88,
-    },
 ];
 
 function build(spec: Spec, evento: Evento): VendasEvento {
     const rand = mulberry32(spec.seed);
+    // Gerador próprio para produtos: não mexe na sequência que gera os demais números.
+    const randProduto = mulberry32(spec.seed + 1000);
     const dataEvento = new Date(evento.data);
     const abertura = addDias(dataEvento, -spec.janelaDias);
     // Eventos já realizados têm a série completa; os ativos param em hoje.
@@ -189,14 +178,14 @@ function build(spec: Spec, evento: Evento): VendasEvento {
         const ingressos = Math.round((peso / somaPesos) * ingressosVendidos);
         acumulado += ingressos;
         const ticket = spec.ticketBase * (0.85 + (dia / Math.max(1, diasCorridos)) * 0.45);
-        // Produto acompanha o ingresso e cresce perto do evento, quando a compra
-        // vira expectativa: camiseta e copo vendem mais na última semana.
-        const apeteceProduto = 0.1 + (dia / Math.max(1, diasCorridos)) * 0.28;
+        // Produto vende em volume bem menor que ingresso (12 a 32 por dia por evento)
+        // e cresce um pouco perto do evento: camiseta e copo vendem mais na reta final.
+        const produtos = Math.round(12 + (dia / Math.max(1, diasCorridos)) * 14 + randProduto() * 6);
         return {
             dia,
             dataISO: addDias(abertura, dia).toISOString().slice(0, 10),
             ingressos,
-            produtos: Math.round(ingressos * apeteceProduto),
+            produtos,
             faturamento: Math.round(ingressos * ticket),
         };
     });
@@ -487,11 +476,15 @@ export interface Ritmo {
     variacao: number | null;
     /** Últimos 30 dias, para o minigráfico. */
     serie: number[];
+    /** Data ISO de cada ponto de `serie`, para o eixo x. */
+    datas: string[];
+    /** Primeiro dia com venda: início do período do total acumulado. */
+    inicio: string;
 }
 
 export interface RitmoOrganizacao {
     gmv: Ritmo;
-    itens: Ritmo;
+    produtos: Ritmo;
     ingressos: Ritmo;
     ticket: Ritmo;
 }
@@ -501,7 +494,7 @@ const JANELA_GRAFICO = 30;
 
 const media = (valores: number[]) => (valores.length ? valores.reduce((t, v) => t + v, 0) / valores.length : 0);
 
-const montaRitmo = (serie: number[]): Ritmo => {
+const montaRitmo = (serie: number[], datas: string[]): Ritmo => {
     const recentes = serie.slice(-JANELA);
     const anteriores = serie.slice(-JANELA * 2, -JANELA);
     const porDia = media(recentes);
@@ -510,6 +503,8 @@ const montaRitmo = (serie: number[]): Ritmo => {
         porDia,
         variacao: base > 0 ? porDia / base - 1 : null,
         serie: serie.slice(-JANELA_GRAFICO),
+        datas: datas.slice(-JANELA_GRAFICO),
+        inicio: datas[0] ?? "",
     };
 };
 
@@ -518,27 +513,29 @@ const montaRitmo = (serie: number[]): Ritmo => {
  * datas diferentes, então a chave é a data do calendário, não o dia de venda.
  */
 export function ritmoDaOrganizacao(lista: ResumoEvento[]): RitmoOrganizacao {
-    const porData = new Map<string, { gmv: number; ingressos: number; itens: number }>();
+    const porData = new Map<string, { gmv: number; ingressos: number; produtos: number }>();
 
     for (const resumo of lista) {
         for (const dia of resumo.vendas?.serie ?? []) {
-            const atual = porData.get(dia.dataISO) ?? { gmv: 0, ingressos: 0, itens: 0 };
+            const atual = porData.get(dia.dataISO) ?? { gmv: 0, ingressos: 0, produtos: 0 };
             atual.gmv += dia.faturamento;
             atual.ingressos += dia.ingressos;
-            atual.itens += dia.ingressos + dia.produtos;
+            atual.produtos += dia.produtos;
             porData.set(dia.dataISO, atual);
         }
     }
 
-    const dias = [...porData.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, valores]) => valores);
+    const ordenados = [...porData.entries()].sort(([a], [b]) => a.localeCompare(b));
+    const datas = ordenados.map(([data]) => data);
+    const dias = ordenados.map(([, valores]) => valores);
 
     /* Ticket médio do dia, não média dos tickets: dia sem venda distorceria. */
     const serieTicket = dias.map((d) => (d.ingressos ? d.gmv / d.ingressos : 0));
 
     return {
-        gmv: montaRitmo(dias.map((d) => d.gmv)),
-        itens: montaRitmo(dias.map((d) => d.itens)),
-        ingressos: montaRitmo(dias.map((d) => d.ingressos)),
-        ticket: montaRitmo(serieTicket),
+        gmv: montaRitmo(dias.map((d) => d.gmv), datas),
+        produtos: montaRitmo(dias.map((d) => d.produtos), datas),
+        ingressos: montaRitmo(dias.map((d) => d.ingressos), datas),
+        ticket: montaRitmo(serieTicket, datas),
     };
 }

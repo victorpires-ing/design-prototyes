@@ -61,7 +61,7 @@ const SEMENTE: Marco[] = [
         eventoId: "2871",
         data: "2026-08-18",
         tipo: "externo",
-        titulo: "Classificação na Libertadores",
+        titulo: "Alok anunciou o evento nas redes",
         descricao: "Pico de procura no dia seguinte.",
     },
 ];

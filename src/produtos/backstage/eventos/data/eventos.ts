@@ -1,9 +1,5 @@
 import { useSyncExternalStore } from "react";
 import eventCover from "@/assets/event-cover.png";
-import gremioBook from "@/assets/gremio-poster-book.jpeg";
-import gremioPacotes from "@/assets/gremio-poster-pacotes.jpeg";
-import gremioTaca from "@/assets/gremio-poster-taca.jpeg";
-import gremioTour from "@/assets/gremio-poster-tour.jpeg";
 
 /**
  * Eventos da organização.
@@ -77,57 +73,48 @@ export function comData<T extends { data: string }>(base: T) {
 export const eventos: Evento[] = [
     {
         id: "6704",
-        nome: "Réveillon Carneiros 2027",
-        produtor: "Ingresse",
-        cover: eventCover,
+        nome: "MOCHAKK CALLING 2026",
+        produtor: "Mochakk Calling",
+        cover: "https://kraken.ingresse.com/event/posters/103691/large/1787000382.8580675.jpg",
         status: "publicado",
-        data: "2026-12-31T20:00:00",
-        local: "Praia dos Carneiros • Tamandaré, PE",
+        data: "2026-10-03T22:00:00",
+        local: "Mercado Pago Hall • São Paulo, SP",
     },
     {
         id: "2871",
-        nome: "Grêmio x Internacional — Gre-Nal 445",
-        produtor: "Grêmio FBPA",
-        cover: gremioTaca,
+        nome: "Laroc apresenta: RAVE THE WORLD by Alok",
+        produtor: "Laroc",
+        cover: "https://kraken.ingresse.com/event/posters/104600/large/1786025742.4637246.jpg",
         status: "publicado",
-        data: "2026-09-12T18:30:00",
-        local: "Arena do Grêmio • Porto Alegre, RS",
+        data: "2026-10-17T22:00:00",
+        local: "Laroc Club • Valinhos, SP",
     },
     {
         id: "3390",
-        nome: "Tour da Arena do Grêmio",
-        produtor: "Grêmio FBPA",
-        cover: gremioTour,
+        nome: "D-EDGE RIO apresenta IN DA CLUB W/ JUICCE",
+        produtor: "D-EDGE",
+        cover: "https://kraken.ingresse.com/event/posters/108467/large/1790120499.9730182.jpg",
         status: "publicado",
-        data: "2026-09-02T10:00:00",
-        local: "Arena do Grêmio • Porto Alegre, RS",
+        data: "2026-10-02T23:00:00",
+        local: "D-EDGE Rio • Rio de Janeiro, RJ",
     },
     {
         id: "5518",
-        nome: "Book de fotos no gramado",
-        produtor: "Grêmio FBPA",
-        cover: gremioBook,
+        nome: "FREAK CHIC D-EDGE SP pres.: P1: BACKFOR3. D.MARCO. MISS BELINI (BDAY). SOL",
+        produtor: "D-EDGE",
+        cover: "https://kraken.ingresse.com/event/posters/108847/large/1790802263.758427.jpg",
         status: "publicado",
-        data: "2026-10-16T14:00:00",
-        local: "Arena do Grêmio • Porto Alegre, RS",
+        data: "2026-10-02T23:00:00",
+        local: "D-EDGE • Barra Funda, São Paulo, SP",
     },
     {
         id: "4102",
-        nome: "Pacote Sócio Torcedor 2027",
-        produtor: "Grêmio FBPA",
-        cover: gremioPacotes,
+        nome: "D-EDGE RIO apresenta INCEPTION",
+        produtor: "D-EDGE",
+        cover: "https://kraken.ingresse.com/event/posters/108445/large/1790030930.3048496.jpg",
         status: "rascunho",
-        data: "2026-10-05T09:00:00",
-        local: "Online",
-    },
-    {
-        id: "1234",
-        nome: "América x Laguna (5 a 0)",
-        produtor: "Ingresse",
-        cover: "https://casadeapostasarenadasdunas.com.br/wp-content/uploads/2026/05/AMERICAXLAGUNA.png",
-        status: "encerrado",
-        data: "2026-06-21T16:00:00",
-        local: "Arena das Dunas • Natal, RN",
+        data: "2026-10-16T23:00:00",
+        local: "D-EDGE Rio • Rio de Janeiro, RJ",
     },
 ].map(comData);
 

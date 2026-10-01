@@ -223,6 +223,7 @@ export default function App() {
         <Route path="/backstage/pedidos/:pedidoId/formulario" element={<EditarFormulario />} />
         <Route path="/backstage/membros" element={<Membros />} />
         <Route path="/backstage/membros/criar-cargo" element={<CriarCargo />} />
+        <Route path="/backstage/membros/cargos/:id/editar" element={<CriarCargo />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao" element={<EquipeDeOperacao />} />

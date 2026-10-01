@@ -22,6 +22,8 @@ export interface Cargo {
     descricao: string;
     /** Permissões granulares por funcionalidade. */
     permissions?: FeaturePermission[];
+    /** Ações concedidas no formato "recurso:acao" (catálogo real). */
+    acoes?: string[];
     /** Cargo sem permissão explícita — configurado por feature (ex: Cortesias). */
     porFeature?: boolean;
 }
@@ -66,7 +68,7 @@ export const CARGOS: Cargo[] = [
 ];
 
 export function cargoById(id: string) {
-    return CARGOS.find((c) => c.id === id);
+    return CARGOS.find((c) => c.id === id) ?? _cargosCustom.find((c) => c.id === id);
 }
 
 /* ---- Eventos (para os selects) ---- */
@@ -184,6 +186,18 @@ export function updateMembro(id: string, patch: Partial<Membro>) {
     _membros = _membros.map((m) => (m.id === id ? { ...m, ...patch } : m));
     notify();
 }
+/** Atualiza cargos/grupos de um membro e reflete a troca de grupos nos próprios grupos. */
+export function editarMembro(id: string, patch: Pick<Membro, "cargoIds" | "grupoIds">) {
+    _membros = _membros.map((m) => (m.id === id ? { ...m, ...patch } : m));
+    _grupos = _grupos.map((g) => {
+        const tem = g.membroIds.includes(id);
+        const deveTer = patch.grupoIds.includes(g.id);
+        if (tem === deveTer) return g;
+        return { ...g, membroIds: deveTer ? [...g.membroIds, id] : g.membroIds.filter((mid) => mid !== id) };
+    });
+    notify();
+}
+
 export function removeMembros(ids: Set<string>) {
     _membros = _membros.filter((m) => !ids.has(m.id));
     // remove referências nos grupos
@@ -221,30 +235,34 @@ function _sincronizarGrupos(m: Membro) {
     _grupos = _grupos.map((g) => (m.grupoIds.includes(g.id) ? { ...g, membroIds: [...new Set([...g.membroIds, m.id])] } : g));
 }
 
-/* ---- cargos customizados (por-criar) ---- */
+/* ---- cargos customizados (criados pela organização) ---- */
 let _cargosCustom: Cargo[] = [];
+// Snapshot estável: useSyncExternalStore exige a mesma referência entre leituras.
+let _cargosSnap: Cargo[] = [...CARGOS];
+const atualizarCargos = () => {
+    _cargosSnap = [...CARGOS, ..._cargosCustom];
+    notify();
+};
 
 export function useCargos() {
-    // Por enquanto, apenas retorna CARGOS combinado com customizados
-    // TODO: implementar com useSyncExternalStore quando resolver o infinite loop
-    return [...CARGOS, ..._cargosCustom];
+    return useSyncExternalStore(subscribe, () => _cargosSnap);
 }
 
+/** Cargos padrão do sistema não podem ser editados nem excluídos. */
+export const isCargoSistema = (id: string) => CARGOS.some((c) => c.id === id);
+
 export function addCargo(c: Cargo) {
-    _cargosCustom = [c, ..._cargosCustom];
+    _cargosCustom = [..._cargosCustom, c];
+    atualizarCargos();
 }
 
 export function updateCargo(id: string, patch: Partial<Cargo>) {
-    const idx = _cargosCustom.findIndex((c) => c.id === id);
-    if (idx !== -1) {
-        _cargosCustom = [
-            ..._cargosCustom.slice(0, idx),
-            { ..._cargosCustom[idx], ...patch },
-            ..._cargosCustom.slice(idx + 1),
-        ];
-    }
+    _cargosCustom = _cargosCustom.map((c) => (c.id === id ? { ...c, ...patch } : c));
+    atualizarCargos();
 }
 
 export function removeCargo(id: string) {
     _cargosCustom = _cargosCustom.filter((c) => c.id !== id);
+    _membros = _membros.map((m) => ({ ...m, cargoIds: m.cargoIds.filter((cid) => cid !== id) }));
+    atualizarCargos();
 }

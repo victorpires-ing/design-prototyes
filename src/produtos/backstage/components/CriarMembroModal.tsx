@@ -5,7 +5,7 @@ import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { cx } from "@/utils/cx";
 import { CheckboxSelect } from "./CheckboxSelect";
-import { addMembro, CARGOS, useGrupos, type Membro } from "./membros-store";
+import { addMembro, editarMembro, useCargos, useGrupos, type Membro } from "./membros-store";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_EMAILS = 30;
@@ -15,10 +15,14 @@ interface CriarMembroModalProps {
     onClose: () => void;
     onCriado?: (membros: Membro[]) => void;
     defaultCargoId?: string;
+    /** Quando informado, o modal edita os cargos e grupos deste membro. */
+    membro?: Membro;
 }
 
-export function CriarMembroModal({ isOpen, onClose, onCriado, defaultCargoId }: CriarMembroModalProps) {
+export function CriarMembroModal({ isOpen, onClose, onCriado, defaultCargoId, membro }: CriarMembroModalProps) {
     const grupos = useGrupos();
+    const todosCargos = useCargos();
+    const editando = Boolean(membro);
     const [emails, setEmails] = useState<string[]>([]);
     const [input, setInput] = useState("");
     const [cargos, setCargos] = useState<Set<string>>(new Set());
@@ -28,10 +32,10 @@ export function CriarMembroModal({ isOpen, onClose, onCriado, defaultCargoId }: 
         if (isOpen) {
             setEmails([]);
             setInput("");
-            setCargos(new Set(defaultCargoId ? [defaultCargoId] : []));
-            setGruposSel(new Set());
+            setCargos(new Set(membro?.cargoIds ?? (defaultCargoId ? [defaultCargoId] : [])));
+            setGruposSel(new Set(membro?.grupoIds ?? []));
         }
-    }, [isOpen, defaultCargoId]);
+    }, [isOpen, defaultCargoId, membro]);
 
     const addEmails = (raw: string) => {
         const novos = raw
@@ -49,12 +53,21 @@ export function CriarMembroModal({ isOpen, onClose, onCriado, defaultCargoId }: 
     };
     const removeEmail = (e: string) => setEmails((prev) => prev.filter((x) => x !== e));
 
-    const cargoOptions = useMemo(() => CARGOS.map((c) => ({ id: c.id, label: c.nome })), []);
+    const cargoOptions = useMemo(() => todosCargos.map((c) => ({ id: c.id, label: c.nome })), [todosCargos]);
 
-    const podeSalvar = emails.length > 0 && cargos.size > 0 && gruposSel.size > 0;
+    const podeSalvar = (editando || emails.length > 0) && cargos.size > 0 && gruposSel.size > 0;
 
     const handleSalvar = () => {
         if (!podeSalvar) return;
+        if (membro) {
+            editarMembro(membro.id, {
+                cargoIds: [...cargos],
+                grupoIds: [...gruposSel],
+            });
+            toast.success(`Membro "${membro.email}" atualizado`);
+            onClose();
+            return;
+        }
         const novos: Membro[] = emails.map((email) => ({
             id: crypto.randomUUID(),
             email,
@@ -74,7 +87,7 @@ export function CriarMembroModal({ isOpen, onClose, onCriado, defaultCargoId }: 
                 <Dialog>
                     <div className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex items-start justify-between gap-3">
-                            <h2 className="text-lg font-semibold text-primary">Adicionar membro</h2>
+                            <h2 className="text-lg font-semibold text-primary">{editando ? "Editar membro" : "Adicionar membro"}</h2>
                             <button
                                 type="button"
                                 onClick={onClose}
@@ -85,63 +98,79 @@ export function CriarMembroModal({ isOpen, onClose, onCriado, defaultCargoId }: 
                             </button>
                         </div>
 
-                        {/* Membros — input de e-mails em tags */}
-                        <div className="flex flex-col gap-1.5">
-                            <span className="text-sm font-medium text-secondary">Membros</span>
-                            <div
-                                className="flex items-center rounded-lg bg-primary px-3 py-2.5 shadow-xs ring-1 ring-border-primary focus-within:ring-2 focus-within:ring-brand"
-                                onKeyDown={(e) => {
-                                    if ((e.key === "Enter" || e.key === ",") && input.trim()) {
-                                        e.preventDefault();
-                                        addEmails(input);
-                                        setInput("");
-                                    } else if (e.key === "Backspace" && !input && emails.length) {
-                                        removeEmail(emails[emails.length - 1]);
-                                    }
-                                }}
-                            >
-                                <input
-                                    type="text"
-                                    value={input}
-                                    onChange={(e) => setInput(e.target.value)}
-                                    onBlur={() => {
-                                        if (input.trim()) {
+                        {membro ? (
+                            <div className="flex flex-col gap-1.5">
+                                <span className="text-sm font-medium text-secondary">E-mail</span>
+                                <p className="text-md text-primary">{membro.email}</p>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-1.5">
+                                <span className="text-sm font-medium text-secondary">Membros</span>
+                                <div
+                                    className="flex items-center rounded-lg bg-primary px-3 py-2.5 shadow-xs ring-1 ring-border-primary focus-within:ring-2 focus-within:ring-brand"
+                                    onKeyDown={(e) => {
+                                        if ((e.key === "Enter" || e.key === ",") && input.trim()) {
+                                            e.preventDefault();
                                             addEmails(input);
                                             setInput("");
+                                        } else if (e.key === "Backspace" && !input && emails.length) {
+                                            removeEmail(emails[emails.length - 1]);
                                         }
                                     }}
-                                    onPaste={(e) => {
-                                        const text = e.clipboardData.getData("text");
-                                        if (/[\s,;]/.test(text)) {
-                                            e.preventDefault();
-                                            addEmails(text);
-                                            setInput("");
-                                        }
-                                    }}
-                                    placeholder="Insira o e-mail ou a lista separada por vírgulas (ex: nome@email.com, nome2@email.com)"
-                                    aria-label="E-mails dos membros"
-                                    className="min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-placeholder"
-                                />
-                            </div>
-
-                            {emails.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5">
-                                    {emails.map((e) => (
-                                        <span key={e} className="inline-flex items-center gap-1 rounded-md bg-secondary py-1 pr-1 pl-2 text-sm text-secondary ring-1 ring-border-secondary">
-                                            {e}
-                                            <button type="button" onClick={() => removeEmail(e)} aria-label={`Remover ${e}`} className="flex size-4 items-center justify-center rounded text-fg-quaternary transition hover:bg-tertiary hover:text-fg-secondary">
-                                                <XClose className="size-3" />
-                                            </button>
-                                        </span>
-                                    ))}
+                                >
+                                    <input
+                                        type="text"
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        onBlur={() => {
+                                            if (input.trim()) {
+                                                addEmails(input);
+                                                setInput("");
+                                            }
+                                        }}
+                                        onPaste={(e) => {
+                                            const text = e.clipboardData.getData("text");
+                                            if (/[\s,;]/.test(text)) {
+                                                e.preventDefault();
+                                                addEmails(text);
+                                                setInput("");
+                                            }
+                                        }}
+                                        placeholder="Insira o e-mail ou a lista separada por vírgulas (ex: nome@email.com, nome2@email.com)"
+                                        aria-label="E-mails dos membros"
+                                        className="min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-placeholder"
+                                    />
                                 </div>
-                            )}
 
-                            <div className="flex items-start justify-between gap-3">
-                                <p className="text-sm text-tertiary">Máximo de 30 e-mails por vez. Use e-mail cadastrado na Ingresse.</p>
-                                <span className={cx("shrink-0 text-sm", emails.length >= MAX_EMAILS ? "text-error-primary" : "text-tertiary")}>{emails.length}/{MAX_EMAILS}</span>
+                                {emails.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {emails.map((e) => (
+                                            <span
+                                                key={e}
+                                                className="inline-flex items-center gap-1 rounded-md bg-secondary py-1 pr-1 pl-2 text-sm text-secondary ring-1 ring-border-secondary"
+                                            >
+                                                {e}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeEmail(e)}
+                                                    aria-label={`Remover ${e}`}
+                                                    className="flex size-4 items-center justify-center rounded text-fg-quaternary transition hover:bg-tertiary hover:text-fg-secondary"
+                                                >
+                                                    <XClose className="size-3" />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="flex items-start justify-between gap-3">
+                                    <p className="text-sm text-tertiary">Máximo de 30 e-mails por vez. Use e-mail cadastrado na Ingresse.</p>
+                                    <span className={cx("shrink-0 text-sm", emails.length >= MAX_EMAILS ? "text-error-primary" : "text-tertiary")}>
+                                        {emails.length}/{MAX_EMAILS}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <CheckboxSelect
                             label="Cargo"
@@ -168,7 +197,7 @@ export function CriarMembroModal({ isOpen, onClose, onCriado, defaultCargoId }: 
                                 Cancelar
                             </Button>
                             <Button size="md" color="primary" onClick={handleSalvar} isDisabled={!podeSalvar}>
-                                Salvar
+                                {editando ? "Salvar alterações" : "Salvar"}
                             </Button>
                         </div>
                     </div>

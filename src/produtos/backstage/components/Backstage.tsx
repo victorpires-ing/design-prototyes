@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { MenuItem as AriaMenuItem, type Key } from "react-aria-components";
 import {
@@ -130,6 +130,32 @@ function useLayoutVariant(): [LayoutVariant, (v: LayoutVariant) => void] {
     return [variant, update];
 }
 
+// O switch de layout é ferramenta de protótipo: fica oculto e alterna com Shift+L.
+// Estado no módulo para continuar visível ao navegar entre páginas.
+let switcherVisivel = false;
+const switcherListeners = new Set<() => void>();
+
+function useSwitcherVisivel() {
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            const alvo = e.target as HTMLElement | null;
+            const digitando = alvo?.closest("input, textarea, select, [contenteditable='true']");
+            if (!e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || e.key.toLowerCase() !== "l" || digitando) return;
+            switcherVisivel = !switcherVisivel;
+            switcherListeners.forEach((l) => l());
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, []);
+    return useSyncExternalStore(
+        (fn) => {
+            switcherListeners.add(fn);
+            return () => switcherListeners.delete(fn);
+        },
+        () => switcherVisivel,
+    );
+}
+
 export function BackstageLayout({
     activeSection,
     activeItem,
@@ -140,6 +166,7 @@ export function BackstageLayout({
 }: BackstageLayoutProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [variant, setVariant] = useLayoutVariant();
+    const mostrarSwitcher = useSwitcherVisivel();
     const [statusModalOpen, setStatusModalOpen] = useState(false);
     const [statusInicial, setStatusInicial] = useState<EventoStatus | undefined>(undefined);
     const eventoAtual = useEventoAtual();
@@ -203,7 +230,7 @@ export function BackstageLayout({
                         </main>
                         <RemixDock />
                     </div>
-                    {showLayoutSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
+                    {showLayoutSwitcher && mostrarSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
                     {statusModal}
                 </div>
             </EventStatusModalContext.Provider>
@@ -220,7 +247,7 @@ export function BackstageLayout({
                     {children}
                     <RemixDock />
                 </div>
-                {showLayoutSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
+                {showLayoutSwitcher && mostrarSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
                 {statusModal}
             </div>
         </EventStatusModalContext.Provider>
@@ -772,7 +799,7 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
             </div>
             <nav className="flex flex-col items-center gap-1">
                 <ProducerRailItem icon={Calendar} label="Eventos" href="/backstage/" isActive={activeProducer === "eventos" || !activeProducer} />
-                <ProducerRailItem icon={UsersPlus} label="Equipe" />
+                <ProducerRailItem icon={UsersPlus} label="Membros" href="/backstage/membros" isActive={activeProducer === "equipe"} />
                 <ProducerRailItem icon={Bank} label="Finanças" />
                 <ProducerRailItem
                     icon={ShoppingCart01}
@@ -811,7 +838,7 @@ const EventRail = ({ activeSection, activeItem }: EventRailProps) => (
 
 const ORG_NAV: Array<{ id: string; icon: ComponentType<{ className?: string }>; label: string; href?: string }> = [
     { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
-    { id: "equipe", icon: UsersPlus, label: "Equipe" },
+    { id: "equipe", icon: UsersPlus, label: "Membros", href: "/backstage/membros" },
     { id: "financas", icon: Bank, label: "Finanças" },
     { id: "pedidos", icon: ShoppingCart01, label: "Pedidos", href: "/backstage/pedidos" },
     { id: "publico", icon: Users01, label: "Público" },

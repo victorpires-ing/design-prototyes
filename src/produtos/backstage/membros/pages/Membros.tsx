@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import type { Key } from "react-aria-components";
-import { LinkExternal01, Plus, SearchLg, Trash01, Users01 } from "@untitledui/icons";
+import { Edit01, LinkExternal01, Lock01, Plus, SearchLg, Trash01, Users01 } from "@untitledui/icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
+import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
@@ -15,7 +16,20 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { CriarGrupoModal } from "../../components/CriarGrupoModal";
 import { CriarMembroModal } from "../../components/CriarMembroModal";
-import { cargoById, eventoById, removeGrupos, removeMembros, useCargos, useGrupos, useMembros, type Grupo, type Membro } from "../../components/membros-store";
+import {
+    cargoById,
+    eventoById,
+    isCargoSistema,
+    removeCargo,
+    removeGrupos,
+    removeMembros,
+    useCargos,
+    useGrupos,
+    useMembros,
+    type Cargo,
+    type Grupo,
+    type Membro,
+} from "../../components/membros-store";
 
 type TabKey = "membros" | "grupos" | "cargos";
 
@@ -37,6 +51,8 @@ export function Membros() {
     const [selMembros, setSelMembros] = useState<Set<string>>(new Set());
     const [selGrupos, setSelGrupos] = useState<Set<string>>(new Set());
     const [confirmRemover, setConfirmRemover] = useState(false);
+    const [membroEditando, setMembroEditando] = useState<Membro | null>(null);
+    const [cargoExcluindo, setCargoExcluindo] = useState<Cargo | null>(null);
 
     const termo = busca.trim().toLowerCase();
 
@@ -76,7 +92,7 @@ export function Membros() {
     };
 
     return (
-        <BackstageLayout showEventContext={false} activeProducer="membros">
+        <BackstageLayout showEventContext={false} activeProducer="equipe">
             <div className="flex min-w-0 flex-1 flex-col">
                 <header className="flex min-h-11 flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
                     <h1 className="text-display-xs font-bold text-primary">Membros</h1>
@@ -128,14 +144,32 @@ export function Membros() {
                             </div>
                         </div>
 
-                        {tab === "membros" && <MembrosTable rows={membrosFiltrados} selected={selMembros} onChange={setSelMembros} />}
+                        {tab === "membros" && <MembrosTable rows={membrosFiltrados} selected={selMembros} onChange={setSelMembros} onEdit={setMembroEditando} />}
                         {tab === "grupos" && <GruposTable rows={gruposFiltrados} selected={selGrupos} onChange={setSelGrupos} />}
-                        {tab === "cargos" && <CargosTable rows={cargosFiltrados} />}
+                        {tab === "cargos" && (
+                            <CargosTable
+                                rows={cargosFiltrados}
+                                onEdit={(c) => navigate(`/backstage/membros/cargos/${c.id}/editar`)}
+                                onDelete={setCargoExcluindo}
+                            />
+                        )}
                     </div>
                 </main>
             </div>
 
             <CriarMembroModal isOpen={membroModalOpen} onClose={() => setMembroModalOpen(false)} />
+            <CriarMembroModal isOpen={membroEditando !== null} membro={membroEditando ?? undefined} onClose={() => setMembroEditando(null)} />
+            <ExcluirCargoModal
+                cargo={cargoExcluindo}
+                membrosAfetados={cargoExcluindo ? membros.filter((m) => m.cargoIds.includes(cargoExcluindo.id)).length : 0}
+                onClose={() => setCargoExcluindo(null)}
+                onConfirm={() => {
+                    if (!cargoExcluindo) return;
+                    removeCargo(cargoExcluindo.id);
+                    toast.success(`Cargo "${cargoExcluindo.nome}" excluído`);
+                    setCargoExcluindo(null);
+                }}
+            />
             <CriarGrupoModal isOpen={grupoModalOpen} onClose={() => setGrupoModalOpen(false)} />
 
             <ConfirmarRemocaoModal
@@ -183,9 +217,19 @@ function toggleId(set: Set<string>, id: string): Set<string> {
 /*  Membros table                                                      */
 /* ------------------------------------------------------------------ */
 
-const MEMBROS_COLS = "grid-cols-[44px_minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]";
+const MEMBROS_COLS = "grid-cols-[44px_minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_64px]";
 
-function MembrosTable({ rows, selected, onChange }: { rows: Membro[]; selected: Set<string>; onChange: (s: Set<string>) => void }) {
+function MembrosTable({
+    rows,
+    selected,
+    onChange,
+    onEdit,
+}: {
+    rows: Membro[];
+    selected: Set<string>;
+    onChange: (s: Set<string>) => void;
+    onEdit: (m: Membro) => void;
+}) {
     if (rows.length === 0) return <TableEmpty description="Não encontramos membros para essa busca." />;
 
     const allSel = rows.every((r) => selected.has(r.id));
@@ -202,6 +246,7 @@ function MembrosTable({ rows, selected, onChange }: { rows: Membro[]; selected: 
                 <span className={HEADER_CELL}>Cargos</span>
                 <span className={HEADER_CELL}>Grupos</span>
                 <span className={HEADER_CELL}>Eventos</span>
+                <span className="sr-only">Ações</span>
             </div>
             {rows.map((m, i) => {
                 const grupoCount = m.grupoIds.length;
@@ -219,7 +264,7 @@ function MembrosTable({ rows, selected, onChange }: { rows: Membro[]; selected: 
                         </div>
                         <div className={cx(CELL, "flex flex-wrap gap-1.5 py-0 md:py-4")}>
                             {m.cargoIds.map((id) => (
-                                <Badge key={id} size="sm" type="pill-color" color={id === "administrador" ? "success" : "gray"}>
+                                <Badge key={id} size="sm" type="pill-color" color="gray">
                                     {cargoById(id)?.nome ?? id}
                                 </Badge>
                             ))}
@@ -228,6 +273,9 @@ function MembrosTable({ rows, selected, onChange }: { rows: Membro[]; selected: 
                             {grupoCount} {grupoCount === 1 ? "grupo" : "grupos"}
                         </div>
                         <div className={cx(CELL, "py-0 text-sm text-tertiary md:py-4")}>{m.eventosCount} eventos</div>
+                        <div className="flex items-center px-4 md:justify-center md:px-0">
+                            <Button size="sm" color="tertiary" iconLeading={Edit01} aria-label={`Editar ${m.email}`} onClick={() => onEdit(m)} />
+                        </div>
                     </div>
                 );
             })}
@@ -301,14 +349,17 @@ function GruposTable({ rows, selected, onChange }: { rows: Grupo[]; selected: Se
 /*  Cargos table                                                       */
 /* ------------------------------------------------------------------ */
 
-function CargosTable({ rows }: { rows: typeof CARGOS }) {
+const CARGOS_COLS = "md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_104px]";
+
+function CargosTable({ rows, onEdit, onDelete }: { rows: Cargo[]; onEdit: (c: Cargo) => void; onDelete: (c: Cargo) => void }) {
     if (rows.length === 0) return <TableEmpty description="Não encontramos cargos para essa busca." />;
 
     return (
         <>
-            <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)] border-b border-secondary bg-secondary_subtle md:grid">
+            <div className={cx("hidden border-b border-secondary bg-secondary_subtle md:grid", CARGOS_COLS)}>
                 <span className={HEADER_CELL}>Nome do cargo</span>
                 <span className={HEADER_CELL}>Informações</span>
+                <span className="sr-only">Ações</span>
             </div>
             {rows.map((c, i) => {
                 const hasPermissions = c.permissions && c.permissions.some((p) => p.level !== "none");
@@ -318,11 +369,12 @@ function CargosTable({ rows }: { rows: typeof CARGOS }) {
                         .map((p) => `${p.nome}: ${p.level === "admin" ? "Admin" : p.level === "editor" ? "Editor" : "Visualizador"}`)
                         .join(", ")
                     : null;
+                const totalAcoes = c.acoes?.length ?? 0;
 
                 return (
                     <div
                         key={c.id}
-                        className={cx("flex flex-col gap-2 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-0", i !== rows.length - 1 && "border-b border-secondary")}
+                        className={cx("flex flex-col gap-2 md:grid md:gap-0", CARGOS_COLS, i !== rows.length - 1 && "border-b border-secondary")}
                     >
                         <div className={cx(CELL, "flex flex-wrap items-center gap-2")}>
                             <span className="text-sm font-semibold text-primary">{c.nome}</span>
@@ -339,13 +391,83 @@ function CargosTable({ rows }: { rows: typeof CARGOS }) {
                                     <div>{permissionsSummary}</div>
                                 </div>
                             ) : (
-                                c.descricao
+                                <div className="flex flex-col gap-1">
+                                    {c.descricao && <span>{c.descricao}</span>}
+                                    {c.acoes && (
+                                        <span className="text-quaternary">
+                                            {totalAcoes} {totalAcoes === 1 ? "permissão" : "permissões"}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1 px-4 pb-4 md:justify-end md:px-6 md:pb-0">
+                            {isCargoSistema(c.id) ? (
+                                <Tooltip title="Cargo padrão" description="Cargos padrão não podem ser editados nem excluídos.">
+                                    <TooltipTrigger aria-label={`${c.nome}: cargo padrão`} className="flex size-9 items-center justify-center rounded-lg text-fg-quaternary">
+                                        <Lock01 className="size-5" aria-hidden="true" />
+                                    </TooltipTrigger>
+                                </Tooltip>
+                            ) : (
+                                <>
+                                    <Button size="sm" color="tertiary" iconLeading={Edit01} aria-label={`Editar ${c.nome}`} onClick={() => onEdit(c)} />
+                                    <Button size="sm" color="tertiary-destructive" iconLeading={Trash01} aria-label={`Excluir ${c.nome}`} onClick={() => onDelete(c)} />
+                                </>
                             )}
                         </div>
                     </div>
                 );
             })}
         </>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Modal de exclusão de cargo                                         */
+/* ------------------------------------------------------------------ */
+
+function ExcluirCargoModal({
+    cargo,
+    membrosAfetados,
+    onClose,
+    onConfirm,
+}: {
+    cargo: Cargo | null;
+    membrosAfetados: number;
+    onClose: () => void;
+    onConfirm: () => void;
+}) {
+    const consequencia =
+        membrosAfetados === 0
+            ? "Nenhum membro usa este cargo."
+            : membrosAfetados === 1
+              ? "1 membro perde as permissões concedidas por ele."
+              : `${membrosAfetados} membros perdem as permissões concedidas por ele.`;
+
+    return (
+        <ModalOverlay isOpen={cargo !== null} onOpenChange={(o) => !o && onClose()} isDismissable>
+            <Modal className="sm:max-w-[440px]">
+                <Dialog>
+                    <div className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                        <div className="flex items-start gap-4">
+                            <FeaturedIcon icon={Trash01} color="error" theme="light" size="lg" />
+                            <div className="flex flex-col gap-1">
+                                <h2 className="text-lg font-semibold text-primary">Excluir o cargo "{cargo?.nome}"?</h2>
+                                <p className="text-sm text-tertiary">{consequencia} Esta ação não pode ser desfeita.</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button size="md" color="secondary" onClick={onClose}>
+                                Manter cargo
+                            </Button>
+                            <Button size="md" color="primary-destructive" onClick={onConfirm}>
+                                Excluir cargo
+                            </Button>
+                        </div>
+                    </div>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
     );
 }
 

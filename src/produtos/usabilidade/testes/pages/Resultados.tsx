@@ -61,6 +61,11 @@ export function Resultados() {
     const atividades = teste.blocos.filter((b): b is BlocoAtividade => b.tipo === "atividade");
     const perguntas = teste.blocos.filter((b): b is BlocoPergunta => b.tipo === "pergunta");
     const susBlocos = teste.blocos.filter((b): b is BlocoSus => b.tipo === "sus");
+    // SUS só entra no relatório quando o teste tem o bloco E alguém respondeu —
+    // sem card vazio em teste que não chegou a usar a escala.
+    const susComRespostas = susBlocos
+        .map((bloco) => ({ bloco, eventos: todosEventos.filter((e) => e.blocoId === bloco.id && temResposta(e)) }))
+        .filter(({ eventos }) => eventos.length > 0);
     const exposicoes = teste.blocos.filter((b): b is BlocoExposicao => b.tipo === "exposicao");
 
     return (
@@ -104,11 +109,11 @@ export function Resultados() {
                 )}
 
                 {/* SUS */}
-                {susBlocos.length > 0 && (
+                {susComRespostas.length > 0 && (
                     <div className="flex flex-col gap-3">
                         <h2 className="text-sm font-semibold tracking-wide text-tertiary uppercase">Escala de usabilidade (SUS)</h2>
-                        {susBlocos.map((bloco) => (
-                            <ResultadoSus key={bloco.id} bloco={bloco} eventos={todosEventos.filter((e) => e.blocoId === bloco.id && temResposta(e))} />
+                        {susComRespostas.map(({ bloco, eventos }) => (
+                            <ResultadoSus key={bloco.id} bloco={bloco} eventos={eventos} />
                         ))}
                     </div>
                 )}

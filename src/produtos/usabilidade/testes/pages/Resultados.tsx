@@ -6,6 +6,16 @@ import { Button } from "@/components/base/buttons/button";
 import { calcularSus, classificarSus, clarityDashboardURL, usabilityStore } from "@/lib/usability";
 import type { BlocoAtividade, BlocoExposicao, BlocoPergunta, BlocoSus, EventoBloco, SessaoTeste, Teste } from "@/lib/usability";
 
+/** Uma resposta só conta quando tem conteúdo — pergunta opcional pulada grava array vazio. */
+function temResposta(e: EventoBloco): boolean {
+    return (e.resposta ?? []).some((r) => r.trim());
+}
+
+/** Sessão mais completa de um device: concluída ganha de qualquer outra; depois, mais eventos. */
+function completude(s: SessaoTeste): number {
+    return (s.concluida ? 1000 : 0) + s.eventos.length;
+}
+
 function fmtDuracao(ms: number): string {
     const s = Math.round(ms / 1000);
     return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
@@ -28,12 +38,25 @@ export function Resultados() {
         });
     }, [id]);
 
-    const todosEventos = useMemo(() => sessoes.flatMap((s) => s.eventos), [sessoes]);
-    const participantes = sessoes.length;
-    const concluidas = sessoes.filter((s) => s.concluida).length;
+    // Participante = quem registrou algum evento. Abrir o link de novo cria outra sessão,
+    // então cada device entra uma vez só, com a sessão em que foi mais longe.
+    const participantesSessoes = useMemo(() => {
+        const porDevice = new Map<string, SessaoTeste>();
+        for (const s of sessoes) {
+            if (!s.eventos?.length) continue;
+            const chave = s.deviceId || s.id;
+            const atual = porDevice.get(chave);
+            if (!atual || completude(s) > completude(atual)) porDevice.set(chave, s);
+        }
+        return [...porDevice.values()];
+    }, [sessoes]);
 
-    if (carregando) return <div className="min-h-screen bg-primary py-20 text-center text-sm text-tertiary">Carregando…</div>;
-    if (!teste) return <div className="min-h-screen bg-primary py-20 text-center text-sm text-tertiary">Teste não encontrado.</div>;
+    const todosEventos = useMemo(() => participantesSessoes.flatMap((s) => s.eventos), [participantesSessoes]);
+    const participantes = participantesSessoes.length;
+    const concluidas = participantesSessoes.filter((s) => s.concluida).length;
+
+    if (carregando) return <div className="min-h-screen bg-primary_alt py-20 text-center text-sm text-tertiary">Carregando…</div>;
+    if (!teste) return <div className="min-h-screen bg-primary_alt py-20 text-center text-sm text-tertiary">Teste não encontrado.</div>;
 
     const atividades = teste.blocos.filter((b): b is BlocoAtividade => b.tipo === "atividade");
     const perguntas = teste.blocos.filter((b): b is BlocoPergunta => b.tipo === "pergunta");
@@ -41,7 +64,7 @@ export function Resultados() {
     const exposicoes = teste.blocos.filter((b): b is BlocoExposicao => b.tipo === "exposicao");
 
     return (
-        <div className="min-h-screen bg-primary text-primary">
+        <div className="min-h-screen bg-primary_alt text-primary">
             <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
                 <div className="flex flex-col gap-4">
                     <Button size="sm" color="link-gray" iconLeading={ArrowLeft} onClick={() => navigate("/testes")} className="self-start">
@@ -85,7 +108,7 @@ export function Resultados() {
                     <div className="flex flex-col gap-3">
                         <h2 className="text-sm font-semibold tracking-wide text-tertiary uppercase">Escala de usabilidade (SUS)</h2>
                         {susBlocos.map((bloco) => (
-                            <ResultadoSus key={bloco.id} bloco={bloco} eventos={todosEventos.filter((e) => e.blocoId === bloco.id && e.resposta)} />
+                            <ResultadoSus key={bloco.id} bloco={bloco} eventos={todosEventos.filter((e) => e.blocoId === bloco.id && temResposta(e))} />
                         ))}
                     </div>
                 )}
@@ -105,7 +128,7 @@ export function Resultados() {
                     <div className="flex flex-col gap-3">
                         <h2 className="text-sm font-semibold tracking-wide text-tertiary uppercase">Perguntas</h2>
                         {perguntas.map((bloco) => (
-                            <ResultadoPergunta key={bloco.id} bloco={bloco} eventos={todosEventos.filter((e) => e.blocoId === bloco.id && e.resposta)} />
+                            <ResultadoPergunta key={bloco.id} bloco={bloco} eventos={todosEventos.filter((e) => e.blocoId === bloco.id)} />
                         ))}
                     </div>
                 )}
@@ -196,21 +219,25 @@ function ResultadoExposicao({ bloco, eventos }: { bloco: BlocoExposicao; eventos
 }
 
 function ResultadoPergunta({ bloco, eventos }: { bloco: BlocoPergunta; eventos: EventoBloco[] }) {
-    const respostas = eventos.flatMap((e) => e.resposta ?? []).filter((r) => r.trim());
+    // Quem chegou na pergunta mas pulou (opcional) grava um evento sem conteúdo:
+    // não entra na contagem de respostas, mas vira a nota "N pularam".
+    const respondidos = eventos.filter(temResposta);
+    const pulados = eventos.length - respondidos.length;
+    const respostas = respondidos.flatMap((e) => e.resposta ?? []).filter((r) => r.trim());
     return (
         <div className="flex flex-col gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
             <div className="flex items-start justify-between gap-3">
                 <span className="text-sm font-medium text-primary">{bloco.enunciado || bloco.titulo}</span>
                 <Badge size="sm" type="pill-color" color="gray">
-                    {eventos.length} {eventos.length === 1 ? "resposta" : "respostas"}
+                    {respondidos.length} {respondidos.length === 1 ? "resposta" : "respostas"}
                 </Badge>
             </div>
             {bloco.formato === "aberta" ? (
                 respostas.length === 0 ? (
-                    <p className="text-xs text-tertiary">Sem respostas ainda.</p>
+                    <p className="text-sm text-tertiary">Sem respostas ainda.</p>
                 ) : (
                     <div className="flex flex-col gap-1.5">
-                        {respostas.slice(0, 50).map((r, i) => (
+                        {respostas.map((r, i) => (
                             <p key={i} className="rounded-md bg-secondary px-3 py-2 text-sm text-secondary">
                                 {r}
                             </p>
@@ -235,6 +262,11 @@ function ResultadoPergunta({ bloco, eventos }: { bloco: BlocoPergunta; eventos: 
                         );
                     })}
                 </div>
+            )}
+            {pulados > 0 && (
+                <span className="text-sm text-tertiary">
+                    {pulados} {pulados === 1 ? "participante pulou" : "participantes pularam"} esta pergunta
+                </span>
             )}
         </div>
     );

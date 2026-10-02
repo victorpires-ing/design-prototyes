@@ -8,7 +8,7 @@ import eventCover from "@/assets/event-cover.png";
  * o status mostrados na listagem são os mesmos que aparecem ao entrar no evento.
  */
 
-export type EventoStatus = "rascunho" | "privado" | "publicado" | "encerrado";
+export type EventoStatus = "rascunho" | "privado" | "publicado" | "suspenso" | "encerrado";
 
 export interface Evento {
     id: string;
@@ -30,6 +30,7 @@ export const EVENTO_STATUS_LABEL: Record<EventoStatus, string> = {
     rascunho: "Rascunho",
     privado: "Privado",
     publicado: "Publicado",
+    suspenso: "Suspenso",
     encerrado: "Encerrado",
 };
 
@@ -38,14 +39,16 @@ export const EVENTO_STATUS_DESCRICAO: Record<EventoStatus, string> = {
     rascunho: "Vendas ainda desligadas",
     privado: "Vendas ligadas, acessíveis só por quem tem o link",
     publicado: "Vendas ligadas, sem restrição de acesso",
+    suspenso: "Vendas desligadas outra vez, depois de já ter estado no ar",
     encerrado: "Vendas encerradas",
 };
 
 /** Cor de badge por status — reaproveitada na listagem e nos cartões de contexto. */
-export const EVENTO_STATUS_BADGE_COLOR: Record<EventoStatus, "warning" | "blue" | "success" | "gray"> = {
+export const EVENTO_STATUS_BADGE_COLOR: Record<EventoStatus, "warning" | "blue" | "success" | "orange" | "gray"> = {
     rascunho: "warning",
     privado: "blue",
     publicado: "success",
+    suspenso: "orange",
     encerrado: "gray",
 };
 
@@ -54,6 +57,27 @@ export const EVENTO_STATUS_BADGE_COLOR: Record<EventoStatus, "warning" | "blue" 
 export function vendasHabilitadas(status: EventoStatus): boolean {
     return status === "privado" || status === "publicado";
 }
+
+/** As quatro trocas simples, sempre nesta posição — a lista inteira do seletor usa
+ *  essa mesma ordem fixa em qualquer tela, com o status atual só marcado desabilitado
+ *  no lugar dele, nunca puxado pra frente. Sem isso, o item que "pula" pra primeiro
+ *  conforme o status de partida muda a cada troca, e ninguém decora onde cada opção
+ *  fica. Encerrado fica de fora — é automático, o sistema aplica sozinho (ex.: quando
+ *  a data do evento passa), então não existe gatilho manual pela interface. */
+export const STATUS_SIMPLES: EventoStatus[] = ["rascunho", "privado", "publicado", "suspenso"];
+
+/** De quais desses quatro dá pra sair um `EventoStatus` — rascunho nunca foi ao ar,
+ *  então não tem o que suspender; os demais trocam livremente entre si, inclusive de
+ *  volta para rascunho a qualquer momento, para puxar o evento de volta e mexer com
+ *  calma. Usado só para decidir QUAIS itens de STATUS_SIMPLES ficam clicáveis — a
+ *  ordem de exibição vem sempre de STATUS_SIMPLES, nunca daqui. */
+export const PROXIMOS_STATUS: Record<EventoStatus, EventoStatus[]> = {
+    rascunho: ["privado", "publicado"],
+    privado: ["rascunho", "publicado", "suspenso"],
+    publicado: ["rascunho", "privado", "suspenso"],
+    suspenso: ["rascunho", "privado", "publicado"],
+    encerrado: [],
+};
 
 const capitalizar = (valor: string) => valor.charAt(0).toUpperCase() + valor.slice(1).replace(".", "");
 
@@ -116,6 +140,15 @@ export const eventos: Evento[] = [
         data: "2026-10-16T23:00:00",
         local: "D-EDGE Rio • Rio de Janeiro, RJ",
     },
+    {
+        id: "7215",
+        nome: "Amistoso de Pré-temporada",
+        produtor: "Grêmio FBPA",
+        cover: gremioTaca,
+        status: "suspenso",
+        data: "2026-11-08T20:00:00",
+        local: "Arena do Grêmio • Porto Alegre, RS",
+    },
 ].map(comData);
 
 /* ------------------------------------------------------------------ */
@@ -132,7 +165,7 @@ function aplicarStatusPersistido() {
     for (const evento of eventos) {
         try {
             const salvo = window.localStorage.getItem(`${STATUS_STORAGE_PREFIX}${evento.id}`);
-            if (salvo === "rascunho" || salvo === "privado" || salvo === "publicado" || salvo === "encerrado") {
+            if (salvo === "rascunho" || salvo === "privado" || salvo === "publicado" || salvo === "suspenso" || salvo === "encerrado") {
                 evento.status = salvo;
             }
         } catch {

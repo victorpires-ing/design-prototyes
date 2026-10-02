@@ -26,6 +26,9 @@ export const PRAZO_REAL_LABEL = "1 hora";
 export const PRAZO_DEMO_SEGUNDOS = 60;
 /** Antecedência mínima para trocar para uma sessão. */
 export const PRAZO_TROCA_HORAS = 24;
+/** Quem está operando o Backstage nesta sessão. Sem autenticação no protótipo, é um nome fixo,
+ *  mas toda ação grava um autor real: "Operador do backoffice" não responde "quem fez isso?". */
+export const OPERADOR_ATUAL = "Renata Lopes";
 
 /* ------------------------------------------------------------------ */
 /*  Tipos                                                              */
@@ -137,6 +140,8 @@ export interface PedidoItem {
     valorPago: number;
     /** Quando a transferência foi concluída, para a linha virar registro legível. */
     transferidoEmLabel?: string;
+    /** Quem pediu a transferência, para a linha responder "quem fez isso" sem abrir o histórico. */
+    transferidoPor?: string;
     respostas: Record<string, string>;
 }
 
@@ -148,6 +153,30 @@ export interface EventoOrg {
     capa: string;
 }
 
+/** O fato que uma entrada do histórico registra. Fatos não mudam: o resultado de uma alteração
+ *  é sempre derivado do último marco do grupo, nunca de uma entrada "pendente" congelada. */
+export type MarcoHistorico = "compra" | "solicitada" | "reenviada" | "paga" | "aplicada" | "falha" | "expirada" | "cancelada" | "financeiro";
+
+export type CategoriaMotivo = "pedido-cliente" | "erro-cadastro" | "erro-operador" | "outro";
+
+export const CATEGORIA_MOTIVO_LABEL: Record<CategoriaMotivo, string> = {
+    "pedido-cliente": "Pedido do cliente",
+    "erro-cadastro": "Erro de cadastro",
+    "erro-operador": "Erro do operador",
+    outro: "Outro",
+};
+
+/** Por que a alteração foi feita. Só a equipe lê: o cliente não vê. */
+export interface Motivo {
+    categoria: CategoriaMotivo;
+    nota: string;
+}
+
+export const motivoValido = (motivo: Motivo) => motivo.categoria !== "outro" || motivo.nota.trim().length > 0;
+
+export const descreverMotivo = (motivo?: Motivo) =>
+    motivo ? [CATEGORIA_MOTIVO_LABEL[motivo.categoria], motivo.nota.trim()].filter(Boolean).join(": ") : "";
+
 export interface EntradaHistorico {
     id: string;
     dataLabel: string;
@@ -158,6 +187,13 @@ export interface EntradaHistorico {
     detalhes?: string[];
     valor?: number;
     estado: "concluido" | "expirado" | "falha" | "pendente";
+    /** Agrupa os fatos de uma mesma alteração: pedido, envios, pagamento e resultado. */
+    solicitacaoId?: string;
+    tipo?: TipoOperacao;
+    marco?: MarcoHistorico;
+    /** Unidades afetadas, para a linha da unidade saber o que aconteceu com ela. */
+    linhaIds?: string[];
+    motivo?: Motivo;
 }
 
 export interface LinhaCobranca {
@@ -193,8 +229,11 @@ export interface Solicitacao {
     estado: "aguardando" | "processando" | "falha" | "aguardando-financeiro";
     /** Por que a aplicação falhou, quando estado é "falha". */
     motivoFalha?: string;
-    /** Referência que o operador digitou ao marcar como pago (não é validação de gateway). */
+    /** Referência que o operador digitou ao registrar o pagamento (não é validação de gateway). */
     referenciaPagamento?: string;
+    motivo?: Motivo;
+    /** Quem abriu a alteração. */
+    operador: string;
     /** Preenchido ao notificar o financeiro — nunca reverte a operação sozinho. */
     escalonamento?: {
         cenario: "falha-aplicacao" | "pagamento-indevido";
@@ -233,9 +272,12 @@ export interface Rascunho {
     /** Transferência: novo titular escolhido por linha. */
     titularPorLinha?: Record<string, string>;
     respostasPorLinha?: Record<string, Record<string, string>>;
-    motivo?: { categoria: string; detalhe: string };
+    motivo?: Motivo;
+    /** Texto da busca de destinatário, para a retomada não abrir em branco. */
+    busca?: string;
     /** Nome de quem o operador está tentando cadastrar, quando o novo titular ainda não tem conta. */
     aguardandoCadastroDe?: string;
+    atualizadoEm: number;
     atualizadoEmLabel: string;
     /** Último operador a tocar o rascunho — alimenta o indicador leve de concorrência. */
     operador: string;
@@ -544,8 +586,8 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
         dataCompraLabel: "02 ago 2026",
         canal: "Online",
         meioPagamento: "Cartão de crédito (2x)",
-        criadoEmLabel: "02 ago 2026, 09:16:33",
-        atualizadoEmLabel: "02 ago 2026, 09:45:33",
+        criadoEmLabel: "02 ago 2026, 10:12",
+        atualizadoEmLabel: "02 ago 2026, 10:12",
         itens: [
             {
                 id: "li-1a",
@@ -563,6 +605,7 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 dataLabel: "02 ago 2026, 10:12",
                 responsavel: "Ana Beatriz Correia",
                 titulo: "Pedido criado",
+                marco: "compra" as const,
                 descricao: "Corrida 10 km no lote promocional, camiseta extra e pacote de fotos.",
                 valor: 269,
                 estado: "concluido",
@@ -576,8 +619,8 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
         dataCompraLabel: "05 ago 2026",
         canal: "Online",
         meioPagamento: "Pix",
-        criadoEmLabel: "05 ago 2026, 09:16:33",
-        atualizadoEmLabel: "05 ago 2026, 09:45:33",
+        criadoEmLabel: "05 ago 2026, 19:44",
+        atualizadoEmLabel: "05 ago 2026, 19:44",
         itens: [
             {
                 id: "li-2a",
@@ -593,6 +636,7 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 dataLabel: "05 ago 2026, 19:44",
                 responsavel: "Rafael Menezes",
                 titulo: "Pedido criado",
+                marco: "compra" as const,
                 descricao: "Corrida 5 km no lote 1.",
                 valor: 120,
                 estado: "concluido",
@@ -607,13 +651,15 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
         canal: "Online",
         meioPagamento: "Cartão de crédito (3x)",
         cupom: "TRAIL10",
-        criadoEmLabel: "11 ago 2026, 09:16:33",
-        atualizadoEmLabel: "11 ago 2026, 09:45:33",
+        criadoEmLabel: "11 ago 2026, 08:31",
+        atualizadoEmLabel: "11 ago 2026, 08:31",
         itens: [
             {
                 id: "li-3a",
                 itemId: "it-trail-12k",
                 titularId: "c-carol",
+                transferidoEmLabel: "28 ago 2026",
+                transferidoPor: "Marcelo Duarte",
                 valorPago: 135,
                 respostas: {
                     ...respostasCompletas("it-trail-12k"),
@@ -633,23 +679,51 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 dataLabel: "11 ago 2026, 08:31",
                 responsavel: "Juliana Prado",
                 titulo: "Pedido criado",
+                marco: "compra" as const,
                 descricao: "Trail 12 km com cupom de 10 por cento e transfer para a largada.",
                 valor: 190,
                 estado: "concluido",
             },
             {
                 id: "h-3b",
-                dataLabel: "28 ago 2026, 16:02",
-                responsavel: "Juliana Prado",
-                titulo: "Troca de titularidade concluída",
-                descricao: "1 item transferido. Comprador do pedido preservado.",
-                detalhes: [
-                    "1x Trail 12 km · Lote 2 · 23 de nov., 07:00",
-                    "De Juliana Prado para Carolina Sampaio (carolina.sampaio@email.com)",
-                    "Transfer para a largada segue com Juliana Prado",
-                ],
+                dataLabel: "28 ago 2026, 15:40",
+                responsavel: "Marcelo Duarte",
+                titulo: "Transferência solicitada",
+                descricao: "Link enviado por e-mail para carolina.sampaio@email.com.",
+                detalhes: ["1x Trail 12 km · Lote 2", "De Juliana Prado para Carolina Sampaio (carolina.sampaio@email.com)"],
                 valor: 15.3,
                 estado: "concluido",
+                solicitacaoId: "sol-seed-3",
+                tipo: "troca-titularidade",
+                marco: "solicitada",
+                linhaIds: ["li-3a"],
+                motivo: { categoria: "pedido-cliente", nota: "" },
+            },
+            {
+                id: "h-3c",
+                dataLabel: "28 ago 2026, 16:01",
+                responsavel: "Carolina Sampaio",
+                titulo: "Pagamento confirmado",
+                descricao: "Pago pelo link de pagamento.",
+                valor: 15.3,
+                estado: "concluido",
+                solicitacaoId: "sol-seed-3",
+                tipo: "troca-titularidade",
+                marco: "paga",
+                linhaIds: ["li-3a"],
+            },
+            {
+                id: "h-3d",
+                dataLabel: "28 ago 2026, 16:02",
+                responsavel: "Sistema",
+                titulo: "Transferência aplicada",
+                descricao: "1 item transferido. O transfer para a largada segue com Juliana Prado.",
+                valor: 15.3,
+                estado: "concluido",
+                solicitacaoId: "sol-seed-3",
+                tipo: "troca-titularidade",
+                marco: "aplicada",
+                linhaIds: ["li-3a"],
             },
         ],
     },
@@ -660,8 +734,8 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
         dataCompraLabel: "14 ago 2026",
         canal: "Bilheteria",
         meioPagamento: "Dinheiro",
-        criadoEmLabel: "14 ago 2026, 09:16:33",
-        atualizadoEmLabel: "14 ago 2026, 09:45:33",
+        criadoEmLabel: "14 ago 2026, 21:07",
+        atualizadoEmLabel: "14 ago 2026, 21:07",
         itens: [
             {
                 id: "li-4a",
@@ -685,6 +759,7 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 dataLabel: "14 ago 2026, 21:07",
                 responsavel: "Marcos Vinícius Leite",
                 titulo: "Pedido criado",
+                marco: "compra" as const,
                 descricao: "Trail 24 km no lote 2 e aluguel de bastões.",
                 valor: 300,
                 estado: "concluido",
@@ -699,8 +774,8 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
         canal: "Online",
         meioPagamento: "Cartão de crédito",
         cupom: "FEDERADO",
-        criadoEmLabel: "19 ago 2026, 09:16:33",
-        atualizadoEmLabel: "19 ago 2026, 09:45:33",
+        criadoEmLabel: "19 ago 2026, 13:55",
+        atualizadoEmLabel: "19 ago 2026, 13:55",
         itens: [
             {
                 id: "li-5a",
@@ -716,18 +791,64 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 dataLabel: "19 ago 2026, 13:55",
                 responsavel: "Diego Fontes",
                 titulo: "Pedido criado",
+                marco: "compra" as const,
                 descricao: "Triathlon sprint com desconto de atleta federado.",
                 valor: 252,
                 estado: "concluido",
             },
             {
                 id: "h-5b",
-                dataLabel: "03 set 2026, 09:18",
+                dataLabel: "02 set 2026, 18:20",
+                responsavel: "Marcelo Duarte",
+                titulo: "Troca solicitada",
+                descricao: "Link enviado por e-mail para diego.fontes@email.com.",
+                detalhes: ["Sai 1x Triathlon sprint · Lote 2", "Entra 1x Triathlon olímpico · Lote 2"],
+                valor: 162.18,
+                estado: "concluido",
+                solicitacaoId: "sol-seed-5",
+                tipo: "troca-item",
+                marco: "solicitada",
+                linhaIds: ["li-5a"],
+                motivo: { categoria: "pedido-cliente", nota: "" },
+            },
+            {
+                id: "h-5c",
+                dataLabel: "03 set 2026, 09:10",
                 responsavel: "Diego Fontes",
-                titulo: "Falha de processamento",
-                descricao: "Troca para triathlon olímpico paga e não aplicada. Estorno em análise pelo financeiro.",
+                titulo: "Pagamento confirmado",
+                descricao: "Pago pelo link de pagamento.",
+                valor: 162.18,
+                estado: "concluido",
+                solicitacaoId: "sol-seed-5",
+                tipo: "troca-item",
+                marco: "paga",
+                linhaIds: ["li-5a"],
+            },
+            {
+                id: "h-5d",
+                dataLabel: "03 set 2026, 09:18",
+                responsavel: "Sistema",
+                titulo: "Troca paga e não aplicada",
+                descricao: "O Triathlon olímpico esgotou antes de a troca ser aplicada. Diego seguiu com o Triathlon sprint.",
                 valor: 162.18,
                 estado: "falha",
+                solicitacaoId: "sol-seed-5",
+                tipo: "troca-item",
+                marco: "falha",
+                linhaIds: ["li-5a"],
+            },
+            {
+                id: "h-5e",
+                dataLabel: "03 set 2026, 09:31",
+                responsavel: "Marcelo Duarte",
+                titulo: "Financeiro notificado",
+                descricao: "Estorno da diferença em análise pelo financeiro.",
+                valor: 162.18,
+                estado: "falha",
+                solicitacaoId: "sol-seed-5",
+                tipo: "troca-item",
+                marco: "financeiro",
+                linhaIds: ["li-5a"],
             },
         ],
     },
@@ -738,8 +859,8 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
         dataCompraLabel: "24 ago 2026",
         canal: "Online",
         meioPagamento: "Pix",
-        criadoEmLabel: "24 ago 2026, 09:16:33",
-        atualizadoEmLabel: "24 ago 2026, 09:45:33",
+        criadoEmLabel: "24 ago 2026, 07:40",
+        atualizadoEmLabel: "24 ago 2026, 07:40",
         itens: [
             { id: "li-6a", itemId: "it-tri-revezamento", valorPago: 330, respostas: { "p-camiseta": "P", "p-kit": "Praia de Ponta Negra" } },
             { id: "li-6b", itemId: "pr-tri-aluguel", valorPago: 110, respostas: {} },
@@ -751,6 +872,7 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 dataLabel: "24 ago 2026, 07:40",
                 responsavel: "Letícia Amaral",
                 titulo: "Pedido criado",
+                marco: "compra" as const,
                 descricao: "Revezamento em dupla no lote 1 e aluguel de neoprene.",
                 valor: 440,
                 estado: "concluido",
@@ -764,8 +886,8 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
         dataCompraLabel: "04 set 2026",
         canal: "Online",
         meioPagamento: "Cartão de crédito (4x)",
-        criadoEmLabel: "04 set 2026, 09:16:33",
-        atualizadoEmLabel: "04 set 2026, 09:45:33",
+        criadoEmLabel: "04 set 2026, 15:02",
+        atualizadoEmLabel: "04 set 2026, 15:02",
         itens: [
             {
                 id: "li-8a",
@@ -796,6 +918,7 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 dataLabel: "04 set 2026, 15:02",
                 responsavel: "Carolina Sampaio",
                 titulo: "Pedido criado",
+                marco: "compra" as const,
                 descricao: "Triathlon olímpico, aluguel de neoprene e pacote de fotos.",
                 valor: 575,
                 estado: "concluido",
@@ -823,8 +946,8 @@ PEDIDOS_INICIAIS.push({
     canal: "Online",
     meioPagamento: "Boleto",
     cupom: "RUNPOT15",
-    criadoEmLabel: "08 set 2026, 09:15:02",
-    atualizadoEmLabel: "08 set 2026, 09:15:02",
+    criadoEmLabel: "08 set 2026, 09:15",
+    atualizadoEmLabel: "08 set 2026, 09:15",
     itens: [
         ...gerarLinhas("li-9a", "it-mar-5k", 40, 102, () => ({
             ...respostasCompletas("it-mar-5k"),
@@ -847,8 +970,9 @@ PEDIDOS_INICIAIS.push({
             dataLabel: "08 set 2026, 09:15",
             responsavel: "Paulo Henrique Braga",
             titulo: "Pedido criado",
+                marco: "compra" as const,
             descricao: "Compra em lote da assessoria Run Potiguar: 60 inscrições e 10 camisetas extras.",
-            valor: 8100,
+            valor: 7860,
             estado: "concluido",
         },
     ],
@@ -864,8 +988,8 @@ PEDIDOS_INICIAIS.push({
     dataCompraLabel: "10 set 2026",
     canal: "Online",
     meioPagamento: "Cartão de crédito (3x)",
-    criadoEmLabel: "10 set 2026, 10:22:15",
-    atualizadoEmLabel: "10 set 2026, 10:22:15",
+    criadoEmLabel: "10 set 2026, 10:22",
+    atualizadoEmLabel: "10 set 2026, 10:22",
     itens: [
         ...gerarLinhas("li-10a", "it-mar-5k", 3, 120, () => ({
             ...respostasCompletas("it-mar-5k"),
@@ -889,6 +1013,7 @@ PEDIDOS_INICIAIS.push({
             dataLabel: "10 set 2026, 10:22",
             responsavel: "Letícia Amaral",
             titulo: "Pedido criado",
+                marco: "compra" as const,
             descricao: "3x Corrida 5 km, 1x Corrida 10 km, 3x camiseta extra do evento e 1x pacote de fotos.",
             valor: 825,
             estado: "concluido",
@@ -969,7 +1094,7 @@ const gerarPedidosExtra = (quantidade: number): PedidoSemente[] =>
         const dia = 1 + Math.floor(aleatorio() * 28);
         const dataCompraLabel = `${String(dia).padStart(2, "0")} ago 2026`;
         const status = sorteio(STATUS_EXTRA);
-        const hora = `${String(8 + Math.floor(aleatorio() * 12)).padStart(2, "0")}:${String(Math.floor(aleatorio() * 60)).padStart(2, "0")}:${String(Math.floor(aleatorio() * 60)).padStart(2, "0")}`;
+        const hora = `${String(8 + Math.floor(aleatorio() * 12)).padStart(2, "0")}:${String(Math.floor(aleatorio() * 60)).padStart(2, "0")}`;
 
         return {
             id: uuidDeterministico(indice + 100),
@@ -986,9 +1111,10 @@ const gerarPedidosExtra = (quantidade: number): PedidoSemente[] =>
             historico: [
                 {
                     id: `h-x${indice}`,
-                    dataLabel: `${dataCompraLabel}, 12:00`,
+                    dataLabel: `${dataCompraLabel}, ${hora}`,
                     responsavel: nome,
                     titulo: "Pedido criado",
+                    marco: "compra" as const,
                     descricao: itens.map((l) => CATALOGO.find((i) => i.id === l.itemId)?.nome).join(", ") + ".",
                     valor: itens.reduce((soma, l) => soma + l.valorPago, 0),
                     estado: "concluido" as const,
@@ -1088,11 +1214,14 @@ export const getFormulario = (id?: string) => (id ? FORMULARIOS.find((f) => f.id
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-/** Totais do pedido, derivados das linhas: nada de valor solto que possa divergir dos itens. */
+/** Totais do pedido, derivados das linhas: nada de valor solto que possa divergir dos itens.
+ *  Desconto só existe quando houve cupom: diferença de lote não é desconto, e sem essa regra
+ *  um pedido sem cupom mostrava "desconto" comparando com o preço de hoje do catálogo. */
 export const totaisDoPedido = (pedido: Pedido) => {
-    const final = pedido.itens.reduce((soma, l) => soma + l.valorPago, 0);
-    const original = pedido.itens.reduce((soma, l) => soma + (getItem(l.itemId)?.precoIntegral ?? l.valorPago), 0);
-    return { final, original, desconto: Math.max(0, Math.round((original - final) * 100) / 100) };
+    const final = arredondar(pedido.itens.reduce((soma, l) => soma + l.valorPago, 0));
+    if (!pedido.cupom) return { final, original: final, desconto: 0 };
+    const original = arredondar(pedido.itens.reduce((soma, l) => soma + Math.max(l.valorPago, getItem(l.itemId)?.precoIntegral ?? l.valorPago), 0));
+    return { final, original, desconto: arredondar(original - final) };
 };
 
 export const formatarMoeda = (valor: number) =>
@@ -1100,11 +1229,14 @@ export const formatarMoeda = (valor: number) =>
 
 export const arredondar = (valor: number) => Math.round(valor * 100) / 100;
 
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+/* Mesmo formato das datas semeadas ("28 ago 2026, 16:02"): o histórico não pode misturar dois
+   jeitos de escrever a mesma coisa. */
+const dataLabel = (d: Date) => `${String(d.getDate()).padStart(2, "0")} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
 const agoraLabel = () => {
     const d = new Date();
-    const data = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
-    const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    return `${data}, ${hora}`;
+    return `${dataLabel(d)}, ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 };
 
 const novoId = (prefixo: string) => `${prefixo}-${Math.random().toString(36).slice(2, 9)}`;
@@ -1112,9 +1244,9 @@ const novoId = (prefixo: string) => `${prefixo}-${Math.random().toString(36).sli
 /** Link de checkout no mesmo formato usado pela bilheteria. */
 const novoLinkPagamento = (pedidoId: string) => `pay.ingresse.com/alteracao/${uuidCurto(pedidoId)}-${Math.random().toString(36).slice(2, 8)}`;
 
-/** Estado para o qual o pedido volta quando uma solicitação é cancelada, expira ou é reaberta. */
-const statusBase = (p: Pedido): StatusPedido =>
-    p.historico.some((h) => h.estado === "concluido" && h.titulo.includes("concluída")) ? "alteracao-concluida" : "ativo";
+/** Estado para o qual o pedido volta quando uma solicitação é cancelada, expira ou é reaberta.
+ *  Lê o marco, nunca o texto do título. */
+const statusBase = (p: Pedido): StatusPedido => (p.historico.some((h) => h.marco === "aplicada") ? "alteracao-concluida" : "ativo");
 
 /* A situação do pedido é sempre derivada. Uma falha nunca fica escondida atrás de outra
    operação aberta na mesma linha ou em outra: ela manda sobre qualquer outro estado
@@ -1160,6 +1292,13 @@ export const TIPO_OPERACAO_LABEL: Record<TipoOperacao, string> = {
     "alterar-respostas": "Edição de respostas",
 };
 
+/** O nome curto, na fala do cliente, que abre os títulos de cartão e de histórico. */
+export const TIPO_OPERACAO_CURTO: Record<TipoOperacao, string> = {
+    "troca-item": "Troca",
+    "troca-titularidade": "Transferência",
+    "alterar-respostas": "Edição do formulário",
+};
+
 /* ------------------------------------------------------------------ */
 /*  Cálculos das operações                                             */
 /* ------------------------------------------------------------------ */
@@ -1171,6 +1310,8 @@ export interface Calculo {
     diferencaBruta: number;
     /** True quando o novo item é mais barato e a diferença é descartada. */
     semCredito: boolean;
+    /** Quanto da diferença cobrada vem do desconto da compra, que não vale para o item novo. */
+    descontoPerdido?: number;
 }
 
 export interface ParTroca {
@@ -1178,11 +1319,26 @@ export interface ParTroca {
     novoItem: CatalogoItem;
 }
 
+/** Pares que saem e entram ordenados do menor para o maior valor: com a diferença tendo piso
+ *  zero, essa combinação dá o menor total possível. Antes, o par dependia da ordem em que as
+ *  linhas e os itens apareciam nos arrays, e trocar a ordem mudava o valor cobrado. */
+export const parearTroca = (linhasSaem: PedidoItem[], itensEntram: CatalogoItem[]): ParTroca[] => {
+    const saem = [...linhasSaem].sort((a, b) => a.valorPago - b.valorPago);
+    const entram = [...itensEntram].sort((a, b) => a.precoIntegral - b.precoIntegral);
+    return saem.flatMap((linha, i) => (entram[i] ? [{ linha, novoItem: entram[i] }] : []));
+};
+
 /** Troca de N itens de uma vez. A diferença é calculada item a item. */
 export const calcularTrocaItens = (pares: ParTroca[]): Calculo => {
     const quantidade = pares.length;
     const diferencaBruta = arredondar(pares.reduce((soma, { linha, novoItem }) => soma + novoItem.precoIntegral - linha.valorPago, 0));
     const diferenca = arredondar(pares.reduce((soma, { linha, novoItem }) => soma + Math.max(0, novoItem.precoIntegral - linha.valorPago), 0));
+    const descontoPerdido = arredondar(
+        pares.reduce((soma, { linha, novoItem }) => {
+            const descontoDaLinha = Math.max(0, (getItem(linha.itemId)?.precoIntegral ?? linha.valorPago) - linha.valorPago);
+            return soma + Math.min(descontoDaLinha, Math.max(0, novoItem.precoIntegral - linha.valorPago));
+        }, 0),
+    );
     const semCredito = diferencaBruta < diferenca;
     const taxaTroca = arredondar(quantidade * TAXA_TROCA_ITEM);
     const subtotal = arredondar(diferenca + taxaTroca);
@@ -1192,6 +1348,7 @@ export const calcularTrocaItens = (pares: ParTroca[]): Calculo => {
     return {
         diferencaBruta,
         semCredito,
+        descontoPerdido,
         total,
         linhas: [
             {
@@ -1341,6 +1498,10 @@ export const titularesDoPedido = (pedido: Pedido) => {
 
 /** Regras de segmentação, estoque e agenda que impedem a troca para um item. */
 export const validarTrocaItem = (pedido: Pedido, linha: PedidoItem, novoItem: CatalogoItem): Bloqueio | null => {
+    /* A origem também tem regra: uma sessão que já aconteceu não tem mais o que trocar. */
+    if (linhaEncerrada(linha)) {
+        return { curto: "Sessão realizada", titulo: "Sessão já realizada", descricao: "A sessão desta unidade já aconteceu. Só a transferência continua disponível." };
+    }
     if (novoItem.id === linha.itemId) {
         return { curto: "Item atual", titulo: "Item igual ao atual", descricao: "Selecione um item diferente do que está no pedido." };
     }
@@ -1401,12 +1562,25 @@ export const validarTrocaItem = (pedido: Pedido, linha: PedidoItem, novoItem: Ca
  *  diferentes, então a restrição de segmentação precisa olhar o item DESSA linha, nunca
  *  "o primeiro item segmentado do pedido inteiro" (isso bloqueava ou liberava transferências
  *  com base num item que não tinha nada a ver com a linha sendo transferida). */
-export const validarNovoTitular = (pedido: Pedido, linha: PedidoItem, conta: Conta): Bloqueio | null => {
+export const validarNovoTitular = (pedido: Pedido, linha: PedidoItem, conta: Conta, junto: PedidoItem[] = []): Bloqueio | null => {
     const titularAtual = linha.titularId ?? pedido.compradorId;
     if (conta.id === titularAtual) {
         return { curto: "Titular atual", titulo: "Conta já é a titular", descricao: "Selecione outra conta para a transferência." };
     }
     const item = getItem(linha.itemId);
+    /* Nominal: uma unidade por pessoa, como na troca. Conta o que a pessoa já tem no pedido e o
+       que está indo para ela na mesma transferência. */
+    if (item && nominalDoItem(item)) {
+        const jaTem = pedido.itens.some((l) => l.id !== linha.id && l.itemId === item.id && (l.titularId ?? pedido.compradorId) === conta.id);
+        const vaiJunto = junto.some((l) => l.id !== linha.id && l.itemId === item.id);
+        if (jaTem || vaiJunto) {
+            return {
+                curto: "Já vinculado",
+                titulo: "Ingresso nominal",
+                descricao: `${conta.nome} já ${jaTem ? "tem" : "vai receber"} uma unidade de ${item.nome}. Ingresso nominal: uma unidade por pessoa.`,
+            };
+        }
+    }
     if (item?.segmentacao === "feminino" && conta.genero !== "F") {
         return {
             curto: "Restrito",
@@ -1442,6 +1616,32 @@ export const pendenciaDaLinha = (pedido: Pedido, linha: PedidoItem) => {
         contaDestinoId: solicitacao.aplicar.titularPorLinha?.[linha.id],
     };
 };
+
+/** As três coisas que um operador faz com uma unidade. */
+export type Verbo = "transferir" | "trocar" | "formulario";
+
+export const temFormulario = (item?: CatalogoItem) => Boolean(getFormulario(item?.formularioId)?.perguntaIds.length);
+
+/** Por que uma unidade não entra numa ação, em texto curto para aparecer ao lado dela.
+ *  Null quando está disponível. A mesma regra vale na lista e dentro do overlay, então nada
+ *  aparece como possível num lugar e bloqueado no outro. */
+export const motivoIndisponivel = (pedido: Pedido, linha: PedidoItem, verbo: Verbo): string | null => {
+    if (linha.titularId) return "Recebeu por transferência";
+    const solicitacao = solicitacaoDaLinha(pedido, linha.id);
+    if (solicitacao) {
+        if (solicitacao.estado === "falha") return `${TIPO_OPERACAO_CURTO[solicitacao.tipo]} paga e não aplicada`;
+        if (solicitacao.tipo === "troca-titularidade") {
+            const destino = getConta(solicitacao.aplicar.titularPorLinha?.[linha.id] ?? "");
+            return `Em transferência para ${destino?.nome ?? "outra pessoa"}`;
+        }
+        return solicitacao.tipo === "troca-item" ? "Em troca" : "Em edição do formulário";
+    }
+    if (verbo === "trocar" && linhaEncerrada(linha)) return "Sessão realizada";
+    if (verbo === "formulario" && !temFormulario(getItem(linha.itemId))) return "Sem formulário";
+    return null;
+};
+
+export const disponivelPara = (pedido: Pedido, linha: PedidoItem, verbo: Verbo) => motivoIndisponivel(pedido, linha, verbo) === null;
 
 /* ------------------------------------------------------------------ */
 /*  Ações                                                              */
@@ -1482,24 +1682,37 @@ export interface CriarSolicitacaoInput {
     calculo: Calculo;
     aplicar: Solicitacao["aplicar"];
     reservas: Solicitacao["reservas"];
-    /** Canal e destino escolhidos na etapa "Enviar cobrança" — sempre grava rastro no histórico. */
+    /** Canal e destino da cobrança: sempre gravam rastro no histórico. */
     canalEnvio: CanalEnvio;
     destinatarioEnvio: string;
+    motivo: Motivo;
 }
 
-/** Cria a cobrança pendente, reserva o estoque e já registra o envio — nunca existe uma
- *  solicitação "criada mas não enviada" sem rastro de canal/destino/horário. */
-export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfetadas, calculo, aplicar, reservas, canalEnvio, destinatarioEnvio }: CriarSolicitacaoInput) => {
+export const canalLabel = (canal: CanalEnvio) => (canal === "email" ? "e-mail" : "WhatsApp");
+
+/** Os campos que toda entrada de uma alteração carrega, para o histórico agrupar por ela. */
+const daAlteracao = (s: Pick<Solicitacao, "id" | "tipo" | "linhasAfetadas">) => ({ solicitacaoId: s.id, tipo: s.tipo, linhaIds: s.linhasAfetadas });
+
+/** Cria a cobrança pendente, reserva o estoque e já registra o envio: nunca existe uma
+ *  solicitação "criada mas não enviada" sem rastro de canal, destino e horário.
+ *  Guarda de concorrência: devolve null, sem criar nada, se alguma unidade já está em outra
+ *  alteração ou já foi transferida (outro operador pode ter agido enquanto este montava). */
+export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfetadas, calculo, aplicar, reservas, canalEnvio, destinatarioEnvio, motivo }: CriarSolicitacaoInput): string | null => {
+    const pedido = getPedido(pedidoId);
+    if (!pedido) return null;
+    const ocupada = linhasAfetadas.some((id) => solicitacaoDaLinha(pedido, id) || pedido.itens.find((l) => l.id === id)?.titularId);
+    if (ocupada) return null;
+
     const agora = Date.now();
+    const solicitacaoId = novoId("sol");
     reservas.forEach((r) => (r.tipo === "item" ? ajustarEstoqueItem(r.itemId, -1) : ajustarEstoqueResposta(r.perguntaId, r.valor, -1)));
-    const canalLabel = canalEnvio === "email" ? "e-mail" : "WhatsApp";
     atualizarPedido(pedidoId, (p) =>
         comStatus({
             ...p,
             solicitacoes: [
                 ...p.solicitacoes,
                 {
-                    id: novoId("sol"),
+                    id: solicitacaoId,
                     tipo,
                     resumo,
                     linhas: calculo.linhas,
@@ -1514,6 +1727,8 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfeta
                     estado: "aguardando",
                     aplicar,
                     reservas,
+                    motivo,
+                    operador: OPERADOR_ATUAL,
                 },
             ],
             historico: [
@@ -1521,25 +1736,28 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfeta
                 {
                     id: novoId("h"),
                     dataLabel: agoraLabel(),
-                    responsavel: "Operador do backoffice",
-                    titulo: `${TIPO_OPERACAO_LABEL[tipo]} solicitada`,
-                    descricao: `${resumo} Link enviado por ${canalLabel} para ${destinatarioEnvio}. Aguardando pagamento, prazo de ${PRAZO_REAL_LABEL}.`,
+                    responsavel: OPERADOR_ATUAL,
+                    titulo: `${TIPO_OPERACAO_CURTO[tipo]} solicitada`,
+                    descricao: `Link enviado por ${canalLabel(canalEnvio)} para ${destinatarioEnvio}.`,
                     detalhes,
                     valor: calculo.total,
-                    estado: "pendente",
+                    estado: "concluido",
+                    marco: "solicitada",
+                    motivo,
+                    ...daAlteracao({ id: solicitacaoId, tipo, linhasAfetadas }),
                 },
             ],
         }),
     );
+    return solicitacaoId;
 };
 
-/** Reenvia o mesmo link (prazo real de 1h contado da criação, não reinicia) — usado quando o
- *  comprador diz que não recebeu ou perguntou de novo. Sempre grava rastro no histórico. */
+/** Reenvia o mesmo link (o prazo conta da criação, não reinicia), para o destino que o operador
+ *  conferiu na hora. Sempre grava rastro no histórico. */
 export const reenviarLink = (pedidoId: string, solicitacaoId: string, canal: CanalEnvio, destinatario: string) =>
     atualizarPedido(pedidoId, (p) => {
         const atual = p.solicitacoes.find((s) => s.id === solicitacaoId);
         if (!atual) return p;
-        const canalLabel = canal === "email" ? "e-mail" : "WhatsApp";
         return comStatus({
             ...p,
             solicitacoes: p.solicitacoes.map((s) => (s.id === solicitacaoId ? { ...s, canalEnvio: canal, destinatarioEnvio: destinatario } : s)),
@@ -1548,15 +1766,21 @@ export const reenviarLink = (pedidoId: string, solicitacaoId: string, canal: Can
                 {
                     id: novoId("h"),
                     dataLabel: agoraLabel(),
-                    responsavel: "Operador do backoffice",
+                    responsavel: OPERADOR_ATUAL,
                     titulo: "Link reenviado",
-                    descricao: `Reenviado por ${canalLabel} para ${destinatario}.`,
+                    descricao: `Por ${canalLabel(canal)} para ${destinatario}.`,
                     valor: atual.total,
-                    estado: "pendente",
+                    estado: "concluido",
+                    marco: "reenviada",
+                    ...daAlteracao(atual),
                 },
             ],
         });
     });
+
+/** O último envio do link de uma alteração: canal, destino, quando e por quem. */
+export const ultimoEnvio = (pedido: Pedido, solicitacaoId: string) =>
+    [...pedido.historico].reverse().find((h) => h.solicitacaoId === solicitacaoId && (h.marco === "solicitada" || h.marco === "reenviada"));
 
 /** Aplica o que a solicitação prometeu e tira ela da lista de operações abertas. */
 const aplicarSolicitacao = (p: Pedido, solicitacao: Solicitacao): Pedido => {
@@ -1567,12 +1791,14 @@ const aplicarSolicitacao = (p: Pedido, solicitacao: Solicitacao): Pedido => {
     const itens = p.itens.map((linha) => {
         const destino = trocasPorLinha.get(linha.id);
         if (destino) {
-            /* Item novo no pedido: as respostas antigas não fazem sentido para ele. Sem formulário aplicado
-               na troca, entra em branco — igual a qualquer item novo do catálogo. */
+            /* O valor pago passa a ser o que a pessoa de fato pagou pela unidade: o da compra mais a
+               diferença paga agora. Antes virava o preço cheio do item novo, e uma segunda troca
+               cobrava de novo uma diferença que já tinha sido paga (ou perdoada). */
+            const precoNovo = getItem(destino)?.precoIntegral ?? linha.valorPago;
             return {
                 ...linha,
                 itemId: destino,
-                valorPago: getItem(destino)?.precoIntegral ?? linha.valorPago,
+                valorPago: Math.max(linha.valorPago, precoNovo),
                 respostas: aplicar.respostasPorItem?.[linha.id] ?? {},
             };
         }
@@ -1582,7 +1808,8 @@ const aplicarSolicitacao = (p: Pedido, solicitacao: Solicitacao): Pedido => {
         return {
             ...linha,
             titularId: novoTitular ?? linha.titularId,
-            transferidoEmLabel: novoTitular ? quando : linha.transferidoEmLabel,
+            transferidoEmLabel: novoTitular ? dataLabel(new Date()) : linha.transferidoEmLabel,
+            transferidoPor: novoTitular ? solicitacao.operador : linha.transferidoPor,
             respostas: novasRespostas ?? linha.respostas,
         };
     });
@@ -1597,18 +1824,20 @@ const aplicarSolicitacao = (p: Pedido, solicitacao: Solicitacao): Pedido => {
             {
                 id: novoId("h"),
                 dataLabel: quando,
-                responsavel: "Operador do backoffice",
-                titulo: `${TIPO_OPERACAO_LABEL[tipo]} concluída`,
+                responsavel: "Sistema",
+                titulo: `${TIPO_OPERACAO_CURTO[tipo]} aplicada`,
                 descricao: resumo,
                 detalhes,
                 valor: total,
                 estado: "concluido",
+                marco: "aplicada",
+                ...daAlteracao(solicitacao),
             },
         ],
     });
 };
 
-/** Confere, no momento de aplicar, se as regras de negócio ainda valem — o estoque ou a
+/** Confere, no momento de aplicar, se as regras de negócio ainda valem: o estoque ou a
  *  segmentação podem ter mudado entre a criação da cobrança e o pagamento confirmado. */
 const revalidarSolicitacao = (pedido: Pedido, solicitacao: Solicitacao): Bloqueio | null => {
     for (const troca of solicitacao.aplicar.trocas ?? []) {
@@ -1618,25 +1847,43 @@ const revalidarSolicitacao = (pedido: Pedido, solicitacao: Solicitacao): Bloquei
         const bloqueio = validarTrocaItem(pedido, linha, novoItem);
         if (bloqueio) return bloqueio;
     }
+    const transferidas = pedido.itens.filter((l) => l.id in (solicitacao.aplicar.titularPorLinha ?? {}));
     for (const [linhaId, contaId] of Object.entries(solicitacao.aplicar.titularPorLinha ?? {})) {
         const linha = pedido.itens.find((l) => l.id === linhaId);
         const conta = getConta(contaId);
         if (!linha || !conta) continue;
-        const bloqueio = validarNovoTitular(pedido, linha, conta);
+        const bloqueio = validarNovoTitular(pedido, linha, conta, transferidas);
         if (bloqueio) return bloqueio;
     }
     return null;
 };
 
-/** Marca a cobrança como paga — confirmação manual do operador, nunca uma validação
- *  automática de gateway. O processamento (revalidação + aplicação) acontece em seguida. */
-export const confirmarPagamento = (pedidoId: string, solicitacaoId: string, referenciaPagamento?: string) => {
-    atualizarPedido(pedidoId, (p) =>
-        comStatus({
+/** Registra um pagamento que o operador confirmou por fora do link. É a ação mais arriscada da
+ *  tela (não volta): exige referência e grava autor e referência no histórico. O
+ *  processamento (revalidação e aplicação) acontece em seguida. */
+export const registrarPagamento = (pedidoId: string, solicitacaoId: string, referenciaPagamento: string) => {
+    atualizarPedido(pedidoId, (p) => {
+        const atual = p.solicitacoes.find((s) => s.id === solicitacaoId);
+        if (!atual) return p;
+        return comStatus({
             ...p,
             solicitacoes: p.solicitacoes.map((s) => (s.id === solicitacaoId ? { ...s, estado: "processando", referenciaPagamento } : s)),
-        }),
-    );
+            historico: [
+                ...p.historico,
+                {
+                    id: novoId("h"),
+                    dataLabel: agoraLabel(),
+                    responsavel: OPERADOR_ATUAL,
+                    titulo: "Pagamento registrado manualmente",
+                    descricao: `Referência informada: ${referenciaPagamento}.`,
+                    valor: atual.total,
+                    estado: "concluido",
+                    marco: "paga",
+                    ...daAlteracao(atual),
+                },
+            ],
+        });
+    });
 
     window.setTimeout(() => {
         const pedido = getPedido(pedidoId);
@@ -1652,20 +1899,19 @@ export const confirmarPagamento = (pedidoId: string, solicitacaoId: string, refe
                 if (!atual) return p;
                 return comStatus({
                     ...p,
-                    solicitacoes: p.solicitacoes.map((s) =>
-                        s.id === solicitacaoId ? { ...s, estado: "falha", motivoFalha: bloqueio.descricao } : s,
-                    ),
+                    solicitacoes: p.solicitacoes.map((s) => (s.id === solicitacaoId ? { ...s, estado: "falha", motivoFalha: bloqueio.descricao } : s)),
                     historico: [
                         ...p.historico,
                         {
                             id: novoId("h"),
                             dataLabel: agoraLabel(),
                             responsavel: "Sistema",
-                            titulo: `${TIPO_OPERACAO_LABEL[atual.tipo]} paga, não aplicada`,
+                            titulo: `${TIPO_OPERACAO_CURTO[atual.tipo]} paga e não aplicada`,
                             descricao: bloqueio.descricao,
-                            detalhes: atual.detalhes,
                             valor: atual.total,
                             estado: "falha",
+                            marco: "falha",
+                            ...daAlteracao(atual),
                         },
                     ],
                 });
@@ -1700,7 +1946,7 @@ export const confirmarPagamento = (pedidoId: string, solicitacaoId: string, refe
 const encerrarSolicitacao = (
     pedidoId: string,
     solicitacaoId: string,
-    entrada: { titulo: (s: Solicitacao) => string; descricao: string; responsavel: string; baseStatus?: StatusPedido },
+    entrada: { titulo: (s: Solicitacao) => string; descricao: string; responsavel: string; marco: MarcoHistorico; baseStatus?: StatusPedido },
 ) => {
     const pedido = getPedido(pedidoId);
     const solicitacao = pedido?.solicitacoes.find((s) => s.id === solicitacaoId);
@@ -1721,9 +1967,10 @@ const encerrarSolicitacao = (
                     responsavel: entrada.responsavel,
                     titulo: entrada.titulo(solicitacao),
                     descricao: entrada.descricao,
-                    detalhes: solicitacao.detalhes,
                     valor: solicitacao.total,
                     estado: "expirado",
+                    marco: entrada.marco,
+                    ...daAlteracao(solicitacao),
                 },
             ],
         }),
@@ -1733,18 +1980,20 @@ const encerrarSolicitacao = (
 /** Expira a solicitação, libera o estoque reservado e volta o pedido ao estado anterior. */
 export const expirarSolicitacao = (pedidoId: string, solicitacaoId: string) =>
     encerrarSolicitacao(pedidoId, solicitacaoId, {
-        titulo: (s) => `${TIPO_OPERACAO_LABEL[s.tipo]} expirada`,
-        descricao: "Pagamento não confirmado no prazo. Reserva liberada e itens revertidos.",
+        titulo: (s) => `${TIPO_OPERACAO_CURTO[s.tipo]} expirou sem pagamento`,
+        descricao: "O prazo do link terminou. Reserva liberada e nada foi cobrado.",
         responsavel: "Sistema",
+        marco: "expirada",
         baseStatus: "expirado",
     });
 
 /** Cancela manualmente a solicitação pendente, com a mesma reversão da expiração. */
 export const cancelarSolicitacao = (pedidoId: string, solicitacaoId: string) =>
     encerrarSolicitacao(pedidoId, solicitacaoId, {
-        titulo: (s) => `${TIPO_OPERACAO_LABEL[s.tipo]} cancelada`,
-        descricao: "Cancelada antes do pagamento. Reserva liberada.",
-        responsavel: "Operador do backoffice",
+        titulo: (s) => `${TIPO_OPERACAO_CURTO[s.tipo]} cancelada`,
+        descricao: "Cancelada antes do pagamento. Reserva liberada e nada foi cobrado.",
+        responsavel: OPERADOR_ATUAL,
+        marco: "cancelada",
     });
 
 /** Volta o pedido de falha ou expirado para o estado operável. */
@@ -1764,47 +2013,50 @@ export const notificarFinanceiro = ({ pedidoId, solicitacaoId, cenario, relato }
     atualizarPedido(pedidoId, (p) => {
         const atual = p.solicitacoes.find((s) => s.id === solicitacaoId);
         if (!atual) return p;
-        const dataLabel = agoraLabel();
+        const quando = agoraLabel();
         return comStatus({
             ...p,
-            solicitacoes: p.solicitacoes.map((s) =>
-                s.id === solicitacaoId ? { ...s, estado: "aguardando-financeiro", escalonamento: { cenario, relato, dataLabel } } : s,
-            ),
+            solicitacoes: p.solicitacoes.map((s) => (s.id === solicitacaoId ? { ...s, estado: "aguardando-financeiro", escalonamento: { cenario, relato, dataLabel: quando } } : s)),
             historico: [
                 ...p.historico,
                 {
                     id: novoId("h"),
-                    dataLabel,
-                    responsavel: "Operador do backoffice",
+                    dataLabel: quando,
+                    responsavel: OPERADOR_ATUAL,
                     titulo: "Financeiro notificado",
                     descricao: relato,
                     valor: atual.total,
                     estado: "falha",
+                    marco: "financeiro",
+                    ...daAlteracao(atual),
                 },
             ],
         });
     });
 
 /* ------------------------------------------------------------------ */
-/*  Rascunhos — operação em montagem, sem cobrança gerada ainda         */
+/*  Rascunhos: operação em montagem, sem cobrança gerada ainda         */
 /* ------------------------------------------------------------------ */
 
-/** Rascunhos do pedido, mais recentes primeiro — alimenta a Faixa de Rascunhos do hub. */
+/** Rascunhos do pedido, do mais recente para o mais antigo. */
 export const useRascunhos = (pedidoId: string) => {
     const todos = useSyncExternalStore(subscribe, () => estado.rascunhos);
-    return todos.filter((r) => r.pedidoId === pedidoId);
+    return todos.filter((r) => r.pedidoId === pedidoId).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
 };
 
 export const getRascunho = (id: string) => estado.rascunhos.find((r) => r.id === id);
 
 export const novoRascunhoId = () => novoId("rasc");
 
-/** Grava (cria ou atualiza) um rascunho — chamado a cada etapa confirmada do wizard. */
-export const salvarRascunho = (rascunho: Omit<Rascunho, "atualizadoEmLabel">) =>
+/** Grava (cria ou atualiza) um rascunho: ao avançar uma etapa e ao fechar o overlay. */
+export const salvarRascunho = (rascunho: Omit<Rascunho, "atualizadoEm" | "atualizadoEmLabel">) =>
     setEstado((atual) => ({
         ...atual,
-        rascunhos: [...atual.rascunhos.filter((r) => r.id !== rascunho.id), { ...rascunho, atualizadoEmLabel: agoraLabel() }],
+        rascunhos: [...atual.rascunhos.filter((r) => r.id !== rascunho.id), { ...rascunho, atualizadoEm: Date.now(), atualizadoEmLabel: agoraLabel() }],
     }));
 
-/** Remove o rascunho — ao enviar a cobrança (ele vira Solicitacao) ou ao descartar deliberadamente. */
+/** Remove o rascunho: ao enviar a cobrança (ele vira Solicitacao) ou ao descartar deliberadamente. */
 export const removerRascunho = (id: string) => setEstado((atual) => ({ ...atual, rascunhos: atual.rascunhos.filter((r) => r.id !== id) }));
+
+/** Desfaz um descarte: devolve o rascunho exatamente como estava. */
+export const restaurarRascunho = (rascunho: Rascunho) => setEstado((atual) => ({ ...atual, rascunhos: [...atual.rascunhos.filter((r) => r.id !== rascunho.id), rascunho] }));

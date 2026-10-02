@@ -1,23 +1,21 @@
 import { useEffect, useState, type FC, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ChevronDown, HelpCircle, InfoCircle, Package, RefreshCcw01, Ticket01, UserSquare } from "@untitledui/icons";
+import { AlertTriangle, ArrowDown, ChevronDown, InfoCircle, Package, RefreshCcw01, Ticket01, UserSquare } from "@untitledui/icons";
 import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
-import { ProgressBarBase } from "@/components/base/progress-indicators/progress-indicators";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { InputNumber } from "@/components/base/input/input-number";
+import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
 import { TextArea } from "@/components/base/textarea/textarea";
-import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx } from "@/utils/cx";
 import {
+    CATEGORIA_MOTIVO_LABEL,
     STATUS_LABEL,
     formatarMoeda,
-    getItem,
-    sessaoDoItem,
-    sessaoLabel,
     type CatalogoItem,
+    type CategoriaMotivo,
     type LinhaCobranca,
-    type PedidoItem,
+    type Motivo,
     type StatusPedido,
     type TipoOperacao,
 } from "../data/pos-compra-store";
@@ -45,7 +43,8 @@ const STATUS_COR: Record<StatusPedido, "success" | "warning" | "error"> = {
     falha: "error",
 };
 
-export const StatusBadge = ({ status, size = "sm" }: { status: StatusPedido; size?: "sm" | "md" | "lg" }) => (
+/* Badges sempre em "md": o "sm" do design system escreve em 12px, abaixo do mínimo da casa. */
+export const StatusBadge = ({ status, size = "md" }: { status: StatusPedido; size?: "sm" | "md" | "lg" }) => (
     <Badge color={STATUS_COR[status]} type="pill-color" size={size}>
         {STATUS_LABEL[status]}
     </Badge>
@@ -65,19 +64,11 @@ export const TIPO_OPERACAO_COR: Record<TipoOperacao, "blue" | "purple" | "gray">
     "alterar-respostas": "gray",
 };
 
-export const BadgeTipoOperacao = ({ tipo, texto, size = "sm" }: { tipo: TipoOperacao; texto: string; size?: "sm" | "md" | "lg" }) => (
+export const BadgeTipoOperacao = ({ tipo, texto, size = "md" }: { tipo: TipoOperacao; texto: string; size?: "sm" | "md" | "lg" }) => (
     <BadgeWithIcon color={TIPO_OPERACAO_COR[tipo]} type="pill-color" size={size} iconLeading={TIPO_OPERACAO_ICONE[tipo]}>
         {texto}
     </BadgeWithIcon>
 );
-
-/** Cor da barra de prazo por faixa restante: acima de 50% do prazo, entre 20% e 50%, abaixo de 20%. */
-export const corDaBarraDePrazo = (restanteMs: number, totalMs: number) => {
-    const fracao = totalMs > 0 ? restanteMs / totalMs : 0;
-    if (fracao > 0.5) return "bg-fg-brand-primary";
-    if (fracao > 0.2) return "bg-fg-warning-primary";
-    return "bg-fg-error-primary";
-};
 
 /** Nota curta de regra. Use só quando a informação não cabe em um rótulo ou em um estado visual. */
 export const Regra = ({ children, className }: { children: ReactNode; className?: string }) => (
@@ -85,21 +76,6 @@ export const Regra = ({ children, className }: { children: ReactNode; className?
         <InfoCircle className="mt-0.5 size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
         <span>{children}</span>
     </p>
-);
-
-/** Explicação que só aparece quando o usuário pede. */
-export const Ajuda = ({ titulo, texto }: { titulo: string; texto: string }) => (
-    <Tooltip title={titulo} description={texto} placement="top">
-        <TooltipTrigger
-            aria-label={texto}
-            className={cx(
-                "flex size-6 shrink-0 items-center justify-center rounded-full bg-primary ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-primary_hover",
-                FOCO,
-            )}
-        >
-            <HelpCircle className="size-4 text-fg-quaternary" aria-hidden="true" />
-        </TooltipTrigger>
-    </Tooltip>
 );
 
 export const Aviso = ({ titulo, descricao, tom = "error" }: { titulo: string; descricao?: string; tom?: "error" | "warning" }) => (
@@ -120,20 +96,19 @@ export const Aviso = ({ titulo, descricao, tom = "error" }: { titulo: string; de
     </div>
 );
 
-/** Card de resumo financeiro: cada linha carrega a regra que a originou. */
-export const ResumoFinanceiro = ({ linhas, titulo = "Resumo da cobrança" }: { linhas: LinhaCobranca[]; titulo?: string }) => (
-    <div className="rounded-xl bg-primary ring-1 ring-border-secondary">
-        <p className="border-b border-secondary px-4 py-3 text-sm font-semibold text-primary">{titulo}</p>
+/** Card de resumo financeiro: cada linha carrega, por escrito, a regra que a originou. A regra
+ *  não fica num tooltip: o do design system escreve em 12px e esconde o que justifica o valor. */
+export const ResumoFinanceiro = ({ linhas, titulo = "Resumo da cobrança", semMoldura = false }: { linhas: LinhaCobranca[]; titulo?: string; semMoldura?: boolean }) => (
+    <div className={cx(!semMoldura && "rounded-xl bg-primary ring-1 ring-border-secondary")}>
+        {!semMoldura && <p className="border-b border-secondary px-4 py-3 text-sm font-semibold text-primary">{titulo}</p>}
         <dl className="flex flex-col divide-y divide-border-secondary">
             {linhas.map((linha) => (
-                <div key={linha.label} className={cx("flex items-center justify-between gap-4 px-4 py-2.5", linha.destaque && "bg-secondary")}>
-                    <dt className={cx("flex items-center gap-1.5 text-sm", linha.destaque ? "font-semibold text-primary" : "text-secondary")}>
-                        {linha.label}
-                        {linha.regra && <Ajuda titulo={linha.label} texto={linha.regra} />}
-                    </dt>
-                    <dd className={cx("text-sm tabular-nums", linha.destaque ? "font-semibold text-primary" : "text-primary")}>
-                        {formatarMoeda(linha.valor)}
-                    </dd>
+                <div key={linha.label} className={cx("flex flex-col gap-0.5 px-4 py-2.5", linha.destaque && "bg-secondary")}>
+                    <div className="flex items-baseline justify-between gap-4">
+                        <dt className={cx("text-sm", linha.destaque ? "font-semibold text-primary" : "text-secondary")}>{linha.label}</dt>
+                        <dd className={cx("shrink-0 text-sm tabular-nums", linha.destaque ? "font-semibold text-primary" : "text-primary")}>{formatarMoeda(linha.valor)}</dd>
+                    </div>
+                    {linha.regra && <p className="text-sm text-tertiary">{linha.regra}</p>}
                 </div>
             ))}
         </dl>
@@ -168,30 +143,34 @@ export const iniciaisDe = (nome: string) =>
         .map((parte) => parte[0]?.toUpperCase() ?? "")
         .join("");
 
-/** Etapa comum aos três fluxos: exige um motivo antes de seguir para a revisão. */
-export const EtapaJustificativa = ({
-    descricao,
-    valor,
-    onChange,
-    destinatario = "comprador",
-}: {
-    descricao: string;
-    valor: string;
-    onChange: (valor: string) => void;
-    /** Quem lê essa justificativa: o comprador original numa troca, o novo titular numa transferência. */
-    destinatario?: string;
-}) => (
+const CATEGORIAS = Object.keys(CATEGORIA_MOTIVO_LABEL) as CategoriaMotivo[];
+
+/** Motivo da alteração, comum aos três fluxos. Opções cobrem o caso frequente com um clique; a
+ *  nota só é obrigatória em "Outro". Diz quem lê: antes o campo pedia um texto "para o
+ *  comprador" e, na mesma tela, dizia que ia para o histórico. */
+export const CampoMotivo = ({ valor, onChange }: { valor: Motivo; onChange: (valor: Motivo) => void }) => (
     <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
-        <Regra>{descricao}</Regra>
+        <div>
+            <p className="text-sm font-semibold text-primary">Motivo da alteração</p>
+            <p className="text-sm text-tertiary">Fica só no histórico do pedido. O cliente não vê.</p>
+        </div>
+        <RadioGroup aria-label="Motivo da alteração" value={valor.categoria} onChange={(categoria) => onChange({ ...valor, categoria: categoria as CategoriaMotivo })} className="gap-3">
+            {CATEGORIAS.map((categoria) => (
+                <RadioButton key={categoria} value={categoria} label={CATEGORIA_MOTIVO_LABEL[categoria]} />
+            ))}
+        </RadioGroup>
         <TextArea
-            label="Justificativa"
-            placeholder={`Explique o motivo dessa alteração para o ${destinatario}.`}
-            value={valor}
-            onChange={onChange}
-            rows={4}
+            label={valor.categoria === "outro" ? "Descreva o motivo" : "Observação (opcional)"}
+            placeholder={valor.categoria === "outro" ? "O que aconteceu" : "Algum detalhe que ajude quem ler depois"}
+            value={valor.nota}
+            onChange={(nota) => onChange({ ...valor, nota })}
+            rows={3}
+            isRequired={valor.categoria === "outro"}
         />
     </div>
 );
+
+export const MOTIVO_INICIAL: Motivo = { categoria: "pedido-cliente", nota: "" };
 
 /** Contagem regressiva acelerada da cobrança pendente. */
 export const useContagem = (expiraEm: number | undefined, aoExpirar: () => void) => {
@@ -293,7 +272,7 @@ export const Stepper = ({
 export const Etapas = ({ atual, titulos }: { atual: number; titulos: string[] }) => (
     <Progress.IconsWithText
         type="number"
-        size="sm"
+        size="md"
         orientation="horizontal"
         className="max-md:hidden"
         items={titulos.map((titulo, indice) => ({
@@ -313,45 +292,6 @@ export const SecaoCard = ({ titulo, acao, children }: { titulo: string; acao?: R
         {children}
     </section>
 );
-
-/** Resumo do que já foi escolhido na lista do pedido: o fluxo começa sabendo sobre o que age. */
-export const ItensSelecionados = ({ linhas, titulo, acao }: { linhas: PedidoItem[]; titulo?: string; acao?: ReactNode }) => {
-    const agrupado = new Map<string, { quantidade: number; total: number }>();
-    linhas.forEach((linha) => {
-        const atual = agrupado.get(linha.itemId) ?? { quantidade: 0, total: 0 };
-        atual.quantidade++;
-        atual.total += linha.valorPago;
-        agrupado.set(linha.itemId, atual);
-    });
-
-    return (
-        <div className="rounded-xl bg-primary ring-1 ring-border-secondary">
-            <div className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-3">
-                <p className="text-sm font-semibold text-primary">
-                    {titulo ?? `${linhas.length} ${linhas.length === 1 ? "item selecionado" : "itens selecionados"}`}
-                </p>
-                {acao}
-            </div>
-            <ul className="flex max-h-72 flex-col divide-y divide-border-secondary overflow-y-auto">
-                {[...agrupado.entries()].map(([itemId, { quantidade, total }]) => {
-                    const item = getItem(itemId);
-                    const detalhe = [item?.lote, sessaoDoItem(item) ? sessaoLabel(item) : null].filter(Boolean).join(" | ");
-                    return (
-                        <li key={itemId} className="flex items-baseline justify-between gap-3 px-4 py-3">
-                            <span className="min-w-0">
-                                <span className="block text-sm font-medium text-primary">
-                                    {quantidade}x {item?.nome}
-                                </span>
-                                {detalhe && <span className="block text-sm text-tertiary">{detalhe}</span>}
-                            </span>
-                            <span className="shrink-0 text-sm font-semibold text-primary tabular-nums">{formatarMoeda(total)}</span>
-                        </li>
-                    );
-                })}
-            </ul>
-        </div>
-    );
-};
 
 /** Stepper para telas pequenas: os ícones mínimos do design system com o rótulo em português.
     O `text` nativo do MinimalIcons escreve "Step X of Y" e conta só as etapas concluídas. */
@@ -407,8 +347,51 @@ export const useRolou = (limiar = 4) => {
     return rolou;
 };
 
+/** Liga "o que está sendo alterado" ao que vem depois, nos três fluxos do overlay. */
+export const SetaParaBaixo = () => (
+    <span className="flex size-11 shrink-0 items-center justify-center self-center rounded-full bg-primary shadow-xs ring-1 ring-border-secondary" aria-hidden="true">
+        <ArrowDown className="size-5 text-fg-secondary" />
+    </span>
+);
+
 /** Foto do produto quando existe; ingresso e combo usam um ícone — não têm imagem própria no catálogo. */
 export const Miniatura = ({ item }: { item: CatalogoItem }) => {
     if (item.foto) return <img src={item.foto} alt="" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-border-primary" />;
     return <FeaturedIcon icon={item.tipo === "ingresso" ? Ticket01 : Package} color="gray" theme="modern" size="md" className="shrink-0" />;
+};
+
+/* ------------------------------------------------------------------ */
+/*  Dados pessoais e prazos                                            */
+/* ------------------------------------------------------------------ */
+
+/** A mesma máscara em toda a superfície: os 6 dígitos do meio bastam para conferir ao telefone. */
+export const mascararCPF = (cpf: string) => {
+    const d = cpf.replace(/\D/g, "");
+    return d.length === 11 ? `***.${d.slice(3, 6)}.${d.slice(6, 9)}-**` : cpf;
+};
+
+/** E-mail de destino de um link, sem expor o endereço inteiro: "b***@email.com". */
+export const mascararEmail = (email: string) => {
+    const [usuario, dominio] = email.split("@");
+    return dominio ? `${usuario.slice(0, 1)}***@${dominio}` : email;
+};
+
+export const mascararTelefone = (telefone: string) => {
+    const d = telefone.replace(/\D/g, "");
+    return d.length >= 8 ? `(${d.slice(-11, -9) || "**"}) *****-${d.slice(-4)}` : telefone;
+};
+
+/** Destino de envio já mascarado, pelo formato do valor. */
+export const mascararDestino = (destino: string) => (destino.includes("@") ? mascararEmail(destino) : mascararTelefone(destino));
+
+/** Celular no formato que cola direto no WhatsApp ou no discador: "+5584988124407". */
+export const telefoneParaCopia = (telefone: string) => `+${telefone.replace(/\D/g, "")}`;
+
+const horaDe = (instante: number) => new Date(instante).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+/** Prazo como horário e tempo restante ("expira às 15:42, em 38 min"), não como cronômetro. */
+export const formatarPrazo = (expiraEm: number, restanteMs: number) => {
+    const segundos = Math.max(0, Math.ceil(restanteMs / 1000));
+    const falta = segundos >= 3600 ? `${Math.floor(segundos / 3600)} h` : segundos >= 60 ? `${Math.floor(segundos / 60)} min` : `${segundos} s`;
+    return `expira às ${horaDe(expiraEm)}, em ${falta}`;
 };

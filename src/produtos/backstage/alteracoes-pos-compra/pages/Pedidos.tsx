@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useMemo } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { motion } from "motion/react";
 import { ArrowLeft, ArrowRight, SearchLg } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
@@ -42,11 +42,30 @@ const combinaSituacao = (status: string, situacao: string) => {
 export function Pedidos() {
     const navigate = useNavigate();
     const pedidos = usePedidos();
-    const [busca, setBusca] = useState("");
-    const [eventoId, setEventoId] = useState<string>(TODOS);
-    const [situacao, setSituacao] = useState<string>(TODOS);
-    const [porPagina, setPorPagina] = useState(25);
-    const [pagina, setPagina] = useState(1);
+    const location = useLocation();
+    /* Busca, filtros e página moram na URL: abrir um pedido e voltar devolve a lista como estava,
+       e o endereço pode ser colado para um colega ver o mesmo recorte. */
+    const [parametros, setParametros] = useSearchParams();
+    const busca = parametros.get("busca") ?? "";
+    const eventoId = parametros.get("evento") ?? TODOS;
+    const situacao = parametros.get("situacao") ?? TODOS;
+    const porPagina = Number(parametros.get("porPagina") ?? 25) || 25;
+    const pagina = Number(parametros.get("pagina") ?? 1) || 1;
+    const definir = (mudancas: Record<string, string | number>) =>
+        setParametros(
+            (atual) => {
+                const proximo = new URLSearchParams(atual);
+                Object.entries(mudancas).forEach(([chave, valor]) => {
+                    const padrao = chave === "pagina" ? "1" : chave === "porPagina" ? "25" : chave === "busca" ? "" : TODOS;
+                    if (String(valor) === padrao) proximo.delete(chave);
+                    else proximo.set(chave, String(valor));
+                });
+                return proximo;
+            },
+            { replace: true },
+        );
+    const setPagina = (valor: number) => definir({ pagina: valor });
+    const abrirPedido = (pedidoId: string) => navigate(`/backstage/pedidos/${pedidoId}`, { state: { de: location.search } });
 
     const termo = busca.trim().toLowerCase();
     const filtrados = useMemo(
@@ -71,10 +90,8 @@ export function Pedidos() {
     const paginaAtual = Math.min(pagina, totalPaginas);
     const inicio = (paginaAtual - 1) * porPagina;
     const visiveis = filtrados.slice(inicio, inicio + porPagina);
-    const aoFiltrar = <T,>(setter: (valor: T) => void) => (valor: T) => {
-        setter(valor);
-        setPagina(1);
-    };
+    /* Uma escrita só na URL: duas seguidas (filtro e página) fariam a segunda apagar a primeira. */
+    const aoFiltrar = (chave: "busca" | "evento" | "situacao") => (valor: string) => definir({ [chave]: valor, pagina: 1 });
 
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
@@ -91,7 +108,7 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                     </p>
                 </header>
 
-                <FaixaAtencaoPedidos pedidos={pedidos} onAbrir={(pedidoId) => navigate(`/backstage/pedidos/${pedidoId}`)} />
+                <FaixaAtencaoPedidos pedidos={pedidos} onAbrir={abrirPedido} />
 
                 <section className="rounded-2xl bg-primary ring-1 ring-border-secondary">
                     <div className="flex flex-col gap-3 border-b border-secondary p-4 md:flex-row md:items-end">
@@ -101,14 +118,14 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                 label="Buscar"
                                 placeholder="ID do pedido, participante ou evento"
                                 value={busca}
-                                onChange={aoFiltrar(setBusca)}
+                                onChange={aoFiltrar("busca")}
                             />
                         </div>
                         <div className="md:w-64">
                             <Select
                                 label="Evento"
                                 selectedKey={eventoId}
-                                onSelectionChange={(key) => aoFiltrar(setEventoId)(String(key))}
+                                onSelectionChange={(key) => aoFiltrar("evento")(String(key))}
                                 items={eventosFiltro}
                             >
                                 {(evento) => <Select.Item id={evento.id}>{evento.label}</Select.Item>}
@@ -118,7 +135,7 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                             <Select
                                 label="Situação"
                                 selectedKey={situacao}
-                                onSelectionChange={(key) => aoFiltrar(setSituacao)(String(key))}
+                                onSelectionChange={(key) => aoFiltrar("situacao")(String(key))}
                                 items={SITUACOES}
                             >
                                 {(opcao) => <Select.Item id={opcao.id}>{opcao.label}</Select.Item>}
@@ -148,7 +165,7 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                     <li key={pedido.id}>
                                         <button
                                             type="button"
-                                            onClick={() => navigate(`/backstage/pedidos/${pedido.id}`)}
+                                            onClick={() => abrirPedido(pedido.id)}
                                             className={cx(
                                                 "flex w-full flex-col gap-2 p-4 text-left transition duration-100 ease-linear hover:bg-secondary",
                                                 FOCO,
@@ -190,7 +207,7 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                         return (
                                             <tr
                                                 key={pedido.id}
-                                                onClick={() => navigate(`/backstage/pedidos/${pedido.id}`)}
+                                                onClick={() => abrirPedido(pedido.id)}
                                                 className="cursor-pointer transition duration-100 ease-linear hover:bg-secondary"
                                             >
                                                 <td className="px-4 py-4">
@@ -210,7 +227,7 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                                         size="sm"
                                                         color="link-color"
                                                         iconTrailing={ArrowRight}
-                                                        onClick={() => navigate(`/backstage/pedidos/${pedido.id}`)}
+                                                        onClick={() => abrirPedido(pedido.id)}
                                                     >
                                                         Abrir
                                                     </Button>
@@ -230,8 +247,7 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                             totalPaginas={totalPaginas}
                             porPagina={porPagina}
                             onPorPagina={(valor) => {
-                                setPorPagina(valor);
-                                setPagina(1);
+                                definir({ porPagina: valor, pagina: 1 });
                             }}
                             onPagina={setPagina}
                         />

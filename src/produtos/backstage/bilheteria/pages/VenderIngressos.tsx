@@ -281,8 +281,9 @@ export function VenderIngressos() {
                                 />
                             )}
 
+                            {/* gap-9: mesma distância que separa o event rail do conteúdo da página (gap-3 do shell + px-6 do main). */}
                             {step === 1 && (
-                                <div className="flex w-full max-w-[1024px] gap-4 max-md:pb-28">
+                                <div className="flex w-full max-w-[1024px] gap-9 max-md:pb-28">
                                     <ItemsStep
                                         cart={cart}
                                         facialBlocked={skipped}
@@ -294,7 +295,7 @@ export function VenderIngressos() {
                                         onRemove={(id) => handleQuantityChange(id, 0)}
                                         onRemoveAll={() => setCart({})}
                                         advanceButton={advanceButton}
-                                        className="w-[330px] shrink-0 self-start max-md:hidden"
+                                        className="sticky top-6 max-h-[calc(100vh-3rem)] w-[282px] shrink-0 self-start overflow-y-auto max-md:hidden"
                                     />
                                 </div>
                             )}

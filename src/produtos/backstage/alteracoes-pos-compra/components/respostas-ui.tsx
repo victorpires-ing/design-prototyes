@@ -135,6 +135,7 @@ export const EditorResposta = ({ pergunta, valor, valorOriginal, onChange }: Edi
     return (
         <Select
             label={pergunta.label}
+            placeholder="Selecione"
             selectedKey={valor || null}
             onSelectionChange={(key) => onChange(String(key))}
             hint={

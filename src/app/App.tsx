@@ -159,11 +159,11 @@ import { SolicitacaoVagas } from '../produtos/landing-pages/sao-silvestre/pages/
 import { SolicitacaoBeneficioPcd } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoBeneficioPcd';
 import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
 import { TransferirInscricao as CarteiraWebTransferir } from '../produtos/carteira-web/pages/TransferirInscricao';
+import { TrocaOnboardingWeb as CarteiraWebTrocaOnboarding } from '../produtos/carteira-web/pages/TrocaOnboardingWeb';
 import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/SolicitacoesInbox';
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
 import { Pedidos as PedidosPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/Pedidos';
 import { DetalhePedido as DetalhePedidoPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/DetalhePedido';
-import { EditarFormulario } from '../produtos/backstage/alteracoes-pos-compra/pages/EditarFormulario';
 import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
 import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
 import { PreVenda } from '../produtos/backstage/marketing/pages/PreVenda';
@@ -223,7 +223,6 @@ export default function App() {
         <Route path="/backstage/home" element={<BackstageHome />} />
         <Route path="/backstage/pedidos" element={<PedidosPosCompra />} />
         <Route path="/backstage/pedidos/:pedidoId" element={<DetalhePedidoPosCompra />} />
-        <Route path="/backstage/pedidos/:pedidoId/formulario" element={<EditarFormulario />} />
         <Route path="/backstage/membros" element={<Membros />} />
         <Route path="/backstage/membros/criar-cargo" element={<CriarCargo />} />
         <Route path="/backstage/membros/cargos/:id/editar" element={<CriarCargo />} />
@@ -375,6 +374,7 @@ export default function App() {
         <Route path="/landing-pages/sao-silvestre/solicitar-beneficio-pcd" element={<SolicitacaoBeneficioPcd />} />
         <Route path="/carteira-web" element={<CarteiraWeb />} />
         <Route path="/carteira-web/transferir" element={<CarteiraWebTransferir />} />
+        <Route path="/carteira-web/troca-onboarding" element={<CarteiraWebTrocaOnboarding />} />
         <Route path="/aprovacoes/solicitacoes" element={<SolicitacoesInbox />} />
         <Route path="/backstage/publico" element={<Publico />} />
         <Route path="/backstage/publico/formularios" element={<FormulariosParticipacao />} />

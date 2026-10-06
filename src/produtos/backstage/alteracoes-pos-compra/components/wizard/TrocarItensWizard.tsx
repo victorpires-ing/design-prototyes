@@ -3,41 +3,43 @@ import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { ArrowDown, Calendar, ChevronDown, SearchLg } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
-import { Button } from "@/components/base/buttons/button";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { InputBase } from "@/components/base/input/input";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { cx } from "@/utils/cx";
-import { Aviso, EtapaJustificativa, FOCO, ItensSelecionados, Miniatura, Regra, ResumoFinanceiro, Stepper } from "../pos-compra-ui";
+import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, SetaParaBaixo, Stepper, mascararEmail } from "../pos-compra-ui";
 import { EditorResposta } from "../respostas-ui";
 import {
+    OPERADOR_ATUAL,
     SESSOES,
+    TIPO_OPERACAO_LABEL,
     calcularTrocaItens,
     criarSolicitacao,
+    disponivelPara,
     formatarMoeda,
     getConta,
     getFormulario,
     getItem,
+    getRascunho,
+    motivoValido,
     novoRascunhoId,
+    parearTroca,
     removerRascunho,
-    respostasCompletas,
     salvarRascunho,
-    sessaoDoItem,
     sessaoLabel,
-    solicitacaoDaLinha,
     useCatalogo,
     usePerguntas,
+    useRascunhos,
+    uuidCurto,
     validarTrocaItem,
-    type CanalEnvio,
     type CatalogoItem,
+    type Motivo,
     type Pedido,
     type PedidoItem,
     type Pergunta,
     type Rascunho,
-    type TipoItem,
 } from "../../data/pos-compra-store";
 import { WizardShell } from "./WizardShell";
-import { isEmailValido, isTelefoneValido } from "./EtapaEnvio";
+import { ResumoUnidades, SeletorUnidades, avisarRascunhoSalvo, detalheDoItem, identidadeDaLinha } from "./seletor-unidades";
 
 type Etapa = "saem" | "entram" | "formularios" | "revisao";
 
@@ -48,63 +50,60 @@ const TITULO_ETAPA: Record<Etapa, string> = {
     revisao: "Revisão",
 };
 
-const LABEL_TIPO: Record<TipoItem, string> = { ingresso: "Ingressos", produto: "Produtos", combo: "Combos" };
-
 const combina = (termo: string, ...campos: Array<string | undefined>) => {
     const busca = termo.trim().toLowerCase();
     if (!busca) return true;
     return campos.some((campo) => campo?.toLowerCase().includes(busca));
 };
 
-const detalheDoItem = (item?: CatalogoItem) => [item?.lote, sessaoDoItem(item) ? sessaoLabel(item) : null].filter(Boolean).join(" | ");
-
 const interromper = (event: MouseEvent) => event.stopPropagation();
 
 interface TrocarItensWizardProps {
     pedido: Pedido;
     linhasIniciais: string[];
-    /** Retomando um rascunho salvo — chega já com a seleção e a etapa anteriores. */
+    /** Retomando um rascunho salvo: chega com a seleção, os destinos, as respostas e o motivo. */
     rascunhoInicial?: Rascunho;
     onFechar: () => void;
+    /** Cobrança criada: o pedido rola até o cartão novo. */
+    onEnviado: (solicitacaoId: string) => void;
 }
 
-export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onFechar }: TrocarItensWizardProps) {
+export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onFechar, onEnviado }: TrocarItensWizardProps) {
     const catalogo = useCatalogo();
     const perguntas = usePerguntas();
+    const rascunhos = useRascunhos(pedido.id);
     const rascunhoId = useState(() => rascunhoInicial?.id ?? novoRascunhoId())[0];
 
-    const [indice, setIndice] = useState(0);
+    const linhasDisponiveis = pedido.itens.filter((l) => disponivelPara(pedido, l, "trocar"));
+    const pedidas = rascunhoInicial?.linhasSelecionadas ?? linhasIniciais;
+    const perdidas = rascunhoInicial ? pedidas.filter((id) => !linhasDisponiveis.some((l) => l.id === id)).length : 0;
+
+    const [indice, setIndice] = useState(() => (linhasDisponiveis.some((l) => linhasIniciais.includes(l.id)) ? 1 : 0));
     const [termo, setTermo] = useState("");
-    const [justificativa, setJustificativa] = useState(rascunhoInicial?.motivo?.detalhe ?? "");
-    const [saem, setSaem] = useState<Record<string, boolean>>(() =>
-        Object.fromEntries((rascunhoInicial?.linhasSelecionadas ?? linhasIniciais).map((id) => [id, true])),
-    );
+    const [motivo, setMotivo] = useState<Motivo>(rascunhoInicial?.motivo ?? MOTIVO_INICIAL);
+    const [saem, setSaem] = useState<Record<string, boolean>>(() => Object.fromEntries(pedidas.map((id) => [id, true])));
     const [entram, setEntram] = useState<Record<string, number>>(() => {
-        if (!rascunhoInicial?.destinoPorLinha) return {};
         const contagem: Record<string, number> = {};
-        Object.values(rascunhoInicial.destinoPorLinha).forEach((itemId) => {
+        Object.values(rascunhoInicial?.destinoPorLinha ?? {}).forEach((itemId) => {
             contagem[itemId] = (contagem[itemId] ?? 0) + 1;
         });
         return contagem;
     });
-    const [respostasEntram, setRespostasEntram] = useState<Record<string, Record<string, string>>>({});
-    const [canal] = useState<CanalEnvio>("email");
-    /* Sem campo próprio pra isso — a cobrança vai direto pro e-mail do comprador do pedido. */
-    const [destino] = useState(() => getConta(pedido.compradorId)?.email ?? "");
+    /* Respostas por unidade, não por item: duas pessoas trocando para o mesmo item continuam
+       com as próprias respostas. */
+    const [respostasEntram, setRespostasEntram] = useState<Record<string, Record<string, string>>>(rascunhoInicial?.respostasPorLinha ?? {});
+    const comprador = getConta(pedido.compradorId);
+    /* A cobrança da troca vai para o e-mail do comprador do pedido. */
+    const destino = comprador?.email ?? "";
 
     /* ------------------------------------------------------------------ */
     /*  O que sai                                                          */
     /* ------------------------------------------------------------------ */
 
-    const linhasDisponiveis = pedido.itens.filter((l) => !l.titularId && !solicitacaoDaLinha(pedido, l.id));
-    const selecaoPrevia = linhasDisponiveis.some((l) => linhasIniciais.includes(l.id));
     const linhasSaem = linhasDisponiveis.filter((l) => saem[l.id]);
     const totalSaem = linhasSaem.length;
-    const linhasPorTipo = (Object.keys(LABEL_TIPO) as TipoItem[])
-        .map((tipo) => ({ tipo, linhas: linhasDisponiveis.filter((l) => (getItem(l.itemId)?.tipo ?? "produto") === tipo) }))
-        .filter((g) => g.linhas.length > 0);
-
-    const alternarSaida = (id: string) => setSaem((atual) => ({ ...atual, [id]: !atual[id] }));
+    const emOutroRascunho = rascunhos.find((r) => r.id !== rascunhoId && r.linhasSelecionadas.some((id) => saem[id]));
+    const incluir = (ids: string[]) => setSaem((atual) => ({ ...atual, ...Object.fromEntries(ids.map((id) => [id, true])) }));
 
     /* ------------------------------------------------------------------ */
     /*  O que entra                                                        */
@@ -122,12 +121,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
     const produtos = candidatos.filter((i) => !i.sessaoId && i.tipo === "produto");
     const combos = candidatos.filter((i) => !i.sessaoId && i.tipo === "combo");
 
-    const referenciaPorTipo = new Map<TipoItem, PedidoItem>();
-    linhasSaem.forEach((l) => {
-        const tipo = getItem(l.itemId)?.tipo;
-        if (tipo && !referenciaPorTipo.has(tipo)) referenciaPorTipo.set(tipo, l);
-    });
-    const referenciaDoItem = (item: CatalogoItem) => referenciaPorTipo.get(item.tipo) ?? linhasSaem[0];
+    const referenciaDoItem = (item: CatalogoItem) => linhasSaem.find((l) => getItem(l.itemId)?.tipo === item.tipo) ?? linhasSaem[0];
 
     const noPedidoPorItem = new Map<string, number>();
     pedido.itens.forEach((l) => noPedidoPorItem.set(l.itemId, (noPedidoPorItem.get(l.itemId) ?? 0) + 1));
@@ -141,28 +135,8 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
         const item = getItem(itemId);
         return item ? Array.from({ length: q }, () => item) : [];
     });
-    const pares = linhasSaem
-        .map((linha, i) => ({ linha, novoItem: destinosItens[i] }))
-        .filter((p): p is { linha: PedidoItem; novoItem: CatalogoItem } => Boolean(p.novoItem));
-    const calculo = pares.length > 0 ? calcularTrocaItens(pares) : null;
-    const paresAgrupados = [
-        ...pares
-            .reduce((mapa, { linha, novoItem }) => {
-                const itemSai = getItem(linha.itemId);
-                const chave = `${linha.itemId}→${novoItem.id}`;
-                const atual = mapa.get(chave) ?? {
-                    chave,
-                    saiNome: itemSai?.nome ?? "",
-                    saiDetalhe: sessaoLabel(itemSai),
-                    entraNome: novoItem.nome,
-                    entraDetalhe: sessaoLabel(novoItem),
-                    quantidade: 0,
-                };
-                atual.quantidade++;
-                return mapa.set(chave, atual);
-            }, new Map<string, { chave: string; saiNome: string; saiDetalhe?: string; entraNome: string; entraDetalhe?: string; quantidade: number }>())
-            .values(),
-    ];
+    const pares = parearTroca(linhasSaem, destinosItens);
+    const calculo = pares.length > 0 && totalEntram === totalSaem ? calcularTrocaItens(pares) : null;
     const selecaoIgual =
         totalSaem > 0 &&
         linhasSaem
@@ -175,36 +149,33 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                 .join("|");
 
     /* ------------------------------------------------------------------ */
-    /*  Formulários dos itens que entram                                   */
+    /*  Formulários: herdados da unidade que sai, nada inventado           */
     /* ------------------------------------------------------------------ */
 
-    const formularios = itensQueEntram
-        .map(([itemId, quantidade]) => {
-            const item = getItem(itemId);
-            const perguntasDoItem = (getFormulario(item?.formularioId)?.perguntaIds ?? []).map((id) => perguntas.find((p) => p.id === id)).filter(Boolean) as Pergunta[];
-            return { itemId, item, quantidade, perguntas: perguntasDoItem };
-        })
-        .filter((f) => f.perguntas.length > 0);
-    const valoresEntram = (itemId: string): Record<string, string> => ({ ...respostasCompletas(itemId), ...(respostasEntram[itemId] ?? {}) });
-    const respondido = (itemId: string, pergunta: Pergunta) => (valoresEntram(itemId)[pergunta.id] ?? "").trim() !== "";
-    const formulariosCompletos = formularios.every((f) => f.perguntas.every((p) => respondido(f.itemId, p)));
+    const perguntasDoItem = (item?: CatalogoItem) => (getFormulario(item?.formularioId)?.perguntaIds ?? []).map((id) => perguntas.find((p) => p.id === id)).filter(Boolean) as Pergunta[];
+    /* A pessoa é a mesma: as perguntas em comum vêm das respostas dela; as novas começam em
+       branco e são obrigatórias. Antes o item que entrava nascia com respostas inventadas
+       (primeira opção com estoque, um "atestado-medico.pdf") e a etapa já aparecia completa. */
+    const valoresDoPar = (linha: PedidoItem, novoItem: CatalogoItem) => {
+        const herdadas = Object.fromEntries(perguntasDoItem(novoItem).flatMap((p) => (linha.respostas[p.id] ? [[p.id, linha.respostas[p.id]]] : [])));
+        return { ...herdadas, ...(respostasEntram[linha.id] ?? {}) };
+    };
+    const faltando = (linha: PedidoItem, novoItem: CatalogoItem) => perguntasDoItem(novoItem).filter((p) => !(valoresDoPar(linha, novoItem)[p.id] ?? "").trim());
+    const paresComFormulario = pares.filter(({ novoItem }) => perguntasDoItem(novoItem).length > 0);
+    const paresIncompletos = paresComFormulario.filter(({ linha, novoItem }) => faltando(linha, novoItem).length > 0);
+    const [precisaFormulario, setPrecisaFormulario] = useState(false);
 
     /* ------------------------------------------------------------------ */
     /*  Etapas                                                             */
     /* ------------------------------------------------------------------ */
 
-    const etapas: Etapa[] = [
-        ...(selecaoPrevia ? [] : (["saem"] as Etapa[])),
-        "entram",
-        ...(formularios.length > 0 ? (["formularios"] as Etapa[]) : []),
-        "revisao",
-    ];
+    /* A etapa de formulários só existe quando o item que entra tem pergunta sem resposta. Ela
+       fica fixa depois de entrar no fluxo, para o stepper não mudar de tamanho enquanto a pessoa
+       responde. */
+    const comFormularios = precisaFormulario || paresIncompletos.length > 0;
+    const etapas: Etapa[] = ["saem", "entram", ...(comFormularios ? (["formularios"] as Etapa[]) : []), "revisao"];
     const etapa = etapas[Math.min(indice, etapas.length - 1)];
-    const destinoValido = canal === "email" ? isEmailValido(destino) : isTelefoneValido(destino);
 
-    /* O índice nasce em 0 porque `etapas` só existe depois de saem/entram/formulários serem
-       computados a partir do rascunho. Uma vez montado com esses valores já restaurados,
-       pulamos direto para a etapa salva em vez de reaplicar o fluxo do zero. */
     useEffect(() => {
         if (!rascunhoInicial) return;
         const alvo = etapas.indexOf(rascunhoInicial.etapa as Etapa);
@@ -218,12 +189,11 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
             : etapa === "entram"
               ? totalSaem > 0 && totalEntram === totalSaem && !selecaoIgual
               : etapa === "formularios"
-                ? formulariosCompletos
-                : Boolean(calculo) && justificativa.trim().length > 0 && destinoValido;
+                ? paresIncompletos.length === 0
+                : Boolean(calculo) && motivoValido(motivo);
 
-    const rotuloAvancar = etapa === "saem" ? "Escolher o que entra" : etapa === "entram" && formularios.length > 0 ? "Preencher formulários" : "Revisar troca";
+    const rotuloAvancar = etapa === "saem" ? "Escolher o que entra" : etapa === "entram" && comFormularios ? "Responder formulários" : "Revisar troca";
 
-    /** Salva o progresso como rascunho — sobrevive a F5, fechar a aba, ou ser retomado por outro operador. */
     const salvarProgresso = (proximaEtapa: string) => {
         const destinoPorLinha: Record<string, string> = {};
         pares.forEach(({ linha, novoItem }) => (destinoPorLinha[linha.id] = novoItem.id));
@@ -235,21 +205,26 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
             linhasSelecionadas: linhasSaem.map((l) => l.id),
             destinoPorLinha,
             respostasPorLinha: respostasEntram,
-            motivo: justificativa ? { categoria: "outro", detalhe: justificativa } : undefined,
-            operador: "Operador do backoffice",
+            motivo,
+            operador: OPERADOR_ATUAL,
         });
     };
 
+    const fechar = () => {
+        const fezAlgo = Boolean(rascunhoInicial || totalEntram > 0 || motivo.nota.trim() || Object.keys(respostasEntram).length);
+        if (fezAlgo && totalSaem > 0) {
+            salvarProgresso(etapa);
+            avisarRascunhoSalvo(getRascunho(rascunhoId));
+        }
+        onFechar();
+    };
+
     const avancar = () => {
+        if (etapa === "entram" && paresIncompletos.length > 0) setPrecisaFormulario(true);
         salvarProgresso(etapas[Math.min(indice + 1, etapas.length - 1)]);
         setIndice((i) => i + 1);
     };
-    const voltar = () => (indice === 0 ? onFechar() : setIndice((i) => i - 1));
-    const minimizar = () => {
-        salvarProgresso(etapa);
-        toast.message("Rascunho salvo. Continue quando quiser, pelo pedido.");
-        onFechar();
-    };
+    const voltar = () => (indice === 0 ? fechar() : setIndice((i) => i - 1));
 
     const cartaoCatalogo = (item: CatalogoItem) => (
         <LinhaCatalogo
@@ -264,6 +239,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
             noPedido={noPedidoPorItem.get(item.id) ?? 0}
             saindo={saindoPorItem.get(item.id) ?? 0}
             onChange={(valor) => setEntram((atual) => (totalSaem === 1 ? (valor > 0 ? { [item.id]: valor } : {}) : { ...atual, [item.id]: valor }))}
+            onTodas={() => setEntram({ [item.id]: totalSaem })}
         />
     );
 
@@ -281,13 +257,11 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                         </span>
                     }
                 >
-                    <ul className="flex flex-col gap-2 p-3">{itens.map(cartaoCatalogo)}</ul>
+                    <ul className="flex flex-col divide-y divide-border-secondary">{itens.map(cartaoCatalogo)}</ul>
                 </Accordion>
             ))}
         </div>
     );
-
-    const comprador = getConta(pedido.compradorId);
 
     const confirmar = () => {
         if (!calculo || pares.length === 0) return;
@@ -300,18 +274,10 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
         });
         const resumoSaem = [...porItem.values()].map((v) => `${v.quantidade}x ${v.nome}`).join(", ");
         const resumoEntram = itensQueEntram.map(([itemId, q]) => `${q}x ${getItem(itemId)?.nome}`).join(", ");
-        const detalhe = (prefixo: string, item?: CatalogoItem) => [prefixo, item?.lote, sessaoDoItem(item) ? sessaoLabel(item) : null].filter(Boolean).join(" · ");
-        const detalhes = [
-            ...linhasSaem.map((l) => detalhe(`Sai 1x ${getItem(l.itemId)?.nome}`, getItem(l.itemId))),
-            ...itensQueEntram.map(([id, q]) => detalhe(`Entra ${q}x ${getItem(id)?.nome}`, getItem(id))),
-            `Justificativa: ${justificativa.trim()}`,
-        ];
+        const detalhes = pares.map(({ linha, novoItem }) => `${getItem(linha.itemId)?.nome} para ${novoItem.nome} · ${identidadeDaLinha(pedido, linha).nome}`);
+        const respostasPorItem = Object.fromEntries(paresComFormulario.map(({ linha, novoItem }) => [linha.id, valoresDoPar(linha, novoItem)]));
 
-        const respostasPorItem = Object.fromEntries(
-            pares.filter(({ novoItem }) => formularios.some((f) => f.itemId === novoItem.id)).map(({ linha, novoItem }) => [linha.id, valoresEntram(novoItem.id)]),
-        );
-
-        criarSolicitacao({
+        const id = criarSolicitacao({
             pedidoId: pedido.id,
             tipo: "troca-item",
             detalhes,
@@ -323,87 +289,69 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                 respostasPorItem: Object.keys(respostasPorItem).length > 0 ? respostasPorItem : undefined,
             },
             reservas: pares.map(({ novoItem }) => ({ tipo: "item" as const, itemId: novoItem.id })),
-            canalEnvio: canal,
+            canalEnvio: "email",
             destinatarioEnvio: destino,
+            motivo,
         });
+        if (!id) {
+            toast.error("Uma das unidades entrou em outra alteração enquanto você montava esta. Confira o pedido e tente de novo.");
+            return;
+        }
         removerRascunho(rascunhoId);
-        toast.success("Cobrança de troca enviada.");
-        onFechar();
+        toast.success(`Cobrança de troca enviada para ${destino}.`);
+        onEnviado(id);
     };
+
+    const cortesia = linhasSaem.some((l) => l.valorPago === 0);
 
     return (
         <WizardShell
             isOpen
-            onClose={onFechar}
-            titulo="Trocar itens"
-            subtitulo={totalSaem > 0 ? `${totalSaem} ${totalSaem === 1 ? "item sai" : "itens saem"}` : undefined}
+            onClose={fechar}
+            titulo="Trocar"
+            subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}
             etapas={etapas.map((e) => TITULO_ETAPA[e])}
             indiceAtual={indice}
             podeAvancar={podeAvancar}
             rotuloAvancar={rotuloAvancar}
             ultimaEtapa={etapa === "revisao"}
-            rotuloConfirmar="Enviar cobrança"
+            rotuloConfirmar={calculo ? `Enviar cobrança de ${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}` : "Enviar cobrança"}
             onVoltar={voltar}
             onAvancar={avancar}
             onConfirmar={confirmar}
-            onMinimizar={indice > 0 ? minimizar : undefined}
         >
+            {perdidas > 0 && (
+                <Aviso tom="warning" titulo={perdidas === 1 ? "1 unidade saiu desta troca" : `${perdidas} unidades saíram desta troca`} descricao="Elas já estão em outra alteração, com outro titular ou a sessão já aconteceu." />
+            )}
+            {emOutroRascunho && (
+                <Aviso tom="warning" titulo={`Unidade também está num rascunho de ${TIPO_OPERACAO_LABEL[emOutroRascunho.tipo].toLowerCase()}`} descricao={`Não enviado, de ${emOutroRascunho.operador}. Rascunho não trava a unidade: quem enviar primeiro vale.`} />
+            )}
+
             {etapa === "saem" && (
                 <>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        <Regra>Marque o que sai do pedido. O que entra vem na próxima etapa.</Regra>
-                        {linhasDisponiveis.length > 1 && (
-                            <Button size="sm" color="link-color" onClick={() => setSaem(totalSaem === linhasDisponiveis.length ? {} : Object.fromEntries(linhasDisponiveis.map((l) => [l.id, true])))}>
-                                {totalSaem === linhasDisponiveis.length ? "Limpar" : "Selecionar todos"}
-                            </Button>
-                        )}
-                    </div>
-
-                    {linhasDisponiveis.length === 0 && <Aviso tom="warning" titulo="Este pedido não tem itens livres para troca." />}
-
-                    {linhasPorTipo.map(({ tipo, linhas }) => (
-                        <div key={tipo} className="flex flex-col gap-2">
-                            {linhasPorTipo.length > 1 && <p className="px-1 text-sm font-semibold text-secondary">{LABEL_TIPO[tipo]}</p>}
-                            <ul className="flex flex-col gap-2">
-                                {linhas.map((linha) => {
-                                    const item = getItem(linha.itemId);
-                                    const marcada = Boolean(saem[linha.id]);
-                                    const detalhe = detalheDoItem(item);
-                                    return (
-                                        <li
-                                            key={linha.id}
-                                            onClick={() => alternarSaida(linha.id)}
-                                            className={cx(
-                                                "flex cursor-pointer items-center gap-3 rounded-xl p-4 ring-1 transition duration-100 ease-linear",
-                                                marcada ? "bg-secondary ring-border-brand" : "bg-primary ring-border-secondary hover:bg-primary_hover",
-                                            )}
-                                        >
-                                            <span onClick={interromper}>
-                                                <Checkbox size="sm" aria-label={`Selecionar ${item?.nome}`} isSelected={marcada} onChange={() => alternarSaida(linha.id)} />
-                                            </span>
-                                            <span className="min-w-0 flex-1">
-                                                <span className="block text-sm font-semibold text-primary">{item?.nome}</span>
-                                                {detalhe && <span className="block text-sm text-tertiary">{detalhe}</span>}
-                                            </span>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </div>
-                    ))}
+                    <Regra>Marque o que sai do pedido. O que entra vem na próxima etapa.</Regra>
+                    <SeletorUnidades pedido={pedido} verbo="trocar" selecao={saem} onChange={setSaem} />
                 </>
             )}
 
             {etapa === "entram" && (
                 <>
-                    <ItensSelecionados linhas={linhasSaem} titulo={`Trocando (${totalSaem})`} acao={<Button size="sm" color="link-color" onClick={() => (selecaoPrevia ? onFechar() : setIndice(0))}>Alterar</Button>} />
+                    <ResumoUnidades pedido={pedido} linhas={linhasSaem} verbo="trocar" titulo={`Trocando (${totalSaem})`} onAlterar={() => setIndice(0)} onIncluir={incluir} />
+                    <SetaParaBaixo />
 
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        <Regra>{totalSaem === 1 ? "Escolha o item que entra no lugar." : "Distribua as unidades que saem entre os itens que entram."}</Regra>
-                        <span className={cx("text-sm tabular-nums", totalEntram === totalSaem ? "text-success-primary" : "text-tertiary")}>
-                            {totalSaem === 1 ? (totalEntram === 1 ? "Item escolhido" : "Nenhum item escolhido") : <><span className="font-semibold">{totalEntram} de {totalSaem}</span> {totalEntram === totalSaem ? "escolhidos" : `escolhidos · faltam ${totalSaem - totalEntram}`}</>}
-                        </span>
-                    </div>
+                    {/* Com uma unidade só, o rádio do item já diz o que foi escolhido: instrução e
+                        contador só aparecem quando há unidades para distribuir. */}
+                    {totalSaem > 1 && (
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <Regra>Clique num item para trocar todas as unidades por ele, ou distribua pelas quantidades.</Regra>
+                            <span className={cx("text-sm tabular-nums", totalEntram === totalSaem ? "text-success-primary" : "text-tertiary")}>
+                                <span className="font-semibold">
+                                    {totalEntram} de {totalSaem}
+                                </span>{" "}
+                                {totalEntram === totalSaem ? "escolhidos" : `escolhidos · faltam ${totalSaem - totalEntram}`}
+                            </span>
+                        </div>
+                    )}
 
                     <InputBase size="sm" icon={SearchLg} value={termo} aria-label="Buscar item" onChange={(evento) => setTermo(evento.target.value)} placeholder="Busque por sessão, grupo, lote ou item" />
 
@@ -426,7 +374,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                         .map((secao) => (
                             <div key={secao.rotulo} className="flex flex-col gap-2">
                                 {secao.outros && <p className="px-1 text-sm font-semibold text-secondary">{secao.rotulo}</p>}
-                                <ul className="flex flex-col gap-2">{secao.itens.map(cartaoCatalogo)}</ul>
+                                <ul className="flex flex-col divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">{secao.itens.map(cartaoCatalogo)}</ul>
                             </div>
                         ))}
                 </>
@@ -434,31 +382,35 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
 
             {etapa === "formularios" && (
                 <>
-                    <Regra>Cada item que entra tem o próprio formulário. Uma resposta vale para todas as unidades daquele item.</Regra>
-                    {formularios.map((formulario, posicao) => {
-                        const completo = formulario.perguntas.every((p) => respondido(formulario.itemId, p));
+                    <Regra>As respostas que já existiam vêm da unidade que sai. Só as perguntas novas do item que entra precisam de resposta.</Regra>
+                    {paresComFormulario.map(({ linha, novoItem }, posicao) => {
+                        const pendentes = faltando(linha, novoItem);
+                        const { nome } = identidadeDaLinha(pedido, linha);
                         return (
                             <Accordion
-                                key={formulario.itemId}
-                                defaultOpen={posicao === 0}
+                                key={linha.id}
+                                defaultOpen={pendentes.length > 0 && posicao === paresComFormulario.findIndex((p) => faltando(p.linha, p.novoItem).length > 0)}
                                 cabecalho={
                                     <span className="flex min-w-0 flex-1 items-center gap-3">
-                                        {formulario.item && <Miniatura item={formulario.item} />}
-                                        <span className="block min-w-0 flex-1 truncate text-sm font-semibold text-primary">
-                                            {formulario.quantidade}x {formulario.item?.nome}
+                                        <Miniatura item={novoItem} />
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm font-semibold text-primary">{novoItem.nome}</span>
+                                            <span className="block truncate text-sm text-tertiary">{nome}</span>
                                         </span>
-                                        <span className={cx("shrink-0 text-sm", completo ? "text-success-primary" : "text-warning-primary")}>{completo ? "Respondido" : "Falta responder"}</span>
+                                        <span className={cx("shrink-0 text-sm", pendentes.length === 0 ? "text-success-primary" : "text-warning-primary")}>
+                                            {pendentes.length === 0 ? "Respondido" : pendentes.length === 1 ? "Falta 1 resposta" : `Faltam ${pendentes.length} respostas`}
+                                        </span>
                                     </span>
                                 }
                             >
                                 <div className="flex max-h-[28rem] flex-col gap-4 overflow-y-auto p-4">
-                                    {formulario.perguntas.map((pergunta) => (
+                                    {perguntasDoItem(novoItem).map((pergunta) => (
                                         <EditorResposta
                                             key={pergunta.id}
                                             pergunta={pergunta}
-                                            valor={valoresEntram(formulario.itemId)[pergunta.id] ?? ""}
-                                            valorOriginal=""
-                                            onChange={(valor) => setRespostasEntram((atual) => ({ ...atual, [formulario.itemId]: { ...(atual[formulario.itemId] ?? {}), [pergunta.id]: valor } }))}
+                                            valor={valoresDoPar(linha, novoItem)[pergunta.id] ?? ""}
+                                            valorOriginal={linha.respostas[pergunta.id] ?? ""}
+                                            onChange={(valor) => setRespostasEntram((atual) => ({ ...atual, [linha.id]: { ...(atual[linha.id] ?? {}), [pergunta.id]: valor } }))}
                                         />
                                     ))}
                                 </div>
@@ -471,30 +423,41 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
             {etapa === "revisao" && calculo && (
                 <>
                     <div className="w-full overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-                        <p className="border-b border-secondary px-4 py-3 text-sm font-semibold text-primary">Trocando</p>
+                        <div className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-3">
+                            <p className="text-sm font-semibold text-primary">Trocando</p>
+                        </div>
                         <ul className="flex flex-col divide-y divide-border-secondary">
-                            {paresAgrupados.map((par) => (
-                                <li key={par.chave} className="flex flex-col gap-2 p-4">
-                                    <div className="min-w-0">
-                                        <p className="text-sm text-tertiary line-through">{par.quantidade}x {par.saiNome}</p>
-                                        {par.saiDetalhe && <p className="text-sm text-tertiary line-through">{par.saiDetalhe}</p>}
-                                    </div>
-                                    <ArrowDown className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-primary">{par.quantidade}x {par.entraNome}</p>
-                                        {par.entraDetalhe && <p className="text-sm text-tertiary">{par.entraDetalhe}</p>}
-                                    </div>
-                                </li>
-                            ))}
+                            {pares.map(({ linha, novoItem }) => {
+                                const itemSai = getItem(linha.itemId);
+                                return (
+                                    <li key={linha.id} className="flex flex-col gap-1.5 p-4">
+                                        <p className="text-sm font-medium text-primary">{identidadeDaLinha(pedido, linha).nome}</p>
+                                        <p className="text-sm text-tertiary line-through">
+                                            {itemSai?.nome}
+                                            {detalheDoItem(itemSai) && ` · ${detalheDoItem(itemSai)}`}
+                                        </p>
+                                        <ArrowDown className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                        <p className="text-sm font-semibold text-primary">
+                                            {novoItem.nome}
+                                            {detalheDoItem(novoItem) && <span className="font-normal text-tertiary"> · {detalheDoItem(novoItem)}</span>}
+                                        </p>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </div>
 
+                    {pares.length > 1 && <Regra>Quando as unidades pagaram valores diferentes, o sistema forma os pares do jeito que resulta no menor total.</Regra>}
                     {calculo.semCredito && <Aviso tom="warning" titulo="Há itens mais baratos na troca." descricao="A diferença deles não gera crédito nem reembolso." />}
+                    {pedido.cupom && (calculo.descontoPerdido ?? 0) > 0 && (
+                        <Aviso tom="warning" titulo={`Inclui ${formatarMoeda(calculo.descontoPerdido ?? 0)} do cupom ${pedido.cupom}`} descricao="O desconto da compra não vale para o item novo: a diferença usa o preço cheio dele." />
+                    )}
+                    {cortesia && <Aviso tom="warning" titulo="Há cortesia na troca." descricao="Unidade de cortesia não tem valor pago: a diferença é o preço cheio do item novo." />}
 
-                    <EtapaJustificativa descricao="Explique por que essa troca está sendo feita. Isso fica registrado no histórico do pedido." valor={justificativa} onChange={setJustificativa} />
+                    <CampoMotivo valor={motivo} onChange={setMotivo} />
 
                     <ResumoFinanceiro linhas={calculo.linhas} />
-                    <Regra>As vagas ficam reservadas por 1 hora. Nada é aplicado antes do pagamento.</Regra>
+                    <Regra>As vagas ficam reservadas por 1 hora. Nada é aplicado antes do pagamento. O link vai para {destino}.</Regra>
                 </>
             )}
         </WizardShell>
@@ -516,6 +479,7 @@ const LinhaCatalogo = ({
     noPedido,
     saindo,
     onChange,
+    onTodas,
 }: {
     item: CatalogoItem;
     pedido: Pedido;
@@ -527,6 +491,8 @@ const LinhaCatalogo = ({
     noPedido: number;
     saindo: number;
     onChange: (valor: number) => void;
+    /** Várias unidades saindo: um clique no item troca todas por ele, sem mexer no stepper. */
+    onTodas: () => void;
 }) => {
     const impedimento = linhaReferencia ? validarTrocaItem(pedido, linhaReferencia, item) : null;
     const bloqueado = Boolean(impedimento) && impedimento?.curto !== "Item atual";
@@ -540,12 +506,12 @@ const LinhaCatalogo = ({
 
     return (
         <li
-            onClick={unico && !naoSelecionavel ? () => onChange(escolhido ? 0 : 1) : undefined}
+            onClick={naoSelecionavel ? undefined : unico ? () => onChange(escolhido ? 0 : 1) : item.estoque >= totalSaem ? onTodas : undefined}
             aria-pressed={unico ? escolhido : undefined}
             className={cx(
-                "flex flex-col gap-3 rounded-xl p-4 ring-1 transition duration-100 ease-linear sm:flex-row sm:items-center sm:justify-between",
-                naoSelecionavel ? "bg-primary opacity-60 ring-border-secondary" : escolhido ? "bg-secondary ring-border-brand" : "bg-primary ring-border-secondary",
-                unico && !naoSelecionavel && "cursor-pointer hover:bg-primary_hover",
+                "flex flex-col gap-3 p-4 transition duration-100 ease-linear sm:flex-row sm:items-center sm:justify-between",
+                naoSelecionavel ? "opacity-60" : escolhido && "bg-secondary",
+                !naoSelecionavel && (unico || item.estoque >= totalSaem) && "cursor-pointer hover:bg-primary_hover",
             )}
         >
             <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -556,10 +522,10 @@ const LinhaCatalogo = ({
                     {item.tipo !== "ingresso" && item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
                     {(saindo > 0 || noPedido > 0 || bloqueado || estoqueCurto) && (
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
-                            {saindo > 0 && <Badge size="sm" type="pill-color" color="gray">{saindo === 1 ? "Item sendo trocado" : `${saindo} itens sendo trocados`}</Badge>}
-                            {saindo === 0 && noPedido > 0 && <Badge size="sm" type="pill-color" color="blue">{noPedido === 1 ? "1 igual no pedido" : `${noPedido} iguais no pedido`}</Badge>}
-                            {bloqueado && <Badge size="sm" type="pill-color" color="error">{impedimento?.curto}</Badge>}
-                            {estoqueCurto && <Badge size="sm" type="pill-color" color="warning">Só {item.estoque} {item.estoque === 1 ? "disponível" : "disponíveis"}</Badge>}
+                            {saindo > 0 && <Badge size="md" type="pill-color" color="gray">{saindo === 1 ? "Item sendo trocado" : `${saindo} itens sendo trocados`}</Badge>}
+                            {saindo === 0 && noPedido > 0 && <Badge size="md" type="pill-color" color="blue">{noPedido === 1 ? "1 igual no pedido" : `${noPedido} iguais no pedido`}</Badge>}
+                            {bloqueado && <Badge size="md" type="pill-color" color="error">{impedimento?.curto}</Badge>}
+                            {estoqueCurto && <Badge size="md" type="pill-color" color="warning">Só {item.estoque} {item.estoque === 1 ? "disponível" : "disponíveis"}</Badge>}
                         </div>
                     )}
                 </div>

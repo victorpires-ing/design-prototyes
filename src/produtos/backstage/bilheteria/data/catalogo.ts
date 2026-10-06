@@ -20,10 +20,18 @@ export interface TicketItem {
 
 export interface TicketSession {
     id: string;
-    /** Rótulo da sessão, como aparece no cabeçalho do accordion. */
+    /** Rótulo da sessão, como aparece no cabeçalho da lista. */
     label: string;
     /** Data curta usada no resumo — `{DD} de {month} • {HH:MM}`. */
     shortDate: string;
+    /** Partes da data, usadas nos chips do carrossel de seleção. */
+    weekday: string;
+    day: string;
+    month: string;
+    year: string;
+    time: string;
+    /** Data sem ingresso disponível — o chip aparece como "Esgotado" e não é selecionável. */
+    soldOut?: boolean;
     tickets: TicketItem[];
 }
 
@@ -53,64 +61,79 @@ export interface ComboItem {
     composicao: ComboComposition[];
 }
 
+const GERAL_DESC = "Entrada válida apenas para a data e o horário selecionados. Sujeito à disponibilidade do lote.";
+
 const PASSAPORTE_DESC =
     "Os ingressos de PASSAPORTE são válidos para SÁBADO e DOMINGO (08 e 09 de agosto). As vendas para sexta-feira ocorrem separadamente.";
 
+const ticket = (
+    id: string,
+    name: string,
+    group: string,
+    type: string,
+    lote: string,
+    access: AccessType,
+    price: number,
+    description = GERAL_DESC,
+): TicketItem => ({ id: `tkt-${id}`, name, group, type, lote, access, price, description });
+
+interface SessionSpec {
+    day: string;
+    weekday: string;
+    longDate: string;
+    month: string;
+    year: string;
+    time: string;
+    soldOut?: boolean;
+}
+
+const makeSession = ({ day, weekday, longDate, month, year, time, soldOut }: SessionSpec, tickets: TicketItem[]): TicketSession => ({
+    id: `sessao-${day}-08`,
+    label: `${longDate} às ${time}`,
+    shortDate: `${longDate} • ${time}`,
+    weekday,
+    day,
+    month,
+    year,
+    time,
+    soldOut,
+    tickets,
+});
+
 export const sessions: TicketSession[] = [
-    {
-        id: "sessao-08-08",
-        label: "08 de agosto às 14:00",
-        shortDate: "08 de agosto • 14:00",
-        tickets: [
-            {
-                id: "tkt-passaporte-inteira",
-                name: "Passaporte 2 dias — Inteira",
-                lote: "1º lote",
-                group: "Pista",
-                type: "Inteira",
-                access: "qrcode",
-                description: PASSAPORTE_DESC,
-                price: 515.97,
-            },
-            {
-                id: "tkt-passaporte-meia",
-                name: "Passaporte 2 dias — Meia-entrada",
-                lote: "1º lote",
-                group: "Pista",
-                type: "Meia-entrada",
-                access: "facial",
-                description: PASSAPORTE_DESC,
-                price: 515.97,
-            },
-        ],
-    },
-    {
-        id: "sessao-09-08",
-        label: "09 de agosto às 14:30",
-        shortDate: "09 de agosto • 14:30",
-        tickets: [
-            {
-                id: "tkt-domingo-inteira",
-                name: "Domingo — Inteira",
-                lote: "2º lote",
-                group: "Pista",
-                type: "Inteira",
-                access: "qrcode",
-                description: PASSAPORTE_DESC,
-                price: 389.9,
-            },
-            {
-                id: "tkt-domingo-vip",
-                name: "Domingo — Camarote",
-                lote: "2º lote",
-                group: "Camarote",
-                type: "Inteira",
-                access: "facial",
-                description: PASSAPORTE_DESC,
-                price: 780.0,
-            },
-        ],
-    },
+    makeSession({ day: "07", weekday: "Sexta", longDate: "07 de agosto", month: "Ago", year: "2026", time: "14:00" }, [
+        ticket("07-pista-inteira", "Pista · Inteira", "Pista", "Inteira", "1º lote", "qrcode", 389.9),
+        ticket("07-pista-meia", "Pista · Meia-entrada", "Pista", "Meia-entrada", "1º lote", "facial", 194.95),
+        ticket("07-premium-inteira", "Pista Premium · Inteira", "Pista Premium", "Inteira", "1º lote", "qrcode", 589.9),
+        ticket("07-camarote-inteira", "Camarote · Inteira", "Camarote", "Inteira", "1º lote", "facial", 780.0),
+    ]),
+    makeSession({ day: "08", weekday: "Sábado", longDate: "08 de agosto", month: "Ago", year: "2026", time: "14:00" }, [
+        ticket("08-passaporte-inteira", "Passaporte 2 dias · Inteira", "Pista", "Inteira", "1º lote", "qrcode", 515.97, PASSAPORTE_DESC),
+        ticket("08-passaporte-meia", "Passaporte 2 dias · Meia-entrada", "Pista", "Meia-entrada", "1º lote", "facial", 257.98, PASSAPORTE_DESC),
+        ticket("08-premium-inteira", "Pista Premium · Inteira", "Pista Premium", "Inteira", "2º lote", "qrcode", 649.9),
+        ticket("08-camarote-inteira", "Camarote · Inteira", "Camarote", "Inteira", "2º lote", "facial", 840.0),
+        ticket("08-camarote-open", "Camarote Open Bar · Inteira", "Camarote", "Inteira", "2º lote", "facial", 1180.0),
+    ]),
+    makeSession({ day: "09", weekday: "Domingo", longDate: "09 de agosto", month: "Ago", year: "2026", time: "14:30" }, [
+        ticket("09-pista-inteira", "Domingo · Inteira", "Pista", "Inteira", "2º lote", "qrcode", 389.9),
+        ticket("09-pista-meia", "Domingo · Meia-entrada", "Pista", "Meia-entrada", "2º lote", "facial", 194.95),
+        ticket("09-camarote-inteira", "Domingo · Camarote", "Camarote", "Inteira", "2º lote", "facial", 780.0),
+    ]),
+    makeSession({ day: "14", weekday: "Sexta", longDate: "14 de agosto", month: "Ago", year: "2026", time: "14:00" }, [
+        ticket("14-pista-inteira", "Pista · Inteira", "Pista", "Inteira", "2º lote", "qrcode", 419.9),
+        ticket("14-premium-inteira", "Pista Premium · Inteira", "Pista Premium", "Inteira", "2º lote", "qrcode", 619.9),
+        ticket("14-camarote-inteira", "Camarote · Inteira", "Camarote", "Inteira", "2º lote", "facial", 820.0),
+    ]),
+    makeSession({ day: "15", weekday: "Sábado", longDate: "15 de agosto", month: "Ago", year: "2026", time: "14:00" }, [
+        ticket("15-pista-inteira", "Pista · Inteira", "Pista", "Inteira", "3º lote", "qrcode", 449.9),
+        ticket("15-pista-meia", "Pista · Meia-entrada", "Pista", "Meia-entrada", "3º lote", "facial", 224.95),
+        ticket("15-premium-inteira", "Pista Premium · Inteira", "Pista Premium", "Inteira", "3º lote", "qrcode", 679.9),
+        ticket("15-camarote-open", "Camarote Open Bar · Inteira", "Camarote", "Inteira", "3º lote", "facial", 1240.0),
+    ]),
+    makeSession({ day: "16", weekday: "Domingo", longDate: "16 de agosto", month: "Ago", year: "2026", time: "14:30", soldOut: true }, [
+        ticket("16-pista-inteira", "Encerramento · Inteira", "Pista", "Inteira", "3º lote", "qrcode", 409.9),
+        ticket("16-camarote-inteira", "Encerramento · Camarote", "Camarote", "Inteira", "3º lote", "facial", 860.0),
+    ]),
 ];
 
 export const products: ProductItem[] = [
@@ -139,13 +162,13 @@ export const combos: ComboItem[] = [
         price: 515.97,
         shortDate: "01 de março • 00:00",
         composicao: [
-            { quantity: 1, ticketName: "Sábado — Inteira", loteName: "1º lote", date: "01 de março • 00:00" },
-            { quantity: 1, ticketName: "Domingo — Inteira", loteName: "1º lote", date: "02 de março • 00:00" },
+            { quantity: 1, ticketName: "Sábado · Inteira", loteName: "1º lote", date: "01 de março • 00:00" },
+            { quantity: 1, ticketName: "Domingo · Inteira", loteName: "1º lote", date: "02 de março • 00:00" },
         ],
     },
     {
         id: "cmb-passaporte-vip",
-        name: "Passaporte de 2 dias — Camarote",
+        name: "Passaporte de 2 dias · Camarote",
         group: "Camarote",
         type: "Inteira",
         dates: ["sáb, 01/03/26 • 00:00", "dom, 02/03/26 • 00:00"],
@@ -153,8 +176,8 @@ export const combos: ComboItem[] = [
         price: 980.0,
         shortDate: "01 de março • 00:00",
         composicao: [
-            { quantity: 1, ticketName: "Sábado — Camarote", loteName: "1º lote", date: "01 de março • 00:00" },
-            { quantity: 1, ticketName: "Domingo — Camarote", loteName: "1º lote", date: "02 de março • 00:00" },
+            { quantity: 1, ticketName: "Sábado · Camarote", loteName: "1º lote", date: "01 de março • 00:00" },
+            { quantity: 1, ticketName: "Domingo · Camarote", loteName: "1º lote", date: "02 de março • 00:00" },
         ],
     },
 ];

@@ -330,7 +330,6 @@ function construirCatalogo(): EventoComparativo[] {
 type Metric = "faturamento" | "ingressos" | "transacoes";
 type Alignment = "abertura" | "evento";
 type Mode = "acumulado" | "diario";
-type WindowDays = number | "all";
 
 const METRIC_FIELD: Record<Metric, keyof DiaSerie> = {
   faturamento: "vendas",
@@ -342,22 +341,6 @@ const METRIC_LABEL: Record<Metric, string> = {
   ingressos: "Ingressos",
   transacoes: "Transações",
 };
-
-const WINDOW_OPTIONS: { id: string; label: string }[] = [
-  { id: "15", label: "Últimos 15 dias" },
-  { id: "30", label: "Últimos 30 dias" },
-  { id: "60", label: "Últimos 60 dias" },
-  { id: "90", label: "Últimos 90 dias" },
-  { id: "all", label: "Todo o período" },
-];
-
-const WINDOW_OPTIONS_ABERTURA: { id: string; label: string }[] = [
-  { id: "15", label: "Primeiros 15 dias" },
-  { id: "30", label: "Primeiros 30 dias" },
-  { id: "60", label: "Primeiros 60 dias" },
-  { id: "90", label: "Primeiros 90 dias" },
-  { id: "all", label: "Todo o período" },
-];
 
 const METRIC_OPTIONS: { id: Metric; label: string }[] = [
   { id: "faturamento", label: "Faturamento líquido" },
@@ -385,15 +368,8 @@ const fmtMetricCurto = (v: number, metric: Metric) =>
     ? fmtDinheiroCurto(v)
     : numberFormatter.format(Math.round(v));
 
-function windowRange(
-  ev: EventoComparativo,
-  alignment: Alignment,
-  windowDays: WindowDays,
-): [number, number] {
-  const last = ev.janelaDias - 1;
-  if (windowDays === "all") return [0, last];
-  if (alignment === "abertura") return [0, Math.min(last, windowDays - 1)];
-  return [Math.max(0, ev.janelaDias - windowDays), last];
+function windowRange(ev: EventoComparativo): [number, number] {
+  return [0, ev.janelaDias - 1];
 }
 
 /**
@@ -479,12 +455,7 @@ const empateTecnico = (a: number, b: number, tolerancia = 0.01) => {
   return Math.abs(a - b) / maior <= tolerancia;
 };
 
-const janelaLabel = (alignment: Alignment, windowDays: WindowDays) =>
-  windowDays === "all"
-    ? "no período total de vendas"
-    : alignment === "abertura"
-      ? `nos primeiros ${windowDays} dias de venda`
-      : `nos últimos ${windowDays} dias antes do evento`;
+const JANELA_LABEL = "no período total de vendas";
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                              */
@@ -504,7 +475,6 @@ export function Comparativos() {
   });
   const [metric, setMetric] = useState<Metric>("faturamento");
   const [alignment, setAlignment] = useState<Alignment>("evento");
-  const [windowDays, setWindowDays] = useState<WindowDays>("all");
 
   // A âncora é sempre a primeira, então fica sempre com a primeira cor da
   // paleta e é sempre a referência das variações.
@@ -566,8 +536,6 @@ export function Comparativos() {
                 onChangeMetric={setMetric}
                 alignment={alignment}
                 onChangeAlignment={setAlignment}
-                windowDays={windowDays}
-                onChangeWindow={setWindowDays}
               />
             }
           />
@@ -583,37 +551,28 @@ export function Comparativos() {
               <InsightCards
                 events={selectedEvents}
                 metric={metric}
-                alignment={alignment}
-                windowDays={windowDays}
               />
               <ComparativoChart
                 events={selectedEvents}
                 metric={metric}
                 alignment={alignment}
-                windowDays={windowDays}
               />
               <FaturamentoPorMes
                 events={selectedEvents}
                 metric={metric}
-                alignment={alignment}
-                windowDays={windowDays}
               />
               <RitmoPorFaixa
                 events={selectedEvents}
                 metric={metric}
                 alignment={alignment}
-                windowDays={windowDays}
               />
               <PrecoEAmplitude
                 events={selectedEvents}
                 alignment={alignment}
-                windowDays={windowDays}
               />
               <ComparativoTable
                 events={selectedEvents}
                 metric={metric}
-                alignment={alignment}
-                windowDays={windowDays}
               />
             </>
           )}
@@ -882,8 +841,6 @@ interface ControlsProps {
   onChangeMetric: (m: Metric) => void;
   alignment: Alignment;
   onChangeAlignment: (a: Alignment) => void;
-  windowDays: WindowDays;
-  onChangeWindow: (w: WindowDays) => void;
 }
 
 const Campo = ({
@@ -947,35 +904,6 @@ const AlignmentField = ({
   </ButtonGroup>
 );
 
-const WindowField = ({
-  windowDays,
-  alignment,
-  onChange,
-  className,
-}: {
-  windowDays: WindowDays;
-  alignment: Alignment;
-  onChange: (w: WindowDays) => void;
-  className?: string;
-}) => (
-  <Select
-    size="sm"
-    aria-label="Período comparado"
-    className={className}
-    items={alignment === "abertura" ? WINDOW_OPTIONS_ABERTURA : WINDOW_OPTIONS}
-    selectedKey={windowDays === "all" ? "all" : String(windowDays)}
-    onSelectionChange={(k: Key | null) => {
-      if (k == null) return;
-      const v = String(k);
-      onChange(v === "all" ? "all" : Number(v));
-    }}
-  >
-    {(item: { id: string; label: string }) => (
-      <Select.Item id={item.id}>{item.label}</Select.Item>
-    )}
-  </Select>
-);
-
 const ComparativoControls = (props: ControlsProps) => {
   const [open, setOpen] = useState(false);
   return (
@@ -1003,14 +931,6 @@ const ComparativoControls = (props: ControlsProps) => {
           <AlignmentField
             alignment={props.alignment}
             onChange={props.onChangeAlignment}
-          />
-        </Campo>
-        <Campo label="Período">
-          <WindowField
-            windowDays={props.windowDays}
-            alignment={props.alignment}
-            onChange={props.onChangeWindow}
-            className="w-44"
           />
         </Campo>
       </div>
@@ -1085,14 +1005,6 @@ const ComparativoControls = (props: ControlsProps) => {
                     ? "As curvas terminam juntas no dia do show de cada evento."
                     : "As curvas começam juntas no dia em que cada venda abriu."}
                 </span>
-              </Campo>
-              <Campo label="Período">
-                <WindowField
-                  windowDays={props.windowDays}
-                  alignment={props.alignment}
-                  onChange={props.onChangeWindow}
-                  className="w-full"
-                />
               </Campo>
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-secondary px-6 py-4">
@@ -1174,18 +1086,14 @@ interface LeituraStat {
 const InsightCards = ({
   events,
   metric,
-  alignment,
-  windowDays,
 }: {
   events: EventoSerie[];
   metric: Metric;
-  alignment: Alignment;
-  windowDays: WindowDays;
 }) => {
   const stats = useMemo<LeituraStat[]>(
     () =>
       events.map((ev) => {
-        const range = windowRange(ev, alignment, windowDays);
+        const range = windowRange(ev);
         const total = totaisDe(ev, range);
         const slice = ev.serie.slice(range[0], range[1] + 1);
 
@@ -1221,7 +1129,7 @@ const InsightCards = ({
           diasFinal,
         };
       }),
-    [events, metric, alignment, windowDays],
+    [events, metric],
   );
 
   const lider = (
@@ -1437,12 +1345,10 @@ const ComparativoChart = ({
   events,
   metric,
   alignment,
-  windowDays,
 }: {
   events: EventoSerie[];
   metric: Metric;
   alignment: Alignment;
-  windowDays: WindowDays;
 }) => {
   // Acumulado como padrão: é a leitura que responde "quem está à frente" sem
   // nenhum clique, e o padrão é o que a maioria vai ver.
@@ -1458,7 +1364,7 @@ const ComparativoChart = ({
     let min = 0;
     let max = 0;
     for (const ev of events) {
-      const range = windowRange(ev, alignment, windowDays);
+      const range = windowRange(ev);
       const vals = seriesValues(ev, metric, mode, range);
       vals.forEach((v, j) => {
         const dayFromOpen = range[0] + j;
@@ -1504,7 +1410,7 @@ const ComparativoChart = ({
     }
 
     return { rows, xMin: min, xMax: max, labelAnchors: anchors };
-  }, [events, metric, alignment, mode, windowDays]);
+  }, [events, metric, alignment, mode]);
 
   const formatY = (v: number | string) => fmtMetricCurto(Number(v), metric);
 
@@ -1564,7 +1470,7 @@ const ComparativoChart = ({
   const pctAtivo = xMax === xMin ? 0 : (xAtivo - xMin) / (xMax - xMin);
 
   const useFill = events.length <= 2;
-  const resumoAcessivel = `${tituloMetrica} ${mode === "acumulado" ? "acumulado" : "por dia"} ${janelaLabel(alignment, windowDays)}, comparando ${events.map((e) => e.curto).join(", ")}.`;
+  const resumoAcessivel = `${tituloMetrica} ${mode === "acumulado" ? "acumulado" : "por dia"} ${JANELA_LABEL}, comparando ${events.map((e) => e.curto).join(", ")}.`;
 
   return (
     <section className="overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
@@ -1574,7 +1480,7 @@ const ComparativoChart = ({
             {tituloMetrica} {mode === "acumulado" ? "acumulado" : "por dia"}
           </h3>
           <p className="text-sm text-tertiary">
-            {descricao} Recorte {janelaLabel(alignment, windowDays)}.
+            {descricao} Recorte {JANELA_LABEL}.
           </p>
         </div>
         <ButtonGroup
@@ -1858,13 +1764,9 @@ const MESES_CURTO = [
 const FaturamentoPorMes = ({
   events,
   metric,
-  alignment,
-  windowDays,
 }: {
   events: EventoSerie[];
   metric: Metric;
-  alignment: Alignment;
-  windowDays: WindowDays;
 }) => {
   const { rows, totais } = useMemo(() => {
     const campo = METRIC_FIELD[metric];
@@ -1872,7 +1774,7 @@ const FaturamentoPorMes = ({
     const porEvento = new Map<string, Map<string, number>>();
 
     for (const ev of events) {
-      const range = windowRange(ev, alignment, windowDays);
+      const range = windowRange(ev);
       const meses = new Map<string, number>();
       for (let d = range[0]; d <= range[1]; d++) {
         const s = ev.serie[d];
@@ -1910,7 +1812,7 @@ const FaturamentoPorMes = ({
     }));
 
     return { rows, totais };
-  }, [events, metric, alignment, windowDays]);
+  }, [events, metric]);
 
   const ChartTooltip = ({
     active,
@@ -2071,12 +1973,10 @@ const RitmoPorFaixa = ({
   events,
   metric,
   alignment,
-  windowDays,
 }: {
   events: EventoSerie[];
   metric: Metric;
   alignment: Alignment;
-  windowDays: WindowDays;
 }) => {
   const field = METRIC_FIELD[metric];
   // No alinhamento pelo evento o tempo corre da faixa mais distante para o dia do show.
@@ -2085,7 +1985,7 @@ const RitmoPorFaixa = ({
   const { rows, maxPct } = useMemo(() => {
     let maior = 0;
     const rows = events.map((ev) => {
-      const range = windowRange(ev, alignment, windowDays);
+      const range = windowRange(ev);
       const values: Record<string, number> = {};
       const presente: Record<string, boolean> = {};
       let total = 0;
@@ -2113,7 +2013,7 @@ const RitmoPorFaixa = ({
       return { ev, total, pcts, presente, pico, dias: range[1] - range[0] + 1 };
     });
     return { rows, maxPct: maior || 1 };
-  }, [events, field, alignment, windowDays]);
+  }, [events, field, alignment]);
 
   const sufixo =
     alignment === "abertura" ? "dias após a abertura" : "dias antes do evento";
@@ -2194,7 +2094,7 @@ const RitmoPorFaixa = ({
         <table className="w-full border-collapse">
           <caption className="sr-only">
             Fatia do total de cada evento por faixa de {sufixo},{" "}
-            {janelaLabel(alignment, windowDays)}.
+            {JANELA_LABEL}.
           </caption>
           <thead className="bg-secondary">
             <tr className="border-b border-secondary text-left">
@@ -2319,17 +2219,15 @@ const RitmoPorFaixa = ({
 const PrecoEAmplitude = ({
   events,
   alignment,
-  windowDays,
 }: {
   events: EventoSerie[];
   alignment: Alignment;
-  windowDays: WindowDays;
 }) => {
   const { rows, xMin, xMax, resumo } = useMemo(() => {
     const xs = new Set<number>();
     const janelas = new Map<string, [number, number]>();
     for (const ev of events) {
-      const range = windowRange(ev, alignment, windowDays);
+      const range = windowRange(ev);
       janelas.set(ev.id, range);
       const paraX = (dia: number) =>
         alignment === "abertura" ? dia : dia - (ev.janelaDias - 1);
@@ -2383,7 +2281,7 @@ const PrecoEAmplitude = ({
       xMax: ordenados.at(-1) ?? 0,
       resumo,
     };
-  }, [events, alignment, windowDays]);
+  }, [events, alignment]);
 
   const ChartTooltip = ({
     active,
@@ -2704,17 +2602,13 @@ const Variacao = ({
 const ComparativoTable = ({
   events,
   metric,
-  alignment,
-  windowDays,
 }: {
   events: EventoSerie[];
   metric: Metric;
-  alignment: Alignment;
-  windowDays: WindowDays;
 }) => {
   const totais = events.map((ev) => ({
     ev,
-    t: totaisDe(ev, windowRange(ev, alignment, windowDays)),
+    t: totaisDe(ev, windowRange(ev)),
   }));
   // A referência é sempre o evento atual, que é sempre o primeiro da seleção.
   const base = totais[0];
@@ -2732,7 +2626,7 @@ const ComparativoTable = ({
       <header className="flex flex-col gap-1 border-b border-secondary px-4 py-4">
         <h3 className="text-md font-semibold text-primary">Os números</h3>
         <p className="text-sm text-tertiary">
-          Valores {janelaLabel(alignment, windowDays)}. As variações são contra{" "}
+          Valores {JANELA_LABEL}. As variações são contra{" "}
           {base.ev.curto}.
         </p>
       </header>
@@ -2797,7 +2691,7 @@ const ComparativoTable = ({
       <div className="hidden overflow-x-auto overflow-y-clip md:block">
         <table className="w-full border-collapse">
           <caption className="sr-only">
-            Métricas de cada evento {janelaLabel(alignment, windowDays)}, com a
+            Métricas de cada evento {JANELA_LABEL}, com a
             variação contra {base.ev.nome}.
           </caption>
           <thead className="sticky top-0 z-20 bg-secondary">

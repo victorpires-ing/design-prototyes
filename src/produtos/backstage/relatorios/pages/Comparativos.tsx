@@ -1641,9 +1641,10 @@ const ComparativoChart = ({
                   })}
                 </ul>
 
-                {/* Chevrons nas pontas, alça no meio: a alça é o que diz que dá
-                    para arrastar, as setas atendem quem prefere passo a passo. */}
-                <div className="mt-0.5 flex items-center justify-between gap-3 border-t border-white/10 pt-1.5">
+                {/* Só no mobile: sem hover, a alça e as setas são o que permite
+                    percorrer a série. No desktop o ponteiro já faz isso, então o
+                    badge fica só com os valores. */}
+                <div className="mt-0.5 flex items-center justify-between gap-3 border-t border-white/10 pt-1.5 md:hidden">
                   <button
                     type="button"
                     onClick={() => andar(-1)}

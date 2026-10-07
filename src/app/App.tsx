@@ -155,6 +155,7 @@ import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPa
 import { Inscricao as TicketSportsInscricao } from '../produtos/ticketsports/inscricao/pages/Inscricao';
 import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
 import { LoungePremiumBahia } from '../produtos/landing-pages/lounge-premium-bahia/pages/LoungePremiumBahia';
+import { SportsWeek } from '../produtos/landing-pages/sports-week/pages/SportsWeek';
 import { SolicitacaoVagas } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoVagas';
 import { SolicitacaoBeneficioPcd } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoBeneficioPcd';
 import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
@@ -366,6 +367,9 @@ export default function App() {
         <Route path="/testes/:id/resultados" element={<UsabilidadeGate><TesteResultados /></UsabilidadeGate>} />
         <Route path="/t/:id" element={<EntradaTeste />} />
         <Route path="/landing-pages" element={<LandingPagesMenu />} />
+        {/* Sub-roteador próprio: as três páginas da campanha trocam entre si com
+            transição, sem mexer no <Routes> plano do app. */}
+        <Route path="/landing-pages/sports-week/*" element={<SportsWeek />} />
         {/* Link separado — não listado na ProductSelection (home) */}
         <Route path="/ticketsports/inscricao" element={<TicketSportsInscricao />} />
         <Route path="/landing-pages/lounge-premium-bahia" element={<LoungePremiumBahia />} />

@@ -12,6 +12,13 @@ interface LandingPageItem {
 
 const PAGES: LandingPageItem[] = [
     {
+        id: "sports-week",
+        name: "Sports Week",
+        description: "Campanha de ofertas em inscrições esportivas",
+        to: "/landing-pages/sports-week",
+        gradient: "linear-gradient(135deg,#B3F300 0%,#0099FF 45%,#FF1289 100%)",
+    },
+    {
         id: "sao-silvestre",
         name: "Corrida de São Silvestre",
         description: "Landing page da São Silvestre 2026",

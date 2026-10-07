@@ -41,7 +41,7 @@ const BrandLogo = ({ className }: { className?: string }) => {
     return (
         <button
             type="button"
-            onClick={() => navigate("/backstage/home")}
+            onClick={() => navigate("/backstage")}
             aria-label="Ir para a home do Backstage"
             className="flex shrink-0 items-center rounded-md transition-opacity duration-100 ease-linear hover:opacity-80"
         >
@@ -459,7 +459,7 @@ const PRODUCER_NAV: Array<{
     href?: string;
     children?: Array<{ id: string; label: string }>;
 }> = [
-    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
+    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/eventos" },
     { id: "pedidos", icon: ShoppingCart01, label: "Pedidos", href: "/backstage/pedidos" },
     { id: "permissao", icon: UsersPlus, label: "Permissão", href: "/backstage/permissao-envio" },
     { id: "produtos", icon: Package, label: "Produtos" },
@@ -798,7 +798,7 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
                 </button>
             </div>
             <nav className="flex flex-col items-center gap-1">
-                <ProducerRailItem icon={Calendar} label="Eventos" href="/backstage/" isActive={activeProducer === "eventos" || !activeProducer} />
+                <ProducerRailItem icon={Calendar} label="Eventos" href="/backstage/eventos" isActive={activeProducer === "eventos" || !activeProducer} />
                 <ProducerRailItem icon={UsersPlus} label="Membros" href="/backstage/membros" isActive={activeProducer === "equipe"} />
                 <ProducerRailItem icon={Bank} label="Finanças" />
                 <ProducerRailItem
@@ -837,7 +837,7 @@ const EventRail = ({ activeSection, activeItem }: EventRailProps) => (
 /* ------------------------------------------------------------------ */
 
 const ORG_NAV: Array<{ id: string; icon: ComponentType<{ className?: string }>; label: string; href?: string }> = [
-    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/" },
+    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/eventos" },
     { id: "equipe", icon: UsersPlus, label: "Membros", href: "/backstage/membros" },
     { id: "financas", icon: Bank, label: "Finanças" },
     { id: "pedidos", icon: ShoppingCart01, label: "Pedidos", href: "/backstage/pedidos" },

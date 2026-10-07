@@ -53,7 +53,7 @@ export function DetalheGrupoV2() {
                     <nav className="flex items-center gap-1.5 text-sm text-tertiary">
                         <button
                             type="button"
-                            onClick={() => navigate("/backstage/home")}
+                            onClick={() => navigate("/backstage")}
                             aria-label="Início"
                             className="transition duration-100 ease-linear hover:text-secondary"
                         >

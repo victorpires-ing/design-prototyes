@@ -1281,7 +1281,7 @@ const CohortCard = ({ events, metric, alignment }: { events: EventoComparativo[]
                                             key={b.id}
                                             className={cx(
                                                 "px-4 py-3 text-right text-sm tabular-nums",
-                                                intensity > 0.55 ? "font-semibold text-white" : "text-primary",
+                                                intensity > 0.55 ? "font-semibold text-base-white" : "text-primary",
                                             )}
                                             style={
                                                 has

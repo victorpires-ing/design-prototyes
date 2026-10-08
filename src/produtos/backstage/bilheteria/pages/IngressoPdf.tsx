@@ -18,7 +18,7 @@ export function IngressoPdf() {
 
     return (
         <div className="flex min-h-screen flex-col bg-[#535353]">
-            <header className="flex items-center gap-4 bg-[#3c3c3c] px-4 py-3 text-white">
+            <header className="flex items-center gap-4 bg-[#3c3c3c] px-4 py-3 text-base-white">
                 <Menu02 className="size-5 shrink-0" aria-hidden="true" />
                 <p className="flex-1 truncate text-md">ingressos-pedido-{SERIE}.pdf</p>
                 <div className="flex items-center gap-2 max-md:hidden">

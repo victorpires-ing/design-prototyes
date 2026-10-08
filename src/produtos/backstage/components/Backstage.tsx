@@ -726,7 +726,7 @@ const MobileDrawer = ({ isOpen, onClose, showEventContext, activeSection, active
                         className="flex items-center justify-between gap-3 rounded-full bg-tertiary px-3 py-2 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-primary_hover"
                     >
                         <span className="flex items-center gap-2">
-                            <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-secondary-solid text-[10px] font-bold text-white">
+                            <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-secondary-solid text-[10px] font-bold text-base-white">
                                 OR
                             </span>
                             <span className="text-sm font-medium text-primary">
@@ -786,7 +786,7 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
     <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[72px] shrink-0 flex-col items-center justify-between rounded-2xl bg-primary py-4 lg:flex">
         <div className="flex flex-col items-center gap-4">
             <div className="relative">
-                <span className="flex size-10 items-center justify-center overflow-hidden rounded-lg bg-secondary-solid text-xs font-bold text-white">
+                <span className="flex size-10 items-center justify-center overflow-hidden rounded-lg bg-secondary-solid text-xs font-bold text-base-white">
                     eng
                 </span>
                 <button
@@ -880,7 +880,7 @@ const OrgTopBar = ({ activeProducer }: { activeProducer?: string }) => {
                         type="button"
                         className="flex shrink-0 items-center gap-2 rounded-full bg-secondary py-1.5 pr-2.5 pl-1.5 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary_hover"
                     >
-                        <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-secondary-solid text-[10px] font-bold text-white">
+                        <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-secondary-solid text-[10px] font-bold text-base-white">
                             eng
                         </span>
                         <span className="text-sm font-semibold text-primary">Ingresse</span>

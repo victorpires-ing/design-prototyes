@@ -65,10 +65,10 @@ const MetricMini = ({ label, value, change, trend, period, darker, className }: 
                 className,
             )}
         >
-            <p className="text-[10px] font-semibold leading-none text-white">{label}</p>
+            <p className="text-[10px] font-semibold leading-none text-base-white">{label}</p>
             <div className="flex items-end gap-2">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <p className="text-[15px] font-semibold leading-none text-white">{value}</p>
+                    <p className="text-[15px] font-semibold leading-none text-base-white">{value}</p>
                     <div className="flex items-center gap-1">
                         <ChangeIcon
                             className={cx("size-2.5", trend === "up" ? "text-fg-success-secondary" : "text-fg-error-secondary")}
@@ -98,7 +98,7 @@ const MetricsIllustration = () => (
 
 /** Unidade do contador (número + rótulo). */
 const TimerUnit = ({ value, label }: { value: string; label: string }) => (
-    <div className="flex flex-col items-center text-white">
+    <div className="flex flex-col items-center text-base-white">
         <span className="text-[11px] font-bold leading-none">{value}</span>
         <span className="text-[8px] leading-tight opacity-50">{label}</span>
     </div>
@@ -120,16 +120,16 @@ const PreVendaPreviewIllustration = () => (
                 <span className="w-[86px] text-[8px] leading-tight text-white/70">A pré-venda encerra em</span>
                 <div className="flex items-start gap-1.5">
                     <TimerUnit value="02" label="dias" />
-                    <span className="text-[11px] font-bold leading-none text-white opacity-50">:</span>
+                    <span className="text-[11px] font-bold leading-none text-base-white opacity-50">:</span>
                     <TimerUnit value="14" label="horas" />
-                    <span className="text-[11px] font-bold leading-none text-white opacity-50">:</span>
+                    <span className="text-[11px] font-bold leading-none text-base-white opacity-50">:</span>
                     <TimerUnit value="36" label="min" />
-                    <span className="text-[11px] font-bold leading-none text-white opacity-50">:</span>
+                    <span className="text-[11px] font-bold leading-none text-base-white opacity-50">:</span>
                     <TimerUnit value="21" label="seg" />
                 </div>
             </div>
             {/* Legenda */}
-            <p className="text-[8px] leading-snug text-white">
+            <p className="text-[8px] leading-snug text-base-white">
                 Entre na pré-venda e tente comprar antes da venda oficial. Você só paga se sua
                 oferta for aceita. <span className="underline">Entenda como funciona.</span>
             </p>

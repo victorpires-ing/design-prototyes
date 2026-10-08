@@ -1206,7 +1206,7 @@ const TooltipFundoEscuro = ({ title, description, children }: { title: ReactNode
                         isExiting && "duration-150 ease-in animate-out fade-out zoom-out-95",
                     )}
                 >
-                    <span className="text-xs font-semibold text-white">{title}</span>
+                    <span className="text-xs font-semibold text-base-white">{title}</span>
                     {description && <span className="text-xs font-medium text-tooltip-supporting-text">{description}</span>}
                 </div>
             )}

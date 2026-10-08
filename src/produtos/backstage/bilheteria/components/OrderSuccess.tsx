@@ -217,7 +217,7 @@ const DownloadCard = ({ label, icon, onClick }: { label: string; icon: React.Rea
 /** Selo verde do WhatsApp: no print o glifo é branco sobre o círculo da marca. */
 const WhatsAppBadge = () => (
     <span data-icon className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]">
-        <WhatsAppIcon aria-hidden="true" className="size-3.5 text-white" />
+        <WhatsAppIcon aria-hidden="true" className="size-3.5 text-base-white" />
     </span>
 );
 

@@ -610,7 +610,7 @@ export function Comparativos() {
  * menu: não sai da comparação. Tudo é lido contra ele, nunca entre si.
  */
 
-const SLOT = "min-w-64 flex-1 basis-0";
+const SLOT = "min-w-0";
 
 /** O slot em busca: input já focado e a lista ancorada logo abaixo dele. */
 const SlotBusca = ({
@@ -881,7 +881,7 @@ const ComparacaoCards = ({
     .filter((e): e is EventoComparativo => Boolean(e));
 
   return (
-    <ul className="flex flex-wrap items-stretch gap-3">
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <li className={SLOT}>
         <SlotEvento ev={atual} cor={corPorId[atual.id]} secundario="Referência" />
       </li>

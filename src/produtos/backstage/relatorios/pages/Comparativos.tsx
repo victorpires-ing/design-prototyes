@@ -519,28 +519,10 @@ export function Comparativos() {
     <BackstageLayout activeSection="relatorios" activeItem="comparativos">
       <div className="flex min-w-0 flex-1 flex-col">
         <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
-          <RelatorioPageHeader
-            title="Comparativos"
-            withFilters={false}
-          />
+          <RelatorioPageHeader title="Comparativos" withFilters={false} />
 
-          <ComparacaoCards
-            catalogo={catalogo}
-            atual={atual}
-            selectedIds={selectedIds}
-            corPorId={corPorId}
-            noLimite={noLimite}
-            onAdicionar={adicionar}
-            onRemover={remover}
-          />
-
-          <ComparativoControls
-            metric={metric}
-            onChangeMetric={setMetric}
-            alignment={alignment}
-            onChangeAlignment={setAlignment}
-          />
-
+          {/* Sem comparação não há o que configurar nem chip a mostrar: a
+              tela inteira vira o convite para escolher o primeiro evento. */}
           {selectedEvents.length < 2 ? (
             <EmptyState
               catalogo={catalogo}
@@ -549,39 +531,58 @@ export function Comparativos() {
               onEscolher={adicionar}
             />
           ) : (
-            // A chave remonta as seções a cada mudança de seleção: é o que
-            // faz a entrada tocar de novo quando o evento entra ou sai.
-            <div key={selectedIds.join("-")} className="flex flex-col gap-6">
-              <Surge ordem={0}>
-                <InsightCards events={selectedEvents} metric={metric} />
-              </Surge>
-              <Surge ordem={1}>
-                <ComparativoChart
-                  events={selectedEvents}
-                  metric={metric}
-                  alignment={alignment}
-                />
-              </Surge>
-              <Surge ordem={2}>
-                <FaturamentoPorMes events={selectedEvents} metric={metric} />
-              </Surge>
-              <Surge ordem={3}>
-                <RitmoPorFaixa
-                  events={selectedEvents}
-                  metric={metric}
-                  alignment={alignment}
-                />
-              </Surge>
-              <Surge ordem={4}>
-                <PrecoEAmplitude
-                  events={selectedEvents}
-                  alignment={alignment}
-                />
-              </Surge>
-              <Surge ordem={5}>
-                <ComparativoTable events={selectedEvents} metric={metric} />
-              </Surge>
-            </div>
+            <>
+              <ComparacaoCards
+                catalogo={catalogo}
+                atual={atual}
+                selectedIds={selectedIds}
+                corPorId={corPorId}
+                noLimite={noLimite}
+                onAdicionar={adicionar}
+                onRemover={remover}
+              />
+
+              <ComparativoControls
+                metric={metric}
+                onChangeMetric={setMetric}
+                alignment={alignment}
+                onChangeAlignment={setAlignment}
+              />
+
+              {/* A chave remonta as seções a cada mudança de seleção: é o
+                  que faz a entrada tocar de novo quando o evento entra. */}
+              <div key={selectedIds.join("-")} className="flex flex-col gap-6">
+                <Surge ordem={0}>
+                  <InsightCards events={selectedEvents} metric={metric} />
+                </Surge>
+                <Surge ordem={1}>
+                  <ComparativoChart
+                    events={selectedEvents}
+                    metric={metric}
+                    alignment={alignment}
+                  />
+                </Surge>
+                <Surge ordem={2}>
+                  <FaturamentoPorMes events={selectedEvents} metric={metric} />
+                </Surge>
+                <Surge ordem={3}>
+                  <RitmoPorFaixa
+                    events={selectedEvents}
+                    metric={metric}
+                    alignment={alignment}
+                  />
+                </Surge>
+                <Surge ordem={4}>
+                  <PrecoEAmplitude
+                    events={selectedEvents}
+                    alignment={alignment}
+                  />
+                </Surge>
+                <Surge ordem={5}>
+                  <ComparativoTable events={selectedEvents} metric={metric} />
+                </Surge>
+              </div>
+            </>
           )}
         </main>
       </div>
@@ -644,7 +645,7 @@ const SlotBusca = ({
 
   return (
     <div
-      className="relative h-full"
+      className={cx("relative", !fixo && "h-full")}
       onBlur={
         fixo
           ? undefined
@@ -707,7 +708,12 @@ const SlotBusca = ({
         )}
       </div>
 
-      <div className="absolute top-full right-0 left-0 z-50 mt-1 overflow-hidden rounded-2xl bg-primary shadow-lg ring-1 ring-border-secondary">
+      <div
+        className={cx(
+          "z-50 mt-1 overflow-hidden rounded-2xl bg-primary shadow-lg ring-1 ring-border-secondary",
+          fixo ? "relative" : "absolute top-full right-0 left-0",
+        )}
+      >
         {/* Sem busca o catálogo inteiro não cabe, então a abertura são os
             próximos eventos. Com busca, a lista é ordenada por relevância. */}
         <p className="border-b border-secondary px-4 py-2.5 text-sm text-tertiary">
@@ -866,7 +872,11 @@ const ComparacaoCards = ({
   return (
     <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <li className="min-w-0">
-        <SlotEvento ev={atual} cor={corPorId[atual.id]} secundario="Referência" />
+        <SlotEvento
+          ev={atual}
+          cor={corPorId[atual.id]}
+          secundario="Referência"
+        />
       </li>
 
       {comparados.map((ev) => (
@@ -896,7 +906,9 @@ const ComparacaoCards = ({
         !noLimite && (
           <li className="min-w-0">
             <SlotAdicionar
-              rotulo={comparados.length === 0 ? "Comparar" : "Adicionar comparação"}
+              rotulo={
+                comparados.length === 0 ? "Comparar" : "Adicionar comparação"
+              }
               onClick={() => setBuscando(true)}
             />
           </li>
@@ -1105,7 +1117,7 @@ const EmptyState = ({
   selectedIds: string[];
   onEscolher: (id: string) => void;
 }) => (
-  <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-16">
+  <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-6 py-10">
     <FeaturedIcon
       icon={BarChartSquare02}
       color="gray"
@@ -1643,7 +1655,9 @@ const ComparativoChart = ({
                     }}
                     className={cx(
                       "flex size-6 touch-none items-center justify-center rounded text-white/40 transition duration-100 ease-linear hover:bg-white/10 hover:text-white/70",
-                      arrastando ? "cursor-grabbing text-white/70" : "cursor-grab",
+                      arrastando
+                        ? "cursor-grabbing text-white/70"
+                        : "cursor-grab",
                     )}
                   >
                     <DotsGrid className="size-4" aria-hidden="true" />
@@ -1663,7 +1677,10 @@ const ComparativoChart = ({
           )}
         </div>
 
-        <div ref={plotRef} className="relative z-0 h-[260px] w-full md:h-[360px]">
+        <div
+          ref={plotRef}
+          className="relative z-0 h-[260px] w-full md:h-[360px]"
+        >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={rows}
@@ -2155,8 +2172,7 @@ const RitmoPorFaixa = ({
       <div className="hidden overflow-x-auto overflow-y-clip md:block">
         <table className="w-full border-collapse">
           <caption className="sr-only">
-            Fatia do total de cada evento por faixa de {sufixo},{" "}
-            {JANELA_LABEL}.
+            Fatia do total de cada evento por faixa de {sufixo}, {JANELA_LABEL}.
           </caption>
           <thead className="bg-secondary">
             <tr className="border-b border-secondary text-left">
@@ -2688,8 +2704,7 @@ const ComparativoTable = ({
       <header className="flex flex-col gap-1 border-b border-secondary px-4 py-4">
         <h3 className="text-md font-semibold text-primary">Os números</h3>
         <p className="text-sm text-tertiary">
-          Valores {JANELA_LABEL}. As variações são contra{" "}
-          {base.ev.curto}.
+          Valores {JANELA_LABEL}. As variações são contra {base.ev.curto}.
         </p>
       </header>
       {/* Base: uma lista por métrica, que cabe em 375px sem rolagem lateral. */}
@@ -2753,8 +2768,8 @@ const ComparativoTable = ({
       <div className="hidden overflow-x-auto overflow-y-clip md:block">
         <table className="w-full border-collapse">
           <caption className="sr-only">
-            Métricas de cada evento {JANELA_LABEL}, com a
-            variação contra {base.ev.nome}.
+            Métricas de cada evento {JANELA_LABEL}, com a variação contra{" "}
+            {base.ev.nome}.
           </caption>
           <thead className="sticky top-0 z-20 bg-secondary">
             <tr className="border-b border-secondary text-left">

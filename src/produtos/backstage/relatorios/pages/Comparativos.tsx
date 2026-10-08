@@ -2,16 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChartSquare02,
   Calendar,
-  Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   DotsGrid,
   CurrencyDollarCircle,
   Percent03,
+  Plus,
   Receipt,
   SearchLg,
   Sliders02,
+  SwitchHorizontal01,
   Ticket01,
   TrendUp01,
   Users01,
@@ -45,8 +45,8 @@ import {
   ButtonGroupItem,
 } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
@@ -200,9 +200,6 @@ const PALETTE = [
 
 /** Canal redundante à cor (WCAG 1.4.1): cada série tem também um traço próprio. */
 const DASHES = ["0", "7 4", "2 3", "11 4", "4 3 1 3", "14 5", "1 3", "9 3 2 3"];
-
-/** Largura do painel de seleção, em px: o painel é fixo e precisa do número. */
-const LARGURA_PAINEL = 320;
 
 /** Teto de eventos comparáveis ao mesmo tempo. */
 const MAX_EDICOES = 4;
@@ -508,6 +505,21 @@ export function Comparativos() {
 
   const noLimite = selectedIds.length >= MAX_EDICOES;
 
+  const adicionar = (id: string) =>
+    setComparadosIds((prev) =>
+      id === atual.id || prev.includes(id) || prev.length >= MAX_EDICOES - 1
+        ? prev
+        : [...prev, id],
+    );
+
+  const remover = (id: string) =>
+    setComparadosIds((prev) => prev.filter((x) => x !== id));
+
+  const trocar = (antigo: string, novo: string) =>
+    setComparadosIds((prev) =>
+      prev.includes(novo) ? prev : prev.map((x) => (x === antigo ? novo : x)),
+    );
+
   const toggleEvent = (id: string) => {
     if (id === atual.id) return; // a âncora não sai da comparação
     setComparadosIds((prev) => {
@@ -526,18 +538,23 @@ export function Comparativos() {
             withFilters={false}
             toolbar={
               <ComparativoControls
-                catalogo={catalogo}
-                atual={atual}
-                selectedIds={selectedIds}
-                corPorId={corPorId}
-                noLimite={noLimite}
-                onToggle={toggleEvent}
                 metric={metric}
                 onChangeMetric={setMetric}
                 alignment={alignment}
                 onChangeAlignment={setAlignment}
               />
             }
+          />
+
+          <ComparacaoCards
+            catalogo={catalogo}
+            atual={atual}
+            selectedIds={selectedIds}
+            corPorId={corPorId}
+            noLimite={noLimite}
+            onAdicionar={adicionar}
+            onRemover={remover}
+            onTrocar={trocar}
           />
 
           {selectedEvents.length < 2 ? (
@@ -592,48 +609,249 @@ const normalizar = (s: string) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
-interface OpcaoEdicao {
-  id: string;
-  label: string;
-  cartaz: string;
-  marcado: boolean;
-}
-
 /**
- * Um campo só, ao lado dos outros controles, em vez de um cartão inteiro de
- * seleção ocupando o topo da página. O evento atual é a âncora fixa: aparece
- * como primeira linha, marcada e travada, o que ensina a regra sem gastar
- * espaço na tela. Tudo que for marcado é lido contra ele, nunca entre si.
+ * Seleção no modelo do Google Trends: um slot por evento, lado a lado, e o
+ * card de adicionar vira o próprio campo de busca no lugar, em vez de abrir
+ * um painel à parte. O evento atual é a âncora, o primeiro slot, e não tem
+ * menu: não sai da comparação. Tudo é lido contra ele, nunca entre si.
  */
-const ComparacaoField = ({
+
+const SLOT = "min-w-56 flex-1 basis-0";
+
+/** O slot em busca: input já focado e a lista ancorada logo abaixo dele. */
+const SlotBusca = ({
+  catalogo,
+  indisponiveis,
+  inicial,
+  onEscolher,
+  onCancelar,
+}: {
+  catalogo: EventoComparativo[];
+  indisponiveis: string[];
+  inicial?: string;
+  onEscolher: (id: string) => void;
+  onCancelar: () => void;
+}) => {
+  const [busca, setBusca] = useState(inicial ?? "");
+  const [ativo, setAtivo] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Ao trocar, o texto já vem selecionado: digitar substitui de uma vez.
+  useEffect(() => {
+    inputRef.current?.focus();
+    if (inicial) inputRef.current?.select();
+  }, [inicial]);
+
+  const opcoes = useMemo(
+    () => {
+      const q = normalizar(busca.trim());
+      return catalogo
+        .filter((ev) => !indisponiveis.includes(ev.id))
+        .filter((ev) => !q || normalizar(`${ev.nome} ${ev.curto}`).includes(q));
+    },
+    [busca, catalogo, indisponiveis],
+  );
+
+  useEffect(() => setAtivo(0), [busca]);
+
+  return (
+    <div
+      className="relative h-full"
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+          onCancelar();
+      }}
+    >
+      <div className="flex h-full items-center gap-2 rounded-xl bg-primary px-4 py-3 ring-2 ring-brand ring-inset">
+        <SearchLg
+          aria-hidden="true"
+          className="size-5 shrink-0 text-fg-quaternary"
+        />
+        <input
+          ref={inputRef}
+          type="text"
+          role="combobox"
+          aria-label="Buscar evento para comparar"
+          aria-expanded={opcoes.length > 0}
+          aria-controls="comparacao-opcoes"
+          aria-activedescendant={
+            opcoes[ativo] ? `comparacao-op-${opcoes[ativo].id}` : undefined
+          }
+          placeholder="Adicione um evento"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setAtivo((i) => Math.min(i + 1, opcoes.length - 1));
+            }
+            if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setAtivo((i) => Math.max(i - 1, 0));
+            }
+            if (e.key === "Enter" && opcoes[ativo]) {
+              e.preventDefault();
+              onEscolher(opcoes[ativo].id);
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              onCancelar();
+            }
+          }}
+          className="min-w-0 flex-1 bg-transparent text-sm text-primary outline-hidden placeholder:text-placeholder"
+        />
+        <button
+          type="button"
+          aria-label="Cancelar"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onCancelar}
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-quaternary_hover"
+        >
+          <XClose className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+
+      <ul
+        id="comparacao-opcoes"
+        role="listbox"
+        aria-label="Eventos para comparar"
+        className="absolute top-full right-0 left-0 z-50 mt-1 max-h-80 overflow-y-auto rounded-xl bg-primary py-1 shadow-lg ring-1 ring-border-secondary"
+      >
+        {opcoes.length === 0 ? (
+          <li className="px-4 py-3 text-sm text-tertiary">
+            Nenhum evento encontrado.
+          </li>
+        ) : (
+          opcoes.map((ev, i) => (
+            <li
+              key={ev.id}
+              id={`comparacao-op-${ev.id}`}
+              role="option"
+              aria-selected={i === ativo}
+            >
+              <button
+                type="button"
+                onMouseEnter={() => setAtivo(i)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onEscolher(ev.id)}
+                className={cx(
+                  "flex w-full items-center gap-3 px-3 py-2 text-left transition duration-100 ease-linear",
+                  i === ativo && "bg-primary_hover",
+                )}
+              >
+                <img
+                  src={ev.cartaz}
+                  alt=""
+                  aria-hidden="true"
+                  className="size-9 shrink-0 rounded-md object-cover"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-primary">
+                    {ev.nome}
+                  </span>
+                  <span className="block truncate text-sm text-tertiary">
+                    {ev.dataEvento}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
+    </div>
+  );
+};
+
+/** O slot preenchido: a bolinha é a mesma cor da série no gráfico. */
+const SlotEvento = ({
+  ev,
+  cor,
+  secundario,
+  onRemover,
+  onTrocar,
+}: {
+  ev: EventoComparativo;
+  cor: string;
+  secundario: string;
+  onRemover?: () => void;
+  onTrocar?: () => void;
+}) => (
+  <div className="group flex h-full items-center gap-3 rounded-xl bg-primary px-4 py-3 ring-1 ring-border-secondary transition duration-100 ease-linear ring-inset hover:bg-secondary">
+    <span
+      aria-hidden="true"
+      className="size-2.5 shrink-0 rounded-full"
+      style={{ background: cor }}
+    />
+    <span className="min-w-0 flex-1">
+      <span className="block truncate text-sm font-medium text-primary">
+        {ev.nome}
+      </span>
+      <span className="block truncate text-sm text-tertiary">{secundario}</span>
+    </span>
+    {onRemover && onTrocar && (
+      // Sem hover no toque, o menu fica sempre visível no mobile.
+      <span className="shrink-0 md:opacity-0 md:transition md:duration-100 md:ease-linear md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+        <Dropdown.Root>
+          <Dropdown.DotsButton />
+          <Dropdown.Popover placement="bottom end" className="w-auto min-w-52">
+            <Dropdown.Menu
+              onAction={(k) => {
+                if (k === "trocar") onTrocar();
+                if (k === "remover") onRemover();
+              }}
+            >
+              <Dropdown.Item
+                id="trocar"
+                icon={SwitchHorizontal01}
+                label="Trocar evento"
+              />
+              <Dropdown.Item id="remover" icon={XClose} label="Remover" />
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+      </span>
+    )}
+  </div>
+);
+
+/** O slot vazio, que vira o campo de busca ao ser clicado. */
+const SlotAdicionar = ({
+  rotulo,
+  onClick,
+}: {
+  rotulo: string;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="flex h-full w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-secondary transition duration-100 ease-linear hover:bg-secondary_hover"
+  >
+    <Plus aria-hidden="true" className="size-5" />
+    {rotulo}
+  </button>
+);
+
+const ComparacaoCards = ({
   catalogo,
   atual,
   selectedIds,
   corPorId,
   noLimite,
-  onToggle,
-  className,
+  onAdicionar,
+  onRemover,
+  onTrocar,
 }: {
   catalogo: EventoComparativo[];
   atual: EventoComparativo;
   selectedIds: string[];
   corPorId: Record<string, string>;
   noLimite: boolean;
-  onToggle: (id: string) => void;
-  className?: string;
+  onAdicionar: (id: string) => void;
+  onRemover: (id: string) => void;
+  onTrocar: (antigo: string, novo: string) => void;
 }) => {
-  const [aberto, setAberto] = useState(false);
-  const [busca, setBusca] = useState("");
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const gatilhoRef = useRef<HTMLButtonElement>(null);
-
-  // Redimensionar move o gatilho e o painel fixo ficaria para trás.
-  useEffect(() => {
-    if (!aberto) return;
-    const fechar = () => setAberto(false);
-    window.addEventListener("resize", fechar);
-    return () => window.removeEventListener("resize", fechar);
-  }, [aberto]);
+  const [editando, setEditando] = useState<"novo" | { id: string } | null>(null);
 
   const porId = useMemo(
     () => new Map(catalogo.map((e) => [e.id, e])),
@@ -641,188 +859,65 @@ const ComparacaoField = ({
   );
   const comparados = selectedIds
     .filter((id) => id !== atual.id)
-    .map((id) => porId.get(id)!);
-
-  const opcoes = useMemo<OpcaoEdicao[]>(() => {
-    const q = normalizar(busca.trim());
-    return catalogo
-      .filter((ev) => ev.id !== atual.id)
-      .filter((ev) => !q || normalizar(`${ev.nome} ${ev.curto}`).includes(q))
-      .map((ev) => ({
-        id: ev.id,
-        label: ev.nome,
-        cartaz: ev.cartaz,
-        marcado: selectedIds.includes(ev.id),
-      }));
-  }, [busca, selectedIds, atual.id, catalogo]);
-
-  const resumo =
-    comparados.length === 0
-      ? "Nenhum evento"
-      : comparados.length <= 2
-        ? comparados.map((e) => e.curto).join(", ")
-        : `${comparados.length} eventos`;
-
-  // O painel é `fixed`, não `absolute`: os controles moram na faixa do header,
-  // que tem overflow próprio e cortaria um filho posicionado em relação a ela.
-  const abrir = () => {
-    const r = gatilhoRef.current?.getBoundingClientRect();
-    // Alinha pela esquerda do campo e só desloca se fosse passar da borda.
-    if (r)
-      setPos({
-        top: r.bottom + 4,
-        left: Math.max(
-          8,
-          Math.min(r.left, window.innerWidth - LARGURA_PAINEL - 8),
-        ),
-      });
-    setAberto(true);
-  };
+    .map((id) => porId.get(id))
+    .filter((e): e is EventoComparativo => Boolean(e));
 
   return (
-    <div
-      className={cx("relative", className)}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null))
-          setAberto(false);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") setAberto(false);
-      }}
-    >
-      <button
-        ref={gatilhoRef}
-        type="button"
-        onClick={() => (aberto ? setAberto(false) : abrir())}
-        aria-expanded={aberto}
-        aria-haspopup="listbox"
-        className="flex w-full items-center gap-2 rounded-lg bg-primary px-3 py-2 text-left shadow-xs ring-1 ring-primary transition duration-100 ease-linear ring-inset hover:bg-primary_hover"
-      >
-        <span className="flex min-w-0 flex-1 items-center gap-1.5">
-          {comparados.slice(0, 2).map((ev) => (
-            <span
-              key={ev.id}
-              aria-hidden="true"
-              className="size-2.5 shrink-0 rounded-full"
-              style={{ background: corPorId[ev.id] }}
+    <ul className="flex flex-wrap items-stretch gap-3">
+      <li className={SLOT}>
+        <SlotEvento ev={atual} cor={corPorId[atual.id]} secundario="Referência" />
+      </li>
+
+      {comparados.map((ev) =>
+        typeof editando === "object" && editando?.id === ev.id ? (
+          <li key={ev.id} className={SLOT}>
+            <SlotBusca
+              catalogo={catalogo}
+              indisponiveis={selectedIds.filter((id) => id !== ev.id)}
+              inicial={ev.nome}
+              onEscolher={(novo) => {
+                onTrocar(ev.id, novo);
+                setEditando(null);
+              }}
+              onCancelar={() => setEditando(null)}
             />
-          ))}
-          <span
-            className={cx(
-              "truncate text-sm",
-              comparados.length ? "text-primary" : "text-placeholder",
-            )}
-          >
-            {resumo}
-          </span>
-        </span>
-        <ChevronDown
-          aria-hidden="true"
-          className="size-4 shrink-0 text-fg-quaternary"
-        />
-      </button>
-
-      {aberto && pos && (
-        <div
-          style={{ top: pos.top, left: pos.left, width: LARGURA_PAINEL }}
-          className="fixed z-50 flex flex-col rounded-lg bg-primary shadow-lg ring-1 ring-border-secondary"
-        >
-          <div className="border-b border-secondary p-2">
-            <Input
-              size="sm"
-              icon={SearchLg}
-              aria-label="Buscar evento para comparar"
-              placeholder="Buscar evento"
-              value={busca}
-              onChange={setBusca}
+          </li>
+        ) : (
+          <li key={ev.id} className={SLOT}>
+            <SlotEvento
+              ev={ev}
+              cor={corPorId[ev.id]}
+              secundario={ev.dataEvento}
+              onRemover={() => onRemover(ev.id)}
+              onTrocar={() => setEditando({ id: ev.id })}
             />
-          </div>
-
-          <ul
-            role="listbox"
-            aria-multiselectable="true"
-            aria-label="Eventos da comparação"
-            className="max-h-80 overflow-y-auto py-1"
-          >
-            {/* A âncora: marcada e travada, porque tudo é lido contra ela. */}
-            <li
-              role="option"
-              aria-selected
-              aria-disabled
-              className="flex items-center gap-3 px-3 py-2 opacity-60"
-            >
-              <span
-                aria-hidden="true"
-                className="flex size-5 shrink-0 items-center justify-center rounded-md border border-transparent text-white"
-                style={{ background: corPorId[atual.id] }}
-              >
-                <Check className="size-3.5" />
-              </span>
-              <img
-                src={atual.cartaz}
-                alt=""
-                aria-hidden="true"
-                className="size-9 shrink-0 rounded-md object-cover"
-              />
-              <span className="truncate text-sm font-medium text-primary">
-                {atual.nome}
-              </span>
-            </li>
-
-            {opcoes.length === 0 ? (
-              <li className="px-3 py-3 text-sm text-tertiary">
-                Nenhum evento encontrado.
-              </li>
-            ) : (
-              opcoes.map((op) => {
-                const bloqueado = !op.marcado && noLimite;
-                return (
-                  <li key={op.id} role="option" aria-selected={op.marcado}>
-                    <button
-                      type="button"
-                      onClick={() => onToggle(op.id)}
-                      disabled={bloqueado}
-                      className={cx(
-                        "flex w-full items-center gap-3 px-3 py-2 text-left transition duration-100 ease-linear",
-                        bloqueado
-                          ? "cursor-not-allowed opacity-50"
-                          : "hover:bg-primary_hover",
-                      )}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={cx(
-                          "flex size-5 shrink-0 items-center justify-center rounded-md border transition",
-                          op.marcado
-                            ? "border-transparent text-white"
-                            : "border-primary text-transparent",
-                        )}
-                        style={
-                          op.marcado
-                            ? { background: corPorId[op.id] }
-                            : undefined
-                        }
-                      >
-                        <Check className="size-3.5" />
-                      </span>
-                      <img
-                        src={op.cartaz}
-                        alt=""
-                        aria-hidden="true"
-                        className="size-9 shrink-0 rounded-md object-cover"
-                      />
-                      <span className="truncate text-sm font-medium text-primary">
-                        {op.label}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })
-            )}
-          </ul>
-        </div>
+          </li>
+        ),
       )}
-    </div>
+
+      {editando === "novo" ? (
+        <li className={SLOT}>
+          <SlotBusca
+            catalogo={catalogo}
+            indisponiveis={selectedIds}
+            onEscolher={(id) => {
+              onAdicionar(id);
+              setEditando(null);
+            }}
+            onCancelar={() => setEditando(null)}
+          />
+        </li>
+      ) : (
+        !noLimite && (
+          <li className={SLOT}>
+            <SlotAdicionar
+              rotulo={comparados.length === 0 ? "Comparar" : "Adicionar comparação"}
+              onClick={() => setEditando("novo")}
+            />
+          </li>
+        )
+      )}
+    </ul>
   );
 };
 
@@ -831,12 +926,6 @@ const ComparacaoField = ({
 /* ------------------------------------------------------------------ */
 
 interface ControlsProps {
-  catalogo: EventoComparativo[];
-  atual: EventoComparativo;
-  selectedIds: string[];
-  corPorId: Record<string, string>;
-  noLimite: boolean;
-  onToggle: (id: string) => void;
   metric: Metric;
   onChangeMetric: (m: Metric) => void;
   alignment: Alignment;
@@ -909,17 +998,6 @@ const ComparativoControls = (props: ControlsProps) => {
   return (
     <>
       <div className="hidden flex-wrap items-end justify-end gap-3 lg:flex">
-        <Campo label={`Comparar ${props.atual.curto} com`}>
-          <ComparacaoField
-            catalogo={props.catalogo}
-            atual={props.atual}
-            selectedIds={props.selectedIds}
-            corPorId={props.corPorId}
-            noLimite={props.noLimite}
-            onToggle={props.onToggle}
-            className="w-56"
-          />
-        </Campo>
         <Campo label="Medir por">
           <MetricField
             metric={props.metric}
@@ -976,17 +1054,6 @@ const ComparativoControls = (props: ControlsProps) => {
               />
             </div>
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-6">
-              <Campo label={`Comparar ${props.atual.curto} com`}>
-                <ComparacaoField
-                  catalogo={props.catalogo}
-                  atual={props.atual}
-                  selectedIds={props.selectedIds}
-                  corPorId={props.corPorId}
-                  noLimite={props.noLimite}
-                  onToggle={props.onToggle}
-                  className="w-full"
-                />
-              </Campo>
               <Campo label="Medir por">
                 <MetricField
                   metric={props.metric}

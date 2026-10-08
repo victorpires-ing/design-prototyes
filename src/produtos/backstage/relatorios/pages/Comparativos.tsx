@@ -52,6 +52,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
+import { buscarEventos } from "../utils/busca-eventos";
 import {
   currencyFormatter,
   numberFormatter,
@@ -536,14 +537,6 @@ export function Comparativos() {
           <RelatorioPageHeader
             title="Comparativos"
             withFilters={false}
-            toolbar={
-              <ComparativoControls
-                metric={metric}
-                onChangeMetric={setMetric}
-                alignment={alignment}
-                onChangeAlignment={setAlignment}
-              />
-            }
           />
 
           <ComparacaoCards
@@ -555,6 +548,13 @@ export function Comparativos() {
             onAdicionar={adicionar}
             onRemover={remover}
             onTrocar={trocar}
+          />
+
+          <ComparativoControls
+            metric={metric}
+            onChangeMetric={setMetric}
+            alignment={alignment}
+            onChangeAlignment={setAlignment}
           />
 
           {selectedEvents.length < 2 ? (
@@ -603,12 +603,6 @@ export function Comparativos() {
 /*  Seleção dos eventos comparados                                    */
 /* ------------------------------------------------------------------ */
 
-const normalizar = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-
 /**
  * Seleção no modelo do Google Trends: um slot por evento, lado a lado, e o
  * card de adicionar vira o próprio campo de busca no lugar, em vez de abrir
@@ -616,7 +610,7 @@ const normalizar = (s: string) =>
  * menu: não sai da comparação. Tudo é lido contra ele, nunca entre si.
  */
 
-const SLOT = "min-w-56 flex-1 basis-0";
+const SLOT = "min-w-64 flex-1 basis-0";
 
 /** O slot em busca: input já focado e a lista ancorada logo abaixo dele. */
 const SlotBusca = ({
@@ -635,6 +629,7 @@ const SlotBusca = ({
   const [busca, setBusca] = useState(inicial ?? "");
   const [ativo, setAtivo] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listaRef = useRef<HTMLUListElement>(null);
 
   // Ao trocar, o texto já vem selecionado: digitar substitui de uma vez.
   useEffect(() => {
@@ -642,17 +637,21 @@ const SlotBusca = ({
     if (inicial) inputRef.current?.select();
   }, [inicial]);
 
-  const opcoes = useMemo(
-    () => {
-      const q = normalizar(busca.trim());
-      return catalogo
-        .filter((ev) => !indisponiveis.includes(ev.id))
-        .filter((ev) => !q || normalizar(`${ev.nome} ${ev.curto}`).includes(q));
-    },
-    [busca, catalogo, indisponiveis],
+  const { itens, total, modo } = useMemo(
+    () => buscarEventos(catalogo, indisponiveis, busca),
+    [catalogo, indisponiveis, busca],
   );
 
   useEffect(() => setAtivo(0), [busca]);
+
+  // Navegar de teclado precisa trazer a linha para dentro da área visível.
+  useEffect(() => {
+    listaRef.current
+      ?.querySelector(`[data-indice="${ativo}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [ativo]);
+
+  const cortados = total - itens.length;
 
   return (
     <div
@@ -662,7 +661,7 @@ const SlotBusca = ({
           onCancelar();
       }}
     >
-      <div className="flex h-full items-center gap-2 rounded-xl bg-primary px-4 py-3 ring-2 ring-brand ring-inset">
+      <div className="flex h-full items-center gap-3 rounded-2xl bg-primary px-5 py-4 ring-2 ring-brand ring-inset">
         <SearchLg
           aria-hidden="true"
           className="size-5 shrink-0 text-fg-quaternary"
@@ -672,60 +671,70 @@ const SlotBusca = ({
           type="text"
           role="combobox"
           aria-label="Buscar evento para comparar"
-          aria-expanded={opcoes.length > 0}
+          aria-expanded={itens.length > 0}
           aria-controls="comparacao-opcoes"
           aria-activedescendant={
-            opcoes[ativo] ? `comparacao-op-${opcoes[ativo].id}` : undefined
+            itens[ativo] ? `comparacao-op-${itens[ativo].id}` : undefined
           }
-          placeholder="Adicione um evento"
+          placeholder="Busque um evento"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault();
-              setAtivo((i) => Math.min(i + 1, opcoes.length - 1));
+              setAtivo((i) => Math.min(i + 1, itens.length - 1));
             }
             if (e.key === "ArrowUp") {
               e.preventDefault();
               setAtivo((i) => Math.max(i - 1, 0));
             }
-            if (e.key === "Enter" && opcoes[ativo]) {
+            if (e.key === "Enter" && itens[ativo]) {
               e.preventDefault();
-              onEscolher(opcoes[ativo].id);
+              onEscolher(itens[ativo].id);
             }
             if (e.key === "Escape") {
               e.preventDefault();
               onCancelar();
             }
           }}
-          className="min-w-0 flex-1 bg-transparent text-sm text-primary outline-hidden placeholder:text-placeholder"
+          className="min-w-0 flex-1 bg-transparent text-md text-primary outline-hidden placeholder:text-placeholder"
         />
         <button
           type="button"
           aria-label="Cancelar"
           onMouseDown={(e) => e.preventDefault()}
           onClick={onCancelar}
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-quaternary_hover"
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-quaternary_hover"
         >
-          <XClose className="size-4" aria-hidden="true" />
+          <XClose className="size-5" aria-hidden="true" />
         </button>
       </div>
 
-      <ul
-        id="comparacao-opcoes"
-        role="listbox"
-        aria-label="Eventos para comparar"
-        className="absolute top-full right-0 left-0 z-50 mt-1 max-h-80 overflow-y-auto rounded-xl bg-primary py-1 shadow-lg ring-1 ring-border-secondary"
-      >
-        {opcoes.length === 0 ? (
-          <li className="px-4 py-3 text-sm text-tertiary">
-            Nenhum evento encontrado.
-          </li>
-        ) : (
-          opcoes.map((ev, i) => (
+      <div className="absolute top-full right-0 left-0 z-50 mt-1 overflow-hidden rounded-2xl bg-primary shadow-lg ring-1 ring-border-secondary">
+        {/* Sem busca o catálogo inteiro não cabe, então a abertura são os
+            próximos eventos. Com busca, a lista é ordenada por relevância. */}
+        <p className="border-b border-secondary px-4 py-2.5 text-sm text-tertiary">
+          {modo === "recentes"
+            ? total > itens.length
+              ? `Eventos mais recentes. Busque entre os ${total}.`
+              : "Eventos mais recentes"
+            : total === 0
+              ? "Nenhum evento encontrado"
+              : `${total} ${total === 1 ? "evento" : "eventos"}`}
+        </p>
+
+        <ul
+          ref={listaRef}
+          id="comparacao-opcoes"
+          role="listbox"
+          aria-label="Eventos para comparar"
+          className="max-h-88 overflow-y-auto py-1"
+        >
+          {itens.map((ev, i) => (
             <li
               key={ev.id}
               id={`comparacao-op-${ev.id}`}
+              data-indice={i}
               role="option"
               aria-selected={i === ativo}
             >
@@ -735,7 +744,7 @@ const SlotBusca = ({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => onEscolher(ev.id)}
                 className={cx(
-                  "flex w-full items-center gap-3 px-3 py-2 text-left transition duration-100 ease-linear",
+                  "flex w-full items-center gap-3 px-4 py-3 text-left transition duration-100 ease-linear",
                   i === ativo && "bg-primary_hover",
                 )}
               >
@@ -743,10 +752,10 @@ const SlotBusca = ({
                   src={ev.cartaz}
                   alt=""
                   aria-hidden="true"
-                  className="size-9 shrink-0 rounded-md object-cover"
+                  className="size-10 shrink-0 rounded-lg object-cover"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-primary">
+                  <span className="block truncate text-md font-medium text-primary">
                     {ev.nome}
                   </span>
                   <span className="block truncate text-sm text-tertiary">
@@ -755,9 +764,18 @@ const SlotBusca = ({
                 </span>
               </button>
             </li>
-          ))
+          ))}
+        </ul>
+
+        {/* O corte nunca é silencioso: dizer quanto ficou de fora é o que
+            faz a pessoa refinar em vez de achar que a lista acabou. */}
+        {cortados > 0 && modo === "busca" && (
+          <p className="border-t border-secondary px-4 py-2.5 text-sm text-tertiary">
+            Mostrando {itens.length}. Refine a busca para chegar nos outros{" "}
+            {cortados}.
+          </p>
         )}
-      </ul>
+      </div>
     </div>
   );
 };
@@ -776,21 +794,21 @@ const SlotEvento = ({
   onRemover?: () => void;
   onTrocar?: () => void;
 }) => (
-  <div className="group flex h-full items-center gap-3 rounded-xl bg-primary px-4 py-3 ring-1 ring-border-secondary transition duration-100 ease-linear ring-inset hover:bg-secondary">
+  <div className="group flex h-full items-center gap-3.5 rounded-2xl bg-primary px-5 py-4 ring-1 ring-border-secondary transition duration-100 ease-linear ring-inset hover:bg-secondary">
     <span
       aria-hidden="true"
       className="size-2.5 shrink-0 rounded-full"
       style={{ background: cor }}
     />
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-sm font-medium text-primary">
+      <span className="block truncate text-md font-semibold text-primary">
         {ev.nome}
       </span>
       <span className="block truncate text-sm text-tertiary">{secundario}</span>
     </span>
     {onRemover && onTrocar && (
       // Sem hover no toque, o menu fica sempre visível no mobile.
-      <span className="shrink-0 md:opacity-0 md:transition md:duration-100 md:ease-linear md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+      <span className="flex size-10 shrink-0 items-center justify-center md:opacity-0 md:transition md:duration-100 md:ease-linear md:group-focus-within:opacity-100 md:group-hover:opacity-100">
         <Dropdown.Root>
           <Dropdown.DotsButton />
           <Dropdown.Popover placement="bottom end" className="w-auto min-w-52">
@@ -825,9 +843,9 @@ const SlotAdicionar = ({
   <button
     type="button"
     onClick={onClick}
-    className="flex h-full w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-secondary transition duration-100 ease-linear hover:bg-secondary_hover"
+    className="flex h-full w-full items-center justify-center gap-2.5 rounded-2xl bg-brand-secondary px-5 py-4 text-md font-semibold text-brand-secondary ring-inset transition duration-100 ease-linear hover:ring-2 hover:ring-brand"
   >
-    <Plus aria-hidden="true" className="size-5" />
+    <Plus aria-hidden="true" className="size-6" />
     {rotulo}
   </button>
 );
@@ -957,7 +975,7 @@ const MetricField = ({
   className?: string;
 }) => (
   <Select
-    size="sm"
+    size="md"
     aria-label="O que comparar"
     className={className}
     items={METRIC_OPTIONS}
@@ -980,7 +998,7 @@ const AlignmentField = ({
   className?: string;
 }) => (
   <ButtonGroup
-    size="sm"
+    size="md"
     aria-label="Como alinhar os eventos no tempo"
     selectedKeys={[alignment]}
     onSelectionChange={(k: Set<React.Key> | "all") =>
@@ -997,12 +1015,12 @@ const ComparativoControls = (props: ControlsProps) => {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <div className="hidden flex-wrap items-end justify-end gap-3 lg:flex">
+      <div className="hidden flex-wrap items-end gap-5 rounded-2xl bg-primary px-5 py-4 ring-1 ring-border-secondary ring-inset lg:flex">
         <Campo label="Medir por">
           <MetricField
             metric={props.metric}
             onChange={props.onChangeMetric}
-            className="w-48"
+            className="w-60"
           />
         </Campo>
         <Campo label="Alinhar">

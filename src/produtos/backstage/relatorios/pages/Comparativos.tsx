@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChartSquare02,
@@ -11,7 +12,6 @@ import {
   Receipt,
   SearchLg,
   Sliders02,
-  SwitchHorizontal01,
   Ticket01,
   TrendUp01,
   Users01,
@@ -45,7 +45,6 @@ import {
   ButtonGroupItem,
 } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
-import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Select } from "@/components/base/select/select";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -516,20 +515,6 @@ export function Comparativos() {
   const remover = (id: string) =>
     setComparadosIds((prev) => prev.filter((x) => x !== id));
 
-  const trocar = (antigo: string, novo: string) =>
-    setComparadosIds((prev) =>
-      prev.includes(novo) ? prev : prev.map((x) => (x === antigo ? novo : x)),
-    );
-
-  const toggleEvent = (id: string) => {
-    if (id === atual.id) return; // a âncora não sai da comparação
-    setComparadosIds((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length >= MAX_EDICOES - 1) return prev;
-      return [...prev, id];
-    });
-  };
-
   return (
     <BackstageLayout activeSection="relatorios" activeItem="comparativos">
       <div className="flex min-w-0 flex-1 flex-col">
@@ -547,7 +532,6 @@ export function Comparativos() {
             noLimite={noLimite}
             onAdicionar={adicionar}
             onRemover={remover}
-            onTrocar={trocar}
           />
 
           <ComparativoControls
@@ -561,37 +545,43 @@ export function Comparativos() {
             <EmptyState
               catalogo={catalogo}
               atual={atual}
-              onSelect={toggleEvent}
+              selectedIds={selectedIds}
+              onEscolher={adicionar}
             />
           ) : (
-            <>
-              <InsightCards
-                events={selectedEvents}
-                metric={metric}
-              />
-              <ComparativoChart
-                events={selectedEvents}
-                metric={metric}
-                alignment={alignment}
-              />
-              <FaturamentoPorMes
-                events={selectedEvents}
-                metric={metric}
-              />
-              <RitmoPorFaixa
-                events={selectedEvents}
-                metric={metric}
-                alignment={alignment}
-              />
-              <PrecoEAmplitude
-                events={selectedEvents}
-                alignment={alignment}
-              />
-              <ComparativoTable
-                events={selectedEvents}
-                metric={metric}
-              />
-            </>
+            // A chave remonta as seções a cada mudança de seleção: é o que
+            // faz a entrada tocar de novo quando o evento entra ou sai.
+            <div key={selectedIds.join("-")} className="flex flex-col gap-6">
+              <Surge ordem={0}>
+                <InsightCards events={selectedEvents} metric={metric} />
+              </Surge>
+              <Surge ordem={1}>
+                <ComparativoChart
+                  events={selectedEvents}
+                  metric={metric}
+                  alignment={alignment}
+                />
+              </Surge>
+              <Surge ordem={2}>
+                <FaturamentoPorMes events={selectedEvents} metric={metric} />
+              </Surge>
+              <Surge ordem={3}>
+                <RitmoPorFaixa
+                  events={selectedEvents}
+                  metric={metric}
+                  alignment={alignment}
+                />
+              </Surge>
+              <Surge ordem={4}>
+                <PrecoEAmplitude
+                  events={selectedEvents}
+                  alignment={alignment}
+                />
+              </Surge>
+              <Surge ordem={5}>
+                <ComparativoTable events={selectedEvents} metric={metric} />
+              </Surge>
+            </div>
           )}
         </main>
       </div>
@@ -616,26 +606,25 @@ const SLOT = "min-w-0";
 const SlotBusca = ({
   catalogo,
   indisponiveis,
-  inicial,
   onEscolher,
   onCancelar,
+  fixo,
 }: {
   catalogo: EventoComparativo[];
   indisponiveis: string[];
-  inicial?: string;
   onEscolher: (id: string) => void;
   onCancelar: () => void;
+  /** No estado vazio o campo é a própria tela: não fecha nem perde o foco. */
+  fixo?: boolean;
 }) => {
-  const [busca, setBusca] = useState(inicial ?? "");
+  const [busca, setBusca] = useState("");
   const [ativo, setAtivo] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listaRef = useRef<HTMLUListElement>(null);
 
-  // Ao trocar, o texto já vem selecionado: digitar substitui de uma vez.
   useEffect(() => {
     inputRef.current?.focus();
-    if (inicial) inputRef.current?.select();
-  }, [inicial]);
+  }, []);
 
   const { itens, total, modo } = useMemo(
     () => buscarEventos(catalogo, indisponiveis, busca),
@@ -656,10 +645,14 @@ const SlotBusca = ({
   return (
     <div
       className="relative h-full"
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null))
-          onCancelar();
-      }}
+      onBlur={
+        fixo
+          ? undefined
+          : (e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+                onCancelar();
+            }
+      }
     >
       <div className="flex h-full items-center gap-3 rounded-2xl bg-primary px-5 py-4 ring-2 ring-brand ring-inset">
         <SearchLg
@@ -694,20 +687,24 @@ const SlotBusca = ({
             }
             if (e.key === "Escape") {
               e.preventDefault();
-              onCancelar();
+              // Preso na tela, Escape limpa o que foi digitado em vez de fechar.
+              if (fixo) setBusca("");
+              else onCancelar();
             }
           }}
           className="min-w-0 flex-1 bg-transparent text-md text-primary outline-hidden placeholder:text-placeholder"
         />
-        <button
-          type="button"
-          aria-label="Cancelar"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={onCancelar}
-          className="flex size-10 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-quaternary_hover"
-        >
-          <XClose className="size-5" aria-hidden="true" />
-        </button>
+        {!fixo && (
+          <button
+            type="button"
+            aria-label="Cancelar"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onCancelar}
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-quaternary_hover"
+          >
+            <XClose className="size-5" aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       <div className="absolute top-full right-0 left-0 z-50 mt-1 overflow-hidden rounded-2xl bg-primary shadow-lg ring-1 ring-border-secondary">
@@ -786,13 +783,11 @@ const SlotEvento = ({
   cor,
   secundario,
   onRemover,
-  onTrocar,
 }: {
   ev: EventoComparativo;
   cor: string;
   secundario: string;
   onRemover?: () => void;
-  onTrocar?: () => void;
 }) => (
   <div className="group flex h-full items-center gap-3.5 rounded-2xl bg-primary px-5 py-4 ring-1 ring-border-secondary transition duration-100 ease-linear ring-inset hover:bg-secondary">
     <span
@@ -806,28 +801,18 @@ const SlotEvento = ({
       </span>
       <span className="block truncate text-sm text-tertiary">{secundario}</span>
     </span>
-    {onRemover && onTrocar && (
-      // Sem hover no toque, o menu fica sempre visível no mobile.
-      <span className="flex size-10 shrink-0 items-center justify-center md:opacity-0 md:transition md:duration-100 md:ease-linear md:group-focus-within:opacity-100 md:group-hover:opacity-100">
-        <Dropdown.Root>
-          <Dropdown.DotsButton />
-          <Dropdown.Popover placement="bottom end" className="w-auto min-w-52">
-            <Dropdown.Menu
-              onAction={(k) => {
-                if (k === "trocar") onTrocar();
-                if (k === "remover") onRemover();
-              }}
-            >
-              <Dropdown.Item
-                id="trocar"
-                icon={SwitchHorizontal01}
-                label="Trocar evento"
-              />
-              <Dropdown.Item id="remover" icon={XClose} label="Remover" />
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown.Root>
-      </span>
+    {onRemover && (
+      // Um X direto, não um menu: trocar de evento é remover e escolher de
+      // novo, e são os mesmos dois cliques. Sem hover no toque, o X fica
+      // sempre visível no mobile.
+      <button
+        type="button"
+        onClick={onRemover}
+        aria-label={`Remover ${ev.curto} da comparação`}
+        className="flex size-10 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear hover:bg-tertiary hover:text-fg-secondary md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
+      >
+        <XClose className="size-5" aria-hidden="true" />
+      </button>
     )}
   </div>
 );
@@ -858,7 +843,6 @@ const ComparacaoCards = ({
   noLimite,
   onAdicionar,
   onRemover,
-  onTrocar,
 }: {
   catalogo: EventoComparativo[];
   atual: EventoComparativo;
@@ -867,9 +851,8 @@ const ComparacaoCards = ({
   noLimite: boolean;
   onAdicionar: (id: string) => void;
   onRemover: (id: string) => void;
-  onTrocar: (antigo: string, novo: string) => void;
 }) => {
-  const [editando, setEditando] = useState<"novo" | { id: string } | null>(null);
+  const [buscando, setBuscando] = useState(false);
 
   const porId = useMemo(
     () => new Map(catalogo.map((e) => [e.id, e])),
@@ -882,55 +865,39 @@ const ComparacaoCards = ({
 
   return (
     <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <li className={SLOT}>
+      <li className="min-w-0">
         <SlotEvento ev={atual} cor={corPorId[atual.id]} secundario="Referência" />
       </li>
 
-      {comparados.map((ev) =>
-        typeof editando === "object" && editando?.id === ev.id ? (
-          <li key={ev.id} className={SLOT}>
-            <SlotBusca
-              catalogo={catalogo}
-              indisponiveis={selectedIds.filter((id) => id !== ev.id)}
-              inicial={ev.nome}
-              onEscolher={(novo) => {
-                onTrocar(ev.id, novo);
-                setEditando(null);
-              }}
-              onCancelar={() => setEditando(null)}
-            />
-          </li>
-        ) : (
-          <li key={ev.id} className={SLOT}>
-            <SlotEvento
-              ev={ev}
-              cor={corPorId[ev.id]}
-              secundario={ev.dataEvento}
-              onRemover={() => onRemover(ev.id)}
-              onTrocar={() => setEditando({ id: ev.id })}
-            />
-          </li>
-        ),
-      )}
+      {comparados.map((ev) => (
+        <li key={ev.id} className="min-w-0">
+          <SlotEvento
+            ev={ev}
+            cor={corPorId[ev.id]}
+            secundario={ev.dataEvento}
+            onRemover={() => onRemover(ev.id)}
+          />
+        </li>
+      ))}
 
-      {editando === "novo" ? (
-        <li className={SLOT}>
+      {buscando ? (
+        <li className="min-w-0">
           <SlotBusca
             catalogo={catalogo}
             indisponiveis={selectedIds}
             onEscolher={(id) => {
               onAdicionar(id);
-              setEditando(null);
+              setBuscando(false);
             }}
-            onCancelar={() => setEditando(null)}
+            onCancelar={() => setBuscando(false)}
           />
         </li>
       ) : (
         !noLimite && (
-          <li className={SLOT}>
+          <li className="min-w-0">
             <SlotAdicionar
               rotulo={comparados.length === 0 ? "Comparar" : "Adicionar comparação"}
-              onClick={() => setEditando("novo")}
+              onClick={() => setBuscando(true)}
             />
           </li>
         )
@@ -1105,55 +1072,65 @@ const ComparativoControls = (props: ControlsProps) => {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Estado vazio, com um caminho em vez de só uma regra               */
+/*  Estado vazio: o próximo passo já debaixo do cursor                */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Com um evento só não há comparação. Em vez de explicar a regra e esperar,
+ * o campo de busca já vem aberto e com foco, no meio da tela: o próximo
+ * passo é escolher um evento, então é isso que está sob o cursor.
+ */
+/**
+ * Entrada das seções quando a comparação muda: sobem e aparecem em cascata
+ * curta, em vez de trocar de uma vez. O atraso vai inline porque depende da
+ * posição de cada seção.
+ */
+const Surge = ({ ordem, children }: { ordem: number; children: ReactNode }) => (
+  <div
+    className="animate-in fade-in slide-in-from-bottom-3 duration-500 ease-out motion-reduce:animate-none"
+    style={{ animationDelay: `${ordem * 70}ms`, animationFillMode: "both" }}
+  >
+    {children}
+  </div>
+);
 
 const EmptyState = ({
   catalogo,
   atual,
-  onSelect,
+  selectedIds,
+  onEscolher,
 }: {
   catalogo: EventoComparativo[];
   atual: EventoComparativo;
-  onSelect: (id: string) => void;
-}) => {
-  const sugestoes = catalogo.filter((e) => e.id !== atual.id).slice(0, 3);
-
-  return (
-    <div className="flex flex-col items-center gap-4 rounded-xl bg-primary px-6 py-12 ring-1 ring-border-secondary">
-      <FeaturedIcon
-        icon={BarChartSquare02}
-        color="gray"
-        theme="modern"
-        size="lg"
-      />
-      <p className="text-sm font-semibold text-primary">
-        Escolha um evento para comparar com {atual.curto}
+  selectedIds: string[];
+  onEscolher: (id: string) => void;
+}) => (
+  <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-16">
+    <FeaturedIcon
+      icon={BarChartSquare02}
+      color="gray"
+      theme="modern"
+      size="lg"
+    />
+    <div className="flex max-w-lg flex-col items-center gap-1 text-center">
+      <p className="text-lg font-semibold text-primary">
+        Escolha um evento para comparar
       </p>
-      <ul className="flex flex-wrap items-center justify-center gap-3">
-        {sugestoes.map((ev) => (
-          <li key={ev.id}>
-            <button
-              type="button"
-              onClick={() => onSelect(ev.id)}
-              className="flex items-center gap-2 rounded-lg bg-secondary py-1.5 pr-3 pl-1.5 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary_hover"
-            >
-              <img
-                src={ev.cartaz}
-                alt=""
-                aria-hidden="true"
-                className="size-9 shrink-0 rounded-md object-cover"
-              />
-              <span className="text-sm font-medium text-primary">
-                {ev.curto}
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
+      <p className="text-md text-tertiary">
+        Os números vão ser lidos contra {atual.nome}.
+      </p>
     </div>
-  );
-};
+    <div className="w-full max-w-lg">
+      <SlotBusca
+        fixo
+        catalogo={catalogo}
+        indisponiveis={selectedIds}
+        onEscolher={onEscolher}
+        onCancelar={() => {}}
+      />
+    </div>
+  </div>
+);
 
 /* ------------------------------------------------------------------ */
 /*  Leituras em linguagem simples                                     */

@@ -1846,7 +1846,11 @@ function ComboFixoView({
     const partes = ratear(combo.preco, combo.inclui.map((i) => i.qtd));
     return (
         <div className="flex flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
-            <div className="flex items-start justify-between gap-4 px-4 py-4">
+            {/* Duas faixas, como na linha de ingresso: identificação em cima e,
+                embaixo, preço e stepper juntos. Com o stepper ao lado do nome ele
+                ficava longe do valor que controla, e a distância crescia com as
+                tags de data e a descrição. */}
+            <div className="flex flex-col px-4 py-4">
                 <div className="flex min-w-0 flex-col gap-2">
                     <span className="text-md font-bold text-primary">{combo.nome}</span>
                     {datas.length > 0 && (
@@ -1860,9 +1864,11 @@ function ComboFixoView({
                     )}
                     {combo.lote && <span className="text-sm text-tertiary">{combo.lote}</span>}
                     {combo.descricao && <p className="text-sm text-tertiary">{combo.descricao}</p>}
-                    <PrecoBloco preco={preco} tamanho="lg" forma="completa" base="combo" className="mt-1" />
                 </div>
-                <Stepper qtd={qtd} rotulo={combo.nome} onInc={onInc} onDec={onDec} />
+                <div className="mt-3 flex items-end justify-between gap-4">
+                    <PrecoBloco preco={preco} tamanho="lg" forma="completa" base="combo" />
+                    <Stepper qtd={qtd} rotulo={combo.nome} onInc={onInc} onDec={onDec} />
+                </div>
             </div>
 
             {aberto && (

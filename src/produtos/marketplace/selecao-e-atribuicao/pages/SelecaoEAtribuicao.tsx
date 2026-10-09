@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router";
-import { AlertTriangle, CheckCircle, ChevronDown, HelpCircle, LayoutRight, LinkExternal01, FileCheck02, InfoCircle, Minus, Package, Phone01, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
+import { AlertTriangle, CheckCircle, ChevronDown, HelpCircle, LayoutRight, InfoCircle, Minus, Package, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
 import { AnimatePresence, motion, type Variants } from "motion/react";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Badge } from "@/components/base/badges/badges";
@@ -21,7 +21,7 @@ import { PrecoBloco } from "../components/preco-bloco";
 import { SelecaoItensModal, type ItemSelecao } from "../components/SelecaoItensModal";
 import { TermosModal } from "../components/TermosModal";
 import { precoExtraDoItem } from "../data/combos";
-import type { ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento, Item, PerguntaEvento, Produto, Quantitativo, TaxaServico } from "../data/combos";
+import type { Beneficio, ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento, Item, PerguntaEvento, Produto, Quantitativo, TaxaServico } from "../data/combos";
 import { DEFAULT_CONFIG, STORAGE_KEY, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
 import {
     brl,
@@ -87,6 +87,7 @@ interface CartGroup {
     isProduto?: boolean;
     /** Como a composição nomeia o valor de face no resumo. Default "ingresso". */
     base?: string;
+    beneficio?: Beneficio;
     sublines?: CartSubline[];
 }
 
@@ -380,6 +381,7 @@ export function SelecaoEAtribuicao() {
                     sub: `${data.diaSemana.slice(0, 3).toLowerCase()}, ${data.dia}/${data.mes}${data.hora ? ` · ${data.hora}` : ""}`,
                     preco: precoIngresso(item.preco ?? 0),
                     qtd: novo,
+                    beneficio: item.beneficio,
                 };
             return next;
         });
@@ -510,7 +512,15 @@ export function SelecaoEAtribuicao() {
     const unidades = grupos.flatMap(([key, g]) => {
         const isProduto = key.startsWith("prod:");
         const imagem = isProduto ? config.produtos.find((p) => p.id === key.split(":")[1])?.imagem : undefined;
-        return Array.from({ length: g.qtd }, (_, i) => ({ id: `${key}#${i}`, key, nome: g.nome, sub: g.sub, isProduto, imagem }));
+        return Array.from({ length: g.qtd }, (_, i) => ({
+            id: `${key}#${i}`,
+            key,
+            nome: g.nome,
+            sub: g.sub,
+            isProduto,
+            imagem,
+            ehMeia: g.beneficio === "meia-entrada",
+        }));
     });
     const perguntasDaUnidade = (u: { key: string; isProduto: boolean }) => (u.isProduto ? [] : perguntasDoGrupo(u.key));
 
@@ -852,37 +862,6 @@ export function SelecaoEAtribuicao() {
             <div className={cx("flex w-full flex-col gap-8 px-4 md:px-0", colunaEtapa)}>
                 <h2 className="text-lg font-bold text-primary">{unidades.length > 1 ? "Para quem são essas inscrições?" : "Para quem é essa inscrição?"}</h2>
 
-                {/* Acessos à página de informações da meia-entrada (âncoras) */}
-                <div className="rounded-2xl bg-secondary p-4 ring-1 ring-border-secondary">
-                    <p className="text-sm font-bold text-primary">Informações da meia-entrada</p>
-                    <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        {[
-                            { icon: InfoCircle, label: "Regras da meia-entrada", secao: "quem-tem-direito" },
-                            { icon: FileCheck02, label: "Documento comprobatório", secao: "quem-tem-direito" },
-                            { icon: Phone01, label: "Órgãos de fiscalização", secao: "fiscalizacao" },
-                        ].map((a) => {
-                            const Icon = a.icon;
-                            return (
-                                // Âncora de verdade, não `navigate`: abre em outra aba, preserva o
-                                // carrinho desta e aceita clique do meio e cmd+clique.
-                                // `key` pelo rótulo: duas entradas apontam para a mesma seção.
-                                <a
-                                    key={a.label}
-                                    href={`/marketplace/meia-entrada?secao=${a.secao}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
-                                >
-                                    <Icon className="size-4 shrink-0 text-fg-quaternary" />
-                                    <span className="flex-1 text-sm font-medium text-primary">{a.label}</span>
-                                    {/* Seta externa no lugar do chevron: o chevron prometia navegar aqui. */}
-                                    <LinkExternal01 className="size-4 shrink-0 text-fg-quaternary" />
-                                </a>
-                            );
-                        })}
-                    </div>
-                </div>
-
                 {unidades.map((u) =>
                     config.modoAtribuicao === "accordion" ? (
                         <AtribuicaoAccordionCard
@@ -1149,6 +1128,64 @@ function OpcaoRadio({ selected, label, onClick, children }: { selected: boolean;
     );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Informações da meia-entrada                                       */
+/* ------------------------------------------------------------------ */
+
+const ACESSOS_MEIA = [
+    {
+        secao: "quem-tem-direito",
+        titulo: "Regras da meia-entrada",
+        descricao: "Quem tem direito e quais são as condições previstas em lei.",
+        acao: "Conferir regras da meia-entrada",
+    },
+    {
+        secao: "cie",
+        titulo: "Documento comprobatório",
+        descricao: "Confira o documento aceito e saiba como identificar uma CIE válida.",
+        acao: "Conferir exemplo da CIE",
+    },
+    {
+        secao: "fiscalizacao",
+        titulo: "Órgãos de fiscalização",
+        descricao: "Consulte os contatos dos órgãos responsáveis pela fiscalização.",
+        acao: "Conferir contatos",
+    },
+];
+
+/**
+ * Informações da meia-entrada, dentro do card da unidade e só quando a unidade
+ * é de meia. Antes era um bloco único no topo da etapa, que aparecia mesmo
+ * quando nenhuma unidade do pedido tinha o benefício e não dizia a qual
+ * ingresso se referia.
+ *
+ * `-mx-4` sangra a faixa até as bordas do card, que tem `p-4`.
+ */
+function InfoMeiaEntrada() {
+    return (
+        <div className="-mx-4 flex gap-3 border-y border-secondary bg-secondary px-4 py-3.5">
+            <InfoCircle className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />
+            <div className="grid flex-1 gap-x-6 gap-y-4 sm:grid-cols-3">
+                {ACESSOS_MEIA.map((a) => (
+                    <div key={a.secao} className="flex min-w-0 flex-col gap-1">
+                        <span className="text-sm font-semibold text-primary">{a.titulo}</span>
+                        <p className="flex-1 text-sm leading-relaxed text-tertiary">{a.descricao}</p>
+                        {/* Nova aba: sair da rota aqui custaria o carrinho inteiro. */}
+                        <a
+                            href={`/marketplace/meia-entrada?secao=${a.secao}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm font-semibold text-primary underline-offset-2 transition duration-100 ease-linear hover:underline"
+                        >
+                            {a.acao}
+                        </a>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function AtribuicaoCard({
     unidade,
     valor,
@@ -1158,7 +1195,7 @@ function AtribuicaoCard({
     onAbrirPerguntas,
     onRemover,
 }: {
-    unidade: { id: string; key: string; nome: string; sub?: string; isProduto?: boolean; imagem?: string };
+    unidade: { id: string; key: string; nome: string; sub?: string; isProduto?: boolean; imagem?: string; ehMeia?: boolean };
     valor?: { tipo: "meu" | "outro"; email: string; confirmado?: boolean };
     perguntas: PerguntaEvento[];
     getResposta: (pid: string) => string;
@@ -1206,6 +1243,8 @@ function AtribuicaoCard({
                     <Trash01 className="size-5" />
                 </button>
             </div>
+
+            {unidade.ehMeia && <InfoMeiaEntrada />}
 
             <div className="flex flex-col gap-2">
                 <OpcaoRadio selected={tipo === "meu"} label={unidade.isProduto ? "Meu produto" : "Meu ingresso"} onClick={() => onAtrib({ tipo: "meu", email })} />
@@ -1315,7 +1354,7 @@ function AtribuicaoAccordionCard({
     onAtrib,
     onRemover,
 }: {
-    unidade: { id: string; key: string; nome: string; sub?: string; isProduto?: boolean; imagem?: string };
+    unidade: { id: string; key: string; nome: string; sub?: string; isProduto?: boolean; imagem?: string; ehMeia?: boolean };
     valor?: { tipo: "meu" | "outro"; email: string; confirmado?: boolean };
     perguntas: PerguntaEvento[];
     getResposta: (pid: string) => string;
@@ -1387,6 +1426,8 @@ function AtribuicaoAccordionCard({
                     <Trash01 className="size-5" />
                 </button>
             </div>
+
+            {unidade.ehMeia && <InfoMeiaEntrada />}
 
             <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
                 {opcoes.map((o, i) => {

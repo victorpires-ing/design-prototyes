@@ -3,6 +3,30 @@
 /*  reaproveitados por datas-de-venda e combos via referência (ids).   */
 /* ------------------------------------------------------------------ */
 
+/** Natureza do ingresso. "promocional" não entra na cota de meia (art. 10 p.ú.). */
+export type Beneficio = "inteira" | "meia-entrada" | "promocional" | "cortesia";
+
+/**
+ * Taxa acessória única (art. 3º V). Ad valorem por construção: sem piso, sem
+ * teto e sem valor absoluto, porque qualquer um dos três quebra a
+ * proporcionalidade exigida pelo art. 9º e derruba o desconto da meia-entrada.
+ */
+export interface TaxaServico {
+    nome: string;
+    /** 0.2 = 20% sobre o preço de face. */
+    aliquota: number;
+    /** O serviço efetivamente prestado que a taxa remunera (art. 3º V e 6º). */
+    descricao: string;
+    /** Documento dos critérios de definição (art. 7º §3º). Link só renderiza se preenchido. */
+    criteriosUrl?: string;
+}
+
+/** Art. 11: quantitativo ofertado por grupo. Oferta, não saldo em tempo real. */
+export interface Quantitativo {
+    ofertados: number;
+    ofertadosMeia: number;
+}
+
 /** Item unificado em tempo de execução (modal e listas por data). */
 export interface Item {
     id: string;
@@ -12,13 +36,18 @@ export interface Item {
     lote?: string;
     descricao?: string;
     preco?: number;
+    beneficio?: Beneficio;
+    /** Produto não é ingresso: fica fora da base de cálculo da taxa acessória. */
+    isProduto?: boolean;
+    /** Cota do benefício vendida. A linha continua na tela, só o stepper trava (art. 8º I). */
+    cotaEsgotada?: boolean;
     imagem?: string;
     obrigatorio?: boolean;
     /** Quantidade mínima deste item no combo (inclusos: >= 1). */
     qtdMin?: number;
     /** Quantidade máxima deste item no combo. */
     qtdMax?: number;
-    /** Exibe o preço deste item na seleção do combo. */
+    /** @deprecated Ignorado. Todo valor que entra no carrinho é exibido (art. 7º §2º). */
     mostrarPreco?: boolean;
     /** Variações (ex.: tamanhos) — produtos com variação abrem modal de escolha. */
     variacoes?: string[];
@@ -32,9 +61,28 @@ export interface Ingresso {
     grupo?: string;
     lote?: string;
     descricao?: string;
+    /**
+     * Preço de face. Em ingresso de meia-entrada é DERIVADO de `baseId` em
+     * tempo de render, nunca digitado: face digitada à mão deixa um operador
+     * produzir uma razão diferente de 50% sem o sistema reclamar (art. 9º).
+     */
     preco?: number;
     imagem?: string;
+    beneficio?: Beneficio;
+    /** Obrigatório quando `beneficio === "meia-entrada"`: id do ingresso base. */
+    baseId?: string;
+    /** Fração da face base. Default 0.5. */
+    percentualBeneficio?: number;
+    cotaEsgotada?: boolean;
 }
+
+/**
+ * Quanto este item ACRESCENTA ao valor do combo.
+ * Item obrigatório já está no preço do pacote e acrescenta zero. Rótulo e
+ * cálculo precisam usar este mesmo predicado, senão o modal exibe "+ R$ 150,00"
+ * em unidades que somam nada.
+ */
+export const precoExtraDoItem = (it: Item) => (it.obrigatorio ? 0 : (it.preco ?? 0));
 
 /** Catálogo: produto (tem imagem). */
 export interface Produto {
@@ -97,11 +145,12 @@ export interface ComboDinamico {
     obrigatorios: string[]; // ids de itens herdados marcados como obrigatórios
     /** Qtd mín./máx. por item herdado (mín. = máx. → quantidade fixa "Nx"). */
     quantidades?: Record<string, { min: number; max: number }>;
-    precoVisivel: string[]; // ids de itens herdados cujo preço aparece na seleção
+    /** @deprecated Ignorado. Mantido só para não quebrar links ?cfg= já compartilhados. */
+    precoVisivel: string[];
     ocultos?: string[]; // ids de itens herdados ocultados deste combo
     /** Valor único do combo. */
     preco?: number;
-    /** Exibe o preço do combo no card de seleção. */
+    /** @deprecated Ignorado. O preço do combo é sempre exibido no card. */
     exibirPreco?: boolean;
 }
 
@@ -148,11 +197,111 @@ export interface Exibir {
 /* ------------------------------------------------------------------ */
 
 export const INGRESSOS: Ingresso[] = [
-    { id: "vip", nome: "Inteira", grupo: "Camarote VIP", lote: "Lote 2", descricao: "Consumação inclusa", preco: 250 },
-    { id: "pista", nome: "Inteira", grupo: "Pista Premium", lote: "Lote 2", preco: 150 },
-    { id: "inteira", nome: "Inteira", grupo: "Arquibancada", lote: "Lote 2", preco: 336 },
-    { id: "meia", nome: "Meia-entrada", grupo: "Arquibancada", lote: "Lote 2", descricao: "Consulte os tipos válidos nos termos do evento", preco: 168 },
+    /* ---- CAMAROTE VIP OPEN BAR PREMIUM ---- */
+    {
+        id: "vip",
+        nome: "INTEIRA",
+        grupo: "CAMAROTE VIP OPEN BAR PREMIUM",
+        lote: "3º LOTE",
+        descricao: "Consumação inclusa até 23h. Entrada exclusiva pelo portão A com acesso ao lounge climatizado e banheiros privativos.",
+        preco: 250,
+        beneficio: "inteira",
+    },
+    { id: "vip-meia", nome: "MEIA-ENTRADA", grupo: "CAMAROTE VIP OPEN BAR PREMIUM", lote: "3º LOTE", beneficio: "meia-entrada", baseId: "vip" },
+    {
+        id: "vip-idoso",
+        nome: "IDOSO 60+",
+        grupo: "CAMAROTE VIP OPEN BAR PREMIUM",
+        lote: "3º LOTE",
+        descricao: "Apresente documento com foto na entrada.",
+        beneficio: "meia-entrada",
+        baseId: "vip",
+    },
+    {
+        id: "vip-solidaria",
+        // Promocional, não meia-entrada: é política comercial do produtor e não
+        // entra na cota legal (art. 10, parágrafo único).
+        nome: "ENTRADA SOLIDÁRIA",
+        grupo: "CAMAROTE VIP OPEN BAR PREMIUM",
+        lote: "3º LOTE",
+        descricao: "Mediante entrega de 1 kg de alimento não perecível na entrada do evento.",
+        preco: 200,
+        beneficio: "promocional",
+    },
+
+    /* ---- PISTA PREMIUM FRONT STAGE ---- */
+    { id: "pista", nome: "INTEIRA", grupo: "PISTA PREMIUM FRONT STAGE", lote: "2º LOTE PROMOCIONAL", preco: 150, beneficio: "inteira" },
+    // Cota vendida: a linha permanece na tela com o stepper travado (art. 8º I).
+    {
+        id: "pista-meia",
+        nome: "MEIA-ENTRADA",
+        grupo: "PISTA PREMIUM FRONT STAGE",
+        lote: "2º LOTE PROMOCIONAL",
+        beneficio: "meia-entrada",
+        baseId: "pista",
+        cotaEsgotada: true,
+    },
+    { id: "pista-idoso", nome: "IDOSO 60+", grupo: "PISTA PREMIUM FRONT STAGE", lote: "2º LOTE PROMOCIONAL", beneficio: "meia-entrada", baseId: "pista" },
+    {
+        id: "pista-solidaria",
+        nome: "ENTRADA SOLIDÁRIA",
+        grupo: "PISTA PREMIUM FRONT STAGE",
+        lote: "2º LOTE PROMOCIONAL",
+        descricao: "Mediante entrega de 1 kg de alimento não perecível na entrada do evento.",
+        preco: 120,
+        beneficio: "promocional",
+    },
+    {
+        id: "pista-social",
+        nome: "ENTRADA SOCIAL",
+        grupo: "PISTA PREMIUM FRONT STAGE",
+        lote: "2º LOTE PROMOCIONAL",
+        descricao: "Lote limitado para moradores da região, mediante comprovante de residência.",
+        preco: 90,
+        beneficio: "promocional",
+    },
+
+    /* ---- ARQUIBANCADA SUPERIOR COBERTA ---- */
+    { id: "inteira", nome: "INTEIRA", grupo: "ARQUIBANCADA SUPERIOR COBERTA", lote: "LOTE 2", preco: 336, beneficio: "inteira" },
+    {
+        id: "meia",
+        nome: "MEIA-ENTRADA",
+        grupo: "ARQUIBANCADA SUPERIOR COBERTA",
+        lote: "LOTE 2",
+        descricao: "Válido para estudantes, pessoas com deficiência e acompanhante, jovens de baixa renda com ID Jovem e pessoas com 60 anos ou mais.",
+        beneficio: "meia-entrada",
+        baseId: "inteira",
+    },
+    { id: "arq-idoso", nome: "IDOSO 60+", grupo: "ARQUIBANCADA SUPERIOR COBERTA", lote: "LOTE 2", beneficio: "meia-entrada", baseId: "inteira" },
+    {
+        id: "arq-solidaria",
+        nome: "ENTRADA SOLIDÁRIA",
+        grupo: "ARQUIBANCADA SUPERIOR COBERTA",
+        lote: "LOTE 2",
+        descricao: "Mediante entrega de 1 kg de alimento não perecível na entrada do evento.",
+        preco: 280,
+        beneficio: "promocional",
+    },
 ];
+
+/** Taxa acessória padrão do protótipo. 20% ad valorem, única. */
+export const TAXA_PADRAO: TaxaServico = {
+    nome: "Taxa de serviço",
+    aliquota: 0.2,
+    descricao:
+        "A taxa de serviço remunera a emissão e a validação do ingresso, o atendimento ao comprador e a operação da bilheteria digital.",
+};
+
+/**
+ * Art. 11. Chaveado pelo nome do grupo. Camarote VIP não oferta meia-entrada,
+ * e a cota de 40% da Lei 12.933/2013 é apurada sobre o evento, não por grupo:
+ * 1.400 de 3.500 ingressos.
+ */
+export const QUANTITATIVO_PADRAO: Record<string, Quantitativo> = {
+    "CAMAROTE VIP OPEN BAR PREMIUM": { ofertados: 300, ofertadosMeia: 120 },
+    "PISTA PREMIUM FRONT STAGE": { ofertados: 1200, ofertadosMeia: 500 },
+    "ARQUIBANCADA SUPERIOR COBERTA": { ofertados: 2000, ofertadosMeia: 820 },
+};
 
 export const PRODUTOS: Produto[] = [
     {
@@ -172,12 +321,21 @@ export const PRODUTOS: Produto[] = [
     },
 ];
 
+/** Ingressos de todas as datas. A meia precisa estar ofertada para ser comprável (art. 8º I). */
+const ITENS_DA_DATA = INGRESSOS.map((i) => i.id);
+
 export const DATAS: DataEvento[] = [
-    { id: "d26", iso: "2026-12-26T10:30", diaSemana: "Sábado", dia: "26", mes: "DEZ", ano: "2026", hora: "10h30", itens: ["vip", "pista"], produtos: ["camiseta"] },
-    { id: "d27", iso: "2026-12-27T10:30", diaSemana: "Domingo", dia: "27", mes: "DEZ", ano: "2026", hora: "10h30", itens: ["vip", "pista"], produtos: ["camiseta"] },
-    { id: "d28", iso: "2026-12-28T10:30", diaSemana: "Segunda", dia: "28", mes: "DEZ", ano: "2026", hora: "10h30", itens: ["vip", "pista"], produtos: ["camiseta"] },
-    { id: "d29", iso: "2026-12-29T10:30", diaSemana: "Terça", dia: "29", mes: "DEZ", ano: "2026", hora: "10h30", itens: ["vip", "pista"], produtos: ["camiseta"] },
+    { id: "d26", iso: "2026-12-26T10:30", diaSemana: "Sábado", dia: "26", mes: "DEZ", ano: "2026", hora: "10h30", itens: ITENS_DA_DATA, produtos: ["camiseta"] },
+    { id: "d27", iso: "2026-12-27T10:30", diaSemana: "Domingo", dia: "27", mes: "DEZ", ano: "2026", hora: "10h30", itens: ITENS_DA_DATA, produtos: ["camiseta"] },
+    { id: "d28", iso: "2026-12-28T10:30", diaSemana: "Segunda", dia: "28", mes: "DEZ", ano: "2026", hora: "10h30", itens: ITENS_DA_DATA, produtos: ["camiseta"] },
+    { id: "d29", iso: "2026-12-29T10:30", diaSemana: "Terça", dia: "29", mes: "DEZ", ano: "2026", hora: "10h30", itens: ITENS_DA_DATA, produtos: ["camiseta"] },
 ];
+
+/** Combos são pacote comercial fechado: herdam só os ingressos que o compõem.
+    Derivado, e não uma lista de exclusões: ingresso novo no catálogo entra
+    fora do combo por padrão, em vez de aparecer nele sem ninguém notar. */
+const NO_COMBO = ["vip", "pista"];
+const FORA_DOS_COMBOS = ITENS_DA_DATA.filter((id) => !NO_COMBO.includes(id));
 
 export const COMBOS_DINAMICOS: ComboDinamico[] = [
     {
@@ -194,9 +352,9 @@ export const COMBOS_DINAMICOS: ComboDinamico[] = [
         obrigatorios: ["vip", "pista"],
         // vip: incluso fixo (1). pista: incluso, mas o comprador pode levar de 1 a 3.
         quantidades: { vip: { min: 1, max: 1 }, pista: { min: 1, max: 3 } },
-        precoVisivel: ["vip", "pista", "camiseta"],
+        ocultos: FORA_DOS_COMBOS,
+        precoVisivel: [],
         preco: 450,
-        exibirPreco: true,
     },
     {
         id: "special-feminino",
@@ -208,9 +366,9 @@ export const COMBOS_DINAMICOS: ComboDinamico[] = [
         maxItens: 8,
         datas: ["d26", "d27", "d28", "d29"],
         obrigatorios: ["vip"],
-        precoVisivel: ["camiseta"],
+        ocultos: FORA_DOS_COMBOS,
+        precoVisivel: [],
         preco: 400,
-        exibirPreco: true,
     },
 ];
 

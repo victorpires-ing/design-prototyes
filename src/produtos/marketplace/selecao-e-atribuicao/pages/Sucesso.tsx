@@ -4,7 +4,8 @@ import { CheckCircle, Mail01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { MarketplaceLayout } from "../../components/MarketplaceLayout";
-import { DEFAULT_CONFIG, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
+import { brl } from "../utils/preco";
+import { DEFAULT_CONFIG, STORAGE_KEY, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
 
 /** Tela de sucesso — compra/inscrição concluída. Mantém o branding do evento via ?cfg= ou ?e=. */
 export function Sucesso() {
@@ -18,7 +19,7 @@ export function Sucesso() {
             if (d) return d;
         }
         try {
-            const saved = localStorage.getItem("marketplace:lastConfig:v2");
+            const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 const d = decodeConfig(saved);
                 if (d) return d;
@@ -50,6 +51,11 @@ export function Sucesso() {
     const usuario = params.get("u")?.trim() || "";
     const primeiroNome = usuario.split(" ")[0] || "";
 
+    // Valor pago, vindo da seleção. Sem ele a última fase da compra não exibe preço.
+    const total = Number(params.get("t"));
+    const taxaPaga = Number(params.get("x"));
+    const temValor = Number.isFinite(total) && total > 0;
+
     const qs = params.toString();
     const voltarEvento = () => navigate(`/marketplace/event${qs ? `?${qs}` : ""}`);
 
@@ -64,6 +70,22 @@ export function Sucesso() {
                         Tudo certo! Sua inscrição em <span className="font-semibold text-secondary">{config.nome}</span> foi confirmada com sucesso.
                     </p>
                 </div>
+
+                {temValor && (
+                    <div className="flex w-full flex-col gap-0.5 rounded-xl bg-secondary p-4 text-left">
+                        <span className="text-sm font-medium text-tertiary">Total pago</span>
+                        <span className="text-xl font-bold text-primary tabular-nums">{brl(total)}</span>
+                        {Number.isFinite(taxaPaga) && taxaPaga > 0 && (
+                            <span className="text-sm font-medium text-tertiary tabular-nums">
+                                inclui {brl(taxaPaga)} de {config.taxaServico.nome.toLowerCase()}
+                            </span>
+                        )}
+                        <p className="mt-2 text-sm text-tertiary">
+                            Se o evento for cancelado, adiado ou sofrer alteração relevante, devolvemos o valor do ingresso e a{" "}
+                            {config.taxaServico.nome.toLowerCase()}.
+                        </p>
+                    </div>
+                )}
 
                 <div className="flex w-full items-start gap-3 rounded-xl bg-secondary p-4 text-left">
                     <Mail01 className="mt-0.5 size-5 shrink-0 text-fg-quaternary" />

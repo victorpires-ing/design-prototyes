@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router";
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronRight, FileCheck02, InfoCircle, Minus, Package, Phone01, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
-import { AnimatePresence, motion } from "motion/react";
+import { AlertTriangle, CheckCircle, ChevronDown, HelpCircle, LayoutRight, LinkExternal01, FileCheck02, InfoCircle, Minus, Package, Phone01, Plus, QrCode01, Send01, Tag01, Ticket01, Trash01, XClose } from "@untitledui/icons";
+import { AnimatePresence, motion, type Variants } from "motion/react";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -13,13 +13,29 @@ import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { MarketplaceLayout, accentVars } from "../../components/MarketplaceLayout";
 import { LoginModal } from "../../components/LoginModal";
+import { AbasCarrossel, ChipLegenda, type AbaItem } from "../components/abas-carrossel";
+import { BarraTotal } from "../components/barra-total";
 import { CupomModal } from "../components/CupomModal";
+import { MeiaSlideout, TaxaSlideout } from "../components/info-slideouts";
+import { PrecoBloco } from "../components/preco-bloco";
 import { SelecaoItensModal, type ItemSelecao } from "../components/SelecaoItensModal";
 import { TermosModal } from "../components/TermosModal";
-import type { ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento, Item, PerguntaEvento, Produto } from "../data/combos";
-import { DEFAULT_CONFIG, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
-
-const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+import { precoExtraDoItem } from "../data/combos";
+import type { Beneficio, ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento, Item, PerguntaEvento, Produto, Quantitativo, TaxaServico } from "../data/combos";
+import { DEFAULT_CONFIG, STORAGE_KEY, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
+import {
+    brl,
+    faceBeneficio,
+    legendaMultipla,
+    multiplicar,
+    PRECO_ZERO,
+    precoComTaxa,
+    precoSemTaxa,
+    precoDoCombo,
+    ratear,
+    somar,
+    type Preco,
+} from "../utils/preco";
 
 const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
@@ -31,6 +47,25 @@ const maskData = (v: string) => {
     return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
 };
 
+const TRANSICAO = { duration: 0.18, ease: "easeOut" } as const;
+
+/** Entra pelo lado de onde veio e sai pelo oposto. */
+const SLIDE_FADE: Variants = {
+    enter: (direcao: number) => ({ opacity: 0, x: direcao * 24 }),
+    center: { opacity: 1, x: 0 },
+    exit: (direcao: number) => ({ opacity: 0, x: direcao * -24 }),
+};
+
+/** Sinal da troca: avançar na tira desliza para um lado, voltar para o outro. */
+const useDirecao = (indice: number) => {
+    const anterior = useRef(indice);
+    const direcao = indice >= anterior.current ? 1 : -1;
+    useEffect(() => {
+        anterior.current = indice;
+    }, [indice]);
+    return direcao;
+};
+
 const MESES_EXT = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const dataPorExtenso = (d: DataEvento) => (d.iso ? `${+d.iso.slice(8, 10)} de ${MESES_EXT[+d.iso.slice(5, 7) - 1]} de ${d.iso.slice(0, 4)}` : `${d.dia} ${d.mes} ${d.ano}`);
 
@@ -38,13 +73,21 @@ interface CartSubline {
     nome: string;
     sub?: string;
     qtd: number;
+    /** Rateio do valor do pacote nesta sub-linha, não o preço de catálogo do item. */
+    valor?: number;
 }
 interface CartGroup {
     nome: string;
     lote?: string;
     sub?: string;
-    precoUnit: number;
+    /** Preço UNITÁRIO decomposto. O subtotal é derivado, nunca armazenado. */
+    preco: Preco;
     qtd: number;
+    /** Produto não tem taxa acessória e é separado no resumo. */
+    isProduto?: boolean;
+    /** Como a composição nomeia o valor de face no resumo. Default "ingresso". */
+    base?: string;
+    beneficio?: Beneficio;
     sublines?: CartSubline[];
 }
 
@@ -60,7 +103,7 @@ export function SelecaoEAtribuicao() {
             if (d) return d;
         }
         try {
-            const saved = localStorage.getItem("marketplace:lastConfig:v2");
+            const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 const d = decodeConfig(saved);
                 if (d) return d;
@@ -92,13 +135,51 @@ export function SelecaoEAtribuicao() {
         };
     }, [params, configInicial]);
 
+    const taxa = config.taxaServico;
+
     // Catálogo resolvido por id (ingressos + produtos → Item unificado).
+    // A face do ingresso com benefício é DERIVADA da base: face digitada à mão
+    // deixa um operador produzir razão diferente de 50% sem o sistema reclamar.
     const itemById = useMemo(() => {
         const map = new Map<string, Item>();
-        for (const i of config.ingressos) map.set(i.id, { id: i.id, nome: i.nome, grupo: i.grupo, lote: i.lote, descricao: i.descricao, preco: i.preco, imagem: i.imagem });
-        for (const p of config.produtos) map.set(p.id, { id: p.id, nome: p.nome, preco: p.preco, imagem: p.imagem });
+        const faceDoIngresso = (id: string, visitados: string[] = []): number => {
+            const ing = config.ingressos.find((x) => x.id === id);
+            if (!ing || visitados.includes(id)) return 0;
+            if (ing.beneficio === "meia-entrada" && ing.baseId) {
+                return faceBeneficio(faceDoIngresso(ing.baseId, [...visitados, id]), ing.percentualBeneficio ?? 0.5);
+            }
+            return ing.preco ?? 0;
+        };
+        for (const i of config.ingressos) {
+            map.set(i.id, {
+                id: i.id,
+                nome: i.nome,
+                grupo: i.grupo,
+                lote: i.lote,
+                descricao: i.descricao,
+                preco: faceDoIngresso(i.id),
+                imagem: i.imagem,
+                beneficio: i.beneficio,
+                cotaEsgotada: i.cotaEsgotada,
+            });
+        }
+        for (const p of config.produtos) map.set(p.id, { id: p.id, nome: p.nome, preco: p.preco, imagem: p.imagem, isProduto: true });
         return map;
     }, [config]);
+
+    /** Preço all-in de um ingresso ou combo. */
+    const precoIngresso = (face: number): Preco => precoComTaxa(face, taxa.aliquota);
+
+    /** Par inteira/meia do evento, usado para demonstrar a proporcionalidade do art. 9º. */
+    const exemploProporcionalidade = useMemo(() => {
+        const meia = config.ingressos.find((i) => i.beneficio === "meia-entrada" && i.baseId);
+        if (!meia?.baseId) return undefined;
+        const faceInteira = itemById.get(meia.baseId)?.preco ?? 0;
+        const faceMeia = itemById.get(meia.id)?.preco ?? 0;
+        if (faceInteira <= 0) return undefined;
+        return { inteira: precoIngresso(faceInteira), meia: precoIngresso(faceMeia) };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [config.ingressos, itemById, taxa.aliquota]);
 
     // Abas de combo fixo (agrupadas pelo rótulo configurável), respeitando "exibir".
     const fixoTabs = useMemo(() => {
@@ -133,16 +214,40 @@ export function SelecaoEAtribuicao() {
                     .map((it) => {
                         const obrigatorio = combo.obrigatorios.includes(it.id);
                         const q = combo.quantidades?.[it.id];
+                        // `precoVisivel` não é mais consultado: todo valor que entra no
+                        // carrinho aparece na tela antes de entrar (art. 7º §2º).
                         return {
                             ...it,
                             obrigatorio,
                             qtdMin: q?.min ?? (obrigatorio ? 1 : 0),
                             qtdMax: q?.max ?? combo.maxItens,
-                            mostrarPreco: combo.precoVisivel.includes(it.id),
                         };
                     }),
             }));
         return { id: combo.id, nome: combo.nome, minItens: combo.minItens, maxItens: combo.maxItens, preco: combo.preco, sessoes };
+    };
+
+    /**
+     * "A partir de" é a menor combinação VÁLIDA: os obrigatórios mais o mínimo
+     * de opcionais necessário para satisfazer `minItens`, pelos mais baratos.
+     * Anunciar só a base seria subdeclaração, ou seja, drip pricing dentro de
+     * um desenho feito para eliminá-lo.
+     */
+    const precoDoComboDinamico = (combo: ComboDinamico) => {
+        const itens = resolverCombo(combo).sessoes.flatMap((s) => s.itens);
+        const jaInclusos = itens.reduce((acc, it) => acc + (it.obrigatorio ? (it.qtdMin ?? 1) : 0), 0);
+        const faltam = Math.max(0, combo.minItens - jaInclusos);
+        const disponiveis = itens
+            .filter((it) => !it.obrigatorio)
+            .flatMap((it) =>
+                Array.from({ length: Math.max(1, it.qtdMax ?? 1) }, () => ({ isProduto: it.isProduto, valor: precoExtraDoItem(it) })),
+            )
+            .sort((a, b) => a.valor - b.valor);
+        return {
+            preco: precoDoCombo(combo.preco ?? 0, disponiveis.slice(0, faltam), taxa.aliquota),
+            /** Há opcional pago capaz de aumentar o valor depois da montagem. */
+            variavel: disponiveis.slice(faltam).some((e) => e.valor > 0),
+        };
     };
 
     // Itens resolvidos de uma data (ingressos + produtos).
@@ -153,8 +258,41 @@ export function SelecaoEAtribuicao() {
     const [cupom, setCupom] = useState<{ codigo: string; ajuda: string } | null>(null);
     const [comboSelecao, setComboSelecao] = useState<ComboDinamicoView | null>(null);
     const [cart, setCart] = useState<Record<string, CartGroup>>({});
+    /**
+     * Último item adicionado, para o resumo rolar até ele.
+     *
+     * Carrega um nonce porque o gatilho é a ADIÇÃO, não o estado do carrinho:
+     * depender de `cart` fazia a remoção reexecutar o efeito com a chave antiga
+     * e rolar sem motivo. E adicionar o mesmo item duas vezes precisa disparar
+     * de novo, o que a chave sozinha não garante.
+     */
+    const [ultimoItem, setUltimoItem] = useState<{ chave: string; n: number } | null>(null);
+    const contadorAdicao = useRef(0);
+    const marcarAdicao = (chave: string) => setUltimoItem({ chave, n: ++contadorAdicao.current });
+    const resumoCorpoRef = useRef<HTMLDivElement>(null);
+
+    /**
+     * Rola o resumo até o item recém-adicionado. Só age quando o miolo de fato
+     * transborda: com o carrinho curto não há o que rolar, e no primeiro item a
+     * medição aconteceria em pleno giro do cartaz, com as caixas já rotacionadas.
+     */
+    useEffect(() => {
+        if (!ultimoItem) return;
+        const cont = resumoCorpoRef.current;
+        if (!cont || cont.scrollHeight <= cont.clientHeight) return;
+        const alvo = [...cont.querySelectorAll<HTMLElement>("[data-item]")].find((el) => el.dataset.item === ultimoItem.chave);
+        if (!alvo) return;
+        const caixa = alvo.getBoundingClientRect();
+        const janela = cont.getBoundingClientRect();
+        if (caixa.top < janela.top) cont.scrollBy({ top: caixa.top - janela.top - 12, behavior: "smooth" });
+        else if (caixa.bottom > janela.bottom) cont.scrollBy({ top: caixa.bottom - janela.bottom + 12, behavior: "smooth" });
+    }, [ultimoItem]);
+
     const [detalhes, setDetalhes] = useState<Record<string, boolean>>({});
     const [resumoAberto, setResumoAberto] = useState(false);
+    // Painéis de informação legal. Abrem sobre a tela para não destruir o carrinho.
+    const [taxaOpen, setTaxaOpen] = useState(false);
+    const [meiaOpen, setMeiaOpen] = useState(false);
     const [termosOpen, setTermosOpen] = useState(false);
     const [termosAceito, setTermosAceito] = useState(false);
     const [pendenteFinalizar, setPendenteFinalizar] = useState(false);
@@ -204,50 +342,71 @@ export function SelecaoEAtribuicao() {
     };
 
     /* ---- carrinho ---- */
-    const setFixo = (combo: ComboFixo, delta: number) =>
+    const setFixo = (combo: ComboFixo, delta: number) => {
+        if (delta > 0) marcarAdicao(`fixo:${combo.id}`);
         setCart((prev) => {
             const key = `fixo:${combo.id}`;
             const novo = Math.max(0, (prev[key]?.qtd ?? 0) + delta);
             const next = { ...prev };
             if (novo === 0) delete next[key];
-            else
+            else {
+                // Sub-linhas exibem o RATEIO do preço do pacote, não o preço de
+                // catálogo de cada item: o pacote tem desconto e listar catálogo
+                // abriria um buraco visível entre as linhas e o total.
+                const partes = ratear(combo.preco, combo.inclui.map((i) => i.qtd));
                 next[key] = {
                     nome: combo.nome,
                     lote: combo.lote,
-                    precoUnit: combo.preco,
+                    base: "combo",
+                    preco: precoIngresso(combo.preco),
                     qtd: novo,
-                    sublines: combo.inclui.map((i) => ({ nome: i.titulo, sub: i.sub, qtd: i.qtd * novo })),
+                    sublines: combo.inclui.map((i, idx) => ({ nome: i.titulo, sub: i.sub, qtd: i.qtd * novo, valor: partes[idx] })),
                 };
+            }
             return next;
         });
+    };
 
-    const setData = (data: DataEvento, item: Item, delta: number) =>
+    const setData = (data: DataEvento, item: Item, delta: number) => {
+        if (delta > 0) marcarAdicao(`data:${data.id}:${item.id}`);
         setCart((prev) => {
             const key = `data:${data.id}:${item.id}`;
             const novo = Math.max(0, (prev[key]?.qtd ?? 0) + delta);
             const next = { ...prev };
             if (novo === 0) delete next[key];
-            else next[key] = { nome: item.nome, sub: `${data.diaSemana.toLowerCase()}, ${data.dia}/${data.mes}${data.hora ? ` • ${data.hora}` : ""}`, precoUnit: item.preco ?? 0, qtd: novo };
+            else
+                next[key] = {
+                    nome: item.nome,
+                    lote: item.grupo,
+                    sub: `${data.diaSemana.slice(0, 3).toLowerCase()}, ${data.dia}/${data.mes}${data.hora ? ` · ${data.hora}` : ""}`,
+                    preco: precoIngresso(item.preco ?? 0),
+                    qtd: novo,
+                    beneficio: item.beneficio,
+                };
             return next;
         });
+    };
 
     const confirmarSelecao = (combo: ComboDinamicoView, selecoes: ItemSelecao[]) => {
-        // Itens extras (opcionais com preço) somam ao valor base do combo.
         const itemDoCombo = (sessaoId: string, itemId: string) => combo.sessoes.find((x) => x.id === sessaoId)?.itens.find((x) => x.id === itemId);
-        const extras = selecoes.reduce((acc, s) => {
+        // Mesmo predicado e mesma função de preço que o modal usa: os dois não podem divergir.
+        const extras = selecoes.map((s) => {
             const item = itemDoCombo(s.sessaoId, s.itemId);
-            if (item && !item.obrigatorio && (item.preco ?? 0) > 0) return acc + (item.preco ?? 0) * s.quantidade;
-            return acc;
-        }, 0);
+            return { isProduto: item?.isProduto, valor: item ? precoExtraDoItem(item) * s.quantidade : 0 };
+        });
+        const preco = precoDoCombo(combo.preco ?? 0, extras, taxa.aliquota);
+        const pesos = selecoes.map((s) => (itemDoCombo(s.sessaoId, s.itemId)?.preco ?? 0) * s.quantidade);
+        const partes = ratear(preco.face, pesos);
+        marcarAdicao(`din:${combo.id}`);
         setCart((prev) => {
             const next: Record<string, CartGroup> = {};
             for (const [k, v] of Object.entries(prev)) if (k !== `din:${combo.id}`) next[k] = v;
-            // Valor base do combo + extras escolhidos; itens como sub-linhas.
             next[`din:${combo.id}`] = {
                 nome: combo.nome,
-                precoUnit: (combo.preco ?? 0) + extras,
+                base: "combo",
+                preco,
                 qtd: 1,
-                sublines: selecoes.map((s) => ({ nome: s.nome, sub: `${s.data} • ${s.hora}`, qtd: s.quantidade })),
+                sublines: selecoes.map((s, i) => ({ nome: s.nome, sub: `${s.data} • ${s.hora}`, qtd: s.quantidade, valor: partes[i] })),
             };
             return next;
         });
@@ -266,36 +425,76 @@ export function SelecaoEAtribuicao() {
         });
 
     // Adiciona uma unidade ao grupo (incrementa a quantidade).
-    const adicionarUnidade = (key: string) =>
+    const adicionarUnidade = (key: string) => {
+        marcarAdicao(key);
         setCart((prev) => {
             const g = prev[key];
             if (!g) return prev;
             return { ...prev, [key]: { ...g, qtd: g.qtd + 1 } };
         });
+    };
 
     const grupos = Object.entries(cart);
     const totalItens = grupos.reduce((acc, [, g]) => acc + g.qtd, 0);
-    const totalValor = grupos.reduce((acc, [, g]) => acc + g.qtd * g.precoUnit, 0);
+
+    /**
+     * Total do carrinho. A taxa agregada é SOMA das taxas unitárias, nunca
+     * recálculo sobre o subtotal, senão o total diverge da soma das linhas.
+     */
+    const totalPreco = useMemo(() => somar(Object.values(cart).map((g) => multiplicar(g.preco, g.qtd))), [cart]);
+    /** Art. 11, recorte do pedido: quantas meias o comprador está levando. */
+    const meiasNoPedido = grupos.reduce((acc, [, g]) => (g.beneficio === "meia-entrada" ? acc + g.qtd : acc), 0);
+
+    /**
+     * Espaçador do rodapé mobile medido, não cravado.
+     * Era `h-36` calibrado à mão para o rodapé antigo; a barra nova é mais alta
+     * e o valor fixo passaria a cobrir o fim da página. Congela enquanto o
+     * resumo está aberto, senão o espaçador saltaria junto com o accordion.
+     */
+    const rodapeRef = useRef<HTMLDivElement | null>(null);
+    const [rodapeAltura, setRodapeAltura] = useState(0);
+    useEffect(() => {
+        if (totalItens === 0) {
+            setRodapeAltura(0);
+            return;
+        }
+        const el = rodapeRef.current;
+        if (!el) return;
+        const medir = () => {
+            if (!resumoAberto) setRodapeAltura(el.offsetHeight);
+        };
+        const ro = new ResizeObserver(medir);
+        ro.observe(el);
+        medir();
+        return () => ro.disconnect();
+    }, [totalItens, resumoAberto]);
+
 
     // Produtos no carrinho (soma de todas as variações).
     const prodQtd = (id: string) => grupos.filter(([k]) => k === `prod:${id}` || k.startsWith(`prod:${id}:`)).reduce((a, [, g]) => a + g.qtd, 0);
-    const setProd = (prod: Produto, size: string | null, delta: number) =>
+    const setProd = (prod: Produto, size: string | null, delta: number) => {
+        if (delta > 0) marcarAdicao(size ? `prod:${prod.id}:${size}` : `prod:${prod.id}`);
         setCart((prev) => {
             const key = size ? `prod:${prod.id}:${size}` : `prod:${prod.id}`;
             const novo = Math.max(0, (prev[key]?.qtd ?? 0) + delta);
             const next = { ...prev };
             if (novo === 0) delete next[key];
-            else next[key] = { nome: prod.nome, sub: size ? `Tamanho ${size}` : undefined, precoUnit: prod.preco ?? 0, qtd: novo };
+            else next[key] = { nome: prod.nome, sub: size ? `Tamanho ${size}` : undefined, preco: precoSemTaxa(prod.preco ?? 0), qtd: novo, isProduto: true };
             return next;
         });
-    const setProdQtd = (prod: Produto, size: string | null, n: number) =>
+    };
+    const setProdQtd = (prod: Produto, size: string | null, n: number) => {
+        const chave = size ? `prod:${prod.id}:${size}` : `prod:${prod.id}`;
+        // Só rola quando a quantidade SOBE: este mesmo caminho atende o "−".
+        if (n > (cart[chave]?.qtd ?? 0)) marcarAdicao(chave);
         setCart((prev) => {
             const key = size ? `prod:${prod.id}:${size}` : `prod:${prod.id}`;
             const next = { ...prev };
             if (!n || n <= 0) delete next[key];
-            else next[key] = { nome: prod.nome, sub: size ? `Tamanho ${size}` : undefined, precoUnit: prod.preco ?? 0, qtd: n };
+            else next[key] = { nome: prod.nome, sub: size ? `Tamanho ${size}` : undefined, preco: precoSemTaxa(prod.preco ?? 0), qtd: n, isProduto: true };
             return next;
         });
+    };
     const temProdutos = config.produtos.length > 0;
 
     const fixoTabAtiva = fixoTabs.find((t) => t.id === aba);
@@ -384,6 +583,9 @@ export function SelecaoEAtribuicao() {
     const finalizarPedido = () => {
         const sp = new URLSearchParams(params);
         if (usuario) sp.set("u", usuario);
+        // Art. 7º caput: o valor também tem de existir na última fase da compra.
+        sp.set("t", totalPreco.total.toFixed(2));
+        sp.set("x", totalPreco.taxa.toFixed(2));
         const qs = sp.toString();
         navigate(`/marketplace/sucesso${qs ? `?${qs}` : ""}`);
     };
@@ -408,36 +610,46 @@ export function SelecaoEAtribuicao() {
     };
 
     /* ---- blocos reutilizados pelos dois layouts ---- */
-    const abas = (
-        <div className="flex flex-wrap gap-3">
-            {fixoTabs.map((t) => (
-                <TabButton key={t.id} active={aba === t.id} onClick={() => setAba(t.id)}>
-                    <span className="px-2 text-sm font-semibold text-primary">{t.label}</span>
-                </TabButton>
-            ))}
-            {temDinamicos && (
-                <TabButton active={aba === "combo"} onClick={() => setAba("combo")}>
-                    <span className="px-2 text-sm font-semibold text-primary">{config.comboTabLabel || "Combo dinâmico"}</span>
-                </TabButton>
-            )}
-            {datasVenda.map((d) => (
-                <TabButton key={d.id} active={aba === d.id} onClick={() => setAba(d.id)}>
-                    <span className="text-sm text-tertiary">{d.diaSemana}</span>
-                    <span className="text-md font-bold text-primary">
+    // Uma fileira só, que rola. Empilhado, o seletor deixava de ler como um
+    // controle único e empurrava o catálogo para baixo da dobra no mobile.
+    const itensAba: AbaItem[] = [
+        // Sem classe de cor nas linhas principais: elas herdam do chip, que inverte.
+        ...fixoTabs.map((t) => ({
+            id: t.id,
+            conteudo: () => <span className="px-2 text-sm font-semibold">{t.label}</span>,
+        })),
+        ...(temDinamicos
+            ? [
+                  {
+                      id: "combo",
+                      conteudo: () => <span className="px-2 text-sm font-semibold">{config.comboTabLabel || "Combo dinâmico"}</span>,
+                  },
+              ]
+            : []),
+        ...datasVenda.map((d) => ({
+            id: d.id,
+            conteudo: (ativo: boolean) => (
+                <>
+                    <ChipLegenda ativo={ativo}>{d.diaSemana}</ChipLegenda>
+                    <span className="text-md font-bold">
                         {d.dia} {d.mes}
                     </span>
-                    <span className="text-sm text-tertiary">{d.ano}</span>
-                </TabButton>
-            ))}
-        </div>
-    );
+                    <ChipLegenda ativo={ativo}>{d.ano}</ChipLegenda>
+                </>
+            ),
+        })),
+    ];
 
-    const conteudo = fixoTabAtiva ? (
+    const abas = <AbasCarrossel abas={itensAba} ativa={aba} ariaLabel="Datas e combos à venda" onSelecionar={setAba} />;
+    const direcaoAba = useDirecao(itensAba.findIndex((i) => i.id === aba));
+
+    const conteudoItens = fixoTabAtiva ? (
         <div className="mt-6 flex flex-col gap-4">
             {fixoTabAtiva.combos.map((combo) => (
                 <ComboFixoView
                     key={combo.id}
                     combo={combo}
+                    taxa={taxa}
                     qtd={cart[`fixo:${combo.id}`]?.qtd ?? 0}
                     aberto={!!detalhes[combo.id]}
                     onToggleDetalhes={() => setDetalhes((p) => ({ ...p, [combo.id]: !p[combo.id] }))}
@@ -448,16 +660,76 @@ export function SelecaoEAtribuicao() {
         </div>
     ) : aba === "combo" ? (
         <div className="mt-6 flex flex-col gap-4">
-            <h2 className="text-sm font-semibold text-primary">Monte seu combo</h2>
-            {config.combosDinamicos.map((combo) => (
-                <ComboDinamicoCard key={combo.id} combo={combo} cupomAplicado={!!cupom} onSelecionar={() => setComboSelecao(resolverCombo(combo))} />
-            ))}
+            {config.combosDinamicos.map((combo) => {
+                const { preco, variavel } = precoDoComboDinamico(combo);
+                return (
+                    <ComboDinamicoCard
+                        key={combo.id}
+                        combo={combo}
+                        preco={preco}
+                        variavel={variavel}
+                        taxa={taxa}
+                        onSelecionar={() => setComboSelecao(resolverCombo(combo))}
+                    />
+                );
+            })}
         </div>
     ) : dataAtiva ? (
-        <ItensPorData data={dataAtiva} itens={itensDaData(dataAtiva)} cart={cart} onInc={(it) => setData(dataAtiva, it, 1)} onDec={(it) => setData(dataAtiva, it, -1)} />
+        <ItensPorData
+            data={dataAtiva}
+            itens={itensDaData(dataAtiva)}
+            cart={cart}
+            taxa={taxa}
+            quantitativo={config.quantitativoPorGrupo}
+            onInc={(it) => setData(dataAtiva, it, 1)}
+            onDec={(it) => setData(dataAtiva, it, -1)}
+            onAbrirMeia={() => setMeiaOpen(true)}
+        />
     ) : (
         <div className="mt-6 flex min-h-[160px] items-center justify-center rounded-xl border border-dashed border-secondary px-6 text-center text-sm text-tertiary">
             Nada configurado para esta aba.
+        </div>
+    );
+
+    /**
+     * Faixa de contexto: nomeia a taxa e o seu escopo uma vez por etapa, para que
+     * a natureza do serviço exista na mesma fase do primeiro contato com o
+     * ingresso, mesmo com o carrinho vazio.
+     */
+    const faixaContexto = (
+        <div className="flex flex-wrap items-baseline gap-x-2">
+            <p className="text-sm text-tertiary">
+                Todos os preços já incluem a {taxa.nome.toLowerCase()}
+                {temProdutos && `, que não se aplica a produtos`}.
+            </p>
+            {/* `LayoutRight` avisa que abre um painel lateral, não que navega para
+                outra página: o link vive ao lado de outro que abre em nova aba. */}
+            <Button size="sm" color="link-color" iconTrailing={LayoutRight} onClick={() => setTaxaOpen(true)}>
+                O que é a {taxa.nome.toLowerCase()}
+            </Button>
+        </div>
+    );
+
+    const conteudo = (
+        <div className="flex flex-col">
+            {/*
+              `mode="wait"` e a key da aba: a lista antiga sai inteira antes de a nova
+              entrar, e a remontagem devolve os agrupadores ao estado fechado.
+            */}
+            <AnimatePresence mode="wait" initial={false} custom={direcaoAba}>
+                <motion.div
+                    key={aba}
+                    custom={direcaoAba}
+                    variants={SLIDE_FADE}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={TRANSICAO}
+                >
+                    {conteudoItens}
+                </motion.div>
+            </AnimatePresence>
+            <div className="mt-5">{faixaContexto}</div>
         </div>
     );
 
@@ -485,36 +757,19 @@ export function SelecaoEAtribuicao() {
         </button>
     );
 
-    const totalBar = (
-        <div className="flex items-center justify-between gap-3 border-t border-secondary px-4 py-4">
-            <div className="flex flex-col gap-0.5">
-                <span className="text-md font-bold text-primary tabular-nums">
-                    {brl(totalValor)} <span className="text-sm font-normal text-tertiary">+ taxas</span>
-                </span>
-                <span className="flex items-center gap-2 text-sm text-tertiary tabular-nums">
-                    {totalItens} {totalItens === 1 ? "item" : "itens"}
-                    {totalItens > 0 && (
-                        <button type="button" onClick={() => setCart({})} className="text-sm text-quaternary underline transition hover:text-tertiary">
-                            Remover {totalItens === 1 ? "item" : "itens"}
-                        </button>
-                    )}
-                </span>
-            </div>
-            <Button size="lg" color="primary" isDisabled={continuarDisabled} onClick={avancar}>
-                Continuar
-            </Button>
-        </div>
+    const barraTotal = (variante: "desktop" | "mobile", comoCard?: boolean) => (
+        <BarraTotal variante={variante} total={totalPreco} continuarDisabled={continuarDisabled} comoCard={comoCard} onAvancar={avancar} />
     );
+    const totalBar = barraTotal("desktop");
 
     const ingressosCart = grupos.filter(([k]) => !k.startsWith("prod:"));
     const produtosCart = grupos.filter(([k]) => k.startsWith("prod:"));
     const limparIngressos = () => setCart((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => k.startsWith("prod:"))));
     const limparProdutos = () => setCart((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !k.startsWith("prod:"))));
 
-    const SecaoHeader = ({ titulo, valor, onLimpar }: { titulo: string; valor?: string; onLimpar: () => void }) => (
+    const SecaoHeader = ({ titulo, onLimpar }: { titulo: string; onLimpar: () => void }) => (
         <div className="flex items-center gap-3">
             <span className="shrink-0 text-sm font-semibold text-tertiary">{titulo}</span>
-            {valor && <span className="shrink-0 text-sm font-bold text-primary tabular-nums">{valor}</span>}
             <span className="flex-1 border-t border-dashed border-secondary" aria-hidden="true" />
             <Button size="sm" color="link-color" onClick={onLimpar}>
                 Limpar tudo
@@ -529,9 +784,16 @@ export function SelecaoEAtribuicao() {
                     <SecaoHeader titulo="Ingressos" onLimpar={limparIngressos} />
                     <ul className="flex flex-col gap-4">
                         {ingressosCart.map(([key, g]) => (
-                            <CartGroupRow key={key} grupo={g} onInc={() => adicionarUnidade(key)} onDec={() => removerUnidade(key)} />
+                            <CartGroupRow key={key} chave={key} grupo={g} onInc={() => adicionarUnidade(key)} onDec={() => removerUnidade(key)} />
                         ))}
                     </ul>
+                    {/* O recorte que o pedido original queria: quantas meias vão no carrinho. */}
+                    {meiasNoPedido > 0 && (
+                        <p className="text-sm text-tertiary">
+                            {meiasNoPedido} {meiasNoPedido === 1 ? "meia-entrada" : "meias-entrada"} neste pedido. Leve o documento comprobatório na
+                            entrada.
+                        </p>
+                    )}
                 </section>
             )}
             {produtosCart.length > 0 && (
@@ -542,37 +804,65 @@ export function SelecaoEAtribuicao() {
                             const [, id, size] = key.split(":");
                             const produto = config.produtos.find((p) => p.id === id);
                             return (
-                                <ProdutoResumoRow
+                                <CartGroupRow
                                     key={key}
-                                    nome={g.nome}
-                                    sub={g.sub}
-                                    preco={g.precoUnit}
+                                    chave={key}
+                                    grupo={g}
                                     imagem={produto?.imagem}
-                                    qtd={g.qtd}
-                                    onSetQtd={(n) => produto && setProdQtd(produto, size ?? null, n)}
+                                    onInc={() => produto && setProdQtd(produto, size ?? null, g.qtd + 1)}
+                                    onDec={() => produto && setProdQtd(produto, size ?? null, g.qtd - 1)}
                                 />
                             );
                         })}
                     </ul>
+                    {/* A ausência de taxa é discriminada por seção, não repetida em cada linha. */}
+                    <p className="text-sm text-tertiary">Produtos não têm {taxa.nome.toLowerCase()}.</p>
                 </section>
             )}
         </>
     );
 
-    const resumoCard = (
-        <div className="hidden max-h-[660px] flex-col rounded-xl bg-primary ring-1 ring-border-secondary lg:flex">
-            <header className="shrink-0 border-b border-secondary px-4 py-3.5">
+    /**
+     * Miolo do resumo. Fonte única do card lateral (atribuição e produtos) e do
+     * verso do cartaz: o layout sem mapa tinha uma cópia que já havia perdido o
+     * scroll interno e o teto de altura.
+     */
+    const resumoInterno = (
+        <>
+            <header className="flex shrink-0 items-baseline justify-between gap-3 border-b border-secondary px-4 py-3.5">
                 <h3 className="text-sm font-semibold text-primary">Resumo da compra</h3>
+                {totalItens > 0 && (
+                    <span className="text-sm text-tertiary tabular-nums">
+                        {totalItens} {totalItens === 1 ? "item" : "itens"}
+                    </span>
+                )}
             </header>
-            <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-4">{resumoSecoes}</div>
-            {totalBar}
-        </div>
+            <div ref={resumoCorpoRef} className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-4">
+                {resumoSecoes}
+            </div>
+            <div className="shrink-0">{totalBar}</div>
+        </>
+    );
+
+    /*
+      Mesma caixa 3:4 do cartaz que vira na seleção (360 × 480 na coluna), e não
+      `max-h`, que fazia o card crescer e encolher com o carrinho e mudar de
+      tamanho na troca de etapa. O miolo já rola por dentro.
+    */
+    const resumoCard = (
+        <div className="hidden aspect-[3/4] flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary lg:flex">{resumoInterno}</div>
     );
 
     const progresso = unidades.length > 0 ? Math.round((unidadesProntas / unidades.length) * 100) : 0;
+    /**
+     * Mesma caixa da seleção, para a troca de etapa não deslocar a página.
+     * Com mapa a seleção é full-bleed (grid 1fr + 640px), sem mapa ela são duas
+     * colunas de 640 e 360 centralizadas.
+     */
+    const colunaEtapa = config.mapa ? "lg:flex-1" : "lg:w-[640px]";
     const atribuicaoLayout = (
-        <div className="mx-auto flex w-full max-w-[1446px] flex-col gap-6 lg:flex-row lg:justify-center">
-            <div className="flex w-full flex-col gap-8 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary lg:w-[1062px]">
+        <div className="mx-auto flex w-full flex-col gap-6 lg:flex-row lg:justify-center">
+            <div className={cx("flex w-full flex-col gap-8 px-4 md:px-0", colunaEtapa)}>
                 <h2 className="text-lg font-bold text-primary">{unidades.length > 1 ? "Para quem são essas inscrições?" : "Para quem é essa inscrição?"}</h2>
 
                 {/* Acessos à página de informações da meia-entrada (âncoras) */}
@@ -586,16 +876,21 @@ export function SelecaoEAtribuicao() {
                         ].map((a) => {
                             const Icon = a.icon;
                             return (
-                                <button
-                                    key={a.secao}
-                                    type="button"
-                                    onClick={() => navigate(`/marketplace/meia-entrada?secao=${a.secao}`)}
+                                // Âncora de verdade, não `navigate`: abre em outra aba, preserva o
+                                // carrinho desta e aceita clique do meio e cmd+clique.
+                                // `key` pelo rótulo: duas entradas apontam para a mesma seção.
+                                <a
+                                    key={a.label}
+                                    href={`/marketplace/meia-entrada?secao=${a.secao}`}
+                                    target="_blank"
+                                    rel="noreferrer"
                                     className="flex items-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-left ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
                                 >
                                     <Icon className="size-4 shrink-0 text-fg-quaternary" />
                                     <span className="flex-1 text-sm font-medium text-primary">{a.label}</span>
-                                    <ChevronRight className="size-4 shrink-0 text-fg-quaternary" />
-                                </button>
+                                    {/* Seta externa no lugar do chevron: o chevron prometia navegar aqui. */}
+                                    <LinkExternal01 className="size-4 shrink-0 text-fg-quaternary" />
+                                </a>
                             );
                         })}
                     </div>
@@ -648,30 +943,30 @@ export function SelecaoEAtribuicao() {
                 {config.mapa ? (
                     <img src={config.mapa} alt="Mapa do local" className="h-full w-full object-cover" />
                 ) : (
-                    config.capa && <img src={config.capa} alt="Capa do evento" className="h-full w-full object-cover" />
+                    <BannerEvento capa={config.capa} nome={config.nome} />
                 )}
             </div>
             <div className="flex w-full flex-col gap-4 lg:h-full lg:min-h-0 lg:max-w-[640px]">
                 {cupomBlock}
-                <div className="flex flex-col overflow-clip bg-primary md:rounded-2xl md:ring-1 md:ring-border-secondary lg:min-h-0 lg:flex-1">
-                    <div className="flex flex-col px-4 pt-4 pb-4 md:px-5 md:pt-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1">
+                    <div className="flex flex-col px-4 md:px-0 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
                         {dataHeader}
                         {conteudo}
                     </div>
-                    {totalItens > 0 && <div className="hidden lg:block">{totalBar}</div>}
+                    {totalItens > 0 && <div className="hidden lg:block">{barraTotal("desktop", true)}</div>}
                 </div>
             </div>
         </div>
     );
 
     const produtosLayout = (
-        <div className="mx-auto flex w-full max-w-[1446px] flex-col gap-6 lg:flex-row lg:justify-center">
-            <div className="flex w-full flex-col gap-4 bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary lg:w-[1062px]">
+        <div className="mx-auto flex w-full flex-col gap-6 lg:flex-row lg:justify-center">
+            <div className={cx("flex w-full flex-col gap-4 px-4 md:px-0", colunaEtapa)}>
                 <div className="flex flex-col gap-0.5">
                     <h2 className="text-xl font-bold text-primary">Leve mais do que o ingresso</h2>
                     <p className="text-sm text-tertiary">Compre online e retire no dia do evento.</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+                <div className={cx("grid grid-cols-2 gap-4 lg:grid-cols-3", config.mapa && "xl:grid-cols-4")}>
                     {config.produtos.map((p) => (
                         <ProdutoCard key={p.id} produto={p} qtd={prodQtd(p.id)} onAbrirVariacao={() => setVariacaoProduto(p)} onSetQtd={(n) => setProdQtd(p, null, n)} />
                     ))}
@@ -716,57 +1011,39 @@ export function SelecaoEAtribuicao() {
 
                     <div className="flex w-full flex-col gap-4 lg:h-full lg:min-h-0 lg:max-w-[640px]">
                         {cupomBlock}
-                        <div className="flex flex-col overflow-clip bg-primary md:rounded-2xl md:ring-1 md:ring-border-secondary lg:min-h-0 lg:flex-1">
-                            <div className="flex flex-col p-4 md:p-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                        <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1">
+                            <div className="flex flex-col px-4 md:px-0 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
                                 {abas}
                                 {conteudo}
                             </div>
-                            {totalItens > 0 && <div className="hidden lg:block">{totalBar}</div>}
+                            {totalItens > 0 && <div className="hidden lg:block">{barraTotal("desktop", true)}</div>}
                         </div>
                     </div>
                 </div>
             ) : (
                 /* Layout sem mapa: seleção à esquerda, capa + cupom + resumo à direita */
                 <div className="flex w-full flex-col gap-6 lg:flex-row lg:justify-center">
-                    <div className="flex w-full flex-col bg-primary p-4 md:rounded-2xl md:p-5 md:ring-1 md:ring-border-secondary lg:w-[640px]">
+                    <div className="flex w-full flex-col px-4 md:px-0 lg:w-[640px]">
                         {abas}
                         {conteudo}
                     </div>
 
-                    <div className="flex w-full flex-col gap-4 lg:w-[360px] lg:shrink-0">
-                        {config.capa && <img src={config.capa} alt="Capa do evento" className="w-full rounded-xl object-cover ring-1 ring-border-secondary" />}
+                    {/* `self-start` é o que faz o sticky funcionar: sem ele o item do
+                        flex estica até a altura da linha e nunca tem para onde grudar.
+                        Só em lg, porque no mobile a coluna é uma pilha normal. */}
+                    <div className="flex w-full flex-col gap-4 lg:sticky lg:top-4 lg:w-[360px] lg:shrink-0 lg:self-start">
                         {cupomBlock}
-
-                        {grupos.length > 0 && (
-                            <div className="hidden flex-col rounded-xl bg-primary ring-1 ring-border-secondary lg:flex">
-                                <header className="border-b border-secondary px-4 py-3.5">
-                                    <h3 className="text-sm font-semibold text-primary">Resumo da compra</h3>
-                                </header>
-
-                                <div className="flex flex-col gap-4 px-4 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <span className="shrink-0 text-sm font-semibold text-tertiary">Ingressos</span>
-                                        <span className="flex-1 border-t border-dashed border-secondary" aria-hidden="true" />
-                                        <Button size="sm" color="link-color" onClick={() => setCart({})}>
-                                            Limpar tudo
-                                        </Button>
-                                    </div>
-                                    <ul className="flex flex-col gap-4">
-                                        {grupos.map(([key, g]) => (
-                                            <CartGroupRow key={key} grupo={g} onInc={() => adicionarUnidade(key)} onDec={() => removerUnidade(key)} />
-                                        ))}
-                                    </ul>
-                                </div>
-
-                                {totalBar}
-                            </div>
-                        )}
+                        <CartazComVerso
+                            virado={grupos.length > 0}
+                            frente={<BannerEvento capa={config.capa} nome={config.nome} />}
+                            verso={resumoInterno}
+                        />
                     </div>
                 </div>
             )}
 
             {/* Resumo fixo no rodapé — apenas mobile, expansível. Em portal no body para ir de ponta a ponta. */}
-            {totalItens > 0 && <div className="h-36 lg:hidden" aria-hidden="true" />}
+            {totalItens > 0 && <div className="lg:hidden" style={{ height: rodapeAltura }} aria-hidden="true" />}
             {createPortal(
                 <>
                     <AnimatePresence>
@@ -789,6 +1066,7 @@ export function SelecaoEAtribuicao() {
                                 animate={{ y: 0 }}
                                 exit={{ y: "100%" }}
                                 transition={{ type: "spring", stiffness: 320, damping: 34 }}
+                                ref={rodapeRef}
                                 className="fixed inset-x-0 bottom-0 z-40 flex flex-col rounded-t-2xl bg-primary shadow-lg ring-1 ring-border-secondary lg:hidden"
                                 style={accentVars(config.corDestaque || undefined)}
                             >
@@ -797,7 +1075,12 @@ export function SelecaoEAtribuicao() {
                             onClick={() => setResumoAberto((o) => !o)}
                             className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-3"
                         >
-                            <span className="text-sm font-semibold text-primary">Resumo da compra</span>
+                            <span className="flex items-baseline gap-2 text-sm font-semibold text-primary">
+                                Resumo da compra
+                                <span className="text-sm font-normal text-tertiary tabular-nums">
+                                    {totalItens} {totalItens === 1 ? "item" : "itens"}
+                                </span>
+                            </span>
                             <ChevronDown className={cx("size-5 text-fg-quaternary transition-transform", resumoAberto && "rotate-180")} />
                         </button>
 
@@ -815,19 +1098,9 @@ export function SelecaoEAtribuicao() {
                             )}
                         </AnimatePresence>
 
-                        <div className="flex items-center justify-between gap-3 border-t border-secondary px-4 pt-3 pb-9">
-                            <div className="flex flex-col">
-                                <span className="text-md font-bold text-primary tabular-nums">
-                                    {brl(totalValor)} <span className="text-sm font-normal text-tertiary">+ taxas</span>
-                                </span>
-                                <span className="text-sm text-tertiary tabular-nums">
-                                    {totalItens} {totalItens === 1 ? "item" : "itens"}
-                                </span>
-                            </div>
-                            <Button size="lg" color="primary" isDisabled={continuarDisabled} onClick={avancar}>
-                                Continuar
-                            </Button>
-                        </div>
+                        {/* Total e composição ficam FORA do accordion: com o resumo fechado,
+                            que é o estado inicial, a tela já precisa mostrar o valor. */}
+                        {barraTotal("mobile")}
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -843,8 +1116,15 @@ export function SelecaoEAtribuicao() {
                 onClose={() => setVariacaoProduto(null)}
             />
             <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} logoEvento={config.logo || undefined} onSucesso={aoLogar} />
-            <SelecaoItensModal combo={comboSelecao} onClose={() => setComboSelecao(null)} onConfirmar={confirmarSelecao} />
+            <SelecaoItensModal combo={comboSelecao} taxa={taxa} onClose={() => setComboSelecao(null)} onConfirmar={confirmarSelecao} />
             <CupomModal isOpen={cupomOpen} onClose={() => setCupomOpen(false)} onAplicar={aplicarCupom} />
+            <TaxaSlideout isOpen={taxaOpen} onClose={() => setTaxaOpen(false)} taxa={taxa} exemplo={exemploProporcionalidade} />
+            <MeiaSlideout
+                isOpen={meiaOpen}
+                onClose={() => setMeiaOpen(false)}
+                quantitativo={config.quantitativoPorGrupo}
+                percentualVendido={config.percentualMeiaVendido}
+            />
             <TermosModal isOpen={termosOpen} termos={config.termos} onClose={() => setTermosOpen(false)} onConfirmar={aceitarTermos} />
 
             {(() => {
@@ -922,7 +1202,7 @@ function AtribuicaoCard({
     const mostrarQuestionario = selecionado && perguntas.length > 0 && (tipo === "meu" || confirmado);
 
     return (
-        <motion.div layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex flex-col gap-4 rounded-xl p-4 ring-1 ring-border-secondary">
+        <motion.div layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
             <div className="flex items-start gap-3">
                 {unidade.imagem ? (
                     <img src={unidade.imagem} alt="" aria-hidden="true" className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-border-secondary" />
@@ -1121,7 +1401,7 @@ function AtribuicaoAccordionCard({
                 </button>
             </div>
 
-            <div className="overflow-hidden rounded-xl ring-1 ring-border-secondary">
+            <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
                 {opcoes.map((o, i) => {
                     const selecionado = tipo === o.id;
                     const expandida = aberta === o.id;
@@ -1258,24 +1538,6 @@ function ResumoQtd({ qtd, onInc, onDec }: { qtd: number; onInc: () => void; onDe
     );
 }
 
-function ProdutoResumoRow({ nome, sub, preco, imagem, qtd, onSetQtd }: { nome: string; sub?: string; preco: number; imagem?: string; qtd: number; onSetQtd: (n: number) => void }) {
-    return (
-        <li className="flex items-center gap-3">
-            {imagem ? (
-                <img src={imagem} alt="" aria-hidden="true" className="size-11 shrink-0 rounded-md object-cover ring-1 ring-border-secondary" />
-            ) : (
-                <span className="size-11 shrink-0 rounded-md bg-secondary ring-1 ring-border-secondary" />
-            )}
-            <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-medium text-primary">{nome}</span>
-                {sub && <span className="truncate text-sm text-tertiary">{sub}</span>}
-                <span className="text-sm font-bold text-primary">{brl(preco)}</span>
-            </div>
-            <ResumoQtd qtd={qtd} onInc={() => onSetQtd(qtd + 1)} onDec={() => onSetQtd(qtd - 1)} />
-        </li>
-    );
-}
-
 function ProdutoCard({ produto, qtd, onAbrirVariacao, onSetQtd }: { produto: Produto; qtd: number; onAbrirVariacao: () => void; onSetQtd: (n: number) => void }) {
     const temVar = (produto.variacoes?.length ?? 0) > 0;
     const [verMais, setVerMais] = useState(false);
@@ -1298,7 +1560,7 @@ function ProdutoCard({ produto, qtd, onAbrirVariacao, onSetQtd }: { produto: Pro
                         </button>
                     </div>
                 )}
-                {produto.preco != null && <span className="mt-0.5 text-sm font-bold text-primary">{brl(produto.preco)}</span>}
+                {produto.preco != null && <PrecoBloco preco={precoSemTaxa(produto.preco)} className="mt-0.5" />}
                 <div className="mt-auto pt-2">
                     {temVar ? (
                         <Button size="lg" color="secondary" iconLeading={Plus} className="w-full" onClick={onAbrirVariacao}>
@@ -1338,6 +1600,7 @@ function VariacaoModal({
     if (!produto) return null;
     const variacoes = produto.variacoes ?? [];
     const escolhidas = variacoes.filter((v) => getQtd(v) > 0);
+    const totalEscolhido = escolhidas.reduce((acc, v) => acc + getQtd(v) * (produto.preco ?? 0), 0);
 
     return (
         <ModalOverlay isOpen={produto !== null} onOpenChange={(open) => !open && onClose()} isDismissable>
@@ -1347,9 +1610,9 @@ function VariacaoModal({
                         {produto.imagem && <img src={produto.imagem} alt="" className="aspect-square w-full shrink-0 object-cover md:max-h-[440px] md:w-1/2" />}
                         <div className="flex min-h-0 flex-1 flex-col">
                             <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-2">
-                                <div className="flex flex-col gap-0.5">
+                                <div className="flex flex-col gap-1">
                                     <h2 className="text-lg font-semibold text-primary">{produto.nome}</h2>
-                                    {produto.preco != null && <p className="text-md font-bold text-primary">{brl(produto.preco)}</p>}
+                                    {produto.preco != null && <PrecoBloco preco={precoSemTaxa(produto.preco)} />}
                                 </div>
                                 <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
                             </div>
@@ -1392,7 +1655,9 @@ function VariacaoModal({
                                 )}
                             </div>
 
-                            <div className="flex shrink-0 justify-end border-t border-secondary px-6 py-4">
+                            {/* O modal somava quantidades sem exibir valor nenhum. */}
+                            <div className="flex shrink-0 items-end justify-between gap-3 border-t border-secondary px-6 py-4">
+                                <PrecoBloco preco={precoSemTaxa(totalEscolhido)} rotulo="Total selecionado" />
                                 <Button size="md" color="primary" onClick={onClose}>
                                     Concluir Seleção
                                 </Button>
@@ -1515,29 +1780,30 @@ function PerguntasModal({
 /*  Subcomponentes                                                    */
 /* ------------------------------------------------------------------ */
 
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={cx(
-                "flex h-[72px] min-w-[96px] flex-col items-center justify-center rounded-xl px-3 transition duration-100 ease-linear",
-                active ? "bg-brand-primary ring-2 ring-brand" : "ring-1 ring-border-secondary hover:bg-primary_hover",
-            )}
-        >
-            {children}
-        </button>
-    );
-}
-
-function Stepper({ qtd, canDec = true, canInc = true, onInc, onDec }: { qtd: number; canDec?: boolean; canInc?: boolean; onInc: () => void; onDec: () => void }) {
+function Stepper({
+    qtd,
+    canDec = true,
+    canInc = true,
+    rotulo,
+    onInc,
+    onDec,
+}: {
+    qtd: number;
+    canDec?: boolean;
+    canInc?: boolean;
+    /** Nome do item. Sem ele, um grupo de 4 ingressos anuncia 4 pares idênticos. */
+    rotulo?: string;
+    onInc: () => void;
+    onDec: () => void;
+}) {
+    const sufixo = rotulo ? ` quantidade de ${rotulo}` : "";
     return (
         <div className="flex shrink-0 items-center gap-2">
             <button
                 type="button"
                 onClick={onDec}
                 disabled={qtd === 0 || !canDec}
-                aria-label="Diminuir"
+                aria-label={`Diminuir${sufixo}`}
                 className="flex size-9 items-center justify-center rounded-md bg-brand-solid text-white transition hover:bg-brand-solid_hover disabled:cursor-not-allowed disabled:bg-secondary disabled:text-fg-quaternary"
             >
                 <Minus className="size-4" />
@@ -1547,7 +1813,7 @@ function Stepper({ qtd, canDec = true, canInc = true, onInc, onDec }: { qtd: num
                 type="button"
                 onClick={onInc}
                 disabled={!canInc}
-                aria-label="Aumentar"
+                aria-label={`Aumentar${sufixo}`}
                 className="flex size-9 items-center justify-center rounded-md bg-brand-solid text-white transition hover:bg-brand-solid_hover disabled:cursor-not-allowed disabled:bg-secondary disabled:text-fg-quaternary"
             >
                 <Plus className="size-4" />
@@ -1559,6 +1825,7 @@ function Stepper({ qtd, canDec = true, canInc = true, onInc, onDec }: { qtd: num
 function ComboFixoView({
     combo,
     qtd,
+    taxa,
     aberto,
     onToggleDetalhes,
     onInc,
@@ -1566,12 +1833,17 @@ function ComboFixoView({
 }: {
     combo: ComboFixo;
     qtd: number;
+    taxa: TaxaServico;
     aberto: boolean;
     onToggleDetalhes: () => void;
     onInc: () => void;
     onDec: () => void;
 }) {
     const datas = combo.inclui.map((i) => i.sub).filter(Boolean) as string[];
+    const preco = precoComTaxa(combo.preco, taxa.aliquota);
+    // Rateio do preço do pacote, com o resíduo na última linha: a lista sempre
+    // fecha com o total impresso logo abaixo dela.
+    const partes = ratear(combo.preco, combo.inclui.map((i) => i.qtd));
     return (
         <div className="flex flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">
             <div className="flex items-start justify-between gap-4 px-4 py-4">
@@ -1588,25 +1860,37 @@ function ComboFixoView({
                     )}
                     {combo.lote && <span className="text-sm text-tertiary">{combo.lote}</span>}
                     {combo.descricao && <p className="text-sm text-tertiary">{combo.descricao}</p>}
-                    <span className="text-md font-bold text-primary">{brl(combo.preco)}</span>
+                    <PrecoBloco preco={preco} tamanho="lg" forma="completa" base="combo" className="mt-1" />
                 </div>
-                <Stepper qtd={qtd} onInc={onInc} onDec={onDec} />
+                <Stepper qtd={qtd} rotulo={combo.nome} onInc={onInc} onDec={onDec} />
             </div>
 
-            {aberto &&
-                combo.inclui.map((i) => (
-                    <div key={i.id} className="flex items-start gap-3 border-t border-secondary px-4 py-3">
-                        <Ticket01 className="mt-0.5 size-4 shrink-0 text-fg-brand-primary" />
-                        <div className="flex min-w-0 flex-1 flex-col gap-1">
-                            <span className="text-sm font-semibold text-primary">{i.titulo}</span>
-                            {i.sub && <span className="text-sm text-tertiary">{i.sub}</span>}
-                            {i.descricao && <p className="text-sm text-tertiary">{i.descricao}</p>}
+            {aberto && (
+                <div className="border-t border-secondary">
+                    {combo.inclui.map((i, idx) => (
+                        <div key={i.id} className="flex items-start gap-3 px-4 py-3">
+                            <Ticket01 className="mt-0.5 size-4 shrink-0 text-fg-brand-primary" />
+                            <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                <span className="text-sm font-semibold text-primary">{i.titulo}</span>
+                                {i.sub && <span className="text-sm text-tertiary">{i.sub}</span>}
+                                {i.descricao && <p className="text-sm text-tertiary">{i.descricao}</p>}
+                            </div>
+                            <span className="shrink-0 text-sm text-primary tabular-nums">{brl(partes[idx])}</span>
                         </div>
-                        <span className="shrink-0 text-sm text-tertiary">
-                            {i.qtd} {i.qtd === 1 ? "item" : "itens"}
-                        </span>
+                    ))}
+                    {/* Taxa e total formam um par, sem régua entre eles: ratear a taxa por
+                        dia exporia 19,998% numa superfície cujo propósito é justamente
+                        demonstrar proporcionalidade. */}
+                    <div className="flex items-center justify-between gap-3 px-4 pt-3 pb-1">
+                        <span className="text-sm text-secondary">{taxa.nome} do combo</span>
+                        <span className="shrink-0 text-sm text-primary tabular-nums">{brl(preco.taxa)}</span>
                     </div>
-                ))}
+                    <div className="flex items-center justify-between gap-3 px-4 pt-1 pb-3">
+                        <span className="text-sm font-bold text-primary">Total do combo</span>
+                        <span className="shrink-0 text-sm font-bold text-primary tabular-nums">{brl(preco.total)}</span>
+                    </div>
+                </div>
+            )}
 
             {combo.inclui.length > 0 && (
                 <button type="button" onClick={onToggleDetalhes} className="flex items-center justify-between gap-2 border-t border-secondary px-4 py-3 text-sm font-medium text-secondary transition hover:bg-primary_hover">
@@ -1618,18 +1902,26 @@ function ComboFixoView({
     );
 }
 
-function ComboDinamicoCard({ combo, cupomAplicado, onSelecionar }: { combo: ComboDinamico; cupomAplicado: boolean; onSelecionar: () => void }) {
+function ComboDinamicoCard({
+    combo,
+    preco,
+    variavel,
+    taxa,
+    onSelecionar,
+}: {
+    combo: ComboDinamico;
+    preco: Preco;
+    variavel: boolean;
+    taxa: TaxaServico;
+    onSelecionar: () => void;
+}) {
     return (
         <div className="flex items-start justify-between gap-4 rounded-xl bg-primary px-4 py-4 ring-1 ring-border-secondary">
             <div className="flex min-w-0 flex-col gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-primary">{combo.nome}</span>
-                    {cupomAplicado && combo.desconto && (
-                        <Badge size="sm" color="success" type="pill-color">
-                            {combo.desconto}
-                        </Badge>
-                    )}
-                </div>
+                {/* O badge de desconto saiu: `totalValor` nunca consultou o cupom, então
+                    anunciar "10% OFF" ao lado de um total ostensivo que não desconta nada
+                    seria pior do que não anunciar. Volta quando o cupom entrar no cálculo. */}
+                <span className="text-sm font-bold text-primary">{combo.nome}</span>
                 <div className="flex flex-wrap items-center gap-2">
                     {combo.dataLabel && <span className="rounded-md bg-secondary px-2 py-0.5 text-sm font-medium text-tertiary">{combo.dataLabel}</span>}
                     {combo.sessoesLabel && <span className="rounded-md bg-secondary px-2 py-0.5 text-sm font-medium text-tertiary">{combo.sessoesLabel}</span>}
@@ -1640,7 +1932,8 @@ function ComboDinamicoCard({ combo, cupomAplicado, onSelecionar }: { combo: Comb
                     </span>
                 ))}
                 {combo.descricao && <p className="text-sm text-tertiary">{combo.descricao}</p>}
-                {combo.exibirPreco && combo.preco != null && <span className="text-md font-bold text-primary">{brl(combo.preco)}</span>}
+                <PrecoBloco preco={preco} tamanho="lg" forma="completa" base="combo" prefixo={variavel ? "A partir de" : undefined} className="mt-1" />
+                {variavel && <p className="text-sm text-tertiary">Itens opcionais aumentam o valor. Você vê o total ao montar.</p>}
             </div>
             <Button size="md" color="secondary" className="shrink-0" onClick={onSelecionar}>
                 Selecionar
@@ -1649,7 +1942,25 @@ function ComboDinamicoCard({ combo, cupomAplicado, onSelecionar }: { combo: Comb
     );
 }
 
-function ItensPorData({ data, itens, cart, onInc, onDec }: { data: DataEvento; itens: Item[]; cart: Record<string, CartGroup>; onInc: (it: Item) => void; onDec: (it: Item) => void }) {
+function ItensPorData({
+    data,
+    itens,
+    cart,
+    taxa,
+    quantitativo,
+    onInc,
+    onDec,
+    onAbrirMeia,
+}: {
+    data: DataEvento;
+    itens: Item[];
+    cart: Record<string, CartGroup>;
+    taxa: TaxaServico;
+    quantitativo?: Record<string, Quantitativo>;
+    onInc: (it: Item) => void;
+    onDec: (it: Item) => void;
+    onAbrirMeia: () => void;
+}) {
     // Agrupa por grupo (mantendo a ordem). Só ingressos com grupo aparecem;
     // grupos separados por vírgula colocam o ingresso em vários grupos.
     const grupos: { nome: string; itens: Item[] }[] = [];
@@ -1681,14 +1992,25 @@ function ItensPorData({ data, itens, cart, onInc, onDec }: { data: DataEvento; i
         <div className="mt-6 flex flex-col gap-4">
             {limiteAtingido && (
                 <p className="text-sm text-tertiary">
-                    Limite de {data.limite} {data.limite === 1 ? "ingresso" : "ingressos"} por data atingido.
+                    Limite de {data.limite} {data.limite === 1 ? "ingresso" : "ingressos"} por data atingido. Não é limite de meia-entrada.
                 </p>
             )}
             {grupos.map((g) => (
-                <GrupoIngressos key={g.nome} nome={g.nome}>
+                <GrupoIngressos key={g.nome} nome={g.nome} quantitativo={quantitativo?.[g.nome]}>
                     {g.itens.map((it) => {
                         const qtd = cart[`data:${data.id}:${it.id}`]?.qtd ?? 0;
-                        return <IngressoRow key={it.id} it={it} qtd={qtd} canInc={!limiteAtingido} onInc={() => onInc(it)} onDec={() => onDec(it)} />;
+                        return (
+                            <IngressoRow
+                                key={it.id}
+                                it={it}
+                                qtd={qtd}
+                                taxa={taxa}
+                                canInc={!limiteAtingido}
+                                onInc={() => onInc(it)}
+                                onDec={() => onDec(it)}
+                                onAbrirMeia={onAbrirMeia}
+                            />
+                        );
                     })}
                 </GrupoIngressos>
             ))}
@@ -1696,53 +2018,152 @@ function ItensPorData({ data, itens, cart, onInc, onDec }: { data: DataEvento; i
     );
 }
 
-/** Accordion de um grupo de ingressos (cabeçalho com ícone + nome + chevron). */
-function GrupoIngressos({ nome, children }: { nome: string; children: React.ReactNode }) {
-    const [aberto, setAberto] = useState(true);
+/**
+ * Accordion de um grupo de ingressos.
+ *
+ * O grupo é moldura, não protagonista: com nomes reais em caixa alta
+ * ("ARQUIBANCADA SUPERIOR COBERTA" sobre "INTEIRA") dois títulos do mesmo peso
+ * disputavam a mesma linha de leitura. O agrupamento passa a ser sinalizado por
+ * fundo e espaço, e o nome do grupo recua para rótulo.
+ */
+function GrupoIngressos({ nome, quantitativo, children }: { nome: string; quantitativo?: Quantitativo; children: React.ReactNode }) {
+    // Fechado por padrão. A troca de aba remonta a árvore (key no AnimatePresence),
+    // então o estado também volta ao fechado a cada data ou combo.
+    const [aberto, setAberto] = useState(false);
     return (
-        <div className="overflow-clip rounded-2xl ring-1 ring-border-secondary">
-            <button type="button" onClick={() => setAberto((v) => !v)} aria-expanded={aberto} className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left transition hover:bg-primary_hover">
-                <QrCode01 className="size-5 shrink-0 text-fg-brand-primary" />
-                <span className="flex-1 text-sm font-bold text-primary">{nome}</span>
-                <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition-transform", aberto && "rotate-180")} />
-            </button>
-            {aberto && <div className="border-t border-secondary px-4">{children}</div>}
-        </div>
-    );
-}
-
-/** Linha de ingresso: nome → lote → descrição → preço + stepper. */
-function IngressoRow({ it, qtd, canInc = true, onInc, onDec }: { it: Item; qtd: number; canInc?: boolean; onInc: () => void; onDec: () => void }) {
-    return (
-        <div className="flex items-center gap-4 border-b border-secondary py-4 last:border-b-0">
-            {it.imagem && <img src={it.imagem} alt="" aria-hidden="true" className="size-20 shrink-0 self-start rounded-lg object-cover ring-1 ring-border-secondary" />}
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <span className="text-sm font-bold text-primary">{it.nome}</span>
-                {it.lote && <span className="text-sm text-tertiary">{it.lote}</span>}
-                {it.descricao && (
-                    <div
-                        className="text-sm text-tertiary [&_b]:font-semibold [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-4"
-                        dangerouslySetInnerHTML={{ __html: it.descricao }}
-                    />
+        <div className="overflow-clip rounded-2xl bg-primary ring-1 ring-border-secondary">
+            {/*
+              O header inteiro é o controle, então o hover cobre as duas linhas.
+              O quantitativo do art. 11 fica dentro do <button> e entra no nome
+              acessível: verboso, mas é informação que o leitor de tela precisa
+              ter, e deixá-la fora criaria uma área com hover que não clica.
+              Spans e não <p>/<div>, que são inválidos dentro de <button>.
+            */}
+            <button
+                type="button"
+                onClick={() => setAberto((v) => !v)}
+                aria-expanded={aberto}
+                className="flex w-full flex-col gap-0.5 border-b border-secondary bg-primary px-4 py-3 text-left transition duration-100 ease-linear hover:bg-primary_hover"
+            >
+                <span className="flex w-full items-center gap-2.5">
+                    <QrCode01 className="size-4 shrink-0 text-fg-quaternary" />
+                    <span className="flex-1 text-sm font-semibold tracking-wide text-secondary">{nome}</span>
+                    <ChevronDown className={cx("size-5 shrink-0 text-fg-quaternary transition-transform", aberto && "rotate-180")} />
+                </span>
+                {quantitativo && quantitativo.ofertados > 0 && (
+                    <span className="pl-6.5 text-sm text-quaternary tabular-nums">
+                        {quantitativo.ofertados.toLocaleString("pt-BR")} ingressos
+                        {quantitativo.ofertadosMeia > 0 && `, ${quantitativo.ofertadosMeia.toLocaleString("pt-BR")} meia-entrada`}
+                    </span>
                 )}
-                {it.preco != null && <span className="text-sm font-bold text-primary">{brl(it.preco)}</span>}
+            </button>
+            {aberto && <div className="divide-y divide-secondary">{children}</div>}
+        </div>
+    );
+}
+
+/**
+ * Linha de ingresso em duas faixas: identificação + stepper em cima, bloco de
+ * preço em largura total embaixo.
+ *
+ * A coluna de texto da faixa de cima mede 177px em uma tela de 375px (91px com
+ * imagem), onde nenhuma legenda de preço cabe. Separar as faixas devolve a
+ * largura inteira ao preço e é pré-requisito, não refinamento.
+ */
+function IngressoRow({
+    it,
+    qtd,
+    taxa,
+    canInc = true,
+    onInc,
+    onDec,
+    onAbrirMeia,
+}: {
+    it: Item;
+    qtd: number;
+    taxa: TaxaServico;
+    canInc?: boolean;
+    onInc: () => void;
+    onDec: () => void;
+    onAbrirMeia: () => void;
+}) {
+    const preco = precoComTaxa(it.preco ?? 0, taxa.aliquota);
+    const ehMeia = it.beneficio === "meia-entrada";
+    const esgotado = !!it.cotaEsgotada;
+    const rotulo = [it.grupo, it.nome].filter(Boolean).join(" ");
+
+    return (
+        <div
+            role="group"
+            aria-label={rotulo}
+            className={cx("flex flex-col px-4 py-4", esgotado && "opacity-50")}
+        >
+            {/* Faixa 1: identificação. Cresce livremente com nome em caixa alta e descrição longa. */}
+            <div className="flex items-start gap-4">
+                {it.imagem && <img src={it.imagem} alt="" aria-hidden="true" className="size-16 shrink-0 rounded-lg object-cover ring-1 ring-border-secondary" />}
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="text-md font-semibold text-primary">{it.nome}</span>
+                        {esgotado && (
+                            <Badge size="sm" color="gray" type="modern">
+                                Esgotado
+                            </Badge>
+                        )}
+                        {/* Ícone, não link: um terceiro alvo em texto competia com o stepper. */}
+                        {ehMeia && (
+                            <button
+                                type="button"
+                                onClick={onAbrirMeia}
+                                aria-label="Ver regras da meia-entrada"
+                                className="rounded-full text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary"
+                            >
+                                <HelpCircle className="size-4" />
+                            </button>
+                        )}
+                    </div>
+                    {it.lote && <span className="text-sm text-tertiary">{it.lote}</span>}
+                    {it.descricao && (
+                        <div
+                            className="text-sm leading-relaxed text-tertiary [&_b]:font-semibold [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-4"
+                            dangerouslySetInnerHTML={{ __html: it.descricao }}
+                        />
+                    )}
+                </div>
             </div>
-            <div className="self-end">
-                <Stepper qtd={qtd} canInc={canInc} onInc={onInc} onDec={onDec} />
+
+            {/* Faixa 2: preço e ação juntos. Antes o stepper ficava quatro linhas acima do
+                valor que ele controla, e com descrição longa a distância só crescia.
+
+                Sem régua aqui: um traço igual ao que separa os itens do grupo tornava
+                ambíguo onde um item termina. Um boundary, uma régua. A faixa se liga ao
+                item pela proximidade (12px contra 32px entre itens). */}
+            <div className="mt-3 flex items-end justify-between gap-4">
+                {it.preco != null ? <PrecoBloco preco={preco} tamanho="lg" /> : <span />}
+                <Stepper qtd={qtd} canInc={canInc && !esgotado} rotulo={rotulo} onInc={onInc} onDec={onDec} />
             </div>
         </div>
     );
 }
 
-function CartGroupRow({ grupo, onInc, onDec }: { grupo: CartGroup; onInc: () => void; onDec: () => void }) {
+/**
+ * Linha única do resumo, para ingresso, combo e produto.
+ * Antes havia duas (`CartGroupRow` imprimia subtotal, `ProdutoResumoRow`
+ * imprimia unitário), e a mesma camisa aparecia com dois valores dependendo de
+ * qual layout do resumo estava na tela.
+ */
+function CartGroupRow({ grupo, chave, imagem, onInc, onDec }: { grupo: CartGroup; chave?: string; imagem?: string; onInc: () => void; onDec: () => void }) {
+    // `truncate` cortava "ARQUIBANCADA SUPERIOR C…", que é justamente o que
+    // identifica o ingresso. Nome em caixa alta estoura 360px por definição.
+    // Grupo e data ficam em linhas distintas: juntos, o clamp comia a data.
     return (
-        <li className="flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-                <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-bold text-primary">{grupo.nome}</span>
-                    {grupo.lote && <span className="truncate text-sm text-tertiary">{grupo.lote}</span>}
-                    {grupo.sub && <span className="truncate text-sm text-tertiary">{grupo.sub}</span>}
-                    <span className="text-sm font-bold text-primary tabular-nums">{brl(grupo.precoUnit * grupo.qtd)}</span>
+        <li data-item={chave} className="flex flex-col gap-2">
+            <div className="flex items-start gap-3">
+                {imagem && <img src={imagem} alt="" aria-hidden="true" className="size-11 shrink-0 rounded-md object-cover ring-1 ring-border-secondary" />}
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="line-clamp-2 text-md font-semibold text-primary">{grupo.nome}</span>
+                    {grupo.lote && <span className="line-clamp-2 text-sm text-tertiary">{grupo.lote}</span>}
+                    {grupo.sub && <span className="text-sm text-quaternary">{grupo.sub}</span>}
+                    <PrecoBloco preco={grupo.preco} qtd={grupo.qtd} base={grupo.base} tamanho="sm" className="mt-1" />
                 </div>
                 <ResumoQtd qtd={grupo.qtd} onInc={onInc} onDec={onDec} />
             </div>
@@ -1751,15 +2172,90 @@ function CartGroupRow({ grupo, onInc, onDec }: { grupo: CartGroup; onInc: () => 
                     {grupo.sublines.map((sl, i) => (
                         <li key={i} className="flex items-start gap-2.5">
                             <span className="pt-0.5 text-sm text-tertiary tabular-nums">{sl.qtd}</span>
-                            <div className="flex min-w-0 flex-col">
+                            <div className="flex min-w-0 flex-1 flex-col">
                                 <span className="truncate text-sm font-medium text-secondary">{sl.nome}</span>
                                 {sl.sub && <span className="truncate text-sm text-tertiary">{sl.sub}</span>}
                             </div>
+                            {sl.valor != null && <span className="shrink-0 pt-0.5 text-sm text-tertiary tabular-nums">{brl(sl.valor)}</span>}
                         </li>
                     ))}
                 </ul>
             )}
         </li>
+    );
+}
+
+/**
+ * Capa do evento, com imagem padrão quando o produtor não configurou nenhuma.
+ *
+ * O fallback em tokens que existia antes lia como placeholder; um pôster real
+ * mostra a proporção e o peso visual que a caixa vai ter de verdade, que é o
+ * que importa num protótipo de layout.
+ */
+const CAPA_PADRAO = "https://kraken.ingresse.com/event/posters/108467/large/1790120499.9730182.jpg";
+
+function BannerEvento({ capa, nome }: { capa?: string; nome: string }) {
+    return <img src={capa || CAPA_PADRAO} alt={`Capa de ${nome}`} className="size-full object-cover" />;
+}
+
+/**
+ * Cartaz do evento com o resumo da compra no verso: ao entrar o primeiro item
+ * no carrinho a caixa vira, e ao esvaziar ela desvira.
+ *
+ * A virada é CSS, não `motion`. `motion` escreve `transform` inline, que não
+ * conhece breakpoint, e abaixo de lg não existe verso (lá o resumo é o rodapé
+ * fixo em portal): o cartaz giraria sozinho mostrando o nada. Com a variante
+ * `lg:` a virada só existe onde há verso, e `motion-reduce` desliga o
+ * movimento sem desligar a troca.
+ *
+ * Detalhes que quebram se forem mexidos:
+ * - `perspective` fica no PAI, nunca no elemento que gira, senão cada face
+ *   ganha o próprio ponto de fuga.
+ * - arredondamento e recorte vão NAS FACES. `overflow` diferente de `visible`
+ *   no elemento que gira achata o contexto 3D e mata o `preserve-3d`.
+ * - 500ms e não os 100ms da convenção do repo: aquela regra é para hover e
+ *   cor. Um giro de 180 graus em 100ms não é lido como giro, é lido como corte.
+ */
+function CartazComVerso({ virado, frente, verso }: { virado: boolean; frente: ReactNode; verso: ReactNode }) {
+    const versoRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const el = versoRef.current;
+        if (!el) return;
+        // `backface-visibility` esconde aos olhos, não ao teclado nem ao leitor
+        // de tela. React 18 não tem a prop `inert`, então vai por atributo.
+        if (virado) el.removeAttribute("inert");
+        else el.setAttribute("inert", "");
+    }, [virado]);
+
+    return (
+        <div className="[perspective:1600px]">
+            <div
+                className={cx(
+                    "relative aspect-[3/4] w-full transition-transform duration-500 ease-in-out [transform-style:preserve-3d] motion-reduce:transition-none",
+                    virado && "lg:[transform:rotateY(180deg)]",
+                )}
+            >
+                <div
+                    className={cx(
+                        "absolute inset-0 overflow-clip rounded-xl ring-1 ring-border-secondary [backface-visibility:hidden]",
+                        virado && "lg:pointer-events-none",
+                    )}
+                >
+                    {frente}
+                </div>
+                {/* Abaixo de lg o verso é display:none, então já sai do tab e do leitor. */}
+                <div
+                    ref={versoRef}
+                    className={cx(
+                        "absolute inset-0 hidden flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary [backface-visibility:hidden] [transform:rotateY(180deg)] lg:flex",
+                        !virado && "pointer-events-none",
+                    )}
+                >
+                    {verso}
+                </div>
+            </div>
+        </div>
     );
 }
 

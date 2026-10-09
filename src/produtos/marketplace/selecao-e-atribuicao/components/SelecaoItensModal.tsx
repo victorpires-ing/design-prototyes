@@ -5,7 +5,10 @@ import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/mod
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
-import type { ComboDinamicoView, ComboSessao, Item } from "../data/combos";
+import { precoExtraDoItem } from "../data/combos";
+import type { ComboDinamicoView, ComboSessao, Item, TaxaServico } from "../data/combos";
+import { brl, precoComTaxa, precoDoCombo } from "../utils/preco";
+import { PrecoBloco } from "./preco-bloco";
 
 /** Seleção confirmada: quantidade por (sessão, item). */
 export interface ItemSelecao {
@@ -19,15 +22,15 @@ export interface ItemSelecao {
 
 interface SelecaoItensModalProps {
     combo: ComboDinamicoView | null;
+    taxa: TaxaServico;
     onClose: () => void;
     onConfirmar: (combo: ComboDinamicoView, selecoes: ItemSelecao[]) => void;
 }
 
 const chave = (sessaoId: string, itemId: string) => `${sessaoId}:${itemId}`;
-const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 /** Modal de seleção de itens do combo dinâmico — quantidades por sessão. */
-export function SelecaoItensModal({ combo, onClose, onConfirmar }: SelecaoItensModalProps) {
+export function SelecaoItensModal({ combo, taxa, onClose, onConfirmar }: SelecaoItensModalProps) {
     // Quantidade por (sessão, item). Itens obrigatórios já começam com 1.
     const [qtds, setQtds] = useState<Record<string, number>>({});
     const [inclusosAberto, setInclusosAberto] = useState(true);
@@ -43,6 +46,15 @@ export function SelecaoItensModal({ combo, onClose, onConfirmar }: SelecaoItensM
     }, [combo]);
 
     const total = useMemo(() => Object.values(qtds).reduce((acc, n) => acc + n, 0), [qtds]);
+
+    /** Valor do pacote mais os opcionais escolhidos, já com a taxa. */
+    const precoAtual = useMemo(() => {
+        if (!combo) return precoComTaxa(0, taxa.aliquota);
+        const extras = combo.sessoes.flatMap((s) =>
+            s.itens.map((it) => ({ isProduto: it.isProduto, valor: precoExtraDoItem(it) * (qtds[chave(s.id, it.id)] ?? 0) })),
+        );
+        return precoDoCombo(combo.preco ?? 0, extras, taxa.aliquota);
+    }, [combo, qtds, taxa.aliquota]);
 
     if (!combo) return null;
 
@@ -87,7 +99,15 @@ export function SelecaoItensModal({ combo, onClose, onConfirmar }: SelecaoItensM
         const q = qtds[chave(s.id, it.id)] ?? 0;
         // Mensagem só quando o limite do PRÓPRIO item é atingido (não o limite geral).
         const noItemMax = !fixa && q >= max;
-        const precoLabel = it.preco != null ? (it.preco > 0 ? `+ ${brl(it.preco)}` : "Grátis") : null;
+        // Rótulo e cálculo usam o MESMO predicado. Antes o rótulo olhava só
+        // `it.preco` e o redutor exigia `!obrigatorio`, então itens inclusos
+        // exibiam "+ R$ 150,00" sem somar nada.
+        const extra = precoExtraDoItem(it);
+        const precoLabel = it.obrigatorio
+            ? "incluso"
+            : extra > 0
+              ? `+ ${brl(it.isProduto ? extra : precoComTaxa(extra, taxa.aliquota).total)}`
+              : null;
         const hierarquia = [it.grupo, it.lote].filter(Boolean).join(" • ");
         return (
             <motion.div key={it.id} layout="position" className="flex flex-col gap-1 border-b border-secondary py-3 first:pt-0 last:border-b-0 last:pb-0">
@@ -97,10 +117,10 @@ export function SelecaoItensModal({ combo, onClose, onConfirmar }: SelecaoItensM
                     <div className="flex min-w-0 flex-1 flex-col">
                         <span className="text-sm font-medium text-primary">{it.nome}</span>
                         {hierarquia && <span className="text-sm text-tertiary">{hierarquia}</span>}
-                        {it.mostrarPreco && precoLabel && <span className="text-sm font-semibold text-primary min-[360px]:hidden">{precoLabel}</span>}
+                        {precoLabel && <span className="text-sm font-semibold text-primary min-[360px]:hidden">{precoLabel}</span>}
                     </div>
                     {/* Zona B: preço/status (some abaixo de 360px) */}
-                    {it.mostrarPreco && precoLabel && <span className="hidden shrink-0 text-sm font-semibold text-primary min-[360px]:block">{precoLabel}</span>}
+                    {precoLabel && <span className="hidden shrink-0 text-sm font-semibold text-primary min-[360px]:block">{precoLabel}</span>}
                     {/* Zona C: controle (texto fixo "Nx" ou stepper) */}
                     {fixa ? (
                         <span className="shrink-0 text-sm font-semibold text-primary tabular-nums">{q}×</span>
@@ -213,8 +233,9 @@ export function SelecaoItensModal({ combo, onClose, onConfirmar }: SelecaoItensM
                             {renderSessoes((it) => !it.obrigatorio)}
                         </div>
 
-                        {/* Footer fixo — Confirmar acima, Cancelar abaixo */}
+                        {/* Footer fixo — total, Confirmar acima, Cancelar abaixo */}
                         <div className="flex shrink-0 flex-col gap-3 border-t border-secondary px-6 py-4">
+                            <PrecoBloco preco={precoAtual} tamanho="lg" forma="completa" base="combo" rotulo="Total do combo" />
                             <Button size="lg" color="primary" className="w-full" isDisabled={!podeConfirmar} onClick={confirmar}>
                                 Confirmar
                             </Button>

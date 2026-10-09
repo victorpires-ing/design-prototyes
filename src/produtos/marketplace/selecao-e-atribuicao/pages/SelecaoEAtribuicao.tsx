@@ -2138,7 +2138,9 @@ function IngressoRow({
                 ambíguo onde um item termina. Um boundary, uma régua. A faixa se liga ao
                 item pela proximidade (12px contra 32px entre itens). */}
             <div className="mt-3 flex items-end justify-between gap-4">
-                {it.preco != null ? <PrecoBloco preco={preco} tamanho="lg" /> : <span />}
+                {/* Um degrau abaixo do nome (14 contra 16): o destaque forte fica só
+                    para o total, não para o preço de cada linha. */}
+                {it.preco != null ? <PrecoBloco preco={preco} tamanho="sm" /> : <span />}
                 <Stepper qtd={qtd} canInc={canInc && !esgotado} rotulo={rotulo} onInc={onInc} onDec={onDec} />
             </div>
         </div>

@@ -21,7 +21,7 @@ import { PrecoBloco } from "../components/preco-bloco";
 import { SelecaoItensModal, type ItemSelecao } from "../components/SelecaoItensModal";
 import { TermosModal } from "../components/TermosModal";
 import { precoExtraDoItem } from "../data/combos";
-import type { Beneficio, ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento, Item, PerguntaEvento, Produto, Quantitativo, TaxaServico } from "../data/combos";
+import type { ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento, Item, PerguntaEvento, Produto, Quantitativo, TaxaServico } from "../data/combos";
 import { DEFAULT_CONFIG, STORAGE_KEY, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
 import {
     brl,
@@ -87,7 +87,6 @@ interface CartGroup {
     isProduto?: boolean;
     /** Como a composição nomeia o valor de face no resumo. Default "ingresso". */
     base?: string;
-    beneficio?: Beneficio;
     sublines?: CartSubline[];
 }
 
@@ -381,7 +380,6 @@ export function SelecaoEAtribuicao() {
                     sub: `${data.diaSemana.slice(0, 3).toLowerCase()}, ${data.dia}/${data.mes}${data.hora ? ` · ${data.hora}` : ""}`,
                     preco: precoIngresso(item.preco ?? 0),
                     qtd: novo,
-                    beneficio: item.beneficio,
                 };
             return next;
         });
@@ -442,8 +440,6 @@ export function SelecaoEAtribuicao() {
      * recálculo sobre o subtotal, senão o total diverge da soma das linhas.
      */
     const totalPreco = useMemo(() => somar(Object.values(cart).map((g) => multiplicar(g.preco, g.qtd))), [cart]);
-    /** Art. 11, recorte do pedido: quantas meias o comprador está levando. */
-    const meiasNoPedido = grupos.reduce((acc, [, g]) => (g.beneficio === "meia-entrada" ? acc + g.qtd : acc), 0);
 
     /**
      * Espaçador do rodapé mobile medido, não cravado.
@@ -787,13 +783,6 @@ export function SelecaoEAtribuicao() {
                             <CartGroupRow key={key} chave={key} grupo={g} onInc={() => adicionarUnidade(key)} onDec={() => removerUnidade(key)} />
                         ))}
                     </ul>
-                    {/* O recorte que o pedido original queria: quantas meias vão no carrinho. */}
-                    {meiasNoPedido > 0 && (
-                        <p className="text-sm text-tertiary">
-                            {meiasNoPedido} {meiasNoPedido === 1 ? "meia-entrada" : "meias-entrada"} neste pedido. Leve o documento comprobatório na
-                            entrada.
-                        </p>
-                    )}
                 </section>
             )}
             {produtosCart.length > 0 && (
@@ -815,8 +804,6 @@ export function SelecaoEAtribuicao() {
                             );
                         })}
                     </ul>
-                    {/* A ausência de taxa é discriminada por seção, não repetida em cada linha. */}
-                    <p className="text-sm text-tertiary">Produtos não têm {taxa.nome.toLowerCase()}.</p>
                 </section>
             )}
         </>
@@ -2036,6 +2023,14 @@ function GrupoIngressos({ nome, quantitativo, children }: { nome: string; quanti
     // Fechado por padrão. A troca de aba remonta a árvore (key no AnimatePresence),
     // então o estado também volta ao fechado a cada data ou combo.
     const [aberto, setAberto] = useState(false);
+
+    /*
+      `ofertados` é o TOTAL do grupo e já contém as meias. Como a linha agora
+      descreve uma partição ("regulares" e "meia-entrada"), o primeiro número é
+      a diferença: rotular o total como "regulares" faria 1.200 + 500 somar
+      1.700 onde existem 1.200.
+    */
+    const regulares = quantitativo ? Math.max(0, quantitativo.ofertados - quantitativo.ofertadosMeia) : 0;
     return (
         <div className="overflow-clip rounded-2xl bg-primary ring-1 ring-border-secondary">
             {/*
@@ -2058,7 +2053,7 @@ function GrupoIngressos({ nome, quantitativo, children }: { nome: string; quanti
                 </span>
                 {quantitativo && quantitativo.ofertados > 0 && (
                     <span className="pl-6.5 text-sm text-quaternary tabular-nums">
-                        {quantitativo.ofertados.toLocaleString("pt-BR")} ingressos
+                        {regulares.toLocaleString("pt-BR")} ingressos regulares
                         {quantitativo.ofertadosMeia > 0 && `, ${quantitativo.ofertadosMeia.toLocaleString("pt-BR")} meia-entrada`}
                     </span>
                 )}

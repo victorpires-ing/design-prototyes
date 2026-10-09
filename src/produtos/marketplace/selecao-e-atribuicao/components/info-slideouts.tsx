@@ -35,7 +35,6 @@ export function TaxaSlideout({ isOpen, onClose, taxa, exemplo }: TaxaSlideoutPro
                     </>
                 )}
             </Paragrafo>
-            <Paragrafo>Produtos não têm {taxa.nome.toLowerCase()}.</Paragrafo>
             <Paragrafo>
                 Se o evento for cancelado, adiado ou sofrer alteração relevante, devolvemos o valor do ingresso e a {taxa.nome.toLowerCase()}.
             </Paragrafo>

@@ -43,17 +43,17 @@ function Linha({ rotulo, valor }: { rotulo: ReactNode; valor: string }) {
 export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBotao = "Continuar", comoCard, onAvancar, onAbrirTaxa }: BarraTotalProps) {
     const mobile = variante === "mobile";
     /*
-      Aberto por padrão. Fechar de saída esconderia a discriminação das
-      cobranças atrás de um clique, e o controle existe para poder recolher
-      depois de ler, não para adiar a informação (art. 6º).
+      Fechado por padrão, e o bloco é sempre o mesmo: título, agregado e
+      controle, com uma cobrança ou com cinco. Alternar a forma conforme a
+      quantidade fazia a barra mudar de desenho entre etapas da mesma compra,
+      que é quando a pessoa está comparando valores.
+
+      O que o art. 6º exige é que a discriminação exista e esteja a um passo
+      previsível do total, não que ela ocupe a tela desde o início: o agregado
+      e o total continuam sempre visíveis, e o painel do (i) nomeia cada
+      cobrança em texto.
     */
-    const [detalhes, setDetalhes] = useState(true);
-    /*
-      Com uma cobrança só, agregado e parcela são o mesmo número: o título
-      "Taxas" e o controle não teriam o que somar nem o que abrir, então a
-      linha mostra direto o nome da cobrança.
-    */
-    const varias = taxas.length > 1;
+    const [detalhes, setDetalhes] = useState(false);
 
     return (
         <div
@@ -76,7 +76,7 @@ export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBo
                     <Linha
                         rotulo={
                             <span className="flex items-center gap-1.5">
-                                {varias ? "Taxas" : taxas[0].nome}
+                                Taxas
                                 <button
                                     type="button"
                                     onClick={onAbrirTaxa}
@@ -90,42 +90,38 @@ export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBo
                         valor={brl(total.taxa)}
                     />
 
-                    {varias && (
-                        <>
-                            <AnimatePresence initial={false}>
-                                {detalhes && (
-                                    <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: "auto", opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.2, ease: "easeOut" }}
-                                        className="overflow-hidden"
-                                    >
-                                        <ul className="flex flex-col gap-1">
-                                            {taxas.map((t) => (
-                                                <li key={t.nome} className="flex items-baseline justify-between gap-3 pl-3">
-                                                    <span className="text-sm text-secondary">{t.nome}</span>
-                                                    <span className="shrink-0 text-sm text-secondary tabular-nums">{brl(t.valor)}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-
-                            {/* Embaixo do bloco: o controle vem DEPOIS do que ele controla,
-                                então a ordem de leitura e a de foco batem com a visual. */}
-                            <button
-                                type="button"
-                                onClick={() => setDetalhes((v) => !v)}
-                                aria-expanded={detalhes}
-                                className="flex items-center gap-1 self-start text-sm text-tertiary transition duration-100 ease-linear hover:text-secondary"
+                    <AnimatePresence initial={false}>
+                        {detalhes && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: "easeOut" }}
+                                className="overflow-hidden motion-reduce:transition-none"
                             >
-                                {detalhes ? "Ocultar detalhes" : "Ver detalhes"}
-                                <ChevronDown className={cx("size-4 transition-transform", detalhes && "rotate-180")} />
-                            </button>
-                        </>
-                    )}
+                                <ul className="flex flex-col gap-1">
+                                    {taxas.map((t) => (
+                                        <li key={t.nome} className="flex items-baseline justify-between gap-3 pl-3">
+                                            <span className="text-sm text-secondary">{t.nome}</span>
+                                            <span className="shrink-0 text-sm text-secondary tabular-nums">{brl(t.valor)}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Embaixo do bloco: o controle vem DEPOIS do que ele controla,
+                        então a ordem de leitura e a de foco batem com a visual. */}
+                    <button
+                        type="button"
+                        onClick={() => setDetalhes((v) => !v)}
+                        aria-expanded={detalhes}
+                        className="flex items-center gap-1 self-start text-sm text-tertiary transition duration-100 ease-linear hover:text-secondary"
+                    >
+                        {detalhes ? "Ocultar detalhes" : "Ver detalhes"}
+                        <ChevronDown className={cx("size-4 transition-transform", detalhes && "rotate-180")} />
+                    </button>
                 </div>
             )}
 

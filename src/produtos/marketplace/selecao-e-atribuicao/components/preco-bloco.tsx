@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cx } from "@/utils/cx";
 import { ariaPreco, brl, legendaTaxa, multiplicar, nomeDaTaxa, type Preco } from "../utils/preco";
 
@@ -81,16 +82,32 @@ export function PrecoLinha({ preco, className }: { preco: Preco; className?: str
 }
 
 /**
- * O par de valores de um item: composição em cima, total embaixo.
+ * Faixa de valor de uma linha larga (ingresso, passaporte): composição à
+ * esquerda, total colado no seletor à direita.
  *
- * O total é a ÚLTIMA linha porque é a que encosta no seletor de quantidade.
- * Com ele no topo, o número da decisão e o controle da decisão ficavam em
- * cantos opostos do bloco, e a pessoa tinha de subir e descer o olho a cada
- * clique no "+".
+ * O total encosta no controle porque é o número da decisão, e o controle é
+ * onde a decisão acontece. Empilhado, os dois ficavam em cantos opostos do
+ * bloco e a pessoa subia e descia o olho a cada clique no "+".
  *
- * Existe como componente, e não como duas linhas copiadas em cada card, porque
- * ingresso, passaporte e produto têm de apresentar valor da mesma forma: duas
- * cópias são duas chances de divergir, e divergir aqui é divergir de preço.
+ * `flex-wrap` com `ml-auto` no grupo da direita: quando a largura não dá para
+ * os dois valores na mesma linha, o par total+seletor desce inteiro e continua
+ * alinhado à direita, em vez de o total se separar do controle.
+ */
+export function PrecoFaixa({ preco, children, className }: { preco: Preco; children?: ReactNode; className?: string }) {
+    return (
+        <div className={cx("flex flex-wrap items-center justify-between gap-x-4 gap-y-2", className)}>
+            <PrecoLinha preco={preco} />
+            <div className="ml-auto flex shrink-0 items-center gap-3">
+                <TotalLinha preco={preco} />
+                {children}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * O par empilhado, para cartões estreitos (produto), onde a faixa horizontal
+ * não cabe. Mesma ordem de leitura da faixa: composição e depois total.
  */
 export function PrecoPar({ preco, className }: { preco: Preco; className?: string }) {
     return (
@@ -102,12 +119,18 @@ export function PrecoPar({ preco, className }: { preco: Preco; className?: strin
 }
 
 /**
- * Total da linha. Sem rótulo visível, mas o leitor de tela continua recebendo
- * "Total": sozinho, o número não diz de que ele é, e logo abaixo há outro.
+ * Total do item, com o rótulo "total" em caixa baixa antes do número.
+ *
+ * O rótulo voltou junto com a faixa horizontal: dois valores lado a lado na
+ * mesma linha, sem nada que os distinga, são dois números soltos. Empilhado a
+ * posição bastava; em linha, não basta.
  */
 export function TotalLinha({ preco, className }: { preco: Preco; className?: string }) {
     return (
-        <span className={cx("block", className)} aria-label={`Total ${brl(preco.total)}`}>
+        <span className={cx("flex items-baseline gap-1", className)} aria-label={`Total ${brl(preco.total)}`}>
+            <span aria-hidden="true" className="text-sm text-tertiary">
+                total
+            </span>
             <span aria-hidden="true" className="text-md font-bold text-primary tabular-nums">
                 {brl(preco.total)}
             </span>

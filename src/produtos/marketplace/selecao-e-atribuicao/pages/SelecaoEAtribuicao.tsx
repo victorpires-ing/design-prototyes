@@ -17,7 +17,7 @@ import { AbasCarrossel, ChipLegenda, type AbaItem } from "../components/abas-car
 import { BarraTotal } from "../components/barra-total";
 import { CupomModal } from "../components/CupomModal";
 import { MeiaSlideout, TaxaSlideout } from "../components/info-slideouts";
-import { PrecoBloco, PrecoPar } from "../components/preco-bloco";
+import { PrecoBloco, PrecoFaixa, PrecoPar } from "../components/preco-bloco";
 import { SelecaoItensModal, type ItemSelecao } from "../components/SelecaoItensModal";
 import { TermosModal } from "../components/TermosModal";
 import { precoExtraDoItem, TAXA_PRODUTO_PADRAO } from "../data/combos";
@@ -1910,13 +1910,12 @@ function ComboFixoView({
                     {combo.lote && <span className="text-sm text-tertiary">{combo.lote}</span>}
                     {combo.descricao && <p className="text-sm text-tertiary">{combo.descricao}</p>}
                 </div>
-                {/* Mesmo bloco de valor da linha de ingresso: total em cima, composicao
-                    embaixo. Passaporte e ingresso sao a mesma decisao de compra e nao
-                    podem apresentar o preco de duas formas na mesma tela (art. 7). */}
-                <div className="mt-3 flex items-end justify-between gap-4">
-                    <PrecoPar preco={preco} />
+                {/* Mesma faixa da linha de ingresso. Passaporte e ingresso são a mesma
+                    decisão de compra e não podem apresentar o preço de duas formas
+                    na mesma tela (art. 7º). */}
+                <PrecoFaixa preco={preco} className="mt-3">
                     <Stepper qtd={qtd} rotulo={combo.nome} onInc={onInc} onDec={onDec} />
-                </div>
+                </PrecoFaixa>
             </div>
 
             {aberto && (
@@ -2199,16 +2198,16 @@ function IngressoRow({
                 ambíguo onde um item termina. Um boundary, uma régua. A faixa se liga ao
                 item pela proximidade (12px contra 32px entre itens).
 
-                Total em cima e a composição embaixo: empilhado cabe em qualquer largura
-                sem container query, e o stepper fica ao lado do par inteiro. */}
-            <div className="mt-3 flex items-end justify-between gap-4">
-                {it.preco != null ? (
-                    <PrecoPar preco={preco} />
-                ) : (
-                    <span />
-                )}
-                <Stepper qtd={qtd} canInc={canInc && !esgotado} rotulo={rotulo} onInc={onInc} onDec={onDec} />
-            </div>
+                Composição à esquerda, total colado no seletor à direita. */}
+            {it.preco != null ? (
+                <PrecoFaixa preco={preco} className="mt-3">
+                    <Stepper qtd={qtd} canInc={canInc && !esgotado} rotulo={rotulo} onInc={onInc} onDec={onDec} />
+                </PrecoFaixa>
+            ) : (
+                <div className="mt-3 flex justify-end">
+                    <Stepper qtd={qtd} canInc={canInc && !esgotado} rotulo={rotulo} onInc={onInc} onDec={onDec} />
+                </div>
+            )}
         </div>
     );
 }

@@ -182,6 +182,7 @@ import { AnaliseResultados as PayInAnaliseResultados } from '../produtos/payin/c
 import { Pagamento as CheckoutPagamento } from '../produtos/checkout/melhorias-de-compra/pages/pagamento';
 import { Cartao as CheckoutCartao } from '../produtos/checkout/melhorias-de-compra/pages/cartao';
 import { NaoAutorizado as CheckoutNaoAutorizado } from '../produtos/checkout/melhorias-de-compra/pages/nao-autorizado';
+import { Pagamento as CheckoutDecretoPagamento } from '../produtos/checkout/novo-decreto/pages/pagamento';
 import { Eventos as CashoutEventos } from '../produtos/payout/contrato-quick-win-finance/pages/eventos';
 import { Produtoras as CashoutProdutoras } from '../produtos/payout/contrato-quick-win-finance/pages/produtoras';
 
@@ -401,6 +402,7 @@ export default function App() {
         <Route path="/checkout/melhorias-de-compra" element={<CheckoutPagamento />} />
         <Route path="/checkout/melhorias-de-compra/cartao" element={<CheckoutCartao />} />
         <Route path="/checkout/melhorias-de-compra/nao-autorizado" element={<CheckoutNaoAutorizado />} />
+        <Route path="/checkout/novo-decreto" element={<CheckoutDecretoPagamento />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </EquipeV2Provider>

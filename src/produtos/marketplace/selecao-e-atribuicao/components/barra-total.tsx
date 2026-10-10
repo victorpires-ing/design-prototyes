@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import { InfoCircle } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import { brl, type Preco } from "../utils/preco";
@@ -9,54 +11,88 @@ import { brl, type Preco } from "../utils/preco";
  * portal do rodapé mobile) que já tinham divergido. Divergência aqui é
  * divergência de preço em fase de compra, ou seja, art. 7º.
  *
- * O razonete saiu: detalhamento linha a linha é assunto do checkout. A taxa de
- * serviço continua discriminada sem nenhum clique, na linha de cada item do
- * catálogo e do resumo; o que não existe mais é a soma dela aqui.
+ * Estrutura espelhada no resumo de pagamento: as taxas em linhas de rótulo e
+ * valor, e o total separado por régua.
  */
 
 interface BarraTotalProps {
     variante: "desktop" | "mobile";
     total: Preco;
+    /** Uma linha por cobrança acessória, com o nome dela. Agregar duas sob um
+        rótulo só apagaria justamente a discriminação que o art. 6º pede. */
+    taxas: { nome: string; valor: number }[];
     continuarDisabled: boolean;
     rotuloBotao?: string;
     /** Fora de um card (layouts com mapa), a barra vira o próprio card. */
     comoCard?: boolean;
     onAvancar: () => void;
+    onAbrirTaxa: () => void;
 }
 
-export function BarraTotal({ variante, total, continuarDisabled, rotuloBotao = "Continuar", comoCard, onAvancar }: BarraTotalProps) {
+/** Linha rótulo à esquerda, valor à direita. Taxa e total têm o mesmo peso. */
+function Linha({ rotulo, valor }: { rotulo: ReactNode; valor: string }) {
+    return (
+        <div className="flex items-baseline justify-between gap-3">
+            <span className="text-md font-bold text-primary">{rotulo}</span>
+            <span className="shrink-0 text-md font-bold text-primary tabular-nums">{valor}</span>
+        </div>
+    );
+}
+
+export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBotao = "Continuar", comoCard, onAvancar, onAbrirTaxa }: BarraTotalProps) {
     const mobile = variante === "mobile";
 
     return (
         <div
             className={cx(
-                // Container query, não breakpoint de tela: a mesma barra vive num painel
-                // de 640px e num resumo lateral de 360px, onde botão e valor não cabem
-                // lado a lado.
-                "@container flex flex-col px-4",
+                "flex flex-col gap-3 px-4",
                 mobile ? "pt-3 pb-9" : "py-4",
                 comoCard ? "rounded-xl bg-primary ring-1 ring-border-secondary" : "border-t border-secondary",
             )}
         >
-            <div className="flex flex-col gap-3 @md:flex-row @md:items-end @md:justify-between">
-                <div className="flex min-w-0 flex-col gap-0.5">
-                    {/*
-                      Sem rótulo visível, mas o leitor de tela continua recebendo "Total a
-                      pagar": sozinho, o número não diz de que ele é.
+            {/*
+              Cada cobrança nesta fase tem a sua linha, com o nome que ela tem em
+              contrato: ingresso paga taxa de serviço e produto paga licenciamento, em
+              alíquotas diferentes. Somar as duas sob um rótulo só devolveria o
+              problema que esta barra existe para resolver.
 
-                      A taxa de serviço segue discriminada em cada linha do catálogo e do
-                      resumo; o que saiu daqui foi a soma dela. E o acréscimo do meio de
-                      pagamento aparece sem valor porque só é conhecido no SDK.
-                    */}
-                    <span aria-label={`Total a pagar ${brl(total.total)}`} className="text-display-xs font-bold text-primary tabular-nums">
-                        {brl(total.total)}
-                    </span>
-                    <span className="text-sm text-tertiary">+ taxas do meio de pagamento</span>
-                </div>
-                <Button size="lg" color="primary" isDisabled={continuarDisabled} onClick={onAvancar} className="w-full @md:w-auto">
-                    {rotuloBotao}
-                </Button>
+              O "i" fica uma vez, na primeira linha, e abre o painel que explica todas:
+              repetir o ícone por linha sugeriria explicações diferentes.
+
+              A taxa de processamento depende do meio de pagamento e só existe no SDK,
+              por isso ela fica como nota sob o total, sem número inventado.
+            */}
+            {taxas.map((t, i) => (
+                <Linha
+                    key={t.nome}
+                    rotulo={
+                        <span className="flex items-center gap-1.5">
+                            {t.nome}
+                            {i === 0 && (
+                                <button
+                                    type="button"
+                                    onClick={onAbrirTaxa}
+                                    aria-label="Entenda como calculamos os valores"
+                                    className="rounded-full text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary"
+                                >
+                                    <InfoCircle className="size-4" />
+                                </button>
+                            )}
+                        </span>
+                    }
+                    valor={brl(t.valor)}
+                />
+            ))}
+
+            <div className="flex flex-col gap-0.5 border-t border-secondary pt-3">
+                <Linha rotulo="Total a pagar" valor={brl(total.total)} />
+                {/* Alinhada ao valor, não ao rótulo: ela qualifica o número. */}
+                <span className="text-right text-sm text-tertiary">+ taxas do meio de pagamento</span>
             </div>
+
+            <Button size="lg" color="primary" isDisabled={continuarDisabled} onClick={onAvancar} className="w-full">
+                {rotuloBotao}
+            </Button>
         </div>
     );
 }

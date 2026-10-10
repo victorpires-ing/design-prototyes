@@ -1,6 +1,5 @@
 import { Button } from "@/components/base/buttons/button";
-import type { Quantitativo, TaxaServico } from "../data/combos";
-import { brl, percentual, type Preco } from "../utils/preco";
+import type { Quantitativo, TaxaProduto, TaxaServico } from "../data/combos";
 import { Slideout } from "./Slideout";
 
 /**
@@ -17,31 +16,53 @@ interface TaxaSlideoutProps {
     isOpen: boolean;
     onClose: () => void;
     taxa: TaxaServico;
-    /** Par inteira/meia do próprio evento, para demonstrar a proporcionalidade do art. 9º. */
-    exemplo?: { inteira: Preco; meia: Preco };
+    /** Só entra no painel quando o produto cobra a dele à parte. */
+    taxaProduto?: TaxaProduto;
 }
 
-export function TaxaSlideout({ isOpen, onClose, taxa, exemplo }: TaxaSlideoutProps) {
+/** Cada cobrança e o que ela remunera (art. 3º V e art. 6º). */
+const COBRANCAS = [
+    {
+        titulo: "Taxa de serviço",
+        texto: "Responsável por viabilizar a operação da plataforma, incluindo tecnologia, atendimento e segurança da compra.",
+    },
+    {
+        titulo: "Taxa de processamento",
+        texto: "Referente ao processamento do pagamento e às integrações necessárias para concluir a transação com segurança.",
+    },
+    {
+        titulo: "Juros de parcelamento",
+        texto: "Valor aplicado pela operadora financeira em compras parceladas, conforme a forma de pagamento escolhida.",
+    },
+    {
+        titulo: "Desconto",
+        texto: "Os descontos são aplicados exclusivamente ao valor dos itens, sem incidência nas taxas.",
+    },
+];
+
+export function TaxaSlideout({ isOpen, onClose, taxa, taxaProduto }: TaxaSlideoutProps) {
+    /*
+      Cobrança na tela sem explicação no painel é cobrança não informada
+      (art. 6º). O licenciamento do produto só aparece aqui quando é repassado
+      ao comprador; embutido, não há parcela a explicar.
+    */
+    const blocos =
+        taxaProduto?.modo === "destacada"
+            ? [COBRANCAS[0], { titulo: taxaProduto.nome, texto: taxaProduto.descricao }, ...COBRANCAS.slice(1)]
+            : COBRANCAS;
+
     return (
-        <Slideout isOpen={isOpen} title={`O que é a ${taxa.nome.toLowerCase()}`} onClose={onClose}>
-            <Paragrafo>{taxa.descricao}</Paragrafo>
-            <Paragrafo>É uma taxa só. Não cobramos taxa de conveniência, de processamento nem de entrega sobre o ingresso.</Paragrafo>
-            <Paragrafo>
-                Ela corresponde a {percentual(taxa.aliquota)} do valor do ingresso, sempre no mesmo percentual para inteira e meia-entrada.
-                {exemplo && (
-                    <>
-                        {" "}
-                        Por isso a meia continua custando exatamente metade: {brl(exemplo.meia.total)} contra {brl(exemplo.inteira.total)}.
-                    </>
-                )}
-            </Paragrafo>
-            <Paragrafo>
-                Se o evento for cancelado, adiado ou sofrer alteração relevante, devolvemos o valor do ingresso e a {taxa.nome.toLowerCase()}.
-            </Paragrafo>
+        <Slideout isOpen={isOpen} title="Entenda como calculamos os valores" onClose={onClose}>
+            {blocos.map((c) => (
+                <div key={c.titulo} className="flex flex-col gap-1">
+                    <span className="text-sm font-semibold text-primary">{c.titulo}</span>
+                    <Paragrafo>{c.texto}</Paragrafo>
+                </div>
+            ))}
             {/* Art. 7º §3º: o link só existe quando o documento existe. Link quebrado é pior que link ausente. */}
             {taxa.criteriosUrl && (
                 <Button size="sm" color="link-color" href={taxa.criteriosUrl} target="_blank" rel="noreferrer" className="self-start">
-                    Como definimos a {taxa.nome.toLowerCase()}
+                    Como definimos as taxas
                 </Button>
             )}
         </Slideout>

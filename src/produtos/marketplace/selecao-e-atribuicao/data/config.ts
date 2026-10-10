@@ -9,6 +9,7 @@ import {
     PRODUTOS,
     QUANTITATIVO_PADRAO,
     TAXA_PADRAO,
+    TAXA_PRODUTO_PADRAO,
     type ComboDinamico,
     type ComboFixo,
     type Cupom,
@@ -18,6 +19,7 @@ import {
     type PerguntaEvento,
     type Produto,
     type Quantitativo,
+    type TaxaProduto,
     type TaxaServico,
 } from "./combos";
 
@@ -54,6 +56,8 @@ export interface EventConfig {
     categoria?: "cultural" | "esportivo";
     /** Taxa acessória única do evento (art. 3º V, 6º e 9º). */
     taxaServico: TaxaServico;
+    /** Cobrança acessória do produto: outra alíquota e outro nome. */
+    taxaProduto?: TaxaProduto;
     /** Art. 11: quantitativo ofertado por nome de grupo de ingresso. */
     quantitativoPorGrupo?: Record<string, Quantitativo>;
     /** Art. 11 p.ú.: divulgado até 30 dias após o evento. Null enquanto não houver. */
@@ -83,6 +87,7 @@ export const DEFAULT_CONFIG: EventConfig = {
     modoAtribuicao: "modal",
     categoria: "cultural",
     taxaServico: TAXA_PADRAO,
+    taxaProduto: TAXA_PRODUTO_PADRAO,
     quantitativoPorGrupo: QUANTITATIVO_PADRAO,
     percentualMeiaVendido: null,
     exibir: EXIBIR_PADRAO,
@@ -140,6 +145,12 @@ export function decodeConfig(param: string): EventConfig | null {
                 aliquota: typeof obj.taxaServico?.aliquota === "number" ? Math.max(0, obj.taxaServico.aliquota) : TAXA_PADRAO.aliquota,
                 descricao: obj.taxaServico?.descricao || TAXA_PADRAO.descricao,
                 criteriosUrl: obj.taxaServico?.criteriosUrl || undefined,
+            },
+            taxaProduto: {
+                nome: obj.taxaProduto?.nome || TAXA_PRODUTO_PADRAO.nome,
+                aliquota: typeof obj.taxaProduto?.aliquota === "number" ? Math.max(0, obj.taxaProduto.aliquota) : TAXA_PRODUTO_PADRAO.aliquota,
+                modo: obj.taxaProduto?.modo === "embutida" ? "embutida" : TAXA_PRODUTO_PADRAO.modo,
+                descricao: obj.taxaProduto?.descricao || TAXA_PRODUTO_PADRAO.descricao,
             },
             quantitativoPorGrupo: obj.quantitativoPorGrupo && typeof obj.quantitativoPorGrupo === "object" ? obj.quantitativoPorGrupo : {},
             percentualMeiaVendido: typeof obj.percentualMeiaVendido === "number" ? obj.percentualMeiaVendido : null,

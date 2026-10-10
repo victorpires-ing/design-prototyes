@@ -17,21 +17,21 @@ import { AbasCarrossel, ChipLegenda, type AbaItem } from "../components/abas-car
 import { BarraTotal } from "../components/barra-total";
 import { CupomModal } from "../components/CupomModal";
 import { MeiaSlideout, TaxaSlideout } from "../components/info-slideouts";
-import { PrecoBloco } from "../components/preco-bloco";
+import { PrecoBloco, PrecoLinha, TotalLinha } from "../components/preco-bloco";
 import { SelecaoItensModal, type ItemSelecao } from "../components/SelecaoItensModal";
 import { TermosModal } from "../components/TermosModal";
-import { precoExtraDoItem } from "../data/combos";
-import type { Beneficio, ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento, Item, PerguntaEvento, Produto, Quantitativo, TaxaServico } from "../data/combos";
+import { precoExtraDoItem, TAXA_PRODUTO_PADRAO } from "../data/combos";
+import type { Beneficio, ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento, Item, PerguntaEvento, Produto, Quantitativo, TaxaProduto, TaxaServico } from "../data/combos";
 import { DEFAULT_CONFIG, STORAGE_KEY, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
 import {
     brl,
     faceBeneficio,
-    legendaMultipla,
     multiplicar,
     PRECO_ZERO,
     precoComTaxa,
-    precoSemTaxa,
     precoDoCombo,
+    precoDoProduto,
+    nomeDaTaxa,
     ratear,
     somar,
     type Preco,
@@ -66,6 +66,13 @@ const useDirecao = (indice: number) => {
     return direcao;
 };
 
+/**
+ * Caixa do resumo, igual nas três etapas. 3:4 na coluna de 360px dá 480px, que
+ * é a altura do cartaz na seleção. Constante única para as etapas não voltarem
+ * a divergir quando uma delas for mexida.
+ */
+const CAIXA_RESUMO = "aspect-[3/4] w-full";
+
 const MESES_EXT = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const dataPorExtenso = (d: DataEvento) => (d.iso ? `${+d.iso.slice(8, 10)} de ${MESES_EXT[+d.iso.slice(5, 7) - 1]} de ${d.iso.slice(0, 4)}` : `${d.dia} ${d.mes} ${d.ano}`);
 
@@ -85,8 +92,6 @@ interface CartGroup {
     qtd: number;
     /** Produto não tem taxa acessória e é separado no resumo. */
     isProduto?: boolean;
-    /** Como a composição nomeia o valor de face no resumo. Default "ingresso". */
-    base?: string;
     beneficio?: Beneficio;
     sublines?: CartSubline[];
 }
@@ -169,17 +174,10 @@ export function SelecaoEAtribuicao() {
 
     /** Preço all-in de um ingresso ou combo. */
     const precoIngresso = (face: number): Preco => precoComTaxa(face, taxa.aliquota);
+    /** Produto tem cobrança acessória própria: outra alíquota, outro nome. */
+    const taxaProduto = config.taxaProduto ?? TAXA_PRODUTO_PADRAO;
+    const precoProduto = (face: number): Preco => precoDoProduto(face, taxaProduto);
 
-    /** Par inteira/meia do evento, usado para demonstrar a proporcionalidade do art. 9º. */
-    const exemploProporcionalidade = useMemo(() => {
-        const meia = config.ingressos.find((i) => i.beneficio === "meia-entrada" && i.baseId);
-        if (!meia?.baseId) return undefined;
-        const faceInteira = itemById.get(meia.baseId)?.preco ?? 0;
-        const faceMeia = itemById.get(meia.id)?.preco ?? 0;
-        if (faceInteira <= 0) return undefined;
-        return { inteira: precoIngresso(faceInteira), meia: precoIngresso(faceMeia) };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [config.ingressos, itemById, taxa.aliquota]);
 
     // Abas de combo fixo (agrupadas pelo rótulo configurável), respeitando "exibir".
     const fixoTabs = useMemo(() => {
@@ -239,14 +237,12 @@ export function SelecaoEAtribuicao() {
         const faltam = Math.max(0, combo.minItens - jaInclusos);
         const disponiveis = itens
             .filter((it) => !it.obrigatorio)
-            .flatMap((it) =>
-                Array.from({ length: Math.max(1, it.qtdMax ?? 1) }, () => ({ isProduto: it.isProduto, valor: precoExtraDoItem(it) })),
-            )
-            .sort((a, b) => a.valor - b.valor);
+            .flatMap((it) => Array.from({ length: Math.max(1, it.qtdMax ?? 1) }, () => precoExtraDoItem(it)))
+            .sort((a, b) => a - b);
         return {
             preco: precoDoCombo(combo.preco ?? 0, disponiveis.slice(0, faltam), taxa.aliquota),
             /** Há opcional pago capaz de aumentar o valor depois da montagem. */
-            variavel: disponiveis.slice(faltam).some((e) => e.valor > 0),
+            variavel: disponiveis.slice(faltam).some((v) => v > 0),
         };
     };
 
@@ -357,7 +353,6 @@ export function SelecaoEAtribuicao() {
                 next[key] = {
                     nome: combo.nome,
                     lote: combo.lote,
-                    base: "combo",
                     preco: precoIngresso(combo.preco),
                     qtd: novo,
                     sublines: combo.inclui.map((i, idx) => ({ nome: i.titulo, sub: i.sub, qtd: i.qtd * novo, valor: partes[idx] })),
@@ -392,7 +387,7 @@ export function SelecaoEAtribuicao() {
         // Mesmo predicado e mesma função de preço que o modal usa: os dois não podem divergir.
         const extras = selecoes.map((s) => {
             const item = itemDoCombo(s.sessaoId, s.itemId);
-            return { isProduto: item?.isProduto, valor: item ? precoExtraDoItem(item) * s.quantidade : 0 };
+            return item ? precoExtraDoItem(item) * s.quantidade : 0;
         });
         const preco = precoDoCombo(combo.preco ?? 0, extras, taxa.aliquota);
         const pesos = selecoes.map((s) => (itemDoCombo(s.sessaoId, s.itemId)?.preco ?? 0) * s.quantidade);
@@ -403,7 +398,6 @@ export function SelecaoEAtribuicao() {
             for (const [k, v] of Object.entries(prev)) if (k !== `din:${combo.id}`) next[k] = v;
             next[`din:${combo.id}`] = {
                 nome: combo.nome,
-                base: "combo",
                 preco,
                 qtd: 1,
                 sublines: selecoes.map((s, i) => ({ nome: s.nome, sub: `${s.data} • ${s.hora}`, qtd: s.quantidade, valor: partes[i] })),
@@ -444,6 +438,23 @@ export function SelecaoEAtribuicao() {
     const totalPreco = useMemo(() => somar(Object.values(cart).map((g) => multiplicar(g.preco, g.qtd))), [cart]);
 
     /**
+     * Cobranças acessórias agrupadas POR NOME, na ordem em que aparecem no
+     * carrinho. Uma linha por cobrança: taxa de serviço do ingresso e
+     * licenciamento do produto são cobranças distintas e não podem sair somadas
+     * sob um rótulo só (art. 6º).
+     */
+    const taxasDoPedido = useMemo(() => {
+        const porNome = new Map<string, number>();
+        for (const g of Object.values(cart)) {
+            const p = multiplicar(g.preco, g.qtd);
+            if (p.taxa <= 0) continue;
+            const nome = nomeDaTaxa(p);
+            porNome.set(nome, (porNome.get(nome) ?? 0) + p.taxa);
+        }
+        return Array.from(porNome, ([nome, valor]) => ({ nome, valor: Math.round(valor * 100) / 100 }));
+    }, [cart]);
+
+    /**
      * Espaçador do rodapé mobile medido, não cravado.
      * Era `h-36` calibrado à mão para o rodapé antigo; a barra nova é mais alta
      * e o valor fixo passaria a cobrir o fim da página. Congela enquanto o
@@ -477,7 +488,7 @@ export function SelecaoEAtribuicao() {
             const novo = Math.max(0, (prev[key]?.qtd ?? 0) + delta);
             const next = { ...prev };
             if (novo === 0) delete next[key];
-            else next[key] = { nome: prod.nome, sub: size ? `Tamanho ${size}` : undefined, preco: precoSemTaxa(prod.preco ?? 0), qtd: novo, isProduto: true };
+            else next[key] = { nome: prod.nome, sub: size ? `Tamanho ${size}` : undefined, preco: precoProduto(prod.preco ?? 0), qtd: novo, isProduto: true };
             return next;
         });
     };
@@ -489,7 +500,7 @@ export function SelecaoEAtribuicao() {
             const key = size ? `prod:${prod.id}:${size}` : `prod:${prod.id}`;
             const next = { ...prev };
             if (!n || n <= 0) delete next[key];
-            else next[key] = { nome: prod.nome, sub: size ? `Tamanho ${size}` : undefined, preco: precoSemTaxa(prod.preco ?? 0), qtd: n, isProduto: true };
+            else next[key] = { nome: prod.nome, sub: size ? `Tamanho ${size}` : undefined, preco: precoProduto(prod.preco ?? 0), qtd: n, isProduto: true };
             return next;
         });
     };
@@ -697,25 +708,6 @@ export function SelecaoEAtribuicao() {
         </div>
     );
 
-    /**
-     * Faixa de contexto: nomeia a taxa e o seu escopo uma vez por etapa, para que
-     * a natureza do serviço exista na mesma fase do primeiro contato com o
-     * ingresso, mesmo com o carrinho vazio.
-     */
-    const faixaContexto = (
-        <div className="flex flex-wrap items-baseline gap-x-2">
-            <p className="text-sm text-tertiary">
-                Todos os preços já incluem a {taxa.nome.toLowerCase()}
-                {temProdutos && `, que não se aplica a produtos`}.
-            </p>
-            {/* `LayoutRight` avisa que abre um painel lateral, não que navega para
-                outra página: o link vive ao lado de outro que abre em nova aba. */}
-            <Button size="sm" color="link-color" iconTrailing={LayoutRight} onClick={() => setTaxaOpen(true)}>
-                O que é a {taxa.nome.toLowerCase()}
-            </Button>
-        </div>
-    );
-
     const conteudo = (
         <div className="flex flex-col">
             {/*
@@ -735,7 +727,6 @@ export function SelecaoEAtribuicao() {
                     {conteudoItens}
                 </motion.div>
             </AnimatePresence>
-            <div className="mt-5">{faixaContexto}</div>
         </div>
     );
 
@@ -764,7 +755,7 @@ export function SelecaoEAtribuicao() {
     );
 
     const barraTotal = (variante: "desktop" | "mobile", comoCard?: boolean) => (
-        <BarraTotal variante={variante} total={totalPreco} continuarDisabled={continuarDisabled} comoCard={comoCard} onAvancar={avancar} />
+        <BarraTotal variante={variante} total={totalPreco} taxas={taxasDoPedido} continuarDisabled={continuarDisabled} comoCard={comoCard} onAvancar={avancar} onAbrirTaxa={() => setTaxaOpen(true)} />
     );
     const totalBar = barraTotal("desktop");
 
@@ -845,9 +836,17 @@ export function SelecaoEAtribuicao() {
       Mesma caixa 3:4 do cartaz que vira na seleção (360 × 480 na coluna), e não
       `max-h`, que fazia o card crescer e encolher com o carrinho e mudar de
       tamanho na troca de etapa. O miolo já rola por dentro.
+
+      O miolo vai em `absolute inset-0`, exatamente como a face de trás do
+      cartaz. Em fluxo normal o `aspect-ratio` é só altura PREFERIDA: a altura
+      mínima automática do flex item é a de min-content, então o carrinho
+      empurrava o card para além de 480 e produto e atribuição ficavam mais
+      altos que a seleção. Fora do fluxo não existe min-content para empurrar.
     */
     const resumoCard = (
-        <div className="hidden aspect-[3/4] flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary lg:flex">{resumoInterno}</div>
+        <div className={cx(CAIXA_RESUMO, "relative hidden lg:block")}>
+            <div className="absolute inset-0 flex flex-col overflow-clip rounded-xl bg-primary ring-1 ring-border-secondary">{resumoInterno}</div>
+        </div>
     );
 
     const progresso = unidades.length > 0 ? Math.round((unidadesProntas / unidades.length) * 100) : 0;
@@ -888,7 +887,7 @@ export function SelecaoEAtribuicao() {
                     ),
                 )}
             </div>
-            <div className="flex w-full flex-col gap-4 lg:w-[360px] lg:shrink-0">{grupos.length > 0 && resumoCard}</div>
+            <div className="flex w-full flex-col gap-4 lg:sticky lg:top-4 lg:w-[360px] lg:shrink-0 lg:self-start">{grupos.length > 0 && resumoCard}</div>
         </div>
     );
 
@@ -934,11 +933,11 @@ export function SelecaoEAtribuicao() {
                 </div>
                 <div className={cx("grid grid-cols-2 gap-4 lg:grid-cols-3", config.mapa && "xl:grid-cols-4")}>
                     {config.produtos.map((p) => (
-                        <ProdutoCard key={p.id} produto={p} qtd={prodQtd(p.id)} onAbrirVariacao={() => setVariacaoProduto(p)} onSetQtd={(n) => setProdQtd(p, null, n)} />
+                        <ProdutoCard key={p.id} produto={p} taxaProduto={taxaProduto} qtd={prodQtd(p.id)} onAbrirVariacao={() => setVariacaoProduto(p)} onSetQtd={(n) => setProdQtd(p, null, n)} />
                     ))}
                 </div>
             </div>
-            <div className="flex w-full flex-col gap-4 lg:w-[360px] lg:shrink-0">{grupos.length > 0 && resumoCard}</div>
+            <div className="flex w-full flex-col gap-4 lg:sticky lg:top-4 lg:w-[360px] lg:shrink-0 lg:self-start">{grupos.length > 0 && resumoCard}</div>
         </div>
     );
 
@@ -1076,6 +1075,7 @@ export function SelecaoEAtribuicao() {
 
             <VariacaoModal
                 produto={variacaoProduto}
+                taxaProduto={taxaProduto}
                 getQtd={(size) => (variacaoProduto ? (cart[`prod:${variacaoProduto.id}:${size}`]?.qtd ?? 0) : 0)}
                 onAdd={(size) => variacaoProduto && setProd(variacaoProduto, size, 1)}
                 onSetQtd={(size, n) => variacaoProduto && setProdQtd(variacaoProduto, size, n)}
@@ -1084,7 +1084,7 @@ export function SelecaoEAtribuicao() {
             <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} logoEvento={config.logo || undefined} onSucesso={aoLogar} />
             <SelecaoItensModal combo={comboSelecao} taxa={taxa} onClose={() => setComboSelecao(null)} onConfirmar={confirmarSelecao} />
             <CupomModal isOpen={cupomOpen} onClose={() => setCupomOpen(false)} onAplicar={aplicarCupom} />
-            <TaxaSlideout isOpen={taxaOpen} onClose={() => setTaxaOpen(false)} taxa={taxa} exemplo={exemploProporcionalidade} />
+            <TaxaSlideout isOpen={taxaOpen} onClose={() => setTaxaOpen(false)} taxa={taxa} taxaProduto={taxaProduto} />
             <MeiaSlideout
                 isOpen={meiaOpen}
                 onClose={() => setMeiaOpen(false)}
@@ -1566,7 +1566,7 @@ function ResumoQtd({ qtd, onInc, onDec }: { qtd: number; onInc: () => void; onDe
     );
 }
 
-function ProdutoCard({ produto, qtd, onAbrirVariacao, onSetQtd }: { produto: Produto; qtd: number; onAbrirVariacao: () => void; onSetQtd: (n: number) => void }) {
+function ProdutoCard({ produto, taxaProduto, qtd, onAbrirVariacao, onSetQtd }: { produto: Produto; taxaProduto: TaxaProduto; qtd: number; onAbrirVariacao: () => void; onSetQtd: (n: number) => void }) {
     const temVar = (produto.variacoes?.length ?? 0) > 0;
     const [verMais, setVerMais] = useState(false);
     const selecionado = qtd > 0;
@@ -1588,7 +1588,13 @@ function ProdutoCard({ produto, qtd, onAbrirVariacao, onSetQtd }: { produto: Pro
                         </button>
                     </div>
                 )}
-                {produto.preco != null && <PrecoBloco preco={precoSemTaxa(produto.preco)} className="mt-0.5" />}
+                {/* Mesmo bloco de valor da linha de ingresso: total em cima, item e taxa embaixo. */}
+                {produto.preco != null && (
+                    <div className="mt-0.5 flex min-w-0 flex-col gap-0.5">
+                        <TotalLinha preco={precoDoProduto(produto.preco, taxaProduto)} />
+                        <PrecoLinha preco={precoDoProduto(produto.preco, taxaProduto)} />
+                    </div>
+                )}
                 <div className="mt-auto pt-2">
                     {temVar ? (
                         <Button size="lg" color="secondary" iconLeading={Plus} className="w-full" onClick={onAbrirVariacao}>
@@ -1609,12 +1615,14 @@ function ProdutoCard({ produto, qtd, onAbrirVariacao, onSetQtd }: { produto: Pro
 
 function VariacaoModal({
     produto,
+    taxaProduto,
     getQtd,
     onAdd,
     onSetQtd,
     onClose,
 }: {
     produto: Produto | null;
+    taxaProduto: TaxaProduto;
     getQtd: (size: string) => number;
     onAdd: (size: string) => void;
     onSetQtd: (size: string, n: number) => void;
@@ -1640,7 +1648,12 @@ function VariacaoModal({
                             <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-2">
                                 <div className="flex flex-col gap-1">
                                     <h2 className="text-lg font-semibold text-primary">{produto.nome}</h2>
-                                    {produto.preco != null && <PrecoBloco preco={precoSemTaxa(produto.preco)} />}
+                                    {produto.preco != null && (
+                                        <div className="flex min-w-0 flex-col gap-0.5">
+                                            <TotalLinha preco={precoDoProduto(produto.preco, taxaProduto)} />
+                                            <PrecoLinha preco={precoDoProduto(produto.preco, taxaProduto)} />
+                                        </div>
+                                    )}
                                 </div>
                                 <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
                             </div>
@@ -1685,7 +1698,7 @@ function VariacaoModal({
 
                             {/* O modal somava quantidades sem exibir valor nenhum. */}
                             <div className="flex shrink-0 items-end justify-between gap-3 border-t border-secondary px-6 py-4">
-                                <PrecoBloco preco={precoSemTaxa(totalEscolhido)} rotulo="Total selecionado" />
+                                <PrecoBloco preco={precoDoProduto(totalEscolhido, taxaProduto)} rotulo="Total selecionado" />
                                 <Button size="md" color="primary" onClick={onClose}>
                                     Concluir Seleção
                                 </Button>
@@ -1893,8 +1906,14 @@ function ComboFixoView({
                     {combo.lote && <span className="text-sm text-tertiary">{combo.lote}</span>}
                     {combo.descricao && <p className="text-sm text-tertiary">{combo.descricao}</p>}
                 </div>
+                {/* Mesmo bloco de valor da linha de ingresso: total em cima, composicao
+                    embaixo. Passaporte e ingresso sao a mesma decisao de compra e nao
+                    podem apresentar o preco de duas formas na mesma tela (art. 7). */}
                 <div className="mt-3 flex items-end justify-between gap-4">
-                    <PrecoBloco preco={preco} tamanho="lg" forma="completa" base="combo" />
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                        <TotalLinha preco={preco} />
+                        <PrecoLinha preco={preco} />
+                    </div>
                     <Stepper qtd={qtd} rotulo={combo.nome} onInc={onInc} onDec={onDec} />
                 </div>
             </div>
@@ -1966,8 +1985,7 @@ function ComboDinamicoCard({
                     </span>
                 ))}
                 {combo.descricao && <p className="text-sm text-tertiary">{combo.descricao}</p>}
-                <PrecoBloco preco={preco} tamanho="lg" forma="completa" base="combo" prefixo={variavel ? "A partir de" : undefined} className="mt-1" />
-                {variavel && <p className="text-sm text-tertiary">Itens opcionais aumentam o valor. Você vê o total ao montar.</p>}
+                <PrecoBloco preco={preco} tamanho="lg" prefixo={variavel ? "A partir de" : undefined} className="mt-1" />
             </div>
             <Button size="md" color="secondary" className="shrink-0" onClick={onSelecionar}>
                 Selecionar
@@ -2178,11 +2196,19 @@ function IngressoRow({
 
                 Sem régua aqui: um traço igual ao que separa os itens do grupo tornava
                 ambíguo onde um item termina. Um boundary, uma régua. A faixa se liga ao
-                item pela proximidade (12px contra 32px entre itens). */}
+                item pela proximidade (12px contra 32px entre itens).
+
+                Total em cima e a composição embaixo: empilhado cabe em qualquer largura
+                sem container query, e o stepper fica ao lado do par inteiro. */}
             <div className="mt-3 flex items-end justify-between gap-4">
-                {/* Um degrau abaixo do nome (14 contra 16): o destaque forte fica só
-                    para o total, não para o preço de cada linha. */}
-                {it.preco != null ? <PrecoBloco preco={preco} tamanho="sm" /> : <span />}
+                {it.preco != null ? (
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                        <TotalLinha preco={preco} />
+                        <PrecoLinha preco={preco} />
+                    </div>
+                ) : (
+                    <span />
+                )}
                 <Stepper qtd={qtd} canInc={canInc && !esgotado} rotulo={rotulo} onInc={onInc} onDec={onDec} />
             </div>
         </div>
@@ -2207,7 +2233,7 @@ function CartGroupRow({ grupo, chave, imagem, onInc, onDec }: { grupo: CartGroup
                     <span className="line-clamp-2 text-md font-semibold text-primary">{grupo.nome}</span>
                     {grupo.lote && <span className="line-clamp-2 text-sm text-tertiary">{grupo.lote}</span>}
                     {grupo.sub && <span className="text-sm text-quaternary">{grupo.sub}</span>}
-                    <PrecoBloco preco={grupo.preco} qtd={grupo.qtd} base={grupo.base} tamanho="sm" className="mt-1" />
+                    <PrecoBloco preco={grupo.preco} qtd={grupo.qtd} tamanho="sm" mostrarTaxa={false} className="mt-1" />
                 </div>
                 <ResumoQtd qtd={grupo.qtd} onInc={onInc} onDec={onDec} />
             </div>
@@ -2276,7 +2302,8 @@ function CartazComVerso({ virado, frente, verso }: { virado: boolean; frente: Re
         <div className="[perspective:1600px]">
             <div
                 className={cx(
-                    "relative aspect-[3/4] w-full transition-transform duration-500 ease-in-out [transform-style:preserve-3d] motion-reduce:transition-none",
+                    CAIXA_RESUMO,
+                    "relative transition-transform duration-500 ease-in-out [transform-style:preserve-3d] motion-reduce:transition-none",
                     virado && "lg:[transform:rotateY(180deg)]",
                 )}
             >

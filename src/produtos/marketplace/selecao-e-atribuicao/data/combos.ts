@@ -21,6 +21,21 @@ export interface TaxaServico {
     criteriosUrl?: string;
 }
 
+/**
+ * Cobrança acessória do PRODUTO. Não é a taxa de serviço do ingresso: alíquota
+ * menor, negociável por contrato e com outro nome ("licenciamento"). Hoje a
+ * maior parte dos contratos a traz embutida no preço anunciado; existe a opção
+ * de repassá-la ao comprador, e aí ela precisa aparecer com o nome dela.
+ */
+export interface TaxaProduto {
+    nome: string;
+    /** 0.05 = 5% sobre o valor do produto. */
+    aliquota: number;
+    /** "embutida": já dentro do preço exibido. "destacada": somada e nomeada na tela. */
+    modo: "embutida" | "destacada";
+    descricao: string;
+}
+
 /** Art. 11: quantitativo ofertado por grupo. Oferta, não saldo em tempo real. */
 export interface Quantitativo {
     ofertados: number;
@@ -290,6 +305,18 @@ export const TAXA_PADRAO: TaxaServico = {
     aliquota: 0.2,
     descricao:
         "A taxa de serviço remunera a emissão e a validação do ingresso, o atendimento ao comprador e a operação da bilheteria digital.",
+};
+
+/**
+ * Licenciamento do produto oficial. Em contrato a maioria dos casos hoje vem
+ * embutida; o protótipo nasce "destacada" porque a tela a ser demonstrada é a
+ * do repasse ao comprador, onde a cobrança precisa aparecer com o nome dela.
+ */
+export const TAXA_PRODUTO_PADRAO: TaxaProduto = {
+    nome: "Taxa de licenciamento",
+    aliquota: 0.05,
+    modo: "destacada",
+    descricao: "A taxa de licenciamento remunera o uso da marca e dos direitos do evento no produto oficial.",
 };
 
 /**

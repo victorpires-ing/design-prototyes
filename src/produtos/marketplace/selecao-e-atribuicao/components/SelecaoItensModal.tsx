@@ -50,9 +50,7 @@ export function SelecaoItensModal({ combo, taxa, onClose, onConfirmar }: Selecao
     /** Valor do pacote mais os opcionais escolhidos, já com a taxa. */
     const precoAtual = useMemo(() => {
         if (!combo) return precoComTaxa(0, taxa.aliquota);
-        const extras = combo.sessoes.flatMap((s) =>
-            s.itens.map((it) => ({ isProduto: it.isProduto, valor: precoExtraDoItem(it) * (qtds[chave(s.id, it.id)] ?? 0) })),
-        );
+        const extras = combo.sessoes.flatMap((s) => s.itens.map((it) => precoExtraDoItem(it) * (qtds[chave(s.id, it.id)] ?? 0)));
         return precoDoCombo(combo.preco ?? 0, extras, taxa.aliquota);
     }, [combo, qtds, taxa.aliquota]);
 
@@ -103,11 +101,8 @@ export function SelecaoItensModal({ combo, taxa, onClose, onConfirmar }: Selecao
         // `it.preco` e o redutor exigia `!obrigatorio`, então itens inclusos
         // exibiam "+ R$ 150,00" sem somar nada.
         const extra = precoExtraDoItem(it);
-        const precoLabel = it.obrigatorio
-            ? "incluso"
-            : extra > 0
-              ? `+ ${brl(it.isProduto ? extra : precoComTaxa(extra, taxa.aliquota).total)}`
-              : null;
+        // Incremento na face, para casar com o número dominante da linha.
+        const precoLabel = it.obrigatorio ? "incluso" : extra > 0 ? `+ ${brl(extra)}` : null;
         const hierarquia = [it.grupo, it.lote].filter(Boolean).join(" • ");
         return (
             <motion.div key={it.id} layout="position" className="flex flex-col gap-1 border-b border-secondary py-3 first:pt-0 last:border-b-0 last:pb-0">
@@ -235,7 +230,7 @@ export function SelecaoItensModal({ combo, taxa, onClose, onConfirmar }: Selecao
 
                         {/* Footer fixo — total, Confirmar acima, Cancelar abaixo */}
                         <div className="flex shrink-0 flex-col gap-3 border-t border-secondary px-6 py-4">
-                            <PrecoBloco preco={precoAtual} tamanho="lg" forma="completa" base="combo" rotulo="Total do combo" />
+                            <PrecoBloco preco={precoAtual} tamanho="lg" rotulo="Total do combo" />
                             <Button size="lg" color="primary" className="w-full" isDisabled={!podeConfirmar} onClick={confirmar}>
                                 Confirmar
                             </Button>

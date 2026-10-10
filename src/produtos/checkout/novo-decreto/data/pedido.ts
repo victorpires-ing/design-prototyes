@@ -1,4 +1,4 @@
-/* Pedido mockado do checkout (evento "Vai safadão"). */
+/* Pedido mockado do checkout (evento "Vai safadão"), com os textos do Figma. */
 
 export const EVENTO = {
     nome: "Vai safadão",
@@ -11,13 +11,29 @@ export const PRECO_PROTECAO = 10;
 export const TAXA_SERVICO = 15;
 export const TAXA_PROCESSAMENTO = 20;
 
-/** Decisão sobre a proteção: enquanto estiver "pendente", o pagamento fica bloqueado. */
-export type Protecao = "pendente" | "com" | "sem";
+/**
+ * Estado da proteção no card:
+ * - carregando: a oferta da seguradora ainda não chegou (skeleton)
+ * - pendente: decisão em aberto, pagamento bloqueado
+ * - com / sem: decisão tomada, pagamento liberado
+ * - sem-oferta: inelegível ou seguradora indisponível, o card some
+ */
+export type Protecao = "carregando" | "pendente" | "com" | "sem" | "sem-oferta";
 
 export const COBERTURAS = {
-    cobre: ["Acidente, doença ou lesão", "Infecção por COVID-19 e isolamento", "Emergência doméstica", "Roubo de documentos"],
-    naoCobre: ["Desistência ou mudança de planos", "Cancelamento ou adiamento do evento, que já têm reembolso pela política da Ingresse"],
-    reembolso: "Em Meus ingressos, até 30 dias após a data do evento, com um documento que comprove o motivo.",
+    cobre: [
+        "Acidente, doença ou lesão",
+        "Infecção por COVID-19 e isolamento",
+        "Emergência doméstica",
+        "Roubo de documentos",
+        "[Demais coberturas, conforme os Termos da seguradora]",
+    ],
+    naoCobre: [
+        "Desistência ou mudança de planos",
+        "Cancelamento ou adiamento do evento, que já têm reembolso pela política da Ingresse",
+        "[Demais exclusões, conforme os Termos da seguradora]",
+    ],
+    reembolso: "Em Meus ingressos, até [prazo] após a data do evento, com um documento que comprove o motivo. O valor volta em até [prazo da seguradora].",
 };
 
 export const TAXAS_EXPLICADAS = [

@@ -26,10 +26,13 @@ export function useTemaClaro() {
 
 const doisDigitos = (n: number) => String(n).padStart(2, "0");
 
-/** "Tempo restante: 09m59s" — reserva de 10 min a partir da abertura da tela. */
+/** Reserva começa em 09m15s, como no Figma, e conta em tempo real. */
+const RESERVA_INICIAL = 9 * 60 + 15;
+
+/** "09m15s" do "Tempo restante". */
 export function useTempoReserva() {
-    const [fim] = useState(() => Date.now() + 10 * 60 * 1000);
-    const [restante, setRestante] = useState(10 * 60);
+    const [fim] = useState(() => Date.now() + RESERVA_INICIAL * 1000);
+    const [restante, setRestante] = useState(RESERVA_INICIAL);
     useEffect(() => {
         const id = window.setInterval(() => setRestante(Math.max(0, Math.ceil((fim - Date.now()) / 1000))), 250);
         return () => window.clearInterval(id);

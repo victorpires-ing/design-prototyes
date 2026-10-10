@@ -1,0 +1,99 @@
+/*
+ * Tokens do Figma "Checkout AWA" (section 9592:2076 · v.1 - Oferta no checkout).
+ * Valores lidos das variáveis do arquivo (get_variable_defs) e escopados em .ck-decreto,
+ * para o protótipo seguir o Figma sem mexer no tema global do repositório.
+ */
+.ck-decreto {
+    /* Superfícies */
+    --ck-surface-low: #f4f6f8; /* surface/low — fundo da página (desktop) */
+    --ck-bg-tertiary: #f5f5f5; /* Colors/Background/bg-tertiary — fundo da página (mobile) */
+    --ck-bar: #181818; /* barColor */
+    --ck-bg-primary: #ffffff; /* Colors/Background/bg-primary */
+    --ck-bg-brand-primary: #fff1f0; /* Colors/Background/bg-brand-primary */
+    --ck-bg-brand-solid: #ff271a; /* Colors/Background/bg-brand-solid */
+    --ck-neutral-50: #fafafa; /* Component colors/Utility/Neutral/utility-neutral-50 */
+    --ck-coberturas-bg: #f8f8f9;
+    --ck-excluido-bg: #ededf0;
+    --ck-skeleton: #e8e8eb;
+    --ck-handle: #d9d9db;
+    --ck-overlay: #0a0a0a; /* Colors/Background/bg-overlay */
+
+    /* Texto */
+    --ck-text-primary: #171717; /* Colors/Text/text-primary (900) */
+    --ck-content-primary: #181818; /* content/primary */
+    --ck-text-secondary: #404040; /* Colors/Text/text-secondary (700) */
+    --ck-content-secundary: #464646; /* content/secundary */
+    --ck-text-quaternary: #737373; /* Colors/Text/text-quaternary (500) */
+    --ck-text-brand-secondary: #c81f14; /* Colors/Text/text-brand-secondary (700) */
+    --ck-text-brand-tertiary: #ff271a; /* Colors/Text/text-brand-tertiary (600) */
+    --ck-utility-brand-500: #ff4a40; /* Component colors/Utility/Brand/utility-brand-500 */
+    --ck-utility-red-500: #ef4444; /* Component colors/Utility/Red/utility-red-500 */
+    --ck-text-success: #16a34a; /* Colors/Text/text-success-primary (600) */
+    --ck-heading-card: #25272a;
+    --ck-text-muted: #6b7380;
+    --ck-text-seguro: #666666;
+    --ck-titulo-cobertura: #1a1a1a;
+
+    /* Bordas e foreground */
+    --ck-border-primary: #d4d4d4; /* Colors/Border/border-primary */
+    --ck-border-secondary: #e5e5e5; /* Colors/Border/border-secondary */
+    --ck-border-secundary: #e6e6e6; /* border/secundary */
+    --ck-border-metodo: #dcdee1;
+    --ck-fg-success: #16a34a; /* Colors/Foreground/fg-success-primary */
+
+    font-family: "Elza", sans-serif;
+    color: var(--ck-text-primary);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Resumo do pedido — 0 0 4 .05 + 0 0 10 .07 */
+.ck-decreto .ck-sombra-resumo {
+    box-shadow:
+        0 0 4px 0 rgba(0, 0, 0, 0.05),
+        0 0 10px 0 rgba(0, 0, 0, 0.07);
+}
+
+/* Formas de pagamento — drop-shadow 0 0 2 .05 + 0 0 5 .07 */
+.ck-decreto .ck-sombra-metodo {
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.05)) drop-shadow(0 0 5px rgba(0, 0, 0, 0.07));
+}
+
+/* Card da proteção na decisão — drop-shadow 0 4 2 .07 + 0 4 2 .04 */
+.ck-decreto .ck-sombra-protecao {
+    box-shadow:
+        0 4px 2px 0 rgba(0, 0, 0, 0.07),
+        0 4px 2px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* Card da proteção depois da escolha — 0 4 4 .05 */
+.ck-decreto .ck-sombra-protecao-escolhida {
+    box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.05);
+}
+
+/*
+ * Shadows/shadow-xs-skeuomorphic + a borda do botão. No Figma a borda é "inside", então ela
+ * vira anel interno aqui para o botão manter os 44px de altura do frame.
+ */
+.ck-decreto .ck-botao-primario {
+    box-shadow:
+        0 1px 2px 0 rgba(0, 0, 0, 0.05),
+        inset 0 0 0 2px rgba(255, 255, 255, 0.12),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.18),
+        inset 0 -2px 0 0 rgba(0, 0, 0, 0.05);
+}
+
+.ck-decreto .ck-botao-secundario {
+    box-shadow:
+        0 1px 2px 0 rgba(0, 0, 0, 0.05),
+        inset 0 0 0 1px var(--ck-border-primary),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.18),
+        inset 0 -2px 0 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Shadows/shadow-xl */
+.ck-decreto .ck-sombra-xl {
+    box-shadow:
+        0 20px 24px -4px rgba(0, 0, 0, 0.08),
+        0 8px 8px -4px rgba(0, 0, 0, 0.03),
+        0 3px 3px -1.5px rgba(0, 0, 0, 0.04);
+}

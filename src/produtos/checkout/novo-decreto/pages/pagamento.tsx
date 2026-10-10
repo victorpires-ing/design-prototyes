@@ -1,107 +1,86 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown } from "@untitledui/icons";
-import { toast } from "sonner";
-import { cx } from "@/utils/cx";
-import icPix from "../assets/ic-pix.svg";
-import { CheckoutShell } from "../components/checkout-shell";
-import { ClickToPayIcon, CreditCardIcon, DebitCardIcon, GoogleIcon } from "../components/icones";
+import { MetodosPagamento } from "../components/metodos-pagamento";
+import { ModalTaxas } from "../components/modal-taxas";
 import { ProtecaoCard } from "../components/protecao-card";
+import { ResumoDesktop, ResumoMobile } from "../components/resumo";
+import { Cabecalho, TituloFinalizar } from "../components/topo";
 import type { Protecao } from "../data/pedido";
+import "../styles/tokens.css";
 import { useIsMobile, useTemaClaro } from "../utils/hooks";
-import { SMART_ANIMATE, SMART_ANIMATE_CSS } from "../utils/transicao";
+import { SMART_ANIMATE } from "../utils/transicao";
 
-interface MetodoProps {
-    icon: ReactNode;
-    label: string;
-    bloqueado: boolean;
-    /** Borda do card: verde destaca o Pix quando o ingresso está protegido. */
-    borda?: "neutra" | "sucesso";
-    badge?: string;
-}
+/** Tempo do skeleton "Carregando proteção" antes de a oferta aparecer. */
+const CARREGAMENTO_MS = 1200;
 
-function Metodo({ icon, label, bloqueado, borda, badge }: MetodoProps) {
-    return (
-        <div className="relative">
-            <button
-                type="button"
-                disabled={bloqueado}
-                aria-disabled={bloqueado}
-                onClick={() => toast(`${label} não faz parte deste protótipo`, { description: "O foco aqui é a decisão sobre a proteção." })}
-                className={cx(
-                    "flex w-full items-center justify-between gap-3 rounded-2xl bg-primary px-4 py-3 text-left shadow-xs ring-1 ring-inset transition-shadow",
-                    SMART_ANIMATE_CSS,
-                    borda === "sucesso" ? "ring-fg-success-primary" : borda === "neutra" ? "ring-primary" : "ring-transparent",
-                    bloqueado ? "cursor-not-allowed" : "cursor-pointer hover:bg-primary_hover",
-                )}
-            >
-                <span className="flex items-center gap-3">
-                    <span className="flex size-8 items-center justify-center rounded-full text-fg-secondary ring-1 ring-secondary ring-inset">{icon}</span>
-                    <span className="text-md font-medium text-primary">{label}</span>
-                </span>
-                <ChevronDown className="size-5 text-fg-secondary" />
-            </button>
-            {badge && (
-                <span className="pointer-events-none absolute -top-2.5 right-1.5 rounded-full bg-fg-success-primary px-2 py-0.5 text-xs font-medium text-white">{badge}</span>
-            )}
-        </div>
-    );
-}
-
+/**
+ * /checkout/novo-decreto — "v.1 - Oferta no checkout".
+ * A tela abre carregando a proteção e cai na decisão. `?cenario=sem-oferta` simula o
+ * comprador inelegível (ou a seguradora fora do ar): o card some e o pagamento fica livre.
+ */
 export function Pagamento() {
     useTemaClaro();
     const isMobile = useIsMobile();
-    const [protecao, setProtecao] = useState<Protecao>("pendente");
-    const bloqueado = protecao === "pendente";
+    const [params] = useSearchParams();
+    const semOferta = params.get("cenario") === "sem-oferta";
+
+    const [protecao, setProtecao] = useState<Protecao>("carregando");
+    const [modalTaxas, setModalTaxas] = useState(false);
+
+    useEffect(() => {
+        setProtecao("carregando");
+        const id = window.setTimeout(() => setProtecao(semOferta ? "sem-oferta" : "pendente"), CARREGAMENTO_MS);
+        return () => window.clearTimeout(id);
+    }, [semOferta]);
+
+    const card = (
+        <AnimatePresence initial={false}>
+            {protecao !== "sem-oferta" && (
+                <motion.div
+                    key="protecao"
+                    initial={false}
+                    exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+                    transition={SMART_ANIMATE}
+                    className={isMobile ? "mb-6 px-4" : "mb-6"}
+                >
+                    <ProtecaoCard isMobile={isMobile} protecao={protecao} onChange={setProtecao} />
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+
+    if (isMobile) {
+        return (
+            <div className="ck-decreto min-h-screen bg-(--ck-bg-tertiary) pb-16 [overflow-anchor:none]">
+                <Cabecalho isMobile />
+                <div className="px-4 pt-4">
+                    <TituloFinalizar isMobile />
+                </div>
+                <div className="px-4 pt-[34px] pb-8">
+                    <ResumoMobile protecao={protecao} onInfoTaxas={() => setModalTaxas(true)} />
+                </div>
+                {card}
+                <MetodosPagamento isMobile protecao={protecao} />
+                <ModalTaxas isOpen={modalTaxas} onClose={() => setModalTaxas(false)} />
+            </div>
+        );
+    }
 
     return (
-        <CheckoutShell isMobile={isMobile} protecao={protecao}>
-            <ProtecaoCard isMobile={isMobile} protecao={protecao} onChange={setProtecao} />
-
-            <section aria-labelledby="titulo-pagamento" className="mt-6">
-                <h2 id="titulo-pagamento" className="text-lg font-semibold text-primary">
-                    Escolha como pagar
-                </h2>
-                <AnimatePresence initial={false}>
-                    {bloqueado && (
-                        <motion.p
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={SMART_ANIMATE}
-                            className="overflow-hidden text-md text-secondary"
-                        >
-                            <span className="block pt-1">Escolha uma das opções de proteção acima para liberar o pagamento.</span>
-                        </motion.p>
-                    )}
-                </AnimatePresence>
-
-                {/* Bloqueadas (50%) até a decisão; habilitam no mesmo Smart Animate do card */}
-                <motion.div
-                    initial={false}
-                    animate={{ opacity: bloqueado ? 0.5 : 1 }}
-                    transition={SMART_ANIMATE}
-                    aria-describedby={bloqueado ? "pagamento-bloqueado" : undefined}
-                    className="mt-6 flex flex-col gap-4"
-                >
-                    {bloqueado && (
-                        <span id="pagamento-bloqueado" className="sr-only">
-                            Pagamento bloqueado até você escolher uma opção de proteção.
-                        </span>
-                    )}
-                    <Metodo
-                        icon={<img src={icPix} alt="" className="size-[18px]" />}
-                        label="Pix"
-                        bloqueado={bloqueado}
-                        borda={protecao === "com" ? "sucesso" : "neutra"}
-                        badge="Aprovação imediata"
-                    />
-                    <Metodo icon={<CreditCardIcon className="size-4" />} label="Cartão de crédito" bloqueado={bloqueado} />
-                    <Metodo icon={<DebitCardIcon className="size-4" />} label="Cartão de débito" bloqueado={bloqueado} />
-                    <Metodo icon={<GoogleIcon className="size-4" />} label="Google Pay" bloqueado={bloqueado} />
-                    <Metodo icon={<ClickToPayIcon className="size-4" />} label="Click To Pay" bloqueado={bloqueado} />
-                </motion.div>
-            </section>
-        </CheckoutShell>
+        <div className="ck-decreto min-h-screen bg-(--ck-surface-low) pb-20 [overflow-anchor:none]">
+            <Cabecalho isMobile={false} />
+            <div className="mx-auto w-full max-w-[1188px] px-4 pt-4">
+                <TituloFinalizar isMobile={false} />
+                <div className="mt-6 grid grid-cols-[minmax(0,684px)_448px] items-start justify-between gap-6">
+                    <main className="min-w-0">
+                        {card}
+                        <MetodosPagamento isMobile={false} protecao={protecao} />
+                    </main>
+                    <ResumoDesktop protecao={protecao} onInfoTaxas={() => setModalTaxas(true)} />
+                </div>
+            </div>
+            <ModalTaxas isOpen={modalTaxas} onClose={() => setModalTaxas(false)} />
+        </div>
     );
 }

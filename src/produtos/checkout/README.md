@@ -25,14 +25,21 @@ mostrar. Marcar "Salvar cartão" faz ele aparecer na lista ao tentar de novo.
 ### `novo-decreto/`
 
 Implementa "v.1 - Oferta no checkout" do Figma (`Checkout AWA`, section
-`9592:2076`), em desktop e mobile, na rota `/checkout/novo-decreto`:
+`9592:2076`) em desktop e mobile, na rota `/checkout/novo-decreto`, com as
+cores, fontes, ícones e medidas do arquivo (tokens em `styles/tokens.css`):
 
-- **Decisão** — o card "Proteja-se de imprevistos" abre a tela e as formas de
-  pagamento ficam bloqueadas (50% de opacidade) até a escolha
-- **Proteger por R$ 10,00** — vira "Ingresso protegido", a proteção entra em
-  "Adicionais" no resumo e o Pix ganha borda verde
-- **Seguir sem proteção** — vira "Ingresso sem proteção", com atalho para
-  proteger depois; **Remover** (no protegido) leva ao mesmo estado
+- **Carregando proteção** — skeleton do card enquanto a oferta chega; as formas
+  de pagamento ficam bloqueadas
+- **Decisão** — "Proteja-se de imprevistos" com as formas de pagamento a 50%;
+  "Ver coberturas" abre as coberturas no card (desktop) ou num bottom sheet
+  (mobile)
+- **Proteger por R$ 10,00** — "Ingresso protegido", proteção em "Adicionais" no
+  resumo e Pix com borda verde
+- **Seguir sem proteção** — "Ingresso sem proteção", com atalho para proteger;
+  **Remover** (no protegido) leva ao mesmo estado
+- **Sem oferta** (`?cenario=sem-oferta`) — inelegível ou seguradora fora do ar:
+  o card some e o pagamento fica livre
+- **Taxas** — o ícone de informação abre "Entenda como calculamos os valores"
 
 Toda troca é um Smart Animate (Ease In and Out, 450 ms — `utils/transicao.ts`)
 na mesma página: a rolagem fica onde estava e quem clicou vê as formas de
@@ -51,8 +58,9 @@ checkout/
 │   └── assets/                 # capa do evento e ícone do Pix
 └── novo-decreto/
     ├── pages/                  # pagamento.tsx (decisão, protegido e sem proteção)
-    ├── components/             # checkout-shell, protecao-card, altura-animada, icones
+    ├── components/             # topo, resumo, protecao-card, metodos-pagamento, coberturas, modal-taxas, base
     ├── data/                   # pedido.ts (valores, coberturas, taxas)
+    ├── styles/                 # tokens.css (variáveis do Figma, escopadas em .ck-decreto)
     ├── utils/                  # hooks.ts · transicao.ts (Smart Animate 450 ms)
-    └── assets/                 # capa do evento e ícone do Pix
+    └── assets/                 # ícones e capa exportados do Figma
 ```

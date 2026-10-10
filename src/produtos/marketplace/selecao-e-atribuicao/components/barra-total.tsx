@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
-import { InfoCircle } from "@untitledui/icons";
+import { useState, type ReactNode } from "react";
+import { ChevronDown, InfoCircle } from "@untitledui/icons";
+import { AnimatePresence, motion } from "motion/react";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import { brl, type Preco } from "../utils/preco";
@@ -41,6 +42,18 @@ function Linha({ rotulo, valor }: { rotulo: ReactNode; valor: string }) {
 
 export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBotao = "Continuar", comoCard, onAvancar, onAbrirTaxa }: BarraTotalProps) {
     const mobile = variante === "mobile";
+    /*
+      Aberto por padrão. Fechar de saída esconderia a discriminação das
+      cobranças atrás de um clique, e o controle existe para poder recolher
+      depois de ler, não para adiar a informação (art. 6º).
+    */
+    const [detalhes, setDetalhes] = useState(true);
+    /*
+      Com uma cobrança só, agregado e parcela são o mesmo número: o título
+      "Taxas" e o controle não teriam o que somar nem o que abrir, então a
+      linha mostra direto o nome da cobrança.
+    */
+    const varias = taxas.length > 1;
 
     return (
         <div
@@ -51,24 +64,19 @@ export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBo
             )}
         >
             {/*
-              Cada cobrança nesta fase tem a sua linha, com o nome que ela tem em
-              contrato: ingresso paga taxa de serviço e produto paga licenciamento, em
-              alíquotas diferentes. Somar as duas sob um rótulo só devolveria o
-              problema que esta barra existe para resolver.
+              O agregado é `total.taxa`, o mesmo número que está dentro de
+              `total.total`: somar de novo as parcelas aqui abriria caminho para
+              a soma divergir do total impresso logo abaixo.
 
-              O "i" fica uma vez, na primeira linha, e abre o painel que explica todas:
-              repetir o ícone por linha sugeriria explicações diferentes.
-
-              A taxa de processamento depende do meio de pagamento e só existe no SDK,
-              por isso ela fica como nota sob o total, sem número inventado.
+              A taxa de processamento depende do meio de pagamento e só existe no
+              SDK, por isso ela fica como nota sob o total, sem número inventado.
             */}
-            {taxas.map((t, i) => (
-                <Linha
-                    key={t.nome}
-                    rotulo={
-                        <span className="flex items-center gap-1.5">
-                            {t.nome}
-                            {i === 0 && (
+            {taxas.length > 0 && (
+                <div className="flex flex-col gap-2">
+                    <Linha
+                        rotulo={
+                            <span className="flex items-center gap-1.5">
+                                {varias ? "Taxas" : taxas[0].nome}
                                 <button
                                     type="button"
                                     onClick={onAbrirTaxa}
@@ -77,12 +85,49 @@ export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBo
                                 >
                                     <InfoCircle className="size-4" />
                                 </button>
-                            )}
-                        </span>
-                    }
-                    valor={brl(t.valor)}
-                />
-            ))}
+                            </span>
+                        }
+                        valor={brl(total.taxa)}
+                    />
+
+                    {varias && (
+                        <>
+                            <AnimatePresence initial={false}>
+                                {detalhes && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2, ease: "easeOut" }}
+                                        className="overflow-hidden"
+                                    >
+                                        <ul className="flex flex-col gap-1">
+                                            {taxas.map((t) => (
+                                                <li key={t.nome} className="flex items-baseline justify-between gap-3 pl-3">
+                                                    <span className="text-sm text-secondary">{t.nome}</span>
+                                                    <span className="shrink-0 text-sm text-secondary tabular-nums">{brl(t.valor)}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Embaixo do bloco: o controle vem DEPOIS do que ele controla,
+                                então a ordem de leitura e a de foco batem com a visual. */}
+                            <button
+                                type="button"
+                                onClick={() => setDetalhes((v) => !v)}
+                                aria-expanded={detalhes}
+                                className="flex items-center gap-1 self-start text-sm text-tertiary transition duration-100 ease-linear hover:text-secondary"
+                            >
+                                {detalhes ? "Ocultar detalhes" : "Ver detalhes"}
+                                <ChevronDown className={cx("size-4 transition-transform", detalhes && "rotate-180")} />
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
 
             <div className="flex flex-col gap-0.5 border-t border-secondary pt-3">
                 <Linha rotulo="Total a pagar" valor={brl(total.total)} />

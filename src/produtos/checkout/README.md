@@ -22,15 +22,37 @@ Implementa a "Fase 2 - Checkout PIX" do Figma (`Checkout AWA`, página
 Todo cartão enviado cai em "não autorizado": é o caminho que o fluxo quer
 mostrar. Marcar "Salvar cartão" faz ele aparecer na lista ao tentar de novo.
 
+### `novo-decreto/`
+
+Implementa "v.1 - Oferta no checkout" do Figma (`Checkout AWA`, section
+`9592:2076`), em desktop e mobile, na rota `/checkout/novo-decreto`:
+
+- **Decisão** — o card "Proteja-se de imprevistos" abre a tela e as formas de
+  pagamento ficam bloqueadas (50% de opacidade) até a escolha
+- **Proteger por R$ 10,00** — vira "Ingresso protegido", a proteção entra em
+  "Adicionais" no resumo e o Pix ganha borda verde
+- **Seguir sem proteção** — vira "Ingresso sem proteção", com atalho para
+  proteger depois; **Remover** (no protegido) leva ao mesmo estado
+
+Toda troca é um Smart Animate (Ease In and Out, 450 ms — `utils/transicao.ts`)
+na mesma página: a rolagem fica onde estava e quem clicou vê as formas de
+pagamento passarem de bloqueadas para habilitadas.
+
 ## Estrutura
 
 ```
 checkout/
 ├── components/                 # vazio: ainda não há shell compartilhado entre projetos
-└── melhorias-de-compra/
-    ├── pages/                  # pagamento.tsx · cartao.tsx · nao-autorizado.tsx
-    ├── components/             # checkout-shell (topo + resumo), pix-card, qr-pix, topo, icones
-    ├── data/                   # pedido.ts (valores, parcelas) · checkout-store.ts
-    ├── utils/                  # cartao.ts (máscaras e validação) · hooks.ts
+├── melhorias-de-compra/
+│   ├── pages/                  # pagamento.tsx · cartao.tsx · nao-autorizado.tsx
+│   ├── components/             # checkout-shell (topo + resumo), pix-card, qr-pix, topo, icones
+│   ├── data/                   # pedido.ts (valores, parcelas) · checkout-store.ts
+│   ├── utils/                  # cartao.ts (máscaras e validação) · hooks.ts
+│   └── assets/                 # capa do evento e ícone do Pix
+└── novo-decreto/
+    ├── pages/                  # pagamento.tsx (decisão, protegido e sem proteção)
+    ├── components/             # checkout-shell, protecao-card, altura-animada, icones
+    ├── data/                   # pedido.ts (valores, coberturas, taxas)
+    ├── utils/                  # hooks.ts · transicao.ts (Smart Animate 450 ms)
     └── assets/                 # capa do evento e ícone do Pix
 ```

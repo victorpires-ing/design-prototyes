@@ -81,6 +81,27 @@ export function PrecoLinha({ preco, className }: { preco: Preco; className?: str
 }
 
 /**
+ * O par de valores de um item: composição em cima, total embaixo.
+ *
+ * O total é a ÚLTIMA linha porque é a que encosta no seletor de quantidade.
+ * Com ele no topo, o número da decisão e o controle da decisão ficavam em
+ * cantos opostos do bloco, e a pessoa tinha de subir e descer o olho a cada
+ * clique no "+".
+ *
+ * Existe como componente, e não como duas linhas copiadas em cada card, porque
+ * ingresso, passaporte e produto têm de apresentar valor da mesma forma: duas
+ * cópias são duas chances de divergir, e divergir aqui é divergir de preço.
+ */
+export function PrecoPar({ preco, className }: { preco: Preco; className?: string }) {
+    return (
+        <div className={cx("flex min-w-0 flex-col gap-0.5", className)}>
+            <PrecoLinha preco={preco} />
+            <TotalLinha preco={preco} />
+        </div>
+    );
+}
+
+/**
  * Total da linha. Sem rótulo visível, mas o leitor de tela continua recebendo
  * "Total": sozinho, o número não diz de que ele é, e logo abaixo há outro.
  */

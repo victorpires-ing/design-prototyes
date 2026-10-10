@@ -70,9 +70,14 @@ export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBo
 
               A taxa de processamento depende do meio de pagamento e só existe no
               SDK, por isso ela fica como nota sob o total, sem número inventado.
+
+              O container não tem `gap`: com `gap-2`, o flex continuaria reservando
+              os dois espaçamentos ao redor do filho animado enquanto ele está em
+              altura zero, e os 8px sumiriam de uma vez no desmonte — a transição
+              acabava num pulo. O espaçamento vai dentro de cada peça.
             */}
             {taxas.length > 0 && (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col">
                     <Linha
                         rotulo={
                             <span className="flex items-center gap-1.5">
@@ -99,7 +104,7 @@ export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBo
                                 transition={{ duration: 0.2, ease: "easeOut" }}
                                 className="overflow-hidden motion-reduce:transition-none"
                             >
-                                <ul className="flex flex-col gap-1">
+                                <ul className="flex flex-col gap-1 pt-2">
                                     {taxas.map((t) => (
                                         <li key={t.nome} className="flex items-baseline justify-between gap-3 pl-3">
                                             <span className="text-sm text-secondary">{t.nome}</span>
@@ -117,7 +122,7 @@ export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBo
                         type="button"
                         onClick={() => setDetalhes((v) => !v)}
                         aria-expanded={detalhes}
-                        className="flex items-center gap-1 self-start text-sm text-tertiary transition duration-100 ease-linear hover:text-secondary"
+                        className="mt-2 flex items-center gap-1 self-start text-sm text-tertiary transition duration-100 ease-linear hover:text-secondary"
                     >
                         {detalhes ? "Ocultar detalhes" : "Ver detalhes"}
                         <ChevronDown className={cx("size-4 transition-transform", detalhes && "rotate-180")} />

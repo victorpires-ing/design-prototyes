@@ -60,6 +60,9 @@ export const precoSemTaxa = (face: number): Preco => ({ face, taxa: 0, total: fa
 export const precoDoProduto = (face: number, taxa: { aliquota: number; nome: string; modo: "embutida" | "destacada" }): Preco =>
     taxa.modo === "destacada" ? precoComTaxa(face, taxa.aliquota, taxa.nome) : precoSemTaxa(face);
 
+/** Escala um valor avulso por quantidade, em centavos exatos. */
+export const escalar = (valor: number, qtd: number) => cent(valor * qtd);
+
 export const multiplicar = (p: Preco, qtd: number): Preco => ({
     face: cent(p.face * qtd),
     taxa: cent(p.taxa * qtd),

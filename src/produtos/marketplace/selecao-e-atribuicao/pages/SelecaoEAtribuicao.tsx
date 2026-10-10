@@ -17,7 +17,7 @@ import { AbasCarrossel, ChipLegenda, type AbaItem } from "../components/abas-car
 import { BarraTotal } from "../components/barra-total";
 import { CupomModal } from "../components/CupomModal";
 import { MeiaSlideout, TaxaSlideout } from "../components/info-slideouts";
-import { PrecoBloco, PrecoLinha, TotalLinha } from "../components/preco-bloco";
+import { PrecoBloco, PrecoPar } from "../components/preco-bloco";
 import { SelecaoItensModal, type ItemSelecao } from "../components/SelecaoItensModal";
 import { TermosModal } from "../components/TermosModal";
 import { precoExtraDoItem, TAXA_PRODUTO_PADRAO } from "../data/combos";
@@ -25,6 +25,7 @@ import type { Beneficio, ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento
 import { DEFAULT_CONFIG, STORAGE_KEY, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
 import {
     brl,
+    escalar,
     faceBeneficio,
     multiplicar,
     PRECO_ZERO,
@@ -173,7 +174,7 @@ export function SelecaoEAtribuicao() {
     }, [config]);
 
     /** Preço all-in de um ingresso ou combo. */
-    const precoIngresso = (face: number): Preco => precoComTaxa(face, taxa.aliquota);
+    const precoIngresso = (face: number): Preco => precoComTaxa(face, taxa.aliquota, taxa.nome);
     /** Produto tem cobrança acessória própria: outra alíquota, outro nome. */
     const taxaProduto = config.taxaProduto ?? TAXA_PRODUTO_PADRAO;
     const precoProduto = (face: number): Preco => precoDoProduto(face, taxaProduto);
@@ -355,7 +356,12 @@ export function SelecaoEAtribuicao() {
                     lote: combo.lote,
                     preco: precoIngresso(combo.preco),
                     qtd: novo,
-                    sublines: combo.inclui.map((i, idx) => ({ nome: i.titulo, sub: i.sub, qtd: i.qtd * novo, valor: partes[idx] })),
+                    // Sub-linha guarda o valor de UM pacote. A multiplicação pela
+                    // quantidade do grupo acontece na renderização, que lê a `qtd`
+                    // viva: gravar já multiplicado deixava a discriminação velha
+                    // sempre que a quantidade mudasse por outro caminho — o "+" do
+                    // resumo não repassa por aqui.
+                    sublines: combo.inclui.map((i, idx) => ({ nome: i.titulo, sub: i.sub, qtd: i.qtd, valor: partes[idx] })),
                 };
             }
             return next;
@@ -603,6 +609,10 @@ export function SelecaoEAtribuicao() {
         // Art. 7º caput: o valor também tem de existir na última fase da compra.
         sp.set("t", totalPreco.total.toFixed(2));
         sp.set("x", totalPreco.taxa.toFixed(2));
+        // Discriminação nominal, não só o agregado: na última fase o comprador
+        // precisa ver a mesma decomposição que viu na barra, e um agregado de
+        // duas cobranças rotulado com o nome de uma delas é cobrança trocada.
+        if (taxasDoPedido.length) sp.set("xd", JSON.stringify(taxasDoPedido));
         const qs = sp.toString();
         navigate(`/marketplace/sucesso${qs ? `?${qs}` : ""}`);
     };
@@ -1590,10 +1600,7 @@ function ProdutoCard({ produto, taxaProduto, qtd, onAbrirVariacao, onSetQtd }: {
                 )}
                 {/* Mesmo bloco de valor da linha de ingresso: total em cima, item e taxa embaixo. */}
                 {produto.preco != null && (
-                    <div className="mt-0.5 flex min-w-0 flex-col gap-0.5">
-                        <TotalLinha preco={precoDoProduto(produto.preco, taxaProduto)} />
-                        <PrecoLinha preco={precoDoProduto(produto.preco, taxaProduto)} />
-                    </div>
+                    <PrecoPar preco={precoDoProduto(produto.preco, taxaProduto)} className="mt-0.5" />
                 )}
                 <div className="mt-auto pt-2">
                     {temVar ? (
@@ -1649,10 +1656,7 @@ function VariacaoModal({
                                 <div className="flex flex-col gap-1">
                                     <h2 className="text-lg font-semibold text-primary">{produto.nome}</h2>
                                     {produto.preco != null && (
-                                        <div className="flex min-w-0 flex-col gap-0.5">
-                                            <TotalLinha preco={precoDoProduto(produto.preco, taxaProduto)} />
-                                            <PrecoLinha preco={precoDoProduto(produto.preco, taxaProduto)} />
-                                        </div>
+                                        <PrecoPar preco={precoDoProduto(produto.preco, taxaProduto)} />
                                     )}
                                 </div>
                                 <ButtonUtility size="sm" color="tertiary" icon={XClose} onClick={onClose} tooltip="Fechar" />
@@ -1881,7 +1885,7 @@ function ComboFixoView({
     onDec: () => void;
 }) {
     const datas = combo.inclui.map((i) => i.sub).filter(Boolean) as string[];
-    const preco = precoComTaxa(combo.preco, taxa.aliquota);
+    const preco = precoComTaxa(combo.preco, taxa.aliquota, taxa.nome);
     // Rateio do preço do pacote, com o resíduo na última linha: a lista sempre
     // fecha com o total impresso logo abaixo dela.
     const partes = ratear(combo.preco, combo.inclui.map((i) => i.qtd));
@@ -1910,10 +1914,7 @@ function ComboFixoView({
                     embaixo. Passaporte e ingresso sao a mesma decisao de compra e nao
                     podem apresentar o preco de duas formas na mesma tela (art. 7). */}
                 <div className="mt-3 flex items-end justify-between gap-4">
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                        <TotalLinha preco={preco} />
-                        <PrecoLinha preco={preco} />
-                    </div>
+                    <PrecoPar preco={preco} />
                     <Stepper qtd={qtd} rotulo={combo.nome} onInc={onInc} onDec={onDec} />
                 </div>
             </div>
@@ -2147,7 +2148,7 @@ function IngressoRow({
     onDec: () => void;
     onAbrirMeia: () => void;
 }) {
-    const preco = precoComTaxa(it.preco ?? 0, taxa.aliquota);
+    const preco = precoComTaxa(it.preco ?? 0, taxa.aliquota, taxa.nome);
     const ehMeia = it.beneficio === "meia-entrada";
     const esgotado = !!it.cotaEsgotada;
     const rotulo = [it.grupo, it.nome].filter(Boolean).join(" ");
@@ -2202,10 +2203,7 @@ function IngressoRow({
                 sem container query, e o stepper fica ao lado do par inteiro. */}
             <div className="mt-3 flex items-end justify-between gap-4">
                 {it.preco != null ? (
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                        <TotalLinha preco={preco} />
-                        <PrecoLinha preco={preco} />
-                    </div>
+                    <PrecoPar preco={preco} />
                 ) : (
                     <span />
                 )}
@@ -2241,12 +2239,14 @@ function CartGroupRow({ grupo, chave, imagem, onInc, onDec }: { grupo: CartGroup
                 <ul className="flex flex-col gap-2 pl-7">
                     {grupo.sublines.map((sl, i) => (
                         <li key={i} className="flex items-start gap-2.5">
-                            <span className="pt-0.5 text-sm text-tertiary tabular-nums">{sl.qtd}</span>
+                            <span className="pt-0.5 text-sm text-tertiary tabular-nums">{sl.qtd * grupo.qtd}</span>
                             <div className="flex min-w-0 flex-1 flex-col">
                                 <span className="truncate text-sm font-medium text-secondary">{sl.nome}</span>
                                 {sl.sub && <span className="truncate text-sm text-tertiary">{sl.sub}</span>}
                             </div>
-                            {sl.valor != null && <span className="shrink-0 pt-0.5 text-sm text-tertiary tabular-nums">{brl(sl.valor)}</span>}
+                            {sl.valor != null && (
+                                <span className="shrink-0 pt-0.5 text-sm text-tertiary tabular-nums">{brl(escalar(sl.valor, grupo.qtd))}</span>
+                            )}
                         </li>
                     ))}
                 </ul>

@@ -54,6 +54,21 @@ export function Sucesso() {
     // Valor pago, vindo da seleção. Sem ele a última fase da compra não exibe preço.
     const total = Number(params.get("t"));
     const taxaPaga = Number(params.get("x"));
+    /*
+      Cobranças discriminadas por nome. `x` sozinho é o agregado, e rotular o
+      agregado de duas cobranças com o nome de uma delas apresenta licenciamento
+      de produto como taxa de serviço justamente na fase em que o comprador
+      confere o que pagou. Links antigos não trazem `xd` e caem no nome único.
+    */
+    const taxasDetalhe: { nome: string; valor: number }[] = (() => {
+        try {
+            const v = JSON.parse(params.get("xd") || "[]");
+            return Array.isArray(v) ? v.filter((t) => t && typeof t.nome === "string" && Number.isFinite(t.valor)) : [];
+        } catch {
+            return [];
+        }
+    })();
+    const nomeUnico = taxasDetalhe.length === 1 ? taxasDetalhe[0].nome : taxasDetalhe.length === 0 ? config.taxaServico.nome : null;
     const temValor = Number.isFinite(total) && total > 0;
 
     const qs = params.toString();
@@ -77,8 +92,18 @@ export function Sucesso() {
                         <span className="text-xl font-bold text-primary tabular-nums">{brl(total)}</span>
                         {Number.isFinite(taxaPaga) && taxaPaga > 0 && (
                             <span className="text-sm font-medium text-tertiary tabular-nums">
-                                inclui {brl(taxaPaga)} de {config.taxaServico.nome.toLowerCase()}
+                                inclui {brl(taxaPaga)} {nomeUnico ? `de ${nomeUnico.toLowerCase()}` : "em taxas"}
                             </span>
+                        )}
+                        {!nomeUnico && (
+                            <ul className="mt-1 flex flex-col gap-0.5">
+                                {taxasDetalhe.map((t) => (
+                                    <li key={t.nome} className="flex items-baseline justify-between gap-3">
+                                        <span className="text-sm text-tertiary">{t.nome}</span>
+                                        <span className="shrink-0 text-sm text-tertiary tabular-nums">{brl(t.valor)}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         )}
                         <p className="mt-2 text-sm text-tertiary">
                             Se o evento for cancelado, adiado ou sofrer alteração relevante, devolvemos o valor do ingresso e a{" "}

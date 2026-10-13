@@ -100,15 +100,16 @@ export function PrecoLinha({ preco, className }: { preco: Preco; className?: str
  *
  * Valores e seletor no MESMO container, um só em todos os tamanhos.
  *
- * Duas colunas na mesma linha: composição à esquerda, e à direita o par que
- * decide — total com o seletor logo abaixo, no mesmo eixo. Os dois ficam
- * alinhados pela borda direita, um em cima do outro.
+ * No celular são duas linhas. Em cima a composição, com a largura inteira do
+ * card — que é o que a faz caber numa linha só, em vez de quebrar por uns
+ * poucos pixels disputando espaço com o seletor. Embaixo o que decide: total
+ * na esquerda e seletor na direita, nas pontas da mesma linha.
  *
- * De `sm` para cima a coluna da direita se abre e vira linha, com o total
- * encostando no seletor em vez de acima dele; a composição segue à esquerda.
+ * De `sm` para cima tudo volta para uma linha: composição à esquerda, total
+ * empurrado para a direita e o seletor logo depois dele.
  *
- * Sem `order` em lugar nenhum: a ordem visual é a mesma do DOM nos dois
- * tamanhos, então teclado e leitor de tela recebem exatamente o que se vê.
+ * Sem `order` em lugar nenhum: a ordem visual é a do DOM nos dois tamanhos,
+ * então teclado e leitor de tela recebem exatamente o que está na tela.
  */
 export function PrecoFaixa({
     preco,
@@ -123,9 +124,9 @@ export function PrecoFaixa({
     className?: string;
 }) {
     return (
-        <div className={cx("flex items-center justify-between gap-3 sm:gap-4", className)}>
-            <PrecoLinha preco={preco} className="min-w-0" />
-            <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-4">
+        <div className={cx("flex min-w-0 flex-col gap-y-1 sm:flex-row sm:items-center sm:gap-4", className)}>
+            <PrecoLinha preco={preco} />
+            <div className="flex w-full items-center justify-between gap-3 sm:ml-auto sm:w-auto sm:shrink-0 sm:justify-end sm:gap-4">
                 <TotalLinha preco={preco} rotulo={rotulo} />
                 {children}
             </div>

@@ -695,7 +695,6 @@ export function SelecaoEAtribuicao() {
                         combo={combo}
                         preco={preco}
                         variavel={variavel}
-                        taxa={taxa}
                         onSelecionar={() => setComboSelecao(resolverCombo(combo))}
                     />
                 );
@@ -1997,22 +1996,29 @@ function ComboDinamicoCard({
     combo,
     preco,
     variavel,
-    taxa,
     onSelecionar,
 }: {
     combo: ComboDinamico;
     preco: Preco;
     variavel: boolean;
-    taxa: TaxaServico;
     onSelecionar: () => void;
 }) {
+    /*
+      Mesma estrutura da linha de ingresso e do passaporte: identificação em
+      cima, faixa de valor embaixo terminando no controle. Este card era o
+      último com o preço no formato antigo — valor grande e taxa entre
+      parênteses — e ficava destoando de tudo ao redor na mesma tela.
+
+      Quando um opcional pago ainda pode subir o valor, o rótulo do total vira
+      "a partir de": chamar aquele número de total seria subdeclarar.
+    */
     return (
-        <div className="flex items-start justify-between gap-4 rounded-xl bg-primary px-4 py-4 ring-1 ring-border-secondary">
+        <div className="flex flex-col rounded-xl bg-primary px-4 py-4 ring-1 ring-border-secondary">
             <div className="flex min-w-0 flex-col gap-2">
                 {/* O badge de desconto saiu: `totalValor` nunca consultou o cupom, então
                     anunciar "10% OFF" ao lado de um total ostensivo que não desconta nada
                     seria pior do que não anunciar. Volta quando o cupom entrar no cálculo. */}
-                <span className="text-sm font-bold text-primary">{combo.nome}</span>
+                <span className="text-md font-semibold text-primary">{combo.nome}</span>
                 <div className="flex flex-wrap items-center gap-2">
                     {combo.dataLabel && <span className="rounded-md bg-secondary px-2 py-0.5 text-sm font-medium text-tertiary">{combo.dataLabel}</span>}
                     {combo.sessoesLabel && <span className="rounded-md bg-secondary px-2 py-0.5 text-sm font-medium text-tertiary">{combo.sessoesLabel}</span>}
@@ -2023,11 +2029,12 @@ function ComboDinamicoCard({
                     </span>
                 ))}
                 {combo.descricao && <p className="text-sm text-tertiary">{combo.descricao}</p>}
-                <PrecoBloco preco={preco} tamanho="lg" prefixo={variavel ? "A partir de" : undefined} className="mt-1" />
             </div>
-            <Button size="md" color="secondary" className="shrink-0" onClick={onSelecionar}>
-                Selecionar
-            </Button>
+            <PrecoFaixa preco={preco} rotulo={variavel ? "a partir de" : undefined} className="mt-3">
+                <Button size="md" color="secondary" className="shrink-0" onClick={onSelecionar}>
+                    Selecionar
+                </Button>
+            </PrecoFaixa>
         </div>
     );
 }

@@ -113,11 +113,22 @@ export function PrecoLinha({ preco, className }: { preco: Preco; className?: str
  * `aria-label`, e a sequência falada é correta nas duas ordens. O único
  * elemento focável, o seletor, não muda de lugar na ordem de tabulação.
  */
-export function PrecoFaixa({ preco, children, className }: { preco: Preco; children?: ReactNode; className?: string }) {
+export function PrecoFaixa({
+    preco,
+    rotulo,
+    children,
+    className,
+}: {
+    preco: Preco;
+    /** Substitui "total", ex.: "a partir de" em combo com opcional pago. */
+    rotulo?: string;
+    children?: ReactNode;
+    className?: string;
+}) {
     return (
         <div className={cx("flex items-center justify-between gap-3 sm:gap-4", className)}>
             <div className="flex min-w-0 flex-1 flex-col gap-y-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <TotalLinha preco={preco} className="order-1 sm:order-2" />
+                <TotalLinha preco={preco} rotulo={rotulo} className="order-1 sm:order-2" />
                 <PrecoLinha preco={preco} className="order-2 sm:order-1" />
             </div>
             {children}
@@ -139,17 +150,22 @@ export function PrecoPar({ preco, className }: { preco: Preco; className?: strin
 }
 
 /**
- * Total do item, com o rótulo "total" em caixa baixa antes do número.
+ * Total do item, com o rótulo em caixa baixa antes do número.
  *
  * O rótulo voltou junto com a faixa horizontal: dois valores lado a lado na
  * mesma linha, sem nada que os distinga, são dois números soltos. Empilhado a
  * posição bastava; em linha, não basta.
+ *
+ * Em combo cujo opcional pago ainda pode subir o valor, o rótulo vira
+ * "a partir de": anunciar aquele número como "total" seria subdeclaração.
  */
-export function TotalLinha({ preco, className }: { preco: Preco; className?: string }) {
+export function TotalLinha({ preco, rotulo = "total", className }: { preco: Preco; rotulo?: string; className?: string }) {
     return (
-        <span className={cx("flex items-baseline gap-1", className)} aria-label={`Total ${brl(preco.total)}`}>
-            <span aria-hidden="true" className="text-sm text-tertiary">
-                total
+        <span className={cx("flex items-baseline gap-1", className)} aria-label={`${rotulo} ${brl(preco.total)}`}>
+            {/* `nowrap`: "total" é uma palavra e nunca quebrou, mas "a partir de"
+                virava três linhas empilhadas ao lado do número. */}
+            <span aria-hidden="true" className="text-sm whitespace-nowrap text-tertiary">
+                {rotulo}
             </span>
             <span aria-hidden="true" className="text-md font-bold text-primary tabular-nums">
                 {brl(preco.total)}

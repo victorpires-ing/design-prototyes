@@ -769,8 +769,8 @@ export function SelecaoEAtribuicao() {
             variante={variante}
             total={totalPreco}
             taxas={taxasDoPedido}
-            // No rodapé mobile as taxas acompanham o accordion: fechado, só o total.
-            mostrarTaxas={variante === "desktop" || resumoAberto}
+            // Rodapé mobile fechado: só o total, sem bloco de taxas e sem régua.
+            compacta={variante === "mobile" && !resumoAberto}
             continuarDisabled={continuarDisabled}
             comoCard={comoCard}
             onAvancar={avancar}
@@ -1024,8 +1024,8 @@ export function SelecaoEAtribuicao() {
                    teclado e leitor de tela continuariam recebendo o cupom por
                    último. Escondido por `display:none`, o ponto inativo sai da
                    ordem de foco e da árvore de acessibilidade. */
-                <div className="flex w-full flex-col gap-6 lg:flex-row lg:justify-center">
-                    <div className="px-4 md:px-0 lg:hidden">{cupomBlock}</div>
+                <div className="flex w-full flex-col gap-3 lg:flex-row lg:justify-center lg:gap-6">
+                    <div className="mt-4 px-4 md:px-0 lg:hidden">{cupomBlock}</div>
 
                     <div className="flex w-full flex-col px-4 md:px-0 lg:w-[640px]">
                         {abas}
@@ -1076,7 +1076,9 @@ export function SelecaoEAtribuicao() {
                         <button
                             type="button"
                             onClick={() => setResumoAberto((o) => !o)}
-                            className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-3"
+                            // Régua só com o resumo aberto: fechada, ela separava o
+                            // cabeçalho do total, que ali são o mesmo bloco.
+                            className={cx("flex items-center justify-between gap-3 px-4 py-3", resumoAberto && "border-b border-secondary")}
                         >
                             <span className="flex items-baseline gap-2 text-sm font-semibold text-primary">
                                 Resumo da compra

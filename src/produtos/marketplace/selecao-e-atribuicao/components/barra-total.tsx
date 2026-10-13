@@ -23,12 +23,13 @@ interface BarraTotalProps {
         rótulo só apagaria justamente a discriminação que o art. 6º pede. */
     taxas: { nome: string; valor: number }[];
     /**
-     * No rodapé mobile fechado o bloco de taxas não entra: a barra é uma faixa
-     * permanente sobre o conteúdo, e cada linha ali é conteúdo que some. O total
-     * — que é o que o art. 7º manda destacar — continua sempre visível, e a
-     * discriminação aparece ao abrir o resumo, no mesmo gesto.
+     * Rodapé mobile com o resumo fechado. A barra é uma faixa permanente sobre o
+     * conteúdo, então ali ela se reduz ao essencial: sai o bloco de taxas, e sai
+     * a régua de cima, porque fechado não há nada acima para separar — cabeçalho
+     * e total são um bloco só. O total, que é o que o art. 7º manda destacar,
+     * continua sempre visível; a discriminação volta ao abrir o resumo.
      */
-    mostrarTaxas?: boolean;
+    compacta?: boolean;
     continuarDisabled: boolean;
     rotuloBotao?: string;
     /** Fora de um card (layouts com mapa), a barra vira o próprio card. */
@@ -51,7 +52,7 @@ export function BarraTotal({
     variante,
     total,
     taxas,
-    mostrarTaxas = true,
+    compacta,
     continuarDisabled,
     rotuloBotao = "Continuar",
     comoCard,
@@ -77,7 +78,7 @@ export function BarraTotal({
             className={cx(
                 "flex flex-col gap-3 px-4",
                 mobile ? "pt-3 pb-9" : "py-4",
-                comoCard ? "rounded-xl bg-primary ring-1 ring-border-secondary" : "border-t border-secondary",
+                comoCard ? "rounded-xl bg-primary ring-1 ring-border-secondary" : !compacta && "border-t border-secondary",
             )}
         >
             {/*
@@ -93,7 +94,7 @@ export function BarraTotal({
               altura zero, e os 8px sumiriam de uma vez no desmonte — a transição
               acabava num pulo. O espaçamento vai dentro de cada peça.
             */}
-            {mostrarTaxas && taxas.length > 0 && (
+            {!compacta && taxas.length > 0 && (
                 <div className="flex flex-col">
                     <Linha
                         rotulo={

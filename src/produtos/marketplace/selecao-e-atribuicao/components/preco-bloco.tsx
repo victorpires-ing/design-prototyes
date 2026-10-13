@@ -100,16 +100,12 @@ export function PrecoLinha({ preco, className }: { preco: Preco; className?: str
  *
  * Valores e seletor no MESMO container, um só em todos os tamanhos.
  *
- * Abaixo de `sm` empilha na borda esquerda, nesta ordem: composição, total e
- * seletor. O total fica COLADO no seletor, um em cima do outro e no mesmo
- * eixo — o número que decide e o controle da decisão. Com o seletor jogado na
- * direita os dois ficavam na diagonal, que é tudo menos empilhado.
+ * Duas colunas na mesma linha: composição à esquerda, e à direita o par que
+ * decide — total com o seletor logo abaixo, no mesmo eixo. Os dois ficam
+ * alinhados pela borda direita, um em cima do outro.
  *
- * A composição vai acima do par, como qualificador do número que vem embaixo,
- * e não entre ele e o controle.
- *
- * De `sm` para cima o mesmo container vira linha: composição à esquerda, total
- * empurrado para a direita e o seletor logo depois dele.
+ * De `sm` para cima a coluna da direita se abre e vira linha, com o total
+ * encostando no seletor em vez de acima dele; a composição segue à esquerda.
  *
  * Sem `order` em lugar nenhum: a ordem visual é a mesma do DOM nos dois
  * tamanhos, então teclado e leitor de tela recebem exatamente o que se vê.
@@ -127,10 +123,12 @@ export function PrecoFaixa({
     className?: string;
 }) {
     return (
-        <div className={cx("flex min-w-0 flex-col items-start gap-y-1 sm:flex-row sm:items-center sm:gap-4", className)}>
-            <PrecoLinha preco={preco} />
-            <TotalLinha preco={preco} rotulo={rotulo} className="sm:ml-auto" />
-            {children && <div className="mt-1 sm:mt-0 sm:shrink-0">{children}</div>}
+        <div className={cx("flex items-center justify-between gap-3 sm:gap-4", className)}>
+            <PrecoLinha preco={preco} className="min-w-0" />
+            <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-4">
+                <TotalLinha preco={preco} rotulo={rotulo} />
+                {children}
+            </div>
         </div>
     );
 }

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cx } from "@/utils/cx";
-import { ariaPreco, brl, legendaTaxa, multiplicar, nomeDaTaxa, type Preco } from "../utils/preco";
+import { ariaPreco, brl, legendaTaxa, multiplicar, nomeDaTaxaCurto, type Preco } from "../utils/preco";
 
 /**
  * A única forma de renderizar dinheiro para o consumidor.
@@ -70,18 +70,21 @@ export function PrecoBloco({ preco, qtd = 1, tamanho = "md", rotulo, prefixo, mo
  */
 export function PrecoLinha({ preco, className }: { preco: Preco; className?: string }) {
     /*
-      Texto corrido, não flex: dividido em duas caixas, a linha quebrava entre
-      elas e deixava a face sozinha numa linha, com a taxa quebrando de novo no
-      meio da frase. Em fluxo normal ela quebra entre palavras, como prosa.
+      A parcela da taxa é um bloco indivisível. No celular a linha não cabe em
+      199px por uns poucos pixels, e deixada à própria sorte ela quebrava no
+      último espaço, largando "serviço" sozinho na segunda linha. Presa, a
+      quebra cai entre a face e a taxa, que é onde o sentido se divide.
     */
     return (
         <span className={cx("block text-sm text-tertiary tabular-nums", className)} aria-label={ariaPreco(preco)}>
             <span aria-hidden="true">{brl(preco.face)}</span>
             {preco.taxa > 0 && (
-                <span aria-hidden="true">
+                <>
                     {" "}
-                    + {brl(preco.taxa)} de {nomeDaTaxa(preco).toLowerCase()}
-                </span>
+                    <span aria-hidden="true" className="whitespace-nowrap">
+                        + {brl(preco.taxa)} {nomeDaTaxaCurto(preco)}
+                    </span>
+                </>
             )}
         </span>
     );

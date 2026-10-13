@@ -98,20 +98,20 @@ export function PrecoLinha({ preco, className }: { preco: Preco; className?: str
  * onde a decisão acontece. Empilhado, os dois ficavam em cantos opostos do
  * bloco e a pessoa subia e descia o olho a cada clique no "+".
  *
- * Os dois valores vivem no MESMO grupo, e o seletor é irmão desse grupo. Assim
- * o seletor se alinha ao par inteiro, e não a uma das duas linhas: antes ele
- * dividia a linha do total, o detalhamento ficava sozinho embaixo e os dois
- * textos tinham pais diferentes.
+ * Valores e seletor no MESMO container, um só em todos os tamanhos.
  *
- * Abaixo de `sm` o grupo é coluna — total em cima, detalhamento exatamente
- * abaixo, mesma borda esquerda — com o seletor ao lado, centrado nos dois.
- * De `sm` para cima o mesmo grupo vira linha e se abre: composição à esquerda,
- * total na direita encostando no seletor.
+ * Abaixo de `sm` ele empilha: total, detalhamento e seletor, nessa ordem. O
+ * seletor sai da linha dos valores, e com isso o detalhamento recupera a
+ * largura inteira do card — disputando espaço com o seletor ele não cabia por
+ * uns poucos pixels e quebrava em duas linhas em todo item da lista.
+ *
+ * De `sm` para cima o mesmo container vira linha e se abre: composição à
+ * esquerda, total empurrado para a direita e o seletor logo depois dele.
  *
  * A inversão entre os dois tamanhos é `order`, que move o pixel e não o DOM.
  * Aqui isso não custa nada: são dois textos vizinhos, cada um com o seu
  * `aria-label`, e a sequência falada é correta nas duas ordens. O único
- * elemento focável, o seletor, não muda de lugar na ordem de tabulação.
+ * elemento focável, o seletor, é o último nos dois casos.
  */
 export function PrecoFaixa({
     preco,
@@ -126,12 +126,10 @@ export function PrecoFaixa({
     className?: string;
 }) {
     return (
-        <div className={cx("flex items-center justify-between gap-3 sm:gap-4", className)}>
-            <div className="flex min-w-0 flex-1 flex-col gap-y-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <TotalLinha preco={preco} rotulo={rotulo} className="order-1 sm:order-2" />
-                <PrecoLinha preco={preco} className="order-2 sm:order-1" />
-            </div>
-            {children}
+        <div className={cx("flex min-w-0 flex-col gap-y-1 sm:flex-row sm:items-center sm:gap-4", className)}>
+            <PrecoLinha preco={preco} className="order-2 sm:order-1" />
+            <TotalLinha preco={preco} rotulo={rotulo} className="order-1 sm:order-2 sm:ml-auto" />
+            {children && <div className="order-3 mt-1 self-end sm:mt-0 sm:shrink-0 sm:self-auto">{children}</div>}
         </div>
     );
 }
@@ -150,23 +148,26 @@ export function PrecoPar({ preco, className }: { preco: Preco; className?: strin
 }
 
 /**
- * Total do item, com o rótulo em caixa baixa antes do número.
+ * Total do item. Sem rótulo visível: o número é o mais pesado do bloco e a
+ * composição logo ao lado já se explica sozinha.
  *
- * O rótulo voltou junto com a faixa horizontal: dois valores lado a lado na
- * mesma linha, sem nada que os distinga, são dois números soltos. Empilhado a
- * posição bastava; em linha, não basta.
+ * O leitor de tela continua recebendo "Total", porque ali não existe peso nem
+ * posição — sem a palavra seriam dois valores lidos em sequência, e quem ouve
+ * não teria como saber qual é qual.
  *
- * Em combo cujo opcional pago ainda pode subir o valor, o rótulo vira
- * "a partir de": anunciar aquele número como "total" seria subdeclaração.
+ * `rotulo` só entra quando o número NÃO é o total: em combo cujo opcional pago
+ * ainda pode subi-lo, ele vira "a partir de", porque anunciar aquele valor
+ * como final seria subdeclaração.
  */
-export function TotalLinha({ preco, rotulo = "total", className }: { preco: Preco; rotulo?: string; className?: string }) {
+export function TotalLinha({ preco, rotulo, className }: { preco: Preco; rotulo?: string; className?: string }) {
     return (
-        <span className={cx("flex items-baseline gap-1", className)} aria-label={`${rotulo} ${brl(preco.total)}`}>
-            {/* `nowrap`: "total" é uma palavra e nunca quebrou, mas "a partir de"
-                virava três linhas empilhadas ao lado do número. */}
-            <span aria-hidden="true" className="text-sm whitespace-nowrap text-tertiary">
-                {rotulo}
-            </span>
+        <span className={cx("flex items-baseline gap-1", className)} aria-label={`${rotulo ?? "Total"} ${brl(preco.total)}`}>
+            {/* `nowrap`: "a partir de" são três palavras e empilhava ao lado do número. */}
+            {rotulo && (
+                <span aria-hidden="true" className="text-sm whitespace-nowrap text-tertiary">
+                    {rotulo}
+                </span>
+            )}
             <span aria-hidden="true" className="text-md font-bold text-primary tabular-nums">
                 {brl(preco.total)}
             </span>

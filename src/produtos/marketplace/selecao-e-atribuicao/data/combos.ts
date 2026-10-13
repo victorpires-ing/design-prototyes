@@ -233,6 +233,17 @@ export const INGRESSOS: Ingresso[] = [
         baseId: "vip",
     },
     {
+        // Valor alto de propósito: é o caso que estressa o layout do preço —
+        // face, taxa e total de cinco dígitos competindo pela mesma linha.
+        id: "vip-mesa",
+        nome: "MESA VIP PARA 10 PESSOAS",
+        grupo: "CAMAROTE VIP OPEN BAR PREMIUM",
+        lote: "3º LOTE",
+        descricao: "Mesa exclusiva na primeira fileira do camarote, com open bar premium e serviço dedicado para até 10 pessoas.",
+        preco: 55437,
+        beneficio: "inteira",
+    },
+    {
         id: "vip-solidaria",
         // Promocional, não meia-entrada: é política comercial do produtor e não
         // entra na cota legal (art. 10, parágrafo único).

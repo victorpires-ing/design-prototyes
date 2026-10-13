@@ -100,18 +100,19 @@ export function PrecoLinha({ preco, className }: { preco: Preco; className?: str
  *
  * Valores e seletor no MESMO container, um só em todos os tamanhos.
  *
- * Abaixo de `sm` ele empilha: total, detalhamento e seletor, nessa ordem. O
- * seletor sai da linha dos valores, e com isso o detalhamento recupera a
- * largura inteira do card — disputando espaço com o seletor ele não cabia por
- * uns poucos pixels e quebrava em duas linhas em todo item da lista.
+ * Abaixo de `sm` empilha na borda esquerda, nesta ordem: composição, total e
+ * seletor. O total fica COLADO no seletor, um em cima do outro e no mesmo
+ * eixo — o número que decide e o controle da decisão. Com o seletor jogado na
+ * direita os dois ficavam na diagonal, que é tudo menos empilhado.
  *
- * De `sm` para cima o mesmo container vira linha e se abre: composição à
- * esquerda, total empurrado para a direita e o seletor logo depois dele.
+ * A composição vai acima do par, como qualificador do número que vem embaixo,
+ * e não entre ele e o controle.
  *
- * A inversão entre os dois tamanhos é `order`, que move o pixel e não o DOM.
- * Aqui isso não custa nada: são dois textos vizinhos, cada um com o seu
- * `aria-label`, e a sequência falada é correta nas duas ordens. O único
- * elemento focável, o seletor, é o último nos dois casos.
+ * De `sm` para cima o mesmo container vira linha: composição à esquerda, total
+ * empurrado para a direita e o seletor logo depois dele.
+ *
+ * Sem `order` em lugar nenhum: a ordem visual é a mesma do DOM nos dois
+ * tamanhos, então teclado e leitor de tela recebem exatamente o que se vê.
  */
 export function PrecoFaixa({
     preco,
@@ -126,10 +127,10 @@ export function PrecoFaixa({
     className?: string;
 }) {
     return (
-        <div className={cx("flex min-w-0 flex-col gap-y-1 sm:flex-row sm:items-center sm:gap-4", className)}>
-            <PrecoLinha preco={preco} className="order-2 sm:order-1" />
-            <TotalLinha preco={preco} rotulo={rotulo} className="order-1 sm:order-2 sm:ml-auto" />
-            {children && <div className="order-3 mt-1 self-end sm:mt-0 sm:shrink-0 sm:self-auto">{children}</div>}
+        <div className={cx("flex min-w-0 flex-col items-start gap-y-1 sm:flex-row sm:items-center sm:gap-4", className)}>
+            <PrecoLinha preco={preco} />
+            <TotalLinha preco={preco} rotulo={rotulo} className="sm:ml-auto" />
+            {children && <div className="mt-1 sm:mt-0 sm:shrink-0">{children}</div>}
         </div>
     );
 }

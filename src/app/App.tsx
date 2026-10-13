@@ -161,6 +161,8 @@ import { SolicitacaoBeneficioPcd } from '../produtos/landing-pages/sao-silvestre
 import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
 import { TransferirInscricao as CarteiraWebTransferir } from '../produtos/carteira-web/pages/TransferirInscricao';
 import { TrocaOnboardingWeb as CarteiraWebTrocaOnboarding } from '../produtos/carteira-web/pages/TrocaOnboardingWeb';
+import { Home as RevendaHome } from '../produtos/revenda/home/pages/Home';
+import { Evento as RevendaEvento } from '../produtos/revenda/evento/pages/Evento';
 import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/SolicitacoesInbox';
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
 import { Pedidos as PedidosPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/Pedidos';
@@ -380,6 +382,8 @@ export default function App() {
         <Route path="/carteira-web" element={<CarteiraWeb />} />
         <Route path="/carteira-web/transferir" element={<CarteiraWebTransferir />} />
         <Route path="/carteira-web/troca-onboarding" element={<CarteiraWebTrocaOnboarding />} />
+        <Route path="/revenda" element={<RevendaHome />} />
+        <Route path="/revenda/:slug" element={<RevendaEvento />} />
         <Route path="/aprovacoes/solicitacoes" element={<SolicitacoesInbox />} />
         <Route path="/backstage/publico" element={<Publico />} />
         <Route path="/backstage/publico/formularios" element={<FormulariosParticipacao />} />

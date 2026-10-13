@@ -100,16 +100,24 @@ export function PrecoLinha({ preco, className }: { preco: Preco; className?: str
  *
  * Valores e seletor no MESMO container, um só em todos os tamanhos.
  *
- * No celular são duas linhas. Em cima a composição, com a largura inteira do
- * card — que é o que a faz caber numa linha só, em vez de quebrar por uns
- * poucos pixels disputando espaço com o seletor. Embaixo o que decide: total
- * na esquerda e seletor na direita, nas pontas da mesma linha.
+ * No celular são duas linhas. Em cima o que decide: total na esquerda e
+ * seletor na direita, nas pontas da mesma linha. Embaixo o preço do ingresso e
+ * a taxa, com a largura inteira do card — que é o que fazem caber numa linha
+ * só, em vez de quebrar disputando espaço com o seletor.
  *
  * De `sm` para cima tudo volta para uma linha: composição à esquerda, total
  * empurrado para a direita e o seletor logo depois dele.
  *
- * Sem `order` em lugar nenhum: a ordem visual é a do DOM nos dois tamanhos,
- * então teclado e leitor de tela recebem exatamente o que está na tela.
+ * A composição vem antes no DOM e desce por `order` no celular. O mismatch é
+ * entre dois textos vizinhos, cada um com o seu `aria-label`, e "preço e
+ * depois total" é sequência correta de ouvir; o seletor, único focável da
+ * faixa, continua sendo o último.
+ *
+ * A régua vem ANTES do par total+seletor, separando a identificação do item
+ * dos valores — e não entre as duas linhas de valor, que são a mesma coisa
+ * dita em dois níveis. É `border-primary`, a de maior contraste, e não se
+ * confunde com a que separa um ITEM do outro porque tem outra EXTENSÃO: a da
+ * lista corre de borda a borda do card, esta fica dentro do padding.
  */
 export function PrecoFaixa({
     preco,
@@ -125,8 +133,8 @@ export function PrecoFaixa({
 }) {
     return (
         <div className={cx("flex min-w-0 flex-col gap-y-1 sm:flex-row sm:items-center sm:gap-4", className)}>
-            <PrecoLinha preco={preco} />
-            <div className="flex w-full items-center justify-between gap-3 sm:ml-auto sm:w-auto sm:shrink-0 sm:justify-end sm:gap-4">
+            <PrecoLinha preco={preco} className="order-2 sm:order-none" />
+            <div className="order-1 flex w-full items-center justify-between gap-3 border-t border-primary pt-1 sm:order-none sm:ml-auto sm:w-auto sm:shrink-0 sm:justify-end sm:gap-4 sm:border-0 sm:pt-0">
                 <TotalLinha preco={preco} rotulo={rotulo} />
                 {children}
             </div>

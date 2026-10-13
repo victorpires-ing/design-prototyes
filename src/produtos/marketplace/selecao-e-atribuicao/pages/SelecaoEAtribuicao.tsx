@@ -1078,7 +1078,7 @@ export function SelecaoEAtribuicao() {
                             onClick={() => setResumoAberto((o) => !o)}
                             // Régua só com o resumo aberto: fechada, ela separava o
                             // cabeçalho do total, que ali são o mesmo bloco.
-                            className={cx("flex items-center justify-between gap-3 px-4 py-3", resumoAberto && "border-b border-secondary")}
+                            className={cx("flex items-center justify-between gap-3 px-4 py-2.5", resumoAberto && "border-b border-secondary")}
                         >
                             <span className="flex items-baseline gap-2 text-sm font-semibold text-primary">
                                 Resumo da compra

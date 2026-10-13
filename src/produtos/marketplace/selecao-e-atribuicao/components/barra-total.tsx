@@ -76,8 +76,14 @@ export function BarraTotal({
     return (
         <div
             className={cx(
-                "flex flex-col gap-3 px-4",
-                mobile ? "pt-3 pb-9" : "py-4",
+                "flex flex-col px-4",
+                /*
+                  `pb-9` era folga cravada para a barra de gestos do iOS, 36px em
+                  todo aparelho, com ou sem ela. Com a área segura real o rodapé
+                  devolve ~25px de tela em quem não tem a barra, e continua
+                  intocado em quem tem.
+                */
+                mobile ? "gap-2 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" : "gap-3 py-4",
                 comoCard ? "rounded-xl bg-primary ring-1 ring-border-secondary" : !compacta && "border-t border-secondary",
             )}
         >

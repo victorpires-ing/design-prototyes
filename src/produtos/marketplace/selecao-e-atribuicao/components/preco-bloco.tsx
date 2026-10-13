@@ -69,13 +69,17 @@ export function PrecoBloco({ preco, qtd = 1, tamanho = "md", rotulo, prefixo, mo
  * (art. 7º), e só ele.
  */
 export function PrecoLinha({ preco, className }: { preco: Preco; className?: string }) {
+    /*
+      Texto corrido, não flex: dividido em duas caixas, a linha quebrava entre
+      elas e deixava a face sozinha numa linha, com a taxa quebrando de novo no
+      meio da frase. Em fluxo normal ela quebra entre palavras, como prosa.
+    */
     return (
-        <span className={cx("flex flex-wrap items-baseline gap-x-1.5", className)} aria-label={ariaPreco(preco)}>
-            <span aria-hidden="true" className="text-sm text-tertiary tabular-nums">
-                {brl(preco.face)}
-            </span>
+        <span className={cx("block text-sm text-tertiary tabular-nums", className)} aria-label={ariaPreco(preco)}>
+            <span aria-hidden="true">{brl(preco.face)}</span>
             {preco.taxa > 0 && (
-                <span aria-hidden="true" className="text-sm text-tertiary tabular-nums">
+                <span aria-hidden="true">
+                    {" "}
                     + {brl(preco.taxa)} de {nomeDaTaxa(preco).toLowerCase()}
                 </span>
             )}
@@ -91,26 +95,29 @@ export function PrecoLinha({ preco, className }: { preco: Preco; className?: str
  * onde a decisão acontece. Empilhado, os dois ficavam em cantos opostos do
  * bloco e a pessoa subia e descia o olho a cada clique no "+".
  *
- * Abaixo de `sm` o par total+seletor toma a linha inteira e se abre: total na
- * borda esquerda, seletor na direita. Assim nome, lote, total e composição
- * compartilham UMA borda esquerda e o seletor tem um único eixo à direita.
- * Com o par empurrado para a direita, a segunda linha começava no meio do card
- * e o olho fazia ziguezague a cada item da lista.
+ * Os dois valores vivem no MESMO grupo, e o seletor é irmão desse grupo. Assim
+ * o seletor se alinha ao par inteiro, e não a uma das duas linhas: antes ele
+ * dividia a linha do total, o detalhamento ficava sozinho embaixo e os dois
+ * textos tinham pais diferentes.
  *
- * E ali o total sobe: o número que decide vem primeiro, com a composição como
- * detalhe logo abaixo dele. A inversão é `order`, que move o pixel e não o DOM,
- * mas aqui isso não custa nada — são dois textos vizinhos, cada um com o seu
- * `aria-label`, e "composição e depois total" continua uma sequência correta
- * de ouvir. O único elemento focável, o seletor, não muda de lugar na ordem.
+ * Abaixo de `sm` o grupo é coluna — total em cima, detalhamento exatamente
+ * abaixo, mesma borda esquerda — com o seletor ao lado, centrado nos dois.
+ * De `sm` para cima o mesmo grupo vira linha e se abre: composição à esquerda,
+ * total na direita encostando no seletor.
+ *
+ * A inversão entre os dois tamanhos é `order`, que move o pixel e não o DOM.
+ * Aqui isso não custa nada: são dois textos vizinhos, cada um com o seu
+ * `aria-label`, e a sequência falada é correta nas duas ordens. O único
+ * elemento focável, o seletor, não muda de lugar na ordem de tabulação.
  */
 export function PrecoFaixa({ preco, children, className }: { preco: Preco; children?: ReactNode; className?: string }) {
     return (
-        <div className={cx("flex flex-wrap items-center justify-between gap-x-4 gap-y-1", className)}>
-            <PrecoLinha preco={preco} className="order-2 sm:order-none" />
-            <div className="order-1 flex w-full items-center justify-between gap-3 sm:order-none sm:ml-auto sm:w-auto sm:shrink-0 sm:justify-end">
-                <TotalLinha preco={preco} />
-                {children}
+        <div className={cx("flex items-center justify-between gap-3 sm:gap-4", className)}>
+            <div className="flex min-w-0 flex-1 flex-col gap-y-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <TotalLinha preco={preco} className="order-1 sm:order-2" />
+                <PrecoLinha preco={preco} className="order-2 sm:order-1" />
             </div>
+            {children}
         </div>
     );
 }

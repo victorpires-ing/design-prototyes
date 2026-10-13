@@ -765,7 +765,17 @@ export function SelecaoEAtribuicao() {
     );
 
     const barraTotal = (variante: "desktop" | "mobile", comoCard?: boolean) => (
-        <BarraTotal variante={variante} total={totalPreco} taxas={taxasDoPedido} continuarDisabled={continuarDisabled} comoCard={comoCard} onAvancar={avancar} onAbrirTaxa={() => setTaxaOpen(true)} />
+        <BarraTotal
+            variante={variante}
+            total={totalPreco}
+            taxas={taxasDoPedido}
+            // No rodapé mobile as taxas acompanham o accordion: fechado, só o total.
+            mostrarTaxas={variante === "desktop" || resumoAberto}
+            continuarDisabled={continuarDisabled}
+            comoCard={comoCard}
+            onAvancar={avancar}
+            onAbrirTaxa={() => setTaxaOpen(true)}
+        />
     );
     const totalBar = barraTotal("desktop");
 
@@ -914,7 +924,14 @@ export function SelecaoEAtribuicao() {
     ) : null;
     const umaDataLayout = (
         <div className="grid w-full grid-cols-1 gap-6 lg:h-full lg:grid-cols-[1fr_640px] lg:overflow-hidden">
-            <div className="h-[260px] overflow-clip bg-secondary lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary">
+            {/* O mapa é referência para escolher o lugar e fica no mobile. O banner
+                é decoração e some: empurrava a lista de ingressos para fora da tela. */}
+            <div
+                className={cx(
+                    "h-[260px] overflow-clip bg-secondary lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary",
+                    !config.mapa && "hidden lg:block",
+                )}
+            >
                 {config.mapa ? (
                     <img src={config.mapa} alt="Mapa do local" className="h-full w-full object-cover" />
                 ) : (
@@ -996,17 +1013,28 @@ export function SelecaoEAtribuicao() {
                     </div>
                 </div>
             ) : (
-                /* Layout sem mapa: seleção à esquerda, capa + cupom + resumo à direita */
+                /* Layout sem mapa: seleção à esquerda, cupom + cartaz à direita.
+
+                   No mobile o cupom vai para o topo e a coluna da direita inteira
+                   desaparece — com ela o cartaz, que é decoração e comia uma tela
+                   antes do primeiro ingresso (o resumo dele já vive no rodapé).
+
+                   Dois pontos de montagem do MESMO `cupomBlock`, e não `order` no
+                   flex: `order` move o pixel e deixa o DOM onde estava, então
+                   teclado e leitor de tela continuariam recebendo o cupom por
+                   último. Escondido por `display:none`, o ponto inativo sai da
+                   ordem de foco e da árvore de acessibilidade. */
                 <div className="flex w-full flex-col gap-6 lg:flex-row lg:justify-center">
+                    <div className="px-4 md:px-0 lg:hidden">{cupomBlock}</div>
+
                     <div className="flex w-full flex-col px-4 md:px-0 lg:w-[640px]">
                         {abas}
                         {conteudo}
                     </div>
 
                     {/* `self-start` é o que faz o sticky funcionar: sem ele o item do
-                        flex estica até a altura da linha e nunca tem para onde grudar.
-                        Só em lg, porque no mobile a coluna é uma pilha normal. */}
-                    <div className="flex w-full flex-col gap-4 lg:sticky lg:top-4 lg:w-[360px] lg:shrink-0 lg:self-start">
+                        flex estica até a altura da linha e nunca tem para onde grudar. */}
+                    <div className="hidden lg:sticky lg:top-4 lg:flex lg:w-[360px] lg:shrink-0 lg:flex-col lg:gap-4 lg:self-start">
                         {cupomBlock}
                         <CartazComVerso
                             virado={grupos.length > 0}

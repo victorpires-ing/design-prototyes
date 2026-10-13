@@ -59,17 +59,19 @@ export function PrecoBloco({ preco, qtd = 1, tamanho = "md", rotulo, prefixo, mo
 }
 
 /**
- * Forma de linha, validada em teste com usuário: valor do ingresso, a taxa
- * inline logo depois e o total colado na ação.
+ * Composição do valor: ingresso e taxa, inline.
  *
- * O teste mostrou que o valor somado sozinho deixa dúvida ("já inclui a taxa?")
- * e que a face sozinha obriga a conta. Os três números juntos resolvem os dois,
- * e o total fica perto do botão, que é onde a decisão acontece.
+ * Teste com usuário mostrou que o valor somado sozinho deixa dúvida ("já
+ * inclui a taxa?") e que a face sozinha obriga a conta — por isso os dois
+ * aparecem. Mas a linha inteira é de peso normal: com a face em negrito, cada
+ * item tinha DOIS números fortes e o olho não sabia qual era o que decide. A
+ * parcela precisa estar discriminada e legível (art. 6º); destacada é o total
+ * (art. 7º), e só ele.
  */
 export function PrecoLinha({ preco, className }: { preco: Preco; className?: string }) {
     return (
         <span className={cx("flex flex-wrap items-baseline gap-x-1.5", className)} aria-label={ariaPreco(preco)}>
-            <span aria-hidden="true" className="text-sm font-semibold text-primary tabular-nums">
+            <span aria-hidden="true" className="text-sm text-tertiary tabular-nums">
                 {brl(preco.face)}
             </span>
             {preco.taxa > 0 && (
@@ -89,15 +91,17 @@ export function PrecoLinha({ preco, className }: { preco: Preco; className?: str
  * onde a decisão acontece. Empilhado, os dois ficavam em cantos opostos do
  * bloco e a pessoa subia e descia o olho a cada clique no "+".
  *
- * `flex-wrap` com `ml-auto` no grupo da direita: quando a largura não dá para
- * os dois valores na mesma linha, o par total+seletor desce inteiro e continua
- * alinhado à direita, em vez de o total se separar do controle.
+ * Abaixo de `sm` o par total+seletor toma a linha inteira e se abre: total na
+ * borda esquerda, seletor na direita. Assim nome, lote, composição e total
+ * compartilham UMA borda esquerda e o seletor tem um único eixo à direita.
+ * Com o par empurrado para a direita, a segunda linha começava no meio do card
+ * e o olho fazia ziguezague a cada item da lista.
  */
 export function PrecoFaixa({ preco, children, className }: { preco: Preco; children?: ReactNode; className?: string }) {
     return (
         <div className={cx("flex flex-wrap items-center justify-between gap-x-4 gap-y-2", className)}>
             <PrecoLinha preco={preco} />
-            <div className="ml-auto flex shrink-0 items-center gap-3">
+            <div className="flex w-full items-center justify-between gap-3 sm:ml-auto sm:w-auto sm:shrink-0 sm:justify-end">
                 <TotalLinha preco={preco} />
                 {children}
             </div>

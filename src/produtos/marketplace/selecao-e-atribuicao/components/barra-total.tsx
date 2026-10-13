@@ -22,6 +22,13 @@ interface BarraTotalProps {
     /** Uma linha por cobrança acessória, com o nome dela. Agregar duas sob um
         rótulo só apagaria justamente a discriminação que o art. 6º pede. */
     taxas: { nome: string; valor: number }[];
+    /**
+     * No rodapé mobile fechado o bloco de taxas não entra: a barra é uma faixa
+     * permanente sobre o conteúdo, e cada linha ali é conteúdo que some. O total
+     * — que é o que o art. 7º manda destacar — continua sempre visível, e a
+     * discriminação aparece ao abrir o resumo, no mesmo gesto.
+     */
+    mostrarTaxas?: boolean;
     continuarDisabled: boolean;
     rotuloBotao?: string;
     /** Fora de um card (layouts com mapa), a barra vira o próprio card. */
@@ -40,7 +47,17 @@ function Linha({ rotulo, valor }: { rotulo: ReactNode; valor: string }) {
     );
 }
 
-export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBotao = "Continuar", comoCard, onAvancar, onAbrirTaxa }: BarraTotalProps) {
+export function BarraTotal({
+    variante,
+    total,
+    taxas,
+    mostrarTaxas = true,
+    continuarDisabled,
+    rotuloBotao = "Continuar",
+    comoCard,
+    onAvancar,
+    onAbrirTaxa,
+}: BarraTotalProps) {
     const mobile = variante === "mobile";
     /*
       Fechado por padrão, e o bloco é sempre o mesmo: título, agregado e
@@ -76,7 +93,7 @@ export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBo
               altura zero, e os 8px sumiriam de uma vez no desmonte — a transição
               acabava num pulo. O espaçamento vai dentro de cada peça.
             */}
-            {taxas.length > 0 && (
+            {mostrarTaxas && taxas.length > 0 && (
                 <div className="flex flex-col">
                     <Linha
                         rotulo={

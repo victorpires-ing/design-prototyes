@@ -1076,9 +1076,17 @@ export function SelecaoEAtribuicao() {
                         <button
                             type="button"
                             onClick={() => setResumoAberto((o) => !o)}
-                            // Régua só com o resumo aberto: fechada, ela separava o
-                            // cabeçalho do total, que ali são o mesmo bloco.
-                            className={cx("flex items-center justify-between gap-3 px-4 py-2.5", resumoAberto && "border-b border-secondary")}
+                            /*
+                              Régua e folga de baixo pertencem ao estado aberto: ali
+                              há conteúdo abaixo para separar e o traço precisa de
+                              respiro. Fechado, quem dá o espaço é o `pt-3` da barra,
+                              e somar os dois só empilhava altura numa faixa que já
+                              come um quinto da tela.
+                            */
+                            className={cx(
+                                "flex items-center justify-between gap-3 px-4 pt-2.5",
+                                resumoAberto ? "border-b border-secondary pb-2.5" : "pb-0",
+                            )}
                         >
                             <span className="flex items-baseline gap-2 text-sm font-semibold text-primary">
                                 Resumo da compra

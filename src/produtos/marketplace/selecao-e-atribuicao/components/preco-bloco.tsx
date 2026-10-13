@@ -132,9 +132,15 @@ export function PrecoFaixa({
     className?: string;
 }) {
     return (
-        <div className={cx("flex min-w-0 flex-col gap-y-1 sm:flex-row sm:items-center sm:gap-4", className)}>
+        <div className={cx("flex min-w-0 flex-col sm:flex-row sm:items-center sm:gap-4", className)}>
             <PrecoLinha preco={preco} className="order-2 sm:order-none" />
-            <div className="order-1 flex w-full items-center justify-between gap-3 border-t border-primary pt-1 sm:order-none sm:ml-auto sm:w-auto sm:shrink-0 sm:justify-end sm:gap-4 sm:border-0 sm:pt-0">
+            {/*
+              `mb-4` embaixo para igualar o respiro de cima: da identificação até
+              o seletor são 12px da faixa mais 4px depois da régua. Com 4px
+              embaixo o par ficava encostado no detalhamento e descolado do
+              item acima.
+            */}
+            <div className="order-1 mb-4 flex w-full items-center justify-between gap-3 border-t border-primary pt-1 sm:order-none sm:mb-0 sm:ml-auto sm:w-auto sm:shrink-0 sm:justify-end sm:gap-4 sm:border-0 sm:pt-0">
                 <TotalLinha preco={preco} rotulo={rotulo} />
                 {children}
             </div>

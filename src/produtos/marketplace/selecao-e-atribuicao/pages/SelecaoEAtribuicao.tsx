@@ -1879,6 +1879,12 @@ function Stepper({
     onDec: () => void;
 }) {
     const sufixo = rotulo ? ` quantidade de ${rotulo}` : "";
+    /*
+      `bg-secondary-solid` (82) no lugar de `bg-brand-solid` (10): quase preto,
+      o par de botões era a coisa mais escura da linha e puxava o olho antes do
+      preço. Um degrau abaixo ainda é botão sólido, e o branco em cima mantém
+      7,7:1 — folgado para AA. No hover ele volta ao sólido original.
+    */
     return (
         <div className="flex shrink-0 items-center gap-2">
             <button
@@ -1886,7 +1892,7 @@ function Stepper({
                 onClick={onDec}
                 disabled={qtd === 0 || !canDec}
                 aria-label={`Diminuir${sufixo}`}
-                className="flex size-9 items-center justify-center rounded-md bg-brand-solid text-white transition hover:bg-brand-solid_hover disabled:cursor-not-allowed disabled:bg-secondary disabled:text-fg-quaternary"
+                className="flex size-9 items-center justify-center rounded-md bg-secondary-solid text-white transition hover:bg-brand-solid disabled:cursor-not-allowed disabled:bg-secondary disabled:text-fg-quaternary"
             >
                 <Minus className="size-4" />
             </button>
@@ -1896,7 +1902,7 @@ function Stepper({
                 onClick={onInc}
                 disabled={!canInc}
                 aria-label={`Aumentar${sufixo}`}
-                className="flex size-9 items-center justify-center rounded-md bg-brand-solid text-white transition hover:bg-brand-solid_hover disabled:cursor-not-allowed disabled:bg-secondary disabled:text-fg-quaternary"
+                className="flex size-9 items-center justify-center rounded-md bg-secondary-solid text-white transition hover:bg-brand-solid disabled:cursor-not-allowed disabled:bg-secondary disabled:text-fg-quaternary"
             >
                 <Plus className="size-4" />
             </button>

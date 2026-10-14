@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ArrowLeft, Calendar, Check, Copy01 } from "@untitledui/icons";
+import { AlertTriangle, ArrowLeft, Calendar, Check, ChevronDown, Copy01 } from "@untitledui/icons";
 import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { CartaoOperacao, idDoCartao } from "../components/CartaoOperacao";
-import { FOCO, FOCO_ESCOPO, Miniatura, mascararCPF, telefoneParaCopia } from "../components/pos-compra-ui";
+import {
+    TIPO_OPERACAO_ICONE, FOCO, FOCO_ESCOPO, Miniatura, mascararCPF, telefoneParaCopia } from "../components/pos-compra-ui";
 import { EditarFormularioWizard } from "../components/wizard/editar-formulario-wizard";
 import { TrocarItensWizard } from "../components/wizard/TrocarItensWizard";
 import { TransferirTitularidadeWizard } from "../components/wizard/TransferirTitularidadeWizard";
@@ -135,31 +137,31 @@ export function DetalhePedido() {
 
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
-            <motion.div className={cx("flex min-w-0 flex-1 flex-col gap-5 p-4 md:p-6", FOCO_ESCOPO)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: "easeOut" }}>
+            <motion.div className={cx("mx-auto flex w-full min-w-0 max-w-4xl flex-1 flex-col gap-5 p-4 md:p-6", FOCO_ESCOPO)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: "easeOut" }}>
                 <Cabecalho pedido={pedido} voltarPara={voltarPara} />
                 <PagamentoCompacto pedido={pedido} />
 
-                <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-                    <div className="flex min-w-0 flex-col gap-5">
-                        <RegiaoAlteracoes pedido={pedido} rascunhos={rascunhos} onContinuar={continuar} />
+                {/*
+                  Uma coluna. O pagamento era um card fixo numa segunda coluna e
+                  disputava atenção com a lista sendo apenas referência; agora ele é
+                  a faixa logo acima, e o que resta na tela é uma pilha só: o que
+                  está em andamento, as abas, e a lista.
+                */}
+                <div className="flex min-w-0 flex-col gap-5">
+                    <RegiaoAlteracoes pedido={pedido} rascunhos={rascunhos} onContinuar={continuar} />
 
-                        <Tabs selectedKey={aba} onSelectionChange={(key) => setAba(key as Aba)}>
-                            <Tabs.List type="underline" size="sm">
-                                <Tabs.Item id="itens">Itens</Tabs.Item>
-                                <Tabs.Item id="historico">Histórico</Tabs.Item>
-                            </Tabs.List>
-                        </Tabs>
+                    <Tabs selectedKey={aba} onSelectionChange={(key) => setAba(key as Aba)}>
+                        <Tabs.List type="underline" size="sm">
+                            <Tabs.Item id="itens">Itens</Tabs.Item>
+                            <Tabs.Item id="historico">Histórico</Tabs.Item>
+                        </Tabs.List>
+                    </Tabs>
 
-                        {aba === "itens" ? (
-                            <ListaDeItens pedido={pedido} rascunhos={rascunhos} onAbrir={abrir} onContinuar={continuar} onVerAlteracao={(id) => setFocar(idDoCartao(id))} onVerHistorico={verNoHistorico} />
-                        ) : (
-                            <Historico pedido={pedido} onVerAlteracao={(id) => setFocar(idDoCartao(id))} />
-                        )}
-                    </div>
-
-                    <aside className="hidden min-w-0 xl:sticky xl:top-[calc(var(--bs-header-offset,0px)+1.5rem)] xl:block">
-                        <CartaoPagamento pedido={pedido} />
-                    </aside>
+                    {aba === "itens" ? (
+                        <ListaDeItens pedido={pedido} rascunhos={rascunhos} onAbrir={abrir} onContinuar={continuar} onVerAlteracao={(id) => setFocar(idDoCartao(id))} onVerHistorico={verNoHistorico} />
+                    ) : (
+                        <Historico pedido={pedido} onVerAlteracao={(id) => setFocar(idDoCartao(id))} />
+                    )}
                 </div>
             </motion.div>
 
@@ -295,29 +297,28 @@ const ParValor = ({ rotulo, valor, destaque = false }: { rotulo: string; valor: 
     </div>
 );
 
-const CartaoPagamento = ({ pedido }: { pedido: Pedido }) => (
-    <section className="rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
-        <h2 className="mb-3 text-base font-semibold text-primary">Pagamento</h2>
-        <LinhasPagamento pedido={pedido} />
-    </section>
-);
-
 /** Abaixo de 1280px o pagamento não vai para o fim da página: vira uma linha logo abaixo do
  *  cabeçalho, com o detalhe sob demanda quando há mais do que o total. */
 const PagamentoCompacto = ({ pedido }: { pedido: Pedido }) => {
     const { final, comCupom, cortesia } = usePagamento(pedido);
     const resumo = cortesia ? "Cortesia, sem valor pago" : `Pago na compra ${formatarMoeda(final)} · ${formaDePagamento(pedido.meioPagamento)}`;
+    /* Sem `xl:hidden`: esta é a única superfície de pagamento agora que a coluna
+       lateral saiu. O detalhe só vira sanfona quando há o que detalhar. */
     if (!comCupom)
         return (
-            <p className="rounded-2xl bg-primary px-5 py-3 text-sm text-secondary ring-1 ring-border-secondary xl:hidden">
+            <p className="rounded-2xl bg-primary px-5 py-3 text-sm text-secondary ring-1 ring-border-secondary">
                 <span className="tabular-nums">{resumo}</span>
             </p>
         );
     return (
-        <details className="rounded-2xl bg-primary ring-1 ring-border-secondary xl:hidden">
+        <details className="group rounded-2xl bg-primary ring-1 ring-border-secondary">
             <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 rounded-2xl px-5 py-3 text-sm text-secondary transition duration-100 ease-linear hover:bg-primary_hover">
                 <span className="tabular-nums">{resumo}</span>
-                <span className="font-semibold text-brand-secondary">Ver pagamento</span>
+                {/* Sem cor de marca, a affordance vem da seta e do peso, não do tom. */}
+                <span className="flex items-center gap-1 font-medium text-primary">
+                    Ver pagamento
+                    <ChevronDown className="size-4 text-fg-quaternary transition-transform group-open:rotate-180" aria-hidden="true" />
+                </span>
             </summary>
             <div className="border-t border-secondary px-5 py-4">
                 <LinhasPagamento pedido={pedido} />
@@ -714,14 +715,31 @@ const LinhaDaUnidade = ({
                         Ver alteração
                     </Button>
                 )}
-                {acoes.length > 0 && (
-                    <div className="flex flex-wrap justify-end gap-2">
-                        {acoes.map(({ verbo, rotulo }) => (
-                            <Button key={verbo} size="sm" color="tertiary" className="text-fg-brand-primary underline-offset-4 hover:bg-transparent hover:text-fg-brand-primary hover:underline" aria-label={`${rotulo === "Formulário" ? "Ver formulário de" : rotulo} ${item.nome} de ${nome}`} onClick={() => onAbrir(verbo, [linha.id])}>
-                                {rotulo}
-                            </Button>
-                        ))}
-                    </div>
+                {/*
+                  Um alvo por unidade. Eram até três botões-texto por linha, todos do
+                  mesmo peso: com três unidades, nove alvos competindo e nenhum
+                  conduzindo. E eles dependiam de `text-fg-brand-primary` — sem cor de
+                  marca, viraram cinza sobre cinza. Um botão contornado se sustenta em
+                  monocromático, e o menu guarda a escolha para depois do clique.
+                */}
+                {acoes.length === 1 && (
+                    <Button size="sm" color="secondary" aria-label={`${acoes[0].rotulo} ${item.nome} de ${nome}`} onClick={() => onAbrir(acoes[0].verbo, [linha.id])}>
+                        {acoes[0].rotulo}
+                    </Button>
+                )}
+                {acoes.length > 1 && (
+                    <Dropdown.Root>
+                        <Button size="sm" color="secondary" iconTrailing={ChevronDown} aria-label={`Alterar ${item.nome} de ${nome}`}>
+                            Alterar
+                        </Button>
+                        <Dropdown.Popover placement="bottom end" className="w-auto min-w-56">
+                            <Dropdown.Menu onAction={(chave) => onAbrir(chave as Verbo, [linha.id])}>
+                                {acoes.map(({ verbo, rotulo }) => (
+                                    <Dropdown.Item key={verbo} id={verbo} icon={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO[verbo]]} label={rotulo} />
+                                ))}
+                            </Dropdown.Menu>
+                        </Dropdown.Popover>
+                    </Dropdown.Root>
                 )}
             </div>
         </div>

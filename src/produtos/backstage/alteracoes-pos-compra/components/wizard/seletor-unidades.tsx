@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Package, Ticket01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { InputNumber } from "@/components/base/input/input-number";
 import { cx } from "@/utils/cx";
 import { ListaLimitada, mascararCPF } from "../pos-compra-ui";
 import {
@@ -49,6 +50,23 @@ export const identidadeDaLinha = (pedido: Pedido, linha: PedidoItem) => {
 };
 
 /**
+ * Unidades que são a mesma coisa: mesmo item e mesmo portador. Duas unidades do mesmo
+ * ingresso só são intercambiáveis enquanto pertencem à mesma pessoa — depois de uma
+ * transferência deixam de ser, e aí voltam a ser linhas separadas, com o nome à mostra.
+ */
+const agruparIguais = (linhas: PedidoItem[], pedido: Pedido) => {
+    const grupos = new Map<string, { itemId: string; titularId: string; unidades: PedidoItem[] }>();
+    for (const linha of linhas) {
+        const titularId = linha.titularId ?? pedido.compradorId;
+        const chave = `${linha.itemId}|${titularId}`;
+        const grupo = grupos.get(chave) ?? { itemId: linha.itemId, titularId, unidades: [] };
+        grupo.unidades.push(linha);
+        grupos.set(chave, grupo);
+    }
+    return [...grupos.values()];
+};
+
+/**
  * Etapa de seleção dentro do overlay. A elegibilidade é do verbo: o que entra numa troca não é o
  * mesmo que entra numa transferência, então só dá para dizer o que pode depois de saber o que se
  * vai fazer. O indisponível aparece com o motivo escrito, nunca como checkbox desabilitado mudo.
@@ -66,40 +84,54 @@ export function SeletorUnidades({
 }) {
     const disponiveis = pedido.itens.filter((l) => !motivoIndisponivel(pedido, l, verbo));
     const indisponiveis = pedido.itens.filter((l) => motivoIndisponivel(pedido, l, verbo));
-    const marcar = (ids: string[], marcado: boolean) => onChange({ ...selecao, ...Object.fromEntries(ids.map((id) => [id, marcado])) });
+
+    /* Uma linha por grupo. Escolher N marca as N primeiras unidades dele: dentro do
+       grupo elas são idênticas, então qual delas vai é indiferente. */
+    const grupos = agruparIguais(disponiveis, pedido);
+    const escolher = (unidades: PedidoItem[], quantas: number) => onChange({ ...selecao, ...Object.fromEntries(unidades.map((l, i) => [l.id, i < quantas])) });
+
+    /* Só vale dizer de quem é a unidade quando o mesmo item cai em mais de um grupo:
+       aí duas linhas seriam idênticas na tela. Com tudo na mão do comprador — o caso
+       normal — o nome repetiria a mesma pessoa linha após linha. */
+    const precisaDoNome = (itemId: string) => grupos.filter((g) => g.itemId === itemId).length > 1;
 
     return (
         <div className="flex flex-col gap-4">
             {disponiveis.length === 0 && <p className="rounded-xl bg-secondary px-4 py-6 text-center text-sm text-tertiary">Nenhuma unidade deste pedido pode entrar nesta alteração agora.</p>}
 
             {/*
-              Lista plana: uma unidade por linha, identificada pelo ITEM — nome, lote e
-              sessão, um em cada linha. Antes a linha era o portador, com o item virando
-              cabeçalho de grupo; quem escolhe o que transferir procura pelo ingresso,
-              não pela pessoa, e o nome só repetia o comprador em todas as linhas.
+              Uma linha por item, não por unidade: um pedido de assessoria com 40 inscrições
+              iguais virava 40 linhas idênticas, impossíveis de distinguir e de percorrer. As
+              unidades iguais entram agregadas e a quantidade vira um campo à direita.
 
-              O ordinal só aparece quando o mesmo item tem mais de uma unidade: sem o
-              nome do portador, duas linhas do mesmo item seriam indistinguíveis.
+              O seletor só aparece onde há quantidade a escolher, e nasce desabilitado: a
+              ordem é marcar o item e então dizer quantas unidades dele entram.
             */}
-            {disponiveis.length > 0 && (
+            {grupos.length > 0 && (
                 <ul className="flex flex-col divide-y divide-border-secondary">
-                    {disponiveis.map((linha) => {
-                        const item = getItem(linha.itemId);
-                        const irmas = disponiveis.filter((l) => l.itemId === linha.itemId);
-                        const ordinal = irmas.length > 1 ? `Unidade ${irmas.indexOf(linha) + 1} de ${irmas.length}` : null;
+                    {grupos.map((grupo) => {
+                        const item = getItem(grupo.itemId);
                         const sessao = sessaoDoItem(item) ? sessaoLabel(item) : null;
+                        const total = grupo.unidades.length;
+                        const escolhidas = grupo.unidades.filter((l) => selecao[l.id]).length;
+                        const marcado = escolhidas > 0;
                         return (
-                            <li key={linha.id} className={cx("cursor-pointer px-4 py-3 transition duration-100 ease-linear hover:bg-primary_hover", selecao[linha.id] && "bg-secondary")}>
+                            <li
+                                key={`${grupo.itemId}|${grupo.titularId}`}
+                                className={cx("flex items-center gap-3 px-4 py-3 transition duration-100 ease-linear hover:bg-primary_hover", marcado && "bg-secondary")}
+                            >
                                 {/*
                                   Miniatura e texto vão dentro do `label`, não no `hint`:
-                                  assim a área clicável é a linha inteira — foto incluída —
-                                  e as três linhas de texto alinham ao lado da imagem em vez
-                                  de recuarem sob a caixa.
+                                  assim a área clicável vai da foto ao fim do texto, e as
+                                  linhas alinham ao lado da imagem em vez de recuarem sob
+                                  a caixa. O seletor fica fora dela, para o clique nele não
+                                  marcar nem desmarcar o item.
                                 */}
                                 <Checkbox
                                     size="md"
-                                    isSelected={Boolean(selecao[linha.id])}
-                                    onChange={(marcado) => marcar([linha.id], marcado)}
+                                    isSelected={marcado}
+                                    onChange={(quer) => escolher(grupo.unidades, quer ? Math.max(1, escolhidas) : 0)}
+                                    className="min-w-0 flex-1 cursor-pointer"
                                     label={
                                         <span className="flex cursor-pointer items-start gap-3">
                                             <MiniaturaEmLinha item={item} />
@@ -107,11 +139,27 @@ export function SeletorUnidades({
                                                 <span className="text-sm font-medium text-primary">{item?.nome}</span>
                                                 {item?.lote && <span className="text-sm font-normal text-tertiary">{item.lote}</span>}
                                                 {sessao && <span className="text-sm font-normal text-tertiary">{sessao}</span>}
-                                                {ordinal && <span className="text-sm font-normal text-tertiary">{ordinal}</span>}
+                                                {precisaDoNome(grupo.itemId) && <span className="text-sm font-normal text-tertiary">{getConta(grupo.titularId)?.nome}</span>}
+                                                {total > 1 && <span className="text-sm font-normal text-tertiary">{total} unidades no pedido</span>}
                                             </span>
                                         </span>
                                     }
                                 />
+                                {total > 1 && (
+                                    <InputNumber
+                                        size="sm"
+                                        orientation="horizontal"
+                                        aria-label={`Quantas unidades de ${item?.nome}`}
+                                        minValue={1}
+                                        maxValue={total}
+                                        value={marcado ? escolhidas : 1}
+                                        isDisabled={!marcado}
+                                        onChange={(quantas) => escolher(grupo.unidades, Number.isFinite(quantas) ? quantas : 1)}
+                                        className="w-auto shrink-0"
+                                        wrapperClassName="w-auto"
+                                        inputClassName="w-12 px-0 text-center tabular-nums"
+                                    />
+                                )}
                             </li>
                         );
                     })}
@@ -177,20 +225,25 @@ export function ResumoUnidades({
                 )}
             </div>
             <div className="px-4 py-1">
-                <ListaLimitada itens={linhas} limite={3} rotulo="unidades">
-                    {(linha) => {
+                {/* Agregado como na etapa de seleção: 40 inscrições iguais são uma linha
+                    "40x Corrida 5 km", não quarenta linhas idênticas de conferir uma a uma. */}
+                <ListaLimitada itens={agruparIguais(linhas, pedido)} limite={3} rotulo="itens">
+                    {(grupo) => {
                         /* Só o item: quem é o portador não ajuda aqui. Na transferência
                            ele é a pessoa que SAI, e a etapa seguinte é justamente sobre
                            quem entra — mostrar os dois convida à troca de um pelo outro. */
-                        const item = getItem(linha.itemId);
+                        const item = getItem(grupo.itemId);
                         const sessao = sessaoDoItem(item) ? sessaoLabel(item) : null;
                         return (
-                            <div key={linha.id} className="py-3">
-                                <p className="text-sm font-medium text-primary">
-                                    {item?.nome}
-                                    {item?.lote && <span className="font-normal text-tertiary"> | {item.lote}</span>}
-                                </p>
-                                {sessao && <p className="text-sm text-tertiary">{sessao}</p>}
+                            <div key={`${grupo.itemId}|${grupo.titularId}`} className="flex gap-3 py-3">
+                                <span className="shrink-0 text-sm font-semibold text-secondary tabular-nums">{grupo.unidades.length}x</span>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-medium text-primary">
+                                        {item?.nome}
+                                        {item?.lote && <span className="font-normal text-tertiary"> | {item.lote}</span>}
+                                    </p>
+                                    {sessao && <p className="text-sm text-tertiary">{sessao}</p>}
+                                </div>
                             </div>
                         );
                     }}

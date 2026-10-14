@@ -5,6 +5,7 @@ import { ArrowDown, Calendar, ChevronDown, SearchLg } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { InputBase } from "@/components/base/input/input";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
+import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, SetaParaBaixo, Stepper, mascararEmail } from "../pos-compra-ui";
@@ -46,11 +47,20 @@ import { ResumoUnidades, SeletorUnidades, avisarRascunhoSalvo, detalheDoItem, id
 type Etapa = "saem" | "entram" | "formularios" | "revisao";
 
 const TITULO_ETAPA: Record<Etapa, string> = {
-    saem: "Itens que saem",
-    entram: "Itens que entram",
+    saem: "Itens atuais",
+    entram: "Novos itens",
     formularios: "Formulários",
     revisao: "Revisão",
 };
+
+type TipoFiltro = "todos" | "ingresso" | "produto" | "combo";
+
+const TIPOS_DE_ITEM: Array<{ id: TipoFiltro; label: string }> = [
+    { id: "todos", label: "Todos os tipos" },
+    { id: "ingresso", label: "Ingressos" },
+    { id: "produto", label: "Produtos" },
+    { id: "combo", label: "Combos" },
+];
 
 const combina = (termo: string, ...campos: Array<string | undefined>) => {
     const busca = termo.trim().toLowerCase();
@@ -82,6 +92,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
 
     const [indice, setIndice] = useState(() => (linhasDisponiveis.some((l) => linhasIniciais.includes(l.id)) ? 1 : 0));
     const [termo, setTermo] = useState("");
+    const [tipo, setTipo] = useState<TipoFiltro>("todos");
     const [motivo, setMotivo] = useState<Motivo>(rascunhoInicial?.motivo ?? MOTIVO_INICIAL);
     const [aceitouSobra, setAceitouSobra] = useState(false);
     const [saem, setSaem] = useState<Record<string, boolean>>(() => Object.fromEntries(pedidas.map((id) => [id, true])));
@@ -112,7 +123,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
     /*  O que entra                                                        */
     /* ------------------------------------------------------------------ */
 
-    const candidatos = catalogo.filter((i) => i.eventoId === pedido.eventoId && combina(termo, i.nome, i.grupo, i.lote, i.descricao, sessaoLabel(i)));
+    const candidatos = catalogo.filter((i) => i.eventoId === pedido.eventoId && (tipo === "todos" || i.tipo === tipo) && combina(termo, i.nome, i.grupo, i.lote, i.descricao, sessaoLabel(i)));
     const sessoes = SESSOES.filter((s) => s.eventoId === pedido.eventoId)
         .sort((a, b) => a.inicio - b.inicio)
         .map((sessao) => {
@@ -195,7 +206,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                 ? paresIncompletos.length === 0
                 : Boolean(calculo) && motivoValido(motivo) && (!precisaAceite || aceitouSobra);
 
-    const rotuloAvancar = etapa === "saem" ? "Escolher o que entra" : etapa === "entram" && comFormularios ? "Responder formulários" : "Revisar troca";
+    const rotuloAvancar = etapa === "saem" ? "Escolher os novos itens" : etapa === "entram" && comFormularios ? "Responder formulários" : "Revisar troca";
 
     const salvarProgresso = (proximaEtapa: string) => {
         const destinoPorLinha: Record<string, string> = {};
@@ -341,14 +352,14 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
 
             {etapa === "saem" && (
                 <>
-                    <Regra>Marque o que sai do pedido. O que entra vem na próxima etapa.</Regra>
+                    <Regra>Marque os itens que serão substituídos. Os novos vêm na próxima etapa.</Regra>
                     <SeletorUnidades pedido={pedido} verbo="trocar" selecao={saem} onChange={setSaem} />
                 </>
             )}
 
             {etapa === "entram" && (
                 <>
-                    <ResumoUnidades pedido={pedido} linhas={linhasSaem} verbo="trocar" titulo={`Trocando (${totalSaem})`} onAlterar={() => setIndice(0)} onIncluir={incluir} />
+                    <ResumoUnidades pedido={pedido} linhas={linhasSaem} verbo="trocar" titulo={`Substituindo (${totalSaem})`} onAlterar={() => setIndice(0)} onIncluir={incluir} />
                     <SetaParaBaixo />
 
                     {/* Com uma unidade só, o rádio do item já diz o que foi escolhido: instrução e
@@ -365,11 +376,37 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                         </div>
                     )}
 
-                    <InputBase size="sm" icon={SearchLg} value={termo} aria-label="Buscar item" onChange={(evento) => setTermo(evento.target.value)} placeholder="Busque por sessão, grupo, lote ou item" />
+                    {/* Busca e tipo na mesma barra. O tipo era só um título no meio da lista:
+                        para chegar aos produtos era preciso rolar todas as datas de ingresso. */}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <InputBase
+                            size="sm"
+                            icon={SearchLg}
+                            value={termo}
+                            aria-label="Buscar item"
+                            onChange={(evento) => setTermo(evento.target.value)}
+                            placeholder="Busque por sessão, grupo, lote ou item"
+                            wrapperClassName="min-w-0 flex-1"
+                        />
+                        <Select
+                            size="sm"
+                            aria-label="Tipo de item"
+                            selectedKey={tipo}
+                            onSelectionChange={(chave) => setTipo(chave as TipoFiltro)}
+                            items={TIPOS_DE_ITEM}
+                            className="shrink-0 sm:w-48"
+                        >
+                            {(opcao) => <Select.Item id={opcao.id}>{opcao.label}</Select.Item>}
+                        </Select>
+                    </div>
 
                     {selecaoIgual && <Aviso titulo="A seleção é igual ao que já está no pedido" descricao="Escolha pelo menos um item diferente para a troca fazer sentido." />}
 
-                    {candidatos.length === 0 && <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">Nenhum item encontrado para a busca.</p>}
+                    {candidatos.length === 0 && (
+                        <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">
+                            {tipo === "todos" ? "Nenhum item encontrado para a busca." : "Nenhum item deste tipo encontrado para a busca."}
+                        </p>
+                    )}
 
                     {sessoes.length > 0 && (
                         <div className="flex flex-col gap-2">

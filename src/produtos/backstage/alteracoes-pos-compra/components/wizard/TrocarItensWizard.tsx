@@ -5,6 +5,7 @@ import { ArrowDown, ChevronDown, SearchLg } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { InputBase } from "@/components/base/input/input";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
+import { Tabs } from "@/components/application/tabs/tabs";
 import { cx } from "@/utils/cx";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, SetaParaBaixo, Stepper, mascararEmail } from "../pos-compra-ui";
@@ -36,6 +37,7 @@ import {
     validarTrocaItem,
     type CatalogoItem,
     type Motivo,
+    type TipoItem,
     type Pedido,
     type PedidoItem,
     type Pergunta,
@@ -52,6 +54,8 @@ const TITULO_ETAPA: Record<Etapa, string> = {
     formularios: "Formulários",
     revisao: "Revisão",
 };
+
+const ROTULO_TIPO: Record<TipoItem, string> = { ingresso: "Ingressos", produto: "Produtos", combo: "Combos" };
 
 /** Partes da data para o chip: dia da semana em cima, dia e mês em destaque. */
 const partesDaSessao = (inicio: number) => {
@@ -94,6 +98,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
     const [indice, setIndice] = useState(() => (linhasDisponiveis.some((l) => linhasIniciais.includes(l.id)) ? 1 : 0));
     const [termo, setTermo] = useState("");
     const [aba, setAba] = useState("");
+    const [tipo, setTipo] = useState<TipoItem>("ingresso");
     const [motivo, setMotivo] = useState<Motivo>(rascunhoInicial?.motivo ?? MOTIVO_INICIAL);
     const [aceitouSobra, setAceitouSobra] = useState(false);
     const [saem, setSaem] = useState<Record<string, boolean>>(() => Object.fromEntries(pedidas.map((id) => [id, true])));
@@ -124,7 +129,12 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
     /*  O que entra                                                        */
     /* ------------------------------------------------------------------ */
 
-    const candidatos = catalogo.filter((i) => i.eventoId === pedido.eventoId && combina(termo, i.nome, i.grupo, i.lote, i.descricao, sessaoLabel(i)));
+    const doEvento = catalogo.filter((i) => i.eventoId === pedido.eventoId);
+    /* As abas de tipo saem do catálogo inteiro, não do resultado da busca: senão sumiriam
+       debaixo do dedo enquanto a pessoa digita. */
+    const tiposDisponiveis = (["ingresso", "produto", "combo"] as TipoItem[]).filter((t) => doEvento.some((i) => i.tipo === t));
+    const tipoAtivo = tiposDisponiveis.includes(tipo) ? tipo : (tiposDisponiveis[0] ?? "ingresso");
+    const candidatos = doEvento.filter((i) => i.tipo === tipoAtivo && combina(termo, i.nome, i.grupo, i.lote, i.descricao, sessaoLabel(i)));
     const sessoes = SESSOES.filter((s) => s.eventoId === pedido.eventoId)
         .sort((a, b) => a.inicio - b.inicio)
         .map((sessao) => {
@@ -133,10 +143,10 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
             return { sessao, grupos: [...grupos.entries()] };
         })
         .filter(({ grupos }) => grupos.length > 0);
-    const produtos = candidatos.filter((i) => !i.sessaoId && i.tipo === "produto");
-    const combos = candidatos.filter((i) => !i.sessaoId && i.tipo === "combo");
+    /* Produto e combo não têm data: viram lista direta, sem carrossel. */
+    const semSessao = candidatos.filter((i) => !i.sessaoId);
 
-    const abasDisponiveis = [...sessoes.map(({ sessao }) => sessao.id), ...(produtos.length > 0 ? ["produtos"] : []), ...(combos.length > 0 ? ["combos"] : [])];
+    const abasDisponiveis = sessoes.map(({ sessao }) => sessao.id);
     /* Abre na primeira sessão que ainda vai acontecer: nada entra numa sessão encerrada, e
        cair numa delas faz a etapa nascer com uma lista inteira de item bloqueado. */
     const padrao = sessoes.find(({ sessao }) => sessao.inicio > Date.now())?.sessao.id ?? abasDisponiveis[0] ?? "";
@@ -160,8 +170,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                 ),
             };
         }),
-        ...(produtos.length > 0 ? [{ id: "produtos", conteudo: () => <span className="px-2 text-sm font-semibold">Produtos</span> }] : []),
-        ...(combos.length > 0 ? [{ id: "combos", conteudo: () => <span className="px-2 text-sm font-semibold">Combos</span> }] : []),
     ];
 
     const referenciaDoItem = (item: CatalogoItem) => linhasSaem.find((l) => getItem(l.itemId)?.tipo === item.tipo) ?? linhasSaem[0];
@@ -400,19 +408,29 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                     <ResumoUnidades pedido={pedido} linhas={linhasSaem} verbo="trocar" titulo={`Substituindo (${totalSaem})`} onAlterar={() => setIndice(0)} onIncluir={incluir} />
                     <SetaParaBaixo />
 
-                    <InputBase
-                        size="sm"
-                        icon={SearchLg}
-                        value={termo}
-                        aria-label="Buscar item"
-                        onChange={(evento) => setTermo(evento.target.value)}
-                        placeholder="Busque por sessão, grupo, lote ou item"
-                    />
+                    {/* Busca e tipo na mesma linha. O tipo era um título no meio da lista: para
+                        chegar aos produtos era preciso rolar todas as datas de ingresso. */}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <InputBase
+                            size="sm"
+                            icon={SearchLg}
+                            value={termo}
+                            aria-label="Buscar item"
+                            onChange={(evento) => setTermo(evento.target.value)}
+                            placeholder="Busque por sessão, grupo, lote ou item"
+                            wrapperClassName="min-w-0 flex-1"
+                        />
+                        {tiposDisponiveis.length > 1 && (
+                            <Tabs selectedKey={tipoAtivo} onSelectionChange={(chave) => setTipo(chave as TipoItem)} className="shrink-0">
+                                <Tabs.List type="button-border" size="sm" items={tiposDisponiveis.map((t) => ({ id: t, label: ROTULO_TIPO[t] }))}>
+                                    {({ id, label }) => <Tabs.Item id={id}>{label}</Tabs.Item>}
+                                </Tabs.List>
+                            </Tabs>
+                        )}
+                    </div>
 
-                    {/* A mesma tira da bilheteria: uma data por chip, e os tipos sem data no fim
-                        dela. Antes todas as datas vinham empilhadas e chegar aos produtos era
-                        rolar o catálogo inteiro. A busca encolhe a tira junto com a lista. */}
-                    {abasDoCatalogo.length > 0 && <AbasCarrossel abas={abasDoCatalogo} ativa={abaAtiva} ariaLabel="Datas e tipos de item" onSelecionar={setAba} />}
+                    {/* Só ingresso tem data. A tira é a mesma da bilheteria, uma data por chip. */}
+                    {abasDoCatalogo.length > 0 && <AbasCarrossel abas={abasDoCatalogo} ativa={abaAtiva} ariaLabel="Datas à venda" onSelecionar={setAba} />}
 
                     {selecaoIgual && <Aviso titulo="A seleção é igual ao que já está no pedido" descricao="Escolha pelo menos um item diferente para a troca fazer sentido." />}
 
@@ -422,10 +440,8 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
 
                     {sessaoAtiva && renderSessao(sessaoAtiva)}
 
-                    {(abaAtiva === "produtos" || abaAtiva === "combos") && (
-                        <ul className="flex flex-col divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-                            {(abaAtiva === "produtos" ? produtos : combos).map(cartaoCatalogo)}
-                        </ul>
+                    {semSessao.length > 0 && (
+                        <ul className="flex flex-col divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">{semSessao.map(cartaoCatalogo)}</ul>
                     )}
                 </>
             )}
@@ -480,16 +496,27 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                             {pares.map(({ linha, novoItem }) => {
                                 const itemSai = getItem(linha.itemId);
                                 return (
+                                    /* Sem o nome do portador: a troca é do item, e numa lista de pares
+                                       o nome se repetia em todas as linhas sem distinguir nenhuma.
+                                       Os dois ícones ficam na mesma coluna, à esquerda: a seta puxa o
+                                       olho do item que sai para o que entra, e o ponto marca onde parou.
+                                       O risco fica no texto, não na linha toda, para não cortar o ícone. */
                                     <li key={linha.id} className="flex flex-col gap-1.5 p-4">
-                                        <p className="text-sm font-medium text-primary">{identidadeDaLinha(pedido, linha).nome}</p>
-                                        <p className="text-sm text-tertiary line-through">
-                                            {itemSai?.nome}
-                                            {detalheDoItem(itemSai) && ` · ${detalheDoItem(itemSai)}`}
+                                        <p className="flex items-center gap-2 text-sm text-tertiary">
+                                            <ArrowDown className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                            <span className="line-through">
+                                                {itemSai?.nome}
+                                                {detalheDoItem(itemSai) && ` · ${detalheDoItem(itemSai)}`}
+                                            </span>
                                         </p>
-                                        <ArrowDown className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                                        <p className="text-sm font-semibold text-primary">
-                                            {novoItem.nome}
-                                            {detalheDoItem(novoItem) && <span className="font-normal text-tertiary"> · {detalheDoItem(novoItem)}</span>}
+                                        <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+                                            <span className="flex size-4 shrink-0 items-center justify-center" aria-hidden="true">
+                                                <span className="size-1.5 rounded-full bg-fg-quaternary" />
+                                            </span>
+                                            <span>
+                                                {novoItem.nome}
+                                                {detalheDoItem(novoItem) && <span className="font-normal text-tertiary"> · {detalheDoItem(novoItem)}</span>}
+                                            </span>
                                         </p>
                                     </li>
                                 );
@@ -497,16 +524,12 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                         </ul>
                     </div>
 
-                    {pares.length > 1 && <Regra>Quando as unidades pagaram valores diferentes, o sistema forma os pares do jeito que resulta no menor total.</Regra>}
                     {precisaAceite && (
                         <Aviso
                             tom="warning"
                             titulo={`${formatarMoeda(naoDevolvido)} não serão devolvidos`}
                             descricao="O item novo é mais barato. A sobra abate a cobrança da troca e o que resta fica com a Ingresse: não vira devolução, crédito nem saldo."
                         />
-                    )}
-                    {pedido.cupom && (calculo.descontoPerdido ?? 0) > 0 && (
-                        <Aviso tom="warning" titulo={`Inclui ${formatarMoeda(calculo.descontoPerdido ?? 0)} do cupom ${pedido.cupom}`} descricao="O desconto da compra não vale para o item novo: a diferença usa o preço cheio dele." />
                     )}
                     {cortesia && <Aviso tom="warning" titulo="Há cortesia na troca." descricao="Unidade de cortesia não tem valor pago: a diferença é o preço cheio do item novo." />}
 
@@ -527,6 +550,9 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                             ? "Sem valor a pagar: a troca é aplicada na hora, sem link e sem prazo."
                             : `A troca só será efetivada após o pagamento e está sujeita à disponibilidade de estoque. Prazo de ${PRAZO_REAL_LABEL}. O link vai para ${destino}.`}
                     </Regra>
+                    {pedido.cupom && (calculo.descontoPerdido ?? 0) > 0 && (
+                        <Aviso tom="warning" titulo={`Inclui ${formatarMoeda(calculo.descontoPerdido ?? 0)} do cupom ${pedido.cupom}`} descricao="O desconto da compra não vale para o item novo: a diferença usa o preço cheio dele." />
+                    )}
                 </>
             )}
         </WizardShell>

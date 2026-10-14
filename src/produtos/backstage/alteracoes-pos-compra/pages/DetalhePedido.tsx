@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
+import { Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ArrowLeft, Calendar, Check, ChevronDown, Copy01, DotsVertical } from "@untitledui/icons";
+import { AlertTriangle, ArrowLeft, Calendar, Check, Copy01, DotsVertical } from "@untitledui/icons";
 import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -139,7 +140,6 @@ export function DetalhePedido() {
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
             <motion.div className={cx("flex min-w-0 flex-1 flex-col gap-5 p-4 md:p-6", FOCO_ESCOPO)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: "easeOut" }}>
                 <Cabecalho pedido={pedido} voltarPara={voltarPara} />
-                <PagamentoCompacto pedido={pedido} />
 
                 {/*
                   Uma coluna. O pagamento era um card fixo numa segunda coluna e
@@ -185,7 +185,8 @@ const Cabecalho = ({ pedido, voltarPara }: { pedido: Pedido; voltarPara: string 
     const { copied, copy } = useClipboard();
     const [falhaCopia, setFalhaCopia] = useState(false);
     const idCompleto = useRef<HTMLSpanElement>(null);
-    const verbo = pedido.canal === "Online" ? "Compra online em" : pedido.canal === "Bilheteria" ? "Compra na bilheteria em" : "Cortesia emitida em";
+    const rotuloCompra = pedido.canal === "Online" ? "Compra online" : pedido.canal === "Bilheteria" ? "Compra na bilheteria" : "Cortesia emitida";
+    const { final, cortesia } = usePagamento(pedido);
 
     const copiarId = async () => {
         const resultado = await copy(pedido.id, "id");
@@ -208,54 +209,126 @@ const Cabecalho = ({ pedido, voltarPara }: { pedido: Pedido; voltarPara: string 
                     Pedidos
                 </Button>
             </div>
-            <div className="flex flex-col gap-1.5">
-                <h1 className="text-xl font-semibold text-primary md:text-2xl">{comprador?.nome ?? `Pedido ${uuidCurto(pedido.id)}`}</h1>
+            <h1 className="text-xl font-semibold text-primary md:text-2xl">{comprador?.nome ?? `Pedido ${uuidCurto(pedido.id)}`}</h1>
+
+            {/*
+              Campos rotulados em dois grupos, nesta ordem: com quem se fala, e qual é a
+              compra. Antes eram duas corridas de texto coladas por ponto, tudo no mesmo
+              peso: nada ancorava o olho, e achar o CPF ou o ID pedia ler a linha inteira.
+              O pagamento, que era uma pílula solta logo abaixo, entra como o último campo.
+            */}
+            <div>
                 {comprador ? (
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-tertiary">
-                        <Contato valor={comprador.email} textoCopia={comprador.email} rotulo="Copiar e-mail" chave="email" copied={copied} copy={copy} />
-                        <span aria-hidden="true">·</span>
-                        {comprador.celular ? <Contato valor={comprador.celular} textoCopia={telefoneParaCopia(comprador.celular)} rotulo="Copiar celular" chave="celular" copied={copied} copy={copy} /> : <span>Celular não informado</span>}
-                        {comprador.cpf && (
+                    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 pb-4 sm:grid-cols-4">
+                        <Campo rotulo="CPF">{comprador.cpf ? <span className="tabular-nums">{mascararCPF(comprador.cpf)}</span> : "Não informado"}</Campo>
+                        <Campo rotulo="E-mail" className="col-span-2 sm:col-span-1">
+                            <Contato valor={comprador.email} textoCopia={comprador.email} rotulo="Copiar e-mail" chave="email" copied={copied} copy={copy} />
+                        </Campo>
+                        <Campo rotulo="Telefone">
+                            {comprador.celular ? (
+                                <Contato valor={comprador.celular} textoCopia={telefoneParaCopia(comprador.celular)} rotulo="Copiar celular" chave="celular" copied={copied} copy={copy} />
+                            ) : (
+                                "Não informado"
+                            )}
+                        </Campo>
+                    </dl>
+                ) : (
+                    <p className="pb-4 text-sm text-tertiary">Comprador não identificado</p>
+                )}
+
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-secondary pt-4 sm:grid-cols-4">
+                    <Campo rotulo="Evento" className="col-span-2 sm:col-span-1">
+                        {evento?.nome}
+                    </Campo>
+                    <Campo rotulo={rotuloCompra}>{pedido.criadoEmLabel}</Campo>
+                    <Campo rotulo="Pedido">
+                        <Contato valor={uuidCurto(pedido.id)} textoCopia={pedido.id} rotulo="Copiar ID do pedido" chave="id" copied={copied} copy={copy} onCopiar={copiarId} mono />
+                    </Campo>
+                    <Campo rotulo="Pago">
+                        {cortesia ? (
+                            "Sem valor pago"
+                        ) : (
                             <>
-                                <span aria-hidden="true">·</span>
-                                <span className="tabular-nums">CPF {mascararCPF(comprador.cpf)}</span>
+                                <span className="flex items-center gap-2">
+                                    <span className="font-semibold tabular-nums">{formatarMoeda(final)}</span>
+                                    <DetalhePagamento pedido={pedido} />
+                                </span>
+                                <span className="block text-tertiary">{formaDePagamento(pedido.meioPagamento)}</span>
                             </>
                         )}
-                    </div>
-                ) : (
-                    <p className="text-sm text-tertiary">Comprador não identificado</p>
-                )}
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-tertiary">
-                    <span className="font-medium text-secondary">{evento?.nome}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>
-                        {verbo} {pedido.criadoEmLabel}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span>
-                        Pedido <span className="font-mono text-secondary select-all">{uuidCurto(pedido.id)}</span>
-                    </span>
-                    <Button size="sm" color="link-gray" iconLeading={copied === "id" ? Check : Copy01} onClick={copiarId}>
-                        {copied === "id" ? "ID copiado" : "Copiar ID"}
-                    </Button>
-                </div>
-                <span role="status" className="sr-only">
-                    {copied === "id" ? "ID do pedido copiado" : copied === "email" ? "E-mail copiado" : copied === "celular" ? "Celular copiado" : ""}
-                </span>
-                {falhaCopia && (
-                    <p className="text-sm text-warning-primary">
-                        Não foi possível copiar. O ID está selecionado, use Ctrl+C ou ⌘C: <span ref={idCompleto} className="font-mono select-all">{pedido.id}</span>
-                    </p>
-                )}
+                    </Campo>
+                </dl>
+
             </div>
+
+            <span role="status" className="sr-only">
+                {copied === "id" ? "ID do pedido copiado" : copied === "email" ? "E-mail copiado" : copied === "celular" ? "Celular copiado" : ""}
+            </span>
+            {falhaCopia && (
+                <p className="text-sm text-warning-primary">
+                    Não foi possível copiar. O ID está selecionado, use Ctrl+C ou ⌘C: <span ref={idCompleto} className="font-mono select-all">{pedido.id}</span>
+                </p>
+            )}
         </header>
     );
 };
 
-const Contato = ({ valor, textoCopia, rotulo, chave, copied, copy }: { valor: string; textoCopia: string; rotulo: string; chave: string; copied: string | boolean; copy: (texto: string, id?: string) => unknown }) => (
-    <span className="flex items-center gap-0.5">
-        <span className="text-secondary">{valor}</span>
-        <ButtonUtility size="xs" color="tertiary" icon={copied === chave ? Check : Copy01} aria-label={rotulo} onClick={() => copy(textoCopia, chave)} />
+/** Detalhe do pagamento sobre o resumo, não dentro dele: a quebra por cupom interessa em poucos
+ *  atendimentos e não vale uma faixa fixa ocupando o cabeçalho de todos os outros. */
+const DetalhePagamento = ({ pedido }: { pedido: Pedido }) => (
+    <AriaDialogTrigger>
+        <Button size="sm" color="link-gray">
+            Detalhes
+        </Button>
+        <AriaPopover
+            offset={8}
+            placement="bottom start"
+            className={({ isEntering, isExiting }) =>
+                cx(
+                    "origin-(--trigger-anchor-point) will-change-transform",
+                    isEntering && "duration-150 ease-out animate-in fade-in placement-top:slide-in-from-bottom-0.5 placement-bottom:slide-in-from-top-0.5",
+                    isExiting && "duration-100 ease-in animate-out fade-out placement-top:slide-out-to-bottom-0.5 placement-bottom:slide-out-to-top-0.5",
+                )
+            }
+        >
+            <AriaDialog aria-label="Detalhe do pagamento" className="w-72 rounded-2xl bg-primary p-4 shadow-xl ring ring-secondary_alt outline-hidden">
+                <LinhasPagamento pedido={pedido} />
+            </AriaDialog>
+        </AriaPopover>
+    </AriaDialogTrigger>
+);
+
+/** Rótulo em cima, valor embaixo: o rótulo é a âncora de leitura e os valores alinham em coluna. */
+const Campo = ({ rotulo, className, children }: { rotulo: string; className?: string; children: ReactNode }) => (
+    <div className={cx("flex min-w-0 flex-col gap-0.5", className)}>
+        <dt className="text-sm text-tertiary">{rotulo}</dt>
+        <dd className="min-w-0 text-sm text-primary">{children}</dd>
+    </div>
+);
+
+const Contato = ({
+    valor,
+    textoCopia,
+    rotulo,
+    chave,
+    copied,
+    copy,
+    onCopiar,
+    mono = false,
+}: {
+    valor: string;
+    textoCopia: string;
+    rotulo: string;
+    chave: string;
+    copied: string | boolean;
+    copy: (texto: string, id?: string) => unknown;
+    /** Caminho próprio de cópia, para quem tem plano B quando a área de transferência falha. */
+    onCopiar?: () => void;
+    mono?: boolean;
+}) => (
+    <span className="flex min-w-0 items-center gap-0.5">
+        <span className={cx("truncate", mono && "font-mono select-all")}>{valor}</span>
+        <ButtonUtility size="xs" color="tertiary" icon={copied === chave ? Check : Copy01} aria-label={rotulo} onClick={() => (onCopiar ? onCopiar() : copy(textoCopia, chave))} />
     </span>
 );
 
@@ -296,36 +369,6 @@ const ParValor = ({ rotulo, valor, destaque = false }: { rotulo: string; valor: 
         <dd className={cx("shrink-0 text-sm tabular-nums", destaque ? "font-semibold text-primary" : "text-primary")}>{valor}</dd>
     </div>
 );
-
-/** Abaixo de 1280px o pagamento não vai para o fim da página: vira uma linha logo abaixo do
- *  cabeçalho, com o detalhe sob demanda quando há mais do que o total. */
-const PagamentoCompacto = ({ pedido }: { pedido: Pedido }) => {
-    const { final, comCupom, cortesia } = usePagamento(pedido);
-    const resumo = cortesia ? "Cortesia, sem valor pago" : `Pago na compra ${formatarMoeda(final)} · ${formaDePagamento(pedido.meioPagamento)}`;
-    /* Sem `xl:hidden`: esta é a única superfície de pagamento agora que a coluna
-       lateral saiu. O detalhe só vira sanfona quando há o que detalhar. */
-    if (!comCupom)
-        return (
-            <p className="rounded-2xl bg-primary px-5 py-3 text-sm text-secondary ring-1 ring-border-secondary">
-                <span className="tabular-nums">{resumo}</span>
-            </p>
-        );
-    return (
-        <details className="group rounded-2xl bg-primary ring-1 ring-border-secondary">
-            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 rounded-2xl px-5 py-3 text-sm text-secondary transition duration-100 ease-linear hover:bg-primary_hover">
-                <span className="tabular-nums">{resumo}</span>
-                {/* Sem cor de marca, a affordance vem da seta e do peso, não do tom. */}
-                <span className="flex items-center gap-1 font-medium text-primary">
-                    Ver pagamento
-                    <ChevronDown className="size-4 text-fg-quaternary transition-transform group-open:rotate-180" aria-hidden="true" />
-                </span>
-            </summary>
-            <div className="border-t border-secondary px-5 py-4">
-                <LinhasPagamento pedido={pedido} />
-            </div>
-        </details>
-    );
-};
 
 /* ------------------------------------------------------------------ */
 /*  Alterações em andamento                                            */

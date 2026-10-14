@@ -78,7 +78,7 @@ export function WizardShell({
         <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable={false}>
             <Modal className="h-[92vh] w-full sm:max-w-4xl">
                 <Dialog className="h-full" aria-label={titulo}>
-                    <div className="flex size-full flex-col overflow-hidden rounded-none bg-primary sm:rounded-2xl">
+                    <div className="flex size-full flex-col overflow-hidden rounded-none bg-primary_alt sm:rounded-2xl">
                         <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-secondary px-4 py-4 md:px-6">
                             <ButtonUtility size="sm" color="secondary" icon={ChevronLeft} aria-label="Voltar" onClick={onVoltar} />
                             <div className="flex flex-col items-center text-center max-md:order-last max-md:w-full md:pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2">

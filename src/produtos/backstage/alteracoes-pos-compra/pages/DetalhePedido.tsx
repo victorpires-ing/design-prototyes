@@ -217,9 +217,9 @@ const Cabecalho = ({ pedido, voltarPara }: { pedido: Pedido; voltarPara: string 
               peso: nada ancorava o olho, e achar o CPF ou o ID pedia ler a linha inteira.
               O pagamento, que era uma pílula solta logo abaixo, entra como o último campo.
             */}
-            <div>
+            <div className="flex flex-col gap-4">
                 {comprador ? (
-                    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 pb-4 sm:grid-cols-4">
+                    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
                         <Campo rotulo="CPF">{comprador.cpf ? <span className="tabular-nums">{mascararCPF(comprador.cpf)}</span> : "Não informado"}</Campo>
                         <Campo rotulo="E-mail" className="col-span-2 sm:col-span-1">
                             <Contato valor={comprador.email} textoCopia={comprador.email} rotulo="Copiar e-mail" chave="email" copied={copied} copy={copy} />
@@ -233,28 +233,27 @@ const Cabecalho = ({ pedido, voltarPara }: { pedido: Pedido; voltarPara: string 
                         </Campo>
                     </dl>
                 ) : (
-                    <p className="pb-4 text-sm text-tertiary">Comprador não identificado</p>
+                    <p className="text-sm text-tertiary">Comprador não identificado</p>
                 )}
 
-                <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-secondary pt-4 sm:grid-cols-4">
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
                     <Campo rotulo="Evento" className="col-span-2 sm:col-span-1">
                         {evento?.nome}
                     </Campo>
                     <Campo rotulo={rotuloCompra}>{pedido.criadoEmLabel}</Campo>
                     <Campo rotulo="Pedido">
-                        <Contato valor={uuidCurto(pedido.id)} textoCopia={pedido.id} rotulo="Copiar ID do pedido" chave="id" copied={copied} copy={copy} onCopiar={copiarId} mono />
+                        <Contato valor={pedido.id} textoCopia={pedido.id} rotulo="Copiar ID do pedido" chave="id" copied={copied} copy={copy} onCopiar={copiarId} mono />
                     </Campo>
                     <Campo rotulo="Pago">
                         {cortesia ? (
                             "Sem valor pago"
                         ) : (
-                            <>
-                                <span className="flex items-center gap-2">
-                                    <span className="font-semibold tabular-nums">{formatarMoeda(final)}</span>
-                                    <DetalhePagamento pedido={pedido} />
-                                </span>
-                                <span className="block text-tertiary">{formaDePagamento(pedido.meioPagamento)}</span>
-                            </>
+                            /* Só o valor: a forma de pagamento está no card de detalhe, e repeti-la
+                               aqui gastava uma segunda linha em todos os pedidos. */
+                            <span className="flex items-center gap-2">
+                                <span className="font-semibold tabular-nums">{formatarMoeda(final)}</span>
+                                <DetalhePagamento pedido={pedido} />
+                            </span>
                         )}
                     </Campo>
                 </dl>
@@ -277,7 +276,7 @@ const Cabecalho = ({ pedido, voltarPara }: { pedido: Pedido; voltarPara: string 
  *  atendimentos e não vale uma faixa fixa ocupando o cabeçalho de todos os outros. */
 const DetalhePagamento = ({ pedido }: { pedido: Pedido }) => (
     <AriaDialogTrigger>
-        <Button size="sm" color="link-gray">
+        <Button size="sm" color="link-gray" className="text-utility-blue-600 hover:text-utility-blue-700">
             Detalhes
         </Button>
         <AriaPopover
@@ -327,7 +326,9 @@ const Contato = ({
     mono?: boolean;
 }) => (
     <span className="flex min-w-0 items-center gap-0.5">
-        <span className={cx("truncate", mono && "font-mono select-all")}>{valor}</span>
+        <span className={cx("truncate", mono && "font-mono select-all")} title={mono ? valor : undefined}>
+            {valor}
+        </span>
         <ButtonUtility size="xs" color="tertiary" icon={copied === chave ? Check : Copy01} aria-label={rotulo} onClick={() => (onCopiar ? onCopiar() : copy(textoCopia, chave))} />
     </span>
 );

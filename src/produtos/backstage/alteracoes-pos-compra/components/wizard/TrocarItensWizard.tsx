@@ -411,17 +411,22 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                     {/* Busca e tipo na mesma linha. O tipo era um título no meio da lista: para
                         chegar aos produtos era preciso rolar todas as datas de ingresso. */}
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <InputBase
-                            size="sm"
-                            icon={SearchLg}
-                            value={termo}
-                            aria-label="Buscar item"
-                            onChange={(evento) => setTermo(evento.target.value)}
-                            placeholder="Busque por sessão, grupo, lote ou item"
-                            wrapperClassName="min-w-0 flex-1"
-                        />
+                        {/* O campo vai dentro de uma div própria: o `wrapperClassName` do InputBase
+                            cai num elemento interno, então o filho do flex precisa ser este div. */}
+                        <div className="min-w-0 flex-1">
+                            <InputBase
+                                size="sm"
+                                icon={SearchLg}
+                                value={termo}
+                                aria-label="Buscar item"
+                                onChange={(evento) => setTermo(evento.target.value)}
+                                placeholder="Busque por sessão, grupo, lote ou item"
+                            />
+                        </div>
                         {tiposDisponiveis.length > 1 && (
-                            <Tabs selectedKey={tipoAtivo} onSelectionChange={(chave) => setTipo(chave as TipoItem)} className="shrink-0">
+                            /* `w-auto` derruba o `w-full` que o Tabs do DS aplica; sem isso a tira
+                               ocupava a linha toda e a busca encolhia até sumir. */
+                            <Tabs selectedKey={tipoAtivo} onSelectionChange={(chave) => setTipo(chave as TipoItem)} className="w-auto shrink-0">
                                 <Tabs.List type="button-border" size="sm" items={tiposDisponiveis.map((t) => ({ id: t, label: ROTULO_TIPO[t] }))}>
                                     {({ id, label }) => <Tabs.Item id={id}>{label}</Tabs.Item>}
                                 </Tabs.List>

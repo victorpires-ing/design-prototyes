@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Copy01, SearchLg } from "@untitledui/icons";
@@ -74,6 +74,10 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
     const perdidas = rascunhoInicial ? pedidas.filter((id) => !linhasDisponiveis.some((l) => l.id === id)).length : 0;
 
     const [indice, setIndice] = useState(() => (linhasDisponiveis.some((l) => linhasIniciais.includes(l.id)) ? 1 : 0));
+    const buscaRef = useRef<HTMLDivElement>(null);
+    const listaRef = useRef<HTMLUListElement>(null);
+    const [sugerindo, setSugerindo] = useState(false);
+    const [focado, setFocado] = useState(0);
     const [busca, setBusca] = useState(rascunhoInicial?.busca ?? contaInicial?.nome ?? "");
     const [motivo, setMotivo] = useState<Motivo>(rascunhoInicial?.motivo ?? MOTIVO_INICIAL);
     const [selecionada, setSelecionada] = useState<Conta | null>(contaInicial ?? null);
@@ -94,6 +98,8 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
     const termo = busca.trim();
     const encontradas = buscarContas(termo);
     const bloqueiosDaConta = (conta: Conta) => linhas.map((linha) => ({ linha, bloqueio: validarNovoTitular(pedido, linha, conta, linhas) })).filter((b) => b.bloqueio);
+    const sugestoesAbertas = sugerindo && encontradas.length > 0;
+
     const bloqueiosPorLinha = selecionada ? bloqueiosDaConta(selecionada) : [];
 
     /* ------------------------------------------------------------------ */
@@ -110,6 +116,61 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
        começa no destinatário, mas "Alterar" e "Voltar" levam até ela sem fechar o overlay. */
     const etapas: Etapa[] = ["itens", "destinatario", "revisao"];
     const etapa = etapas[Math.min(indice, etapas.length - 1)];
+
+    /*
+      Semântica de combobox no <input> real. O `Input` do DS espalha os props no
+      wrapper do TextField, não no elemento, então `role` e `aria-*` passados por
+      prop não chegam ao leitor de tela — conferido: voltavam null. Daí o ref.
+    */
+    useEffect(() => {
+        const campo = buscaRef.current?.querySelector("input");
+        if (!campo) return;
+        campo.setAttribute("role", "combobox");
+        campo.setAttribute("aria-autocomplete", "list");
+        campo.setAttribute("aria-controls", "sugestoes-destinatario");
+        campo.setAttribute("aria-expanded", String(sugestoesAbertas));
+    }, [sugestoesAbertas, etapa]);
+
+    /* Ao abrir, traz a lista para dentro da área visível: dentro do overlay ela
+       nascia abaixo da dobra e a pessoa não via que havia resultados. */
+    useEffect(() => {
+        if (!sugestoesAbertas) return;
+        const suave = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const id = requestAnimationFrame(() => listaRef.current?.scrollIntoView({ block: "nearest", behavior: suave ? "smooth" : "auto" }));
+        return () => cancelAnimationFrame(id);
+    }, [sugestoesAbertas, encontradas.length]);
+
+    /* Fecha ao clicar fora, como qualquer sugestão de busca. */
+    useEffect(() => {
+        if (!sugestoesAbertas) return;
+        const fora = (e: MouseEvent) => {
+            if (!buscaRef.current?.contains(e.target as Node)) setSugerindo(false);
+        };
+        document.addEventListener("mousedown", fora);
+        return () => document.removeEventListener("mousedown", fora);
+    }, [sugestoesAbertas]);
+
+    /* Setas percorrem, Enter escolhe, Esc fecha sem perder o que foi digitado. */
+    const aoTeclar = (e: ReactKeyboardEvent) => {
+        if (!sugestoesAbertas) {
+            if (e.key === "ArrowDown" && encontradas.length > 0) setSugerindo(true);
+            return;
+        }
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setFocado((n) => (n + 1) % encontradas.length);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setFocado((n) => (n - 1 + encontradas.length) % encontradas.length);
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            const alvo = encontradas[focado];
+            if (alvo) escolherDestinatario(alvo);
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            setSugerindo(false);
+        }
+    };
 
     useEffect(() => {
         if (!rascunhoInicial) return;
@@ -247,74 +308,79 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                         <ResumoUnidades pedido={pedido} linhas={linhas} verbo="transferir" titulo="Transferindo" onAlterar={() => setIndice(0)} onIncluir={incluir} />
                         <SetaParaBaixo />
 
-                        {(
-                            <>
-                                <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
-                                    <Input
-                                        icon={SearchLg}
-                                        label="Nome, e-mail ou CPF de quem vai receber"
-                                        placeholder="Nome completo, e-mail ou CPF"
-                                        value={busca}
-                                        onChange={(valor) => {
-                                            setBusca(valor);
-                                            setSelecionada(null);
-                                        }}
-                                    />
-                                    {/* V08: sem conta a operação é bloqueada. O fluxo NÃO cria conta (§4, C14). */}
-                                    {termo && encontradas.length === 0 ? (
-                                        <Aviso
-                                            tom="warning"
-                                            titulo="Conta não encontrada"
-                                            descricao="O novo participante precisa se cadastrar antes da troca. A transferência não cria conta: oriente o cadastro e retome depois."
-                                        />
-                                    ) : (
-                                        <Regra>Busque pelo nome, não precisa saber o e-mail ou CPF de cor.</Regra>
-                                    )}
-                                </div>
+                        {/*
+                              Campo e resultados são UM elemento: a lista é um popover
+                              ancorado no input, como busca de site. Antes eram dois cards
+                              separados por um vão, e o segundo empurrava o resto da etapa
+                              para baixo a cada letra digitada.
+                            */}
+                            <div ref={buscaRef} className="relative w-full">
+                                <Input
+                                    icon={SearchLg}
+                                    label="Nome, e-mail ou CPF de quem vai receber"
+                                    placeholder="Nome completo, e-mail ou CPF"
+                                    value={busca}
+                                    onChange={(valor) => {
+                                        setBusca(valor);
+                                        setSelecionada(null);
+                                        setSugerindo(true);
+                                        setFocado(0);
+                                    }}
+                                    onKeyDown={aoTeclar}
+                                    autoComplete="off"
+                                    hint={termo && encontradas.length === 0 ? undefined : "Busque pelo nome, não precisa saber o e-mail ou CPF de cor."}
+                                />
 
-                                {encontradas.length > 0 && (
-                                    <div className="w-full rounded-2xl bg-primary ring-1 ring-border-secondary">
-                                        <div className="px-5 pt-5 pb-3">
-                                            <p className="text-base font-semibold text-primary">{encontradas.length === 1 ? "Conta encontrada" : "Contas encontradas"}</p>
-                                            <p className="text-sm text-tertiary">Confira o nome e o e-mail antes de continuar. Clicar escolhe a pessoa e já avança.</p>
-                                        </div>
-                                        <ul className="flex flex-col divide-y divide-border-secondary border-t border-secondary">
-                                            {encontradas.map((conta) => {
-                                                const ativa = selecionada?.id === conta.id;
-                                                return (
-                                                    <li key={conta.id}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => escolherDestinatario(conta)}
-                                                            aria-pressed={ativa}
-                                                            className={cx("flex w-full items-center gap-3 px-5 py-4 text-left transition duration-100 ease-linear last:rounded-b-2xl hover:bg-primary_hover", ativa && "bg-secondary", FOCO)}
-                                                        >
-                                                            <Avatar size="md" initials={iniciaisDe(conta.nome)} alt={conta.nome} />
-                                                            <span className="min-w-0 flex-1">
-                                                                <span className="block text-sm font-semibold text-primary">{conta.nome}</span>
-                                                                <span className="block truncate text-sm text-tertiary">
-                                                                    {conta.email}
-                                                                    {conta.cpf && ` · CPF ${mascararCPF(conta.cpf)}`}
-                                                                </span>
-                                                            </span>
-                                                            <ChevronRight className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                                                        </button>
-                                                    </li>
-                                                );
-                                            })}
-                                        </ul>
-                                    </div>
+                                {sugestoesAbertas && (
+                                    <ul
+                                        ref={listaRef}
+                                        id="sugestoes-destinatario"
+                                        role="listbox"
+                                        aria-label="Contas encontradas"
+                                        className="absolute top-full right-0 left-0 z-20 mt-1 max-h-72 overflow-y-auto rounded-xl bg-primary py-1 shadow-lg ring-1 ring-border-secondary"
+                                    >
+                                        {encontradas.map((conta, i) => (
+                                            <li key={conta.id} role="option" aria-selected={i === focado}>
+                                                <button
+                                                    type="button"
+                                                    tabIndex={-1}
+                                                    onMouseEnter={() => setFocado(i)}
+                                                    onClick={() => escolherDestinatario(conta)}
+                                                    className={cx(
+                                                        "flex w-full items-center gap-3 px-4 py-3 text-left transition duration-100 ease-linear",
+                                                        i === focado ? "bg-secondary" : "hover:bg-primary_hover",
+                                                    )}
+                                                >
+                                                    <Avatar size="md" initials={iniciaisDe(conta.nome)} alt={conta.nome} />
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="block text-sm font-semibold text-primary">{conta.nome}</span>
+                                                        <span className="block truncate text-sm text-tertiary">
+                                                            {conta.email}
+                                                            {conta.cpf && ` · CPF ${mascararCPF(conta.cpf)}`}
+                                                        </span>
+                                                    </span>
+                                                    <ChevronRight className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
                                 )}
+                            </div>
 
-                                {selecionada && bloqueiosPorLinha.length > 0 && (
-                                    <div className="w-full">
-                                        <Aviso
-                                            titulo={bloqueiosPorLinha.length === linhas.length ? `Não dá para transferir assim para ${selecionada.nome}` : `${bloqueiosPorLinha.length} ${bloqueiosPorLinha.length === 1 ? "unidade não pode" : "unidades não podem"} ir para ${selecionada.nome}`}
-                                            descricao={bloqueiosPorLinha[0].bloqueio?.descricao}
-                                        />
-                                    </div>
-                                )}
-                            </>
+                            {/* V08: sem conta a operação é bloqueada. O fluxo NÃO cria conta (§4, C14). */}
+                            {termo && encontradas.length === 0 ? (
+                                <Aviso
+                                    tom="warning"
+                                    titulo="Conta não encontrada"
+                                    descricao="O novo participante precisa se cadastrar antes da troca. A transferência não cria conta: oriente o cadastro e retome depois."
+                                />
+                            ) : null}
+
+                            {selecionada && bloqueiosPorLinha.length > 0 && (
+                                <Aviso
+                                    titulo={bloqueiosPorLinha.length === linhas.length ? `Não dá para transferir assim para ${selecionada.nome}` : `${bloqueiosPorLinha.length} ${bloqueiosPorLinha.length === 1 ? "unidade não pode" : "unidades não podem"} ir para ${selecionada.nome}`}
+                                    descricao={bloqueiosPorLinha[0].bloqueio?.descricao}
+                                />
                         )}
                     </>
                 )}

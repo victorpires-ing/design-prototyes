@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { toast } from "sonner";
+import { Package, Ticket01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { cx } from "@/utils/cx";
-import { ListaLimitada, Miniatura, mascararCPF } from "../pos-compra-ui";
+import { ListaLimitada, mascararCPF } from "../pos-compra-ui";
 import {
     getConta,
     getItem,
@@ -18,6 +19,21 @@ import {
     type Rascunho,
     type Verbo,
 } from "../../data/pos-compra-store";
+
+/**
+ * Miniatura feita só de `span`. A `Miniatura` de pos-compra-ui usa FeaturedIcon,
+ * que renderiza um `div`, e aqui ela vive dentro do label do Checkbox — que o
+ * React Aria monta como `p`. Div dentro de p é HTML inválido e o React reclama.
+ */
+const MiniaturaEmLinha = ({ item }: { item?: CatalogoItem }) => {
+    if (item?.foto) return <img src={item.foto} alt="" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-border-primary" />;
+    const Icone = item?.tipo === "ingresso" ? Ticket01 : Package;
+    return (
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-fg-secondary ring-1 ring-border-secondary">
+            <Icone className="size-5" aria-hidden="true" />
+        </span>
+    );
+};
 
 export const detalheDoItem = (item?: CatalogoItem) => [item?.lote, sessaoDoItem(item) ? sessaoLabel(item) : null].filter(Boolean).join(" | ");
 
@@ -86,7 +102,7 @@ export function SeletorUnidades({
                                     onChange={(marcado) => marcar([linha.id], marcado)}
                                     label={
                                         <span className="flex cursor-pointer items-start gap-3">
-                                            {item && <Miniatura item={item} />}
+                                            <MiniaturaEmLinha item={item} />
                                             <span className="flex min-w-0 flex-col gap-0.5">
                                                 <span className="text-sm font-medium text-primary">{item?.nome}</span>
                                                 {item?.lote && <span className="text-sm font-normal text-tertiary">{item.lote}</span>}
@@ -163,17 +179,18 @@ export function ResumoUnidades({
             <div className="px-4 py-1">
                 <ListaLimitada itens={linhas} limite={3} rotulo="unidades">
                     {(linha) => {
-                        const { nome, apoio } = identidadeDaLinha(pedido, linha);
+                        /* Só o item: quem é o portador não ajuda aqui. Na transferência
+                           ele é a pessoa que SAI, e a etapa seguinte é justamente sobre
+                           quem entra — mostrar os dois convida à troca de um pelo outro. */
                         const item = getItem(linha.itemId);
+                        const sessao = sessaoDoItem(item) ? sessaoLabel(item) : null;
                         return (
                             <div key={linha.id} className="py-3">
                                 <p className="text-sm font-medium text-primary">
                                     {item?.nome}
                                     {item?.lote && <span className="font-normal text-tertiary"> | {item.lote}</span>}
-                                    <span className="font-normal text-tertiary"> · </span>
-                                    {nome}
                                 </p>
-                                <p className="text-sm text-tertiary">{apoio}</p>
+                                {sessao && <p className="text-sm text-tertiary">{sessao}</p>}
                             </div>
                         );
                     }}

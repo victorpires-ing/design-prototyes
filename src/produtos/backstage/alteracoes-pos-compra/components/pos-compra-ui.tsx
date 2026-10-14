@@ -1,6 +1,6 @@
 import { useEffect, useState, type FC, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ArrowDown, ChevronDown, InfoCircle, Package, RefreshCcw01, Ticket01, UserSquare } from "@untitledui/icons";
+import { AlertTriangle, ArrowDown, ChevronDown, ClipboardCheck, InfoCircle, Package, RefreshCcw01, Ticket01, UserSquare } from "@untitledui/icons";
 import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -56,7 +56,9 @@ export const StatusBadge = ({ status, size = "md" }: { status: StatusPedido; siz
 export const TIPO_OPERACAO_ICONE: Record<TipoOperacao, FC<{ className?: string }>> = {
     "troca-item": RefreshCcw01,
     "troca-titularidade": UserSquare,
-    "alterar-respostas": InfoCircle,
+    /* Era InfoCircle. Como o ícone agora também é o botão da linha, "i" lia como
+       informação, não como ação sobre o formulário. */
+    "alterar-respostas": ClipboardCheck,
 };
 
 export const TIPO_OPERACAO_COR: Record<TipoOperacao, "blue" | "purple" | "gray"> = {

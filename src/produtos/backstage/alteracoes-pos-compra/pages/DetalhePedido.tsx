@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, ArrowLeft, Calendar, Check, ChevronDown, Copy01 } from "@untitledui/icons";
 import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { useClipboard } from "@/hooks/use-clipboard";
@@ -716,30 +715,31 @@ const LinhaDaUnidade = ({
                     </Button>
                 )}
                 {/*
-                  Um alvo por unidade. Eram até três botões-texto por linha, todos do
-                  mesmo peso: com três unidades, nove alvos competindo e nenhum
-                  conduzindo. E eles dependiam de `text-fg-brand-primary` — sem cor de
-                  marca, viraram cinza sobre cinza. Um botão contornado se sustenta em
-                  monocromático, e o menu guarda a escolha para depois do clique.
+                  Um ícone por verbo, num clique. O dropdown que esteve aqui escondia
+                  os verbos e cobrava dois cliques num operador que já sabe o que quer;
+                  os botões-texto anteriores dependiam de `text-fg-brand-primary` e
+                  sumiram quando a marca saiu.
+
+                  Os ícones são os MESMOS de `TIPO_OPERACAO_ICONE`, que o projeto já usa
+                  no badge, no cartão de operação e no histórico — então o símbolo que a
+                  pessoa aprende na linha é o que ela reencontra no resto da tela. É o
+                  mesmo padrão de ação em linha do resto do Backstage (bilheteria,
+                  cortesias e a lista de pedidos).
                 */}
-                {acoes.length === 1 && (
-                    <Button size="sm" color="secondary" aria-label={`${acoes[0].rotulo} ${item.nome} de ${nome}`} onClick={() => onAbrir(acoes[0].verbo, [linha.id])}>
-                        {acoes[0].rotulo}
-                    </Button>
-                )}
-                {acoes.length > 1 && (
-                    <Dropdown.Root>
-                        <Button size="sm" color="secondary" iconTrailing={ChevronDown} aria-label={`Alterar ${item.nome} de ${nome}`}>
-                            Alterar
-                        </Button>
-                        <Dropdown.Popover placement="bottom end" className="w-auto min-w-56">
-                            <Dropdown.Menu onAction={(chave) => onAbrir(chave as Verbo, [linha.id])}>
-                                {acoes.map(({ verbo, rotulo }) => (
-                                    <Dropdown.Item key={verbo} id={verbo} icon={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO[verbo]]} label={rotulo} />
-                                ))}
-                            </Dropdown.Menu>
-                        </Dropdown.Popover>
-                    </Dropdown.Root>
+                {acoes.length > 0 && (
+                    <div className="flex items-center gap-1">
+                        {acoes.map(({ verbo, rotulo }) => (
+                            <ButtonUtility
+                                key={verbo}
+                                size="xs"
+                                color="tertiary"
+                                icon={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO[verbo]]}
+                                tooltip={rotulo}
+                                aria-label={`${rotulo} ${item.nome} de ${nome}`}
+                                onClick={() => onAbrir(verbo, [linha.id])}
+                            />
+                        ))}
+                    </div>
                 )}
             </div>
         </div>

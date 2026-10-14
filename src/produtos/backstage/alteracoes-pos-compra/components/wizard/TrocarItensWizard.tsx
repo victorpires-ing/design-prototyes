@@ -1,14 +1,14 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { ArrowDown, Calendar, ChevronDown, SearchLg } from "@untitledui/icons";
+import { ArrowDown, ChevronDown, SearchLg } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { InputBase } from "@/components/base/input/input";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
-import { Select } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, SetaParaBaixo, Stepper, mascararEmail } from "../pos-compra-ui";
+import { AbasCarrossel, ChipLegenda, type AbaItem } from "../abas-carrossel";
 import { EditorResposta } from "../respostas-ui";
 import {
     OPERADOR_ATUAL,
@@ -53,14 +53,15 @@ const TITULO_ETAPA: Record<Etapa, string> = {
     revisao: "Revisão",
 };
 
-type TipoFiltro = "todos" | "ingresso" | "produto" | "combo";
-
-const TIPOS_DE_ITEM: Array<{ id: TipoFiltro; label: string }> = [
-    { id: "todos", label: "Todos os tipos" },
-    { id: "ingresso", label: "Ingressos" },
-    { id: "produto", label: "Produtos" },
-    { id: "combo", label: "Combos" },
-];
+/** Partes da data para o chip: dia da semana em cima, dia e mês em destaque. */
+const partesDaSessao = (inicio: number) => {
+    const d = new Date(inicio);
+    return {
+        diaSemana: d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", ""),
+        dia: d.toLocaleDateString("pt-BR", { day: "2-digit" }),
+        mes: d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
+    };
+};
 
 const combina = (termo: string, ...campos: Array<string | undefined>) => {
     const busca = termo.trim().toLowerCase();
@@ -92,7 +93,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
 
     const [indice, setIndice] = useState(() => (linhasDisponiveis.some((l) => linhasIniciais.includes(l.id)) ? 1 : 0));
     const [termo, setTermo] = useState("");
-    const [tipo, setTipo] = useState<TipoFiltro>("todos");
+    const [aba, setAba] = useState("");
     const [motivo, setMotivo] = useState<Motivo>(rascunhoInicial?.motivo ?? MOTIVO_INICIAL);
     const [aceitouSobra, setAceitouSobra] = useState(false);
     const [saem, setSaem] = useState<Record<string, boolean>>(() => Object.fromEntries(pedidas.map((id) => [id, true])));
@@ -123,7 +124,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
     /*  O que entra                                                        */
     /* ------------------------------------------------------------------ */
 
-    const candidatos = catalogo.filter((i) => i.eventoId === pedido.eventoId && (tipo === "todos" || i.tipo === tipo) && combina(termo, i.nome, i.grupo, i.lote, i.descricao, sessaoLabel(i)));
+    const candidatos = catalogo.filter((i) => i.eventoId === pedido.eventoId && combina(termo, i.nome, i.grupo, i.lote, i.descricao, sessaoLabel(i)));
     const sessoes = SESSOES.filter((s) => s.eventoId === pedido.eventoId)
         .sort((a, b) => a.inicio - b.inicio)
         .map((sessao) => {
@@ -134,6 +135,34 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
         .filter(({ grupos }) => grupos.length > 0);
     const produtos = candidatos.filter((i) => !i.sessaoId && i.tipo === "produto");
     const combos = candidatos.filter((i) => !i.sessaoId && i.tipo === "combo");
+
+    const abasDisponiveis = [...sessoes.map(({ sessao }) => sessao.id), ...(produtos.length > 0 ? ["produtos"] : []), ...(combos.length > 0 ? ["combos"] : [])];
+    /* Abre na primeira sessão que ainda vai acontecer: nada entra numa sessão encerrada, e
+       cair numa delas faz a etapa nascer com uma lista inteira de item bloqueado. */
+    const padrao = sessoes.find(({ sessao }) => sessao.inicio > Date.now())?.sessao.id ?? abasDisponiveis[0] ?? "";
+    const abaAtiva = abasDisponiveis.includes(aba) ? aba : padrao;
+    const sessaoAtiva = sessoes.find(({ sessao }) => sessao.id === abaAtiva);
+
+    const abasDoCatalogo: AbaItem[] = [
+        ...sessoes.map(({ sessao }) => {
+            const { diaSemana, dia, mes } = partesDaSessao(sessao.inicio);
+            const encerrada = sessao.inicio <= Date.now();
+            return {
+                id: sessao.id,
+                conteudo: (ativo: boolean) => (
+                    <>
+                        <ChipLegenda ativo={ativo}>{diaSemana}</ChipLegenda>
+                        <span className="text-md font-bold">
+                            {dia} {mes}
+                        </span>
+                        <ChipLegenda ativo={ativo}>{encerrada ? "encerrada" : sessao.horaLabel}</ChipLegenda>
+                    </>
+                ),
+            };
+        }),
+        ...(produtos.length > 0 ? [{ id: "produtos", conteudo: () => <span className="px-2 text-sm font-semibold">Produtos</span> }] : []),
+        ...(combos.length > 0 ? [{ id: "combos", conteudo: () => <span className="px-2 text-sm font-semibold">Combos</span> }] : []),
+    ];
 
     const referenciaDoItem = (item: CatalogoItem) => linhasSaem.find((l) => getItem(l.itemId)?.tipo === item.tipo) ?? linhasSaem[0];
 
@@ -257,13 +286,12 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
         />
     );
 
-    const renderSessao = ({ sessao, grupos }: (typeof sessoes)[number], primeiraSessao: boolean) => (
+    const renderSessao = ({ sessao, grupos }: (typeof sessoes)[number]) => (
         <div key={sessao.id} className="flex flex-col gap-2">
-            <CabecalhoSessao sessao={sessao} />
             {grupos.map(([grupo, itens], posicao) => (
                 <Accordion
                     key={grupo}
-                    defaultOpen={(primeiraSessao && posicao === 0) || Boolean(termo.trim())}
+                    defaultOpen={posicao === 0 || Boolean(termo.trim())}
                     cabecalho={
                         <span className="flex min-w-0 flex-1 items-baseline gap-2">
                             <span className="truncate text-sm font-semibold text-primary">{grupo}</span>
@@ -342,6 +370,16 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
             onVoltar={voltar}
             onAvancar={avancar}
             onConfirmar={confirmar}
+            infoRodape={
+                etapa === "entram" && totalSaem > 1 ? (
+                    <span className={cx("tabular-nums", totalEntram === totalSaem ? "text-success-primary" : "text-tertiary")}>
+                        <span className="font-semibold">
+                            {totalEntram} de {totalSaem}
+                        </span>{" "}
+                        escolhidos
+                    </span>
+                ) : undefined
+            }
         >
             {perdidas > 0 && (
                 <Aviso tom="warning" titulo={perdidas === 1 ? "1 unidade saiu desta troca" : `${perdidas} unidades saíram desta troca`} descricao="Elas já estão em outra alteração, com outro titular ou a sessão já aconteceu." />
@@ -362,70 +400,33 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                     <ResumoUnidades pedido={pedido} linhas={linhasSaem} verbo="trocar" titulo={`Substituindo (${totalSaem})`} onAlterar={() => setIndice(0)} onIncluir={incluir} />
                     <SetaParaBaixo />
 
-                    {/* Com uma unidade só, o rádio do item já diz o que foi escolhido: instrução e
-                        contador só aparecem quando há unidades para distribuir. */}
-                    {totalSaem > 1 && (
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <Regra>Clique num item para trocar todas as unidades por ele, ou distribua pelas quantidades.</Regra>
-                            <span className={cx("text-sm tabular-nums", totalEntram === totalSaem ? "text-success-primary" : "text-tertiary")}>
-                                <span className="font-semibold">
-                                    {totalEntram} de {totalSaem}
-                                </span>{" "}
-                                {totalEntram === totalSaem ? "escolhidos" : `escolhidos · faltam ${totalSaem - totalEntram}`}
-                            </span>
-                        </div>
-                    )}
+                    <InputBase
+                        size="sm"
+                        icon={SearchLg}
+                        value={termo}
+                        aria-label="Buscar item"
+                        onChange={(evento) => setTermo(evento.target.value)}
+                        placeholder="Busque por sessão, grupo, lote ou item"
+                    />
 
-                    {/* Busca e tipo na mesma barra. O tipo era só um título no meio da lista:
-                        para chegar aos produtos era preciso rolar todas as datas de ingresso. */}
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <InputBase
-                            size="sm"
-                            icon={SearchLg}
-                            value={termo}
-                            aria-label="Buscar item"
-                            onChange={(evento) => setTermo(evento.target.value)}
-                            placeholder="Busque por sessão, grupo, lote ou item"
-                            wrapperClassName="min-w-0 flex-1"
-                        />
-                        <Select
-                            size="sm"
-                            aria-label="Tipo de item"
-                            selectedKey={tipo}
-                            onSelectionChange={(chave) => setTipo(chave as TipoFiltro)}
-                            items={TIPOS_DE_ITEM}
-                            className="shrink-0 sm:w-48"
-                        >
-                            {(opcao) => <Select.Item id={opcao.id}>{opcao.label}</Select.Item>}
-                        </Select>
-                    </div>
+                    {/* A mesma tira da bilheteria: uma data por chip, e os tipos sem data no fim
+                        dela. Antes todas as datas vinham empilhadas e chegar aos produtos era
+                        rolar o catálogo inteiro. A busca encolhe a tira junto com a lista. */}
+                    {abasDoCatalogo.length > 0 && <AbasCarrossel abas={abasDoCatalogo} ativa={abaAtiva} ariaLabel="Datas e tipos de item" onSelecionar={setAba} />}
 
                     {selecaoIgual && <Aviso titulo="A seleção é igual ao que já está no pedido" descricao="Escolha pelo menos um item diferente para a troca fazer sentido." />}
 
                     {candidatos.length === 0 && (
-                        <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">
-                            {tipo === "todos" ? "Nenhum item encontrado para a busca." : "Nenhum item deste tipo encontrado para a busca."}
-                        </p>
+                        <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">Nenhum item encontrado para a busca.</p>
                     )}
 
-                    {sessoes.length > 0 && (
-                        <div className="flex flex-col gap-2">
-                            {(produtos.length > 0 || combos.length > 0) && <p className="px-1 text-sm font-semibold text-secondary">Ingressos</p>}
-                            {sessoes.map((entrada, i) => renderSessao(entrada, i === 0))}
-                        </div>
-                    )}
+                    {sessaoAtiva && renderSessao(sessaoAtiva)}
 
-                    {[
-                        { rotulo: "Produtos", itens: produtos, outros: sessoes.length > 0 || combos.length > 0 },
-                        { rotulo: "Combos", itens: combos, outros: sessoes.length > 0 || produtos.length > 0 },
-                    ]
-                        .filter((secao) => secao.itens.length > 0)
-                        .map((secao) => (
-                            <div key={secao.rotulo} className="flex flex-col gap-2">
-                                {secao.outros && <p className="px-1 text-sm font-semibold text-secondary">{secao.rotulo}</p>}
-                                <ul className="flex flex-col divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">{secao.itens.map(cartaoCatalogo)}</ul>
-                            </div>
-                        ))}
+                    {(abaAtiva === "produtos" || abaAtiva === "combos") && (
+                        <ul className="flex flex-col divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+                            {(abaAtiva === "produtos" ? produtos : combos).map(cartaoCatalogo)}
+                        </ul>
+                    )}
                 </>
             )}
 
@@ -615,14 +616,6 @@ const LinhaCatalogo = ({
         </li>
     );
 };
-
-const CabecalhoSessao = ({ sessao }: { sessao: { dataLabel: string; horaLabel: string; inicio: number } }) => (
-    <div className="flex items-center gap-2 px-1 pt-1">
-        <Calendar className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-        <span className="text-sm font-semibold text-secondary first-letter:uppercase">{sessao.dataLabel}, {sessao.horaLabel}</span>
-        {sessao.inicio <= Date.now() && <span className="text-sm text-tertiary">· sessão encerrada</span>}
-    </div>
-);
 
 const Accordion = ({ cabecalho, defaultOpen, children }: { cabecalho: ReactNode; defaultOpen: boolean; children: ReactNode }) => {
     const [aberto, setAberto] = useState(defaultOpen);

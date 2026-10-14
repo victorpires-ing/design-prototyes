@@ -30,6 +30,7 @@ export function WizardShell({
     onAvancar,
     onConfirmar,
     ocultarRodape = false,
+    infoRodape,
     children,
 }: {
     isOpen: boolean;
@@ -50,6 +51,9 @@ export function WizardShell({
     /** Esconde o rodapé fixo, para etapas onde a própria escolha já avança (ex.: clicar num
      *  card de destinatário), sem um "Avançar" redundante embaixo. */
     ocultarRodape?: boolean;
+    /** Estado do progresso ao lado do botão: "0 de 2 escolhidos". Fica no rodapé porque
+     *  é ali que a pessoa procura o que falta quando o botão não libera. */
+    infoRodape?: ReactNode;
     children: ReactNode;
 }) {
     /* Direção do slide: avançar entra pela direita, voltar entra pela esquerda. O movimento
@@ -120,8 +124,9 @@ export function WizardShell({
                                     animate={{ y: 0, opacity: 1 }}
                                     exit={{ y: "100%", opacity: 0 }}
                                     transition={{ duration: 0.25, ease: "easeOut" }}
-                                    className="flex shrink-0 items-center justify-end gap-3 border-t border-secondary px-4 py-4 md:px-6"
+                                    className="flex shrink-0 items-center justify-between gap-3 border-t border-secondary px-4 py-4 md:px-6"
                                 >
+                                    <div className="min-w-0 text-sm text-tertiary">{infoRodape}</div>
                                     {ultimaEtapa ? (
                                         <Button size="md" isDisabled={!podeAvancar} onClick={onConfirmar}>
                                             {rotuloConfirmar}

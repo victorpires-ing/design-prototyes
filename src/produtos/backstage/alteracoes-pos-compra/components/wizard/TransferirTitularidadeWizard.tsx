@@ -18,6 +18,7 @@ import {
     getConta,
     getFormulario,
     getItem,
+    nominalDoItem,
     getRascunho,
     motivoValido,
     novoRascunhoId,
@@ -100,6 +101,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
     const [indice, setIndice] = useState(() => (linhasDisponiveis.some((l) => linhasIniciais.includes(l.id)) ? 1 : 0));
     const buscaRef = useRef<HTMLDivElement>(null);
+    const avisoRef = useRef<HTMLDivElement>(null);
     const [sugerindo, setSugerindo] = useState(false);
     const [encaixe, setEncaixe] = useState({ altura: ALTURA_SUGESTOES, acima: false });
     const [focado, setFocado] = useState(0);
@@ -115,6 +117,13 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
     const titularAtual = linhas[0] ? titularDaLinha(pedido, linhas[0]) : undefined;
     const comprador = getConta(pedido.compradorId);
     const emOutroRascunho = rascunhos.find((r) => r.id !== rascunhoId && r.linhasSelecionadas.some((id) => selecao[id]));
+
+    /* Ingresso nominal é uma unidade por pessoa: duas do mesmo item não cabem num destinatário
+       só. O problema é da seleção, então ele para a seleção — sem isso a pessoa só descobria na
+       etapa seguinte, quando a busca inteira voltava marcada "Já vinculado". */
+    const porItem = new Map<string, number>();
+    linhas.forEach((l) => porItem.set(l.itemId, (porItem.get(l.itemId) ?? 0) + 1));
+    const repetido = [...porItem.entries()].map(([itemId, quantas]) => ({ item: getItem(itemId), quantas })).find(({ item, quantas }) => quantas > 1 && item && nominalDoItem(item));
 
     /* ------------------------------------------------------------------ */
     /*  Destinatário: busca por nome, e-mail ou CPF, contra toda a base     */
@@ -226,7 +235,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
     const podeAvancar =
         etapa === "itens"
-            ? linhas.length > 0
+            ? linhas.length > 0 && !repetido
             : etapa === "destinatario"
               ? Boolean(selecionada) && bloqueiosPorLinha.length === 0
               : Boolean(selecionada) && motivoValido(motivo);
@@ -268,7 +277,14 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
        item: aí fica na etapa, e o aviso abaixo da lista explica por quê. */
     const escolherDestinatario = (conta: Conta) => {
         setSelecionada(conta);
-        if (bloqueiosDaConta(conta).length > 0) return;
+        setSugerindo(false);
+        if (bloqueiosDaConta(conta).length > 0) {
+            /* Fica na etapa e leva os olhos até o motivo. Sem isso a lista continuava
+               aberta por cima do aviso e o clique parecia não ter feito nada. */
+            const suave = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            requestAnimationFrame(() => avisoRef.current?.scrollIntoView({ block: "nearest", behavior: suave ? "smooth" : "auto" }));
+            return;
+        }
         salvarProgresso(etapas[Math.min(indice + 1, etapas.length - 1)], conta);
         setIndice((i) => i + 1);
     };
@@ -345,6 +361,13 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                 {etapa === "itens" && (
                     <div className="flex w-full flex-col gap-4">
                         <SeletorUnidades pedido={pedido} verbo="transferir" selecao={selecao} onChange={setSelecao} />
+                        {repetido && (
+                            <Aviso
+                                tom="warning"
+                                titulo={`${repetido.item?.nome} é nominal: uma unidade por pessoa`}
+                                descricao={`Você escolheu ${repetido.quantas} unidades e elas não cabem num destinatário só. Deixe uma, ou faça uma transferência para cada pessoa.`}
+                            />
+                        )}
                     </div>
                 )}
 
@@ -387,7 +410,9 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                             encaixe.acima ? "bottom-full mb-1" : "top-full mt-1",
                                         )}
                                     >
-                                        {encontradas.map((conta, i) => (
+                                        {encontradas.map((conta, i) => {
+                                            const impedida = bloqueiosDaConta(conta)[0]?.bloqueio;
+                                            return (
                                             <li key={conta.id} role="option" aria-selected={i === focado}>
                                                 <button
                                                     type="button"
@@ -403,6 +428,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                                     className={cx(
                                                         "flex w-full items-center gap-3 px-4 py-3 text-left transition duration-100 ease-linear",
                                                         i === focado ? "bg-secondary" : "hover:bg-primary_hover",
+                                                        impedida && "opacity-60",
                                                     )}
                                                 >
                                                     <Avatar size="md" initials={iniciaisDe(conta.nome)} alt={conta.nome} />
@@ -413,10 +439,15 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                                             {conta.cpf && ` · CPF ${mascararCPF(conta.cpf)}`}
                                                         </span>
                                                     </span>
-                                                    <ChevronRight className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                                    {impedida ? (
+                                                        <span className="shrink-0 text-sm text-warning-primary">{impedida.curto}</span>
+                                                    ) : (
+                                                        <ChevronRight className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                                    )}
                                                 </button>
                                             </li>
-                                        ))}
+                                            );
+                                        })}
                                     </ul>
                                 )}
                             </div>
@@ -431,10 +462,12 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                             ) : null}
 
                             {selecionada && bloqueiosPorLinha.length > 0 && (
+                                <div ref={avisoRef}>
                                 <Aviso
                                     titulo={bloqueiosPorLinha.length === linhas.length ? `Não dá para transferir assim para ${selecionada.nome}` : `${bloqueiosPorLinha.length} ${bloqueiosPorLinha.length === 1 ? "unidade não pode" : "unidades não podem"} ir para ${selecionada.nome}`}
                                     descricao={bloqueiosPorLinha[0].bloqueio?.descricao}
                                 />
+                                </div>
                         )}
                     </>
                 )}

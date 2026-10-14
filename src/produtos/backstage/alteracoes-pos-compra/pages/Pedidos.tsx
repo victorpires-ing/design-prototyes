@@ -24,22 +24,6 @@ const totalPago = (pedido: Pedido) => pedido.itens.reduce((soma, linha) => soma 
 
 const TODOS = "todos";
 
-/* A lista traz todo mundo, inclusive quem nunca pediu alteração: o filtro separa quem precisa de atenção. */
-const SITUACOES = [
-    { id: TODOS, label: "Todas as situações" },
-    { id: "ativo", label: "Sem alterações" },
-    { id: "em-andamento", label: "Alteração em andamento" },
-    { id: "alteracao-concluida", label: "Já alterados" },
-    { id: "problema", label: "Expirados e falhas" },
-];
-
-const combinaSituacao = (status: string, situacao: string) => {
-    if (situacao === TODOS) return true;
-    if (situacao === "em-andamento") return status === "aguardando-pagamento" || status === "pago-processando";
-    if (situacao === "problema") return status === "expirado" || status === "falha";
-    return status === situacao;
-};
-
 export function Pedidos() {
     const navigate = useNavigate();
     const pedidos = usePedidos();
@@ -49,7 +33,6 @@ export function Pedidos() {
     const [parametros, setParametros] = useSearchParams();
     const busca = parametros.get("busca") ?? "";
     const eventoId = parametros.get("evento") ?? TODOS;
-    const situacao = parametros.get("situacao") ?? TODOS;
     const porPagina = Number(parametros.get("porPagina") ?? 25) || 25;
     const pagina = Number(parametros.get("pagina") ?? 1) || 1;
     const definir = (mudancas: Record<string, string | number>) =>
@@ -73,7 +56,6 @@ export function Pedidos() {
         () =>
             pedidos.filter((pedido) => {
                 if (eventoId !== TODOS && pedido.eventoId !== eventoId) return false;
-                if (!combinaSituacao(pedido.status, situacao)) return false;
                 if (!termo) return true;
                 const comprador = getConta(pedido.compradorId)?.nome.toLowerCase() ?? "";
                 const evento = getEvento(pedido.eventoId)?.nome.toLowerCase() ?? "";
@@ -81,7 +63,7 @@ export function Pedidos() {
                     pedido.id.toLowerCase().includes(termo) || comprador.includes(termo) || evento.includes(termo)
                 );
             }),
-        [pedidos, termo, eventoId, situacao],
+        [pedidos, termo, eventoId],
     );
 
     const eventosFiltro = [{ id: TODOS, label: "Todos os eventos" }, ...EVENTOS.map((e) => ({ id: e.id, label: e.nome }))];
@@ -92,7 +74,7 @@ export function Pedidos() {
     const inicio = (paginaAtual - 1) * porPagina;
     const visiveis = filtrados.slice(inicio, inicio + porPagina);
     /* Uma escrita só na URL: duas seguidas (filtro e página) fariam a segunda apagar a primeira. */
-    const aoFiltrar = (chave: "busca" | "evento" | "situacao") => (valor: string) => definir({ [chave]: valor, pagina: 1 });
+    const aoFiltrar = (chave: "busca" | "evento") => (valor: string) => definir({ [chave]: valor, pagina: 1 });
 
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
@@ -132,16 +114,6 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                 {(evento) => <Select.Item id={evento.id}>{evento.label}</Select.Item>}
                             </Select>
                         </div>
-                        <div className="md:w-56">
-                            <Select
-                                label="Situação"
-                                selectedKey={situacao}
-                                onSelectionChange={(key) => aoFiltrar("situacao")(String(key))}
-                                items={SITUACOES}
-                            >
-                                {(opcao) => <Select.Item id={opcao.id}>{opcao.label}</Select.Item>}
-                            </Select>
-                        </div>
                     </div>
 
                     {filtrados.length === 0 ? (
@@ -152,7 +124,7 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                 </EmptyState.Header>
                                 <EmptyState.Content>
                                     <EmptyState.Title>Nenhum pedido encontrado</EmptyState.Title>
-                                    <EmptyState.Description>Revise a busca ou volte os filtros para todas as situações.</EmptyState.Description>
+                                    <EmptyState.Description>Revise a busca ou volte o filtro para todos os eventos.</EmptyState.Description>
                                 </EmptyState.Content>
                             </EmptyState>
                         </div>

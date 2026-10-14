@@ -117,7 +117,7 @@ export function LoteCard({ lote, aoAbrirTaxas }: { lote: LoteRevenda; aoAbrirTax
             <header className="flex w-full flex-col gap-1 pt-1 pb-3">
                 <h3 className="text-xl leading-[26px] font-bold text-[#212b36]">{lote.nome}</h3>
                 <p className="text-base leading-6 text-[#454f5b]">
-                    {plural(disponiveis, "oferta", "ofertas")} · Valor original <span className="text-[#212b36]">{brl(lote.valorOriginal)}</span>
+                    {plural(disponiveis, "oferta", "ofertas")}
                 </p>
             </header>
 

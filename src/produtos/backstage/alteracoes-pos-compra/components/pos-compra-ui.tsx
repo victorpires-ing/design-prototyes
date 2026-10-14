@@ -101,22 +101,40 @@ export const Aviso = ({ titulo, descricao, tom = "error" }: { titulo: string; de
 
 /** Card de resumo financeiro: cada linha carrega, por escrito, a regra que a originou. A regra
  *  não fica num tooltip: o do design system escreve em 12px e esconde o que justifica o valor. */
-export const ResumoFinanceiro = ({ linhas, titulo = "Resumo da cobrança", semMoldura = false }: { linhas: LinhaCobranca[]; titulo?: string; semMoldura?: boolean }) => (
-    <div className={cx(!semMoldura && "rounded-xl bg-primary ring-1 ring-border-secondary")}>
-        {!semMoldura && <p className="border-b border-secondary px-4 py-3 text-sm font-semibold text-primary">{titulo}</p>}
-        <dl className="flex flex-col divide-y divide-border-secondary">
-            {linhas.map((linha) => (
-                <div key={linha.label} className={cx("flex flex-col gap-0.5 px-4 py-2.5", linha.destaque && "bg-secondary")}>
-                    <div className="flex items-baseline justify-between gap-4">
-                        <dt className={cx("text-sm", linha.destaque ? "font-semibold text-primary" : "text-secondary")}>{linha.label}</dt>
-                        <dd className={cx("shrink-0 text-sm tabular-nums", linha.destaque ? "font-semibold text-primary" : "text-primary")}>{formatarMoeda(linha.valor)}</dd>
+/**
+ * Recibo: rótulo e valor, as parcelas somando no total. Nada mais.
+ *
+ * Antes cada linha vinha com um parágrafo explicando a própria regra, e quatro
+ * linhas viravam um bloco de texto que ninguém lê na hora de conferir um valor.
+ * A regra que o operador precisa ver na decisão — a sobra não devolvida do
+ * downgrade — está no aviso e no aceite da revisão, que é onde ela age.
+ *
+ * `regra` continua no modelo: documenta a conta para quem lê o código e serve
+ * se um dia houver uma superfície de auditoria. Só não polui o recibo.
+ */
+export const ResumoFinanceiro = ({ linhas, titulo = "Resumo da cobrança", semMoldura = false }: { linhas: LinhaCobranca[]; titulo?: string; semMoldura?: boolean }) => {
+    const parcelas = linhas.filter((l) => !l.destaque);
+    const total = linhas.find((l) => l.destaque);
+    return (
+        <div className={cx(!semMoldura && "rounded-xl bg-primary ring-1 ring-border-secondary")}>
+            {!semMoldura && <p className="border-b border-secondary px-4 py-3 text-sm font-semibold text-primary">{titulo}</p>}
+            <dl className="flex flex-col gap-2 px-4 py-3">
+                {parcelas.map((linha) => (
+                    <div key={linha.label} className="flex items-baseline justify-between gap-4">
+                        <dt className="text-sm text-secondary">{linha.label}</dt>
+                        <dd className="shrink-0 text-sm text-primary tabular-nums">{formatarMoeda(linha.valor)}</dd>
                     </div>
-                    {linha.regra && <p className="text-sm text-tertiary">{linha.regra}</p>}
-                </div>
-            ))}
-        </dl>
-    </div>
-);
+                ))}
+                {total && (
+                    <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-secondary pt-3">
+                        <dt className="text-sm font-semibold text-primary">{total.label}</dt>
+                        <dd className="shrink-0 text-md font-bold text-primary tabular-nums">{formatarMoeda(total.valor)}</dd>
+                    </div>
+                )}
+            </dl>
+        </div>
+    );
+};
 
 export const CampoComparativo = ({ label, de, para }: { label: string; de: string; para: string }) => {
     const mudou = de !== para;

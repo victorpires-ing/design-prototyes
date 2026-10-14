@@ -1420,13 +1420,9 @@ export const calcularTrocaItens = (pares: ParTroca[]): Calculo => {
             regra: `Cobrada uma vez por operação, independente de quantos itens mudam. Dividida em ${formatarMoeda(COBRANCA_TROCA_ITEM_PRODUTOR)} para o produtor e ${formatarMoeda(COBRANCA_TROCA_ITEM_INGRESSE)} para a Ingresse.`,
         },
     ];
-    if (naoDevolvido > 0) {
-        linhas.push({
-            label: "Valor não devolvido",
-            valor: naoDevolvido,
-            regra: "O item novo é mais barato. A sobra abate a cobrança da troca e o que resta fica com a Ingresse: não vira devolução, crédito nem saldo.",
-        });
-    }
+    /* A sobra do downgrade NÃO entra no recibo: ela não é cobrança e, somada às
+       parcelas, fazia a lista deixar de fechar com o total. Ela aparece onde age,
+       no aviso e no aceite da revisão (§10.2). */
     linhas.push({ label: "Total", valor: total, destaque: true });
 
     return { linhas, total, diferencaBruta: diferenca, semCredito: naoDevolvido > 0, naoDevolvido, descontoPerdido };

@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { motion } from "motion/react";
-import { ArrowLeft, ArrowRight, SearchLg } from "@untitledui/icons";
+import { ArrowLeft, ArrowRight, Eye, SearchLg } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
@@ -198,7 +199,7 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                         <Th>Evento</Th>
                                         <Th>Itens</Th>
                                         <Th>Total pago</Th>
-                                        <th className="w-24 px-4 py-3" />
+                                        <th className="w-16 px-4 py-3" />
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border-secondary">
@@ -223,14 +224,22 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                                     {formatarMoeda(totalPago(pedido))}
                                                 </td>
                                                 <td className="px-4 py-4 text-right">
-                                                    <Button
-                                                        size="sm"
-                                                        color="link-color"
-                                                        iconTrailing={ArrowRight}
-                                                        onClick={() => abrirPedido(pedido.id)}
-                                                    >
-                                                        Abrir
-                                                    </Button>
+                                                    {/*
+                                                      Olho, como nas outras listagens de pedido do Backstage
+                                                      (bilheteria e cortesias). `stopPropagation` porque a linha
+                                                      inteira também abre o pedido: sem ele o clique no botão
+                                                      dispara navegação duas vezes.
+                                                    */}
+                                                    <ButtonUtility
+                                                        size="xs"
+                                                        color="tertiary"
+                                                        icon={Eye}
+                                                        tooltip="Detalhes"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            abrirPedido(pedido.id);
+                                                        }}
+                                                    />
                                                 </td>
                                             </tr>
                                         );

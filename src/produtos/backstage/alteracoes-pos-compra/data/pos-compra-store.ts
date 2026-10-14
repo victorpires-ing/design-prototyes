@@ -1443,7 +1443,9 @@ export const calcularTrocaTitularidade = (quantidade = 1): Calculo => {
         total,
         linhas: [
             {
-                label: `Cobrança da transferência (${quantidade} × ${formatarMoeda(COBRANCA_TITULARIDADE)})`,
+                /* Sem a conta no rótulo: a quantidade já está no card "Transferindo",
+                   logo acima, e com uma unidade saía o inútil "(1 × R$ 15,00)". */
+                label: quantidade > 1 ? `Cobrança da transferência · ${quantidade} unidades` : "Cobrança da transferência",
                 valor: total,
                 regra: "Segue a configuração da transferência paga. O item é o mesmo: não há diferença de preço nem taxa de serviço proporcional.",
             },

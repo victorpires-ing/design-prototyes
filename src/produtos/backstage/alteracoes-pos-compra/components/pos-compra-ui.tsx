@@ -113,8 +113,13 @@ export const Aviso = ({ titulo, descricao, tom = "error" }: { titulo: string; de
  * se um dia houver uma superfície de auditoria. Só não polui o recibo.
  */
 export const ResumoFinanceiro = ({ linhas, titulo = "Resumo da cobrança", semMoldura = false }: { linhas: LinhaCobranca[]; titulo?: string; semMoldura?: boolean }) => {
-    const parcelas = linhas.filter((l) => !l.destaque);
+    const todas = linhas.filter((l) => !l.destaque);
     const total = linhas.find((l) => l.destaque);
+    /* Uma cobrança só: parcela e total são o mesmo número, e repetir o valor em
+       duas linhas não informa nada. A linha única vira o próprio total, mantendo
+       o rótulo que diz do que se trata. */
+    const unica = todas.length === 1 && total && todas[0].valor === total.valor ? todas[0] : null;
+    const parcelas = unica ? [] : todas;
     return (
         <div className={cx(!semMoldura && "rounded-xl bg-primary ring-1 ring-border-secondary")}>
             {!semMoldura && <p className="border-b border-secondary px-4 py-3 text-sm font-semibold text-primary">{titulo}</p>}
@@ -126,8 +131,8 @@ export const ResumoFinanceiro = ({ linhas, titulo = "Resumo da cobrança", semMo
                     </div>
                 ))}
                 {total && (
-                    <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-secondary pt-3">
-                        <dt className="text-sm font-semibold text-primary">{total.label}</dt>
+                    <div className={cx("flex items-baseline justify-between gap-4", !unica && "mt-1 border-t border-secondary pt-3")}>
+                        <dt className="text-sm font-semibold text-primary">{unica ? unica.label : total.label}</dt>
                         <dd className="shrink-0 text-md font-bold text-primary tabular-nums">{formatarMoeda(total.valor)}</dd>
                     </div>
                 )}

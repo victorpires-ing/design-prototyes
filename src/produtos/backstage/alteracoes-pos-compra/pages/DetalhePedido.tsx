@@ -137,7 +137,7 @@ export function DetalhePedido() {
 
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
-            <motion.div className={cx("mx-auto flex w-full min-w-0 max-w-4xl flex-1 flex-col gap-5 p-4 md:p-6", FOCO_ESCOPO)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: "easeOut" }}>
+            <motion.div className={cx("flex min-w-0 flex-1 flex-col gap-5 p-4 md:p-6", FOCO_ESCOPO)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: "easeOut" }}>
                 <Cabecalho pedido={pedido} voltarPara={voltarPara} />
                 <PagamentoCompacto pedido={pedido} />
 

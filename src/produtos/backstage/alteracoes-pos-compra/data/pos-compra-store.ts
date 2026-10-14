@@ -1659,7 +1659,12 @@ export const temFormulario = (item?: CatalogoItem) => Boolean(getFormulario(item
  *  Null quando está disponível. A mesma regra vale na lista e dentro do overlay, então nada
  *  aparece como possível num lugar e bloqueado no outro. */
 export const motivoIndisponivel = (pedido: Pedido, linha: PedidoItem, verbo: Verbo): string | null => {
-    if (linha.titularId) return "Recebeu por transferência";
+    /*
+      Ter recebido por transferência NÃO bloqueia nada. A spec prevê o item mudar
+      de possuidor mais de uma vez (576978948 §11.3, C23) e prevê o operador
+      trocar perguntas DEPOIS da titularidade concluída (§10, C12). A única chave
+      de bloqueio é a solicitação pendente (H-08).
+    */
     const solicitacao = solicitacaoDaLinha(pedido, linha.id);
     if (solicitacao) {
         if (solicitacao.estado === "falha") return `${TIPO_OPERACAO_CURTO[solicitacao.tipo]} paga e não aplicada`;
@@ -1752,7 +1757,8 @@ const devolverEstoqueDasOrigens = (pedido: Pedido, solicitacao: Solicitacao) => 
 export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfetadas, calculo, aplicar, reservas, canalEnvio, destinatarioEnvio, motivo }: CriarSolicitacaoInput): string | null => {
     const pedido = getPedido(pedidoId);
     if (!pedido) return null;
-    const ocupada = linhasAfetadas.some((id) => solicitacaoDaLinha(pedido, id) || pedido.itens.find((l) => l.id === id)?.titularId);
+    /* Só a solicitação pendente ocupa a linha; transferência concluída não ocupa (H-08). */
+    const ocupada = linhasAfetadas.some((id) => solicitacaoDaLinha(pedido, id));
     if (ocupada) return null;
 
     const agora = Date.now();

@@ -365,7 +365,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                             <Aviso
                                 tom="warning"
                                 titulo={`${repetido.item?.nome} é nominal: uma unidade por pessoa`}
-                                descricao={`Você escolheu ${repetido.quantas} unidades e elas não cabem num destinatário só. Deixe uma, ou faça uma transferência para cada pessoa.`}
+                                descricao="Reduza para 1 unidade e faça uma transferência para cada destinatário."
                             />
                         )}
                     </div>

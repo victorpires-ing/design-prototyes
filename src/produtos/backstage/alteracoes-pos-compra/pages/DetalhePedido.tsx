@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ArrowLeft, Calendar, Check, ChevronDown, Copy01 } from "@untitledui/icons";
+import { AlertTriangle, ArrowLeft, Calendar, Check, ChevronDown, Copy01, DotsVertical } from "@untitledui/icons";
 import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cx } from "@/utils/cx";
@@ -682,8 +683,21 @@ const LinhaDaUnidade = ({
                     {quantidade}
                     {apoio}
                 </p>
-                {transferida && <p className="text-sm text-tertiary">Unidade transferida não pode ser alterada de novo pelo Backstage.</p>}
-                {solicitacao && <EstadoDaUnidade pedido={pedido} linha={linha} solicitacao={solicitacao} />}
+                {transferida && (
+                    <span className="w-fit">
+                        <BadgeWithDot color="gray" type="pill-color" size="md">
+                            Transferido
+                        </BadgeWithDot>
+                    </span>
+                )}
+                {solicitacao && (
+                    <>
+                        <EstadoDaUnidade pedido={pedido} linha={linha} solicitacao={solicitacao} />
+                        <Button size="sm" color="link-gray" className="w-fit" onClick={() => onVerAlteracao(solicitacao.id)}>
+                            Ver alteração
+                        </Button>
+                    </>
+                )}
                 {!solicitacao && rascunho && (
                     <p className="flex flex-wrap items-center gap-x-2 text-sm text-tertiary">
                         Rascunho de {rascunho.tipo === "troca-titularidade" ? "transferência" : "troca"} não enviado
@@ -702,44 +716,28 @@ const LinhaDaUnidade = ({
                 )}
             </div>
 
-            <div className="ml-auto flex shrink-0 flex-col items-end gap-2">
-                {valor && <p className="text-sm font-semibold text-primary tabular-nums">{valor}</p>}
-                {transferida && (
-                    <BadgeWithDot color="gray" type="pill-color" size="md">
-                        Transferido
-                    </BadgeWithDot>
-                )}
-                {solicitacao && (
-                    <Button size="sm" color="secondary" onClick={() => onVerAlteracao(solicitacao.id)}>
-                        Ver alteração
-                    </Button>
-                )}
-                {/*
-                  Um ícone por verbo, num clique. O dropdown que esteve aqui escondia
-                  os verbos e cobrava dois cliques num operador que já sabe o que quer;
-                  os botões-texto anteriores dependiam de `text-fg-brand-primary` e
-                  sumiram quando a marca saiu.
+            {/*
+              Zona direita enxuta: valor e um só controle, na mesma linha do nome do
+              item. Antes era uma pilha de quatro coisas — valor, selo, "Ver alteração"
+              e as ações — e o valor flutuava longe da linha a que pertence.
 
-                  Os ícones são os MESMOS de `TIPO_OPERACAO_ICONE`, que o projeto já usa
-                  no badge, no cartão de operação e no histórico — então o símbolo que a
-                  pessoa aprende na linha é o que ela reencontra no resto da tela. É o
-                  mesmo padrão de ação em linha do resto do Backstage (bilheteria,
-                  cortesias e a lista de pedidos).
-                */}
+              Selo e "Ver alteração" desceram para junto das linhas de estado, na coluna
+              do meio: eles descrevem o que aconteceu com a unidade, não o que se pode
+              fazer com ela.
+            */}
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+                {valor && <p className="text-sm font-semibold text-primary tabular-nums">{valor}</p>}
                 {acoes.length > 0 && (
-                    <div className="flex items-center gap-1">
-                        {acoes.map(({ verbo, rotulo }) => (
-                            <ButtonUtility
-                                key={verbo}
-                                size="xs"
-                                color="tertiary"
-                                icon={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO[verbo]]}
-                                tooltip={rotulo}
-                                aria-label={`${rotulo} ${item.nome} de ${nome}`}
-                                onClick={() => onAbrir(verbo, [linha.id])}
-                            />
-                        ))}
-                    </div>
+                    <Dropdown.Root>
+                        <ButtonUtility size="sm" color="tertiary" icon={DotsVertical} tooltip="Mais ações" aria-label={`Mais ações para ${item.nome} de ${nome}`} />
+                        <Dropdown.Popover placement="bottom end" className="w-auto min-w-56">
+                            <Dropdown.Menu onAction={(chave) => onAbrir(chave as Verbo, [linha.id])}>
+                                {acoes.map(({ verbo, rotulo }) => (
+                                    <Dropdown.Item key={verbo} id={verbo} icon={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO[verbo]]} label={rotulo} />
+                                ))}
+                            </Dropdown.Menu>
+                        </Dropdown.Popover>
+                    </Dropdown.Root>
                 )}
             </div>
         </div>

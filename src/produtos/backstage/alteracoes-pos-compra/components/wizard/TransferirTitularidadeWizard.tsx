@@ -390,15 +390,9 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                         <ResumoUnidades pedido={pedido} linhas={linhas} verbo="transferir" titulo="Transferindo" onAlterar={() => setIndice(0)} onIncluir={incluir} />
                         <SetaParaBaixo />
 
-                        <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
-                            <div>
-                                <p className="text-base font-semibold text-primary">Tudo certo para transferir?</p>
-                                <p className="mt-1 text-sm text-tertiary">
-                                    {linhas.length === 1 ? "Esta unidade passa" : `Estas ${linhas.length} unidades passam`} de <span className="font-medium text-primary">{titularAtual?.nome}</span> para{" "}
-                                    <span className="font-medium text-primary">{selecionada.nome}</span> assim que a taxa for paga. O link vai para o e-mail de {selecionada.nome}, que é quem paga.
-                                </p>
-                            </div>
-
+                        {/* Sem moldura: o destinatário é o resultado da etapa anterior, e um
+                            card ao redor dele repetia a borda que o overlay já dá. */}
+                        <div className="flex w-full flex-col gap-4">
                             <div className="flex items-center gap-3 rounded-xl bg-secondary p-4">
                                 <Avatar size="md" initials={iniciaisDe(selecionada.nome)} alt={selecionada.nome} />
                                 <div className="min-w-0 flex-1">
@@ -407,16 +401,12 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                 </div>
                             </div>
 
-                            {/* §8 E4: o resumo declara a herança das respostas e o que o novo
-                                possuidor poderá alterar. Alterar resposta aqui não existe. */}
+                            {/* §8 E4: o resumo declara a herança das respostas. Alterar resposta aqui não existe. */}
                             {comFormulario.length > 0 && (
-                                <div className="flex flex-col gap-1 border-t border-secondary pt-4">
-                                    <p className="text-sm font-semibold text-primary">Respostas do formulário</p>
-                                    <p className="text-sm text-tertiary">
-                                        Herdadas pelo novo possuidor, sem alteração. Para mudar alguma, faça uma troca de perguntas depois que a transferência
-                                        concluir.
-                                    </p>
-                                </div>
+                                <p className="text-sm text-tertiary">
+                                    O novo possuidor herda as respostas do formulário sem alteração; para mudar alguma, faça uma troca de perguntas depois que a
+                                    transferência concluir.
+                                </p>
                             )}
                         </div>
 

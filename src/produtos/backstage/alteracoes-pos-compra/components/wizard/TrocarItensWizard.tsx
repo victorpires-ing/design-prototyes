@@ -188,6 +188,10 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
     });
     const pares = parearTroca(linhasSaem, destinosItens);
     const calculo = pares.length > 0 && totalEntram === totalSaem ? calcularTrocaItens(pares) : null;
+    const cortesia = linhasSaem.some((l) => l.valorPago === 0);
+    /* §10.2: a sobra do downgrade fica com a Ingresse e a tela exige aceite explícito. */
+    const naoDevolvido = calculo?.naoDevolvido ?? 0;
+    const precisaAceite = naoDevolvido > 0;
     const selecaoIgual =
         totalSaem > 0 &&
         linhasSaem
@@ -351,11 +355,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
         toast.success(`Cobrança de troca enviada para ${destino}.`);
         onEnviado(id);
     };
-
-    const cortesia = linhasSaem.some((l) => l.valorPago === 0);
-    /* §10.2: a sobra do downgrade fica com a Ingresse e a tela exige aceite explícito. */
-    const naoDevolvido = calculo?.naoDevolvido ?? 0;
-    const precisaAceite = naoDevolvido > 0;
 
     return (
         <WizardShell

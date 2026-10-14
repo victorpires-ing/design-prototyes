@@ -46,6 +46,12 @@ const BENEFICIOS = [
 export function Home() {
     useForceLightTheme();
 
+    // O React Router não reseta o scroll entre rotas: entrar no canal vindo de
+    // uma página já rolada (a seleção de produtos) começaria no meio da home.
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
+
     const navigate = useNavigate();
     const abrirEvento = (evento: EventoRevenda) => navigate(`/revenda/${evento.id}`);
 

@@ -55,6 +55,12 @@ export const valor = (v: number) => v.toLocaleString("pt-BR", { minimumFractionD
 
 export const totalOferta = (o: OfertaRevenda) => o.ingresso + o.taxa;
 
+/** Como a oferta se posiciona em relação ao valor de face do lote. */
+export type ComparacaoValor = "abaixo" | "igual" | "acima";
+
+export const compararComOriginal = (o: OfertaRevenda, valorOriginal: number): ComparacaoValor =>
+    o.ingresso > valorOriginal ? "acima" : o.ingresso < valorOriginal ? "abaixo" : "igual";
+
 export const ofertasDoLote = (l: LoteRevenda) => l.ofertas.reduce((t, o) => t + o.disponiveis, 0);
 
 export const totalOfertas = (e: EventoRevenda) => e.lotes.reduce((t, l) => t + ofertasDoLote(l), 0);
@@ -105,8 +111,9 @@ export const EVENTOS: EventoRevenda[] = [
                 nome: "PISTA 1º LOTE - Inteira",
                 valorOriginal: 240,
                 ofertas: [
-                    { id: "a", ingresso: 270, taxa: 32.5, disponiveis: 2 },
-                    { id: "b", ingresso: 290, taxa: 35, disponiveis: 1 },
+                    { id: "a", ingresso: 220, taxa: 26.5, disponiveis: 2 },
+                    { id: "b", ingresso: 240, taxa: 29, disponiveis: 1 },
+                    { id: "c", ingresso: 290, taxa: 35, disponiveis: 1 },
                 ],
             },
             {
@@ -200,7 +207,7 @@ export const EVENTOS: EventoRevenda[] = [
                 id: "unico",
                 nome: "PISTA ÚNICA - Inteira",
                 valorOriginal: 260,
-                ofertas: [{ id: "a", ingresso: 290, taxa: 35, disponiveis: 1 }],
+                ofertas: [{ id: "a", ingresso: 260, taxa: 31.5, disponiveis: 1 }],
             },
         ],
         perguntas: [
@@ -236,7 +243,7 @@ export const EVENTOS: EventoRevenda[] = [
                 nome: "PISTA 3º LOTE - Inteira",
                 valorOriginal: 220,
                 ofertas: [
-                    { id: "a", ingresso: 240, taxa: 29, disponiveis: 2 },
+                    { id: "a", ingresso: 200, taxa: 24, disponiveis: 2 },
                     { id: "b", ingresso: 260, taxa: 31.5, disponiveis: 1 },
                 ],
             },
@@ -337,7 +344,7 @@ export const EVENTOS: EventoRevenda[] = [
                 nome: "LOUNGE 3º LOTE - Inteira",
                 valorOriginal: 140,
                 ofertas: [
-                    { id: "a", ingresso: 150, taxa: 18, disponiveis: 4 },
+                    { id: "a", ingresso: 140, taxa: 17, disponiveis: 4 },
                     { id: "b", ingresso: 185, taxa: 22.5, disponiveis: 2 },
                 ],
             },
@@ -423,7 +430,7 @@ export const EVENTOS: EventoRevenda[] = [
                 nome: "PISTA 2º LOTE - Inteira",
                 valorOriginal: 110,
                 ofertas: [
-                    { id: "a", ingresso: 120, taxa: 14.5, disponiveis: 2 },
+                    { id: "a", ingresso: 100, taxa: 12, disponiveis: 2 },
                     { id: "b", ingresso: 145, taxa: 17.5, disponiveis: 3 },
                 ],
             },

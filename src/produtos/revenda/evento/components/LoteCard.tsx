@@ -1,5 +1,38 @@
 import { InfoCircle } from "@untitledui/icons";
-import { brl, ofertasDoLote, plural, totalOferta, valor, type LoteRevenda, type OfertaRevenda } from "../../data/eventos";
+import { cx } from "@/utils/cx";
+import {
+    brl,
+    compararComOriginal,
+    ofertasDoLote,
+    plural,
+    totalOferta,
+    valor,
+    type ComparacaoValor,
+    type LoteRevenda,
+    type OfertaRevenda,
+} from "../../data/eventos";
+
+/** Como a oferta se posiciona frente ao valor de face — medidas do Figma 16420:25547. */
+const BADGES: Record<ComparacaoValor, { texto: string; estilo: string }> = {
+    abaixo: { texto: "Abaixo do valor original", estilo: "border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]" },
+    igual: { texto: "Valor igual ao original", estilo: "border-[#e5e5e5] bg-[#fafafa] text-[#404040]" },
+    acima: { texto: "Acima do valor original", estilo: "border-[#fef08a] bg-[#fefce8] text-[#a16207]" },
+};
+
+function BadgeValor({ comparacao, className }: { comparacao: ComparacaoValor; className?: string }) {
+    const { texto, estilo } = BADGES[comparacao];
+    return (
+        <span
+            className={cx(
+                "shrink-0 items-center rounded-full border px-2 py-0.5 text-xs leading-[18px] font-medium whitespace-nowrap",
+                estilo,
+                className,
+            )}
+        >
+            {texto}
+        </span>
+    );
+}
 
 /**
  * Linha de oferta com a quebra de preço do decreto:
@@ -7,11 +40,16 @@ import { brl, ofertasDoLote, plural, totalOferta, valor, type LoteRevenda, type 
  * Desktop: tudo numa linha (h 57). Mobile: preço/taxa em cima e total embaixo (h 86).
  * Medidas do Figma 16414:25113 (desktop) e 16501:48493 (mobile).
  */
-function LinhaOferta({ oferta, aoAbrirTaxas }: { oferta: OfertaRevenda; aoAbrirTaxas: () => void }) {
+function LinhaOferta({ oferta, valorOriginal, aoAbrirTaxas }: { oferta: OfertaRevenda; valorOriginal: number; aoAbrirTaxas: () => void }) {
+    const comparacao = compararComOriginal(oferta, valorOriginal);
+
     return (
-        <li className="flex w-full items-center justify-between gap-2 rounded-xl bg-[#fafafa] px-2 py-3 transition-colors duration-100 ease-linear hover:bg-[#f5f5f5] sm:gap-[14px] sm:px-4">
+        <li className="flex w-full items-center justify-between gap-2 rounded-xl bg-[#fafafa] px-2 py-3 sm:gap-[14px] sm:px-4">
             {/* O `gap` garante a folga mínima quando o space-between se fecha em telas estreitas */}
             <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                {/* No mobile a badge abre a pilha; no desktop ela acompanha o total, à direita */}
+                <BadgeValor comparacao={comparacao} className="inline-flex self-start sm:hidden" />
+
                 {/*
                  * Preço, taxa e disponibilidade compartilham a linha de base (como em produção:
                  * `_price_1340n` usa align-items: baseline). Centrar as caixas deixaria os
@@ -49,10 +87,13 @@ function LinhaOferta({ oferta, aoAbrirTaxas }: { oferta: OfertaRevenda; aoAbrirT
                     </span>
                 </span>
 
-                {/* Total */}
-                <span className="flex shrink-0 items-baseline gap-1 sm:w-[118px]">
-                    <span className="text-sm leading-5 text-[#212b36] sm:leading-[1.2]">total</span>
-                    <span className="text-[18px] leading-7 font-bold text-[#212b36] sm:leading-[1.4]">{brl(totalOferta(oferta))}</span>
+                {/* Badge + total, agrupados à direita no desktop */}
+                <span className="flex shrink-0 items-center gap-2">
+                    <BadgeValor comparacao={comparacao} className="hidden sm:inline-flex" />
+                    <span className="flex items-baseline gap-1 sm:w-[118px]">
+                        <span className="text-sm leading-5 text-[#212b36] sm:leading-[1.2]">total</span>
+                        <span className="text-[18px] leading-7 font-bold text-[#212b36] sm:leading-[1.4]">{brl(totalOferta(oferta))}</span>
+                    </span>
                 </span>
             </div>
 
@@ -82,7 +123,7 @@ export function LoteCard({ lote, aoAbrirTaxas }: { lote: LoteRevenda; aoAbrirTax
 
             <ul className="flex w-full flex-col gap-3">
                 {lote.ofertas.map((o) => (
-                    <LinhaOferta key={o.id} oferta={o} aoAbrirTaxas={aoAbrirTaxas} />
+                    <LinhaOferta key={o.id} oferta={o} valorOriginal={lote.valorOriginal} aoAbrirTaxas={aoAbrirTaxas} />
                 ))}
             </ul>
         </article>

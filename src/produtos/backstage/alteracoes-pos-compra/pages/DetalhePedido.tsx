@@ -355,7 +355,7 @@ const LinhasPagamento = ({ pedido }: { pedido: Pedido }) => {
                     <ParValor rotulo={`Cupom ${pedido.cupom}`} valor={`-${formatarMoeda(desconto)}`} />
                 </>
             )}
-            <ParValor rotulo="Pago na compra" valor={formatarMoeda(final)} destaque />
+            <ParValor rotulo="Total pago" valor={formatarMoeda(final)} destaque />
             <div className="flex flex-col gap-0.5 border-t border-secondary pt-2">
                 <dt className="text-sm text-tertiary">Forma de pagamento</dt>
                 <dd className="text-sm text-primary">{formaDePagamento(pedido.meioPagamento)}</dd>

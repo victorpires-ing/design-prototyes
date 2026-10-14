@@ -20,7 +20,8 @@ type IllustrationKind =
     | "payin"
     | "totem"
     | "payout"
-    | "checkout";
+    | "checkout"
+    | "revenda";
 
 interface ProductCardData {
     id: string;
@@ -122,6 +123,13 @@ const PRODUCTS: ProductCardData[] = [
         to: "/checkout/melhorias-de-compra",
         illustration: "checkout",
     },
+    {
+        id: "revenda",
+        name: "Revenda",
+        description: "Canal oficial de revenda: compre de quem não vai mais, mesmo após o sold out",
+        to: "/revenda",
+        illustration: "revenda",
+    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
@@ -138,6 +146,7 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     totem: TotemIllustration,
     payout: PayOutIllustration,
     checkout: CheckoutIllustration,
+    revenda: RevendaIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -718,6 +727,34 @@ function BackstageIllustration() {
                     <rect x="208" y="86" width="18" height="5" rx="2.5" />
                 </g>
             </g>
+        </svg>
+    );
+}
+
+function RevendaIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <rect width="320" height="160" fill={N100} />
+            {/* vitrine do canal */}
+            <rect x="30" y="18" width="260" height="128" rx="12" fill={N50} stroke={BORDER} />
+            {/* hero */}
+            <rect x="30" y="18" width="260" height="40" rx="12" fill={BRAND_SOFT} />
+            <rect x="30" y="46" width="260" height="12" fill={BRAND_SOFT} />
+            <rect x="44" y="29" width="88" height="7" rx="3.5" fill={BRAND} />
+            <rect x="44" y="41" width="58" height="5" rx="2.5" fill={N300} />
+            {/* selo da revenda: a troca entre quem vende e quem compra */}
+            <circle cx="258" cy="38" r="13" fill={N50} stroke={BORDER} />
+            <path d="M252 35h10l-3-3" fill="none" stroke={BRAND} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M264 41h-10l3 3" fill="none" stroke={BRAND} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            {/* grade de eventos, um deles com oferta ativa */}
+            <rect x="44" y="72" width="52" height="58" rx="6" fill={N200} />
+            <rect x="104" y="72" width="52" height="58" rx="6" fill={BRAND_SOFT} />
+            <rect x="164" y="72" width="52" height="58" rx="6" fill={N200} />
+            <rect x="224" y="72" width="52" height="58" rx="6" fill={N200} />
+            <rect x="50" y="116" width="34" height="6" rx="3" fill={N300} />
+            <rect x="110" y="116" width="34" height="6" rx="3" fill={BRAND} />
+            <rect x="170" y="116" width="34" height="6" rx="3" fill={N300} />
+            <rect x="230" y="116" width="34" height="6" rx="3" fill={N300} />
         </svg>
     );
 }

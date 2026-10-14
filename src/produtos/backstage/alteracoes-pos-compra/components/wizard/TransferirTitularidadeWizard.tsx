@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Copy01, SearchLg } from "@untitledui/icons";
@@ -52,6 +52,31 @@ const TITULO_ETAPA: Record<Etapa, string> = {
     revisao: "Revisão",
 };
 
+/** Teto da lista quando há espaço de sobra, e o respiro até a borda que a recorta. */
+const ALTURA_SUGESTOES = 288;
+const FOLGA_SUGESTOES = 12;
+/** Cerca de duas sugestões. Abaixo disso compensa abrir a lista para cima. */
+const MINIMO_SUGESTOES = 132;
+
+/**
+ * Até onde a lista pode descer sem ser recortada: a janela, interceptada com todo
+ * ancestral que esconde o que passa da borda. O overlay é um desses — a lista nascia
+ * com 288px fixos, era pintada para fora dele e as sugestões de baixo não recebiam
+ * clique nenhum (elementFromPoint devolvia nada nelas).
+ */
+const areaVisivel = (no: HTMLElement) => {
+    let topo = 0;
+    let base = window.innerHeight;
+    for (let pai = no.parentElement; pai; pai = pai.parentElement) {
+        const estilo = getComputedStyle(pai);
+        if (estilo.overflowY === "visible" && estilo.overflowX === "visible") continue;
+        const caixa = pai.getBoundingClientRect();
+        topo = Math.max(topo, caixa.top);
+        base = Math.min(base, caixa.bottom);
+    }
+    return { topo, base };
+};
+
 interface TransferirTitularidadeWizardProps {
     pedido: Pedido;
     linhasIniciais: string[];
@@ -75,8 +100,8 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
     const [indice, setIndice] = useState(() => (linhasDisponiveis.some((l) => linhasIniciais.includes(l.id)) ? 1 : 0));
     const buscaRef = useRef<HTMLDivElement>(null);
-    const listaRef = useRef<HTMLUListElement>(null);
     const [sugerindo, setSugerindo] = useState(false);
+    const [encaixe, setEncaixe] = useState({ altura: ALTURA_SUGESTOES, acima: false });
     const [focado, setFocado] = useState(0);
     const [busca, setBusca] = useState(rascunhoInicial?.busca ?? contaInicial?.nome ?? "");
     const [motivo, setMotivo] = useState<Motivo>(rascunhoInicial?.motivo ?? MOTIVO_INICIAL);
@@ -131,13 +156,33 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
         campo.setAttribute("aria-expanded", String(sugestoesAbertas));
     }, [sugestoesAbertas, etapa]);
 
-    /* Ao abrir, traz a lista para dentro da área visível: dentro do overlay ela
-       nascia abaixo da dobra e a pessoa não via que havia resultados. */
-    useEffect(() => {
+    /* A lista só cabe onde o overlay deixa. Mede o espaço livre abaixo do campo,
+       vira para cima quando lá embaixo cabe menos, e limita a altura ao que sobrou —
+       o resto a lista rola por dentro, com toda sugestão ao alcance do clique.
+       Antes era um scrollIntoView("nearest") que não dava conta: a lista continuava
+       maior que a área visível e metade dela ficava fora, morta. */
+    useLayoutEffect(() => {
         if (!sugestoesAbertas) return;
-        const suave = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const id = requestAnimationFrame(() => listaRef.current?.scrollIntoView({ block: "nearest", behavior: suave ? "smooth" : "auto" }));
-        return () => cancelAnimationFrame(id);
+        const medir = () => {
+            const campo = buscaRef.current;
+            if (!campo) return;
+            const caixa = campo.getBoundingClientRect();
+            const { topo, base } = areaVisivel(campo);
+            const abaixo = base - caixa.bottom - FOLGA_SUGESTOES;
+            const acima = caixa.top - topo - FOLGA_SUGESTOES;
+            const paraCima = abaixo < MINIMO_SUGESTOES && acima > abaixo;
+            setEncaixe({ altura: Math.max(96, Math.min(ALTURA_SUGESTOES, paraCima ? acima : abaixo)), acima: paraCima });
+        };
+        medir();
+        /* O overlay rola e a janela muda de tamanho: a lista acompanha o campo,
+           mas o espaço livre embaixo dele não é o mesmo. Captura pega o scroll
+           do container interno, que não borbulha. */
+        window.addEventListener("resize", medir);
+        document.addEventListener("scroll", medir, true);
+        return () => {
+            window.removeEventListener("resize", medir);
+            document.removeEventListener("scroll", medir, true);
+        };
     }, [sugestoesAbertas, encontradas.length]);
 
     /* Fecha ao clicar fora, como qualquer sugestão de busca. */
@@ -333,11 +378,14 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
                                 {sugestoesAbertas && (
                                     <ul
-                                        ref={listaRef}
                                         id="sugestoes-destinatario"
                                         role="listbox"
                                         aria-label="Contas encontradas"
-                                        className="absolute top-full right-0 left-0 z-20 mt-1 max-h-72 overflow-y-auto rounded-xl bg-primary py-1 shadow-lg ring-1 ring-border-secondary"
+                                        style={{ maxHeight: encaixe.altura }}
+                                        className={cx(
+                                            "absolute right-0 left-0 z-20 overflow-y-auto rounded-xl bg-primary py-1 shadow-lg ring-1 ring-border-secondary",
+                                            encaixe.acima ? "bottom-full mb-1" : "top-full mt-1",
+                                        )}
                                     >
                                         {encontradas.map((conta, i) => (
                                             <li key={conta.id} role="option" aria-selected={i === focado}>
@@ -345,7 +393,13 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                                     type="button"
                                                     tabIndex={-1}
                                                     onMouseEnter={() => setFocado(i)}
-                                                    onClick={() => escolherDestinatario(conta)}
+                                                    /* Escolhe ao apertar, não ao soltar: se a lista se mexer entre o
+                                                       mousedown e o mouseup — rolagem, reposicionamento — o clique
+                                                       nunca chega. É o que o combobox do React Aria também faz. */
+                                                    onPointerDown={(e) => {
+                                                        e.preventDefault();
+                                                        escolherDestinatario(conta);
+                                                    }}
                                                     className={cx(
                                                         "flex w-full items-center gap-3 px-4 py-3 text-left transition duration-100 ease-linear",
                                                         i === focado ? "bg-secondary" : "hover:bg-primary_hover",

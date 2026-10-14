@@ -66,7 +66,7 @@ export function SeletorUnidades({
               nome do portador, duas linhas do mesmo item seriam indistinguíveis.
             */}
             {disponiveis.length > 0 && (
-                <ul className="flex flex-col divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+                <ul className="flex flex-col divide-y divide-border-secondary">
                     {disponiveis.map((linha) => {
                         const item = getItem(linha.itemId);
                         const irmas = disponiveis.filter((l) => l.itemId === linha.itemId);

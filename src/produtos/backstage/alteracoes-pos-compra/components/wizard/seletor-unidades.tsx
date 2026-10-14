@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { cx } from "@/utils/cx";
-import { ListaLimitada, mascararCPF } from "../pos-compra-ui";
+import { ListaLimitada, Miniatura, mascararCPF } from "../pos-compra-ui";
 import {
     getConta,
     getItem,
@@ -73,17 +73,26 @@ export function SeletorUnidades({
                         const ordinal = irmas.length > 1 ? `Unidade ${irmas.indexOf(linha) + 1} de ${irmas.length}` : null;
                         const sessao = sessaoDoItem(item) ? sessaoLabel(item) : null;
                         return (
-                            <li key={linha.id} className={cx("px-4 py-3 transition duration-100 ease-linear hover:bg-primary_hover", selecao[linha.id] && "bg-secondary")}>
+                            <li key={linha.id} className={cx("cursor-pointer px-4 py-3 transition duration-100 ease-linear hover:bg-primary_hover", selecao[linha.id] && "bg-secondary")}>
+                                {/*
+                                  Miniatura e texto vão dentro do `label`, não no `hint`:
+                                  assim a área clicável é a linha inteira — foto incluída —
+                                  e as três linhas de texto alinham ao lado da imagem em vez
+                                  de recuarem sob a caixa.
+                                */}
                                 <Checkbox
                                     size="md"
                                     isSelected={Boolean(selecao[linha.id])}
                                     onChange={(marcado) => marcar([linha.id], marcado)}
-                                    label={<span className="text-sm font-medium text-primary">{item?.nome}</span>}
-                                    hint={
-                                        <span className="flex flex-col text-sm text-tertiary">
-                                            {item?.lote && <span>{item.lote}</span>}
-                                            {sessao && <span>{sessao}</span>}
-                                            {ordinal && <span>{ordinal}</span>}
+                                    label={
+                                        <span className="flex cursor-pointer items-start gap-3">
+                                            {item && <Miniatura item={item} />}
+                                            <span className="flex min-w-0 flex-col gap-0.5">
+                                                <span className="text-sm font-medium text-primary">{item?.nome}</span>
+                                                {item?.lote && <span className="text-sm font-normal text-tertiary">{item.lote}</span>}
+                                                {sessao && <span className="text-sm font-normal text-tertiary">{sessao}</span>}
+                                                {ordinal && <span className="text-sm font-normal text-tertiary">{ordinal}</span>}
+                                            </span>
                                         </span>
                                     }
                                 />

@@ -238,7 +238,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
                 {etapa === "itens" && (
                     <div className="flex w-full flex-col gap-4">
-                        <Regra>Marque o que muda de titular. Quem recebe vem na próxima etapa.</Regra>
                         <SeletorUnidades pedido={pedido} verbo="transferir" selecao={selecao} onChange={setSelecao} />
                     </div>
                 )}

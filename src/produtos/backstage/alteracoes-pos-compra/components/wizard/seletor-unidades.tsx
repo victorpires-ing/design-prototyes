@@ -32,12 +32,6 @@ export const identidadeDaLinha = (pedido: Pedido, linha: PedidoItem) => {
     return { nome: conta?.nome ?? "Participante", apoio: [origem, cpf].filter(Boolean).join(" · ") };
 };
 
-const agruparPorItem = (linhas: PedidoItem[]) => {
-    const grupos = new Map<string, PedidoItem[]>();
-    linhas.forEach((l) => grupos.set(l.itemId, [...(grupos.get(l.itemId) ?? []), l]));
-    return [...grupos.entries()].map(([itemId, doItem]) => ({ item: getItem(itemId), linhas: doItem }));
-};
-
 /**
  * Etapa de seleção dentro do overlay. A elegibilidade é do verbo: o que entra numa troca não é o
  * mesmo que entra numa transferência, então só dá para dizer o que pode depois de saber o que se
@@ -62,44 +56,42 @@ export function SeletorUnidades({
         <div className="flex flex-col gap-4">
             {disponiveis.length === 0 && <p className="rounded-xl bg-secondary px-4 py-6 text-center text-sm text-tertiary">Nenhuma unidade deste pedido pode entrar nesta alteração agora.</p>}
 
-            {agruparPorItem(disponiveis).map(({ item, linhas }) => {
-                const marcadas = linhas.filter((l) => selecao[l.id]).length;
-                return (
-                    <section key={item?.id} className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-secondary bg-secondary px-4 py-3">
-                            <div className="min-w-0">
-                                <p className="text-sm font-semibold text-primary">{item?.nome}</p>
-                                {detalheDoItem(item) && <p className="text-sm text-tertiary">{detalheDoItem(item)}</p>}
-                            </div>
-                            {linhas.length > 1 && (
+            {/*
+              Lista plana: uma unidade por linha, identificada pelo ITEM — nome, lote e
+              sessão, um em cada linha. Antes a linha era o portador, com o item virando
+              cabeçalho de grupo; quem escolhe o que transferir procura pelo ingresso,
+              não pela pessoa, e o nome só repetia o comprador em todas as linhas.
+
+              O ordinal só aparece quando o mesmo item tem mais de uma unidade: sem o
+              nome do portador, duas linhas do mesmo item seriam indistinguíveis.
+            */}
+            {disponiveis.length > 0 && (
+                <ul className="flex flex-col divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+                    {disponiveis.map((linha) => {
+                        const item = getItem(linha.itemId);
+                        const irmas = disponiveis.filter((l) => l.itemId === linha.itemId);
+                        const ordinal = irmas.length > 1 ? `Unidade ${irmas.indexOf(linha) + 1} de ${irmas.length}` : null;
+                        const sessao = sessaoDoItem(item) ? sessaoLabel(item) : null;
+                        return (
+                            <li key={linha.id} className={cx("px-4 py-3 transition duration-100 ease-linear hover:bg-primary_hover", selecao[linha.id] && "bg-secondary")}>
                                 <Checkbox
                                     size="md"
-                                    label={<span className="text-sm font-medium text-secondary">Selecionar as {linhas.length} unidades</span>}
-                                    isSelected={marcadas === linhas.length}
-                                    isIndeterminate={marcadas > 0 && marcadas < linhas.length}
-                                    onChange={(marcado) => marcar(linhas.map((l) => l.id), marcado)}
+                                    isSelected={Boolean(selecao[linha.id])}
+                                    onChange={(marcado) => marcar([linha.id], marcado)}
+                                    label={<span className="text-sm font-medium text-primary">{item?.nome}</span>}
+                                    hint={
+                                        <span className="flex flex-col text-sm text-tertiary">
+                                            {item?.lote && <span>{item.lote}</span>}
+                                            {sessao && <span>{sessao}</span>}
+                                            {ordinal && <span>{ordinal}</span>}
+                                        </span>
+                                    }
                                 />
-                            )}
-                        </div>
-                        <ul className="flex flex-col divide-y divide-border-secondary">
-                            {linhas.map((linha) => {
-                                const { nome, apoio } = identidadeDaLinha(pedido, linha);
-                                return (
-                                    <li key={linha.id} className={cx("px-4 py-3 transition duration-100 ease-linear hover:bg-primary_hover", selecao[linha.id] && "bg-secondary")}>
-                                        <Checkbox
-                                            size="md"
-                                            isSelected={Boolean(selecao[linha.id])}
-                                            onChange={(marcado) => marcar([linha.id], marcado)}
-                                            label={<span className="text-sm font-medium text-primary">{nome}</span>}
-                                            hint={<span className="text-sm text-tertiary">{apoio}</span>}
-                                        />
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    </section>
-                );
-            })}
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
 
             {indisponiveis.length > 0 && (
                 <details className="group rounded-xl bg-primary ring-1 ring-border-secondary">

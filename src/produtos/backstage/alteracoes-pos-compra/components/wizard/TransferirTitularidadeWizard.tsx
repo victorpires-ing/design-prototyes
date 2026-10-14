@@ -392,7 +392,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
                         {/* Sem moldura: o destinatário é o resultado da etapa anterior, e um
                             card ao redor dele repetia a borda que o overlay já dá. */}
-                        <div className="flex w-full flex-col gap-4">
+                        <div className="flex w-full flex-col gap-2">
                             <div className="flex items-center gap-3 rounded-xl bg-secondary p-4">
                                 <Avatar size="md" initials={iniciaisDe(selecionada.nome)} alt={selecionada.nome} />
                                 <div className="min-w-0 flex-1">
@@ -404,8 +404,8 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                             {/* §8 E4: o resumo declara a herança das respostas. Alterar resposta aqui não existe. */}
                             {comFormulario.length > 0 && (
                                 <p className="text-sm text-tertiary">
-                                    O novo possuidor herda as respostas do formulário sem alteração; para mudar alguma, faça uma troca de perguntas depois que a
-                                    transferência concluir.
+                                    O destinatário herda as respostas do formulário sem alteração. Para mudar, faça uma troca de perguntas depois que concluir a
+                                    transferência.
                                 </p>
                             )}
                         </div>

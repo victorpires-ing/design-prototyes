@@ -12,16 +12,29 @@ import FOTO_TIRANTE from "../../../../assets/products/tirante/1.png";
 /*  Regras de negócio (valores fixos do protótipo)                     */
 /* ------------------------------------------------------------------ */
 
-/** Taxa fixa cobrada em qualquer troca de item/modalidade. */
-export const TAXA_TROCA_ITEM = 20;
-/** Taxa fixa cobrada em qualquer troca de titularidade. */
-export const TAXA_TITULARIDADE = 15;
-/** Taxa única por operação de edição de respostas, independente de quantas respostas mudam. */
-export const TAXA_EDICAO_FORMULARIO = 10;
-/** Taxa de processamento aplicada sobre o subtotal da operação. */
-export const TAXA_PROCESSAMENTO = 0.02;
-/** Prazo real de pagamento: 1 hora. No protótipo o timer roda acelerado. */
-export const PRAZO_REAL_LABEL = "1 hora";
+/**
+ * Taxa de serviço padrão sobre o preço do item. O item pode ter a sua: a tabela
+ * de exemplos da EF (575995905 §10.4) tem um caso com destino a 12%.
+ */
+export const TAXA_SERVICO_PADRAO = 0.1;
+/**
+ * Cobrança da troca de item. Configurada no finance e cobrada UMA VEZ por
+ * operação, não por item (575995905 §10.1).
+ */
+export const COBRANCA_TROCA_ITEM = 20;
+/** Divisão da cobrança da troca de item (575995905 §10.3). */
+export const COBRANCA_TROCA_ITEM_PRODUTOR = 15;
+export const COBRANCA_TROCA_ITEM_INGRESSE = 5;
+/**
+ * Cobrança da troca de perguntas. Entrada PRÓPRIA no finance, separada da troca
+ * de item, uma vez por operação (575635517 §6.2 e §9.2).
+ */
+export const COBRANCA_TROCA_PERGUNTAS = 10;
+/** Cobrança da titularidade: segue a configuração da transferência paga (576978948 §6). */
+export const COBRANCA_TITULARIDADE = 15;
+/** Prazo real de pagamento: 15 minutos (544309249 §4, 575995905 H-09, 575635517 §11.1).
+ *  No protótipo o timer roda acelerado. */
+export const PRAZO_REAL_LABEL = "15 minutos";
 /** Prazo acelerado usado na demonstração (em segundos). */
 export const PRAZO_DEMO_SEGUNDOS = 60;
 /** Antecedência mínima para trocar para uma sessão. */
@@ -108,6 +121,8 @@ export interface CatalogoItem {
     nome: string;
     modalidade: string;
     precoIntegral: number;
+    /** Taxa de serviço deste item. Ausente = TAXA_SERVICO_PADRAO. */
+    taxaServicoPercent?: number;
     estoque: number;
     formularioId?: string;
     /** Regra de segmentação simulada que restringe quem pode assumir o item. */
@@ -138,6 +153,11 @@ export interface PedidoItem {
     titularId?: string;
     /** Valor efetivamente pago nesta linha (pode ser menor que o preço integral). */
     valorPago: number;
+    /**
+     * Taxa de serviço efetivamente paga nesta linha. É o minuendo da taxa
+     * proporcional (575995905 §10.2). Ausente, deriva do valor pago.
+     */
+    taxaServicoPaga?: number;
     /** Quando a transferência foi concluída, para a linha virar registro legível. */
     transferidoEmLabel?: string;
     /** Quem pediu a transferência, para a linha responder "quem fez isso" sem abrir o histórico. */
@@ -170,12 +190,20 @@ export const CATEGORIA_MOTIVO_LABEL: Record<CategoriaMotivo, string> = {
 export interface Motivo {
     categoria: CategoriaMotivo;
     nota: string;
+    /** Número do chamado. Obrigatório no Backstage, nas três operações (H-07). */
+    chamado: string;
 }
 
-export const motivoValido = (motivo: Motivo) => motivo.categoria !== "outro" || motivo.nota.trim().length > 0;
+/** H-07: motivo E número do chamado são obrigatórios em toda alteração no Backstage. */
+export const motivoValido = (motivo: Motivo) =>
+    motivo.chamado.trim().length > 0 && (motivo.categoria !== "outro" || motivo.nota.trim().length > 0);
 
 export const descreverMotivo = (motivo?: Motivo) =>
-    motivo ? [CATEGORIA_MOTIVO_LABEL[motivo.categoria], motivo.nota.trim()].filter(Boolean).join(": ") : "";
+    motivo
+        ? [CATEGORIA_MOTIVO_LABEL[motivo.categoria], motivo.nota.trim(), motivo.chamado.trim() && `Chamado ${motivo.chamado.trim()}`]
+              .filter(Boolean)
+              .join(" · ")
+        : "";
 
 export interface EntradaHistorico {
     id: string;
@@ -697,7 +725,7 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 tipo: "troca-titularidade",
                 marco: "solicitada",
                 linhaIds: ["li-3a"],
-                motivo: { categoria: "pedido-cliente", nota: "" },
+                motivo: { categoria: "pedido-cliente", nota: "", chamado: "98231" },
             },
             {
                 id: "h-3c",
@@ -809,7 +837,7 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 tipo: "troca-item",
                 marco: "solicitada",
                 linhaIds: ["li-5a"],
-                motivo: { categoria: "pedido-cliente", nota: "" },
+                motivo: { categoria: "pedido-cliente", nota: "", chamado: "98231" },
             },
             {
                 id: "h-5c",
@@ -1308,11 +1336,22 @@ export interface Calculo {
     total: number;
     /** Diferença bruta entre o novo item e o valor pago, antes da regra de crédito. */
     diferencaBruta: number;
-    /** True quando o novo item é mais barato e a diferença é descartada. */
+    /** True quando sobrou crédito que não é devolvido (downgrade). Exige aceite explícito. */
     semCredito: boolean;
+    /**
+     * Sobra do downgrade que fica com a Ingresse: não vira devolução, crédito
+     * nem saldo, e a tela precisa de aceite explícito (575995905 §10.2).
+     */
+    naoDevolvido?: number;
     /** Quanto da diferença cobrada vem do desconto da compra, que não vale para o item novo. */
     descontoPerdido?: number;
 }
+
+/** Taxa de serviço de um item do catálogo, com o padrão quando não há a sua. */
+const percentualDoItem = (item?: CatalogoItem) => item?.taxaServicoPercent ?? TAXA_SERVICO_PADRAO;
+const taxaServicoSobre = (valor: number, item?: CatalogoItem) => arredondar(valor * percentualDoItem(item));
+/** Taxa de serviço paga na linha. Sem registro, deriva do que foi efetivamente pago. */
+const taxaPagaNaLinha = (linha: PedidoItem) => linha.taxaServicoPaga ?? taxaServicoSobre(linha.valorPago, getItem(linha.itemId));
 
 export interface ParTroca {
     linha: PedidoItem;
@@ -1328,118 +1367,112 @@ export const parearTroca = (linhasSaem: PedidoItem[], itensEntram: CatalogoItem[
     return saem.flatMap((linha, i) => (entram[i] ? [{ linha, novoItem: entram[i] }] : []));
 };
 
-/** Troca de N itens de uma vez. A diferença é calculada item a item. */
+/**
+ * Troca de N itens (575995905 §10.2).
+ *
+ *   Diferença  = Σ (integral do novo − efetivamente pago no atual)   ← pode ser negativa
+ *   Taxa prop. = Σ máx(0, taxa de serviço do novo − taxa paga no atual)
+ *   TOTAL      = máx(0, Diferença + Taxa proporcional + Cobrança da troca)
+ *
+ * Duas armadilhas que a implementação anterior caiu:
+ *
+ * O `máx(0, …)` é do TOTAL, não da diferença. Travando item a item, o crédito
+ * do downgrade deixava de abater a cobrança e o protótipo cobrava R$ 20,40 numa
+ * troca que a tabela §10.4 diz ser de R$ 0,00.
+ *
+ * A cobrança da troca é por OPERAÇÃO. Multiplicada pela quantidade, uma troca
+ * de três itens cobrava três vezes o que o finance configura uma vez.
+ *
+ * Não existe taxa de processamento: "Não existe outra taxa na operação" (§10.1).
+ */
 export const calcularTrocaItens = (pares: ParTroca[]): Calculo => {
-    const quantidade = pares.length;
-    const diferencaBruta = arredondar(pares.reduce((soma, { linha, novoItem }) => soma + novoItem.precoIntegral - linha.valorPago, 0));
-    const diferenca = arredondar(pares.reduce((soma, { linha, novoItem }) => soma + Math.max(0, novoItem.precoIntegral - linha.valorPago), 0));
+    const diferenca = arredondar(pares.reduce((soma, { linha, novoItem }) => soma + novoItem.precoIntegral - linha.valorPago, 0));
+    const taxaProporcional = arredondar(
+        pares.reduce((soma, { linha, novoItem }) => soma + Math.max(0, taxaServicoSobre(novoItem.precoIntegral, novoItem) - taxaPagaNaLinha(linha)), 0),
+    );
+    /* O desconto da compra não acompanha a troca: o crédito é o que foi pago e o
+       destino entra pelo integral do lote (§10.1). Isto é só o aviso na tela. */
     const descontoPerdido = arredondar(
         pares.reduce((soma, { linha, novoItem }) => {
             const descontoDaLinha = Math.max(0, (getItem(linha.itemId)?.precoIntegral ?? linha.valorPago) - linha.valorPago);
             return soma + Math.min(descontoDaLinha, Math.max(0, novoItem.precoIntegral - linha.valorPago));
         }, 0),
     );
-    const semCredito = diferencaBruta < diferenca;
-    const taxaTroca = arredondar(quantidade * TAXA_TROCA_ITEM);
-    const subtotal = arredondar(diferenca + taxaTroca);
-    const processamento = arredondar(subtotal * TAXA_PROCESSAMENTO);
-    const total = arredondar(subtotal + processamento);
 
-    return {
-        diferencaBruta,
-        semCredito,
-        descontoPerdido,
-        total,
-        linhas: [
-            {
-                label: "Diferença dos itens",
-                valor: diferenca,
-                regra: "Calculada item a item, com o preço atual do item novo menos o valor pago. Item mais barato entra como zero: não gera crédito nem reembolso.",
-            },
-            {
-                label: `Taxa de troca (${quantidade} × ${formatarMoeda(TAXA_TROCA_ITEM)})`,
-                valor: taxaTroca,
-                regra: `Valor fixo de ${formatarMoeda(TAXA_TROCA_ITEM)} por item trocado.`,
-            },
-            { label: "Taxa de processamento (2%)", valor: processamento, regra: "2% sobre a diferença somada às taxas de troca." },
-            { label: "Total", valor: total, destaque: true },
-        ],
-    };
-};
+    const bruto = arredondar(diferenca + taxaProporcional + COBRANCA_TROCA_ITEM);
+    const total = Math.max(0, bruto);
+    const naoDevolvido = Math.max(0, arredondar(-bruto));
 
-export const calcularTrocaItem = (linha: PedidoItem, novoItem: CatalogoItem): Calculo => {
-    const diferencaBruta = arredondar(novoItem.precoIntegral - linha.valorPago);
-    const diferenca = Math.max(0, diferencaBruta);
-    const semCredito = diferencaBruta < 0;
-    const subtotal = arredondar(diferenca + TAXA_TROCA_ITEM);
-    const processamento = arredondar(subtotal * TAXA_PROCESSAMENTO);
     const linhas: LinhaCobranca[] = [
         {
-            label: "Preço atual do novo item",
-            valor: novoItem.precoIntegral,
-            regra: "A troca usa o preço atual do item de destino, não o preço do lote em que a compra foi feita.",
-        },
-        {
-            label: "Valor pago pelo item atual",
-            valor: -linha.valorPago,
-            regra: "Valor efetivamente pago, já com cupons e descontos aplicados.",
-        },
-        {
-            label: "Diferença",
+            label: "Diferença dos itens",
             valor: diferenca,
-            regra: semCredito
-                ? `A diferença seria de ${formatarMoeda(diferencaBruta)}. Troca para item mais barato não gera crédito nem reembolso.`
-                : "Valor cobrado do participante para cobrir a diferença de preço.",
+            regra: "Preço integral do item novo menos o valor efetivamente pago no atual. O desconto da compra original não acompanha a troca.",
         },
-        { label: "Taxa de troca", valor: TAXA_TROCA_ITEM, regra: `Valor fixo de ${formatarMoeda(TAXA_TROCA_ITEM)} por troca de item.` },
         {
-            label: "Taxa de processamento (2%)",
-            valor: processamento,
-            regra: "2% sobre a diferença somada à taxa de troca.",
+            label: "Taxa de serviço proporcional",
+            valor: taxaProporcional,
+            regra: "Taxa de serviço do item novo menos a já paga no atual. Nunca negativa.",
         },
-        { label: "Total", valor: arredondar(subtotal + processamento), destaque: true },
+        {
+            label: "Cobrança da troca",
+            valor: COBRANCA_TROCA_ITEM,
+            regra: `Cobrada uma vez por operação, independente de quantos itens mudam. Dividida em ${formatarMoeda(COBRANCA_TROCA_ITEM_PRODUTOR)} para o produtor e ${formatarMoeda(COBRANCA_TROCA_ITEM_INGRESSE)} para a Ingresse.`,
+        },
     ];
-    return { linhas, total: arredondar(subtotal + processamento), diferencaBruta, semCredito };
+    if (naoDevolvido > 0) {
+        linhas.push({
+            label: "Valor não devolvido",
+            valor: naoDevolvido,
+            regra: "O item novo é mais barato. A sobra abate a cobrança da troca e o que resta fica com a Ingresse: não vira devolução, crédito nem saldo.",
+        });
+    }
+    linhas.push({ label: "Total", valor: total, destaque: true });
+
+    return { linhas, total, diferencaBruta: diferenca, semCredito: naoDevolvido > 0, naoDevolvido, descontoPerdido };
 };
 
+/** Um item só. Delega, para não existirem duas fórmulas que possam divergir. */
+export const calcularTrocaItem = (linha: PedidoItem, novoItem: CatalogoItem): Calculo => calcularTrocaItens([{ linha, novoItem }]);
+
+/**
+ * Titularidade (576978948 §6): o item não muda, então não há diferença nem taxa
+ * de serviço proporcional. Vale a cobrança da transferência paga.
+ */
 export const calcularTrocaTitularidade = (quantidade = 1): Calculo => {
-    const taxa = arredondar(quantidade * TAXA_TITULARIDADE);
-    const processamento = arredondar(taxa * TAXA_PROCESSAMENTO);
-    const total = arredondar(taxa + processamento);
+    const total = arredondar(quantidade * COBRANCA_TITULARIDADE);
     return {
         diferencaBruta: 0,
         semCredito: false,
         total,
         linhas: [
             {
-                label: `Taxa de transferência (${quantidade} × ${formatarMoeda(TAXA_TITULARIDADE)})`,
-                valor: taxa,
-                regra: "O item é o mesmo, então não há diferença de preço. A taxa é cobrada por item transferido.",
+                label: `Cobrança da transferência (${quantidade} × ${formatarMoeda(COBRANCA_TITULARIDADE)})`,
+                valor: total,
+                regra: "Segue a configuração da transferência paga. O item é o mesmo: não há diferença de preço nem taxa de serviço proporcional.",
             },
-            { label: "Taxa de processamento (2%)", valor: processamento, regra: "2% sobre a taxa." },
             { label: "Total", valor: total, destaque: true },
         ],
     };
 };
 
-export const calcularEdicaoRespostas = (quantidadeAlterada: number): Calculo => {
-    const processamento = arredondar(TAXA_EDICAO_FORMULARIO * TAXA_PROCESSAMENTO);
-    const total = arredondar(TAXA_EDICAO_FORMULARIO + processamento);
-    return {
-        diferencaBruta: 0,
-        semCredito: false,
-        total,
-        linhas: [
-            {
-                label: "Taxa de edição",
-                valor: TAXA_EDICAO_FORMULARIO,
-                regra: `Cobrada uma vez por operação. As ${quantidadeAlterada} respostas alteradas juntas custam o mesmo que uma.`,
-            },
-            { label: "Taxa de processamento (2%)", valor: processamento, regra: "2% sobre a taxa." },
-            { label: "Total", valor: total, destaque: true },
-        ],
-    };
-};
+/**
+ * Troca de respostas (575635517 §9.2): TOTAL = cobrança da troca, e só.
+ * Respostas não têm valor monetário — sem diferença, crédito ou taxa de serviço.
+ */
+export const calcularEdicaoRespostas = (quantidadeAlterada: number): Calculo => ({
+    diferencaBruta: 0,
+    semCredito: false,
+    total: COBRANCA_TROCA_PERGUNTAS,
+    linhas: [
+        {
+            label: "Cobrança da troca",
+            valor: COBRANCA_TROCA_PERGUNTAS,
+            regra: `Entrada própria no finance, separada da troca de item. Cobrada uma vez por operação: as ${quantidadeAlterada} respostas alteradas juntas custam o mesmo que uma.`,
+        },
+        { label: "Total", valor: COBRANCA_TROCA_PERGUNTAS, destaque: true },
+    ],
+});
 
 /* ------------------------------------------------------------------ */
 /*  Bloqueios                                                          */
@@ -1697,6 +1730,25 @@ const daAlteracao = (s: Pick<Solicitacao, "id" | "tipo" | "linhasAfetadas">) => 
  *  solicitação "criada mas não enviada" sem rastro de canal, destino e horário.
  *  Guarda de concorrência: devolve null, sem criar nada, se alguma unidade já está em outra
  *  alteração ou já foi transferida (outro operador pode ter agido enquanto este montava). */
+/**
+ * Devolve ao estoque o que a operação libera: o item de origem de cada troca e a
+ * resposta anterior de cada linha. O destino já foi consumido na reserva, então
+ * aqui só entra o que sai (575995905 §11, 575635517 §10).
+ */
+const devolverEstoqueDasOrigens = (pedido: Pedido, solicitacao: Solicitacao) => {
+    solicitacao.aplicar.trocas?.forEach((t) => {
+        const origem = pedido.itens.find((l) => l.id === t.pedidoItemId);
+        if (origem) ajustarEstoqueItem(origem.itemId, 1);
+    });
+    solicitacao.reservas.forEach((r) => {
+        if (r.tipo !== "resposta") return;
+        solicitacao.linhasAfetadas.forEach((linhaId) => {
+            const anterior = pedido.itens.find((l) => l.id === linhaId)?.respostas[r.perguntaId];
+            if (anterior && anterior !== r.valor) ajustarEstoqueResposta(r.perguntaId, anterior, 1);
+        });
+    });
+};
+
 export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfetadas, calculo, aplicar, reservas, canalEnvio, destinatarioEnvio, motivo }: CriarSolicitacaoInput): string | null => {
     const pedido = getPedido(pedidoId);
     if (!pedido) return null;
@@ -1706,6 +1758,61 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfeta
     const agora = Date.now();
     const solicitacaoId = novoId("sol");
     reservas.forEach((r) => (r.tipo === "item" ? ajustarEstoqueItem(r.itemId, -1) : ajustarEstoqueResposta(r.perguntaId, r.valor, -1)));
+
+    /*
+      Total zero não gera solicitação, link nem prazo: valida, aplica e devolve o
+      estoque de origem na mesma transação (575995905 §10.2 e §12.3, 575635517 §6.2
+      e §9.2). Antes a tela oferecia "Enviar cobrança de R$ 0,00" e punha a operação
+      para esperar um pagamento que não existe.
+    */
+    if (calculo.total === 0) {
+        const semCobranca: Solicitacao = {
+            id: solicitacaoId,
+            tipo,
+            resumo,
+            linhas: calculo.linhas,
+            total: 0,
+            criadoEm: agora,
+            expiraEm: agora,
+            linkPagamento: "",
+            canalEnvio,
+            destinatarioEnvio,
+            detalhes,
+            linhasAfetadas,
+            estado: "aguardando",
+            aplicar,
+            reservas,
+            motivo,
+            operador: OPERADOR_ATUAL,
+        };
+        devolverEstoqueDasOrigens(pedido, semCobranca);
+        atualizarPedido(pedidoId, (p) =>
+            aplicarSolicitacao(
+                {
+                    ...p,
+                    historico: [
+                        ...p.historico,
+                        {
+                            id: novoId("h"),
+                            dataLabel: agoraLabel(),
+                            responsavel: OPERADOR_ATUAL,
+                            titulo: `${TIPO_OPERACAO_CURTO[tipo]} sem cobrança`,
+                            descricao: "Sem valor a pagar: aplicada na hora, sem link e sem prazo.",
+                            detalhes,
+                            valor: 0,
+                            estado: "concluido",
+                            marco: "solicitada",
+                            motivo,
+                            ...daAlteracao({ id: solicitacaoId, tipo, linhasAfetadas }),
+                        },
+                    ],
+                },
+                semCobranca,
+            ),
+        );
+        return solicitacaoId;
+    }
+
     atualizarPedido(pedidoId, (p) =>
         comStatus({
             ...p,
@@ -1919,21 +2026,7 @@ export const registrarPagamento = (pedidoId: string, solicitacaoId: string, refe
             return;
         }
 
-        const { aplicar, reservas } = solicitacao;
-
-        /* O destino já foi reservado ao criar a solicitação: aqui devolve o estoque das origens. */
-        aplicar.trocas?.forEach((t) => {
-            const origem = pedido.itens.find((l) => l.id === t.pedidoItemId);
-            if (origem) ajustarEstoqueItem(origem.itemId, 1);
-        });
-        reservas.forEach((r) => {
-            if (r.tipo !== "resposta") return;
-            /* A opção antiga de cada linha volta ao estoque quando a nova entra no lugar. */
-            solicitacao.linhasAfetadas.forEach((linhaId) => {
-                const anterior = pedido.itens.find((l) => l.id === linhaId)?.respostas[r.perguntaId];
-                if (anterior && anterior !== r.valor) ajustarEstoqueResposta(r.perguntaId, anterior, 1);
-            });
-        });
+        devolverEstoqueDasOrigens(pedido, solicitacao);
 
         atualizarPedido(pedidoId, (p) => {
             const atual = p.solicitacoes.find((s) => s.id === solicitacaoId);

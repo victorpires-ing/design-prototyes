@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowDown, ChevronDown, InfoCircle, Package, RefreshCcw0
 import { Badge, BadgeWithIcon } from "@/components/base/badges/badges";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
+import { Input } from "@/components/base/input/input";
 import { InputNumber } from "@/components/base/input/input-number";
 import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
 import { TextArea } from "@/components/base/textarea/textarea";
@@ -154,6 +155,15 @@ export const CampoMotivo = ({ valor, onChange }: { valor: Motivo; onChange: (val
             <p className="text-sm font-semibold text-primary">Motivo da alteração</p>
             <p className="text-sm text-tertiary">Fica só no histórico do pedido. O cliente não vê.</p>
         </div>
+        {/* H-07: motivo E número do chamado são obrigatórios em toda alteração no Backstage. */}
+        <Input
+            label="Número do chamado"
+            placeholder="Ex.: 98231"
+            value={valor.chamado}
+            onChange={(chamado) => onChange({ ...valor, chamado })}
+            isRequired
+            hint="Obrigatório: liga a alteração ao atendimento que a originou."
+        />
         <RadioGroup aria-label="Motivo da alteração" value={valor.categoria} onChange={(categoria) => onChange({ ...valor, categoria: categoria as CategoriaMotivo })} className="gap-3">
             {CATEGORIAS.map((categoria) => (
                 <RadioButton key={categoria} value={categoria} label={CATEGORIA_MOTIVO_LABEL[categoria]} />
@@ -170,7 +180,7 @@ export const CampoMotivo = ({ valor, onChange }: { valor: Motivo; onChange: (val
     </div>
 );
 
-export const MOTIVO_INICIAL: Motivo = { categoria: "pedido-cliente", nota: "" };
+export const MOTIVO_INICIAL: Motivo = { categoria: "pedido-cliente", nota: "", chamado: "" };
 
 /** Contagem regressiva acelerada da cobrança pendente. */
 export const useContagem = (expiraEm: number | undefined, aoExpirar: () => void) => {

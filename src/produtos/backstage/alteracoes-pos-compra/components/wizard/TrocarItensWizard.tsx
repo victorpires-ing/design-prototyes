@@ -6,10 +6,12 @@ import { Badge } from "@/components/base/badges/badges";
 import { InputBase } from "@/components/base/input/input";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { cx } from "@/utils/cx";
+import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, SetaParaBaixo, Stepper, mascararEmail } from "../pos-compra-ui";
 import { EditorResposta } from "../respostas-ui";
 import {
     OPERADOR_ATUAL,
+    PRAZO_REAL_LABEL,
     SESSOES,
     TIPO_OPERACAO_LABEL,
     calcularTrocaItens,
@@ -81,6 +83,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
     const [indice, setIndice] = useState(() => (linhasDisponiveis.some((l) => linhasIniciais.includes(l.id)) ? 1 : 0));
     const [termo, setTermo] = useState("");
     const [motivo, setMotivo] = useState<Motivo>(rascunhoInicial?.motivo ?? MOTIVO_INICIAL);
+    const [aceitouSobra, setAceitouSobra] = useState(false);
     const [saem, setSaem] = useState<Record<string, boolean>>(() => Object.fromEntries(pedidas.map((id) => [id, true])));
     const [entram, setEntram] = useState<Record<string, number>>(() => {
         const contagem: Record<string, number> = {};
@@ -190,7 +193,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
               ? totalSaem > 0 && totalEntram === totalSaem && !selecaoIgual
               : etapa === "formularios"
                 ? paresIncompletos.length === 0
-                : Boolean(calculo) && motivoValido(motivo);
+                : Boolean(calculo) && motivoValido(motivo) && (!precisaAceite || aceitouSobra);
 
     const rotuloAvancar = etapa === "saem" ? "Escolher o que entra" : etapa === "entram" && comFormularios ? "Responder formulários" : "Revisar troca";
 
@@ -303,6 +306,9 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
     };
 
     const cortesia = linhasSaem.some((l) => l.valorPago === 0);
+    /* §10.2: a sobra do downgrade fica com a Ingresse e a tela exige aceite explícito. */
+    const naoDevolvido = calculo?.naoDevolvido ?? 0;
+    const precisaAceite = naoDevolvido > 0;
 
     return (
         <WizardShell
@@ -315,7 +321,13 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
             podeAvancar={podeAvancar}
             rotuloAvancar={rotuloAvancar}
             ultimaEtapa={etapa === "revisao"}
-            rotuloConfirmar={calculo ? `Enviar cobrança de ${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}` : "Enviar cobrança"}
+            rotuloConfirmar={
+                !calculo
+                    ? "Enviar cobrança"
+                    : calculo.total === 0
+                      ? "Aplicar troca sem cobrança"
+                      : `Enviar cobrança de ${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}`
+            }
             onVoltar={voltar}
             onAvancar={avancar}
             onConfirmar={confirmar}
@@ -448,7 +460,13 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                     </div>
 
                     {pares.length > 1 && <Regra>Quando as unidades pagaram valores diferentes, o sistema forma os pares do jeito que resulta no menor total.</Regra>}
-                    {calculo.semCredito && <Aviso tom="warning" titulo="Há itens mais baratos na troca." descricao="A diferença deles não gera crédito nem reembolso." />}
+                    {precisaAceite && (
+                        <Aviso
+                            tom="warning"
+                            titulo={`${formatarMoeda(naoDevolvido)} não serão devolvidos`}
+                            descricao="O item novo é mais barato. A sobra abate a cobrança da troca e o que resta fica com a Ingresse: não vira devolução, crédito nem saldo."
+                        />
+                    )}
                     {pedido.cupom && (calculo.descontoPerdido ?? 0) > 0 && (
                         <Aviso tom="warning" titulo={`Inclui ${formatarMoeda(calculo.descontoPerdido ?? 0)} do cupom ${pedido.cupom}`} descricao="O desconto da compra não vale para o item novo: a diferença usa o preço cheio dele." />
                     )}
@@ -457,7 +475,20 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                     <CampoMotivo valor={motivo} onChange={setMotivo} />
 
                     <ResumoFinanceiro linhas={calculo.linhas} />
-                    <Regra>As vagas ficam reservadas por 1 hora. Nada é aplicado antes do pagamento. O link vai para {destino}.</Regra>
+                    {precisaAceite && (
+                        <Checkbox
+                            isSelected={aceitouSobra}
+                            onChange={setAceitouSobra}
+                            label={`Confirmo, em nome do comprador, que ${formatarMoeda(naoDevolvido)} não serão devolvidos`}
+                            hint="O aceite fica registrado no histórico junto com o motivo e o chamado."
+                        />
+                    )}
+                    {/* §11: criar a solicitação valida o estoque, não o reserva. */}
+                    <Regra>
+                        {calculo.total === 0
+                            ? "Sem valor a pagar: a troca é aplicada na hora, sem link e sem prazo."
+                            : `A troca só será efetivada após o pagamento e está sujeita à disponibilidade de estoque. Prazo de ${PRAZO_REAL_LABEL}. O link vai para ${destino}.`}
+                    </Regra>
                 </>
             )}
         </WizardShell>

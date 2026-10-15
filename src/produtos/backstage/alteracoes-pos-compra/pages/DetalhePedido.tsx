@@ -167,7 +167,7 @@ export function DetalhePedido() {
                     </Tabs>
 
                     {aba === "itens" ? (
-                        <ListaDeItens pedido={pedido} rascunhos={rascunhos} onAbrir={abrir} onContinuar={continuar} onVerAlteracao={(id) => setFocar(idDoCartao(id))} onVerHistorico={verNoHistorico} />
+                        <ListaDeItens pedido={pedido} rascunhos={rascunhos} onAbrir={abrir} onContinuar={continuar} onVerHistorico={verNoHistorico} />
                     ) : (
                         <Historico pedido={pedido} onVerAlteracao={(id) => setFocar(idDoCartao(id))} />
                     )}
@@ -516,7 +516,6 @@ interface UnidadeDoPedido {
 interface AcoesDaLista {
     onAbrir: (verbo: Verbo, linhas: string[]) => void;
     onContinuar: (rascunho: Rascunho) => void;
-    onVerAlteracao: (solicitacaoId: string) => void;
     onVerHistorico: (solicitacaoId?: string) => void;
 }
 
@@ -729,16 +728,6 @@ const EstadoDaUnidade = ({ pedido, linha, solicitacao }: { pedido: Pedido; linha
     );
 };
 
-/** Como cada fato fecha a frase "Última alteração: troca ..." na linha da unidade. */
-const DESFECHO: Partial<Record<NonNullable<EntradaHistorico["marco"]>, string>> = {
-    paga: "paga",
-    aplicada: "aplicada",
-    falha: "paga e não aplicada",
-    financeiro: "encaminhada ao financeiro",
-    expirada: "expirou sem pagamento",
-    cancelada: "cancelada",
-};
-
 /**
  * Transferir e trocar têm uma porta só, no topo da lista, porque servem para uma unidade ou
  * para n: a escolha de quais acontece dentro do fluxo, depois de saber o verbo, já que o que
@@ -772,18 +761,13 @@ type EstadoLido = ReturnType<typeof lerUnidade>;
 
 /** O que aconteceu com a unidade. Fica sempre na coluna de texto, nunca na de controle: a
  *  direita do cartão é o que se pode fazer, não o que já foi feito. */
-const FatosDaUnidade = ({ pedido, linha, estado, onContinuar, onVerAlteracao, onVerHistorico }: { pedido: Pedido; linha: PedidoItem; estado: EstadoLido } & Omit<AcoesDaLista, "onAbrir">) => {
-    const { solicitacao, rascunho, ultima, transferida } = estado;
+const FatosDaUnidade = ({ pedido, linha, estado, onContinuar, onVerHistorico }: { pedido: Pedido; linha: PedidoItem; estado: EstadoLido } & Omit<AcoesDaLista, "onAbrir">) => {
+    const { solicitacao, rascunho, ultima } = estado;
     return (
         <>
-            {solicitacao && (
-                <>
-                    <EstadoDaUnidade pedido={pedido} linha={linha} solicitacao={solicitacao} />
-                    <Button size="sm" color="link-gray" className="w-fit" onClick={() => onVerAlteracao(solicitacao.id)}>
-                        Ver alteração
-                    </Button>
-                </>
-            )}
+            {/* Só a frase de estado: o cartão da operação já está na tela, logo acima das abas,
+                então "Ver alteração" rolava até algo que a pessoa está vendo. */}
+            {solicitacao && <EstadoDaUnidade pedido={pedido} linha={linha} solicitacao={solicitacao} />}
             {!solicitacao && rascunho && (
                 <p className="flex flex-wrap items-center gap-x-2 text-sm text-tertiary">
                     Rascunho de {rascunho.tipo === "troca-titularidade" ? "transferência" : "troca"} não enviado
@@ -792,13 +776,13 @@ const FatosDaUnidade = ({ pedido, linha, estado, onContinuar, onVerAlteracao, on
                     </Button>
                 </p>
             )}
+            {/* Sem a frase "Última alteração: ...": contar de novo no cartão o que a aba
+                Histórico já conta por extenso. Fica o caminho até lá, que é o que liga esta
+                unidade ao registro dela. */}
             {!solicitacao && ultima && (
-                <p className="flex flex-wrap items-center gap-x-2 text-sm text-tertiary">
-                    {!transferida && `Última alteração: ${ultima.tipo ? `${TIPO_OPERACAO_CURTO[ultima.tipo].toLowerCase()} ${DESFECHO[ultima.marco ?? "aplicada"] ?? ""}` : ultima.titulo.toLowerCase()} em ${dataDoLabel(ultima.dataLabel)}`}
-                    <Button size="sm" color="link-color" onClick={() => onVerHistorico(ultima.solicitacaoId)}>
-                        Ver no histórico
-                    </Button>
-                </p>
+                <Button size="sm" color="link-color" className="w-fit" onClick={() => onVerHistorico(ultima.solicitacaoId)}>
+                    Ver no histórico
+                </Button>
             )}
         </>
     );

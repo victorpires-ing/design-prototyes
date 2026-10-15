@@ -336,12 +336,18 @@ const DetalhePagamento = ({ pedido }: { pedido: Pedido }) => (
 );
 
 /** Um número da compra, no formato da fileira de estatísticas do cartão de perfil. */
-/** Rótulo sobre valor, como o bloco de status do trilho do evento: em 280px o par lado a lado
- *  quebrava o valor em duas linhas e desalinhava a coluna inteira. */
+/**
+ * Rótulo sobre valor, como o bloco de status do trilho do evento: em 280px o par lado a lado
+ * quebrava o valor em duas linhas e desalinhava a coluna inteira.
+ *
+ * O valor fica um degrau abaixo do nome do comprador. A 16/600 ele empatava com o nome em
+ * 16/700 e o trilho ficava com dois níveis disputando o topo; pago, quantidade e data são
+ * referência de atendimento, não a manchete do cartão.
+ */
 const Estatistica = ({ rotulo, children }: { rotulo: string; children: ReactNode }) => (
     <div className="flex flex-col gap-0.5 py-2.5">
         <dt className="text-sm font-medium text-quaternary">{rotulo}</dt>
-        <dd className="text-md font-semibold text-primary">{children}</dd>
+        <dd className="text-sm font-semibold text-primary">{children}</dd>
     </div>
 );
 

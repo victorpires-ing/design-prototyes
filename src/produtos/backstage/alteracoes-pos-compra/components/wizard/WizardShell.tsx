@@ -4,6 +4,7 @@ import { ArrowLeft } from "@untitledui/icons";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressIconType } from "@/components/application/progress-steps/progress-types";
 import { Button } from "@/components/base/buttons/button";
+import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { EtapaCompacta } from "../pos-compra-ui";
 
 /**
@@ -77,19 +78,18 @@ export function WizardShell({
 
     return (
         <div className="flex min-w-0 flex-1 flex-col">
-            <header className="flex flex-col gap-3 px-4 pt-4 md:px-6">
-                <div>
-                    <Button size="sm" color="link-gray" iconLeading={ArrowLeft} onClick={onClose}>
-                        Pedido
-                    </Button>
-                </div>
-                <div>
-                    <h1 className="text-xl font-semibold text-primary md:text-2xl">{titulo}</h1>
+            {/* Mesmo cabeçalho da venda de ingressos: voltar à esquerda e o título centrado na
+                página por posicionamento absoluto, que volta a ser estático no mobile, onde
+                centrar ao lado do botão desalinharia os dois. */}
+            <header className="relative flex items-center justify-between gap-3 px-4 py-6 max-md:justify-start md:px-6">
+                <ButtonUtility size="sm" color="tertiary" icon={ArrowLeft} tooltip="Voltar para o pedido" onClick={onClose} />
+                <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 flex-col items-center text-center max-md:static max-md:translate-x-0 max-md:items-start max-md:text-left">
+                    <h1 className="text-display-xs font-bold text-primary">{titulo}</h1>
                     {subtitulo && <p className="text-sm text-tertiary">{subtitulo}</p>}
                 </div>
             </header>
 
-            <div className="flex flex-1 flex-col items-center gap-6 px-4 py-6 md:px-6">
+            <div className="flex flex-1 flex-col items-center gap-6 px-4 pb-6 md:px-6">
                 {etapas.length > 1 && (
                     <>
                         <Progress.IconsWithText items={progressItems} type="number" size="md" orientation="horizontal" className="max-w-[560px] max-md:hidden" />

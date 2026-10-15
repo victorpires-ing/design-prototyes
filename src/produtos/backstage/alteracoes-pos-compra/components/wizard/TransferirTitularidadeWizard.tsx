@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Copy01, SearchLg } from "@untitledui/icons";
+import { CheckCircle, ChevronDown, ChevronRight, Copy01, SearchLg } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
@@ -135,6 +135,8 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
     const buscaRef = useRef<HTMLDivElement>(null);
     const avisoRef = useRef<HTMLDivElement>(null);
     const [sugerindo, setSugerindo] = useState(false);
+    const [buscando, setBuscando] = useState(false);
+    const timerBusca = useRef<number | null>(null);
     const [encaixe, setEncaixe] = useState({ altura: ALTURA_SUGESTOES, acima: false });
     const [focado, setFocado] = useState(0);
     const [busca, setBusca] = useState(rascunhoInicial?.busca ?? contaInicial?.nome ?? "");
@@ -163,7 +165,18 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
        o pedido tem de transferível: só vira selo quem não pode receber NADA — o comprador, por
        exemplo. O que cabe unidade a unidade é assunto da etapa seguinte. */
     const naoRecebeNada = (conta: Conta) => linhasDisponiveis.length > 0 && bloqueiosDaConta(conta, linhasDisponiveis).length === linhasDisponiveis.length;
-    const sugestoesAbertas = sugerindo && encontradas.length > 0;
+    /* Abre assim que há termo: a espera e o vazio também são resposta, e some os dois deixava
+       o campo mudo enquanto a busca acontecia. */
+    const sugestoesAbertas = sugerindo && termo.length > 0;
+
+    /* A busca real vai ter latência; o protótipo mostra a mesma espera, entre 1s e 2s, para a
+       lista não aparecer instantânea e dar uma impressão que a tela pronta não vai cumprir. */
+    const agendarBusca = () => {
+        if (timerBusca.current) window.clearTimeout(timerBusca.current);
+        setBuscando(true);
+        timerBusca.current = window.setTimeout(() => setBuscando(false), 1000 + Math.random() * 1000);
+    };
+    useEffect(() => () => void (timerBusca.current && window.clearTimeout(timerBusca.current)), []);
 
     const bloqueiosPorLinha = selecionada ? bloqueiosDaConta(selecionada) : [];
 
@@ -237,6 +250,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
     /* Setas percorrem, Enter escolhe, Esc fecha sem perder o que foi digitado. */
     const aoTeclar = (e: ReactKeyboardEvent) => {
+        if (buscando) return;
         if (!sugestoesAbertas) {
             if (e.key === "ArrowDown" && encontradas.length > 0) setSugerindo(true);
             return;
@@ -438,6 +452,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                         setSelecionada(null);
                                         setSugerindo(true);
                                         setFocado(0);
+                                        agendarBusca();
                                     }}
                                     onKeyDown={aoTeclar}
                                     autoComplete="off"
@@ -454,7 +469,30 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                             encaixe.acima ? "bottom-full mb-1" : "top-full mt-1",
                                         )}
                                     >
-                                        {encontradas.map((conta, i) => {
+                                        {buscando &&
+                                            [0, 1, 2].map((i) => (
+                                                <li key={`esqueleto-${i}`} aria-hidden="true" className="flex items-center gap-3 px-4 py-3">
+                                                    <span className="size-10 shrink-0 animate-pulse rounded-full bg-secondary" />
+                                                    <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                                                        <span className="h-3.5 w-40 animate-pulse rounded bg-secondary" />
+                                                        <span className="h-3 w-56 animate-pulse rounded bg-secondary" />
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        {buscando && (
+                                            <li role="status" className="sr-only">
+                                                Buscando contas
+                                            </li>
+                                        )}
+
+                                        {/* Buscou e não achou: a resposta é uma linha da própria lista. O cartão
+                                            grande que dizia isso saiu. */}
+                                        {!buscando && encontradas.length === 0 && (
+                                            <li className="px-4 py-3 text-sm text-tertiary">Nenhuma conta encontrada para “{termo}”.</li>
+                                        )}
+
+                                        {!buscando &&
+                                            encontradas.map((conta, i) => {
                                             const impedida = naoRecebeNada(conta) ? bloqueiosDaConta(conta, linhasDisponiveis)[0]?.bloqueio : undefined;
                                             return (
                                             <li key={conta.id} role="option" aria-selected={i === focado}>
@@ -507,19 +545,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                 apoio={`${selecionada.email}${selecionada.cpf ? ` · CPF ${mascararCPF(selecionada.cpf)}` : ""}`}
                             />
                         )}
-
-                        {/* V08: sem conta a operação é bloqueada. O fluxo NÃO cria conta (§4, C14). */}
-                        {termo && encontradas.length === 0 && (
-                            <CartaoResultado
-                                icone={<FeaturedIcon icon={AlertCircle} color="gray" theme="gradient" size="md" className="shrink-0 rounded-full" />}
-                                titulo="Conta não encontrada"
-                                apoio={termo}
-                            >
-                                O novo participante precisa se cadastrar antes da transferência. O fluxo não cria conta: oriente o cadastro e retome depois.
-                            </CartaoResultado>
-                        )}
-
-                        <p className="text-sm text-tertiary">O que essa pessoa pode receber deste pedido aparece na próxima etapa.</p>
 
                     </>
                 )}

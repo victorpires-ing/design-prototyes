@@ -331,7 +331,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
     return (
         <WizardShell
-            isOpen
             onClose={fechar}
             titulo="Transferir"
             subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}

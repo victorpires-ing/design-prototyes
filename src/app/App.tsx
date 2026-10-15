@@ -165,6 +165,7 @@ import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/Sol
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
 import { Pedidos as PedidosPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/Pedidos';
 import { DetalhePedido as DetalhePedidoPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/DetalhePedido';
+import { AlterarPedido } from '../produtos/backstage/alteracoes-pos-compra/pages/AlterarPedido';
 import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
 import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
 import { PreVenda } from '../produtos/backstage/marketing/pages/PreVenda';
@@ -225,6 +226,9 @@ export default function App() {
         <Route path="/backstage/home" element={<BackstageHome />} />
         <Route path="/backstage/pedidos" element={<PedidosPosCompra />} />
         <Route path="/backstage/pedidos/:pedidoId" element={<DetalhePedidoPosCompra />} />
+        <Route path="/backstage/pedidos/:pedidoId/transferir" element={<AlterarPedido verbo="transferir" />} />
+        <Route path="/backstage/pedidos/:pedidoId/trocar" element={<AlterarPedido verbo="trocar" />} />
+        <Route path="/backstage/pedidos/:pedidoId/formulario" element={<AlterarPedido verbo="formulario" />} />
         <Route path="/backstage/membros" element={<Membros />} />
         <Route path="/backstage/membros/criar-cargo" element={<CriarCargo />} />
         <Route path="/backstage/membros/cargos/:id/editar" element={<CriarCargo />} />

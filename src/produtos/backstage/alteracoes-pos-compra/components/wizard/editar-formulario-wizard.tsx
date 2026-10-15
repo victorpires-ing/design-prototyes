@@ -90,7 +90,6 @@ export function EditarFormularioWizard({ pedido, linhaId, onFechar, onEnviado }:
 
     return (
         <WizardShell
-            isOpen
             onClose={onFechar}
             titulo="Formulário"
             subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}

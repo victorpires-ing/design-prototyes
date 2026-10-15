@@ -14,9 +14,6 @@ import { BackstageLayout } from "../../components/Backstage";
 import { CartaoOperacao, idDoCartao } from "../components/CartaoOperacao";
 import {
     TIPO_OPERACAO_ICONE, FOCO, FOCO_ESCOPO, Miniatura, mascararCPF, telefoneParaCopia } from "../components/pos-compra-ui";
-import { EditarFormularioWizard } from "../components/wizard/editar-formulario-wizard";
-import { TrocarItensWizard } from "../components/wizard/TrocarItensWizard";
-import { TransferirTitularidadeWizard } from "../components/wizard/TransferirTitularidadeWizard";
 import { descartarRascunho, identidadeDaLinha } from "../components/wizard/seletor-unidades";
 import {
     SESSOES,
@@ -28,7 +25,6 @@ import {
     getEvento,
     getItem,
     pedidoEncerrado,
-    retomarPedido,
     solicitacaoDaLinha,
     temFormulario,
     totaisDoPedido,
@@ -57,13 +53,8 @@ const formaDePagamento = (meio: string) => meio.replace(/\s*\((\d+)x\)/, " em $1
 
 type Aba = "itens" | "historico";
 
-interface FluxoAberto {
-    tipo: TipoOperacao;
-    linhas: string[];
-    rascunho?: Rascunho;
-}
-
 const TIPO_DO_VERBO: Record<Verbo, TipoOperacao> = { transferir: "troca-titularidade", trocar: "troca-item", formulario: "alterar-respostas" };
+const VERBO_DO_TIPO: Record<TipoOperacao, Verbo> = { "troca-titularidade": "transferir", "troca-item": "trocar", "alterar-respostas": "formulario" };
 
 export function DetalhePedido() {
     const { pedidoId } = useParams();
@@ -75,8 +66,8 @@ export function DetalhePedido() {
     /* Sempre abre em Itens e nada troca de aba sozinho: a mesma ação (abrir o pedido) leva sempre
        ao mesmo lugar. O que está em andamento fica acima das abas, visível de qualquer uma. */
     const [aba, setAba] = useState<Aba>("itens");
-    const [fluxo, setFluxo] = useState<FluxoAberto | null>(null);
-    const [focar, setFocar] = useState<string | null>(null);
+    /* Voltando de um fluxo, o cartão recém-criado chega pela URL para receber o foco. */
+    const [focar, setFocar] = useState<string | null>(() => new URLSearchParams(location.search).get("focar"));
     /* A lista guarda busca e filtros na URL: voltar devolve a lista como estava. */
     const voltarPara = `/backstage/pedidos${(location.state as { de?: string } | null)?.de ?? ""}`;
     const comprador = pedido ? getConta(pedido.compradorId) : undefined;
@@ -118,19 +109,22 @@ export function DetalhePedido() {
         );
     }
 
+    /* Os fluxos são telas com rota própria. A unidade escolhida e o rascunho viajam na URL, então
+       recarregar a página ou mandar o link para um colega cai no mesmo ponto do atendimento. */
+    const rotaDoFluxo = (verbo: Verbo, linhas: string[], rascunhoId?: string) => {
+        const query = new URLSearchParams();
+        if (linhas.length > 0) query.set("linhas", linhas.join(","));
+        if (rascunhoId) query.set("rascunho", rascunhoId);
+        const busca = query.toString();
+        return `/backstage/pedidos/${pedido.id}/${verbo}${busca ? `?${busca}` : ""}`;
+    };
     const abrir = (verbo: Verbo, linhas: string[]) => {
-        if (pedido.status === "expirado") retomarPedido(pedido.id);
-        const tipo = TIPO_DO_VERBO[verbo];
         /* Um rascunho por unidade: o mesmo verbo numa unidade que já está num rascunho retoma ele. */
+        const tipo = TIPO_DO_VERBO[verbo];
         const rascunho = linhas.length === 1 ? rascunhos.find((r) => r.tipo === tipo && r.linhasSelecionadas.includes(linhas[0])) : undefined;
-        setFluxo({ tipo, linhas, rascunho });
+        navigate(rotaDoFluxo(verbo, linhas, rascunho?.id));
     };
-    const continuar = (rascunho: Rascunho) => setFluxo({ tipo: rascunho.tipo, linhas: rascunho.linhasSelecionadas, rascunho });
-    const fechar = () => setFluxo(null);
-    const enviado = (solicitacaoId: string) => {
-        setFluxo(null);
-        setFocar(idDoCartao(solicitacaoId));
-    };
+    const continuar = (rascunho: Rascunho) => navigate(rotaDoFluxo(VERBO_DO_TIPO[rascunho.tipo], rascunho.linhasSelecionadas, rascunho.id));
     const verNoHistorico = (solicitacaoId?: string) => {
         setAba("historico");
         if (solicitacaoId) setFocar(`grupo-${solicitacaoId}`);
@@ -165,9 +159,6 @@ export function DetalhePedido() {
                 </div>
             </motion.div>
 
-            {fluxo?.tipo === "troca-item" && <TrocarItensWizard pedido={pedido} linhasIniciais={fluxo.linhas} rascunhoInicial={fluxo.rascunho} onFechar={fechar} onEnviado={enviado} />}
-            {fluxo?.tipo === "troca-titularidade" && <TransferirTitularidadeWizard pedido={pedido} linhasIniciais={fluxo.linhas} rascunhoInicial={fluxo.rascunho} onFechar={fechar} onEnviado={enviado} />}
-            {fluxo?.tipo === "alterar-respostas" && fluxo.linhas[0] && <EditarFormularioWizard pedido={pedido} linhaId={fluxo.linhas[0]} onFechar={fechar} onEnviado={enviado} />}
         </BackstageLayout>
     );
 }

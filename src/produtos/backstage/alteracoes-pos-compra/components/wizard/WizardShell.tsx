@@ -1,22 +1,23 @@
 import { useRef, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ChevronLeft, XClose } from "@untitledui/icons";
+import { ArrowLeft } from "@untitledui/icons";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressIconType } from "@/components/application/progress-steps/progress-types";
 import { Button } from "@/components/base/buttons/button";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { EtapaCompacta } from "../pos-compra-ui";
 
 /**
- * Casca compartilhada dos três fluxos de alteração (troca, transferência, formulário). Sobrepõe
- * o pedido em vez de navegar para outra rota, então a página nunca desmonta durante o atendimento.
+ * Casca compartilhada dos três fluxos de alteração (troca, transferência, formulário).
  *
- * Fechar tem um comportamento só: o fluxo decide se guarda um rascunho (só quando já há algo
- * feito além da unidade escolhida). Não existe mais "Minimizar", que fazia quase o mesmo que o X.
+ * É uma TELA, não um modal, como na bilheteria: o fluxo tem rota própria, a pessoa pode recarregar
+ * a página sem perder o trabalho e o link volta para onde parou. Enquanto era overlay, o rascunho
+ * existia mas não havia endereço que levasse de volta a ele. O fundo vem do BackstageLayout, que
+ * já é `bg-primary_alt`.
+ *
+ * Voltar tem um comportamento só: o fluxo decide se guarda um rascunho (só quando já há algo feito
+ * além da unidade escolhida) e então navega de volta ao pedido.
  */
 export function WizardShell({
-    isOpen,
     onClose,
     titulo,
     subtitulo,
@@ -33,7 +34,7 @@ export function WizardShell({
     infoRodape,
     children,
 }: {
-    isOpen: boolean;
+    /** Sai do fluxo inteiro e volta para o pedido. */
     onClose: () => void;
     titulo: string;
     /** Sobre quem é a alteração: "{Comprador} · Pedido {id curto}". */
@@ -45,13 +46,14 @@ export function WizardShell({
     ultimaEtapa: boolean;
     /** Diz o que acontece e com quanto: "Enviar cobrança de R$ 15,30 para c***@email.com". */
     rotuloConfirmar: string;
+    /** Uma etapa para trás, ou para fora do fluxo quando já está na primeira. */
     onVoltar: () => void;
     onAvancar: () => void;
     onConfirmar: () => void;
-    /** Esconde o rodapé fixo, para etapas onde a própria escolha já avança (ex.: clicar num
+    /** Esconde a barra de ação, para etapas onde a própria escolha já avança (ex.: clicar num
      *  card de destinatário), sem um "Avançar" redundante embaixo. */
     ocultarRodape?: boolean;
-    /** Estado do progresso ao lado do botão: "0 de 2 escolhidos". Fica no rodapé porque
+    /** Estado do progresso ao lado do botão: "0 de 2 escolhidos". Fica na barra porque
      *  é ali que a pessoa procura o que falta quando o botão não libera. */
     infoRodape?: ReactNode;
     children: ReactNode;
@@ -66,7 +68,6 @@ export function WizardShell({
     }
     const semMovimento = useReducedMotion();
     const deslocamento = semMovimento ? 0 : 48;
-    const rolagem = useRef<HTMLDivElement>(null);
 
     const progressItems: ProgressIconType[] = etapas.map((titulo, i) => ({
         title: titulo,
@@ -75,73 +76,77 @@ export function WizardShell({
     }));
 
     return (
-        <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable={false}>
-            <Modal className="h-[92vh] w-full sm:max-w-4xl">
-                <Dialog className="h-full" aria-label={titulo}>
-                    <div className="flex size-full flex-col overflow-hidden rounded-none bg-primary_alt sm:rounded-2xl">
-                        <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-secondary px-4 py-4 md:px-6">
-                            <ButtonUtility size="sm" color="secondary" icon={ChevronLeft} aria-label="Voltar" onClick={onVoltar} />
-                            <div className="flex flex-col items-center text-center max-md:order-last max-md:w-full md:pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2">
-                                <h2 className="text-lg font-bold text-primary">{titulo}</h2>
-                                {subtitulo && <p className="text-sm text-tertiary">{subtitulo}</p>}
-                            </div>
-                            <ButtonUtility size="sm" color="secondary" icon={XClose} aria-label="Fechar" onClick={onClose} />
-                        </header>
+        <div className="flex min-w-0 flex-1 flex-col">
+            <header className="flex flex-col gap-3 px-4 pt-4 md:px-6">
+                <div>
+                    <Button size="sm" color="link-gray" iconLeading={ArrowLeft} onClick={onClose}>
+                        Pedido
+                    </Button>
+                </div>
+                <div>
+                    <h1 className="text-xl font-semibold text-primary md:text-2xl">{titulo}</h1>
+                    {subtitulo && <p className="text-sm text-tertiary">{subtitulo}</p>}
+                </div>
+            </header>
 
-                        <div ref={rolagem} className="flex flex-1 flex-col items-center gap-6 overflow-x-hidden overflow-y-auto px-4 py-6 md:px-6">
-                            {etapas.length > 1 && (
-                                <>
-                                    <Progress.IconsWithText items={progressItems} type="number" size="md" orientation="horizontal" className="max-w-[560px] max-md:hidden" />
-                                    <EtapaCompacta atual={indiceAtual} titulos={etapas} className="md:hidden" />
-                                </>
-                            )}
-                            {/* Cada etapa nova começa do topo: sem isso, avançar de uma lista longa abria
-                                a próxima etapa no meio. */}
-                            <AnimatePresence mode="wait" initial={false} custom={direcao.current} onExitComplete={() => rolagem.current?.scrollTo({ top: 0 })}>
-                                <motion.section
-                                    key={indiceAtual}
-                                    custom={direcao.current}
-                                    variants={{
-                                        entra: (d: number) => ({ x: d * deslocamento, opacity: 0 }),
-                                        centro: { x: 0, opacity: 1 },
-                                        sai: (d: number) => ({ x: d * -deslocamento, opacity: 0 }),
-                                    }}
-                                    initial="entra"
-                                    animate="centro"
-                                    exit="sai"
-                                    transition={{ duration: 0.18, ease: "easeOut" }}
-                                    className="flex w-full max-w-2xl flex-col gap-5 pb-6"
-                                >
-                                    {children}
-                                </motion.section>
-                            </AnimatePresence>
-                        </div>
+            <div className="flex flex-1 flex-col items-center gap-6 px-4 py-6 md:px-6">
+                {etapas.length > 1 && (
+                    <>
+                        <Progress.IconsWithText items={progressItems} type="number" size="md" orientation="horizontal" className="max-w-[560px] max-md:hidden" />
+                        <EtapaCompacta atual={indiceAtual} titulos={etapas} className="md:hidden" />
+                    </>
+                )}
+                {/* Cada etapa nova começa do topo: sem isso, avançar de uma lista longa abria
+                    a próxima etapa no meio. Agora quem rola é a página, então o alvo é a janela. */}
+                <AnimatePresence
+                    mode="wait"
+                    initial={false}
+                    custom={direcao.current}
+                    onExitComplete={() => window.scrollTo({ top: 0, behavior: semMovimento ? "auto" : "smooth" })}
+                >
+                    <motion.section
+                        key={indiceAtual}
+                        custom={direcao.current}
+                        variants={{
+                            entra: (d: number) => ({ x: d * deslocamento, opacity: 0 }),
+                            centro: { x: 0, opacity: 1 },
+                            sai: (d: number) => ({ x: d * -deslocamento, opacity: 0 }),
+                        }}
+                        initial="entra"
+                        animate="centro"
+                        exit="sai"
+                        transition={{ duration: 0.18, ease: "easeOut" }}
+                        className="flex w-full max-w-2xl flex-col gap-5 pb-6"
+                    >
+                        {children}
+                    </motion.section>
+                </AnimatePresence>
+            </div>
 
-                        <AnimatePresence>
-                            {!ocultarRodape && (
-                                <motion.footer
-                                    initial={{ y: "100%", opacity: 0 }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    exit={{ y: "100%", opacity: 0 }}
-                                    transition={{ duration: 0.25, ease: "easeOut" }}
-                                    className="flex shrink-0 items-center justify-between gap-3 border-t border-secondary px-4 py-4 md:px-6"
-                                >
-                                    <div className="min-w-0 text-sm text-tertiary">{infoRodape}</div>
-                                    {ultimaEtapa ? (
-                                        <Button size="md" isDisabled={!podeAvancar} onClick={onConfirmar}>
-                                            {rotuloConfirmar}
-                                        </Button>
-                                    ) : (
-                                        <Button size="md" isDisabled={!podeAvancar} onClick={onAvancar}>
-                                            {rotuloAvancar}
-                                        </Button>
-                                    )}
-                                </motion.footer>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                </Dialog>
-            </Modal>
-        </ModalOverlay>
+            {/* Barra de ação colada no fim da janela, como a barra de total da bilheteria: a página
+                rola por baixo dela e o botão nunca sai de alcance numa lista longa. */}
+            <AnimatePresence>
+                {!ocultarRodape && (
+                    <motion.div
+                        initial={{ y: "100%", opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: "100%", opacity: 0 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-secondary bg-primary_alt px-4 py-4 md:px-6"
+                    >
+                        <div className="min-w-0 text-sm text-tertiary">{infoRodape}</div>
+                        {ultimaEtapa ? (
+                            <Button size="md" isDisabled={!podeAvancar} onClick={onConfirmar}>
+                                {rotuloConfirmar}
+                            </Button>
+                        ) : (
+                            <Button size="md" isDisabled={!podeAvancar} onClick={onAvancar}>
+                                {rotuloAvancar}
+                            </Button>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
     );
 }

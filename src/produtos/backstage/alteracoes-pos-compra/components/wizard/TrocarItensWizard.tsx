@@ -358,7 +358,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
 
     return (
         <WizardShell
-            isOpen
             onClose={fechar}
             titulo="Trocar"
             subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}

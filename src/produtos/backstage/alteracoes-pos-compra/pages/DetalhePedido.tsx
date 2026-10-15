@@ -538,12 +538,13 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
             .sort((a, b) => a.inicio - b.inicio)
             .map((sessao) => ({ sessao, itens: todos.filter((g) => g.item.tipo === "ingresso" && g.item.sessaoId === sessao.id) }))
             .filter((s) => s.itens.length > 0);
-        return { sessoes, produtos: todos.filter((g) => g.item.tipo === "produto"), combos: todos.filter((g) => g.item.tipo === "combo"), totalItens: todos.length };
+        return { sessoes, produtos: todos.filter((g) => g.item.tipo === "produto"), combos: todos.filter((g) => g.item.tipo === "combo") };
     }, [pedido]);
 
     const elegiveis = (verbo: Verbo) => pedido.itens.filter((l) => disponivelPara(pedido, l, verbo)).length;
     const nTransferir = elegiveis("transferir");
     const nTrocar = elegiveis("trocar");
+    const temAcoes = nTransferir >= 2 || nTrocar >= 2;
     const motivoGeral =
         nTransferir === 0 ? "Todas as unidades estão em outra alteração ou com outro titular." : pedidoEncerrado(pedido) ? "As sessões deste pedido já aconteceram. Só a transferência continua disponível." : null;
 
@@ -554,26 +555,25 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
            delimita. Um cartão em volta deles acrescentava uma segunda borda ao redor do mesmo
            conteúdo e empurrava tudo 20px para dentro, estreitando a linha sem separar nada. */
         <section className="flex flex-col gap-5">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-secondary pb-3">
-                <p className="text-sm text-tertiary">
-                    {plural(pedido.itens.length, "unidade", "unidades")} em {plural(estrutura.totalItens, "item", "itens")}
-                    {motivoGeral && <span className="text-secondary"> · {motivoGeral}</span>}
-                </p>
-                {(nTransferir >= 2 || nTrocar >= 2) && (
-                    <div className="flex w-full gap-2 sm:ml-auto sm:w-auto">
-                        {nTransferir >= 2 && (
-                            <Button size="sm" color="secondary" className="flex-1 sm:flex-none" onClick={() => acoes.onAbrir("transferir", [])}>
-                                Transferir itens
-                            </Button>
-                        )}
-                        {nTrocar >= 2 && (
-                            <Button size="sm" color="secondary" className="flex-1 sm:flex-none" onClick={() => acoes.onAbrir("trocar", [])}>
-                                Trocar itens
-                            </Button>
-                        )}
-                    </div>
-                )}
-            </div>
+            {(temAcoes || motivoGeral) && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    {temAcoes && (
+                        <div className="flex w-full gap-2 sm:w-auto">
+                            {nTransferir >= 2 && (
+                                <Button size="sm" color="secondary" className="flex-1 sm:flex-none" onClick={() => acoes.onAbrir("transferir", [])}>
+                                    Transferir itens
+                                </Button>
+                            )}
+                            {nTrocar >= 2 && (
+                                <Button size="sm" color="secondary" className="flex-1 sm:flex-none" onClick={() => acoes.onAbrir("trocar", [])}>
+                                    Trocar itens
+                                </Button>
+                            )}
+                        </div>
+                    )}
+                    {motivoGeral && <p className="text-sm text-secondary">{motivoGeral}</p>}
+                </div>
+            )}
 
             <div className="flex flex-col gap-6">
                 {estrutura.sessoes.length > 0 && (

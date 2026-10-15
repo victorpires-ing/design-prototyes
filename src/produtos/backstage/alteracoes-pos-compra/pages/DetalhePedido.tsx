@@ -11,7 +11,7 @@ import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cx } from "@/utils/cx";
-import { BackstageLayout, SOFT_SCROLLBAR } from "../../components/Backstage";
+import { BackstageLayout } from "../../components/Backstage";
 import { CartaoOperacao, idDoCartao } from "../components/CartaoOperacao";
 import {
     TIPO_OPERACAO_ICONE, FOCO, FOCO_ESCOPO, Miniatura, iniciaisDe, mascararCPF, telefoneParaCopia } from "../components/pos-compra-ui";
@@ -215,27 +215,10 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
     return (
         /* `top` acompanha a shell: a variante com barra no topo define --bs-header-offset, a de
            sidebar não define e o fallback zera. Mesma convenção do RelatorioPageHeader. */
-        <aside
-            className={cx(
-                "flex w-full shrink-0 flex-col gap-3 md:sticky md:w-[280px] md:overflow-y-auto",
-                /* Altura FIXA da janela, não máxima, que é o que o trilho do evento faz. Com teto
-                   máximo o trilho tinha a altura do próprio cartão, e quando o cartão era mais
-                   baixo que a coluna de conteúdo não sobrava curso para o sticky agir: ele descia
-                   junto com a rolagem. Ocupando a janela inteira ele nunca se mexe, e o que não
-                   couber rola por dentro.
-
-                   Os 138px são o que a janela gasta fora do trilho: 24 de padding da shell, 24
-                   da página, 26 da linha do "Pedidos" e 16 de gap acima dele, mais 48 de padding
-                   abaixo. Sem descontar isso, o trilho sozinho já era mais alto que o espaço livre
-                   e a página ganhava uma faixa de rolagem só por causa da barra de cima — com o
-                   trilho preenchendo o pai inteiro, sem curso nenhum para prender.
-
-                   O `top` sai do mesmo offset: a shell com barra no topo define --bs-header-offset
-                   como 64px e a de sidebar não define, onde o fallback zera. */
-                "md:top-[calc(var(--bs-header-offset,0px)+1.5rem)] md:h-[calc(100vh-var(--bs-header-offset,0px)-138px)]",
-                SOFT_SCROLLBAR,
-            )}
-        >
+        /* Sticky sem teto de altura: o trilho tem a altura do próprio cartão. Chegou a ter altura
+           de janela com rolagem interna, para prender em qualquer tela, mas rolar por dentro de um
+           cartão de identidade é pior que ele descer junto num pedido curto. */
+        <aside className="flex w-full shrink-0 flex-col gap-3 md:sticky md:top-[calc(var(--bs-header-offset,0px)+1.5rem)] md:w-[280px]">
             {/*
               Cartão de perfil: a capa do evento, o comprador sobreposto a ela, e a compra como
               uma fileira de números. O `capa` do evento existia no modelo com o comentário

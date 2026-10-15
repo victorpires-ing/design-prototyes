@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router";
 import { Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, ArrowLeft, Calendar, Check, Copy01, DotsVertical, Mail01, Phone, Tag01, User01 } from "@untitledui/icons";
-import { BadgeWithDot } from "@/components/base/badges/badges";
+import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
 import { AvatarProfilePhoto } from "@/components/base/avatar/avatar-profile-photo";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -21,8 +21,10 @@ import {
     TIPO_OPERACAO_CURTO,
     descreverMotivo,
     disponivelPara,
+    PERGUNTAS,
     formatarMoeda,
     getConta,
+    getFormulario,
     getEvento,
     getItem,
     pedidoEncerrado,
@@ -36,6 +38,7 @@ import {
     type EntradaHistorico,
     type Pedido,
     type PedidoItem,
+    type Pergunta,
     type Rascunho,
     type Sessao,
     type Solicitacao,
@@ -548,7 +551,7 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
     const motivoGeral =
         nTransferir === 0 ? "Todas as unidades estão em outra alteração ou com outro titular." : pedidoEncerrado(pedido) ? "As sessões deste pedido já aconteceram. Só a transferência continua disponível." : null;
 
-    const renderItem = (grupo: ItemComLinhas) => <ItemDoPedido key={grupo.item.id} pedido={pedido} rascunhos={rascunhos} {...grupo} {...acoes} />;
+    const renderItem = (grupo: ItemComLinhas) => <CartaoDoItem key={grupo.item.id} pedido={pedido} rascunhos={rascunhos} {...grupo} {...acoes} />;
 
     return (
         /* Sem moldura: os itens já estão dentro da coluna de trabalho, que o trilho à esquerda
@@ -575,31 +578,24 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
                 </div>
             )}
 
+            {/* gap-6 entre grupos, gap-3 entre cartoes: o cartao traz a propria moldura, entao
+                o que separa itens agora e o ar, nao mais o fio do divide-y. */}
             <div className="flex flex-col gap-6">
                 {estrutura.sessoes.length > 0 && (
-                    <GrupoDeItens titulo="Ingressos">
+                    /* Uma sessao so: "Ingressos" e a data cabem na mesma linha. Dois titulos
+                       empilhados sobre um cartao que ja tem borda eram tres caixas para dizer
+                       uma coisa. Com duas ou mais sessoes os niveis voltam a existir. */
+                    <GrupoDeItens titulo="Ingressos" sessao={estrutura.sessoes.length === 1 ? estrutura.sessoes[0].sessao : undefined}>
                         {estrutura.sessoes.map(({ sessao, itens }) => (
-                            <div key={sessao.id} className="flex flex-col gap-1">
-                                <h4 className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-semibold text-secondary">
-                                    <Calendar className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                                    <span className="first-letter:uppercase">{tituloDaSessao(sessao)}</span>
-                                    {sessao.inicio <= Date.now() && <span className="font-normal text-tertiary">· Sessão realizada. Só a transferência continua disponível.</span>}
-                                </h4>
-                                <div className="flex flex-col divide-y divide-border-secondary">{itens.map(renderItem)}</div>
+                            <div key={sessao.id} className="flex flex-col gap-3">
+                                {estrutura.sessoes.length > 1 && <TituloDaSessao sessao={sessao} />}
+                                {itens.map(renderItem)}
                             </div>
                         ))}
                     </GrupoDeItens>
                 )}
-                {estrutura.produtos.length > 0 && (
-                    <GrupoDeItens titulo="Produtos">
-                        <div className="flex flex-col divide-y divide-border-secondary">{estrutura.produtos.map(renderItem)}</div>
-                    </GrupoDeItens>
-                )}
-                {estrutura.combos.length > 0 && (
-                    <GrupoDeItens titulo="Combos">
-                        <div className="flex flex-col divide-y divide-border-secondary">{estrutura.combos.map(renderItem)}</div>
-                    </GrupoDeItens>
-                )}
+                {estrutura.produtos.length > 0 && <GrupoDeItens titulo="Produtos">{estrutura.produtos.map(renderItem)}</GrupoDeItens>}
+                {estrutura.combos.length > 0 && <GrupoDeItens titulo="Combos">{estrutura.combos.map(renderItem)}</GrupoDeItens>}
             </div>
         </section>
     );
@@ -613,87 +609,172 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
  */
 const caminhoDoItem = (item: CatalogoItem) => [item.grupo, item.lote && rotuloDoLote(item.lote)].filter(Boolean).join(" · ");
 
-const GrupoDeItens = ({ titulo, children }: { titulo: string; children: ReactNode }) => (
+/** "Qua, 11 de nov., 06h00" e, quando a sessão já passou, o que isso restringe. */
+const MarcaDaSessao = ({ sessao }: { sessao: Sessao }) => (
+    <>
+        <Calendar className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+        <span className="first-letter:uppercase">{tituloDaSessao(sessao)}</span>
+        {sessao.inicio <= Date.now() && <span className="font-normal text-tertiary">· Sessão realizada. Só a transferência continua disponível.</span>}
+    </>
+);
+
+/** Quando o grupo tem uma sessão só, ela sobe para a mesma linha do título. */
+const GrupoDeItens = ({ titulo, sessao, children }: { titulo: string; sessao?: Sessao; children: ReactNode }) => (
     <div className="flex flex-col gap-3">
         {/* Etiqueta de arquivo, não capítulo: a 16/700 competia de igual para igual com o nome
             do item, que é o alvo da varredura. Desce para o andar do detalhe. */}
-        <h3 className="text-sm font-semibold text-secondary">{titulo}</h3>
+        <h3 className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-semibold text-secondary">
+            {titulo}
+            {sessao && (
+                <>
+                    <span className="text-quaternary" aria-hidden="true">
+                        ·
+                    </span>
+                    <MarcaDaSessao sessao={sessao} />
+                </>
+            )}
+        </h3>
         {children}
     </div>
 );
 
-/** Uma linha da lista: uma unidade, ou várias unidades iguais de um produto não nominal. */
-interface Linha {
-    chave: string;
-    linhas: PedidoItem[];
-}
+const TituloDaSessao = ({ sessao }: { sessao: Sessao }) => (
+    <h4 className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-semibold text-secondary">
+        <MarcaDaSessao sessao={sessao} />
+    </h4>
+);
 
+/**
+ * As respostas do formulário que mudam de uma unidade para outra.
+ *
+ * Num pedido de 40 inscrições iguais tudo é idêntico menos uma coisa, e é por essa coisa que o
+ * comprador identifica a dele ao telefone: "a da camiseta G". Pergunta cuja resposta se repete
+ * em todas as unidades não entra, porque escrever "Kit: Arena das Dunas" quarenta vezes não
+ * distingue nada. Sem isso, quarenta linhas são quarenta vezes a mesma frase.
+ */
+const discriminantes = (item: CatalogoItem, linhas: PedidoItem[]): Pergunta[] => {
+    if (linhas.length < 2) return [];
+    const formulario = getFormulario(item.formularioId);
+    if (!formulario) return [];
+    return formulario.perguntaIds
+        .map((id) => PERGUNTAS.find((p) => p.id === id))
+        .filter((p): p is Pergunta => Boolean(p))
+        .filter((p) => new Set(linhas.map((l) => l.respostas[p.id] ?? "")).size > 1);
+};
+
+/** A regra do catálogo que faz uma transferência ser recusada lá na frente. */
+const RESTRICAO: Record<NonNullable<CatalogoItem["segmentacao"]>, string> = {
+    feminino: "Exclusivo feminino",
+    socio: "Exclusivo sócios",
+};
+
+/** Acima disso a lista de unidades nasce recolhida. Até seis, o alternador custa mais linha
+ *  do que esconde, e a lista inteira cabe sem rolar. */
+const SEMPRE_ABERTO = 6;
 const LIMITE_LINHAS = 5;
 
 /** Unidade em estado normal: sem alteração aberta, sem rascunho, sem outro titular. */
 const linhaNormal = (pedido: Pedido, rascunhos: Rascunho[], linha: PedidoItem) => !linha.titularId && !solicitacaoDaLinha(pedido, linha.id) && !rascunhos.some((r) => r.linhasSelecionadas.includes(linha.id));
 
-const ItemDoPedido = ({ pedido, rascunhos, item, linhas, ...acoes }: { pedido: Pedido; rascunhos: Rascunho[] } & ItemComLinhas & AcoesDaLista) => {
-    const [todas, setTodas] = useState(false);
+/* Um degrau abaixo do `rounded-2xl` do trilho e do CartaoOperacao: o item é conteúdo da
+   página, não o objeto mais alto dela. Mesmo anel, raio menor, sem sombra pesada. */
+const CARTAO = "flex flex-col rounded-xl bg-primary shadow-xs ring-1 ring-border-secondary ring-inset";
 
-    /* Uma linha por unidade. Elas chegavam fundidas quando eram da mesma pessoa e nada
-       acontecia com elas, mas o que se transfere ou troca é a unidade, não o item: com 40
-       inscrições iguais, escolher "a do Victor, que não vai mais correr" exige que ela exista
-       na tela. A ordem é a da compra e não muda: linha que troca de lugar faz o próximo
-       clique cair na vizinha. */
-    const agrupadas: Linha[] = linhas.map((linha) => ({ chave: linha.id, linhas: [linha] }));
+/**
+ * Um item do pedido, com as unidades dentro dele.
+ *
+ * Virou cartão porque a lista precisava de uma fronteira: sem moldura, o fio entre dois itens
+ * tinha o mesmo peso do fio entre duas unidades do mesmo item, e a hierarquia grupo > ingresso >
+ * lote > unidade se achatava em uma pilha só. A moldura se paga: o `divide-y` entre itens some,
+ * e quando o grupo tem uma sessão só os dois títulos empilhados viram um.
+ */
+const CartaoDoItem = ({ pedido, rascunhos, item, linhas, ...acoes }: { pedido: Pedido; rascunhos: Rascunho[] } & ItemComLinhas & AcoesDaLista) => {
+    const [todas, setTodas] = useState(false);
+    const unico = linhas.length === 1;
 
     const valores = new Set(linhas.map((l) => l.valorPago));
-    const valorDoItem = valores.size === 1 ? (linhas.length > 1 ? `${formatarMoeda(linhas[0].valorPago)} cada` : formatarMoeda(linhas[0].valorPago)) : formatarMoeda(linhas.reduce((soma, l) => soma + l.valorPago, 0));
+    const mesmoValor = valores.size === 1;
+    const valorDoItem = mesmoValor ? (unico ? formatarMoeda(linhas[0].valorPago) : `${formatarMoeda(linhas[0].valorPago)} cada`) : formatarMoeda(linhas.reduce((soma, l) => soma + l.valorPago, 0));
 
-    /* Uma linha só: o item e a unidade são a mesma coisa, sem sub-linha. */
-    if (agrupadas.length === 1) {
-        return (
-            <div className="py-2">
-                <LinhaDaUnidade pedido={pedido} rascunhos={rascunhos} item={item} linhas={agrupadas[0].linhas} valor={valorDoItem} fundida {...acoes} />
+    const colunas = discriminantes(item, linhas);
+
+    const cabecalho = (
+        <div className="flex items-start gap-3 px-4 py-4 lg:px-5">
+            <Miniatura item={item} />
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {/* O único text-md do cartão: é por ele que se varre a coluna. */}
+                    <p className="text-md font-semibold text-primary">{item.nome}</p>
+                    {item.segmentacao && (
+                        <Badge size="md" type="modern" color="gray">
+                            {RESTRICAO[item.segmentacao]}
+                        </Badge>
+                    )}
+                </div>
+                {caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
+                {item.datasCombo && item.datasCombo.length > 0 && <p className="text-sm text-tertiary">{item.datasCombo.join(" · ")}</p>}
+                {item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
             </div>
+            <div className="flex shrink-0 flex-col items-end">
+                {!unico && <p className="text-sm text-tertiary tabular-nums">{plural(linhas.length, "unidade", "unidades")}</p>}
+                <p className="text-sm font-semibold text-primary tabular-nums">{valorDoItem}</p>
+            </div>
+        </div>
+    );
+
+    /* Uma unidade: o item e a unidade são a mesma coisa. Sem lista, sem ordinal, sem sub-linha,
+       e os verbos saem de trás do kebab para o rodapé, escritos. É o formato da maioria dos
+       pedidos, e é onde esconder três ações atrás de um ícone custava mais caro. */
+    if (unico) {
+        return (
+            <article className={CARTAO}>
+                {cabecalho}
+                <UnidadeUnica pedido={pedido} rascunhos={rascunhos} item={item} linha={linhas[0]} {...acoes} />
+            </article>
         );
     }
 
-    /* Até 5 linhas; acima disso, as que fogem do normal continuam visíveis no lugar delas. */
-    const visiveis = todas ? agrupadas : agrupadas.filter((g, i) => i < LIMITE_LINHAS || !g.linhas.every((l) => linhaNormal(pedido, rascunhos, l)));
-    const ocultas = agrupadas.length - visiveis.length;
+    const aberta = todas || linhas.length <= SEMPRE_ABERTO;
+    /* Recolhido, as unidades em estado excepcional continuam visíveis no lugar delas: o que
+       está acontecendo com o pedido nunca fica atrás de um alternador. */
+    const visiveis = aberta ? linhas : linhas.filter((l, i) => i < LIMITE_LINHAS || !linhaNormal(pedido, rascunhos, l));
+    const ocultas = linhas.length - visiveis.length;
 
     return (
-        <div className="flex flex-col py-3">
-            <div className="flex items-start gap-3 pb-1">
-                {item.tipo !== "ingresso" && <Miniatura item={item} />}
-                <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-primary">{item.nome}</p>
-                    {caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
-                    {item.tipo !== "ingresso" && item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
-                </div>
-                <p className="shrink-0 text-right text-sm text-tertiary tabular-nums">
-                    {plural(linhas.length, "unidade", "unidades")} · <span className="font-semibold text-primary">{valorDoItem}</span>
-                </p>
-            </div>
-            <ul className="flex flex-col">
-                {visiveis.map((grupo) => (
-                    <li key={grupo.chave}>
-                        <LinhaDaUnidade
-                            pedido={pedido}
-                            rascunhos={rascunhos}
-                            item={item}
-                            linhas={grupo.linhas}
-                            ordinal={`Unidade ${agrupadas.findIndex((g) => g.chave === grupo.chave) + 1} de ${agrupadas.length}`}
-                            {...acoes}
-                        />
-                    </li>
+        <article className={CARTAO}>
+            {cabecalho}
+            {colunas.length > 0 && (
+                /* Nomeia a dimensão uma vez, no lugar de repetir "Tamanho da camiseta" em
+                   quarenta linhas. */
+                <p className="border-t border-secondary px-4 pt-3 pb-1 text-sm text-tertiary lg:px-5">{colunas.map((p) => p.label).join(" · ")}</p>
+            )}
+            <ul className={cx("flex flex-col px-2 pb-2 lg:px-3", colunas.length === 0 && "border-t border-secondary pt-2")}>
+                {visiveis.map((linha) => (
+                    <LinhaDaUnidade
+                        key={linha.id}
+                        pedido={pedido}
+                        rascunhos={rascunhos}
+                        item={item}
+                        linha={linha}
+                        colunas={colunas}
+                        ordinal={linhas.indexOf(linha) + 1}
+                        total={linhas.length}
+                        valor={mesmoValor ? undefined : formatarMoeda(linha.valorPago)}
+                        {...acoes}
+                    />
                 ))}
             </ul>
-            {(ocultas > 0 || todas) && agrupadas.length > LIMITE_LINHAS && (
-                <div className="pt-2">
+            {(ocultas > 0 || todas) && linhas.length > SEMPRE_ABERTO && (
+                <div className="border-t border-secondary px-4 py-2 lg:px-5">
+                    {/* Diz o que está escondido, não só que há algo escondido: quem some é
+                        sempre unidade sem alteração, e é isso que tira a dúvida de "será que a
+                        que eu procuro está aí dentro?". */}
                     <Button size="sm" color="link-color" aria-expanded={todas} onClick={() => setTodas((atual) => !atual)}>
-                        {todas ? "Ver menos" : `Ver todas as ${linhas.length} unidades`}
+                        {todas ? "Ver menos" : `Mais ${plural(ocultas, "unidade", "unidades")} sem alteração`}
                     </Button>
                 </div>
             )}
-        </div>
+        </article>
     );
 };
 
@@ -740,123 +821,165 @@ const ACOES: Array<{ verbo: Verbo; rotulo: string }> = [
     { verbo: "trocar", rotulo: "Trocar" },
     { verbo: "formulario", rotulo: "Editar formulário" },
 ];
+/**
+ * Tudo o que se sabe sobre uma unidade, lido de um lugar só: a linha da lista e o cartão de
+ * unidade única consultam daqui, e assim nunca discordam sobre o que oferecer.
+ */
+const lerUnidade = (pedido: Pedido, rascunhos: Rascunho[], item: CatalogoItem, linha: PedidoItem) => {
+    const solicitacao = solicitacaoDaLinha(pedido, linha.id);
+    const transferida = Boolean(linha.titularId);
+    return {
+        solicitacao,
+        transferida,
+        rascunho: rascunhos.find((r) => r.linhasSelecionadas.includes(linha.id)),
+        /* A última mudança da unidade, para responder "o que aconteceu com este ingresso" sem
+           abrir o histórico. */
+        ultima: [...pedido.historico].reverse().find((h) => h.solicitacaoId && h.linhaIds?.includes(linha.id) && h.marco !== "solicitada" && h.marco !== "reenviada"),
+        verbos: solicitacao || transferida ? [] : ACOES.filter(({ verbo }) => (verbo === "formulario" ? temFormulario(item) && disponivelPara(pedido, linha, verbo) : disponivelPara(pedido, linha, verbo))),
+    };
+};
 
+type EstadoLido = ReturnType<typeof lerUnidade>;
+
+/** O que aconteceu com a unidade. Fica sempre na coluna de texto, nunca na de controle: a
+ *  direita do cartão é o que se pode fazer, não o que já foi feito. */
+const FatosDaUnidade = ({ pedido, linha, estado, onContinuar, onVerAlteracao, onVerHistorico }: { pedido: Pedido; linha: PedidoItem; estado: EstadoLido } & Omit<AcoesDaLista, "onAbrir">) => {
+    const { solicitacao, rascunho, ultima, transferida } = estado;
+    return (
+        <>
+            {solicitacao && (
+                <>
+                    <EstadoDaUnidade pedido={pedido} linha={linha} solicitacao={solicitacao} />
+                    <Button size="sm" color="link-gray" className="w-fit" onClick={() => onVerAlteracao(solicitacao.id)}>
+                        Ver alteração
+                    </Button>
+                </>
+            )}
+            {!solicitacao && rascunho && (
+                <p className="flex flex-wrap items-center gap-x-2 text-sm text-tertiary">
+                    Rascunho de {rascunho.tipo === "troca-titularidade" ? "transferência" : "troca"} não enviado
+                    <Button size="sm" color="link-color" onClick={() => onContinuar(rascunho)}>
+                        Continuar
+                    </Button>
+                </p>
+            )}
+            {!solicitacao && ultima && (
+                <p className="flex flex-wrap items-center gap-x-2 text-sm text-tertiary">
+                    {!transferida && `Última alteração: ${ultima.tipo ? `${TIPO_OPERACAO_CURTO[ultima.tipo].toLowerCase()} ${DESFECHO[ultima.marco ?? "aplicada"] ?? ""}` : ultima.titulo.toLowerCase()} em ${dataDoLabel(ultima.dataLabel)}`}
+                    <Button size="sm" color="link-color" onClick={() => onVerHistorico(ultima.solicitacaoId)}>
+                        Ver no histórico
+                    </Button>
+                </p>
+            )}
+        </>
+    );
+};
+
+/** Quem está com a unidade, quando não é quem comprou. O nome do comprador já é o trilho da
+ *  página; repeti-lo em cada linha enchia a lista de eco. */
+const PortadorDaUnidade = ({ pedido, linha }: { pedido: Pedido; linha: PedidoItem }) => {
+    const { nome, apoio } = identidadeDaLinha(pedido, linha);
+    return (
+        <>
+            <p className="text-sm font-medium text-primary">{nome}</p>
+            <p className="text-sm text-tertiary">{apoio}</p>
+            <span className="w-fit pt-0.5">
+                <BadgeWithDot color="gray" type="pill-color" size="md">
+                    Transferido
+                </BadgeWithDot>
+            </span>
+        </>
+    );
+};
+
+/**
+ * O corpo do cartão quando o item tem uma unidade só.
+ *
+ * Aqui os verbos saem de trás do kebab e ganham nome no rodapé, como na referência do job card.
+ * É o formato da maioria dos pedidos, e era onde esconder três ações atrás de um ícone custava
+ * mais caro: a unidade é o item, então não há ambiguidade de escopo para resolver.
+ */
+const UnidadeUnica = ({ pedido, rascunhos, item, linha, onAbrir, ...resto }: { pedido: Pedido; rascunhos: Rascunho[]; item: CatalogoItem; linha: PedidoItem } & AcoesDaLista) => {
+    const estado = lerUnidade(pedido, rascunhos, item, linha);
+    const temFatos = estado.transferida || estado.solicitacao || estado.rascunho || estado.ultima;
+
+    if (!temFatos && estado.verbos.length === 0) return null;
+
+    return (
+        <>
+            {temFatos && (
+                <div className="flex flex-col gap-0.5 border-t border-secondary px-4 py-3 lg:px-5">
+                    {estado.transferida && <PortadorDaUnidade pedido={pedido} linha={linha} />}
+                    <FatosDaUnidade pedido={pedido} linha={linha} estado={estado} {...resto} />
+                </div>
+            )}
+            {estado.verbos.length > 0 && (
+                <footer className="flex flex-wrap gap-2 border-t border-secondary px-4 py-3 lg:px-5">
+                    {estado.verbos.map(({ verbo, rotulo }) => (
+                        <Button key={verbo} size="sm" color="secondary" iconLeading={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO[verbo]]} className="max-sm:flex-1" onClick={() => onAbrir(verbo, [linha.id])}>
+                            {rotulo}
+                        </Button>
+                    ))}
+                </footer>
+            )}
+        </>
+    );
+};
+
+/** Uma unidade dentro do cartão de um item com várias. */
 const LinhaDaUnidade = ({
     pedido,
     rascunhos,
     item,
-    linhas,
-    valor,
+    linha,
+    colunas,
     ordinal,
-    fundida = false,
+    total,
+    valor,
     onAbrir,
-    onContinuar,
-    onVerAlteracao,
-    onVerHistorico,
+    ...resto
 }: {
     pedido: Pedido;
     rascunhos: Rascunho[];
     item: CatalogoItem;
-    linhas: PedidoItem[];
+    linha: PedidoItem;
+    /** As perguntas cuja resposta varia entre as unidades deste item. */
+    colunas: Pergunta[];
+    ordinal: number;
+    total: number;
+    /** Só quando as unidades do item têm valores diferentes; senão o cabeçalho já disse. */
     valor?: string;
-    /** "Unidade 3 de 40". Sem assento, facial nem número de ingresso no modelo, é o único
-     *  jeito de distinguir duas unidades iguais da mesma pessoa depois de desagregar. */
-    ordinal?: string;
-    fundida?: boolean;
 } & AcoesDaLista) => {
-    const linha = linhas[0];
-    const { nome, apoio } = identidadeDaLinha(pedido, linha);
-    const solicitacao = solicitacaoDaLinha(pedido, linha.id);
-    const rascunho = rascunhos.find((r) => r.linhasSelecionadas.includes(linha.id));
-    const transferida = Boolean(linha.titularId);
-    /* A última mudança da unidade, com autor, para responder "o que aconteceu com este ingresso"
-       sem abrir o histórico. O link só existe quando há algo para ver. */
-    const ultima = [...pedido.historico].reverse().find((h) => h.solicitacaoId && h.linhaIds?.includes(linha.id) && h.marco !== "solicitada" && h.marco !== "reenviada");
-    const acoes = solicitacao || transferida ? [] : ACOES.filter(({ verbo }) => (verbo === "formulario" ? temFormulario(item) && disponivelPara(pedido, linha, verbo) : disponivelPara(pedido, linha, verbo)));
+    const estado = lerUnidade(pedido, rascunhos, item, linha);
+    const respostas = colunas
+        .map((p) => linha.respostas[p.id])
+        .filter(Boolean)
+        .join(" · ");
 
     return (
-        <div className={cx("-mx-3 flex flex-wrap items-start gap-x-3 gap-y-2 rounded-lg px-3 py-3 transition duration-100 ease-linear focus-within:bg-primary_hover hover:bg-primary_hover")}>
-            {fundida && item.tipo !== "ingresso" && <Miniatura item={item} />}
-            <div className="flex min-w-[12rem] flex-1 flex-col gap-0.5">
-                {fundida && (
-                    <>
-                        {/* O nome do item é o único text-md da lista: é por ele que se varre, e
-                            ele marca onde um item começa melhor do que qualquer fio. */}
-                        <p className="text-md font-semibold text-primary">{item.nome}</p>
-                        {caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
-                        {item.tipo !== "ingresso" && item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
-                    </>
-                )}
-                {/*
-                  O portador só é notícia quando NÃO é o comprador. Nome e CPF do comprador já são
-                  o cabeçalho da página, e repeti-los em toda linha enchia a lista de eco: num
-                  pedido de três itens, o mesmo nome aparecia quatro vezes. Quando a unidade foi
-                  transferida, o portador é outra pessoa, não está em lugar nenhum da tela, e aí
-                  o nome e o documento dele são o que o atendente confere ao telefone.
-                */}
-                {transferida ? (
-                    <>
-                        <p className={cx("text-sm", fundida ? "text-secondary" : "font-medium text-primary")}>{nome}</p>
-                        <p className="text-sm text-tertiary">{apoio}</p>
-                    </>
-                ) : (
-                    !fundida && ordinal && <p className="text-sm text-tertiary">{ordinal}</p>
-                )}
-                {transferida && (
-                    <span className="w-fit">
-                        <BadgeWithDot color="gray" type="pill-color" size="md">
-                            Transferido
-                        </BadgeWithDot>
-                    </span>
-                )}
-                {solicitacao && (
-                    <>
-                        <EstadoDaUnidade pedido={pedido} linha={linha} solicitacao={solicitacao} />
-                        <Button size="sm" color="link-gray" className="w-fit" onClick={() => onVerAlteracao(solicitacao.id)}>
-                            Ver alteração
-                        </Button>
-                    </>
-                )}
-                {!solicitacao && rascunho && (
-                    <p className="flex flex-wrap items-center gap-x-2 text-sm text-tertiary">
-                        Rascunho de {rascunho.tipo === "troca-titularidade" ? "transferência" : "troca"} não enviado
-                        <Button size="sm" color="link-color" onClick={() => onContinuar(rascunho)}>
-                            Continuar
-                        </Button>
-                    </p>
-                )}
-                {!solicitacao && ultima && (
-                    <p className="flex flex-wrap items-center gap-x-2 text-sm text-tertiary">
-                        {!transferida && `Última alteração: ${ultima.tipo ? `${TIPO_OPERACAO_CURTO[ultima.tipo].toLowerCase()} ${DESFECHO[ultima.marco ?? "aplicada"] ?? ""}` : ultima.titulo.toLowerCase()} em ${dataDoLabel(ultima.dataLabel)}`}
-                        <Button size="sm" color="link-color" onClick={() => onVerHistorico(ultima.solicitacaoId)}>
-                            Ver no histórico
-                        </Button>
-                    </p>
-                )}
+        <li className="flex items-start gap-3 rounded-lg px-2 py-1.5 transition duration-100 ease-linear focus-within:bg-primary_hover hover:bg-primary_hover">
+            {/* Calha de números: tabular-nums alinha os dígitos numa régua vertical contínua, e
+                "a unidade 17" vira a coordenada que o atendente e o comprador compartilham ao
+                telefone. Sem divide-y entre as linhas: o fio horizontal corta exatamente a
+                direção em que o olho precisa correr. */}
+            <span className="w-6 shrink-0 pt-0.5 text-right text-sm text-quaternary tabular-nums">
+                <span aria-hidden="true">{ordinal}</span>
+                <span className="sr-only">{`Unidade ${ordinal} de ${total}`}</span>
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                {estado.transferida ? <PortadorDaUnidade pedido={pedido} linha={linha} /> : respostas && <p className="text-sm text-secondary">{respostas}</p>}
+                <FatosDaUnidade pedido={pedido} linha={linha} estado={estado} {...resto} />
             </div>
-
-            {/*
-              Zona direita enxuta: valor e um só controle, na mesma linha do nome do
-              item. Antes era uma pilha de quatro coisas — valor, selo, "Ver alteração"
-              e as ações — e o valor flutuava longe da linha a que pertence.
-
-              Selo e "Ver alteração" desceram para junto das linhas de estado, na coluna
-              do meio: eles descrevem o que aconteceu com a unidade, não o que se pode
-              fazer com ela.
-            */}
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-                {valor && (
-                    <p className="text-sm tabular-nums">
-                        {fundida && linhas.length > 1 && <span className="text-tertiary">{plural(linhas.length, "unidade", "unidades")} · </span>}
-                        <span className="font-semibold text-primary">{valor}</span>
-                    </p>
-                )}
-                {acoes.length > 0 && (
+            {valor && <p className="shrink-0 pt-0.5 text-sm font-medium text-primary tabular-nums">{valor}</p>}
+            {/* Slot sempre reservado: com o controle aparecendo e sumindo, a borda direita
+                serrilhava ao longo de quarenta linhas. */}
+            <div className="flex size-9 shrink-0 items-center justify-center">
+                {estado.verbos.length > 0 && (
                     <Dropdown.Root>
-                        <ButtonUtility size="sm" color="tertiary" icon={DotsVertical} tooltip="Mais ações" aria-label={`Mais ações para ${item.nome} de ${nome}`} />
+                        <ButtonUtility size="sm" color="tertiary" icon={DotsVertical} tooltip="Mais ações" aria-label={`Mais ações para a unidade ${ordinal} de ${item.nome}`} />
                         <Dropdown.Popover placement="bottom end" className="w-auto min-w-56">
                             <Dropdown.Menu onAction={(chave) => onAbrir(chave as Verbo, [linha.id])}>
-                                {acoes.map(({ verbo, rotulo }) => (
+                                {estado.verbos.map(({ verbo, rotulo }) => (
                                     <Dropdown.Item key={verbo} id={verbo} icon={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO[verbo]]} label={rotulo} />
                                 ))}
                             </Dropdown.Menu>
@@ -864,9 +987,10 @@ const LinhaDaUnidade = ({
                     </Dropdown.Root>
                 )}
             </div>
-        </div>
+        </li>
     );
 };
+
 
 /* ------------------------------------------------------------------ */
 /*  Histórico                                                          */

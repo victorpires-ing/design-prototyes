@@ -515,11 +515,6 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
                                 <h4 className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-semibold text-secondary">
                                     <Calendar className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
                                     <span className="first-letter:uppercase">{tituloDaSessao(sessao)}</span>
-                                    {gruposDaSessao(itens).map((grupo) => (
-                                        <span key={grupo} className="font-medium text-tertiary">
-                                            {grupo}
-                                        </span>
-                                    ))}
                                     {sessao.inicio <= Date.now() && <span className="font-normal text-tertiary">· Sessão realizada. Só a transferência continua disponível.</span>}
                                 </h4>
                                 <div className="flex flex-col divide-y divide-border-secondary">{itens.map(renderItem)}</div>
@@ -542,9 +537,13 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
     );
 };
 
-/** Os grupos de bilheteria presentes nesta sessão. No catálogo é sempre um, mas a tela não
- *  depende disso: dois grupos viram dois rótulos em vez de um cabeçalho mentiroso. */
-const gruposDaSessao = (itens: ItemComLinhas[]) => [...new Set(itens.map((g) => g.item.grupo).filter(Boolean))] as string[];
+/**
+ * Onde o ingresso mora: grupo e lote sob o nome. O ingresso é identificado pelo caminho
+ * grupo > ingresso > lote, e sem o grupo na própria linha um item fora do contexto da sessão
+ * deixa de se explicar — "Corrida 5 km" existe em mais de um grupo. Produto não tem nem um
+ * nem outro, e aí a linha simplesmente não aparece.
+ */
+const caminhoDoItem = (item: CatalogoItem) => [item.grupo, item.lote && rotuloDoLote(item.lote)].filter(Boolean).join(" · ");
 
 const GrupoDeItens = ({ titulo, children }: { titulo: string; children: ReactNode }) => (
     <div className="flex flex-col gap-3">
@@ -611,7 +610,7 @@ const ItemDoPedido = ({ pedido, rascunhos, item, linhas, ...acoes }: { pedido: P
                 {item.tipo !== "ingresso" && <Miniatura item={item} />}
                 <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-primary">{item.nome}</p>
-                    {item.lote && <p className="text-sm text-tertiary">{rotuloDoLote(item.lote)}</p>}
+                    {caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
                     {item.tipo !== "ingresso" && item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
                 </div>
                 <p className="shrink-0 text-right text-sm text-tertiary tabular-nums">
@@ -718,7 +717,7 @@ const LinhaDaUnidade = ({
                         {/* O nome do item é o único text-md da lista: é por ele que se varre, e
                             ele marca onde um item começa melhor do que qualquer fio. */}
                         <p className="text-md font-semibold text-primary">{item.nome}</p>
-                        {item.lote && <p className="text-sm text-tertiary">{rotuloDoLote(item.lote)}</p>}
+                        {caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
                         {item.tipo !== "ingresso" && item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
                     </>
                 )}

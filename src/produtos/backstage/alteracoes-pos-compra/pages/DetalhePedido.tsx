@@ -548,8 +548,11 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
     const renderItem = (grupo: ItemComLinhas) => <ItemDoPedido key={grupo.item.id} pedido={pedido} rascunhos={rascunhos} {...grupo} {...acoes} />;
 
     return (
-        <section className="rounded-2xl bg-primary ring-1 ring-border-secondary">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-secondary px-5 py-3">
+        /* Sem moldura: os itens já estão dentro da coluna de trabalho, que o trilho à esquerda
+           delimita. Um cartão em volta deles acrescentava uma segunda borda ao redor do mesmo
+           conteúdo e empurrava tudo 20px para dentro, estreitando a linha sem separar nada. */
+        <section className="flex flex-col gap-5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-secondary pb-3">
                 <p className="text-sm text-tertiary">
                     {plural(pedido.itens.length, "unidade", "unidades")} em {plural(estrutura.totalItens, "item", "itens")}
                     {motivoGeral && <span className="text-secondary"> · {motivoGeral}</span>}
@@ -570,7 +573,7 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
                 )}
             </div>
 
-            <div className="flex flex-col gap-6 p-5">
+            <div className="flex flex-col gap-6">
                 {estrutura.sessoes.length > 0 && (
                     <GrupoDeItens titulo="Ingressos">
                         {estrutura.sessoes.map(({ sessao, itens }) => (

@@ -1,7 +1,4 @@
 import { useSyncExternalStore } from "react";
-import CAPA_MARATONA from "../../../../assets/event-cover.png";
-import CAPA_TRAIL from "../../../../assets/gremio-hero.webp";
-import CAPA_TRIATHLON from "../../../../assets/gremio-poster-taca.jpeg";
 import FOTO_CAMISETA from "../../../../assets/products/camisa_oficial/1.webp";
 import FOTO_KIT from "../../../../assets/products/kit_oficial/1.png";
 import FOTO_COPO from "../../../../assets/products/copo_oficial/1.png";
@@ -371,10 +368,33 @@ export const SESSOES: Sessao[] = [
     criarSessao("s-tri-d2", "ev-triathlon", 84, 7, 0),
 ];
 
+/*
+  Os mesmos eventos da listagem do Backstage (eventos/data/eventos.ts), com nome e pôster
+  iguais: trocar de tela durante um atendimento tem que parecer o mesmo produto, e o produtor
+  reconhece o evento pela arte que já vê na própria lista.
+
+  Os ids internos seguem como estavam porque as sessões, o catálogo e os pedidos semente
+  apontam para eles; só o que aparece na tela mudou.
+*/
 export const EVENTOS: EventoOrg[] = [
-    { id: "ev-maratona", nome: "Maratona Internacional de Natal", data: SESSOES[2].dataLabel, capa: CAPA_MARATONA },
-    { id: "ev-trail", nome: "Trail Run Serra do Mel", data: SESSOES[4].dataLabel, capa: CAPA_TRAIL },
-    { id: "ev-triathlon", nome: "Triathlon Costa Branca", data: SESSOES[6].dataLabel, capa: CAPA_TRIATHLON },
+    {
+        id: "ev-maratona",
+        nome: "Laroc apresenta: RAVE THE WORLD by Alok",
+        data: SESSOES[2].dataLabel,
+        capa: "https://kraken.ingresse.com/event/posters/104600/large/1786025742.4637246.jpg",
+    },
+    {
+        id: "ev-trail",
+        nome: "MOCHAKK CALLING 2026",
+        data: SESSOES[4].dataLabel,
+        capa: "https://kraken.ingresse.com/event/posters/103691/large/1787000382.8580675.jpg",
+    },
+    {
+        id: "ev-triathlon",
+        nome: "D-EDGE RIO apresenta IN DA CLUB W/ JUICCE",
+        data: SESSOES[6].dataLabel,
+        capa: "https://kraken.ingresse.com/event/posters/108467/large/1790120499.9730182.jpg",
+    },
 ];
 
 /** Nível 2 e 3: cada item pertence a um grupo dentro de uma sessão. */

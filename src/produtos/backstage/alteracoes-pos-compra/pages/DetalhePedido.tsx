@@ -133,16 +133,31 @@ export function DetalhePedido() {
 
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
-            <motion.div className={cx("flex min-w-0 flex-1 flex-col gap-5 p-4 md:p-6", FOCO_ESCOPO)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: "easeOut" }}>
-                <Cabecalho pedido={pedido} voltarPara={voltarPara} />
+            <motion.div
+                className={cx("flex min-w-0 flex-1 flex-col gap-4 p-4 md:py-6 md:pr-6 md:pl-0", FOCO_ESCOPO)}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.28, ease: "easeOut" }}
+            >
+                <div>
+                    <Button size="sm" color="link-gray" iconLeading={ArrowLeft} href={voltarPara}>
+                        Pedidos
+                    </Button>
+                </div>
+
+                {/* Trilho e trabalho começam na mesma altura: o voltar subiu para fora das duas
+                    colunas, senão as abas nasciam acima do topo do cartão. */}
+                <div className="flex flex-col gap-5 md:flex-row md:items-start md:gap-5">
+                    <TrilhoDoComprador pedido={pedido} />
 
                 {/*
-                  Uma coluna. O pagamento era um card fixo numa segunda coluna e
-                  disputava atenção com a lista sendo apenas referência; agora ele é
-                  a faixa logo acima, e o que resta na tela é uma pilha só: o que
-                  está em andamento, as abas, e a lista.
+                  Duas colunas, como o resto do Backstage: à esquerda o trilho com de quem é
+                  o pedido, que fica à vista enquanto se rola a lista; à direita o trabalho.
+                  Antes a pessoa era uma faixa no topo que saía da tela no primeiro scroll,
+                  justamente num atendimento em que a pergunta "com quem eu estou falando"
+                  volta o tempo todo.
                 */}
-                <div className="flex min-w-0 flex-col gap-5">
+                <div className="flex min-w-0 flex-1 flex-col gap-5">
                     <RegiaoAlteracoes pedido={pedido} rascunhos={rascunhos} onContinuar={continuar} />
 
                     <Tabs selectedKey={aba} onSelectionChange={(key) => setAba(key as Aba)}>
@@ -157,6 +172,7 @@ export function DetalhePedido() {
                     ) : (
                         <Historico pedido={pedido} onVerAlteracao={(id) => setFocar(idDoCartao(id))} />
                     )}
+                    </div>
                 </div>
             </motion.div>
 
@@ -168,10 +184,12 @@ export function DetalhePedido() {
 /*  Cabeçalho: de quem é este pedido                                   */
 /* ------------------------------------------------------------------ */
 
-/** O título é a pessoa, não o evento: dezenas de pedidos têm o mesmo evento, e quem está ao
- *  telefone é o comprador. Sem status nem ação aqui: o status é a região de alterações logo
- *  abaixo, e as ações moram perto dos itens sobre os quais agem. */
-const Cabecalho = ({ pedido, voltarPara }: { pedido: Pedido; voltarPara: string }) => {
+/**
+ * Trilho do comprador, na forma do trilho do evento: um aside de 280px, grudado, com um card
+ * de capa, identidade e números. De quem é o pedido é a pergunta que volta durante o
+ * atendimento inteiro, e como faixa no topo ela saía da tela no primeiro scroll da lista.
+ */
+const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
     const comprador = getConta(pedido.compradorId);
     const evento = getEvento(pedido.eventoId);
     const { copied, copy } = useClipboard();
@@ -195,12 +213,9 @@ const Cabecalho = ({ pedido, voltarPara }: { pedido: Pedido; voltarPara: string 
     };
 
     return (
-        <header className="flex flex-col gap-3">
-            <div>
-                <Button size="sm" color="link-gray" iconLeading={ArrowLeft} href={voltarPara}>
-                    Pedidos
-                </Button>
-            </div>
+        /* `top` acompanha a shell: a variante com barra no topo define --bs-header-offset, a de
+           sidebar não define e o fallback zera. Mesma convenção do RelatorioPageHeader. */
+        <aside className="flex w-full shrink-0 flex-col gap-3 md:sticky md:top-[calc(var(--bs-header-offset,0px)+1.5rem)] md:w-[280px]">
             {/*
               Cartão de perfil: a capa do evento, o comprador sobreposto a ela, e a compra como
               uma fileira de números. O `capa` do evento existia no modelo com o comentário
@@ -211,53 +226,47 @@ const Cabecalho = ({ pedido, voltarPara }: { pedido: Pedido; voltarPara: string 
               compra é uma fileira de quatro números legíveis de relance, e o que serve para
               conferir identidade ao telefone desce para uma lista de contato com ícone.
             */}
-            <div className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
+            <div className="flex flex-col gap-4 rounded-2xl bg-primary p-3 ring-1 ring-border-secondary">
                 {evento?.capa && (
-                    <div className="px-2 pt-2">
-                        <img src={evento.capa} alt="" className="h-28 w-full rounded-xl object-cover md:h-36" />
-                    </div>
-                )}
-
-                <div className={cx("flex flex-col gap-5 px-5 pb-5 md:px-6 md:pb-6", evento?.capa ? "-mt-12" : "pt-5 md:pt-6")}>
-                    <div className="flex items-end justify-between gap-4">
-                        <AvatarProfilePhoto size="sm" alt={comprador?.nome ?? "Comprador"} initials={iniciaisDe(comprador?.nome ?? "?")} />
+                    <div className="relative aspect-[256/160] w-full overflow-hidden rounded-xl bg-secondary">
+                        <img src={evento.capa} alt="" className="size-full object-cover" />
                         {pedido.cupom && (
-                            <Badge size="md" type="pill-color" color="gray">
+                            <Badge size="sm" type="pill-color" color="gray" className="absolute top-3 left-3">
                                 Cupom {pedido.cupom}
                             </Badge>
                         )}
                     </div>
+                )}
 
-                    <div className="flex flex-col gap-4">
-                        <div className="min-w-0">
-                            <h1 className="truncate text-xl font-semibold text-primary">{comprador?.nome ?? `Pedido ${uuidCurto(pedido.id)}`}</h1>
-                            <p className="truncate text-sm text-tertiary">{evento?.nome}</p>
-                        </div>
+                <div className={cx("flex flex-col gap-4 px-1", evento?.capa && "-mt-10")}>
+                    <AvatarProfilePhoto size="sm" alt={comprador?.nome ?? "Comprador"} initials={iniciaisDe(comprador?.nome ?? "?")} />
 
-                        {/* Os números da compra, lado a lado. O rótulo fica em text-sm por regra do
-                            projeto (nada abaixo disso), então o contraste vem do peso e da cor. */}
-                        <dl className="flex flex-wrap items-center gap-x-5 gap-y-4">
-                            <Estatistica rotulo="Pago">
-                                {cortesia ? (
-                                    "Sem valor"
-                                ) : (
-                                    <span className="flex items-baseline gap-2">
-                                        <span className="tabular-nums">{formatarMoeda(final)}</span>
-                                        <DetalhePagamento pedido={pedido} />
-                                    </span>
-                                )}
-                            </Estatistica>
-                            <Divisor />
-                            <Estatistica rotulo="Unidades">{pedido.itens.length}</Estatistica>
-                            <Divisor />
-                            <Estatistica rotulo="Itens">{new Set(pedido.itens.map((l) => l.itemId)).size}</Estatistica>
-                            <Divisor />
-                            <Estatistica rotulo={rotuloCompra}>{pedido.criadoEmLabel}</Estatistica>
-                        </dl>
+                    <div className="min-w-0">
+                        <h1 className="truncate text-md font-bold text-primary">{comprador?.nome ?? `Pedido ${uuidCurto(pedido.id)}`}</h1>
+                        <p className="truncate text-sm text-tertiary">{evento?.nome}</p>
                     </div>
 
+                    {/* Em 280px os números empilham. O rótulo fica em text-sm por regra do projeto
+                        (nada abaixo disso), então o contraste vem do peso e da cor. */}
+                    <dl className="flex flex-col divide-y divide-border-secondary border-y border-secondary">
+                        <Estatistica rotulo="Pago">
+                            {cortesia ? (
+                                "Sem valor"
+                            ) : (
+                                <span className="flex items-baseline gap-2">
+                                    <span className="tabular-nums">{formatarMoeda(final)}</span>
+                                    <DetalhePagamento pedido={pedido} />
+                                </span>
+                            )}
+                        </Estatistica>
+                        <Estatistica rotulo="No pedido">
+                            {plural(pedido.itens.length, "unidade", "unidades")} em {plural(new Set(pedido.itens.map((l) => l.itemId)).size, "item", "itens")}
+                        </Estatistica>
+                        <Estatistica rotulo={rotuloCompra}>{pedido.criadoEmLabel}</Estatistica>
+                    </dl>
+
                     {/* Conferência ao telefone: o que o atendente lê de volta para o comprador. */}
-                    <ul className="flex flex-col gap-2 border-t border-secondary pt-4">
+                    <ul className="flex flex-col gap-2">
                         {comprador?.cpf && (
                             <ItemDeContato icone={User01}>
                                 <span className="tabular-nums">CPF {mascararCPF(comprador.cpf)}</span>
@@ -288,7 +297,7 @@ const Cabecalho = ({ pedido, voltarPara }: { pedido: Pedido; voltarPara: string 
                     Não foi possível copiar. O ID está selecionado, use Ctrl+C ou ⌘C: <span ref={idCompleto} className="font-mono select-all">{pedido.id}</span>
                 </p>
             )}
-        </header>
+        </aside>
     );
 };
 
@@ -318,14 +327,14 @@ const DetalhePagamento = ({ pedido }: { pedido: Pedido }) => (
 );
 
 /** Um número da compra, no formato da fileira de estatísticas do cartão de perfil. */
+/** Rótulo sobre valor, como o bloco de status do trilho do evento: em 280px o par lado a lado
+ *  quebrava o valor em duas linhas e desalinhava a coluna inteira. */
 const Estatistica = ({ rotulo, children }: { rotulo: string; children: ReactNode }) => (
-    <div className="flex min-w-0 flex-col gap-0.5">
+    <div className="flex flex-col gap-0.5 py-2.5">
         <dt className="text-sm font-medium text-quaternary">{rotulo}</dt>
         <dd className="text-md font-semibold text-primary">{children}</dd>
     </div>
 );
-
-const Divisor = () => <hr className="h-10 w-px shrink-0 rounded-full border-none bg-border-primary" aria-hidden="true" />;
 
 /** Linha da lista de conferência: ícone apagado e o dado, como o bloco "About" do cartão. */
 const ItemDeContato = ({ icone: Icone, children }: { icone: FC<{ className?: string }>; children: ReactNode }) => (

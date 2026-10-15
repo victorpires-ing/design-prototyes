@@ -1,10 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Copy01, SearchLg } from "@untitledui/icons";
+import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Copy01, SearchLg } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
-import { Input } from "@/components/base/input/input";
+import { InputBase } from "@/components/base/input/input";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, SetaParaBaixo, iniciaisDe, mascararCPF, mascararEmail } from "../pos-compra-ui";
 import {
@@ -85,6 +86,21 @@ interface TransferirTitularidadeWizardProps {
     /** Cobrança criada: o pedido rola até o cartão novo. */
     onEnviado: (solicitacaoId: string) => void;
 }
+
+/** Resultado da busca no formato da nova venda: ícone de estado, identidade e, quando há, o que
+ *  aquele estado implica para a operação. */
+const CartaoResultado = ({ icone, titulo, apoio, children }: { icone: ReactNode; titulo: string; apoio?: string; children?: ReactNode }) => (
+    <div className="flex w-full flex-col gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
+        <div className="flex items-center gap-3">
+            {icone}
+            <div className="flex min-w-0 flex-col">
+                <p className="truncate text-sm font-semibold text-primary">{titulo}</p>
+                {apoio && <p className="truncate text-sm text-tertiary">{apoio}</p>}
+            </div>
+        </div>
+        {children && <div className="text-sm text-tertiary">{children}</div>}
+    </div>
+);
 
 /** Quem recebe, com o caminho de volta para trocar de pessoa sem mexer no stepper. */
 const CartaoDestinatario = ({ conta, onAlterar }: { conta: Conta; onAlterar: () => void }) => (
@@ -396,29 +412,35 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
                 {etapa === "destinatario" && (
                     <>
-                        <Regra>Comece por quem vai receber. Os itens que essa pessoa pode receber vêm na próxima etapa.</Regra>
-
                         {/*
-                              Campo e resultados são UM elemento: a lista é um popover
-                              ancorado no input, como busca de site. Antes eram dois cards
-                              separados por um vão, e o segundo empurrava o resto da etapa
-                              para baixo a cada letra digitada.
-                            */}
+                          Mesma arquitetura do passo 1 da nova venda da bilheteria: o campo mora
+                          num card, com rótulo próprio em cima e a dica embaixo, e o resultado vem
+                          num card separado com o ícone de estado.
+
+                          A interação continua a nossa: a lista é um popover ancorado no input,
+                          que aparece enquanto se digita. Sem botão "Buscar" — aqui o operador
+                          procura por nome, não tem o documento de cor, e esperar um submit só
+                          colocaria um passo entre ele e a lista.
+                        */}
+                        <div className="flex w-full flex-col gap-1.5 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
+                            <label htmlFor="destinatario-busca" className="text-sm font-medium text-secondary">
+                                Quem vai receber?
+                            </label>
                             <div ref={buscaRef} className="relative w-full">
-                                <Input
+                                <InputBase
+                                    id="destinatario-busca"
+                                    size="md"
                                     icon={SearchLg}
-                                    label="Nome, e-mail ou CPF de quem vai receber"
                                     placeholder="Nome completo, e-mail ou CPF"
                                     value={busca}
-                                    onChange={(valor) => {
-                                        setBusca(valor);
+                                    onChange={(evento) => {
+                                        setBusca(evento.target.value);
                                         setSelecionada(null);
                                         setSugerindo(true);
                                         setFocado(0);
                                     }}
                                     onKeyDown={aoTeclar}
                                     autoComplete="off"
-                                    hint={termo && encontradas.length === 0 ? undefined : "Busque pelo nome, não precisa saber o e-mail ou CPF de cor."}
                                 />
 
                                 {sugestoesAbertas && (
@@ -473,15 +495,31 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                     </ul>
                                 )}
                             </div>
+                            <p className="text-sm text-tertiary">Busque pelo nome, não precisa saber o e-mail ou CPF de cor.</p>
+                        </div>
 
-                            {/* V08: sem conta a operação é bloqueada. O fluxo NÃO cria conta (§4, C14). */}
-                            {termo && encontradas.length === 0 ? (
-                                <Aviso
-                                    tom="warning"
-                                    titulo="Conta não encontrada"
-                                    descricao="O novo participante precisa se cadastrar antes da troca. A transferência não cria conta: oriente o cadastro e retome depois."
-                                />
-                            ) : null}
+                        {/* Voltando pelo "Alterar", a conta já escolhida fica à vista para conferência,
+                            como a conta encontrada da nova venda. */}
+                        {selecionada && (
+                            <CartaoResultado
+                                icone={<FeaturedIcon icon={CheckCircle} color="success" theme="dark" size="md" className="shrink-0 rounded-full" />}
+                                titulo={selecionada.nome}
+                                apoio={`${selecionada.email}${selecionada.cpf ? ` · CPF ${mascararCPF(selecionada.cpf)}` : ""}`}
+                            />
+                        )}
+
+                        {/* V08: sem conta a operação é bloqueada. O fluxo NÃO cria conta (§4, C14). */}
+                        {termo && encontradas.length === 0 && (
+                            <CartaoResultado
+                                icone={<FeaturedIcon icon={AlertCircle} color="gray" theme="gradient" size="md" className="shrink-0 rounded-full" />}
+                                titulo="Conta não encontrada"
+                                apoio={termo}
+                            >
+                                O novo participante precisa se cadastrar antes da transferência. O fluxo não cria conta: oriente o cadastro e retome depois.
+                            </CartaoResultado>
+                        )}
+
+                        <p className="text-sm text-tertiary">O que essa pessoa pode receber deste pedido aparece na próxima etapa.</p>
 
                     </>
                 )}

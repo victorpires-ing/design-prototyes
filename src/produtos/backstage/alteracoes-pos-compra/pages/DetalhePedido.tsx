@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ArrowLeft, Calendar, Check, Copy01, DotsVertical } from "@untitledui/icons";
-import { BadgeWithDot } from "@/components/base/badges/badges";
+import { AlertTriangle, ArrowLeft, Calendar, Check, Copy01, DotsVertical, Mail01, Phone, Tag01, User01 } from "@untitledui/icons";
+import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
+import { AvatarProfilePhoto } from "@/components/base/avatar/avatar-profile-photo";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
@@ -13,7 +14,7 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { CartaoOperacao, idDoCartao } from "../components/CartaoOperacao";
 import {
-    TIPO_OPERACAO_ICONE, FOCO, FOCO_ESCOPO, Miniatura, mascararCPF, telefoneParaCopia } from "../components/pos-compra-ui";
+    TIPO_OPERACAO_ICONE, FOCO, FOCO_ESCOPO, Miniatura, iniciaisDe, mascararCPF, telefoneParaCopia } from "../components/pos-compra-ui";
 import { descartarRascunho, identidadeDaLinha } from "../components/wizard/seletor-unidades";
 import {
     SESSOES,
@@ -200,57 +201,83 @@ const Cabecalho = ({ pedido, voltarPara }: { pedido: Pedido; voltarPara: string 
                     Pedidos
                 </Button>
             </div>
-            <h1 className="text-xl font-semibold text-primary md:text-2xl">{comprador?.nome ?? `Pedido ${uuidCurto(pedido.id)}`}</h1>
-
             {/*
-              Campos rotulados em dois grupos, nesta ordem: com quem se fala, e qual é a
-              compra. Antes eram duas corridas de texto coladas por ponto, tudo no mesmo
-              peso: nada ancorava o olho, e achar o CPF ou o ID pedia ler a linha inteira.
-              O pagamento, que era uma pílula solta logo abaixo, entra como o último campo.
+              Cartão de perfil: a capa do evento, o comprador sobreposto a ela, e a compra como
+              uma fileira de números. O `capa` do evento existia no modelo com o comentário
+              "Arte do evento, mostrada no cabeçalho do pedido" e nunca era lido — agora é.
+
+              A grade de sete campos rotulados que estava aqui tinha rótulo e valor no mesmo
+              tamanho, então os rótulos dobravam a massa de texto sem liderar nada. Agora a
+              compra é uma fileira de quatro números legíveis de relance, e o que serve para
+              conferir identidade ao telefone desce para uma lista de contato com ícone.
             */}
-            <div className="flex flex-col gap-4">
-                {comprador ? (
-                    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-                        <Campo rotulo="CPF">{comprador.cpf ? <span className="tabular-nums">{mascararCPF(comprador.cpf)}</span> : "Não informado"}</Campo>
-                        <Campo rotulo="E-mail" className="col-span-2 sm:col-span-1">
-                            <Contato valor={comprador.email} textoCopia={comprador.email} rotulo="Copiar e-mail" chave="email" copied={copied} copy={copy} />
-                        </Campo>
-                        <Campo rotulo="Telefone">
-                            {comprador.celular ? (
-                                <Contato valor={comprador.celular} textoCopia={telefoneParaCopia(comprador.celular)} rotulo="Copiar celular" chave="celular" copied={copied} copy={copy} />
-                            ) : (
-                                "Não informado"
-                            )}
-                        </Campo>
-                    </dl>
-                ) : (
-                    <p className="text-sm text-tertiary">Comprador não identificado</p>
+            <div className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
+                {evento?.capa && (
+                    <div className="px-2 pt-2">
+                        <img src={evento.capa} alt="" className="h-28 w-full rounded-xl object-cover md:h-36" />
+                    </div>
                 )}
 
-                <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-                    <Campo rotulo="Evento" className="col-span-2 sm:col-span-1">
-                        {evento?.nome}
-                    </Campo>
-                    <Campo rotulo={rotuloCompra}>{pedido.criadoEmLabel}</Campo>
-                    <Campo rotulo="Pedido">
-                        <Contato valor={pedido.id} textoCopia={pedido.id} rotulo="Copiar ID do pedido" chave="id" copied={copied} copy={copy} onCopiar={copiarId} mono />
-                    </Campo>
-                    <Campo rotulo="Pago">
-                        {cortesia ? (
-                            "Sem valor pago"
-                        ) : (
-                            /* Só o valor: a forma de pagamento está no card de detalhe, e repeti-la
-                               aqui gastava uma segunda linha em todos os pedidos. */
-                            /* A segunda âncora da página. Era 14/600, igual a um preço unitário de
-                               linha; é o número que o atendente fala ao telefone. */
-                            <span className="flex items-baseline gap-2">
-                                <span className="text-xl font-semibold tabular-nums">{formatarMoeda(final)}</span>
-                                <DetalhePagamento pedido={pedido} />
-                            </span>
+                <div className={cx("flex flex-col gap-5 px-5 pb-5 md:px-6 md:pb-6", evento?.capa ? "-mt-12" : "pt-5 md:pt-6")}>
+                    <div className="flex items-end justify-between gap-4">
+                        <AvatarProfilePhoto size="sm" alt={comprador?.nome ?? "Comprador"} initials={iniciaisDe(comprador?.nome ?? "?")} />
+                        {pedido.cupom && (
+                            <Badge size="md" type="pill-color" color="gray">
+                                Cupom {pedido.cupom}
+                            </Badge>
                         )}
-                    </Campo>
-                </dl>
+                    </div>
 
+                    <div className="flex flex-col gap-4">
+                        <div className="min-w-0">
+                            <h1 className="truncate text-xl font-semibold text-primary">{comprador?.nome ?? `Pedido ${uuidCurto(pedido.id)}`}</h1>
+                            <p className="truncate text-sm text-tertiary">{evento?.nome}</p>
+                        </div>
+
+                        {/* Os números da compra, lado a lado. O rótulo fica em text-sm por regra do
+                            projeto (nada abaixo disso), então o contraste vem do peso e da cor. */}
+                        <dl className="flex flex-wrap items-center gap-x-5 gap-y-4">
+                            <Estatistica rotulo="Pago">
+                                {cortesia ? (
+                                    "Sem valor"
+                                ) : (
+                                    <span className="flex items-baseline gap-2">
+                                        <span className="tabular-nums">{formatarMoeda(final)}</span>
+                                        <DetalhePagamento pedido={pedido} />
+                                    </span>
+                                )}
+                            </Estatistica>
+                            <Divisor />
+                            <Estatistica rotulo="Unidades">{pedido.itens.length}</Estatistica>
+                            <Divisor />
+                            <Estatistica rotulo="Itens">{new Set(pedido.itens.map((l) => l.itemId)).size}</Estatistica>
+                            <Divisor />
+                            <Estatistica rotulo={rotuloCompra}>{pedido.criadoEmLabel}</Estatistica>
+                        </dl>
+                    </div>
+
+                    {/* Conferência ao telefone: o que o atendente lê de volta para o comprador. */}
+                    <ul className="flex flex-col gap-2 border-t border-secondary pt-4">
+                        {comprador?.cpf && (
+                            <ItemDeContato icone={User01}>
+                                <span className="tabular-nums">CPF {mascararCPF(comprador.cpf)}</span>
+                            </ItemDeContato>
+                        )}
+                        {comprador && (
+                            <ItemDeContato icone={Mail01}>
+                                <Contato valor={comprador.email} textoCopia={comprador.email} rotulo="Copiar e-mail" chave="email" copied={copied} copy={copy} />
+                            </ItemDeContato>
+                        )}
+                        {comprador?.celular && (
+                            <ItemDeContato icone={Phone}>
+                                <Contato valor={comprador.celular} textoCopia={telefoneParaCopia(comprador.celular)} rotulo="Copiar celular" chave="celular" copied={copied} copy={copy} />
+                            </ItemDeContato>
+                        )}
+                        <ItemDeContato icone={Tag01}>
+                            <Contato valor={pedido.id} textoCopia={pedido.id} rotulo="Copiar ID do pedido" chave="id" copied={copied} copy={copy} onCopiar={copiarId} mono />
+                        </ItemDeContato>
+                    </ul>
+                </div>
             </div>
 
             <span role="status" className="sr-only">
@@ -288,6 +315,24 @@ const DetalhePagamento = ({ pedido }: { pedido: Pedido }) => (
             </AriaDialog>
         </AriaPopover>
     </AriaDialogTrigger>
+);
+
+/** Um número da compra, no formato da fileira de estatísticas do cartão de perfil. */
+const Estatistica = ({ rotulo, children }: { rotulo: string; children: ReactNode }) => (
+    <div className="flex min-w-0 flex-col gap-0.5">
+        <dt className="text-sm font-medium text-quaternary">{rotulo}</dt>
+        <dd className="text-md font-semibold text-primary">{children}</dd>
+    </div>
+);
+
+const Divisor = () => <hr className="h-10 w-px shrink-0 rounded-full border-none bg-border-primary" aria-hidden="true" />;
+
+/** Linha da lista de conferência: ícone apagado e o dado, como o bloco "About" do cartão. */
+const ItemDeContato = ({ icone: Icone, children }: { icone: FC<{ className?: string }>; children: ReactNode }) => (
+    <li className="flex items-center gap-2 text-sm text-tertiary">
+        <Icone className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+        {children}
+    </li>
 );
 
 /** Rótulo em cima, valor embaixo: o rótulo é a âncora de leitura e os valores alinham em coluna. */

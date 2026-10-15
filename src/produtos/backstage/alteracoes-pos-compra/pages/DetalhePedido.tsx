@@ -249,26 +249,9 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
                         <p className="truncate text-sm text-tertiary">{evento?.nome}</p>
                     </div>
 
-                    {/* Em 280px os números empilham. O rótulo fica em text-sm por regra do projeto
-                        (nada abaixo disso), então o contraste vem do peso e da cor. */}
-                    <dl className="flex flex-col divide-y divide-border-secondary border-y border-secondary">
-                        <Estatistica rotulo="Pago">
-                            {cortesia ? (
-                                "Sem valor"
-                            ) : (
-                                <span className="flex items-baseline gap-2">
-                                    <span className="tabular-nums">{formatarMoeda(final)}</span>
-                                    <DetalhePagamento pedido={pedido} />
-                                </span>
-                            )}
-                        </Estatistica>
-                        <Estatistica rotulo="No pedido">
-                            {plural(pedido.itens.length, "unidade", "unidades")} em {plural(new Set(pedido.itens.map((l) => l.itemId)).size, "item", "itens")}
-                        </Estatistica>
-                        <Estatistica rotulo={rotuloCompra}>{pedido.criadoEmLabel}</Estatistica>
-                    </dl>
-
-                    {/* Conferência ao telefone: o que o atendente lê de volta para o comprador. */}
+                    {/* Tudo que o atendente lê de volta ao telefone, junto e antes do primeiro
+                        divisor: quem é a pessoa e qual é o pedido. Abaixo do divisor ficam só os
+                        números da compra, que ninguém dita, se consulta. */}
                     <ul className="flex flex-col gap-2">
                         {comprador?.cpf && (
                             <ItemDeContato icone={User01}>
@@ -289,6 +272,26 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
                             <Contato valor={pedido.id} textoCopia={pedido.id} rotulo="Copiar ID do pedido" chave="id" copied={copied} copy={copy} onCopiar={copiarId} mono />
                         </ItemDeContato>
                     </ul>
+
+                    {/* Em 280px os números empilham. O rótulo fica em text-sm por regra do projeto
+                        (nada abaixo disso), então o contraste vem do peso e da cor. */}
+                    <dl className="flex flex-col divide-y divide-border-secondary border-y border-secondary">
+                        <Estatistica rotulo="Pago">
+                            {cortesia ? (
+                                "Sem valor"
+                            ) : (
+                                <span className="flex items-baseline gap-2">
+                                    <span className="tabular-nums">{formatarMoeda(final)}</span>
+                                    <DetalhePagamento pedido={pedido} />
+                                </span>
+                            )}
+                        </Estatistica>
+                        <Estatistica rotulo="No pedido">
+                            {plural(pedido.itens.length, "unidade", "unidades")} em {plural(new Set(pedido.itens.map((l) => l.itemId)).size, "item", "itens")}
+                        </Estatistica>
+                        <Estatistica rotulo={rotuloCompra}>{pedido.criadoEmLabel}</Estatistica>
+                    </dl>
+
                 </div>
             </div>
 

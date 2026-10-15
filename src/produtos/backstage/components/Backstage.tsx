@@ -822,7 +822,8 @@ interface EventRailProps {
 
 /** Scrollbar suave (fino, track transparente, thumb em cor de borda) — evita
  *  o contraste alto do scrollbar global dentro do card branco do menu. */
-const SOFT_SCROLLBAR =
+/** Barra de rolagem discreta dos trilhos. Exportada para o trilho do pedido usar a mesma. */
+export const SOFT_SCROLLBAR =
     "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--color-border-secondary)] hover:[&::-webkit-scrollbar-thumb]:bg-[var(--color-border-primary)]";
 
 const EventRail = ({ activeSection, activeItem }: EventRailProps) => (

@@ -11,7 +11,7 @@ import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cx } from "@/utils/cx";
-import { BackstageLayout } from "../../components/Backstage";
+import { BackstageLayout, SOFT_SCROLLBAR } from "../../components/Backstage";
 import { CartaoOperacao, idDoCartao } from "../components/CartaoOperacao";
 import {
     TIPO_OPERACAO_ICONE, FOCO, FOCO_ESCOPO, Miniatura, iniciaisDe, mascararCPF, telefoneParaCopia } from "../components/pos-compra-ui";
@@ -215,7 +215,16 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
     return (
         /* `top` acompanha a shell: a variante com barra no topo define --bs-header-offset, a de
            sidebar não define e o fallback zera. Mesma convenção do RelatorioPageHeader. */
-        <aside className="flex w-full shrink-0 flex-col gap-3 md:sticky md:top-[calc(var(--bs-header-offset,0px)+1.5rem)] md:w-[280px]">
+        <aside
+            className={cx(
+                "flex w-full shrink-0 flex-col gap-3 md:sticky md:w-[280px] md:overflow-y-auto",
+                /* Preso ao topo e limitado à janela: sem o teto de altura, um cartão mais alto que
+                   a viewport rolava inteiro antes de grudar — comportamento correto do sticky, mas
+                   não o que se quer de um trilho. O excedente rola por dentro, como no do evento. */
+                "md:top-[calc(var(--bs-header-offset,0px)+1.5rem)] md:max-h-[calc(100vh-var(--bs-header-offset,0px)-3rem)]",
+                SOFT_SCROLLBAR,
+            )}
+        >
             {/*
               Cartão de perfil: a capa do evento, o comprador sobreposto a ela, e a compra como
               uma fileira de números. O `capa` do evento existia no modelo com o comentário

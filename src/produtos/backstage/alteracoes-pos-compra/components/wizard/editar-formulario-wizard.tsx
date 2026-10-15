@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { CampoMotivo, MOTIVO_INICIAL, Regra, ResumoFinanceiro, mascararEmail } from "../pos-compra-ui";
-import { ComparativoResposta, EditorResposta, RespostaLinha } from "../respostas-ui";
+import { ComparativoResposta, EditorResposta } from "../respostas-ui";
 import {
     calcularEdicaoRespostas,
     criarSolicitacao,
@@ -29,7 +29,6 @@ type Etapa = "respostas" | "revisao";
 export function EditarFormularioWizard({ pedido, linhaId, onFechar, onEnviado }: { pedido: Pedido; linhaId: string; onFechar: () => void; onEnviado: (solicitacaoId: string) => void }) {
     const perguntas = usePerguntas();
     const [etapa, setEtapa] = useState<Etapa>("respostas");
-    const [editando, setEditando] = useState(false);
     const [novos, setNovos] = useState<Record<string, string>>({});
     const [motivo, setMotivo] = useState<Motivo>(MOTIVO_INICIAL);
 
@@ -45,17 +44,10 @@ export function EditarFormularioWizard({ pedido, linhaId, onFechar, onEnviado }:
     const alteradas = Object.keys(novos).filter((id) => novos[id] !== (linha.respostas[id] ?? ""));
     const calculo = calcularEdicaoRespostas(alteradas.length);
 
-    const avancar = () => {
-        if (!editando) setEditando(true);
-        else setEtapa("revisao");
-    };
-    const voltar = () => {
-        if (etapa === "revisao") setEtapa("respostas");
-        else if (editando) {
-            setEditando(false);
-            setNovos({});
-        } else onFechar();
-    };
+    /* O fluxo entra editando: ele é aberto por "Editar formulário", então a tela de leitura
+       antes da edição era um passo a mais para chegar onde a pessoa já disse que queria ir. */
+    const avancar = () => setEtapa("revisao");
+    const voltar = () => (etapa === "revisao" ? setEtapa("respostas") : onFechar());
 
     const confirmar = () => {
         const novasRespostas = { ...linha.respostas, ...Object.fromEntries(alteradas.map((id) => [id, novos[id]])) };
@@ -93,29 +85,19 @@ export function EditarFormularioWizard({ pedido, linhaId, onFechar, onEnviado }:
             onClose={onFechar}
             titulo="Formulário"
             subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}
-            etapas={editando || etapa === "revisao" ? ["Respostas", "Revisão"] : ["Respostas"]}
+            etapas={["Respostas", "Revisão"]}
             indiceAtual={etapa === "revisao" ? 1 : 0}
-            podeAvancar={etapa === "respostas" ? !editando || alteradas.length > 0 : motivoValido(motivo)}
-            rotuloAvancar={editando ? "Revisar alteração" : "Editar respostas"}
+            podeAvancar={etapa === "respostas" ? alteradas.length > 0 : motivoValido(motivo)}
+            rotuloAvancar="Revisar alteração"
             ultimaEtapa={etapa === "revisao"}
             rotuloConfirmar={`Enviar cobrança de ${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}`}
             onVoltar={voltar}
             onAvancar={avancar}
             onConfirmar={confirmar}
         >
-            <ResumoUnidades pedido={pedido} linhas={[linha]} verbo="formulario" titulo={editando || etapa === "revisao" ? "Editando" : "Respostas de"} />
+            <ResumoUnidades pedido={pedido} linhas={[linha]} verbo="formulario" titulo="Editando" />
 
-            {etapa === "respostas" && !editando && (
-                <div className="rounded-2xl bg-primary px-5 py-2 ring-1 ring-border-secondary">
-                    <div className="flex flex-col divide-y divide-border-secondary">
-                        {perguntasDoItem.map((pergunta) => (
-                            <RespostaLinha key={pergunta.id} pergunta={pergunta} valor={linha.respostas[pergunta.id] || "Sem resposta"} />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {etapa === "respostas" && editando && (
+            {etapa === "respostas" && (
                 <>
                     <Regra>Mude só o que precisa. A edição custa {formatarMoeda(calculo.total)} por vez, não importa quantas respostas mudem.</Regra>
                     <div className="flex flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">

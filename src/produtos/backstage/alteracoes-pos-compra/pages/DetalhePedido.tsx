@@ -634,25 +634,12 @@ const linhaNormal = (pedido: Pedido, rascunhos: Rascunho[], linha: PedidoItem) =
 const ItemDoPedido = ({ pedido, rascunhos, item, linhas, ...acoes }: { pedido: Pedido; rascunhos: Rascunho[] } & ItemComLinhas & AcoesDaLista) => {
     const [todas, setTodas] = useState(false);
 
-    /* Unidades iguais (mesma pessoa, nada acontecendo) viram uma linha só, com a quantidade:
-       três linhas idênticas "Letícia Amaral · Fez a compra" não informam nada e triplicam os
-       alvos de clique. Qualquer uma delas serve para a ação; o overlay marca uma e oferece incluir
-       as outras. Quando algo acontece com uma unidade, ela ganha linha própria. A ordem é a da
-       compra e não muda: linha que troca de lugar faz o próximo clique cair na vizinha. */
-    const agrupadas: Linha[] = [];
-    const normais = new Map<string, PedidoItem[]>();
-    linhas.forEach((linha) => {
-        if (!linhaNormal(pedido, rascunhos, linha)) {
-            agrupadas.push({ chave: linha.id, linhas: [linha] });
-            return;
-        }
-        const titular = linha.titularId ?? pedido.compradorId;
-        if (!normais.has(titular)) {
-            normais.set(titular, []);
-            agrupadas.push({ chave: `grupo-${titular}`, linhas: normais.get(titular)! });
-        }
-        normais.get(titular)!.push(linha);
-    });
+    /* Uma linha por unidade. Elas chegavam fundidas quando eram da mesma pessoa e nada
+       acontecia com elas, mas o que se transfere ou troca é a unidade, não o item: com 40
+       inscrições iguais, escolher "a do Victor, que não vai mais correr" exige que ela exista
+       na tela. A ordem é a da compra e não muda: linha que troca de lugar faz o próximo
+       clique cair na vizinha. */
+    const agrupadas: Linha[] = linhas.map((linha) => ({ chave: linha.id, linhas: [linha] }));
 
     const valores = new Set(linhas.map((l) => l.valorPago));
     const valorDoItem = valores.size === 1 ? (linhas.length > 1 ? `${formatarMoeda(linhas[0].valorPago)} cada` : formatarMoeda(linhas[0].valorPago)) : formatarMoeda(linhas.reduce((soma, l) => soma + l.valorPago, 0));
@@ -686,7 +673,14 @@ const ItemDoPedido = ({ pedido, rascunhos, item, linhas, ...acoes }: { pedido: P
             <ul className="flex flex-col">
                 {visiveis.map((grupo) => (
                     <li key={grupo.chave}>
-                        <LinhaDaUnidade pedido={pedido} rascunhos={rascunhos} item={item} linhas={grupo.linhas} {...acoes} />
+                        <LinhaDaUnidade
+                            pedido={pedido}
+                            rascunhos={rascunhos}
+                            item={item}
+                            linhas={grupo.linhas}
+                            ordinal={`Unidade ${agrupadas.findIndex((g) => g.chave === grupo.chave) + 1} de ${agrupadas.length}`}
+                            {...acoes}
+                        />
                     </li>
                 ))}
             </ul>
@@ -742,7 +736,7 @@ const DESFECHO: Partial<Record<NonNullable<EntradaHistorico["marco"]>, string>> 
 const ACOES: Array<{ verbo: Verbo; rotulo: string }> = [
     { verbo: "transferir", rotulo: "Transferir" },
     { verbo: "trocar", rotulo: "Trocar" },
-    { verbo: "formulario", rotulo: "Formulário" },
+    { verbo: "formulario", rotulo: "Editar formulário" },
 ];
 
 const LinhaDaUnidade = ({
@@ -751,6 +745,7 @@ const LinhaDaUnidade = ({
     item,
     linhas,
     valor,
+    ordinal,
     fundida = false,
     onAbrir,
     onContinuar,
@@ -762,6 +757,9 @@ const LinhaDaUnidade = ({
     item: CatalogoItem;
     linhas: PedidoItem[];
     valor?: string;
+    /** "Unidade 3 de 40". Sem assento, facial nem número de ingresso no modelo, é o único
+     *  jeito de distinguir duas unidades iguais da mesma pessoa depois de desagregar. */
+    ordinal?: string;
     fundida?: boolean;
 } & AcoesDaLista) => {
     const linha = linhas[0];
@@ -800,7 +798,7 @@ const LinhaDaUnidade = ({
                         <p className="text-sm text-tertiary">{apoio}</p>
                     </>
                 ) : (
-                    !fundida && <p className="text-sm text-secondary">{plural(linhas.length, "unidade", "unidades")}</p>
+                    !fundida && ordinal && <p className="text-sm text-tertiary">{ordinal}</p>
                 )}
                 {transferida && (
                     <span className="w-fit">

@@ -241,8 +241,10 @@ const Cabecalho = ({ pedido, voltarPara }: { pedido: Pedido; voltarPara: string 
                         ) : (
                             /* Só o valor: a forma de pagamento está no card de detalhe, e repeti-la
                                aqui gastava uma segunda linha em todos os pedidos. */
-                            <span className="flex items-center gap-2">
-                                <span className="font-semibold tabular-nums">{formatarMoeda(final)}</span>
+                            /* A segunda âncora da página. Era 14/600, igual a um preço unitário de
+                               linha; é o número que o atendente fala ao telefone. */
+                            <span className="flex items-baseline gap-2">
+                                <span className="text-xl font-semibold tabular-nums">{formatarMoeda(final)}</span>
                                 <DetalhePagamento pedido={pedido} />
                             </span>
                         )}
@@ -513,6 +515,11 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
                                 <h4 className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-semibold text-secondary">
                                     <Calendar className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
                                     <span className="first-letter:uppercase">{tituloDaSessao(sessao)}</span>
+                                    {gruposDaSessao(itens).map((grupo) => (
+                                        <span key={grupo} className="font-medium text-tertiary">
+                                            {grupo}
+                                        </span>
+                                    ))}
                                     {sessao.inicio <= Date.now() && <span className="font-normal text-tertiary">· Sessão realizada. Só a transferência continua disponível.</span>}
                                 </h4>
                                 <div className="flex flex-col divide-y divide-border-secondary">{itens.map(renderItem)}</div>
@@ -535,9 +542,15 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
     );
 };
 
+/** Os grupos de bilheteria presentes nesta sessão. No catálogo é sempre um, mas a tela não
+ *  depende disso: dois grupos viram dois rótulos em vez de um cabeçalho mentiroso. */
+const gruposDaSessao = (itens: ItemComLinhas[]) => [...new Set(itens.map((g) => g.item.grupo).filter(Boolean))] as string[];
+
 const GrupoDeItens = ({ titulo, children }: { titulo: string; children: ReactNode }) => (
     <div className="flex flex-col gap-3">
-        <h3 className="text-md font-bold text-primary">{titulo}</h3>
+        {/* Etiqueta de arquivo, não capítulo: a 16/700 competia de igual para igual com o nome
+            do item, que é o alvo da varredura. Desce para o andar do detalhe. */}
+        <h3 className="text-sm font-semibold text-secondary">{titulo}</h3>
         {children}
     </div>
 );
@@ -597,11 +610,8 @@ const ItemDoPedido = ({ pedido, rascunhos, item, linhas, ...acoes }: { pedido: P
             <div className="flex items-start gap-3 pb-1">
                 {item.tipo !== "ingresso" && <Miniatura item={item} />}
                 <div className="min-w-0 flex-1">
-                    {item.grupo && <p className="text-sm text-tertiary">{item.grupo}</p>}
-                    <p className="text-sm font-semibold text-primary">
-                        {item.nome}
-                        {item.lote && <span className="font-normal text-tertiary"> | {rotuloDoLote(item.lote)}</span>}
-                    </p>
+                    <p className="text-sm font-semibold text-primary">{item.nome}</p>
+                    {item.lote && <p className="text-sm text-tertiary">{rotuloDoLote(item.lote)}</p>}
                     {item.tipo !== "ingresso" && item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
                 </div>
                 <p className="shrink-0 text-right text-sm text-tertiary tabular-nums">
@@ -698,7 +708,6 @@ const LinhaDaUnidade = ({
        sem abrir o histórico. O link só existe quando há algo para ver. */
     const ultima = [...pedido.historico].reverse().find((h) => h.solicitacaoId && h.linhaIds?.includes(linha.id) && h.marco !== "solicitada" && h.marco !== "reenviada");
     const acoes = solicitacao || transferida ? [] : ACOES.filter(({ verbo }) => (verbo === "formulario" ? temFormulario(item) && disponivelPara(pedido, linha, verbo) : disponivelPara(pedido, linha, verbo)));
-    const quantidade = linhas.length > 1 ? `${linhas.length} unidades · ` : "";
 
     return (
         <div className={cx("-mx-3 flex flex-wrap items-start gap-x-3 gap-y-2 rounded-lg px-3 py-3 transition duration-100 ease-linear focus-within:bg-primary_hover hover:bg-primary_hover")}>
@@ -706,18 +715,28 @@ const LinhaDaUnidade = ({
             <div className="flex min-w-[12rem] flex-1 flex-col gap-0.5">
                 {fundida && (
                     <>
-                        {item.grupo && <p className="text-sm text-tertiary">{item.grupo}</p>}
-                        <p className="text-sm font-semibold text-primary">
-                            {item.nome}
-                            {item.lote && <span className="font-normal text-tertiary"> | {rotuloDoLote(item.lote)}</span>}
-                        </p>
+                        {/* O nome do item é o único text-md da lista: é por ele que se varre, e
+                            ele marca onde um item começa melhor do que qualquer fio. */}
+                        <p className="text-md font-semibold text-primary">{item.nome}</p>
+                        {item.lote && <p className="text-sm text-tertiary">{rotuloDoLote(item.lote)}</p>}
+                        {item.tipo !== "ingresso" && item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
                     </>
                 )}
-                <p className={cx("text-sm", fundida ? "text-secondary" : "font-medium text-primary")}>{nome}</p>
-                <p className="text-sm text-tertiary">
-                    {quantidade}
-                    {apoio}
-                </p>
+                {/*
+                  O portador só é notícia quando NÃO é o comprador. Nome e CPF do comprador já são
+                  o cabeçalho da página, e repeti-los em toda linha enchia a lista de eco: num
+                  pedido de três itens, o mesmo nome aparecia quatro vezes. Quando a unidade foi
+                  transferida, o portador é outra pessoa, não está em lugar nenhum da tela, e aí
+                  o nome e o documento dele são o que o atendente confere ao telefone.
+                */}
+                {transferida ? (
+                    <>
+                        <p className={cx("text-sm", fundida ? "text-secondary" : "font-medium text-primary")}>{nome}</p>
+                        <p className="text-sm text-tertiary">{apoio}</p>
+                    </>
+                ) : (
+                    !fundida && <p className="text-sm text-secondary">{plural(linhas.length, "unidade", "unidades")}</p>
+                )}
                 {transferida && (
                     <span className="w-fit">
                         <BadgeWithDot color="gray" type="pill-color" size="md">
@@ -761,7 +780,12 @@ const LinhaDaUnidade = ({
               fazer com ela.
             */}
             <div className="ml-auto flex shrink-0 items-center gap-2">
-                {valor && <p className="text-sm font-semibold text-primary tabular-nums">{valor}</p>}
+                {valor && (
+                    <p className="text-sm tabular-nums">
+                        {fundida && linhas.length > 1 && <span className="text-tertiary">{plural(linhas.length, "unidade", "unidades")} · </span>}
+                        <span className="font-semibold text-primary">{valor}</span>
+                    </p>
+                )}
                 {acoes.length > 0 && (
                     <Dropdown.Root>
                         <ButtonUtility size="sm" color="tertiary" icon={DotsVertical} tooltip="Mais ações" aria-label={`Mais ações para ${item.nome} de ${nome}`} />

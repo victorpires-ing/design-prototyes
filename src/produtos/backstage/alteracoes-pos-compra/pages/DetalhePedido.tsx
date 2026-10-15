@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router";
 import { Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, ArrowLeft, Calendar, Check, Copy01, DotsVertical, Mail01, Phone, Tag01, User01 } from "@untitledui/icons";
-import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
+import { BadgeWithDot } from "@/components/base/badges/badges";
 import { AvatarProfilePhoto } from "@/components/base/avatar/avatar-profile-photo";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -229,15 +229,10 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
               compra é uma fileira de quatro números legíveis de relance, e o que serve para
               conferir identidade ao telefone desce para uma lista de contato com ícone.
             */}
-            <div className="flex flex-col gap-4 rounded-2xl bg-primary p-3 ring-1 ring-border-secondary">
+            <div className="flex flex-col gap-4 overflow-hidden rounded-2xl bg-primary px-3 pt-3 pb-0 ring-1 ring-border-secondary">
                 {evento?.capa && (
-                    <div className="relative aspect-[256/160] w-full overflow-hidden rounded-xl bg-secondary">
+                    <div className="aspect-[256/160] w-full overflow-hidden rounded-xl bg-secondary">
                         <img src={evento.capa} alt="" className="size-full object-cover" />
-                        {pedido.cupom && (
-                            <Badge size="sm" type="pill-color" color="gray" className="absolute top-3 left-3">
-                                Cupom {pedido.cupom}
-                            </Badge>
-                        )}
                     </div>
                 )}
 
@@ -275,7 +270,10 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
 
                     {/* Em 280px os números empilham. O rótulo fica em text-sm por regra do projeto
                         (nada abaixo disso), então o contraste vem do peso e da cor. */}
-                    <dl className="flex flex-col divide-y divide-border-secondary border-y border-secondary">
+                    {/* `-mx-4` desfaz o px-3 do cartão mais o px-1 do miolo, então as réguas vão de
+                        ponta a ponta. Embaixo não há borda própria: o cartão não tem padding inferior e
+                        o ring dele já desenha 1px na mesma cor ali — duas linhas somariam 2px. */}
+                    <dl className="-mx-4 flex flex-col divide-y divide-border-secondary border-t border-secondary">
                         <Estatistica rotulo="Pago">
                             {cortesia ? (
                                 "Sem valor"

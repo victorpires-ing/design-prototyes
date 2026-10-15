@@ -77,11 +77,15 @@ export function SeletorUnidades({
     selecao,
     onChange,
     bloqueioExtra,
+    unica = false,
 }: {
     pedido: Pedido;
     verbo: Verbo;
     selecao: Record<string, boolean>;
     onChange: (proxima: Record<string, boolean>) => void;
+    /** Escolha de uma unidade só, sem quantidade: o formulário é de uma unidade por vez.
+     *  Marcar um item desmarca o anterior, e o campo de quantidade não aparece. */
+    unica?: boolean;
     /** Motivo que depende de algo de fora da unidade — na transferência, de quem vai receber.
      *  A elegibilidade é da dupla pessoa+unidade, e só quem sabe a pessoa consegue respondê-la. */
     bloqueioExtra?: (linha: PedidoItem) => string | null;
@@ -93,7 +97,8 @@ export function SeletorUnidades({
     /* Uma linha por grupo. Escolher N marca as N primeiras unidades dele: dentro do
        grupo elas são idênticas, então qual delas vai é indiferente. */
     const grupos = agruparIguais(disponiveis, pedido);
-    const escolher = (unidades: PedidoItem[], quantas: number) => onChange({ ...selecao, ...Object.fromEntries(unidades.map((l, i) => [l.id, i < quantas])) });
+    const escolher = (unidades: PedidoItem[], quantas: number) =>
+        onChange(unica ? (quantas > 0 ? { [unidades[0].id]: true } : {}) : { ...selecao, ...Object.fromEntries(unidades.map((l, i) => [l.id, i < quantas])) });
 
     /* Só vale dizer de quem é a unidade quando o mesmo item cai em mais de um grupo:
        aí duas linhas seriam idênticas na tela. Com tudo na mão do comprador — o caso
@@ -150,7 +155,7 @@ export function SeletorUnidades({
                                         </span>
                                     }
                                 />
-                                {total > 1 && (
+                                {total > 1 && !unica && (
                                     <InputNumber
                                         size="sm"
                                         orientation="horizontal"

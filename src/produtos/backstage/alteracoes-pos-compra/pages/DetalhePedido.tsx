@@ -2,12 +2,11 @@ import { useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "r
 import { useLocation, useNavigate, useParams } from "react-router";
 import { Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ArrowLeft, Calendar, Check, Copy01, DotsVertical, Mail01, Phone, Tag01, User01 } from "@untitledui/icons";
+import { AlertTriangle, ArrowLeft, Calendar, Check, Copy01, Mail01, Phone, Tag01, User01 } from "@untitledui/icons";
 import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
 import { AvatarProfilePhoto } from "@/components/base/avatar/avatar-profile-photo";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cx } from "@/utils/cx";
@@ -21,10 +20,8 @@ import {
     TIPO_OPERACAO_CURTO,
     descreverMotivo,
     disponivelPara,
-    PERGUNTAS,
     formatarMoeda,
     getConta,
-    getFormulario,
     getEvento,
     getItem,
     pedidoEncerrado,
@@ -38,7 +35,6 @@ import {
     type EntradaHistorico,
     type Pedido,
     type PedidoItem,
-    type Pergunta,
     type Rascunho,
     type Sessao,
     type Solicitacao,
@@ -509,9 +505,12 @@ const CartaoRascunho = ({ pedido, rascunho, onContinuar }: { pedido: Pedido; ras
 /*  Itens                                                              */
 /* ------------------------------------------------------------------ */
 
-interface ItemComLinhas {
+/** Uma unidade comprada e o item de catálogo dela. Cópias do mesmo item NÃO se juntam: cada
+ *  uma tem respostas próprias de formulário e pode ser editada sozinha, então cada uma é um
+ *  cartão. Agregá-las economizava altura e tirava a única porta para a cópia certa. */
+interface UnidadeDoPedido {
     item: CatalogoItem;
-    linhas: PedidoItem[];
+    linha: PedidoItem;
 }
 
 interface AcoesDaLista {
@@ -528,50 +527,40 @@ interface AcoesDaLista {
  */
 const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunhos: Rascunho[] } & AcoesDaLista) => {
     const estrutura = useMemo(() => {
-        const porItem = new Map<string, ItemComLinhas>();
-        pedido.itens.forEach((linha) => {
-            const item = getItem(linha.itemId);
-            if (!item) return;
-            const grupo = porItem.get(item.id) ?? { item, linhas: [] };
-            grupo.linhas.push(linha);
-            porItem.set(item.id, grupo);
-        });
-        const todos = [...porItem.values()];
+        /* Ordem da compra, sem reordenar: linha que troca de lugar faz o próximo clique cair
+           na vizinha. */
+        const todas = pedido.itens.map((linha) => ({ linha, item: getItem(linha.itemId) })).filter((u): u is UnidadeDoPedido => Boolean(u.item));
         const sessoes = SESSOES.filter((s) => s.eventoId === pedido.eventoId)
             .sort((a, b) => a.inicio - b.inicio)
-            .map((sessao) => ({ sessao, itens: todos.filter((g) => g.item.tipo === "ingresso" && g.item.sessaoId === sessao.id) }))
-            .filter((s) => s.itens.length > 0);
-        return { sessoes, produtos: todos.filter((g) => g.item.tipo === "produto"), combos: todos.filter((g) => g.item.tipo === "combo") };
+            .map((sessao) => ({ sessao, unidades: todas.filter((u) => u.item.tipo === "ingresso" && u.item.sessaoId === sessao.id) }))
+            .filter((s) => s.unidades.length > 0);
+        return { sessoes, produtos: todas.filter((u) => u.item.tipo === "produto"), combos: todas.filter((u) => u.item.tipo === "combo") };
     }, [pedido]);
 
+    /* Uma unidade elegível já basta para o botão existir: ele é a única porta de transferência
+       e troca, e com o corte antigo de duas unidades 17 dos 25 pedidos ficavam sem ação. */
     const elegiveis = (verbo: Verbo) => pedido.itens.filter((l) => disponivelPara(pedido, l, verbo)).length;
     const nTransferir = elegiveis("transferir");
-    const nTrocar = elegiveis("trocar");
-    const temAcoes = nTransferir >= 2 || nTrocar >= 2;
+    const verbos = VERBOS_EM_MASSA.filter(({ verbo }) => elegiveis(verbo) > 0);
     const motivoGeral =
         nTransferir === 0 ? "Todas as unidades estão em outra alteração ou com outro titular." : pedidoEncerrado(pedido) ? "As sessões deste pedido já aconteceram. Só a transferência continua disponível." : null;
 
-    const renderItem = (grupo: ItemComLinhas) => <CartaoDoItem key={grupo.item.id} pedido={pedido} rascunhos={rascunhos} {...grupo} {...acoes} />;
+    const renderUnidade = (unidade: UnidadeDoPedido) => <CartaoDaUnidade key={unidade.linha.id} pedido={pedido} rascunhos={rascunhos} {...unidade} {...acoes} />;
 
     return (
         /* Sem moldura: os itens já estão dentro da coluna de trabalho, que o trilho à esquerda
            delimita. Um cartão em volta deles acrescentava uma segunda borda ao redor do mesmo
            conteúdo e empurrava tudo 20px para dentro, estreitando a linha sem separar nada. */
         <section className="flex flex-col gap-5">
-            {(temAcoes || motivoGeral) && (
+            {(verbos.length > 0 || motivoGeral) && (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    {temAcoes && (
-                        <div className="flex w-full gap-2 sm:w-auto">
-                            {nTransferir >= 2 && (
-                                <Button size="sm" color="secondary" className="flex-1 sm:flex-none" onClick={() => acoes.onAbrir("transferir", [])}>
-                                    Transferir itens
+                    {verbos.length > 0 && (
+                        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                            {verbos.map(({ verbo, rotulo }) => (
+                                <Button key={verbo} size="sm" color="secondary" iconLeading={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO[verbo]]} className="max-sm:flex-1" onClick={() => acoes.onAbrir(verbo, [])}>
+                                    {rotulo}
                                 </Button>
-                            )}
-                            {nTrocar >= 2 && (
-                                <Button size="sm" color="secondary" className="flex-1 sm:flex-none" onClick={() => acoes.onAbrir("trocar", [])}>
-                                    Trocar itens
-                                </Button>
-                            )}
+                            ))}
                         </div>
                     )}
                     {motivoGeral && <p className="text-sm text-secondary">{motivoGeral}</p>}
@@ -586,16 +575,16 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
                        empilhados sobre um cartao que ja tem borda eram tres caixas para dizer
                        uma coisa. Com duas ou mais sessoes os niveis voltam a existir. */
                     <GrupoDeItens titulo="Ingressos" sessao={estrutura.sessoes.length === 1 ? estrutura.sessoes[0].sessao : undefined}>
-                        {estrutura.sessoes.map(({ sessao, itens }) => (
+                        {estrutura.sessoes.map(({ sessao, unidades }) => (
                             <div key={sessao.id} className="flex flex-col gap-3">
                                 {estrutura.sessoes.length > 1 && <TituloDaSessao sessao={sessao} />}
-                                {itens.map(renderItem)}
+                                {unidades.map(renderUnidade)}
                             </div>
                         ))}
                     </GrupoDeItens>
                 )}
-                {estrutura.produtos.length > 0 && <GrupoDeItens titulo="Produtos">{estrutura.produtos.map(renderItem)}</GrupoDeItens>}
-                {estrutura.combos.length > 0 && <GrupoDeItens titulo="Combos">{estrutura.combos.map(renderItem)}</GrupoDeItens>}
+                {estrutura.produtos.length > 0 && <GrupoDeItens titulo="Produtos">{estrutura.produtos.map(renderUnidade)}</GrupoDeItens>}
+                {estrutura.combos.length > 0 && <GrupoDeItens titulo="Combos">{estrutura.combos.map(renderUnidade)}</GrupoDeItens>}
             </div>
         </section>
     );
@@ -644,139 +633,73 @@ const TituloDaSessao = ({ sessao }: { sessao: Sessao }) => (
     </h4>
 );
 
-/**
- * As respostas do formulário que mudam de uma unidade para outra.
- *
- * Num pedido de 40 inscrições iguais tudo é idêntico menos uma coisa, e é por essa coisa que o
- * comprador identifica a dele ao telefone: "a da camiseta G". Pergunta cuja resposta se repete
- * em todas as unidades não entra, porque escrever "Kit: Arena das Dunas" quarenta vezes não
- * distingue nada. Sem isso, quarenta linhas são quarenta vezes a mesma frase.
- */
-const discriminantes = (item: CatalogoItem, linhas: PedidoItem[]): Pergunta[] => {
-    if (linhas.length < 2) return [];
-    const formulario = getFormulario(item.formularioId);
-    if (!formulario) return [];
-    return formulario.perguntaIds
-        .map((id) => PERGUNTAS.find((p) => p.id === id))
-        .filter((p): p is Pergunta => Boolean(p))
-        .filter((p) => new Set(linhas.map((l) => l.respostas[p.id] ?? "")).size > 1);
-};
+/** Acima disso a lista de unidades nasce recolhida. Até seis, o alternador custa mais linha
+ *  do que esconde, e a lista inteira cabe sem rolar. */
+/* Um degrau abaixo do `rounded-2xl` do trilho e do CartaoOperacao: a unidade é conteúdo da
+   página, não o objeto mais alto dela. Mesmo anel, raio menor, sem sombra pesada. */
+const CARTAO = "flex flex-col rounded-xl bg-primary shadow-xs ring-1 ring-border-secondary ring-inset";
 
 /** A regra do catálogo que faz uma transferência ser recusada lá na frente. */
-const RESTRICAO: Record<NonNullable<CatalogoItem["segmentacao"]>, string> = {
+const RESTRICAO_DO_ITEM: Record<NonNullable<CatalogoItem["segmentacao"]>, string> = {
     feminino: "Exclusivo feminino",
     socio: "Exclusivo sócios",
 };
 
-/** Acima disso a lista de unidades nasce recolhida. Até seis, o alternador custa mais linha
- *  do que esconde, e a lista inteira cabe sem rolar. */
-const SEMPRE_ABERTO = 6;
-const LIMITE_LINHAS = 5;
-
-/** Unidade em estado normal: sem alteração aberta, sem rascunho, sem outro titular. */
-const linhaNormal = (pedido: Pedido, rascunhos: Rascunho[], linha: PedidoItem) => !linha.titularId && !solicitacaoDaLinha(pedido, linha.id) && !rascunhos.some((r) => r.linhasSelecionadas.includes(linha.id));
-
-/* Um degrau abaixo do `rounded-2xl` do trilho e do CartaoOperacao: o item é conteúdo da
-   página, não o objeto mais alto dela. Mesmo anel, raio menor, sem sombra pesada. */
-const CARTAO = "flex flex-col rounded-xl bg-primary shadow-xs ring-1 ring-border-secondary ring-inset";
-
 /**
- * Um item do pedido, com as unidades dentro dele.
+ * Uma unidade comprada, como cartão. Duas cópias do mesmo ingresso dão dois cartões iguais.
  *
- * Virou cartão porque a lista precisava de uma fronteira: sem moldura, o fio entre dois itens
- * tinha o mesmo peso do fio entre duas unidades do mesmo item, e a hierarquia grupo > ingresso >
- * lote > unidade se achatava em uma pilha só. A moldura se paga: o `divide-y` entre itens some,
- * e quando o grupo tem uma sessão só os dois títulos empilhados viram um.
+ * Elas não se agregam porque não são a mesma coisa: cada uma tem as respostas de formulário do
+ * seu participante, e é por elas que o comprador liga. Agregadas, a única forma de chegar numa
+ * cópia específica era um ordinal ("unidade 17 de 40") que não corresponde a nada que o
+ * comprador vê, ou uma coluna com a resposta de uma pergunta eleita entre vinte. Repetir o
+ * cartão custa altura e resolve as duas: a cópia é o objeto, e o formulário dela é a ação.
  */
-const CartaoDoItem = ({ pedido, rascunhos, item, linhas, ...acoes }: { pedido: Pedido; rascunhos: Rascunho[] } & ItemComLinhas & AcoesDaLista) => {
-    const [todas, setTodas] = useState(false);
-    const unico = linhas.length === 1;
-
-    const valores = new Set(linhas.map((l) => l.valorPago));
-    const mesmoValor = valores.size === 1;
-    const valorDoItem = mesmoValor ? (unico ? formatarMoeda(linhas[0].valorPago) : `${formatarMoeda(linhas[0].valorPago)} cada`) : formatarMoeda(linhas.reduce((soma, l) => soma + l.valorPago, 0));
-
-    const colunas = discriminantes(item, linhas);
-
-    const cabecalho = (
-        <div className="flex items-start gap-3 px-4 py-4 lg:px-5">
-            <Miniatura item={item} />
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {/* O único text-md do cartão: é por ele que se varre a coluna. */}
-                    <p className="text-md font-semibold text-primary">{item.nome}</p>
-                    {item.segmentacao && (
-                        <Badge size="md" type="modern" color="gray">
-                            {RESTRICAO[item.segmentacao]}
-                        </Badge>
-                    )}
-                </div>
-                {caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
-                {item.datasCombo && item.datasCombo.length > 0 && <p className="text-sm text-tertiary">{item.datasCombo.join(" · ")}</p>}
-                {item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
-            </div>
-            <div className="flex shrink-0 flex-col items-end">
-                {!unico && <p className="text-sm text-tertiary tabular-nums">{plural(linhas.length, "unidade", "unidades")}</p>}
-                <p className="text-sm font-semibold text-primary tabular-nums">{valorDoItem}</p>
-            </div>
-        </div>
-    );
-
-    /* Uma unidade: o item e a unidade são a mesma coisa. Sem lista, sem ordinal, sem sub-linha,
-       e os verbos saem de trás do kebab para o rodapé, escritos. É o formato da maioria dos
-       pedidos, e é onde esconder três ações atrás de um ícone custava mais caro. */
-    if (unico) {
-        return (
-            <article className={CARTAO}>
-                {cabecalho}
-                <UnidadeUnica pedido={pedido} rascunhos={rascunhos} item={item} linha={linhas[0]} {...acoes} />
-            </article>
-        );
-    }
-
-    const aberta = todas || linhas.length <= SEMPRE_ABERTO;
-    /* Recolhido, as unidades em estado excepcional continuam visíveis no lugar delas: o que
-       está acontecendo com o pedido nunca fica atrás de um alternador. */
-    const visiveis = aberta ? linhas : linhas.filter((l, i) => i < LIMITE_LINHAS || !linhaNormal(pedido, rascunhos, l));
-    const ocultas = linhas.length - visiveis.length;
+const CartaoDaUnidade = ({ pedido, rascunhos, item, linha, onAbrir, ...resto }: { pedido: Pedido; rascunhos: Rascunho[] } & UnidadeDoPedido & AcoesDaLista) => {
+    const estado = lerUnidade(pedido, rascunhos, linha);
+    const temFatos = estado.transferida || estado.solicitacao || estado.rascunho || estado.ultima;
+    /* O formulário é desta unidade, com as respostas dela: a porta é o cartão, não um botão de
+       pedido inteiro. Some quando o item não tem formulário ou a unidade está travada. */
+    const podeFormulario = temFormulario(item) && disponivelPara(pedido, linha, "formulario");
 
     return (
         <article className={CARTAO}>
-            {cabecalho}
-            {colunas.length > 0 && (
-                /* Nomeia a dimensão uma vez, no lugar de repetir "Tamanho da camiseta" em
-                   quarenta linhas. */
-                <p className="border-t border-secondary px-4 pt-3 pb-1 text-sm text-tertiary lg:px-5">{colunas.map((p) => p.label).join(" · ")}</p>
-            )}
-            <ul className={cx("flex flex-col px-2 pb-2 lg:px-3", colunas.length === 0 && "border-t border-secondary pt-2")}>
-                {visiveis.map((linha) => (
-                    <LinhaDaUnidade
-                        key={linha.id}
-                        pedido={pedido}
-                        rascunhos={rascunhos}
-                        item={item}
-                        linha={linha}
-                        colunas={colunas}
-                        ordinal={linhas.indexOf(linha) + 1}
-                        total={linhas.length}
-                        valor={mesmoValor ? undefined : formatarMoeda(linha.valorPago)}
-                        {...acoes}
-                    />
-                ))}
-            </ul>
-            {(ocultas > 0 || todas) && linhas.length > SEMPRE_ABERTO && (
-                <div className="border-t border-secondary px-4 py-2 lg:px-5">
-                    {/* Diz o que está escondido, não só que há algo escondido: quem some é
-                        sempre unidade sem alteração, e é isso que tira a dúvida de "será que a
-                        que eu procuro está aí dentro?". */}
-                    <Button size="sm" color="link-color" aria-expanded={todas} onClick={() => setTodas((atual) => !atual)}>
-                        {todas ? "Ver menos" : `Mais ${plural(ocultas, "unidade", "unidades")} sem alteração`}
-                    </Button>
+            <div className="flex items-start gap-3 px-4 py-4 lg:px-5">
+                <Miniatura item={item} />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        {/* O único text-md do cartão: é por ele que se varre a coluna. */}
+                        <p className="text-md font-semibold text-primary">{item.nome}</p>
+                        {item.segmentacao && (
+                            <Badge size="md" type="modern" color="gray">
+                                {RESTRICAO_DO_ITEM[item.segmentacao]}
+                            </Badge>
+                        )}
+                    </div>
+                    {caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
+                    {item.datasCombo && item.datasCombo.length > 0 && <p className="text-sm text-tertiary">{item.datasCombo.join(" · ")}</p>}
+                    {item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
                 </div>
+                <p className="shrink-0 text-sm font-semibold text-primary tabular-nums">{formatarMoeda(linha.valorPago)}</p>
+            </div>
+
+            {temFatos && (
+                <div className="flex flex-col gap-0.5 border-t border-secondary px-4 py-3 lg:px-5">
+                    {estado.transferida && <PortadorDaUnidade pedido={pedido} linha={linha} />}
+                    <FatosDaUnidade pedido={pedido} linha={linha} estado={estado} {...resto} />
+                </div>
+            )}
+
+            {podeFormulario && (
+                <footer className="flex border-t border-secondary px-4 py-3 lg:px-5">
+                    <Button size="sm" color="secondary" iconLeading={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO.formulario]} className="max-sm:flex-1" onClick={() => onAbrir("formulario", [linha.id])}>
+                        Editar formulário
+                    </Button>
+                </footer>
             )}
         </article>
     );
 };
+
 
 /** O que está acontecendo com a unidade, no lugar das ações enquanto houver alteração aberta. */
 const EstadoDaUnidade = ({ pedido, linha, solicitacao }: { pedido: Pedido; linha: PedidoItem; solicitacao: Solicitacao }) => {
@@ -816,16 +739,23 @@ const DESFECHO: Partial<Record<NonNullable<EntradaHistorico["marco"]>, string>> 
     cancelada: "cancelada",
 };
 
-const ACOES: Array<{ verbo: Verbo; rotulo: string }> = [
-    { verbo: "transferir", rotulo: "Transferir" },
-    { verbo: "trocar", rotulo: "Trocar" },
-    { verbo: "formulario", rotulo: "Editar formulário" },
+/**
+ * Transferir e trocar têm uma porta só, no topo da lista, porque servem para uma unidade ou
+ * para n: a escolha de quais acontece dentro do fluxo, depois de saber o verbo, já que o que
+ * pode entrar depende dele.
+ *
+ * Editar formulário não está aqui. Ele não tem versão geral: o formulário é de uma unidade,
+ * com as respostas dela, então a porta dele é o cartão da unidade.
+ */
+const VERBOS_EM_MASSA: Array<{ verbo: Verbo; rotulo: string }> = [
+    { verbo: "transferir", rotulo: "Transferir itens" },
+    { verbo: "trocar", rotulo: "Trocar itens" },
 ];
 /**
  * Tudo o que se sabe sobre uma unidade, lido de um lugar só: a linha da lista e o cartão de
  * unidade única consultam daqui, e assim nunca discordam sobre o que oferecer.
  */
-const lerUnidade = (pedido: Pedido, rascunhos: Rascunho[], item: CatalogoItem, linha: PedidoItem) => {
+const lerUnidade = (pedido: Pedido, rascunhos: Rascunho[], linha: PedidoItem) => {
     const solicitacao = solicitacaoDaLinha(pedido, linha.id);
     const transferida = Boolean(linha.titularId);
     return {
@@ -835,7 +765,6 @@ const lerUnidade = (pedido: Pedido, rascunhos: Rascunho[], item: CatalogoItem, l
         /* A última mudança da unidade, para responder "o que aconteceu com este ingresso" sem
            abrir o histórico. */
         ultima: [...pedido.historico].reverse().find((h) => h.solicitacaoId && h.linhaIds?.includes(linha.id) && h.marco !== "solicitada" && h.marco !== "reenviada"),
-        verbos: solicitacao || transferida ? [] : ACOES.filter(({ verbo }) => (verbo === "formulario" ? temFormulario(item) && disponivelPara(pedido, linha, verbo) : disponivelPara(pedido, linha, verbo))),
     };
 };
 
@@ -892,104 +821,6 @@ const PortadorDaUnidade = ({ pedido, linha }: { pedido: Pedido; linha: PedidoIte
     );
 };
 
-/**
- * O corpo do cartão quando o item tem uma unidade só.
- *
- * Aqui os verbos saem de trás do kebab e ganham nome no rodapé, como na referência do job card.
- * É o formato da maioria dos pedidos, e era onde esconder três ações atrás de um ícone custava
- * mais caro: a unidade é o item, então não há ambiguidade de escopo para resolver.
- */
-const UnidadeUnica = ({ pedido, rascunhos, item, linha, onAbrir, ...resto }: { pedido: Pedido; rascunhos: Rascunho[]; item: CatalogoItem; linha: PedidoItem } & AcoesDaLista) => {
-    const estado = lerUnidade(pedido, rascunhos, item, linha);
-    const temFatos = estado.transferida || estado.solicitacao || estado.rascunho || estado.ultima;
-
-    if (!temFatos && estado.verbos.length === 0) return null;
-
-    return (
-        <>
-            {temFatos && (
-                <div className="flex flex-col gap-0.5 border-t border-secondary px-4 py-3 lg:px-5">
-                    {estado.transferida && <PortadorDaUnidade pedido={pedido} linha={linha} />}
-                    <FatosDaUnidade pedido={pedido} linha={linha} estado={estado} {...resto} />
-                </div>
-            )}
-            {estado.verbos.length > 0 && (
-                <footer className="flex flex-wrap gap-2 border-t border-secondary px-4 py-3 lg:px-5">
-                    {estado.verbos.map(({ verbo, rotulo }) => (
-                        <Button key={verbo} size="sm" color="secondary" iconLeading={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO[verbo]]} className="max-sm:flex-1" onClick={() => onAbrir(verbo, [linha.id])}>
-                            {rotulo}
-                        </Button>
-                    ))}
-                </footer>
-            )}
-        </>
-    );
-};
-
-/** Uma unidade dentro do cartão de um item com várias. */
-const LinhaDaUnidade = ({
-    pedido,
-    rascunhos,
-    item,
-    linha,
-    colunas,
-    ordinal,
-    total,
-    valor,
-    onAbrir,
-    ...resto
-}: {
-    pedido: Pedido;
-    rascunhos: Rascunho[];
-    item: CatalogoItem;
-    linha: PedidoItem;
-    /** As perguntas cuja resposta varia entre as unidades deste item. */
-    colunas: Pergunta[];
-    ordinal: number;
-    total: number;
-    /** Só quando as unidades do item têm valores diferentes; senão o cabeçalho já disse. */
-    valor?: string;
-} & AcoesDaLista) => {
-    const estado = lerUnidade(pedido, rascunhos, item, linha);
-    const respostas = colunas
-        .map((p) => linha.respostas[p.id])
-        .filter(Boolean)
-        .join(" · ");
-
-    return (
-        <li className="flex items-start gap-3 rounded-lg px-2 py-1.5 transition duration-100 ease-linear focus-within:bg-primary_hover hover:bg-primary_hover">
-            {/* Calha de números: tabular-nums alinha os dígitos numa régua vertical contínua, e
-                "a unidade 17" vira a coordenada que o atendente e o comprador compartilham ao
-                telefone. Sem divide-y entre as linhas: o fio horizontal corta exatamente a
-                direção em que o olho precisa correr. */}
-            <span className="w-6 shrink-0 pt-0.5 text-right text-sm text-quaternary tabular-nums">
-                <span aria-hidden="true">{ordinal}</span>
-                <span className="sr-only">{`Unidade ${ordinal} de ${total}`}</span>
-            </span>
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                {estado.transferida ? <PortadorDaUnidade pedido={pedido} linha={linha} /> : respostas && <p className="text-sm text-secondary">{respostas}</p>}
-                <FatosDaUnidade pedido={pedido} linha={linha} estado={estado} {...resto} />
-            </div>
-            {valor && <p className="shrink-0 pt-0.5 text-sm font-medium text-primary tabular-nums">{valor}</p>}
-            {/* Slot sempre reservado: com o controle aparecendo e sumindo, a borda direita
-                serrilhava ao longo de quarenta linhas. */}
-            <div className="flex size-9 shrink-0 items-center justify-center">
-                {estado.verbos.length > 0 && (
-                    <Dropdown.Root>
-                        <ButtonUtility size="sm" color="tertiary" icon={DotsVertical} tooltip="Mais ações" aria-label={`Mais ações para a unidade ${ordinal} de ${item.nome}`} />
-                        <Dropdown.Popover placement="bottom end" className="w-auto min-w-56">
-                            <Dropdown.Menu onAction={(chave) => onAbrir(chave as Verbo, [linha.id])}>
-                                {estado.verbos.map(({ verbo, rotulo }) => (
-                                    <Dropdown.Item key={verbo} id={verbo} icon={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO[verbo]]} label={rotulo} />
-                                ))}
-                            </Dropdown.Menu>
-                        </Dropdown.Popover>
-                    </Dropdown.Root>
-                )}
-            </div>
-        </li>
-    );
-};
 
 
 /* ------------------------------------------------------------------ */

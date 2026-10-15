@@ -18,7 +18,6 @@ import {
     getConta,
     getFormulario,
     getItem,
-    nominalDoItem,
     getRascunho,
     motivoValido,
     novoRascunhoId,
@@ -87,6 +86,20 @@ interface TransferirTitularidadeWizardProps {
     onEnviado: (solicitacaoId: string) => void;
 }
 
+/** Quem recebe, com o caminho de volta para trocar de pessoa sem mexer no stepper. */
+const CartaoDestinatario = ({ conta, onAlterar }: { conta: Conta; onAlterar: () => void }) => (
+    <div className="flex w-full items-center gap-3 rounded-xl bg-secondary p-4">
+        <Avatar size="md" initials={iniciaisDe(conta.nome)} alt={conta.nome} />
+        <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-primary">{conta.nome}</p>
+            <p className="truncate text-sm text-tertiary">{conta.email}</p>
+        </div>
+        <Button size="sm" color="link-color" onClick={onAlterar}>
+            Alterar
+        </Button>
+    </div>
+);
+
 export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoInicial, onFechar, onEnviado }: TransferirTitularidadeWizardProps) {
     const perguntas = usePerguntas();
     const rascunhos = useRascunhos(pedido.id);
@@ -94,12 +107,15 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
     /* Retomar de verdade: destinatário, busca, respostas e motivo voltam como estavam. Antes a
        retomada restaurava só a seleção e a etapa, e as etapas seguintes abriam em branco. */
-    const contaInicial = rascunhoInicial?.titularPorLinha ? getConta(Object.values(rascunhoInicial.titularPorLinha)[0] ?? "") : undefined;
+    const contaInicial = getConta(rascunhoInicial?.destinatarioId ?? Object.values(rascunhoInicial?.titularPorLinha ?? {})[0] ?? "");
     const linhasDisponiveis = pedido.itens.filter((l) => disponivelPara(pedido, l, "transferir"));
     const pedidas = rascunhoInicial?.linhasSelecionadas ?? linhasIniciais;
     const perdidas = rascunhoInicial ? pedidas.filter((id) => !linhasDisponiveis.some((l) => l.id === id)).length : 0;
 
-    const [indice, setIndice] = useState(() => (linhasDisponiveis.some((l) => linhasIniciais.includes(l.id)) ? 1 : 0));
+    /* Sempre pela porta da frente. Antes, vir do kebab de uma linha pulava para a etapa 2 porque
+       o item já era conhecido; com o destinatário primeiro, a unidade escolhida só aparece
+       pré-marcada na etapa de itens e a entrada é uma só. */
+    const [indice, setIndice] = useState(0);
     const buscaRef = useRef<HTMLDivElement>(null);
     const avisoRef = useRef<HTMLDivElement>(null);
     const [sugerindo, setSugerindo] = useState(false);
@@ -118,12 +134,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
     const comprador = getConta(pedido.compradorId);
     const emOutroRascunho = rascunhos.find((r) => r.id !== rascunhoId && r.linhasSelecionadas.some((id) => selecao[id]));
 
-    /* Ingresso nominal é uma unidade por pessoa: duas do mesmo item não cabem num destinatário
-       só. O problema é da seleção, então ele para a seleção — sem isso a pessoa só descobria na
-       etapa seguinte, quando a busca inteira voltava marcada "Já vinculado". */
-    const porItem = new Map<string, number>();
-    linhas.forEach((l) => porItem.set(l.itemId, (porItem.get(l.itemId) ?? 0) + 1));
-    const repetido = [...porItem.entries()].map(([itemId, quantas]) => ({ item: getItem(itemId), quantas })).find(({ item, quantas }) => quantas > 1 && item && nominalDoItem(item));
 
     /* ------------------------------------------------------------------ */
     /*  Destinatário: busca por nome, e-mail ou CPF, contra toda a base     */
@@ -131,7 +141,12 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
     const termo = busca.trim();
     const encontradas = buscarContas(termo);
-    const bloqueiosDaConta = (conta: Conta) => linhas.map((linha) => ({ linha, bloqueio: validarNovoTitular(pedido, linha, conta, linhas) })).filter((b) => b.bloqueio);
+    const bloqueiosDaConta = (conta: Conta, contra: PedidoItem[] = linhas) =>
+        contra.map((linha) => ({ linha, bloqueio: validarNovoTitular(pedido, linha, conta, linhas) })).filter((b) => b.bloqueio);
+    /* Na etapa do destinatário nada está marcado ainda, então a sugestão é medida contra tudo que
+       o pedido tem de transferível: só vira selo quem não pode receber NADA — o comprador, por
+       exemplo. O que cabe unidade a unidade é assunto da etapa seguinte. */
+    const naoRecebeNada = (conta: Conta) => linhasDisponiveis.length > 0 && bloqueiosDaConta(conta, linhasDisponiveis).length === linhasDisponiveis.length;
     const sugestoesAbertas = sugerindo && encontradas.length > 0;
 
     const bloqueiosPorLinha = selecionada ? bloqueiosDaConta(selecionada) : [];
@@ -148,7 +163,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
     /* "Itens" é sempre a primeira etapa: vindo de uma linha, ela já nasce concluída e o fluxo
        começa no destinatário, mas "Alterar" e "Voltar" levam até ela sem fechar o overlay. */
-    const etapas: Etapa[] = ["itens", "destinatario", "revisao"];
+    const etapas: Etapa[] = ["destinatario", "itens", "revisao"];
     const etapa = etapas[Math.min(indice, etapas.length - 1)];
 
     /*
@@ -234,13 +249,13 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
     }, []);
 
     const podeAvancar =
-        etapa === "itens"
-            ? linhas.length > 0 && !repetido
-            : etapa === "destinatario"
-              ? Boolean(selecionada) && bloqueiosPorLinha.length === 0
+        etapa === "destinatario"
+            ? Boolean(selecionada)
+            : etapa === "itens"
+              ? linhas.length > 0 && bloqueiosPorLinha.length === 0
               : Boolean(selecionada) && motivoValido(motivo);
 
-    const rotuloAvancar = etapa === "itens" ? "Escolher destinatário" : "Revisar transferência";
+    const rotuloAvancar = etapa === "destinatario" ? "Escolher itens" : "Revisar transferência";
 
     const salvarProgresso = (proximaEtapa: string, destinatario: Conta | null = selecionada) =>
         salvarRascunho({
@@ -250,6 +265,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
             etapa: proximaEtapa,
             linhasSelecionadas: linhas.map((l) => l.id),
             titularPorLinha: destinatario ? Object.fromEntries(linhas.map((l) => [l.id, destinatario.id])) : undefined,
+            destinatarioId: destinatario?.id,
             motivo,
             busca,
             operador: OPERADOR_ATUAL,
@@ -259,7 +275,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
        e avisa, com "Descartar". Abrir e fechar sem fazer nada não deixa rastro. */
     const fechar = () => {
         const fezAlgo = Boolean(rascunhoInicial || selecionada || termo || motivo.nota.trim() || motivo.chamado.trim());
-        if (fezAlgo && linhas.length > 0) {
+        if (fezAlgo && (linhas.length > 0 || selecionada)) {
             salvarProgresso(etapa);
             avisarRascunhoSalvo(getRascunho(rascunhoId));
         }
@@ -275,16 +291,11 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
     /* Clicar no card já escolhe e avança. Só não avança quando a conta está bloqueada para algum
        item: aí fica na etapa, e o aviso abaixo da lista explica por quê. */
+    /* Escolher a pessoa já avança para os itens. Não há o que validar aqui: a elegibilidade
+       depende de quais unidades vão, e é na etapa seguinte que ela aparece unidade a unidade. */
     const escolherDestinatario = (conta: Conta) => {
         setSelecionada(conta);
         setSugerindo(false);
-        if (bloqueiosDaConta(conta).length > 0) {
-            /* Fica na etapa e leva os olhos até o motivo. Sem isso a lista continuava
-               aberta por cima do aviso e o clique parecia não ter feito nada. */
-            const suave = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-            requestAnimationFrame(() => avisoRef.current?.scrollIntoView({ block: "nearest", behavior: suave ? "smooth" : "auto" }));
-            return;
-        }
         salvarProgresso(etapas[Math.min(indice + 1, etapas.length - 1)], conta);
         setIndice((i) => i + 1);
     };
@@ -357,23 +368,35 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                     </div>
                 )}
 
-                {etapa === "itens" && (
+                {etapa === "itens" && selecionada && (
                     <div className="flex w-full flex-col gap-4">
-                        <SeletorUnidades pedido={pedido} verbo="transferir" selecao={selecao} onChange={setSelecao} />
-                        {repetido && (
-                            <Aviso
-                                tom="warning"
-                                titulo={`${repetido.item?.nome} é nominal: uma unidade por pessoa`}
-                                descricao="Reduza para 1 unidade e faça uma transferência para cada destinatário."
-                            />
+                        {/* Quem recebe fica à vista enquanto se escolhe o que mandar: é a pessoa que
+                            define o que cabe, e trocar de ideia sobre ela não exige voltar no stepper. */}
+                        <CartaoDestinatario conta={selecionada} onAlterar={() => setIndice(0)} />
+                        <SetaParaBaixo />
+                        <SeletorUnidades
+                            pedido={pedido}
+                            verbo="transferir"
+                            selecao={selecao}
+                            onChange={setSelecao}
+                            bloqueioExtra={(linha) => validarNovoTitular(pedido, linha, selecionada, linhas)?.curto ?? null}
+                        />
+                        {/* Resta o caso em que NADA cabe: a lista fica vazia e sem isso a etapa
+                            não diria por quê. Unidade a unidade o motivo já está na própria linha. */}
+                        {linhasDisponiveis.length > 0 && linhasDisponiveis.every((l) => validarNovoTitular(pedido, l, selecionada, linhas)) && (
+                            <div ref={avisoRef}>
+                                <Aviso
+                                    titulo={`Nada deste pedido pode ir para ${selecionada.nome}`}
+                                    descricao={validarNovoTitular(pedido, linhasDisponiveis[0], selecionada, linhas)?.descricao}
+                                />
+                            </div>
                         )}
                     </div>
                 )}
 
                 {etapa === "destinatario" && (
                     <>
-                        <ResumoUnidades pedido={pedido} linhas={linhas} verbo="transferir" titulo="Transferindo" onAlterar={() => setIndice(0)} onIncluir={incluir} />
-                        <SetaParaBaixo />
+                        <Regra>Comece por quem vai receber. Os itens que essa pessoa pode receber vêm na próxima etapa.</Regra>
 
                         {/*
                               Campo e resultados são UM elemento: a lista é um popover
@@ -410,7 +433,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                         )}
                                     >
                                         {encontradas.map((conta, i) => {
-                                            const impedida = bloqueiosDaConta(conta)[0]?.bloqueio;
+                                            const impedida = naoRecebeNada(conta) ? bloqueiosDaConta(conta, linhasDisponiveis)[0]?.bloqueio : undefined;
                                             return (
                                             <li key={conta.id} role="option" aria-selected={i === focado}>
                                                 <button
@@ -460,32 +483,24 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                 />
                             ) : null}
 
-                            {selecionada && bloqueiosPorLinha.length > 0 && (
-                                <div ref={avisoRef}>
-                                <Aviso
-                                    titulo={bloqueiosPorLinha.length === linhas.length ? `Não dá para transferir assim para ${selecionada.nome}` : `${bloqueiosPorLinha.length} ${bloqueiosPorLinha.length === 1 ? "unidade não pode" : "unidades não podem"} ir para ${selecionada.nome}`}
-                                    descricao={bloqueiosPorLinha[0].bloqueio?.descricao}
-                                />
-                                </div>
-                        )}
                     </>
                 )}
 
                 {etapa === "revisao" && selecionada && (
                     <>
-                        <ResumoUnidades pedido={pedido} linhas={linhas} verbo="transferir" titulo="Transferindo" onAlterar={() => setIndice(0)} onIncluir={incluir} />
+                        <CartaoDestinatario conta={selecionada} onAlterar={() => setIndice(0)} />
                         <SetaParaBaixo />
+                        <ResumoUnidades
+                            pedido={pedido}
+                            linhas={linhas}
+                            verbo="transferir"
+                            titulo="Transferindo"
+                            onAlterar={() => setIndice(1)}
+                            onIncluir={incluir}
+                            bloqueioExtra={(linha) => validarNovoTitular(pedido, linha, selecionada, linhas)?.curto ?? null}
+                        />
 
-                        {/* Sem moldura: o destinatário é o resultado da etapa anterior, e um
-                            card ao redor dele repetia a borda que o overlay já dá. */}
                         <div className="flex w-full flex-col gap-2">
-                            <div className="flex items-center gap-3 rounded-xl bg-secondary p-4">
-                                <Avatar size="md" initials={iniciaisDe(selecionada.nome)} alt={selecionada.nome} />
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-semibold text-primary">{selecionada.nome}</p>
-                                    <p className="truncate text-sm text-tertiary">{selecionada.email}</p>
-                                </div>
-                            </div>
 
                             {/* §8 E4: o resumo declara a herança das respostas. Alterar resposta aqui não existe. */}
                             {comFormulario.length > 0 && (

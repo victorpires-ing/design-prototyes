@@ -76,14 +76,19 @@ export function SeletorUnidades({
     verbo,
     selecao,
     onChange,
+    bloqueioExtra,
 }: {
     pedido: Pedido;
     verbo: Verbo;
     selecao: Record<string, boolean>;
     onChange: (proxima: Record<string, boolean>) => void;
+    /** Motivo que depende de algo de fora da unidade — na transferência, de quem vai receber.
+     *  A elegibilidade é da dupla pessoa+unidade, e só quem sabe a pessoa consegue respondê-la. */
+    bloqueioExtra?: (linha: PedidoItem) => string | null;
 }) {
-    const disponiveis = pedido.itens.filter((l) => !motivoIndisponivel(pedido, l, verbo));
-    const indisponiveis = pedido.itens.filter((l) => motivoIndisponivel(pedido, l, verbo));
+    const motivo = (linha: PedidoItem) => motivoIndisponivel(pedido, linha, verbo) ?? bloqueioExtra?.(linha) ?? null;
+    const disponiveis = pedido.itens.filter((l) => !motivo(l));
+    const indisponiveis = pedido.itens.filter((l) => motivo(l));
 
     /* Uma linha por grupo. Escolher N marca as N primeiras unidades dele: dentro do
        grupo elas são idênticas, então qual delas vai é indiferente. */
@@ -178,7 +183,7 @@ export function SeletorUnidades({
                                 <span className="text-sm text-secondary">
                                     {getItem(linha.itemId)?.nome} · {identidadeDaLinha(pedido, linha).nome}
                                 </span>
-                                <span className="text-sm text-tertiary">{motivoIndisponivel(pedido, linha, verbo)}</span>
+                                <span className="text-sm text-tertiary">{motivo(linha)}</span>
                             </li>
                         ))}
                     </ul>
@@ -200,6 +205,7 @@ export function ResumoUnidades({
     titulo,
     onAlterar,
     onIncluir,
+    bloqueioExtra,
     extra,
 }: {
     pedido: Pedido;
@@ -208,10 +214,16 @@ export function ResumoUnidades({
     titulo: string;
     onAlterar?: () => void;
     onIncluir?: (ids: string[]) => void;
+    /** Mesmo motivo do seletor: o atalho de incluir as irmãs não pode oferecer unidade que o
+     *  destinatário escolhido não tem como receber. */
+    bloqueioExtra?: (linha: PedidoItem) => string | null;
     extra?: ReactNode;
 }) {
     const ids = new Set(linhas.map((l) => l.id));
-    const irmas = onIncluir && linhas.length > 0 ? pedido.itens.filter((l) => !ids.has(l.id) && linhas.some((x) => x.itemId === l.itemId) && !motivoIndisponivel(pedido, l, verbo)) : [];
+    const irmas =
+        onIncluir && linhas.length > 0
+            ? pedido.itens.filter((l) => !ids.has(l.id) && linhas.some((x) => x.itemId === l.itemId) && !motivoIndisponivel(pedido, l, verbo) && !bloqueioExtra?.(l))
+            : [];
     const nomeDasIrmas = getItem(irmas[0]?.itemId ?? "")?.nome;
 
     return (

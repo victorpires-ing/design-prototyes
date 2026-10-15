@@ -299,6 +299,10 @@ export interface Rascunho {
     destinoPorLinha?: Record<string, string>;
     /** Transferência: novo titular escolhido por linha. */
     titularPorLinha?: Record<string, string>;
+    /** Transferência: o destinatário escolhido, independente de haver linha marcada. Com o
+     *  destinatário vindo antes dos itens, existe um rascunho legítimo de conta escolhida e
+     *  nenhuma unidade, e `titularPorLinha` (indexado por linha) não tem onde guardá-lo. */
+    destinatarioId?: string;
     respostasPorLinha?: Record<string, Record<string, string>>;
     motivo?: Motivo;
     /** Texto da busca de destinatário, para a retomada não abrir em branco. */

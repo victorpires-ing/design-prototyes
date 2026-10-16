@@ -1490,22 +1490,36 @@ export const calcularTrocaItem = (linha: PedidoItem, novoItem: CatalogoItem): Ca
  * Titularidade (576978948 §6): o item não muda, então não há diferença nem taxa
  * de serviço proporcional. Vale a cobrança da transferência paga.
  */
-export const calcularTrocaTitularidade = (quantidade = 1): Calculo => {
-    const total = arredondar(quantidade * COBRANCA_TITULARIDADE);
+export const calcularTrocaTitularidade = (unidades: PedidoItem[]): Calculo => {
+    const total = arredondar(unidades.length * COBRANCA_TITULARIDADE);
+
+    /* Uma linha por item, não uma linha só com a conta embutida no rótulo. O recibo dizia
+       "Cobrança da transferência · 2 unidades" e repetia o mesmo número no total: duas linhas
+       para uma informação, sem dizer de quais unidades nem quanto custa cada uma. Agora lê como
+       recibo: o que está sendo transferido, quanto custa, e o total embaixo.
+
+       Unidades do mesmo item e lote entram juntas, com a quantidade na frente: três linhas
+       idênticas não são detalhe, são repetição. */
+    const porItem = new Map<string, { label: string; quantidade: number }>();
+    unidades.forEach((unidade) => {
+        const item = getItem(unidade.itemId);
+        const label = [item?.nome ?? "Item", item?.lote].filter(Boolean).join(" · ");
+        const atual = porItem.get(label) ?? { label, quantidade: 0 };
+        atual.quantidade++;
+        porItem.set(label, atual);
+    });
+
+    const linhas: LinhaCobranca[] = [...porItem.values()].map(({ label, quantidade }) => ({
+        label: quantidade > 1 ? `${quantidade}x ${label}` : label,
+        valor: arredondar(quantidade * COBRANCA_TITULARIDADE),
+        regra: `${formatarMoeda(COBRANCA_TITULARIDADE)} por unidade, pela configuração da transferência paga. O item é o mesmo: não há diferença de preço nem taxa de serviço proporcional.`,
+    }));
+
     return {
         diferencaBruta: 0,
         semCredito: false,
         total,
-        linhas: [
-            {
-                /* Sem a conta no rótulo: a quantidade já está no card "Transferindo",
-                   logo acima, e com uma unidade saía o inútil "(1 × R$ 15,00)". */
-                label: quantidade > 1 ? `Cobrança da transferência · ${quantidade} unidades` : "Cobrança da transferência",
-                valor: total,
-                regra: "Segue a configuração da transferência paga. O item é o mesmo: não há diferença de preço nem taxa de serviço proporcional.",
-            },
-            { label: "Total", valor: total, destaque: true },
-        ],
+        linhas: [...linhas, { label: "Total", valor: total, destaque: true }],
     };
 };
 

@@ -161,7 +161,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     const destino = selecionada?.email ?? "";
 
     const linhas = linhasDisponiveis.filter((l) => selecao[l.id]);
-    const calculo = calcularTrocaTitularidade(linhas.length);
+    const calculo = calcularTrocaTitularidade(linhas);
     const comprador = getConta(pedido.compradorId);
     /* De quem as unidades saem. O cabeçalho do fluxo mostra o COMPRADOR e o resumo mostra só o
        item, então o nome de quem PERDE o ingresso não aparecia em tela nenhuma: num pedido com

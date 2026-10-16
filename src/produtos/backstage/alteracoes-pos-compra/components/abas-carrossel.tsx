@@ -42,6 +42,9 @@ export interface AbaItem {
     id: string;
     /** Recebe o estado para que as legendas acompanhem a inversão do chip. */
     conteudo: (ativo: boolean) => ReactNode;
+    /** Aba que não leva a lugar nenhum, como uma data já encerrada. Fica visível, porque sumir
+     *  com ela esconderia que a data existe, mas não recebe clique nem foco. */
+    bloqueada?: boolean;
 }
 
 /**
@@ -128,6 +131,7 @@ export function AbasCarrossel({ abas, ativa, ariaLabel, onSelecionar }: AbasCarr
                             type="button"
                             role="radio"
                             aria-checked={ativo}
+                            disabled={aba.bloqueada}
                             data-aba={aba.id}
                             onClick={() => onSelecionar(aba.id)}
                             className={cx(
@@ -136,7 +140,8 @@ export function AbasCarrossel({ abas, ativa, ariaLabel, onSelecionar }: AbasCarr
                                   O chip escolhido inverte em relação à superfície: os tokens alpha
                                   viram branco no dark e preto no light, que é o chip do design.
                                 */
-                                ativo ? "bg-alpha-black text-alpha-white" : "bg-primary text-primary ring-1 ring-border-secondary hover:bg-primary_hover",
+                                ativo ? "bg-alpha-black text-alpha-white" : "bg-primary text-primary ring-1 ring-border-secondary",
+                                aba.bloqueada ? "cursor-not-allowed opacity-50" : !ativo && "hover:bg-primary_hover",
                             )}
                         >
                             {aba.conteudo(ativo)}

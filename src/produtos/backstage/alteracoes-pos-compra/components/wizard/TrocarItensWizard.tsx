@@ -158,6 +158,9 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
             const encerrada = sessao.inicio <= Date.now();
             return {
                 id: sessao.id,
+                /* Nada entra numa sessão que já aconteceu: a data continua à vista, para não
+                   parecer que sumiu do evento, mas não abre. */
+                bloqueada: encerrada,
                 conteudo: (ativo: boolean) => (
                     <>
                         <ChipLegenda ativo={ativo}>{diaSemana}</ChipLegenda>

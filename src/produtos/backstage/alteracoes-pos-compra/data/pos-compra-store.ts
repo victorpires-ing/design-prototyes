@@ -35,7 +35,6 @@ export const PRAZO_REAL_LABEL = "15 minutos";
 /** Prazo acelerado usado na demonstração (em segundos). */
 export const PRAZO_DEMO_SEGUNDOS = 60;
 /** Antecedência mínima para trocar para uma sessão. */
-export const PRAZO_TROCA_HORAS = 24;
 /** Quem está operando o Backstage nesta sessão. Sem autenticação no protótipo, é um nome fixo,
  *  mas toda ação grava um autor real: "Operador do backoffice" não responde "quem fez isso?". */
 export const OPERADOR_ATUAL = "Renata Lopes";
@@ -57,7 +56,10 @@ export type StatusPedido =
 export type TipoOperacao = "troca-item" | "troca-titularidade" | "alterar-respostas";
 
 /** Únicos dois canais para entregar o link de pagamento — escolhidos e disparados pelo operador. */
-export type CanalEnvio = "email" | "whatsapp";
+/* Só e-mail. A EF de troca de item põe o envio automático por WhatsApp fora do escopo (§25) e
+   define e-mail como canal das notificações (§15); o operador copia e cola o link quando quiser
+   mandar por outro meio. O tipo continua existindo para o dia em que houver um segundo canal. */
+export type CanalEnvio = "email";
 
 export interface Conta {
     id: string;
@@ -185,19 +187,22 @@ export const CATEGORIA_MOTIVO_LABEL: Record<CategoriaMotivo, string> = {
 
 /** Por que a alteração foi feita. Só a equipe lê: o cliente não vê. */
 export interface Motivo {
-    categoria: CategoriaMotivo;
+    /** Vazio até o operador escolher: H-07 exige que o motivo seja informado, e categoria
+     *  pré-marcada enchia todo histórico de "Pedido do cliente" por omissão. */
+    categoria: CategoriaMotivo | "";
     nota: string;
     /** Número do chamado. Obrigatório no Backstage, nas três operações (H-07). */
     chamado: string;
 }
 
-/** H-07: motivo E número do chamado são obrigatórios em toda alteração no Backstage. */
+/** H-07: motivo E número do chamado são obrigatórios em toda alteração no Backstage. O motivo
+ *  só conta como informado quando o operador escolheu a categoria; em "Outro", a nota explica. */
 export const motivoValido = (motivo: Motivo) =>
-    motivo.chamado.trim().length > 0 && (motivo.categoria !== "outro" || motivo.nota.trim().length > 0);
+    motivo.chamado.trim().length > 0 && motivo.categoria !== "" && (motivo.categoria !== "outro" || motivo.nota.trim().length > 0);
 
 export const descreverMotivo = (motivo?: Motivo) =>
     motivo
-        ? [CATEGORIA_MOTIVO_LABEL[motivo.categoria], motivo.nota.trim(), motivo.chamado.trim() && `Chamado ${motivo.chamado.trim()}`]
+        ? [motivo.categoria && CATEGORIA_MOTIVO_LABEL[motivo.categoria], motivo.nota.trim(), motivo.chamado.trim() && `Chamado ${motivo.chamado.trim()}`]
               .filter(Boolean)
               .join(" · ")
         : "";
@@ -246,25 +251,25 @@ export interface Solicitacao {
     /** Linhas presas nesta operação: elas não entram em outra enquanto isso não resolver. */
     linhasAfetadas: string[];
     /**
+     * A máquina de estados das três EFs (§12.1 / §11.1).
+     *
      * aguardando: cobrança pendente. processando: pagamento confirmado, aplicando.
-     * falha: pagamento confirmado, mas a revalidação das regras de negócio não passou mais
-     * no momento de aplicar — nada é revertido automaticamente. aguardando-financeiro: o
-     * operador já escalou o incidente; fica como registro somente leitura.
+     * reprovada: o pagamento entrou e a revalidação das regras reprovou — estorno integral
+     * automático, nada muda no pedido, estado final (H-06). falha: a revalidação passou e a
+     * aplicação quebrou por erro técnico; sem nova cobrança, admite reprocessamento.
+     *
+     * O protótipo tinha um "aguardando-financeiro" no lugar do estorno: a operação ficava paga
+     * e não aplicada e a saída era avisar o financeiro por fora. Isso trocava a regra do
+     * documento por um processo manual e deixava o cliente pago e sem o item.
      */
-    estado: "aguardando" | "processando" | "falha" | "aguardando-financeiro";
-    /** Por que a aplicação falhou, quando estado é "falha". */
+    estado: "aguardando" | "processando" | "reprovada" | "falha";
+    /** Por que reprovou ou falhou. */
     motivoFalha?: string;
     /** Referência que o operador digitou ao registrar o pagamento (não é validação de gateway). */
     referenciaPagamento?: string;
     motivo?: Motivo;
     /** Quem abriu a alteração. */
     operador: string;
-    /** Preenchido ao notificar o financeiro — nunca reverte a operação sozinho. */
-    escalonamento?: {
-        cenario: "falha-aplicacao" | "pagamento-indevido";
-        relato: string;
-        dataLabel: string;
-    };
     /** Payload aplicado apenas quando o pagamento é confirmado. */
     aplicar: {
         /** Trocas em lote: cada linha do pedido vira o item de destino indicado. */
@@ -304,8 +309,6 @@ export interface Rascunho {
     motivo?: Motivo;
     /** Texto da busca de destinatário, para a retomada não abrir em branco. */
     busca?: string;
-    /** Nome de quem o operador está tentando cadastrar, quando o novo titular ainda não tem conta. */
-    aguardandoCadastroDe?: string;
     atualizadoEm: number;
     atualizadoEmLabel: string;
     /** Último operador a tocar o rascunho — alimenta o indicador leve de concorrência. */
@@ -1308,33 +1311,11 @@ export const buscarContas = (termo: string, limite = 8): Conta[] => {
         .slice(0, limite);
 };
 
-export interface NovaContaInput {
-    nome: string;
-    email: string;
-    celular: string;
-    cpf?: string;
-    genero?: "F" | "M" | "outro";
-    socio?: boolean;
-}
-
-/** Cadastra uma conta nova sem sair do wizard — o caso mais comum de transferência é o novo
- *  titular ainda não ter conta na plataforma. Não contorna a regra de segmentação: os campos que
- *  ela exige (gênero, sócio) continuam sendo checados normalmente contra a conta recém-criada. */
-export const criarConta = (input: NovaContaInput): Conta => {
-    const conta: Conta = {
-        id: novoId("c-novo"),
-        nome: input.nome,
-        email: input.email,
-        celular: input.celular,
-        cpf: input.cpf ?? "",
-        nascimento: "",
-        genero: input.genero ?? "outro",
-        socio: input.socio ?? false,
-    };
-    CONTAS_EXTRA.push(conta);
-    notificar();
-    return conta;
-};
+/* Criar conta não existe neste fluxo. A EF de titularidade põe fora do escopo criar conta,
+   cadastrar facial e editar o cadastro global (§4 e §18), e manda bloquear a operação quando o
+   novo possuidor não tem conta, orientando o cadastro (§8 E2, V08). Havia aqui um `criarConta`
+   e um formulário inline que coletava inclusive gênero e vínculo de sócio, os dois campos que a
+   segmentação usa para decidir: o operador declararia o dado que o bloqueia. */
 export const getEvento = (id: string) => EVENTOS.find((e) => e.id === id);
 export const getPergunta = (id: string) => estado.perguntas.find((p) => p.id === id);
 export const getFormulario = (id?: string) => (id ? FORMULARIOS.find((f) => f.id === id) : undefined);
@@ -1382,7 +1363,7 @@ const statusBase = (p: Pedido): StatusPedido => (p.historico.some((h) => h.marco
    transitório até ser resolvida deliberadamente (Notificar financeiro). */
 const comStatus = (p: Pedido): Pedido => ({
     ...p,
-    status: p.solicitacoes.some((s) => s.estado === "falha" || s.estado === "aguardando-financeiro")
+    status: p.solicitacoes.some((s) => s.estado === "falha")
         ? "falha"
         : p.solicitacoes.some((s) => s.estado === "processando")
           ? "pago-processando"
@@ -1599,11 +1580,6 @@ export const sessaoRealizada = (item: CatalogoItem) => {
     return sessao ? sessao.inicio <= Date.now() : false;
 };
 
-export const dentroDoPrazoDeTroca = (item: CatalogoItem) => {
-    const sessao = sessaoDoItem(item);
-    return sessao ? sessao.inicio - Date.now() > PRAZO_TROCA_HORAS * 60 * 60 * 1000 : true;
-};
-
 /** Sessão da linha já aconteceu: não há mais o que trocar nela. */
 export const linhaEncerrada = (linha: PedidoItem) => {
     const item = getItem(linha.itemId);
@@ -1663,13 +1639,6 @@ export const validarTrocaItem = (pedido: Pedido, linha: PedidoItem, novoItem: Ca
             curto: "Sessão encerrada",
             titulo: "Sessão já realizada",
             descricao: `${novoItem.nome} ocorreu em ${sessaoLabel(novoItem)}. A troca só vale para sessões futuras.`,
-        };
-    }
-    if (!dentroDoPrazoDeTroca(novoItem)) {
-        return {
-            curto: `Prazo encerrado`,
-            titulo: "Prazo de troca encerrado",
-            descricao: `${novoItem.nome} começa em ${sessaoLabel(novoItem)}. A troca exige ${PRAZO_TROCA_HORAS} horas de antecedência.`,
         };
     }
     const titular = getConta(linha.titularId ?? pedido.compradorId);
@@ -1734,8 +1703,10 @@ export const validarNovoTitular = (pedido: Pedido, linha: PedidoItem, conta: Con
 export const temConflito = (pedido: Pedido) => pedido.solicitacoes.length > 0;
 
 /** Operação aberta que já reservou esta linha. Enquanto existir, a linha não entra em outra. */
+/* Reprovada é estado final com estorno feito: não há nada pendente sobre a linha, então ela
+   volta a aceitar operação. Só aguardando, processando e falha prendem a unidade (§12.1). */
 export const solicitacaoDaLinha = (pedido: Pedido, linhaId: string) =>
-    pedido.solicitacoes.find((s) => s.linhasAfetadas.includes(linhaId));
+    pedido.solicitacoes.find((s) => s.linhasAfetadas.includes(linhaId) && s.estado !== "reprovada");
 
 /** O que está acontecendo com a linha agora, para mostrar dentro do próprio item. */
 export const pendenciaDaLinha = (pedido: Pedido, linha: PedidoItem) => {
@@ -1825,7 +1796,7 @@ export interface CriarSolicitacaoInput {
     motivo: Motivo;
 }
 
-export const canalLabel = (canal: CanalEnvio) => (canal === "email" ? "e-mail" : "WhatsApp");
+export const canalLabel = (_canal: CanalEnvio) => "e-mail";
 
 /** Os campos que toda entrada de uma alteração carrega, para o histórico agrupar por ela. */
 const daAlteracao = (s: Pick<Solicitacao, "id" | "tipo" | "linhasAfetadas">) => ({ solicitacaoId: s.id, tipo: s.tipo, linhaIds: s.linhasAfetadas });
@@ -1839,6 +1810,11 @@ const daAlteracao = (s: Pick<Solicitacao, "id" | "tipo" | "linhasAfetadas">) => 
  * resposta anterior de cada linha. O destino já foi consumido na reserva, então
  * aqui só entra o que sai (575995905 §11, 575635517 §10).
  */
+/** Solta o que a solicitação havia segurado no destino. Usado quando ela termina sem aplicar:
+ *  expirada, cancelada ou reprovada depois do pagamento. */
+const liberarReservasDoDestino = (solicitacao: Solicitacao) =>
+    solicitacao.reservas.forEach((r) => (r.tipo === "item" ? ajustarEstoqueItem(r.itemId, 1) : ajustarEstoqueResposta(r.perguntaId, r.valor, 1)));
+
 const devolverEstoqueDasOrigens = (pedido: Pedido, solicitacao: Solicitacao) => {
     solicitacao.aplicar.trocas?.forEach((t) => {
         const origem = pedido.itens.find((l) => l.id === t.pedidoItemId);
@@ -2104,24 +2080,27 @@ export const registrarPagamento = (pedidoId: string, solicitacaoId: string, refe
 
         const bloqueio = revalidarSolicitacao(pedido, solicitacao);
         if (bloqueio) {
-            /* Nada é revertido: a origem continua com a linha, o destino segue reservado.
-               Só o financeiro, fora deste sistema, decide o que fazer com o pagamento já feito. */
+            /* H-06, nas três EFs: pagamento confirmado com revalidação reprovada gera estorno
+               integral automático e estado final REPROVADA. Nada muda no pedido, as reservas
+               do destino são liberadas e a linha volta a aceitar operação. */
+            liberarReservasDoDestino(solicitacao);
             atualizarPedido(pedidoId, (p) => {
                 const atual = p.solicitacoes.find((s) => s.id === solicitacaoId);
                 if (!atual) return p;
                 return comStatus({
                     ...p,
-                    solicitacoes: p.solicitacoes.map((s) => (s.id === solicitacaoId ? { ...s, estado: "falha", motivoFalha: bloqueio.descricao } : s)),
+                    baseStatus: statusBase(p),
+                    solicitacoes: p.solicitacoes.map((s) => (s.id === solicitacaoId ? { ...s, estado: "reprovada", motivoFalha: bloqueio.descricao } : s)),
                     historico: [
                         ...p.historico,
                         {
                             id: novoId("h"),
                             dataLabel: agoraLabel(),
                             responsavel: "Sistema",
-                            titulo: `${TIPO_OPERACAO_CURTO[atual.tipo]} paga e não aplicada`,
-                            descricao: bloqueio.descricao,
+                            titulo: `${TIPO_OPERACAO_CURTO[atual.tipo]} reprovada após o pagamento`,
+                            descricao: `${bloqueio.descricao} O valor pago foi estornado integralmente e nada mudou no pedido.`,
                             valor: atual.total,
-                            estado: "falha",
+                            estado: "concluido",
                             marco: "falha",
                             ...daAlteracao(atual),
                         },
@@ -2197,40 +2176,6 @@ export const cancelarSolicitacao = (pedidoId: string, solicitacaoId: string) =>
 /** Volta o pedido de falha ou expirado para o estado operável. */
 export const retomarPedido = (pedidoId: string) =>
     atualizarPedido(pedidoId, (p) => comStatus({ ...p, baseStatus: statusBase(p) }));
-
-export interface NotificarFinanceiroInput {
-    pedidoId: string;
-    solicitacaoId: string;
-    cenario: "falha-aplicacao" | "pagamento-indevido";
-    relato: string;
-}
-
-/** Escalona um incidente financeiro de forma honesta: registra o relato e deixa a operação
- *  como leitura, sem fingir que o Backstage consegue reverter dinheiro sozinho. */
-export const notificarFinanceiro = ({ pedidoId, solicitacaoId, cenario, relato }: NotificarFinanceiroInput) =>
-    atualizarPedido(pedidoId, (p) => {
-        const atual = p.solicitacoes.find((s) => s.id === solicitacaoId);
-        if (!atual) return p;
-        const quando = agoraLabel();
-        return comStatus({
-            ...p,
-            solicitacoes: p.solicitacoes.map((s) => (s.id === solicitacaoId ? { ...s, estado: "aguardando-financeiro", escalonamento: { cenario, relato, dataLabel: quando } } : s)),
-            historico: [
-                ...p.historico,
-                {
-                    id: novoId("h"),
-                    dataLabel: quando,
-                    responsavel: OPERADOR_ATUAL,
-                    titulo: "Financeiro notificado",
-                    descricao: relato,
-                    valor: atual.total,
-                    estado: "falha",
-                    marco: "financeiro",
-                    ...daAlteracao(atual),
-                },
-            ],
-        });
-    });
 
 /* ------------------------------------------------------------------ */
 /*  Rascunhos: operação em montagem, sem cobrança gerada ainda         */

@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
-import { Mail01, MessageChatCircle } from "@untitledui/icons";
 import { Input } from "@/components/base/input/input";
-import { RadioGroupRadioButton } from "@/components/base/radio-groups/radio-group-radio-button";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { formatarMoeda, PRAZO_REAL_LABEL, type CanalEnvio, type Conta } from "../../data/pos-compra-store";
 import { Regra } from "../pos-compra-ui";
 
 export const isEmailValido = (valor: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valor.trim());
-export const isTelefoneValido = (valor: string) => valor.replace(/\D/g, "").length >= 10;
 
 interface EtapaEnvioProps {
     /** A quem a cobrança deveria ir por padrão — o comprador numa troca, o novo titular numa transferência.
@@ -33,30 +30,21 @@ export function EtapaEnvio({ destinatarioSugerido, resumo, total, canal, destino
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [canal, destinatarioSugerido]);
 
-    const valido = canal === "email" ? isEmailValido(destino) : isTelefoneValido(destino);
+    const valido = isEmailValido(destino);
     const link = "pay.ingresse.com/alteracao/…";
 
     return (
         <>
             <Regra>Escolha para onde vai o link de pagamento. O comprador paga fora do Backstage, então confira o destinatário antes de enviar.</Regra>
 
-            <RadioGroupRadioButton
-                value={canal}
-                onChange={(valor) => onCanalChange(valor as CanalEnvio)}
-                items={[
-                    { value: "email", title: "E-mail", secondaryTitle: "", description: "Envia o link por e-mail.", icon: Mail01 },
-                    { value: "whatsapp", title: "WhatsApp", secondaryTitle: "", description: "Envia o link por WhatsApp.", icon: MessageChatCircle },
-                ]}
-            />
-
             <Input
-                label={canal === "email" ? "E-mail de destino" : "WhatsApp de destino (com DDD)"}
-                placeholder={canal === "email" ? "comprador@email.com" : "(11) 98888-7777"}
+                label="E-mail de destino"
+                placeholder="comprador@email.com"
                 value={destino}
                 onChange={onDestinoChange}
                 onBlur={() => setTocado(true)}
                 isInvalid={tocado && !valido}
-                hint={tocado && !valido ? (canal === "email" ? "Informe um e-mail válido." : "Informe um número com DDD.") : undefined}
+                hint={tocado && !valido ? "Informe um e-mail válido." : undefined}
                 isRequired
             />
 

@@ -427,7 +427,7 @@ const ParValor = ({ rotulo, valor, destaque = false }: { rotulo: string; valor: 
 /*  Alterações em andamento                                            */
 /* ------------------------------------------------------------------ */
 
-const ORDEM_ESTADO: Record<Solicitacao["estado"], number> = { falha: 0, processando: 1, aguardando: 2, "aguardando-financeiro": 3 };
+const ORDEM_ESTADO: Record<Solicitacao["estado"], number> = { falha: 0, reprovada: 1, processando: 2, aguardando: 3 };
 
 /** O que está aberto neste pedido, sempre acima das abas: usado ao mesmo tempo que a lista, não
  *  pode ficar atrás de um clique. Falha primeiro. Só existe quando há alguma coisa aberta. */
@@ -481,7 +481,6 @@ const CartaoRascunho = ({ pedido, rascunho, onContinuar }: { pedido: Pedido; ras
                 {itens && <p className="text-sm text-tertiary">{itens}</p>}
                 <p className="text-sm text-tertiary">
                     Atualizado por {rascunho.operador} às {horaDoLabel(rascunho.atualizadoEmLabel)}. Nada foi cobrado nem reservado.
-                    {rascunho.aguardandoCadastroDe && ` Aguardando o cadastro de ${rascunho.aguardandoCadastroDe}.`}
                 </p>
             </div>
             <div className="flex items-center gap-4">
@@ -687,7 +686,7 @@ const EstadoDaUnidade = ({ pedido, linha, solicitacao }: { pedido: Pedido; linha
             </p>
         );
     }
-    if (solicitacao.estado === "aguardando-financeiro") return <p className="text-sm font-medium text-warning-primary">Com o financeiro desde {dataDoLabel(solicitacao.escalonamento?.dataLabel ?? "")}</p>;
+    if (solicitacao.estado === "reprovada") return <p className="text-sm text-secondary">Reprovada na revalidação. O valor pago foi estornado e nada mudou.</p>;
     if (solicitacao.estado === "processando") return <p className="text-sm text-secondary">Pagamento registrado. Aplicando a {tipo}.</p>;
 
     const alvo =
@@ -825,7 +824,7 @@ const resultadoDoGrupo = (pedido: Pedido, grupo: GrupoHistorico): { rotulo: stri
     const viva = pedido.solicitacoes.find((s) => s.id === grupo.solicitacaoId);
     if (viva) {
         if (viva.estado === "falha") return { rotulo: "Paga e não aplicada", tom: "erro", dinheiro: "pagos e não aplicados", viva };
-        if (viva.estado === "aguardando-financeiro") return { rotulo: "Com o financeiro", tom: "aviso", dinheiro: "pagos e não aplicados", viva };
+        if (viva.estado === "reprovada") return { rotulo: "Reprovada, valor estornado", tom: "neutro", dinheiro: "estornados", viva };
         return { rotulo: "Em andamento", tom: "neutro", dinheiro: viva.estado === "processando" ? "pagos" : "aguardando pagamento", viva };
     }
     const ultimo = grupo.entradas[grupo.entradas.length - 1];

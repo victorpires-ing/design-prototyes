@@ -4,14 +4,13 @@ import { AlertTriangle, ArrowRight, Check, CheckCircle, ChevronDown, Clock, Copy
 import { Button } from "@/components/base/buttons/button";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Input } from "@/components/base/input/input";
-import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-buttons";
 import { RadioGroupRadioButton } from "@/components/base/radio-groups/radio-group-radio-button";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cx } from "@/utils/cx";
 import { FOCO, Regra, ResumoFinanceiro, TIPO_OPERACAO_ICONE, mascararDestino, useContagem } from "./pos-compra-ui";
-import { isEmailValido, isTelefoneValido } from "./wizard/EtapaEnvio";
+import { isEmailValido } from "./wizard/EtapaEnvio";
 import {
     TIPO_OPERACAO_CURTO,
     canalLabel,
@@ -21,7 +20,6 @@ import {
     formatarMoeda,
     getConta,
     getItem,
-    notificarFinanceiro,
     reenviarLink,
     registrarPagamento,
     titularDaLinha,
@@ -81,7 +79,7 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
     const aguardando = solicitacao.estado === "aguardando";
     const processando = solicitacao.estado === "processando";
     const falha = solicitacao.estado === "falha";
-    const comFinanceiro = solicitacao.estado === "aguardando-financeiro";
+    const reprovada = solicitacao.estado === "reprovada";
 
     const restante = useContagem(aguardando ? solicitacao.expiraEm : undefined, () => expirarSolicitacao(pedido.id, solicitacao.id));
     /* Reta final do prazo (os últimos 10 minutos de 1 hora): o tempo ganha peso. */
@@ -89,7 +87,6 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
     const [reenviarAberto, setReenviarAberto] = useState(false);
     const [pagamentoAberto, setPagamentoAberto] = useState(false);
     const [cancelarAberto, setCancelarAberto] = useState(false);
-    const [notificarAberto, setNotificarAberto] = useState(false);
     const { copied, copy } = useClipboard();
 
     const pagante = quemPaga(pedido, solicitacao);
@@ -156,12 +153,14 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
                 </div>
             )}
 
-            {comFinanceiro && solicitacao.escalonamento && (
-                <div className="flex items-start gap-3 rounded-lg bg-warning-primary px-3 py-2.5 ring-1 ring-border-secondary">
-                    <AlertTriangle className="mt-0.5 size-5 shrink-0 text-fg-warning-secondary" aria-hidden="true" />
+            {/* H-06: reprovada é estado final com estorno automático. Nada ficou pendente, então
+                a faixa informa e não pede ação. */}
+            {reprovada && (
+                <div className="flex items-start gap-3 rounded-lg bg-secondary px-3 py-2.5 ring-1 ring-border-secondary">
+                    <AlertTriangle className="mt-0.5 size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
                     <div className="min-w-0">
-                        <p className="text-sm font-semibold text-warning-primary">Com o financeiro desde {solicitacao.escalonamento.dataLabel}</p>
-                        <p className="text-sm text-secondary">O ajuste é feito fora do Backstage. As unidades ficam bloqueadas até lá.</p>
+                        <p className="text-sm font-semibold text-primary">Reprovada na revalidação após o pagamento</p>
+                        <p className="text-sm text-secondary">{solicitacao.motivoFalha} O valor foi estornado integralmente e nada mudou no pedido.</p>
                     </div>
                 </div>
             )}
@@ -201,13 +200,10 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
                 </div>
             )}
 
-            {falha && (
-                <div>
-                    <Button size="sm" color="primary" onClick={() => setNotificarAberto(true)}>
-                        Notificar financeiro
-                    </Button>
-                </div>
-            )}
+            {/* Falha é erro técnico com o pagamento aprovado: a EF manda reprocessar, sem nova
+                cobrança, e restringe a ação ao Admin Ingresse (§17). O protótipo não tem perfis,
+                então só diz o que vai acontecer. */}
+            {falha && <p className="text-sm text-secondary">Pagamento aprovado e aplicação interrompida por erro técnico. Será reprocessada, sem nova cobrança.</p>}
 
             {/* 4. Detalhe, sob demanda */}
             <details className="group border-t border-secondary pt-3">
@@ -224,7 +220,6 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
                                     Motivo: {descreverMotivo(solicitacao.motivo)} · aberta por {solicitacao.operador}
                                 </p>
                             )}
-                            {comFinanceiro && solicitacao.escalonamento && <p>Relato ao financeiro: {solicitacao.escalonamento.relato}</p>}
                         </div>
                     )}
                 </div>
@@ -233,7 +228,6 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
             <ModalReenviarLink isOpen={reenviarAberto} onClose={() => setReenviarAberto(false)} pedidoId={pedido.id} solicitacao={solicitacao} pagante={pagante} />
             <ModalRegistrarPagamento isOpen={pagamentoAberto} onClose={() => setPagamentoAberto(false)} pedidoId={pedido.id} solicitacao={solicitacao} />
             <ModalCancelarAlteracao isOpen={cancelarAberto} onClose={() => setCancelarAberto(false)} pedidoId={pedido.id} solicitacaoId={solicitacao.id} />
-            <ModalNotificarFinanceiro isOpen={notificarAberto} onClose={() => setNotificarAberto(false)} pedidoId={pedido.id} solicitacao={solicitacao} />
         </section>
     );
 }
@@ -245,13 +239,9 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
 function ModalReenviarLink({ isOpen, onClose, pedidoId, solicitacao, pagante }: { isOpen: boolean; onClose: () => void; pedidoId: string; solicitacao: Solicitacao; pagante?: Conta }) {
     /* Começa no último destino usado, não no cadastro: se o cliente disse "mudei de número" e o
        operador corrigiu, o próximo reenvio não volta para o número velho. */
-    const [canal, setCanal] = useState<CanalEnvio>(solicitacao.canalEnvio);
-    const [destinos, setDestinos] = useState<Record<CanalEnvio, string>>({
-        email: solicitacao.canalEnvio === "email" ? solicitacao.destinatarioEnvio : (pagante?.email ?? ""),
-        whatsapp: solicitacao.canalEnvio === "whatsapp" ? solicitacao.destinatarioEnvio : (pagante?.celular ?? ""),
-    });
-    const destino = destinos[canal];
-    const valido = canal === "email" ? isEmailValido(destino) : isTelefoneValido(destino);
+    const canal: CanalEnvio = "email";
+    const [destino, setDestino] = useState(solicitacao.destinatarioEnvio || (pagante?.email ?? ""));
+    const valido = isEmailValido(destino);
 
     const enviar = () => {
         reenviarLink(pedidoId, solicitacao.id, canal, destino.trim());
@@ -268,16 +258,12 @@ function ModalReenviarLink({ isOpen, onClose, pedidoId, solicitacao, pagante }: 
                             <h2 className="text-lg font-semibold text-primary">Reenviar link de pagamento</h2>
                             <p className="mt-1 text-sm text-tertiary">O link é o mesmo e o prazo não reinicia. Confira o contato com o cliente antes de enviar.</p>
                         </div>
-                        <RadioGroup aria-label="Canal" value={canal} onChange={(valor) => setCanal(valor as CanalEnvio)} className="flex-row gap-6">
-                            <RadioButton value="email" label="E-mail" />
-                            <RadioButton value="whatsapp" label="WhatsApp" />
-                        </RadioGroup>
                         <Input
-                            label={canal === "email" ? "E-mail" : "WhatsApp"}
+                            label="E-mail"
                             value={destino}
-                            onChange={(valor) => setDestinos((atual) => ({ ...atual, [canal]: valor }))}
+                            onChange={setDestino}
                             isInvalid={destino.length > 0 && !valido}
-                            hint={destino.length > 0 && !valido ? (canal === "email" ? "Confira o e-mail." : "Confira o número com DDD.") : undefined}
+                            hint={destino.length > 0 && !valido ? "Confira o e-mail." : undefined}
                         />
                         <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                             <Button size="md" color="secondary" onClick={onClose}>
@@ -383,55 +369,3 @@ function ModalCancelarAlteracao({ isOpen, onClose, pedidoId, solicitacaoId }: { 
     );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Notificar financeiro: escalonamento honesto, nunca finge reverter  */
-/* ------------------------------------------------------------------ */
-
-function ModalNotificarFinanceiro({ isOpen, onClose, pedidoId, solicitacao }: { isOpen: boolean; onClose: () => void; pedidoId: string; solicitacao: Solicitacao }) {
-    const [cenario, setCenario] = useState<"falha-aplicacao" | "pagamento-indevido">("falha-aplicacao");
-    const [relato, setRelato] = useState("");
-
-    return (
-        <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable>
-            <Modal className="sm:max-w-md">
-                <Dialog aria-label="Notificar financeiro">
-                    <div className="flex w-full flex-col gap-4 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
-                        <div>
-                            <h2 className="text-lg font-semibold text-primary">Notificar financeiro</h2>
-                            <p className="mt-1 text-sm text-tertiary">Esta alteração não pode ser revertida pelo Backstage. O time financeiro trata o ajuste fora do sistema.</p>
-                        </div>
-
-                        <RadioGroupRadioButton
-                            value={cenario}
-                            onChange={(v) => setCenario(v as typeof cenario)}
-                            items={[
-                                { value: "falha-aplicacao", title: "Pagamento confirmado e aplicação falhou", secondaryTitle: "", description: "A cobrança foi paga, mas a troca ou transferência não pôde ser aplicada.", icon: AlertTriangle },
-                                { value: "pagamento-indevido", title: "Pagamento pode ter sido registrado por engano", secondaryTitle: "", description: "Foi registrado como pago sem confirmação real do comprador.", icon: AlertTriangle },
-                            ]}
-                        />
-
-                        <TextArea label="Relato para o financeiro" placeholder="Descreva o que aconteceu" value={relato} onChange={setRelato} rows={4} isRequired />
-
-                        <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                            <Button size="md" color="secondary" onClick={onClose}>
-                                Voltar
-                            </Button>
-                            <Button
-                                size="md"
-                                color="primary"
-                                isDisabled={relato.trim().length === 0}
-                                onClick={() => {
-                                    notificarFinanceiro({ pedidoId, solicitacaoId: solicitacao.id, cenario, relato: relato.trim() });
-                                    toast.success("Financeiro notificado.");
-                                    onClose();
-                                }}
-                            >
-                                Notificar financeiro
-                            </Button>
-                        </div>
-                    </div>
-                </Dialog>
-            </Modal>
-        </ModalOverlay>
-    );
-}

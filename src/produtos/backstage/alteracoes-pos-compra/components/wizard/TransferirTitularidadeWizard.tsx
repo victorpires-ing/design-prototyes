@@ -283,7 +283,10 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
             ? Boolean(selecionada)
             : etapa === "itens"
               ? linhas.length > 0 && bloqueiosPorLinha.length === 0
-              : Boolean(selecionada) && motivoValido(motivo);
+              : /* A revisão também exige unidade: dá para chegar aqui com a seleção vazia, por
+                    rascunho retomado ou porque outra operação levou as unidades no meio do
+                    caminho, e sem isso o envio da cobrança liberava com zero unidades. */
+                Boolean(selecionada) && linhas.length > 0 && motivoValido(motivo);
 
     const rotuloAvancar = etapa === "destinatario" ? "Escolher itens" : "Revisar transferência";
 

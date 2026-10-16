@@ -174,7 +174,11 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
         }),
     ];
 
-    const referenciaDoItem = (item: CatalogoItem) => linhasSaem.find((l) => getItem(l.itemId)?.tipo === item.tipo) ?? linhasSaem[0];
+    /* A elegibilidade é da dupla possuidor + item de destino. Escolher a referência pelo TIPO
+       do item testava a regra contra outra unidade, de outro possuidor: num pedido com titulares
+       diferentes, um item restrito aparecia liberado porque foi conferido com a pessoa errada.
+       Agora o item só aparece liberado quando passa para TODAS as unidades que estão saindo. */
+    const referenciaDoItem = (item: CatalogoItem) => linhasSaem.find((l) => validarTrocaItem(pedido, l, item)) ?? linhasSaem[0];
 
     const noPedidoPorItem = new Map<string, number>();
     pedido.itens.forEach((l) => noPedidoPorItem.set(l.itemId, (noPedidoPorItem.get(l.itemId) ?? 0) + 1));
@@ -347,7 +351,9 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
             reservas: pares.map(({ novoItem }) => ({ tipo: "item" as const, itemId: novoItem.id })),
             canalEnvio: "email",
             destinatarioEnvio: destino,
-            motivo,
+            /* O aceite entra junto do motivo, que é o que vai para o histórico: a tela promete
+               "o aceite fica registrado no histórico" e até aqui ele morria no estado local. */
+            motivo: precisaAceite ? { ...motivo, nota: [motivo.nota.trim(), `Comprador aceitou não receber de volta ${formatarMoeda(naoDevolvido)}.`].filter(Boolean).join(" ") } : motivo,
         });
         if (!id) {
             toast.error("Uma das unidades entrou em outra alteração enquanto você montava esta. Confira o pedido e tente de novo.");

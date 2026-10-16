@@ -82,7 +82,11 @@ export function WizardShell({
                 página por posicionamento absoluto, que volta a ser estático no mobile, onde
                 centrar ao lado do botão desalinharia os dois. */}
             <header className="relative flex items-center justify-between gap-3 px-4 py-6 max-md:justify-start md:px-6">
-                <ButtonUtility size="sm" color="tertiary" icon={ArrowLeft} tooltip="Voltar para o pedido" onClick={onClose} />
+                {/* Uma etapa para trás, e para fora do fluxo quando já está na primeira: é o que
+                    `onVoltar` sempre significou nos quatro chamadores. A seta chamava `onClose`,
+                    então não havia como voltar uma etapa em lugar nenhum; o stepper do DS não é
+                    clicável e os links "Alterar" que compensavam isso saíram das etapas 2. */}
+                <ButtonUtility size="sm" color="tertiary" icon={ArrowLeft} tooltip={indiceAtual === 0 ? "Voltar para o pedido" : "Voltar uma etapa"} onClick={onVoltar} />
                 <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 flex-col items-center text-center max-md:static max-md:translate-x-0 max-md:items-start max-md:text-left">
                     <h1 className="text-display-xs font-bold text-primary">{titulo}</h1>
                     {subtitulo && <p className="text-sm text-tertiary">{subtitulo}</p>}

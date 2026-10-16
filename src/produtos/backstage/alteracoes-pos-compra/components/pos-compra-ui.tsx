@@ -205,7 +205,7 @@ export const CampoMotivo = ({ valor, onChange }: { valor: Motivo; onChange: (val
     </div>
 );
 
-export const MOTIVO_INICIAL: Motivo = { categoria: "pedido-cliente", nota: "", chamado: "" };
+export const MOTIVO_INICIAL: Motivo = { categoria: "", nota: "", chamado: "" };
 
 /** Contagem regressiva acelerada da cobrança pendente. */
 export const useContagem = (expiraEm: number | undefined, aoExpirar: () => void) => {

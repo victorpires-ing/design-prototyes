@@ -22,6 +22,14 @@ interface BarraTotalProps {
     /** Uma linha por cobrança acessória, com o nome dela. Agregar duas sob um
         rótulo só apagaria justamente a discriminação que o art. 6º pede. */
     taxas: { nome: string; valor: number }[];
+    /**
+     * Rodapé mobile com o resumo fechado. A barra é uma faixa permanente sobre o
+     * conteúdo, então ali ela se reduz ao essencial: sai o bloco de taxas, e sai
+     * a régua de cima, porque fechado não há nada acima para separar — cabeçalho
+     * e total são um bloco só. O total, que é o que o art. 7º manda destacar,
+     * continua sempre visível; a discriminação volta ao abrir o resumo.
+     */
+    compacta?: boolean;
     continuarDisabled: boolean;
     rotuloBotao?: string;
     /** Fora de um card (layouts com mapa), a barra vira o próprio card. */
@@ -40,7 +48,17 @@ function Linha({ rotulo, valor }: { rotulo: ReactNode; valor: string }) {
     );
 }
 
-export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBotao = "Continuar", comoCard, onAvancar, onAbrirTaxa }: BarraTotalProps) {
+export function BarraTotal({
+    variante,
+    total,
+    taxas,
+    compacta,
+    continuarDisabled,
+    rotuloBotao = "Continuar",
+    comoCard,
+    onAvancar,
+    onAbrirTaxa,
+}: BarraTotalProps) {
     const mobile = variante === "mobile";
     /*
       Fechado por padrão, e o bloco é sempre o mesmo: título, agregado e
@@ -58,9 +76,15 @@ export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBo
     return (
         <div
             className={cx(
-                "flex flex-col gap-3 px-4",
-                mobile ? "pt-3 pb-9" : "py-4",
-                comoCard ? "rounded-xl bg-primary ring-1 ring-border-secondary" : "border-t border-secondary",
+                "flex flex-col px-4",
+                /*
+                  `pb-9` era folga cravada para a barra de gestos do iOS, 36px em
+                  todo aparelho, com ou sem ela. Com a área segura real o rodapé
+                  devolve ~25px de tela em quem não tem a barra, e continua
+                  intocado em quem tem.
+                */
+                mobile ? "gap-2 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" : "gap-3 py-4",
+                comoCard ? "rounded-xl bg-primary ring-1 ring-border-secondary" : !compacta && "border-t border-secondary",
             )}
         >
             {/*
@@ -76,7 +100,7 @@ export function BarraTotal({ variante, total, taxas, continuarDisabled, rotuloBo
               altura zero, e os 8px sumiriam de uma vez no desmonte — a transição
               acabava num pulo. O espaçamento vai dentro de cada peça.
             */}
-            {taxas.length > 0 && (
+            {!compacta && taxas.length > 0 && (
                 <div className="flex flex-col">
                     <Linha
                         rotulo={

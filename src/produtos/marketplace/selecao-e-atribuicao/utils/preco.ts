@@ -109,6 +109,24 @@ export const precoDoCombo = (base: number, extras: number[], aliquota: number): 
 export const nomeDaTaxa = (p: Preco) => p.nomeTaxa ?? TAXA_SERVICO;
 
 /**
+ * Forma curta, para a linha de composição dentro do card do item, onde o nome
+ * por extenso empurrava a linha para duas no celular.
+ *
+ * É abreviação do MESMO termo, não outro nome: "Taxa de serviço" vira
+ * "tx. serviço", "Taxa de licenciamento" vira "tx. licenciamento". Derivada do
+ * nome configurado, e não escrita à mão, senão renomear a taxa no editor
+ * deixaria o card exibindo a abreviação da taxa antiga.
+ *
+ * O nome por extenso continua na barra de total, no painel do (i) e no rótulo
+ * acessível: quem usa leitor de tela não recebe abreviação.
+ */
+export const nomeDaTaxaCurto = (p: Preco) =>
+    nomeDaTaxa(p)
+        .replace(/^taxa\s+de\s+/i, "tx. ")
+        .replace(/^taxa\s+/i, "tx. ")
+        .toLowerCase();
+
+/**
  * Linha de composição: só a taxa, nomeada e entre parênteses. O número
  * dominante passou a ser o valor do ingresso, então a parcela que precisa de
  * rótulo é a taxa, não a face.

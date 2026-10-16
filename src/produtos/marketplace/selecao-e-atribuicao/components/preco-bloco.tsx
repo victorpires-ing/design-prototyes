@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cx } from "@/utils/cx";
-import { ariaPreco, brl, legendaTaxa, multiplicar, nomeDaTaxa, type Preco } from "../utils/preco";
+import { ariaPreco, brl, legendaTaxa, multiplicar, nomeDaTaxaCurto, type Preco } from "../utils/preco";
 
 /**
  * A única forma de renderizar dinheiro para o consumidor.
@@ -59,23 +59,32 @@ export function PrecoBloco({ preco, qtd = 1, tamanho = "md", rotulo, prefixo, mo
 }
 
 /**
- * Forma de linha, validada em teste com usuário: valor do ingresso, a taxa
- * inline logo depois e o total colado na ação.
+ * Composição do valor: ingresso e taxa, inline.
  *
- * O teste mostrou que o valor somado sozinho deixa dúvida ("já inclui a taxa?")
- * e que a face sozinha obriga a conta. Os três números juntos resolvem os dois,
- * e o total fica perto do botão, que é onde a decisão acontece.
+ * Teste com usuário mostrou que o valor somado sozinho deixa dúvida ("já
+ * inclui a taxa?") e que a face sozinha obriga a conta — por isso os dois
+ * aparecem. Mas a linha inteira é de peso normal: com a face em negrito, cada
+ * item tinha DOIS números fortes e o olho não sabia qual era o que decide. A
+ * parcela precisa estar discriminada e legível (art. 6º); destacada é o total
+ * (art. 7º), e só ele.
  */
 export function PrecoLinha({ preco, className }: { preco: Preco; className?: string }) {
+    /*
+      A parcela da taxa é um bloco indivisível. No celular a linha não cabe em
+      199px por uns poucos pixels, e deixada à própria sorte ela quebrava no
+      último espaço, largando "serviço" sozinho na segunda linha. Presa, a
+      quebra cai entre a face e a taxa, que é onde o sentido se divide.
+    */
     return (
-        <span className={cx("flex flex-wrap items-baseline gap-x-1.5", className)} aria-label={ariaPreco(preco)}>
-            <span aria-hidden="true" className="text-sm font-semibold text-primary tabular-nums">
-                {brl(preco.face)}
-            </span>
+        <span className={cx("block text-sm text-tertiary tabular-nums", className)} aria-label={ariaPreco(preco)}>
+            <span aria-hidden="true">{brl(preco.face)}</span>
             {preco.taxa > 0 && (
-                <span aria-hidden="true" className="text-sm text-tertiary tabular-nums">
-                    + {brl(preco.taxa)} de {nomeDaTaxa(preco).toLowerCase()}
-                </span>
+                <>
+                    {" "}
+                    <span aria-hidden="true" className="whitespace-nowrap">
+                        + {brl(preco.taxa)} {nomeDaTaxaCurto(preco)}
+                    </span>
+                </>
             )}
         </span>
     );
@@ -89,16 +98,50 @@ export function PrecoLinha({ preco, className }: { preco: Preco; className?: str
  * onde a decisão acontece. Empilhado, os dois ficavam em cantos opostos do
  * bloco e a pessoa subia e descia o olho a cada clique no "+".
  *
- * `flex-wrap` com `ml-auto` no grupo da direita: quando a largura não dá para
- * os dois valores na mesma linha, o par total+seletor desce inteiro e continua
- * alinhado à direita, em vez de o total se separar do controle.
+ * Valores e seletor no MESMO container, um só em todos os tamanhos.
+ *
+ * No celular são duas linhas. Em cima o que decide: total na esquerda e
+ * seletor na direita, nas pontas da mesma linha. Embaixo o preço do ingresso e
+ * a taxa, com a largura inteira do card — que é o que fazem caber numa linha
+ * só, em vez de quebrar disputando espaço com o seletor.
+ *
+ * De `sm` para cima tudo volta para uma linha: composição à esquerda, total
+ * empurrado para a direita e o seletor logo depois dele.
+ *
+ * A composição vem antes no DOM e desce por `order` no celular. O mismatch é
+ * entre dois textos vizinhos, cada um com o seu `aria-label`, e "preço e
+ * depois total" é sequência correta de ouvir; o seletor, único focável da
+ * faixa, continua sendo o último.
+ *
+ * A régua vem ANTES do par total+seletor, separando a identificação do item
+ * dos valores — e não entre as duas linhas de valor, que são a mesma coisa
+ * dita em dois níveis. É `border-primary`, a de maior contraste, e não se
+ * confunde com a que separa um ITEM do outro porque tem outra EXTENSÃO: a da
+ * lista corre de borda a borda do card, esta fica dentro do padding.
  */
-export function PrecoFaixa({ preco, children, className }: { preco: Preco; children?: ReactNode; className?: string }) {
+export function PrecoFaixa({
+    preco,
+    rotulo,
+    children,
+    className,
+}: {
+    preco: Preco;
+    /** Substitui "total", ex.: "a partir de" em combo com opcional pago. */
+    rotulo?: string;
+    children?: ReactNode;
+    className?: string;
+}) {
     return (
-        <div className={cx("flex flex-wrap items-center justify-between gap-x-4 gap-y-2", className)}>
-            <PrecoLinha preco={preco} />
-            <div className="ml-auto flex shrink-0 items-center gap-3">
-                <TotalLinha preco={preco} />
+        <div className={cx("flex min-w-0 flex-col sm:flex-row sm:items-center sm:gap-4", className)}>
+            <PrecoLinha preco={preco} className="order-2 sm:order-none" />
+            {/*
+              `mb-4` embaixo para igualar o respiro de cima: da identificação até
+              o seletor são 12px da faixa mais 4px depois da régua. Com 4px
+              embaixo o par ficava encostado no detalhamento e descolado do
+              item acima.
+            */}
+            <div className="order-1 mb-4 flex w-full items-center justify-between gap-3 border-t border-primary pt-1 sm:order-none sm:mb-0 sm:ml-auto sm:w-auto sm:shrink-0 sm:justify-end sm:gap-4 sm:border-0 sm:pt-0">
+                <TotalLinha preco={preco} rotulo={rotulo} />
                 {children}
             </div>
         </div>
@@ -119,18 +162,26 @@ export function PrecoPar({ preco, className }: { preco: Preco; className?: strin
 }
 
 /**
- * Total do item, com o rótulo "total" em caixa baixa antes do número.
+ * Total do item. Sem rótulo visível: o número é o mais pesado do bloco e a
+ * composição logo ao lado já se explica sozinha.
  *
- * O rótulo voltou junto com a faixa horizontal: dois valores lado a lado na
- * mesma linha, sem nada que os distinga, são dois números soltos. Empilhado a
- * posição bastava; em linha, não basta.
+ * O leitor de tela continua recebendo "Total", porque ali não existe peso nem
+ * posição — sem a palavra seriam dois valores lidos em sequência, e quem ouve
+ * não teria como saber qual é qual.
+ *
+ * `rotulo` só entra quando o número NÃO é o total: em combo cujo opcional pago
+ * ainda pode subi-lo, ele vira "a partir de", porque anunciar aquele valor
+ * como final seria subdeclaração.
  */
-export function TotalLinha({ preco, className }: { preco: Preco; className?: string }) {
+export function TotalLinha({ preco, rotulo, className }: { preco: Preco; rotulo?: string; className?: string }) {
     return (
-        <span className={cx("flex items-baseline gap-1", className)} aria-label={`Total ${brl(preco.total)}`}>
-            <span aria-hidden="true" className="text-sm text-tertiary">
-                total
-            </span>
+        <span className={cx("flex items-baseline gap-1", className)} aria-label={`${rotulo ?? "Total"} ${brl(preco.total)}`}>
+            {/* `nowrap`: "a partir de" são três palavras e empilhava ao lado do número. */}
+            {rotulo && (
+                <span aria-hidden="true" className="text-sm whitespace-nowrap text-tertiary">
+                    {rotulo}
+                </span>
+            )}
             <span aria-hidden="true" className="text-md font-bold text-primary tabular-nums">
                 {brl(preco.total)}
             </span>

@@ -10,7 +10,9 @@ import { cx } from "@/utils/cx";
  * Antes era `flex-wrap`: com cinco ou mais abas a tira empilhava em duas ou três
  * fileiras e deixava de ler como um seletor único, empurrando o catálogo para
  * baixo da dobra no mobile. Agora é uma fileira só, que rola por toque e, no
- * desktop, por setas que só aparecem quando há aba daquele lado.
+ * desktop e no mobile, por setas que só aparecem quando há aba daquele lado.
+ * No toque elas convivem com o arrasto: quem desliza não precisa delas, mas
+ * sem nenhuma affordance a fila cortada na borda não se anuncia como rolável.
  *
  * Mesmo padrão do carrossel de chips da bilheteria. É cópia e não import porque
  * o repo não permite um produto importar de outro.
@@ -30,7 +32,7 @@ function SetaAnimada({ lado, children }: { lado: -1 | 1; children: ReactNode }) 
             transition={TRANSICAO}
             onAnimationStart={() => setRecortar(true)}
             onAnimationComplete={() => setRecortar(false)}
-            className={cx("shrink-0 max-md:hidden", recortar && "overflow-hidden")}
+            className={cx("shrink-0", recortar && "overflow-hidden")}
         >
             {children}
         </motion.div>

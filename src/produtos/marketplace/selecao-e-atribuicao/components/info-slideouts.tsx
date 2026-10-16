@@ -104,10 +104,15 @@ export function MeiaSlideout({ isOpen, onClose, quantitativo, percentualVendido 
                         </span>
                     </div>
                     <ul className="flex flex-col gap-2 border-t border-secondary pt-3">
+                        {/*
+                          Empilhado no estreito: lado a lado, "CAMAROTE VIP OPEN BAR
+                          PREMIUM" quebrava em quatro linhas contra o número e o
+                          quadro do art. 11 virava uma escada ilegível.
+                        */}
                         {grupos.map(([nome, q]) => (
-                            <li key={nome} className="flex items-baseline justify-between gap-3">
+                            <li key={nome} className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
                                 <span className="text-sm text-secondary">{nome}</span>
-                                <span className="shrink-0 text-sm text-tertiary tabular-nums">
+                                <span className="text-sm text-tertiary tabular-nums sm:shrink-0">
                                     {q.ofertados.toLocaleString("pt-BR")} ofertados, {q.ofertadosMeia.toLocaleString("pt-BR")} com meia
                                 </span>
                             </li>

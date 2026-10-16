@@ -695,7 +695,6 @@ export function SelecaoEAtribuicao() {
                         combo={combo}
                         preco={preco}
                         variavel={variavel}
-                        taxa={taxa}
                         onSelecionar={() => setComboSelecao(resolverCombo(combo))}
                     />
                 );
@@ -765,7 +764,17 @@ export function SelecaoEAtribuicao() {
     );
 
     const barraTotal = (variante: "desktop" | "mobile", comoCard?: boolean) => (
-        <BarraTotal variante={variante} total={totalPreco} taxas={taxasDoPedido} continuarDisabled={continuarDisabled} comoCard={comoCard} onAvancar={avancar} onAbrirTaxa={() => setTaxaOpen(true)} />
+        <BarraTotal
+            variante={variante}
+            total={totalPreco}
+            taxas={taxasDoPedido}
+            // Rodapé mobile fechado: só o total, sem bloco de taxas e sem régua.
+            compacta={variante === "mobile" && !resumoAberto}
+            continuarDisabled={continuarDisabled}
+            comoCard={comoCard}
+            onAvancar={avancar}
+            onAbrirTaxa={() => setTaxaOpen(true)}
+        />
     );
     const totalBar = barraTotal("desktop");
 
@@ -914,7 +923,14 @@ export function SelecaoEAtribuicao() {
     ) : null;
     const umaDataLayout = (
         <div className="grid w-full grid-cols-1 gap-6 lg:h-full lg:grid-cols-[1fr_640px] lg:overflow-hidden">
-            <div className="h-[260px] overflow-clip bg-secondary lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary">
+            {/* O mapa é referência para escolher o lugar e fica no mobile. O banner
+                é decoração e some: empurrava a lista de ingressos para fora da tela. */}
+            <div
+                className={cx(
+                    "h-[260px] overflow-clip bg-secondary lg:h-full lg:rounded-2xl lg:ring-1 lg:ring-border-secondary",
+                    !config.mapa && "hidden lg:block",
+                )}
+            >
                 {config.mapa ? (
                     <img src={config.mapa} alt="Mapa do local" className="h-full w-full object-cover" />
                 ) : (
@@ -996,17 +1012,28 @@ export function SelecaoEAtribuicao() {
                     </div>
                 </div>
             ) : (
-                /* Layout sem mapa: seleção à esquerda, capa + cupom + resumo à direita */
-                <div className="flex w-full flex-col gap-6 lg:flex-row lg:justify-center">
+                /* Layout sem mapa: seleção à esquerda, cupom + cartaz à direita.
+
+                   No mobile o cupom vai para o topo e a coluna da direita inteira
+                   desaparece — com ela o cartaz, que é decoração e comia uma tela
+                   antes do primeiro ingresso (o resumo dele já vive no rodapé).
+
+                   Dois pontos de montagem do MESMO `cupomBlock`, e não `order` no
+                   flex: `order` move o pixel e deixa o DOM onde estava, então
+                   teclado e leitor de tela continuariam recebendo o cupom por
+                   último. Escondido por `display:none`, o ponto inativo sai da
+                   ordem de foco e da árvore de acessibilidade. */
+                <div className="flex w-full flex-col gap-3 lg:flex-row lg:justify-center lg:gap-6">
+                    <div className="mt-4 px-4 md:px-0 lg:hidden">{cupomBlock}</div>
+
                     <div className="flex w-full flex-col px-4 md:px-0 lg:w-[640px]">
                         {abas}
                         {conteudo}
                     </div>
 
                     {/* `self-start` é o que faz o sticky funcionar: sem ele o item do
-                        flex estica até a altura da linha e nunca tem para onde grudar.
-                        Só em lg, porque no mobile a coluna é uma pilha normal. */}
-                    <div className="flex w-full flex-col gap-4 lg:sticky lg:top-4 lg:w-[360px] lg:shrink-0 lg:self-start">
+                        flex estica até a altura da linha e nunca tem para onde grudar. */}
+                    <div className="hidden lg:sticky lg:top-4 lg:flex lg:w-[360px] lg:shrink-0 lg:flex-col lg:gap-4 lg:self-start">
                         {cupomBlock}
                         <CartazComVerso
                             virado={grupos.length > 0}
@@ -1048,7 +1075,17 @@ export function SelecaoEAtribuicao() {
                         <button
                             type="button"
                             onClick={() => setResumoAberto((o) => !o)}
-                            className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-3"
+                            /*
+                              Régua e folga de baixo pertencem ao estado aberto: ali
+                              há conteúdo abaixo para separar e o traço precisa de
+                              respiro. Fechado, quem dá o espaço é o `pt-3` da barra,
+                              e somar os dois só empilhava altura numa faixa que já
+                              come um quinto da tela.
+                            */
+                            className={cx(
+                                "flex items-center justify-between gap-3 px-4 pt-2.5",
+                                resumoAberto ? "border-b border-secondary pb-2.5" : "pb-0",
+                            )}
                         >
                             <span className="flex items-baseline gap-2 text-sm font-semibold text-primary">
                                 Resumo da compra
@@ -1842,6 +1879,12 @@ function Stepper({
     onDec: () => void;
 }) {
     const sufixo = rotulo ? ` quantidade de ${rotulo}` : "";
+    /*
+      `bg-secondary-solid` (82) no lugar de `bg-brand-solid` (10): quase preto,
+      o par de botões era a coisa mais escura da linha e puxava o olho antes do
+      preço. Um degrau abaixo ainda é botão sólido, e o branco em cima mantém
+      7,7:1 — folgado para AA. No hover ele volta ao sólido original.
+    */
     return (
         <div className="flex shrink-0 items-center gap-2">
             <button
@@ -1849,7 +1892,7 @@ function Stepper({
                 onClick={onDec}
                 disabled={qtd === 0 || !canDec}
                 aria-label={`Diminuir${sufixo}`}
-                className="flex size-9 items-center justify-center rounded-md bg-brand-solid text-white transition hover:bg-brand-solid_hover disabled:cursor-not-allowed disabled:bg-secondary disabled:text-fg-quaternary"
+                className="flex size-9 items-center justify-center rounded-md bg-secondary-solid text-white transition hover:bg-brand-solid disabled:cursor-not-allowed disabled:bg-secondary disabled:text-fg-quaternary"
             >
                 <Minus className="size-4" />
             </button>
@@ -1859,7 +1902,7 @@ function Stepper({
                 onClick={onInc}
                 disabled={!canInc}
                 aria-label={`Aumentar${sufixo}`}
-                className="flex size-9 items-center justify-center rounded-md bg-brand-solid text-white transition hover:bg-brand-solid_hover disabled:cursor-not-allowed disabled:bg-secondary disabled:text-fg-quaternary"
+                className="flex size-9 items-center justify-center rounded-md bg-secondary-solid text-white transition hover:bg-brand-solid disabled:cursor-not-allowed disabled:bg-secondary disabled:text-fg-quaternary"
             >
                 <Plus className="size-4" />
             </button>
@@ -1959,22 +2002,29 @@ function ComboDinamicoCard({
     combo,
     preco,
     variavel,
-    taxa,
     onSelecionar,
 }: {
     combo: ComboDinamico;
     preco: Preco;
     variavel: boolean;
-    taxa: TaxaServico;
     onSelecionar: () => void;
 }) {
+    /*
+      Mesma estrutura da linha de ingresso e do passaporte: identificação em
+      cima, faixa de valor embaixo terminando no controle. Este card era o
+      último com o preço no formato antigo — valor grande e taxa entre
+      parênteses — e ficava destoando de tudo ao redor na mesma tela.
+
+      Quando um opcional pago ainda pode subir o valor, o rótulo do total vira
+      "a partir de": chamar aquele número de total seria subdeclarar.
+    */
     return (
-        <div className="flex items-start justify-between gap-4 rounded-xl bg-primary px-4 py-4 ring-1 ring-border-secondary">
+        <div className="flex flex-col rounded-xl bg-primary px-4 py-4 ring-1 ring-border-secondary">
             <div className="flex min-w-0 flex-col gap-2">
                 {/* O badge de desconto saiu: `totalValor` nunca consultou o cupom, então
                     anunciar "10% OFF" ao lado de um total ostensivo que não desconta nada
                     seria pior do que não anunciar. Volta quando o cupom entrar no cálculo. */}
-                <span className="text-sm font-bold text-primary">{combo.nome}</span>
+                <span className="text-md font-semibold text-primary">{combo.nome}</span>
                 <div className="flex flex-wrap items-center gap-2">
                     {combo.dataLabel && <span className="rounded-md bg-secondary px-2 py-0.5 text-sm font-medium text-tertiary">{combo.dataLabel}</span>}
                     {combo.sessoesLabel && <span className="rounded-md bg-secondary px-2 py-0.5 text-sm font-medium text-tertiary">{combo.sessoesLabel}</span>}
@@ -1985,11 +2035,12 @@ function ComboDinamicoCard({
                     </span>
                 ))}
                 {combo.descricao && <p className="text-sm text-tertiary">{combo.descricao}</p>}
-                <PrecoBloco preco={preco} tamanho="lg" prefixo={variavel ? "A partir de" : undefined} className="mt-1" />
             </div>
-            <Button size="md" color="secondary" className="shrink-0" onClick={onSelecionar}>
-                Selecionar
-            </Button>
+            <PrecoFaixa preco={preco} rotulo={variavel ? "a partir de" : undefined} className="mt-3">
+                <Button size="md" color="secondary" className="shrink-0" onClick={onSelecionar}>
+                    Selecionar
+                </Button>
+            </PrecoFaixa>
         </div>
     );
 }

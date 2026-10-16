@@ -153,6 +153,9 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     const [busca, setBusca] = useState("");
     const [motivo, setMotivo] = useState<Motivo>(MOTIVO_INICIAL);
     const [selecionada, setSelecionada] = useState<Conta | null>(null);
+    /* Conta clicada que não recebe nada do pedido: não vira destinatário e não avança. Guarda o
+       nome e o porquê, que a etapa mostra acima da busca. */
+    const [recusada, setRecusada] = useState<{ titulo: string; motivos: string[] } | null>(null);
     const [selecao, setSelecao] = useState<Record<string, boolean>>(() => Object.fromEntries(linhasIniciais.map((id) => [id, true])));
     const [aberta, setAberta] = useState<string | null>(null);
     const destino = selecionada?.email ?? "";
@@ -199,14 +202,15 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
        pode ser transferido", quando o mesmo ingresso iria sem problema para outra pessoa. A frase
        inteira do store diz de quem é o impedimento; onde ela chama a pessoa de "essa conta" entra
        o nome, que é como ela está sendo chamada na ligação. */
-    const motivoParaDestinatario = (linha: PedidoItem): string | null => {
-        if (!selecionada) return null;
-        const bloqueio = validarNovoTitular(pedido, linha, selecionada, linhas);
+    const motivoDaConta = (conta: Conta, linha: PedidoItem): string | null => {
+        const bloqueio = validarNovoTitular(pedido, linha, conta, linhas);
         if (!bloqueio) return null;
         /* Sem "a titular": o nome na frente deixa a concordância errada metade das vezes. */
-        if ((linha.titularId ?? pedido.compradorId) === selecionada.id) return `${selecionada.nome} já está com esta unidade.`;
-        return bloqueio.descricao.replace(/essa conta/g, selecionada.nome);
+        if ((linha.titularId ?? pedido.compradorId) === conta.id) return `${conta.nome} já está com esta unidade.`;
+        return bloqueio.descricao.replace(/essa conta/g, conta.nome);
     };
+    /* A forma que o seletor de unidades espera: a pessoa já escolhida, linha a linha. */
+    const motivoParaDestinatario = (linha: PedidoItem): string | null => (selecionada ? motivoDaConta(selecionada, linha) : null);
 
     /* Nada do pedido pode ir para esta pessoa. Os motivos entram sem repetição: o aviso usava a
        descrição da primeira unidade como se valesse para todas, e com três unidades barradas por
@@ -343,6 +347,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     const reiniciarDestinatario = () => {
         if (timerBusca.current) window.clearTimeout(timerBusca.current);
         setSelecionada(null);
+        setRecusada(null);
         setBusca("");
         setSugerindo(false);
         setBuscando(false);
@@ -359,11 +364,35 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     };
     const incluir = (ids: string[]) => setSelecao((atual) => ({ ...atual, ...Object.fromEntries(ids.map((id) => [id, true])) }));
 
-    /* Clicar no card já escolhe e avança. Só não avança quando a conta está bloqueada para algum
-       item: aí fica na etapa, e o aviso abaixo da lista explica por quê. */
-    /* Escolher a pessoa já avança para os itens. Não há o que validar aqui: a elegibilidade
-       depende de quais unidades vão, e é na etapa seguinte que ela aparece unidade a unidade. */
+    /* Escolher a pessoa avança para os itens, menos quando ela não pode receber NADA do pedido:
+       aí o fluxo fica na etapa e diz por quê. O caso de sempre é transferir para quem já porta
+       a unidade, e mandar esse clique para a etapa seguinte entregava uma lista inteira barrada
+       para o atendente descobrir sozinho o que tinha feito de errado.
+
+       Bloqueio parcial continua avançando: com três unidades e uma barrada, quem decide o que
+       vai é a etapa de itens, que marca a barrada e explica linha a linha. */
     const escolherDestinatario = (conta: Conta) => {
+        if (naoRecebeNada(conta)) {
+            const jaPorta = linhasDisponiveis.every((l) => (l.titularId ?? pedido.compradorId) === conta.id);
+            setRecusada(
+                jaPorta
+                    ? {
+                          titulo: `${conta.nome} já porta ${linhasDisponiveis.length === 1 ? "esta unidade" : "estas unidades"}`,
+                          /* O motivo do store repetiria o título. Aqui vale mais dizer a saída. */
+                          motivos: ["Escolha outra pessoa para receber a transferência."],
+                      }
+                    : {
+                          titulo: `Nenhuma unidade pode ir para ${conta.nome}`,
+                          motivos: [...new Set(linhasDisponiveis.map((l) => motivoDaConta(conta, l)).filter(Boolean) as string[])],
+                      },
+            );
+            /* A lista sai de cena: ela vira para cima quando falta espaço embaixo do campo, e aí
+               cobria justamente o aviso que o clique acabou de produzir. Volta num clique no
+               campo, com o termo que já estava escrito. */
+            setSugerindo(false);
+            return;
+        }
+        setRecusada(null);
         setSelecionada(conta);
         setSugerindo(false);
         setIndice((i) => i + 1);
@@ -491,6 +520,23 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                           procura por nome, não tem o documento de cor, e esperar um submit só
                           colocaria um passo entre ele e a lista.
                         */}
+                        {/* Acima da busca, não abaixo: embaixo dela o popover de sugestões cobriria
+                            o aviso justamente enquanto a lista está aberta, que é quando ele nasce.
+                            A lista fica aberta de propósito, para escolher outra pessoa sem
+                            precisar buscar de novo. */}
+                        {recusada && (
+                            <div role="alert" className="flex flex-col gap-2">
+                                <Aviso titulo={recusada.titulo} descricao={recusada.motivos.length === 1 ? recusada.motivos[0] : undefined} />
+                                {recusada.motivos.length > 1 && (
+                                    <ul className="flex flex-col gap-1 pl-11 text-sm text-tertiary">
+                                        {recusada.motivos.map((texto) => (
+                                            <li key={texto}>{texto}</li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        )}
+
                         <div className="flex w-full flex-col gap-1.5 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
                             <label htmlFor="destinatario-busca" className="text-sm font-medium text-secondary">
                                 Quem vai receber?
@@ -505,11 +551,17 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                                     onChange={(evento) => {
                                         setBusca(evento.target.value);
                                         setSelecionada(null);
+                                        setRecusada(null);
                                         setSugerindo(true);
                                         setFocado(0);
                                         agendarBusca();
                                     }}
                                     onKeyDown={aoTeclar}
+                                    /* Clicar no campo traz a lista de volta sem redigitar: é o
+                                       caminho de saída depois de uma conta recusada. Pelo clique
+                                       e não pelo foco, porque escolher na lista não tira o foco
+                                       do campo e o `focus` nunca dispararia de novo. */
+                                    onClick={() => termo.length > 0 && setSugerindo(true)}
                                     autoComplete="off"
                                 />
 

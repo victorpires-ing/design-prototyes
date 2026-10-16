@@ -114,6 +114,7 @@ const EscolherUnidade = ({ pedido, subtitulo, onFechar, onEscolher }: { pedido: 
             rotuloAvancar="Abrir formulário"
             ultimaEtapa={false}
             rotuloConfirmar=""
+            rotuloContinuar="Continuar escolhendo"
             onVoltar={onFechar}
             onAvancar={() => marcada && onEscolher(marcada)}
             onConfirmar={() => undefined}

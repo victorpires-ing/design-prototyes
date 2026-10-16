@@ -45,7 +45,7 @@ const TITULO_ETAPA: Record<Etapa, string> = {
     saem: "Itens atuais",
     entram: "Novos itens",
     formularios: "Formulários",
-    revisao: "Revisão",
+    revisao: "Confirmar",
 };
 
 const ROTULO_TIPO: Record<TipoItem, string> = { ingresso: "Ingressos", produto: "Produtos", combo: "Combos" };
@@ -410,6 +410,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                       ? "Aplicar troca sem cobrança"
                       : "Enviar cobrança"
             }
+            rotuloContinuar="Continuar trocando"
             onVoltar={voltar}
             onAvancar={avancar}
             onConfirmar={confirmar}

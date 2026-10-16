@@ -39,7 +39,7 @@ type Etapa = "itens" | "destinatario" | "revisao";
 const TITULO_ETAPA: Record<Etapa, string> = {
     itens: "Itens",
     destinatario: "Destinatário",
-    revisao: "Revisão",
+    revisao: "Confirmar",
 };
 
 /** Só o primeiro nome. O rótulo da etapa divide uma faixa de 560px com outros dois e, com o nome
@@ -464,6 +464,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
             rotuloAvancar={rotuloAvancar}
             ultimaEtapa={etapa === "revisao"}
             rotuloConfirmar="Enviar cobrança"
+            rotuloContinuar="Continuar transferindo"
             /* O que custa e para quem fica acima do botão, não dentro dele: a frase inteira
                enchia três linhas de um botão de largura total no telefone. */
             infoRodape={etapa === "revisao" ? `${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}` : undefined}

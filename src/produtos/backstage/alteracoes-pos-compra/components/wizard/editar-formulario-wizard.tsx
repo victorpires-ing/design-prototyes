@@ -92,6 +92,7 @@ export function EditarFormularioWizard({ pedido, linhaId, onFechar, onEnviado }:
             rotuloAvancar="Revisar alteração"
             ultimaEtapa={etapa === "revisao"}
             rotuloConfirmar="Enviar cobrança"
+            rotuloContinuar="Continuar editando"
             infoRodape={etapa === "revisao" ? `${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}` : undefined}
             onVoltar={voltar}
             onAvancar={avancar}

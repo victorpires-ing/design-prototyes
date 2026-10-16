@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { AlertTriangle, ArrowLeft } from "@untitledui/icons";
+import { ArrowLeft } from "@untitledui/icons";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressIconType } from "@/components/application/progress-steps/progress-types";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { EtapaCompacta, FOCO_ESCOPO } from "../pos-compra-ui";
 
@@ -83,6 +82,7 @@ export function WizardShell({
     ocultarRodape = false,
     infoRodape,
     trabalhoEmAndamento,
+    rotuloContinuar,
     children,
 }: {
     /** Sai do fluxo inteiro e volta para o pedido. */
@@ -110,6 +110,8 @@ export function WizardShell({
     /** Há algo a perder se o fluxo fechar ou a aba recarregar agora. Por padrão a casca deduz
      *  do que ela mesma enxerga; um fluxo que saiba exatamente o que é trabalho diz aqui. */
     trabalhoEmAndamento?: boolean;
+    /** A ação de ficar, na voz do fluxo: "Continuar trocando", "Continuar transferindo". */
+    rotuloContinuar: string;
     children: ReactNode;
 }) {
     /* Direção do slide: avançar entra pela direita, voltar entra pela esquerda. O movimento
@@ -246,19 +248,16 @@ export function WizardShell({
                 <Modal>
                     <Dialog>
                         <div className={cx("w-full max-w-lg rounded-xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary", FOCO_ESCOPO)}>
-                            <div className="flex items-start gap-4">
-                                <FeaturedIcon icon={AlertTriangle} color="warning" theme="light" size="md" />
-                                <div className="min-w-0 flex-1">
-                                    <h2 className="text-lg font-semibold text-primary">Sair e descartar esta alteração?</h2>
-                                    <p className="mt-1 text-sm text-tertiary">O que foi escolhido e digitado aqui não fica guardado. Nada foi cobrado e nada fica registrado no pedido.</p>
-                                </div>
+                            <div className="min-w-0">
+                                <h2 className="text-lg font-semibold text-primary">Sair e descartar esta alteração?</h2>
+                                <p className="mt-1 text-sm text-tertiary">O que foi escolhido e digitado aqui não fica guardado. Nada foi cobrado e nada fica registrado no pedido.</p>
                             </div>
                             {/* No telefone a ação de ficar sobe para o alcance do polegar, e as duas
                                 ocupam a linha inteira. */}
                             <div className="mt-6 flex justify-end gap-3 max-md:flex-col-reverse">
                                 <Button
                                     size="md"
-                                    color="secondary-destructive"
+                                    color="secondary"
                                     className="max-md:w-full"
                                     onClick={() => {
                                         setConfirmandoSaida(false);
@@ -268,7 +267,7 @@ export function WizardShell({
                                     Sair e descartar
                                 </Button>
                                 <Button size="md" autoFocus className="max-md:w-full" onClick={() => setConfirmandoSaida(false)}>
-                                    Continuar montando
+                                    {rotuloContinuar}
                                 </Button>
                             </div>
                         </div>

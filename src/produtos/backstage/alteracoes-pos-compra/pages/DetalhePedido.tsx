@@ -714,7 +714,22 @@ const CartaoDaUnidade = ({ pedido, item, linha, onAbrir }: { pedido: Pedido } & 
                     </div>
                     {caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
                     {item.datasCombo && item.datasCombo.length > 0 && <p className="text-sm text-tertiary">{item.datasCombo.join(" · ")}</p>}
-                    {item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
+                    {/* No combo a descrição é o que vem dentro do pacote: um texto corrido que
+                        ocupava uma linha inteira em toda unidade e empurrava o portador para
+                        baixo. Recolhida, fica a um clique, e a régua à esquerda diz que ela
+                        pertence ao item acima sem precisar de um cartão dentro do cartão. */}
+                    {item.descricao &&
+                        (item.tipo === "combo" ? (
+                            <details className="group">
+                                <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-sm text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover max-md:min-h-11 [&::-webkit-details-marker]:hidden">
+                                    Detalhes
+                                    <ChevronDown className="size-4 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
+                                </summary>
+                                <p className="mt-1 border-l border-secondary pl-3 text-sm text-tertiary">{item.descricao}</p>
+                            </details>
+                        ) : (
+                            <p className="text-sm text-tertiary">{item.descricao}</p>
+                        ))}
                     <PortadorDaUnidade linha={linha} />
                 </div>
             </div>

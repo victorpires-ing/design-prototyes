@@ -213,8 +213,14 @@ export interface EntradaHistorico {
     responsavel: string;
     titulo: string;
     descricao: string;
-    /** Linhas curtas com o que exatamente mudou: itens, quantidades, de quem para quem. */
+    /** Linhas curtas de observação livre sobre a alteração. */
     detalhes?: string[];
+    /**
+     * O que virou o quê, em dado e não em frase. A decisão de 14/10 pede "A → B com seta em vez
+     * de frases verbosas de/para", e extrair isso de texto não funciona: "Transfer para a
+     * largada" é nome de produto e quebra qualquer corte em " para ".
+     */
+    mudancas?: Array<{ escopo?: string; de: string; para: string }>;
     valor?: number;
     estado: "concluido" | "expirado" | "falha" | "pendente";
     /** Agrupa os fatos de uma mesma alteração: pedido, envios, pagamento e resultado. */
@@ -248,6 +254,7 @@ export interface Solicitacao {
     canalEnvio: CanalEnvio;
     destinatarioEnvio: string;
     detalhes?: string[];
+    mudancas?: Array<{ escopo?: string; de: string; para: string }>;
     /** Linhas presas nesta operação: elas não entram em outra enquanto isso não resolver. */
     linhasAfetadas: string[];
     /**
@@ -740,7 +747,7 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 responsavel: "Marcelo Duarte",
                 titulo: "Transferência solicitada",
                 descricao: "Link enviado por e-mail para carolina.sampaio@email.com.",
-                detalhes: ["1x Trail 12 km · Lote 2", "De Juliana Prado para Carolina Sampaio (carolina.sampaio@email.com)"],
+                mudancas: [{ escopo: "1x Trail 12 km · Lote 2", de: "Juliana Prado", para: "Carolina Sampaio" }],
                 valor: 15.3,
                 estado: "concluido",
                 solicitacaoId: "sol-seed-3",
@@ -852,7 +859,7 @@ const PEDIDOS_INICIAIS: PedidoSemente[] = [
                 responsavel: "Marcelo Duarte",
                 titulo: "Troca solicitada",
                 descricao: "Link enviado por e-mail para diego.fontes@email.com.",
-                detalhes: ["Sai 1x Triathlon sprint · Lote 2", "Entra 1x Triathlon olímpico · Lote 2"],
+                mudancas: [{ escopo: "Lote 2 · Diego Fontes", de: "Triathlon sprint", para: "Triathlon olímpico" }],
                 valor: 162.18,
                 estado: "concluido",
                 solicitacaoId: "sol-seed-5",
@@ -1749,6 +1756,8 @@ export interface CriarSolicitacaoInput {
     pedidoId: string;
     /** Detalhamento que acompanha a operação no histórico. */
     detalhes?: string[];
+    /** O que virou o quê, para o histórico desenhar A → B em vez de escrever a frase. */
+    mudancas?: Array<{ escopo?: string; de: string; para: string }>;
     /** Linhas do pedido presas na operação até o pagamento resolver. */
     linhasAfetadas: string[];
     tipo: TipoOperacao;
@@ -1795,7 +1804,7 @@ const devolverEstoqueDasOrigens = (pedido: Pedido, solicitacao: Solicitacao) => 
     });
 };
 
-export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfetadas, calculo, aplicar, reservas, canalEnvio, destinatarioEnvio, motivo }: CriarSolicitacaoInput): string | null => {
+export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, mudancas, linhasAfetadas, calculo, aplicar, reservas, canalEnvio, destinatarioEnvio, motivo }: CriarSolicitacaoInput): string | null => {
     const pedido = getPedido(pedidoId);
     if (!pedido) return null;
     /* Só a solicitação pendente ocupa a linha; transferência concluída não ocupa (H-08). */
@@ -1825,6 +1834,7 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfeta
             canalEnvio,
             destinatarioEnvio,
             detalhes,
+            mudancas,
             linhasAfetadas,
             estado: "aguardando",
             aplicar,
@@ -1846,6 +1856,7 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfeta
                             titulo: `${TIPO_OPERACAO_CURTO[tipo]} sem cobrança`,
                             descricao: "Sem valor a pagar: aplicada na hora, sem link e sem prazo.",
                             detalhes,
+                            mudancas,
                             valor: 0,
                             estado: "concluido",
                             marco: "solicitada",
@@ -1877,6 +1888,7 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfeta
                     canalEnvio,
                     destinatarioEnvio,
                     detalhes,
+                    mudancas,
                     linhasAfetadas,
                     estado: "aguardando",
                     aplicar,
@@ -1894,6 +1906,7 @@ export const criarSolicitacao = ({ pedidoId, tipo, resumo, detalhes, linhasAfeta
                     titulo: `${TIPO_OPERACAO_CURTO[tipo]} solicitada`,
                     descricao: `Link enviado por ${canalLabel(canalEnvio)} para ${destinatarioEnvio}.`,
                     detalhes,
+                    mudancas,
                     valor: calculo.total,
                     estado: "concluido",
                     marco: "solicitada",
@@ -1982,6 +1995,7 @@ const aplicarSolicitacao = (p: Pedido, solicitacao: Solicitacao): Pedido => {
                 titulo: `${TIPO_OPERACAO_CURTO[tipo]} aplicada`,
                 descricao: resumo,
                 detalhes,
+                mudancas,
                 valor: total,
                 estado: "concluido",
                 marco: "aplicada",

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, Calendar, Check, ChevronRight, Copy01, Mail01, Phone, Tag01, User01 } from "@untitledui/icons";
+import { AlertTriangle, ArrowLeft, Calendar, Check, ChevronDown, ChevronRight, Copy01, Mail01, Phone, Tag01, User01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { AvatarProfilePhoto } from "@/components/base/avatar/avatar-profile-photo";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -939,7 +940,7 @@ const Historico = ({ pedido, onVerAlteracao }: { pedido: Pedido; onVerAlteracao:
             <p className="text-sm text-secondary">{resumo}</p>
 
             {visiveis.length > 0 && (
-                <ol className="flex flex-col divide-y divide-border-secondary">
+                <ol className="flex flex-col gap-2">
                     {visiveis.map((grupo) => (
                         <GrupoDoHistorico key={grupo.chave} pedido={pedido} grupo={grupo} onVerAlteracao={onVerAlteracao} />
                     ))}
@@ -972,61 +973,126 @@ const Historico = ({ pedido, onVerAlteracao }: { pedido: Pedido; onVerAlteracao:
     );
 };
 
+/**
+ * Uma alteração no histórico: uma linha de extrato que abre.
+ *
+ * Era tudo aberto e tudo em 14px: 16 elementos de texto do mesmo tamanho, encadeados por 16
+ * pontos médios, 399px para UMA alteração. A decisão de 14/10 pede o contrário, "fechado e
+ * expandindo sob demanda, com o básico do básico à vista, e A → B com seta em vez de frases
+ * verbosas de/para".
+ *
+ * Fechado mostra o que o atendente sempre precisa: o que foi, de que virou o quê, quanto e como
+ * terminou. Aberto mostra o que ele precisa às vezes: o motivo, o chamado e a hora de cada marco.
+ * A exceção deliberada é a alteração que ainda pede trabalho: ela nasce aberta, porque é para
+ * onde ele ia de qualquer jeito.
+ */
 const GrupoDoHistorico = ({ pedido, grupo, onVerAlteracao }: { pedido: Pedido; grupo: GrupoHistorico; onVerAlteracao: (solicitacaoId: string) => void }) => {
     const { rotulo, tom, dinheiro, viva } = resultadoDoGrupo(pedido, grupo);
     const abertura = grupo.entradas.find((e) => e.marco === "solicitada") ?? grupo.entradas[0];
     const tipo = grupo.tipo ? TIPO_OPERACAO_CURTO[grupo.tipo] : abertura.titulo;
     const valor = abertura.valor;
     const eventos = juntarReenvios(grupo.entradas);
+    const mudancas = abertura.mudancas ?? [];
+    const Icone = grupo.tipo ? TIPO_OPERACAO_ICONE[grupo.tipo] : Calendar;
 
     return (
-        <li id={grupo.solicitacaoId ? `grupo-${grupo.solicitacaoId}` : undefined} tabIndex={grupo.solicitacaoId ? -1 : undefined} className={cx("flex scroll-mt-24 flex-col gap-2 rounded-lg py-4 first:pt-0", FOCO)}>
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <p className="text-sm font-semibold text-primary">
-                    {grupo.tipo ? tipo : abertura.titulo}
-                    <span className={cx("font-medium", tom === "erro" ? "text-error-primary" : tom === "aviso" ? "text-warning-primary" : "text-tertiary")}> · {rotulo}</span>
-                </p>
-                {typeof valor === "number" && valor > 0 && dinheiro && (
-                    <p className="text-sm text-tertiary">
-                        <span className="font-medium text-primary tabular-nums">{formatarMoeda(valor)}</span> {dinheiro}
-                    </p>
-                )}
-            </div>
-            <p className="text-sm text-tertiary">
-                Por {abertura.responsavel} · {abertura.dataLabel}
-            </p>
-            {abertura.detalhes && abertura.detalhes.length > 0 && (
-                <ul className="flex flex-col gap-0.5">
-                    {abertura.detalhes.map((detalhe) => (
-                        <li key={detalhe} className="text-sm text-secondary">
+        <li id={grupo.solicitacaoId ? `grupo-${grupo.solicitacaoId}` : undefined} className="scroll-mt-24">
+            <details open={tom !== "neutro"} className={cx("group rounded-xl bg-primary ring-1 ring-border-secondary", FOCO_ESCOPO)}>
+                {/* A linha inteira é o gatilho: um chevron de 20px seria o menor alvo da tela. */}
+                <summary className={cx("flex cursor-pointer list-none items-start gap-3 rounded-xl p-4 transition duration-100 ease-linear hover:bg-primary_hover [&::-webkit-details-marker]:hidden", FOCO)}>
+                    <FeaturedIcon icon={Icone} color="gray" theme="modern" size="sm" className="mt-0.5 shrink-0" />
+
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                        {/* O único text-md do bloco: é por ele que se varre a coluna de alterações. */}
+                        <p className="text-md font-semibold text-primary">{grupo.tipo ? tipo : abertura.titulo}</p>
+
+                        {/* A → B vem de dado, não de frase: `mudancas` guarda o par. */}
+                        {mudancas.length > 0 && (
+                            <ul className="flex flex-col gap-0.5">
+                                {mudancas.slice(0, 2).map((m, i) => (
+                                    <li key={i} className="flex flex-wrap items-center gap-x-2 text-sm">
+                                        <span className="text-tertiary line-through">{m.de}</span>
+                                        <span className="text-fg-quaternary" aria-hidden="true">
+                                            {"\u2192"}
+                                        </span>
+                                        <span className="font-medium text-primary">{m.para}</span>
+                                    </li>
+                                ))}
+                                {mudancas.length > 2 && <li className="text-sm text-tertiary">{`e mais ${mudancas.length - 2}`}</li>}
+                            </ul>
+                        )}
+
+                        <p className="text-sm text-tertiary">
+                            <span className="tabular-nums">{horaDoLabel(abertura.dataLabel) || abertura.dataLabel}</span> · {abertura.responsavel}
+                        </p>
+                    </div>
+
+                    {/* Dinheiro e resultado numa coluna fixa à direita: entre linhas, os valores
+                        alinham e o selo dá a cor do desfecho sem virar cauda do título. */}
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                        {typeof valor === "number" && valor > 0 && dinheiro && (
+                            <>
+                                <p className="text-md font-semibold text-primary tabular-nums">{formatarMoeda(valor)}</p>
+                                <p className="text-sm text-tertiary">{dinheiro}</p>
+                            </>
+                        )}
+                        <Badge size="md" type="pill-color" color={tom === "erro" ? "error" : tom === "aviso" ? "warning" : "gray"}>
+                            {rotulo}
+                        </Badge>
+                    </div>
+
+                    <ChevronDown className="mt-1 size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
+                </summary>
+
+                <div className="flex flex-col gap-3 border-t border-secondary p-4">
+                    {mudancas.length > 0 && (
+                        <ul className="flex flex-col gap-2">
+                            {mudancas.map((m, i) => (
+                                <li key={i} className="flex flex-col gap-0.5">
+                                    {m.escopo && <p className="text-sm text-tertiary">{m.escopo}</p>}
+                                    <p className="flex flex-wrap items-center gap-x-2 text-sm">
+                                        <span className="text-tertiary line-through">{m.de}</span>
+                                        <span className="text-fg-quaternary" aria-hidden="true">
+                                            {"\u2192"}
+                                        </span>
+                                        <span className="font-medium text-primary">{m.para}</span>
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {abertura.detalhes?.map((detalhe) => (
+                        <p key={detalhe} className="text-sm text-secondary">
                             {detalhe}
-                        </li>
+                        </p>
                     ))}
-                </ul>
-            )}
-            {abertura.motivo && <p className="text-sm text-secondary">Motivo: {descreverMotivo(abertura.motivo)}</p>}
+                    {abertura.motivo && <p className="text-sm text-tertiary">{descreverMotivo(abertura.motivo)}</p>}
 
-            <ol className="mt-1 flex flex-col gap-1 border-l border-secondary pl-3">
-                {eventos.map(({ entrada, vezes }) => (
-                    <li key={entrada.id} className="text-sm text-tertiary">
-                        <span className="tabular-nums">{horaDoLabel(entrada.dataLabel) || entrada.dataLabel}</span>
-                        {" · "}
-                        <span className="text-secondary">{entrada.titulo}</span>
-                        {vezes > 1 && ` ${vezes} vezes`}
-                        {entrada.marco !== "aplicada" && entrada.descricao && ` · ${entrada.descricao}`}
-                        {" · "}
-                        {entrada.responsavel}
-                    </li>
-                ))}
-            </ol>
+                    {/* A hora vira coluna, e a coluna vira o separador: a linha do tempo tinha três
+                        pontos médios por marco só para emendar hora, fato, descrição e autor. */}
+                    <ol className="grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1.5 border-t border-secondary pt-3">
+                        {eventos.map(({ entrada, vezes }) => (
+                            <Fragment key={entrada.id}>
+                                <dt className="text-sm text-tertiary tabular-nums">{horaDoLabel(entrada.dataLabel) || entrada.dataLabel}</dt>
+                                <dd className="min-w-0 text-sm text-secondary">
+                                    <span className="font-medium text-primary">{entrada.titulo}</span>
+                                    {vezes > 1 && ` ${vezes} vezes`}
+                                    {entrada.marco !== "aplicada" && entrada.descricao && <span className="block text-tertiary">{entrada.descricao}</span>}
+                                    <span className="block text-tertiary">{entrada.responsavel}</span>
+                                </dd>
+                            </Fragment>
+                        ))}
+                    </ol>
 
-            {viva && (
-                <div>
-                    <Button size="sm" color="link-color" onClick={() => onVerAlteracao(viva.id)}>
-                        Ver alteração
-                    </Button>
+                    {viva && (
+                        <div>
+                            <Button size="sm" color="link-color" onClick={() => onVerAlteracao(viva.id)}>
+                                Ver alteração
+                            </Button>
+                        </div>
+                    )}
                 </div>
-            )}
+            </details>
         </li>
     );
 };

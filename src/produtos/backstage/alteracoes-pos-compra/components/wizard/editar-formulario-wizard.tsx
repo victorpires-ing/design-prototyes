@@ -54,10 +54,11 @@ export function EditarFormularioWizard({ pedido, linhaId, onFechar, onEnviado }:
         const id = criarSolicitacao({
             pedidoId: pedido.id,
             tipo: "alterar-respostas",
-            detalhes: alteradas.map((perguntaId) => {
-                const pergunta = perguntas.find((p) => p.id === perguntaId);
-                return `${pergunta?.label}: ${linha.respostas[perguntaId] || "sem resposta"} para ${novos[perguntaId]}`;
-            }),
+            mudancas: alteradas.map((perguntaId) => ({
+                escopo: perguntas.find((p) => p.id === perguntaId)?.label,
+                de: linha.respostas[perguntaId] || "sem resposta",
+                para: novos[perguntaId],
+            })),
             linhasAfetadas: [linha.id],
             resumo: `${alteradas.length} ${alteradas.length === 1 ? "resposta alterada" : "respostas alteradas"} em ${item?.nome}.`,
             calculo,

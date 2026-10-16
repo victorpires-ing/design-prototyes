@@ -314,18 +314,23 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
         /* H-23: o novo possuidor herda as respostas como estão. A titularidade não as altera. */
         const porItem = new Map<string, number>();
         linhas.forEach((l) => porItem.set(l.itemId, (porItem.get(l.itemId) ?? 0) + 1));
-        const detalhes = [
-            ...[...porItem.entries()].map(([itemId, quantidade]) => {
-                const item = getItem(itemId);
-                return [`${quantidade}x ${item?.nome}`, detalheDoItem(item)].filter(Boolean).join(" · ");
-            }),
-            `De ${titularAtual?.nome} para ${selecionada.nome} (${selecionada.email})`,
-        ];
+        const detalhes = [...porItem.entries()].map(([itemId, quantidade]) => {
+            const item = getItem(itemId);
+            return [`${quantidade}x ${item?.nome}`, detalheDoItem(item)].filter(Boolean).join(" · ");
+        });
+        /* Uma mudança por unidade, com o portador de origem de cada uma: num pedido com dois
+           titulares, dizer "De Fulano" no singular atribuía a saída inteira a um só. */
+        const mudancas = linhas.map((l) => ({
+            escopo: [getItem(l.itemId)?.nome, detalheDoItem(getItem(l.itemId))].filter(Boolean).join(" · "),
+            de: titularDaLinha(pedido, l)?.nome ?? "Comprador",
+            para: selecionada.nome,
+        }));
 
         const id = criarSolicitacao({
             pedidoId: pedido.id,
             tipo: "troca-titularidade",
             detalhes,
+            mudancas,
             linhasAfetadas: linhas.map((l) => l.id),
             resumo: `${linhas.length} ${linhas.length === 1 ? "item transferido" : "itens transferidos"} para ${selecionada.nome}. Comprador original preservado.`,
             calculo,
@@ -341,7 +346,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
             return;
         }
 
-        toast.success(`Cobrança de transferência enviada para ${destino}.`);
+        toast.success(calculo.total > 0 ? `Cobrança de ${formatarMoeda(calculo.total)} enviada para ${destino}.` : "Transferência aplicada. Sem valor a pagar, nada foi enviado.");
         onEnviado(id);
     };
 

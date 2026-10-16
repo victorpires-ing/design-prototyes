@@ -280,13 +280,20 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
         });
         const resumoSaem = [...porItem.values()].map((v) => `${v.quantidade}x ${v.nome}`).join(", ");
         const resumoEntram = itensQueEntram.map(([itemId, q]) => `${q}x ${getItem(itemId)?.nome}`).join(", ");
-        const detalhes = pares.map(({ linha, novoItem }) => `${getItem(linha.itemId)?.nome} para ${novoItem.nome} · ${identidadeDaLinha(pedido, linha).nome}`);
+        const detalhes: string[] = [];
+        /* O par já existe aqui; antes virava frase e o histórico tinha de reconstruir a seta. */
+        const mudancas = pares.map(({ linha, novoItem }) => ({
+            escopo: identidadeDaLinha(pedido, linha).nome,
+            de: getItem(linha.itemId)?.nome ?? "",
+            para: novoItem.nome,
+        }));
         const respostasPorItem = Object.fromEntries(paresComFormulario.map(({ linha, novoItem }) => [linha.id, valoresDoPar(linha, novoItem)]));
 
         const id = criarSolicitacao({
             pedidoId: pedido.id,
             tipo: "troca-item",
             detalhes,
+            mudancas,
             linhasAfetadas: pares.map(({ linha }) => linha.id),
             resumo: `${resumoSaem} para ${resumoEntram}.`,
             calculo,
@@ -305,7 +312,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
             toast.error("Uma das unidades entrou em outra alteração enquanto você montava esta. Confira o pedido e tente de novo.");
             return;
         }
-        toast.success(`Cobrança de troca enviada para ${destino}.`);
+        toast.success(calculo.total > 0 ? `Cobrança de ${formatarMoeda(calculo.total)} enviada para ${destino}.` : "Troca aplicada. Sem valor a pagar, nada foi enviado ao comprador.");
         onEnviado(id);
     };
 

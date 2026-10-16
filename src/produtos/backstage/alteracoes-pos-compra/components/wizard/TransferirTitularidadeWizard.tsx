@@ -7,7 +7,7 @@ import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
-import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, SetaParaBaixo, iniciaisDe, mascararCPF, mascararEmail } from "../pos-compra-ui";
+import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, SetaParaBaixo, iniciaisDe, formatarCPF, mascararEmail } from "../pos-compra-ui";
 import {
     OPERADOR_ATUAL,
     TIPO_OPERACAO_LABEL,
@@ -518,7 +518,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                                                         <span className="block text-sm font-semibold text-primary">{conta.nome}</span>
                                                         <span className="block truncate text-sm text-tertiary">
                                                             {conta.email}
-                                                            {conta.cpf && ` · CPF ${mascararCPF(conta.cpf)}`}
+                                                            {conta.cpf && ` · CPF ${formatarCPF(conta.cpf)}`}
                                                         </span>
                                                     </span>
                                                     {impedida ? (
@@ -542,7 +542,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                             <CartaoResultado
                                 icone={<FeaturedIcon icon={CheckCircle} color="success" theme="dark" size="md" className="shrink-0 rounded-full" />}
                                 titulo={selecionada.nome}
-                                apoio={`${selecionada.email}${selecionada.cpf ? ` · CPF ${mascararCPF(selecionada.cpf)}` : ""}`}
+                                apoio={`${selecionada.email}${selecionada.cpf ? ` · CPF ${formatarCPF(selecionada.cpf)}` : ""}`}
                             />
                         )}
 

@@ -5,7 +5,7 @@ import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { InputNumber } from "@/components/base/input/input-number";
 import { cx } from "@/utils/cx";
-import { ListaLimitada, mascararCPF } from "../pos-compra-ui";
+import { ListaLimitada, formatarCPF } from "../pos-compra-ui";
 import {
     getConta,
     getItem,
@@ -42,7 +42,7 @@ export const detalheDoItem = (item?: CatalogoItem) => [item?.lote, sessaoDoItem(
  *  o nome e o CPF mascarado: três "Corrida 5 km" iguais deixam de ser indistinguíveis. */
 export const identidadeDaLinha = (pedido: Pedido, linha: PedidoItem) => {
     const conta = getConta(linha.titularId ?? pedido.compradorId);
-    const cpf = conta?.cpf ? `CPF ${mascararCPF(conta.cpf)}` : conta?.email;
+    const cpf = conta?.cpf ? `CPF ${formatarCPF(conta.cpf)}` : conta?.email;
     const origem = linha.titularId
         ? ["Recebeu por transferência", linha.transferidoEmLabel && `em ${linha.transferidoEmLabel}`, linha.transferidoPor && `por ${linha.transferidoPor}`].filter(Boolean).join(" ")
         : "Fez a compra";

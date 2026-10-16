@@ -564,6 +564,33 @@ export const CATALOGO: CatalogoItem[] = [
     { id: "pr-trail-transfer", tipo: "produto", eventoId: "ev-trail", foto: FOTO_KIT, nome: "Transfer para a largada", modalidade: "Ida e volta", descricao: "Saída de Natal às 4h.", precoIntegral: 55, estoque: 24 },
     { id: "pr-tri-aluguel", tipo: "produto", eventoId: "ev-triathlon", foto: FOTO_SACOCHILA, nome: "Aluguel de roupa de neoprene", modalidade: "Unidade", descricao: "Retirada na véspera, na arena de transição.", precoIntegral: 110, estoque: 9 },
 
+    /* Combos: um pacote vendido como item único que cobre mais de uma data. O tipo existia no
+       modelo (e `datasCombo` com ele) sem nenhum item no catálogo, então o grupo "Combos" da
+       lista nunca aparecia na tela. */
+    {
+        id: "cb-mar-2dias",
+        tipo: "combo",
+        eventoId: "ev-maratona",
+        nome: "Combo dois dias",
+        modalidade: "Dupla",
+        descricao: "Inscrição nos dois dias de prova, com kit único na retirada.",
+        precoIntegral: 420,
+        estoque: 24,
+        formularioId: "f-corrida",
+        datasCombo: [SESSOES[2].dataLabel, SESSOES[3].dataLabel],
+    },
+    {
+        id: "cb-mar-dupla",
+        tipo: "combo",
+        eventoId: "ev-maratona",
+        nome: "Combo corrida mais camiseta",
+        modalidade: "Unidade",
+        descricao: "Inscrição de 10 km com a camiseta oficial inclusa.",
+        precoIntegral: 230,
+        estoque: 40,
+        datasCombo: [SESSOES[2].dataLabel],
+    },
+
     /* Combos removidos por hora — "combo" segue existindo em TipoItem para religar rápido depois. */
 ];
 
@@ -1174,6 +1201,56 @@ const gerarPedidosExtra = (quantidade: number): PedidoSemente[] =>
             ],
         };
     });
+
+/* Pedido com os três tipos de item lado a lado, que nenhum outro tinha: combo, ingresso e
+   produto. Dois deles chegam já transferidos, um combo e um produto, para a linha de portador
+   e o detalhe da titularidade aparecerem fora do ingresso. */
+PEDIDOS_INICIAIS.push({
+    id: uuidDeterministico(11),
+    eventoId: "ev-maratona",
+    compradorId: "c-rafael",
+    dataCompraLabel: "12 set 2026",
+    canal: "Online",
+    meioPagamento: "Pix",
+    criadoEmLabel: "12 set 2026, 16:40",
+    atualizadoEmLabel: "29 set 2026, 11:05",
+    itens: [
+        { id: "li-11a", itemId: "cb-mar-2dias", valorPago: 420, respostas: { ...respostasCompletas("cb-mar-2dias"), "p-camiseta": "G", "p-kit": ARENA, "p-equipe": "Sem equipe" } },
+        {
+            id: "li-11b",
+            itemId: "cb-mar-2dias",
+            titularId: "c-carol",
+            transferidoEmLabel: "29 set 2026",
+            transferidoPor: "Rafael Menezes",
+            valorPago: 420,
+            respostas: { ...respostasCompletas("cb-mar-2dias"), "p-camiseta": "M", "p-kit": ARENA, "p-equipe": "Sem equipe" },
+        },
+        { id: "li-11c", itemId: "cb-mar-dupla", valorPago: 230, respostas: {} },
+        { id: "li-11d", itemId: "it-mar-10k", valorPago: 180, respostas: { ...respostasCompletas("it-mar-10k"), "p-camiseta": "GG", "p-kit": ARENA, "p-equipe": "Sem equipe" } },
+        {
+            id: "li-11e",
+            itemId: "pr-camiseta-extra",
+            titularId: "c-diego",
+            transferidoEmLabel: "29 set 2026",
+            transferidoPor: "Rafael Menezes",
+            valorPago: 80,
+            respostas: {},
+        },
+    ],
+    status: "alteracao-concluida",
+    historico: [
+        {
+            id: "h-11",
+            dataLabel: "12 set 2026, 16:40",
+            responsavel: "Rafael Menezes",
+            titulo: "Pedido criado",
+            marco: "compra" as const,
+            descricao: "2x combo dois dias, 1x combo corrida mais camiseta, 1x Corrida 10 km e 1x camiseta extra.",
+            valor: 1330,
+            estado: "concluido",
+        },
+    ],
+});
 
 PEDIDOS_INICIAIS.push(...gerarPedidosExtra(101));
 

@@ -399,10 +399,11 @@ export const Miniatura = ({ item }: { item: CatalogoItem }) => {
 /*  Dados pessoais e prazos                                            */
 /* ------------------------------------------------------------------ */
 
-/** A mesma máscara em toda a superfície: os 6 dígitos do meio bastam para conferir ao telefone. */
-export const mascararCPF = (cpf: string) => {
+/** CPF por extenso, no formato do documento. Era mascarado em `***.012.345-**`, mostrando só os
+ *  seis dígitos do meio; o produto exibe os onze. */
+export const formatarCPF = (cpf: string) => {
     const d = cpf.replace(/\D/g, "");
-    return d.length === 11 ? `***.${d.slice(3, 6)}.${d.slice(6, 9)}-**` : cpf;
+    return d.length === 11 ? `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}` : cpf;
 };
 
 /** E-mail de destino de um link, sem expor o endereço inteiro: "b***@email.com". */

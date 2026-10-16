@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router";
 import { Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, ArrowLeft, Calendar, Check, Copy01, Mail01, Phone, Tag01, User01 } from "@untitledui/icons";
-import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
+import { Badge } from "@/components/base/badges/badges";
 import { AvatarProfilePhoto } from "@/components/base/avatar/avatar-profile-photo";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -13,8 +13,8 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { CartaoOperacao, idDoCartao } from "../components/CartaoOperacao";
 import {
-    TIPO_OPERACAO_ICONE, FOCO, FOCO_ESCOPO, Miniatura, iniciaisDe, mascararCPF, telefoneParaCopia } from "../components/pos-compra-ui";
-import { descartarRascunho, identidadeDaLinha } from "../components/wizard/seletor-unidades";
+    TIPO_OPERACAO_ICONE, FOCO, FOCO_ESCOPO, Miniatura, iniciaisDe, formatarCPF, telefoneParaCopia } from "../components/pos-compra-ui";
+import { descartarRascunho } from "../components/wizard/seletor-unidades";
 import {
     SESSOES,
     TIPO_OPERACAO_CURTO,
@@ -245,7 +245,7 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
                     <ul className="flex flex-col gap-2">
                         {comprador?.cpf && (
                             <ItemDeContato icone={User01}>
-                                <span className="tabular-nums">CPF {mascararCPF(comprador.cpf)}</span>
+                                <span className="tabular-nums">CPF {formatarCPF(comprador.cpf)}</span>
                             </ItemDeContato>
                         )}
                         {comprador && (
@@ -650,7 +650,9 @@ const RESTRICAO_DO_ITEM: Record<NonNullable<CatalogoItem["segmentacao"]>, string
  */
 const CartaoDaUnidade = ({ pedido, rascunhos, item, linha, onAbrir, ...resto }: { pedido: Pedido; rascunhos: Rascunho[] } & UnidadeDoPedido & AcoesDaLista) => {
     const estado = lerUnidade(pedido, rascunhos, linha);
-    const temFatos = estado.transferida || estado.solicitacao || estado.rascunho || estado.ultima;
+    /* Só o que está em curso abre um andar próprio. Quem porta a unidade subiu para o
+       cabeçalho: é identidade, não acontecimento. */
+    const temFatos = Boolean(estado.solicitacao || estado.rascunho);
     /* O formulário é desta unidade, com as respostas dela: a porta é o cartão, não um botão de
        pedido inteiro. Some quando o item não tem formulário ou a unidade está travada. */
     const podeFormulario = temFormulario(item) && disponivelPara(pedido, linha, "formulario");
@@ -672,13 +674,13 @@ const CartaoDaUnidade = ({ pedido, rascunhos, item, linha, onAbrir, ...resto }: 
                     {caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
                     {item.datasCombo && item.datasCombo.length > 0 && <p className="text-sm text-tertiary">{item.datasCombo.join(" · ")}</p>}
                     {item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
+                    <PortadorDaUnidade linha={linha} />
                 </div>
                 <p className="shrink-0 text-sm font-semibold text-primary tabular-nums">{formatarMoeda(linha.valorPago)}</p>
             </div>
 
             {temFatos && (
                 <div className="flex flex-col gap-0.5 border-t border-secondary px-4 py-3 lg:px-5">
-                    {estado.transferida && <PortadorDaUnidade pedido={pedido} linha={linha} />}
                     <FatosDaUnidade pedido={pedido} linha={linha} estado={estado} {...resto} />
                 </div>
             )}
@@ -772,20 +774,55 @@ const FatosDaUnidade = ({ pedido, linha, estado, onContinuar }: { pedido: Pedido
     );
 };
 
-/** Quem está com a unidade, quando não é quem comprou. O nome do comprador já é o trilho da
- *  página; repeti-lo em cada linha enchia a lista de eco. */
-const PortadorDaUnidade = ({ pedido, linha }: { pedido: Pedido; linha: PedidoItem }) => {
-    const { nome, apoio } = identidadeDaLinha(pedido, linha);
+/**
+ * Quem porta a unidade, numa linha só, logo abaixo do grupo e do lote. Vale para ingresso,
+ * produto e combo: quem segura a unidade é a mesma pergunta nos três.
+ *
+ * Era um bloco próprio, com nome, frase de origem e um selo "Transferido", e partia o cartão
+ * em três andares para dizer o que cabe numa linha. Quem porta é da mesma natureza de grupo e
+ * lote: identifica a unidade, não é um acontecimento. De onde ela veio é conferência, e
+ * conferência fica atrás de "Detalhes", como no pagamento.
+ */
+const PortadorDaUnidade = ({ linha }: { linha: PedidoItem }) => {
+    const conta = linha.titularId ? getConta(linha.titularId) : undefined;
+    if (!conta) return <p className="text-sm text-tertiary">Portado pelo comprador</p>;
+
+    const origem = [linha.transferidoEmLabel && `em ${linha.transferidoEmLabel}`, linha.transferidoPor && `por ${linha.transferidoPor}`].filter(Boolean).join(" ");
     return (
-        <>
-            <p className="text-sm font-medium text-primary">{nome}</p>
-            <p className="text-sm text-tertiary">{apoio}</p>
-            <span className="w-fit pt-0.5">
-                <BadgeWithDot color="gray" type="pill-color" size="md">
-                    Transferido
-                </BadgeWithDot>
+        <p className="flex flex-wrap items-center gap-x-2 text-sm text-tertiary">
+            <span>Portado por {conta.nome}</span>
+            <span className="text-quaternary" aria-hidden="true">
+                |
             </span>
-        </>
+            <AriaDialogTrigger>
+                <Button size="sm" color="link-gray" className="text-utility-blue-600 hover:text-utility-blue-700">
+                    Detalhes
+                </Button>
+                <AriaPopover
+                    offset={8}
+                    placement="bottom start"
+                    className={({ isEntering, isExiting }) =>
+                        cx(
+                            "origin-(--trigger-anchor-point) will-change-transform",
+                            isEntering && "duration-150 ease-out animate-in fade-in placement-top:slide-in-from-bottom-0.5 placement-bottom:slide-in-from-top-0.5",
+                            isExiting && "duration-100 ease-in animate-out fade-out placement-top:slide-out-to-bottom-0.5 placement-bottom:slide-out-to-top-0.5",
+                        )
+                    }
+                >
+                    <AriaDialog aria-label="Detalhe da titularidade" className="w-72 rounded-2xl bg-primary p-4 shadow-xl ring ring-secondary_alt outline-hidden">
+                        <dl className="flex flex-col gap-2">
+                            <Campo rotulo="Portador">{conta.nome}</Campo>
+                            {conta.cpf && <Campo rotulo="CPF">{formatarCPF(conta.cpf)}</Campo>}
+                            {conta.email && <Campo rotulo="E-mail">{conta.email}</Campo>}
+                            <div className="flex flex-col gap-0.5 border-t border-secondary pt-2">
+                                <dt className="text-sm text-tertiary">Recebeu por transferência</dt>
+                                <dd className="text-sm text-primary">{origem || "Sem registro da data"}</dd>
+                            </div>
+                        </dl>
+                    </AriaDialog>
+                </AriaPopover>
+            </AriaDialogTrigger>
+        </p>
     );
 };
 

@@ -1022,9 +1022,12 @@ const GrupoDoHistorico = ({ pedido, grupo, onVerAlteracao }: { pedido: Pedido; g
 
     return (
         <li id={grupo.solicitacaoId ? `grupo-${grupo.solicitacaoId}` : undefined} className="scroll-mt-24">
-            <details open={tom !== "neutro"} className={cx("group rounded-xl bg-primary ring-1 ring-border-secondary", FOCO_ESCOPO)}>
-                {/* A linha inteira é o gatilho: um chevron de 20px seria o menor alvo da tela. */}
-                <summary className={cx("flex cursor-pointer list-none items-start gap-3 rounded-xl p-4 transition duration-100 ease-linear hover:bg-primary_hover [&::-webkit-details-marker]:hidden", FOCO)}>
+            {/* O cabeçalho sai de dentro do `details`: o gatilho agora é um campo rotulado no pé
+                do cartão, e o `summary` precisa ser o primeiro filho do seu próprio `details`.
+                O que se ganha é um alvo que diz o que faz, em vez de uma linha inteira clicável
+                com um chevron mudo no canto. */}
+            <div className={cx("rounded-xl bg-primary ring-1 ring-border-secondary", FOCO_ESCOPO)}>
+                <div className="flex items-start gap-3 p-4">
                     <FeaturedIcon icon={Icone} color="gray" theme="modern" size="sm" className="mt-0.5 shrink-0" />
 
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -1071,10 +1074,20 @@ const GrupoDoHistorico = ({ pedido, grupo, onVerAlteracao }: { pedido: Pedido; g
                         )}
                     </div>
 
-                    <ChevronDown className="mt-1 size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
-                </summary>
+                </div>
 
-                <div className="flex flex-col gap-3 border-t border-secondary p-4">
+                <details open={tom !== "neutro"} className="group border-t border-secondary">
+                    <summary
+                        className={cx(
+                            "flex cursor-pointer list-none items-center gap-1 px-4 py-3 text-sm text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover max-md:min-h-11 [&::-webkit-details-marker]:hidden",
+                            FOCO,
+                        )}
+                    >
+                        Detalhes
+                        <ChevronDown className="size-4 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
+                    </summary>
+
+                    <div className="flex flex-col gap-3 px-4 pb-4">
                     {/* Abrir mostra o que o cabeçalho não mostra. O A → B saiu daqui: ele já está
                         acima, e repetido logo abaixo de si mesmo lia como duas alterações.
 
@@ -1107,15 +1120,16 @@ const GrupoDoHistorico = ({ pedido, grupo, onVerAlteracao }: { pedido: Pedido; g
                         </div>
                     )}
 
-                    {viva && (
-                        <div>
-                            <Button size="sm" color="link-color" onClick={() => onVerAlteracao(viva.id)}>
-                                Ver alteração
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            </details>
+                        {viva && (
+                            <div>
+                                <Button size="sm" color="link-color" onClick={() => onVerAlteracao(viva.id)}>
+                                    Ver alteração
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </details>
+            </div>
         </li>
     );
 };

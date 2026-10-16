@@ -214,8 +214,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
     const itensQueEntram = Object.entries(entram).filter(([, q]) => q > 0);
     const totalEntram = itensQueEntram.reduce((soma, [, q]) => soma + q, 0);
     const restante = totalSaem - totalEntram;
-    /* Com um único item escolhido dá para nomeá-lo na instrução do limite. */
-    const unicoEscolhido = itensQueEntram.length === 1 ? getItem(itensQueEntram[0][0]) : undefined;
     const destinosItens = itensQueEntram.flatMap(([itemId, q]) => {
         const item = getItem(itemId);
         return item ? Array.from({ length: q }, () => item) : [];
@@ -496,17 +494,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
 
                     {selecaoIgual && <Aviso titulo="A seleção é igual ao que já está no pedido" descricao="Escolha pelo menos um item diferente para a troca fazer sentido." />}
 
-                    {totalSaem > 1 && restante === 0 && (
-                        /* Com a conta fechada o catálogo para de responder. Antes o toque morria em
-                           silêncio e o atendente tocava de novo, achando que a tela travou. */
-                        <Regra>
-                            {/* Sem "os escolhidos acima": o bloco que ficava ali saiu, e a frase
-                                apontava para o vazio. Quem tem quantidade mostra o stepper na
-                                própria linha do catálogo. */}
-                            Limite atingido. {unicoEscolhido ? `Tire 1 de ${unicoEscolhido.nome}` : "Tire 1 de um item já escolhido"} para escolher outro item.
-                        </Regra>
-                    )}
-
                     {candidatos.length === 0 &&
                         (outrosTiposComAchado.length > 0 ? (
                             /* Estado vazio que é caminho, não negativa: o item existe, só está em
@@ -739,6 +726,46 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
 /*  Peças                                                              */
 /* ------------------------------------------------------------------ */
 
+/** A identidade do item: botão quando a linha inteira é o alvo, texto quando quem conta é o
+ *  stepper ao lado. Mesmo layout nos dois casos, para a lista não mudar de forma. */
+const Identidade = ({
+    unico,
+    ativavel,
+    escolhido,
+    naoSelecionavel,
+    onClick,
+    children,
+}: {
+    unico: boolean;
+    ativavel: boolean;
+    escolhido: boolean;
+    naoSelecionavel: boolean;
+    onClick: () => void;
+    children: ReactNode;
+}) => {
+    const layout = "flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left max-md:min-h-16";
+    if (!unico) return <div className={layout}>{children}</div>;
+    return (
+        <button
+            type="button"
+            disabled={!ativavel}
+            onClick={onClick}
+            aria-pressed={escolhido}
+            aria-disabled={naoSelecionavel || undefined}
+            className={cx(
+                layout,
+                "transition duration-100 ease-linear",
+                /* O pseudo-elemento se estica sobre o `li` inteiro e entrega o clique a este
+                   botão, então preço, diferença e espaço vazio também escolhem o item. */
+                ativavel && "before:absolute before:inset-0",
+                FOCO,
+            )}
+        >
+            {children}
+        </button>
+    );
+};
+
 const LinhaCatalogo = ({
     item,
     pedido,
@@ -785,7 +812,10 @@ const LinhaCatalogo = ({
        que já tinha sido marcado nos outros itens. O gesto destrutivo da etapa era o maior alvo
        da tela, mudo e sem desfazer. Quem quer as N no mesmo item chega lá pelo stepper. */
     const somavel = !naoSelecionavel && quantidade < maximo;
-    const ativavel = unico ? !naoSelecionavel : somavel;
+    /* Só a escolha de uma unidade usa a linha como alvo. Com várias, quem conta é o stepper, e
+       somar pelo clique na linha ficava ambíguo ao lado de um campo que faz a mesma coisa com
+       precisão: o gesto grande e mudo some, o campo fica. */
+    const ativavel = unico && !naoSelecionavel;
     /* Linha que não aceita mais nada fica com a cara de bloqueada. Acesa, ela recebia o toque
        sem reagir e sem mudar de aparência: o atendente tocava duas, três vezes. */
     const inerte = naoSelecionavel || (!unico && !somavel && !escolhido);
@@ -808,26 +838,19 @@ const LinhaCatalogo = ({
             {/* A opacidade fica na fileira, não na linha inteira: o motivo do bloqueio e a saída
                 dele ficam embaixo e precisam de contraste cheio. */}
             <div className={cx("flex flex-col gap-3 transition duration-100 ease-linear sm:flex-row sm:items-center sm:justify-between", inerte && "opacity-60")}>
-                {/* Botão de verdade, não div com onClick: no telefone a linha não tem hover para
-                    anunciar que é tocável, e o min-h garante alvo mesmo no item de uma linha só. */}
-                <button
-                    type="button"
-                    disabled={!ativavel}
-                    onClick={unico ? () => onChange(escolhido ? 0 : 1) : () => onChange(quantidade + 1)}
-                    aria-pressed={unico ? escolhido : undefined}
-                    className={cx(
-                        "flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left transition duration-100 ease-linear max-md:min-h-16",
-                        /* O pseudo-elemento se estica sobre o `li` inteiro e entrega o clique a
-                           este botão, então preço, diferença e espaço vazio também escolhem o
-                           item. Aninhar o stepper dentro do botão não é possível, e por isso ele
-                           sobe no empilhamento logo abaixo em vez de entrar aqui. */
-                        ativavel && "before:absolute before:inset-0",
-                        FOCO,
-                    )}
+                {/* Com uma unidade saindo a identidade é um botão de verdade, não div com
+                    onClick: no telefone a linha não tem hover para anunciar que é tocável, e o
+                    min-h garante alvo mesmo no item de uma linha só. Com várias, ela é só texto,
+                    e quem recebe o toque é o stepper ao lado. */}
+                <Identidade
+                    unico={unico}
+                    ativavel={ativavel}
+                    escolhido={escolhido}
+                    naoSelecionavel={naoSelecionavel}
+                    onClick={() => onChange(escolhido ? 0 : 1)}
                 >
                     {unico && <RadioButtonBase size="sm" isSelected={escolhido} isDisabled={naoSelecionavel} className="mt-0.5 shrink-0" />}
                     <span className="min-w-0 flex-1">
-                        {!unico && <span className="sr-only">Adicionar 1 unidade de </span>}
                         <span className="block text-sm font-semibold text-primary">{item.nome}</span>
                         {item.lote && <span className="block text-sm text-tertiary">{item.lote}</span>}
                         {/* Na busca a única pista de qual dia é o item era o chip de data, que pode
@@ -849,7 +872,7 @@ const LinhaCatalogo = ({
                             </span>
                         )}
                     </span>
-                </button>
+                </Identidade>
 
                 <div className="flex items-center justify-between gap-4 sm:justify-end">
                     <div className="sm:text-right">
@@ -862,14 +885,7 @@ const LinhaCatalogo = ({
                             </p>
                         )}
                     </div>
-                    {/* Acima do alvo da linha: o stepper tem os próprios botões e precisa receber
-                        o clique antes dela. O preço fica de fora de propósito, para continuar
-                        valendo como parte do alvo. */}
-                    {!bloqueado && !unico && !itemAtual && (
-                        <span className="relative z-10 flex">
-                            <Stepper valor={quantidade} maximo={maximo} rotulo={item.nome} onChange={onChange} />
-                        </span>
-                    )}
+                    {!bloqueado && !unico && !itemAtual && <Stepper valor={quantidade} maximo={maximo} rotulo={item.nome} onChange={onChange} />}
                 </div>
             </div>
 

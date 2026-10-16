@@ -21,7 +21,7 @@ type IllustrationKind =
     | "totem"
     | "payout"
     | "checkout"
-    | "checkout-decreto";
+    | "revenda";
 
 interface ProductCardData {
     id: string;
@@ -124,11 +124,11 @@ const PRODUCTS: ProductCardData[] = [
         illustration: "checkout",
     },
     {
-        id: "checkout-novo-decreto",
-        name: "Checkout - Novo decreto",
-        description: "Decisão sobre a proteção antes do pagamento, com transição animada",
-        to: "/checkout/novo-decreto",
-        illustration: "checkout-decreto",
+        id: "revenda",
+        name: "Revenda",
+        description: "Canal oficial de revenda: compre de quem não vai mais, mesmo após o sold out",
+        to: "/revenda",
+        illustration: "revenda",
     },
 ];
 
@@ -146,7 +146,7 @@ const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     totem: TotemIllustration,
     payout: PayOutIllustration,
     checkout: CheckoutIllustration,
-    "checkout-decreto": CheckoutDecretoIllustration,
+    revenda: RevendaIllustration,
 };
 
 /* Neutral base + brand highlight palette (theme-aware via tokens). */
@@ -262,42 +262,6 @@ function PayInIllustration() {
                 <path d="M164 80 L186 80" />
                 <polyline points="180,74 186,80 180,86" />
             </g>
-        </svg>
-    );
-}
-
-function CheckoutDecretoIllustration() {
-    return (
-        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
-            <defs>
-                <linearGradient id="ckd-bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="160">
-                    <stop offset="0%" stopColor={N100} />
-                    <stop offset="100%" stopColor={N200} />
-                </linearGradient>
-            </defs>
-            <rect width="320" height="160" fill="url(#ckd-bg)" />
-
-            {/* Card da proteção: escolha entre seguir sem e proteger */}
-            <rect x="24" y="24" width="176" height="62" rx="10" fill={N50} stroke={BORDER} />
-            <rect x="36" y="36" width="80" height="8" rx="4" fill={N300} />
-            <rect x="36" y="52" width="110" height="5" rx="2.5" fill={N200} />
-            <rect x="36" y="66" width="72" height="12" rx="4" fill={N50} stroke={N300} />
-            <rect x="114" y="66" width="74" height="12" rx="4" fill={BRAND} />
-
-            {/* Formas de pagamento bloqueadas (50%) */}
-            <g opacity="0.5">
-                <rect x="24" y="94" width="176" height="14" rx="5" fill={N50} stroke={BORDER} />
-                <rect x="24" y="114" width="176" height="14" rx="5" fill={N50} stroke={BORDER} />
-                <rect x="24" y="134" width="176" height="14" rx="5" fill={N50} stroke={BORDER} />
-            </g>
-
-            {/* Resumo do pedido */}
-            <rect x="212" y="24" width="84" height="118" rx="10" fill={N50} stroke={BORDER} />
-            <rect x="222" y="34" width="22" height="22" rx="4" fill={BRAND_SOFT} />
-            <rect x="222" y="66" width="64" height="6" rx="3" fill={N200} />
-            <rect x="222" y="80" width="50" height="6" rx="3" fill={N200} />
-            <rect x="222" y="94" width="58" height="6" rx="3" fill={N200} />
-            <rect x="222" y="120" width="64" height="12" rx="4" fill={BRAND} />
         </svg>
     );
 }
@@ -763,6 +727,34 @@ function BackstageIllustration() {
                     <rect x="208" y="86" width="18" height="5" rx="2.5" />
                 </g>
             </g>
+        </svg>
+    );
+}
+
+function RevendaIllustration() {
+    return (
+        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+            <rect width="320" height="160" fill={N100} />
+            {/* vitrine do canal */}
+            <rect x="30" y="18" width="260" height="128" rx="12" fill={N50} stroke={BORDER} />
+            {/* hero */}
+            <rect x="30" y="18" width="260" height="40" rx="12" fill={BRAND_SOFT} />
+            <rect x="30" y="46" width="260" height="12" fill={BRAND_SOFT} />
+            <rect x="44" y="29" width="88" height="7" rx="3.5" fill={BRAND} />
+            <rect x="44" y="41" width="58" height="5" rx="2.5" fill={N300} />
+            {/* selo da revenda: a troca entre quem vende e quem compra */}
+            <circle cx="258" cy="38" r="13" fill={N50} stroke={BORDER} />
+            <path d="M252 35h10l-3-3" fill="none" stroke={BRAND} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M264 41h-10l3 3" fill="none" stroke={BRAND} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            {/* grade de eventos, um deles com oferta ativa */}
+            <rect x="44" y="72" width="52" height="58" rx="6" fill={N200} />
+            <rect x="104" y="72" width="52" height="58" rx="6" fill={BRAND_SOFT} />
+            <rect x="164" y="72" width="52" height="58" rx="6" fill={N200} />
+            <rect x="224" y="72" width="52" height="58" rx="6" fill={N200} />
+            <rect x="50" y="116" width="34" height="6" rx="3" fill={N300} />
+            <rect x="110" y="116" width="34" height="6" rx="3" fill={BRAND} />
+            <rect x="170" y="116" width="34" height="6" rx="3" fill={N300} />
+            <rect x="230" y="116" width="34" height="6" rx="3" fill={N300} />
         </svg>
     );
 }

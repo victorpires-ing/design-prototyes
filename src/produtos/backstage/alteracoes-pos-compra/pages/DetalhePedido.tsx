@@ -607,7 +607,7 @@ const CartaoDaUnidade = ({ pedido, item, linha, onAbrir }: { pedido: Pedido } & 
 
             {temFatos && (
                 <div className="flex flex-col gap-0.5 border-t border-secondary px-4 py-3 lg:px-5">
-                    <FatosDaUnidade pedido={pedido} linha={linha} estado={estado} {...resto} />
+                    <FatosDaUnidade pedido={pedido} linha={linha} estado={estado} />
                 </div>
             )}
 

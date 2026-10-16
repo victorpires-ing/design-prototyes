@@ -213,7 +213,7 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
                 </summary>
                 <div className="mt-3 overflow-hidden rounded-xl ring-1 ring-border-secondary">
                     <ResumoFinanceiro linhas={solicitacao.linhas} semMoldura />
-                    {(solicitacao.motivo || comFinanceiro) && (
+                    {solicitacao.motivo && (
                         <div className="flex flex-col gap-1 border-t border-secondary px-4 py-3 text-sm text-tertiary">
                             {solicitacao.motivo && (
                                 <p>

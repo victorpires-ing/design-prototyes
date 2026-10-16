@@ -125,10 +125,6 @@ export function DetalhePedido() {
         navigate(rotaDoFluxo(verbo, linhas, rascunho?.id));
     };
     const continuar = (rascunho: Rascunho) => navigate(rotaDoFluxo(VERBO_DO_TIPO[rascunho.tipo], rascunho.linhasSelecionadas, rascunho.id));
-    const verNoHistorico = (solicitacaoId?: string) => {
-        setAba("historico");
-        if (solicitacaoId) setFocar(`grupo-${solicitacaoId}`);
-    };
 
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
@@ -167,7 +163,7 @@ export function DetalhePedido() {
                     </Tabs>
 
                     {aba === "itens" ? (
-                        <ListaDeItens pedido={pedido} rascunhos={rascunhos} onAbrir={abrir} onContinuar={continuar} onVerHistorico={verNoHistorico} />
+                        <ListaDeItens pedido={pedido} rascunhos={rascunhos} onAbrir={abrir} onContinuar={continuar} />
                     ) : (
                         <Historico pedido={pedido} onVerAlteracao={(id) => setFocar(idDoCartao(id))} />
                     )}
@@ -516,7 +512,6 @@ interface UnidadeDoPedido {
 interface AcoesDaLista {
     onAbrir: (verbo: Verbo, linhas: string[]) => void;
     onContinuar: (rascunho: Rascunho) => void;
-    onVerHistorico: (solicitacaoId?: string) => void;
 }
 
 /**
@@ -751,9 +746,6 @@ const lerUnidade = (pedido: Pedido, rascunhos: Rascunho[], linha: PedidoItem) =>
         solicitacao,
         transferida,
         rascunho: rascunhos.find((r) => r.linhasSelecionadas.includes(linha.id)),
-        /* A última mudança da unidade, para responder "o que aconteceu com este ingresso" sem
-           abrir o histórico. */
-        ultima: [...pedido.historico].reverse().find((h) => h.solicitacaoId && h.linhaIds?.includes(linha.id) && h.marco !== "solicitada" && h.marco !== "reenviada"),
     };
 };
 
@@ -761,8 +753,8 @@ type EstadoLido = ReturnType<typeof lerUnidade>;
 
 /** O que aconteceu com a unidade. Fica sempre na coluna de texto, nunca na de controle: a
  *  direita do cartão é o que se pode fazer, não o que já foi feito. */
-const FatosDaUnidade = ({ pedido, linha, estado, onContinuar, onVerHistorico }: { pedido: Pedido; linha: PedidoItem; estado: EstadoLido } & Omit<AcoesDaLista, "onAbrir">) => {
-    const { solicitacao, rascunho, ultima } = estado;
+const FatosDaUnidade = ({ pedido, linha, estado, onContinuar }: { pedido: Pedido; linha: PedidoItem; estado: EstadoLido } & Omit<AcoesDaLista, "onAbrir">) => {
+    const { solicitacao, rascunho } = estado;
     return (
         <>
             {/* Só a frase de estado: o cartão da operação já está na tela, logo acima das abas,
@@ -775,14 +767,6 @@ const FatosDaUnidade = ({ pedido, linha, estado, onContinuar, onVerHistorico }: 
                         Continuar
                     </Button>
                 </p>
-            )}
-            {/* Sem a frase "Última alteração: ...": contar de novo no cartão o que a aba
-                Histórico já conta por extenso. Fica o caminho até lá, que é o que liga esta
-                unidade ao registro dela. */}
-            {!solicitacao && ultima && (
-                <Button size="sm" color="link-color" className="w-fit" onClick={() => onVerHistorico(ultima.solicitacaoId)}>
-                    Ver no histórico
-                </Button>
             )}
         </>
     );

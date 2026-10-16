@@ -10,9 +10,10 @@ import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { FaixaAtencaoPedidos } from "../components/FaixaAtencaoPedidos";
-import { FOCO, FOCO_ESCOPO } from "../components/pos-compra-ui";
+import { FOCO, FOCO_ESCOPO, StatusBadge } from "../components/pos-compra-ui";
 import {
     EVENTOS,
+    STATUS_LABEL,
     formatarMoeda,
     getConta,
     getEvento,
@@ -24,6 +25,12 @@ const totalPago = (pedido: Pedido) => pedido.itens.reduce((soma, linha) => soma 
 
 const TODOS = "todos";
 
+/* O filtro é por rótulo, não por status: "aguardando-pagamento" e "pago-processando" são a
+   mesma frase na tela ("Alteração em andamento"), e oferecer duas opções com o mesmo nome
+   obrigaria a pessoa a adivinhar a diferença. Quem filtra por um rótulo acha tudo que a
+   coluna mostra com esse rótulo. */
+const SITUACOES = [...new Set(Object.values(STATUS_LABEL))];
+
 export function Pedidos() {
     const navigate = useNavigate();
     const pedidos = usePedidos();
@@ -32,6 +39,7 @@ export function Pedidos() {
        e o endereço pode ser colado para um colega ver o mesmo recorte. */
     const [parametros, setParametros] = useSearchParams();
     const busca = parametros.get("busca") ?? "";
+    const situacao = parametros.get("situacao") ?? TODOS;
     const eventoId = parametros.get("evento") ?? TODOS;
     const porPagina = Number(parametros.get("porPagina") ?? 25) || 25;
     const pagina = Number(parametros.get("pagina") ?? 1) || 1;
@@ -56,6 +64,7 @@ export function Pedidos() {
         () =>
             pedidos.filter((pedido) => {
                 if (eventoId !== TODOS && pedido.eventoId !== eventoId) return false;
+                if (situacao !== TODOS && STATUS_LABEL[pedido.status] !== situacao) return false;
                 if (!termo) return true;
                 const comprador = getConta(pedido.compradorId)?.nome.toLowerCase() ?? "";
                 const evento = getEvento(pedido.eventoId)?.nome.toLowerCase() ?? "";
@@ -63,10 +72,11 @@ export function Pedidos() {
                     pedido.id.toLowerCase().includes(termo) || comprador.includes(termo) || evento.includes(termo)
                 );
             }),
-        [pedidos, termo, eventoId],
+        [pedidos, termo, eventoId, situacao],
     );
 
     const eventosFiltro = [{ id: TODOS, label: "Todos os eventos" }, ...EVENTOS.map((e) => ({ id: e.id, label: e.nome }))];
+    const situacoesFiltro = [{ id: TODOS, label: "Todas as situações" }, ...SITUACOES.map((label) => ({ id: label, label }))];
 
     /* Qualquer mudança de filtro recomeça a leitura: manter a página 7 depois de filtrar confunde. */
     const totalPaginas = Math.max(1, Math.ceil(filtrados.length / porPagina));
@@ -74,7 +84,7 @@ export function Pedidos() {
     const inicio = (paginaAtual - 1) * porPagina;
     const visiveis = filtrados.slice(inicio, inicio + porPagina);
     /* Uma escrita só na URL: duas seguidas (filtro e página) fariam a segunda apagar a primeira. */
-    const aoFiltrar = (chave: "busca" | "evento") => (valor: string) => definir({ [chave]: valor, pagina: 1 });
+    const aoFiltrar = (chave: "busca" | "evento" | "situacao") => (valor: string) => definir({ [chave]: valor, pagina: 1 });
 
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
@@ -114,6 +124,16 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                 {(evento) => <Select.Item id={evento.id}>{evento.label}</Select.Item>}
                             </Select>
                         </div>
+                        <div className="md:w-56">
+                            <Select
+                                label="Situação"
+                                selectedKey={situacao}
+                                onSelectionChange={(key) => aoFiltrar("situacao")(String(key))}
+                                items={situacoesFiltro}
+                            >
+                                {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                            </Select>
+                        </div>
                     </div>
 
                     {filtrados.length === 0 ? (
@@ -124,7 +144,7 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                 </EmptyState.Header>
                                 <EmptyState.Content>
                                     <EmptyState.Title>Nenhum pedido encontrado</EmptyState.Title>
-                                    <EmptyState.Description>Revise a busca ou volte o filtro para todos os eventos.</EmptyState.Description>
+                                    <EmptyState.Description>Revise a busca ou volte os filtros de evento e situação para todos.</EmptyState.Description>
                                 </EmptyState.Content>
                             </EmptyState>
                         </div>
@@ -156,6 +176,7 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                                     {formatarMoeda(totalPago(pedido))}
                                                 </span>
                                             </span>
+                                            <StatusBadge status={pedido.status} />
                                         </button>
                                     </li>
                                 );
@@ -171,6 +192,7 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                         <Th>Evento</Th>
                                         <Th>Itens</Th>
                                         <Th>Total pago</Th>
+                                        <Th>Situação</Th>
                                         <th className="w-16 px-4 py-3" />
                                     </tr>
                                 </thead>
@@ -194,6 +216,12 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                                 <td className="px-4 py-4 text-sm text-tertiary tabular-nums">{pedido.itens.length}</td>
                                                 <td className="px-4 py-4 text-sm whitespace-nowrap text-primary tabular-nums">
                                                     {formatarMoeda(totalPago(pedido))}
+                                                </td>
+                                                {/* A situação sai das solicitações abertas, então uma alteração feita
+                                                    agora aparece aqui assim que o fluxo é enviado: é por esta coluna que
+                                                    se acha de volta o pedido que acabou de ser mexido. */}
+                                                <td className="px-4 py-4">
+                                                    <StatusBadge status={pedido.status} />
                                                 </td>
                                                 <td className="px-4 py-4 text-right">
                                                     {/*

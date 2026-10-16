@@ -245,16 +245,15 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
                     Detalhes da cobrança
                     <ChevronDown className="size-4 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
                 </summary>
-                <div className="mt-3 overflow-hidden rounded-xl ring-1 ring-border-secondary">
+                {/* Sem moldura própria: isto abre dentro de um cartão que já tem a sua, e um anel
+                    dentro do outro só dava mais uma borda para o olho resolver. O `p-0` tira o
+                    recuo que o resumo carrega para quando ele mora num container de verdade. */}
+                <div className="mt-3 flex flex-col gap-2 [&_dl]:p-0">
                     <ResumoFinanceiro linhas={solicitacao.linhas} semMoldura />
                     {solicitacao.motivo && (
-                        <div className="flex flex-col gap-1 border-t border-secondary px-4 py-3 text-sm text-tertiary">
-                            {solicitacao.motivo && (
-                                <p>
-                                    Motivo: {descreverMotivo(solicitacao.motivo)} · aberta por {solicitacao.operador}
-                                </p>
-                            )}
-                        </div>
+                        <p className="text-sm text-tertiary">
+                            Motivo: {descreverMotivo(solicitacao.motivo)} · aberta por {solicitacao.operador}
+                        </p>
                     )}
                 </div>
             </details>

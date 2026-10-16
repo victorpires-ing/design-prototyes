@@ -951,18 +951,17 @@ const Historico = ({ pedido, onVerAlteracao }: { pedido: Pedido; onVerAlteracao:
     const lista = [...grupos.values()].sort((a, b) => b.ordem - a.ordem);
     const visiveis = todos ? lista : lista.slice(0, LIMITE_GRUPOS);
 
-    const contagem = new Map<string, number>();
-    lista.forEach((g) => {
-        const { rotulo } = resultadoDoGrupo(pedido, g);
-        contagem.set(rotulo.toLowerCase(), (contagem.get(rotulo.toLowerCase()) ?? 0) + 1);
-    });
+    /* Só a contagem. A quebra por desfecho ("1 alteração desde a compra: 1 concluída") repetia o
+       número para dizer a mesma coisa duas vezes, e cada alteração já carrega o seu desfecho. */
     const resumo =
         lista.length === 0
             ? "Nenhuma alteração registrada no Backstage desde a compra."
-            : `${plural(lista.length, "alteração", "alterações")} desde a compra: ${[...contagem.entries()].map(([rotulo, n]) => `${n} ${rotulo}`).join(", ")}.`;
+            : `${plural(lista.length, "alteração", "alterações")} desde a compra.`;
 
+    /* Sem moldura própria: cada alteração já é um cartão, e a caixa em volta punha caixa dentro
+       de caixa. O que organiza a aba é a pilha, não o anel. */
     return (
-        <section className="flex flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
+        <section className="flex flex-col gap-4">
             <p className="text-sm text-secondary">{resumo}</p>
 
             {visiveis.length > 0 && (
@@ -1062,41 +1061,26 @@ const GrupoDoHistorico = ({ pedido, grupo, onVerAlteracao }: { pedido: Pedido; g
                                 <p className="text-sm text-tertiary">{dinheiro}</p>
                             </>
                         )}
-                        <Badge size="md" type="pill-color" color={tom === "erro" ? "error" : tom === "aviso" ? "warning" : "gray"}>
-                            {rotulo}
-                        </Badge>
+                        {/* "Concluída" é o desfecho que toda alteração deveria ter: o selo gastava
+                            cor e espaço para dizer que nada aconteceu de diferente. Os outros
+                            ficam, porque aí há algo acontecendo ou algo deu errado. */}
+                        {rotulo !== "Concluída" && (
+                            <Badge size="md" type="pill-color" color={tom === "erro" ? "error" : tom === "aviso" ? "warning" : "gray"}>
+                                {rotulo}
+                            </Badge>
+                        )}
                     </div>
 
                     <ChevronDown className="mt-1 size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
                 </summary>
 
                 <div className="flex flex-col gap-3 border-t border-secondary p-4">
-                    {mudancas.length > 0 && (
-                        <ul className="flex flex-col gap-2">
-                            {mudancas.map((m, i) => (
-                                <li key={i} className="flex flex-col gap-0.5">
-                                    {m.escopo && <p className="text-sm text-tertiary">{m.escopo}</p>}
-                                    <p className="flex flex-wrap items-center gap-x-2 text-sm">
-                                        <span className="text-tertiary line-through">{m.de}</span>
-                                        <span className="text-fg-quaternary" aria-hidden="true">
-                                            {"\u2192"}
-                                        </span>
-                                        <span className="font-medium text-primary">{m.para}</span>
-                                    </p>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    {abertura.detalhes?.map((detalhe) => (
-                        <p key={detalhe} className="text-sm text-secondary">
-                            {detalhe}
-                        </p>
-                    ))}
-                    {abertura.motivo && <p className="text-sm text-tertiary">{descreverMotivo(abertura.motivo)}</p>}
+                    {/* Abrir mostra o que o cabeçalho não mostra. O A → B saiu daqui: ele já está
+                        acima, e repetido logo abaixo de si mesmo lia como duas alterações.
 
-                    {/* A hora vira coluna, e a coluna vira o separador: a linha do tempo tinha três
+                        A hora vira coluna, e a coluna vira o separador: a linha do tempo tinha três
                         pontos médios por marco só para emendar hora, fato, descrição e autor. */}
-                    <ol className="grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1.5 border-t border-secondary pt-3">
+                    <ol className="grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1.5">
                         {eventos.map(({ entrada, vezes }) => (
                             <Fragment key={entrada.id}>
                                 <dt className="text-sm text-tertiary tabular-nums">{horaDoLabel(entrada.dataLabel) || entrada.dataLabel}</dt>
@@ -1109,6 +1093,19 @@ const GrupoDoHistorico = ({ pedido, grupo, onVerAlteracao }: { pedido: Pedido; g
                             </Fragment>
                         ))}
                     </ol>
+
+                    {/* O porquê num box ao pé: é a leitura que vem depois dos fatos, não entre
+                        eles, e o fundo o separa da linha do tempo sem mais uma régua. */}
+                    {(abertura.detalhes?.length || abertura.motivo) && (
+                        <div className="flex flex-col gap-1 rounded-lg bg-secondary p-3">
+                            {abertura.detalhes?.map((detalhe) => (
+                                <p key={detalhe} className="text-sm text-secondary">
+                                    {detalhe}
+                                </p>
+                            ))}
+                            {abertura.motivo && <p className="text-sm text-tertiary">{descreverMotivo(abertura.motivo)}</p>}
+                        </div>
+                    )}
 
                     {viva && (
                         <div>

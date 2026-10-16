@@ -63,6 +63,14 @@ const agruparIguais = (linhas: PedidoItem[], pedido: Pedido) => {
     return [...grupos.values()];
 };
 
+/** O que a unidade barrada não pode sofrer, na voz do fluxo. "Não podem entrar" servia aos três
+ *  e não dizia nada em nenhum: entrar onde, se a lista é do próprio pedido. */
+const PARTICIPIO: Record<Verbo, { singular: string; plural: string }> = {
+    transferir: { singular: "transferida", plural: "transferidas" },
+    trocar: { singular: "trocada", plural: "trocadas" },
+    formulario: { singular: "editada", plural: "editadas" },
+};
+
 /**
  * Etapa de seleção dentro do overlay. A elegibilidade é do verbo: o que entra numa troca não é o
  * mesmo que entra numa transferência, então só dá para dizer o que pode depois de saber o que se
@@ -188,7 +196,9 @@ export function SeletorUnidades({
             {indisponiveis.length > 0 && (
                 <details className="group rounded-xl bg-primary ring-1 ring-border-secondary">
                     <summary className="cursor-pointer list-none rounded-xl px-4 py-3 text-sm font-semibold text-secondary transition duration-100 ease-linear hover:bg-primary_hover">
-                        {indisponiveis.length === 1 ? "1 unidade não pode entrar" : `${indisponiveis.length} unidades não podem entrar`}
+                        {indisponiveis.length === 1
+                            ? `1 unidade não pode ser ${PARTICIPIO[verbo].singular}`
+                            : `${indisponiveis.length} unidades não podem ser ${PARTICIPIO[verbo].plural}`}
                         <span className="font-normal text-tertiary"> · ver motivo</span>
                     </summary>
                     <ul className="flex flex-col divide-y divide-border-secondary border-t border-secondary">

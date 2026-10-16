@@ -669,12 +669,18 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
 
                         <CampoMotivo valor={motivo} onChange={setMotivo} />
 
-                        <div className="w-full">
-                            <ResumoFinanceiro linhas={calculo.linhas} />
+                        {/* O mesmo cartão da troca: título sem régua embaixo nem faixa própria, o
+                            peso da fonte já separa, e a letra miúda mora junto da conta a que ela
+                            se refere. O `p-0` tira o recuo que o resumo carrega para quando ele
+                            mora num container com faixa. */}
+                        <div className="flex w-full flex-col gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5 [&_dl]:p-0">
+                            <p className="text-sm font-semibold text-primary">Resumo da cobrança</p>
+                            <ResumoFinanceiro linhas={calculo.linhas} semMoldura />
                         </div>
 
-                        {/* §8 E4: o resumo declara a herança das respostas. Alterar resposta aqui
-                            não existe. Fica no fim, depois da cobrança: é a letra miúda do que foi
+                        {/* §8 E4: o resumo declara a herança das respostas. Fora do cartão e por
+                            último: o resumo é a conta, e isto é o que acontece com as respostas.
+                            Alterar resposta aqui não existe, então é letra miúda do que foi
                             combinado, não uma decisão a tomar no meio do caminho. */}
                         {comFormulario.length > 0 && (
                             <p className="w-full text-sm text-tertiary">

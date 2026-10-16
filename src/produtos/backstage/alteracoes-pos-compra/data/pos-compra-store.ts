@@ -1491,35 +1491,34 @@ export const calcularTrocaItem = (linha: PedidoItem, novoItem: CatalogoItem): Ca
  * de serviço proporcional. Vale a cobrança da transferência paga.
  */
 export const calcularTrocaTitularidade = (unidades: PedidoItem[]): Calculo => {
-    const total = arredondar(unidades.length * COBRANCA_TITULARIDADE);
+    const cobranca = arredondar(unidades.length * COBRANCA_TITULARIDADE);
 
-    /* Uma linha por item, não uma linha só com a conta embutida no rótulo. O recibo dizia
-       "Cobrança da transferência · 2 unidades" e repetia o mesmo número no total: duas linhas
-       para uma informação, sem dizer de quais unidades nem quanto custa cada uma. Agora lê como
-       recibo: o que está sendo transferido, quanto custa, e o total embaixo.
-
-       Unidades do mesmo item e lote entram juntas, com a quantidade na frente: três linhas
-       idênticas não são detalhe, são repetição. */
-    const porItem = new Map<string, { label: string; quantidade: number }>();
-    unidades.forEach((unidade) => {
-        const item = getItem(unidade.itemId);
-        const label = [item?.nome ?? "Item", item?.lote].filter(Boolean).join(" · ");
-        const atual = porItem.get(label) ?? { label, quantidade: 0 };
-        atual.quantidade++;
-        porItem.set(label, atual);
-    });
-
-    const linhas: LinhaCobranca[] = [...porItem.values()].map(({ label, quantidade }) => ({
-        label: quantidade > 1 ? `${quantidade}x ${label}` : label,
-        valor: arredondar(quantidade * COBRANCA_TITULARIDADE),
-        regra: `${formatarMoeda(COBRANCA_TITULARIDADE)} por unidade, pela configuração da transferência paga. O item é o mesmo: não há diferença de preço nem taxa de serviço proporcional.`,
-    }));
-
+    /* As mesmas parcelas da troca, na mesma ordem, inclusive as que dão zero. Uma linha só com
+       a conta embutida no rótulo ("Cobrança da transferência · 2 unidades") não dizia de onde
+       vinha o valor nem por que não havia mais nada: os dois zeros são a resposta, e dizem que
+       a titularidade não mexe no preço nem na taxa. */
     return {
         diferencaBruta: 0,
         semCredito: false,
-        total,
-        linhas: [...linhas, { label: "Total", valor: total, destaque: true }],
+        total: cobranca,
+        linhas: [
+            {
+                label: "Diferença dos itens",
+                valor: 0,
+                regra: "A titularidade não troca o item: o que sai e o que fica é o mesmo ingresso, pelo mesmo preço.",
+            },
+            {
+                label: "Taxa de serviço proporcional",
+                valor: 0,
+                regra: "Sem item novo não há taxa de serviço nova para comparar com a já paga.",
+            },
+            {
+                label: "Cobrança da transferência",
+                valor: cobranca,
+                regra: `${formatarMoeda(COBRANCA_TITULARIDADE)} por unidade, pela configuração da transferência paga.`,
+            },
+            { label: "Total", valor: cobranca, destaque: true },
+        ],
     };
 };
 

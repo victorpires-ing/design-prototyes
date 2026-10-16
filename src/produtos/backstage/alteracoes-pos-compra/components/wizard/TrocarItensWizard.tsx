@@ -13,7 +13,6 @@ import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinan
 import { AbasCarrossel, ChipLegenda, type AbaItem } from "../abas-carrossel";
 import { EditorResposta } from "../respostas-ui";
 import {
-    PRAZO_REAL_LABEL,
     SESSOES,
     calcularTrocaItens,
     criarSolicitacao,
@@ -240,13 +239,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
        linhas, e a troca já é identificada pelo item que sai. */
     const titularesQueSaem = new Set(linhasSaem.map((l) => l.titularId ?? pedido.compradorId));
     const mostrarPortador = titularesQueSaem.size > 1;
-    const topicosDaConta = [
-        "Diferença e taxas",
-        cortesia ? "cortesia" : null,
-        pedido.cupom && (calculo?.descontoPerdido ?? 0) > 0 ? "cupom" : null,
-        "prazo e estoque",
-    ].filter(Boolean) as string[];
-
     /* ------------------------------------------------------------------ */
     /*  Formulários: herdados da unidade que sai, nada inventado           */
     /* ------------------------------------------------------------------ */
@@ -618,12 +610,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                         <div className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-3">
                             <p className="text-sm font-semibold text-primary">Trocando</p>
                         </div>
-                        {pares.length > 1 && (
-                            /* O par sai de parearTroca, que ordena os dois lados por valor: quem
-                               recebe o quê é decisão da ordenação, não do atendente. Calado, isso
-                               vira uma escolha que ele acha que fez. */
-                            <Regra className="border-b border-secondary px-4 py-3">O par de cada unidade é escolhido pelo menor valor total.</Regra>
-                        )}
                         <ul className="flex flex-col divide-y divide-border-secondary">
                             {pares.map(({ linha, novoItem }) => {
                                 const itemSai = getItem(linha.itemId);
@@ -657,65 +643,50 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                         </ul>
                     </div>
 
-                    {/* A consequência primeiro: ao telefone a conversa é "o valor é X, o senhor
-                        concorda?", e a tela abria pelo cartão de motivo. O aceite da sobra mora
-                        dentro deste bloco, colado ao aviso que ele aceita. */}
-                    <div className="flex w-full flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
-                        <div className="flex items-baseline justify-between gap-4">
-                            <p className="text-sm font-semibold text-primary">{calculo.total > 0 ? "Total a cobrar" : "Total"}</p>
-                            <p className="text-display-xs font-bold text-primary tabular-nums">{formatarMoeda(calculo.total)}</p>
-                        </div>
-                        <Regra>
-                            {calculo.total === 0
-                                ? "Sem valor a pagar: a troca é aplicada na hora, sem link e sem prazo."
-                                : `A troca só é efetivada depois do pagamento. O link vai para ${destino}, com prazo de ${PRAZO_REAL_LABEL}.`}
-                        </Regra>
-                        {precisaAceite && (
-                            <>
-                                <Aviso
-                                    tom="warning"
-                                    titulo={`${formatarMoeda(naoDevolvido)} não serão devolvidos`}
-                                    descricao="O item novo é mais barato. A sobra abate a cobrança da troca e o que resta fica com a Ingresse: não vira devolução, crédito nem saldo."
-                                />
-                                <Checkbox
-                                    isSelected={aceitouSobra}
-                                    onChange={setAceitouSobra}
-                                    label={`Confirmo, em nome do comprador, que ${formatarMoeda(naoDevolvido)} não serão devolvidos`}
-                                    hint="O aceite fica registrado no histórico junto com o motivo e o chamado."
-                                />
-                            </>
-                        )}
-                    </div>
+                    {/* A burocracia antes do recibo: é o que o atendente registra enquanto combina
+                        o valor ao telefone. */}
+                    <CampoMotivo valor={motivo} onChange={setMotivo} />
 
-                    {/* As regras informativas eram até quatro banners empilhados acima do número que
-                        o atendente precisa ler. Juntas e recolhidas, continuam a um toque. */}
-                    <Accordion
-                        defaultOpen={false}
-                        cabecalho={
-                            <span className="flex min-w-0 flex-1 flex-col">
-                                <span className="text-sm font-semibold text-primary">Como esta cobrança foi calculada</span>
-                                <span className="truncate text-sm text-tertiary">{topicosDaConta.join(" · ")}</span>
-                            </span>
-                        }
-                    >
-                        <div className="flex flex-col gap-3 pb-3">
-                            <ResumoFinanceiro linhas={calculo.linhas} semMoldura />
-                            <div className="flex flex-col gap-3 px-4">
+                    {/* Era um acordeão recolhido chamado "Como esta cobrança foi calculada", que
+                        escondia a conta atrás de um toque. Aberto e no fim, ele é o recibo: as
+                        parcelas, o total e as ressalvas que valem para esta troca. O rodapé já
+                        carrega o total e para quem vai, então nada aqui precisa ser alcançado
+                        antes de decidir. */}
+                    {/* Título sem régua embaixo e sem faixa própria: o peso da fonte já separa, e a
+                        régua somava a sua altura ao padding da faixa e ao do resumo, afastando o
+                        rótulo das suas próprias linhas. O `p-0` tira o recuo que o resumo carrega
+                        para quando ele mora num container com faixa. */}
+                    <div className="flex w-full flex-col gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5 [&_dl]:p-0">
+                        <p className="text-sm font-semibold text-primary">Resumo da cobrança</p>
+                        <ResumoFinanceiro linhas={calculo.linhas} semMoldura />
+                        <div className="flex flex-col gap-3">
                                 {cortesia && <Regra>Há cortesia na troca: unidade de cortesia não tem valor pago, então a diferença é o preço cheio do item novo.</Regra>}
                                 {pedido.cupom && (calculo.descontoPerdido ?? 0) > 0 && (
                                     <Regra>
                                         Inclui {formatarMoeda(calculo.descontoPerdido ?? 0)} do cupom {pedido.cupom}: o desconto da compra não vale para o item novo, e a diferença usa o preço cheio dele.
                                     </Regra>
                                 )}
-                                {/* §11: criar a solicitação valida o estoque, não o reserva. */}
-                                <Regra>A troca está sujeita à disponibilidade de estoque: a solicitação confere o estoque, não reserva.</Regra>
+                                {/* §11: criar a solicitação valida o estoque, não o reserva. A
+                                    segunda metade da frase explicava o mecanismo; o que muda para
+                                    quem está ao telefone é só a ressalva. */}
+                                <Regra>A troca está sujeita à disponibilidade de estoque</Regra>
                             </div>
-                        </div>
-                    </Accordion>
+                    </div>
 
-                    {/* A burocracia por último: é o que o atendente registra depois de combinar o
-                        valor, não antes. */}
-                    <CampoMotivo valor={motivo} onChange={setMotivo} />
+                    {/* Fora do resumo e por último: o resumo é a conta, isto é uma decisão que o
+                        atendente toma com o comprador. Dentro do cartão ele lia como mais uma
+                        linha da conta, e é a única coisa da etapa que trava a confirmação. O
+                        rodapé diz o que falta enquanto a caixa não for marcada. */}
+                    {precisaAceite && (
+                        <div className="flex w-full flex-col gap-4">
+                            <Checkbox
+                                isSelected={aceitouSobra}
+                                onChange={setAceitouSobra}
+                                label={`Confirmo, em nome do comprador, que ${formatarMoeda(naoDevolvido)} não serão devolvidos`}
+                                hint="O aceite fica registrado no histórico junto com o motivo e o chamado."
+                            />
+                        </div>
+                    )}
                 </>
             )}
         </WizardShell>

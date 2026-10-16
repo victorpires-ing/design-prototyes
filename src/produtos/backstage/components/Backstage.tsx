@@ -35,7 +35,10 @@ import LogoWhite from "../../../assets/Company logo_white.svg";
 import { AlterarStatusModal, ORDEM_STATUS } from "../eventos/components/AlterarStatusModal";
 import { EVENTO_STATUS_BADGE_COLOR, EVENTO_STATUS_LABEL, setEventoStatus, useEventoAtual, type EventoStatus } from "../eventos/data/eventos";
 
-/** Logo da Ingresse — clicável, leva para a home do Backstage. */
+/** Logo da Ingresse, clicável, leva para a home do Backstage.
+ *  O alvo era a altura da imagem, 20px: no telefone só acertava quem mirasse bem. O padding leva
+ *  o alvo a 44px e as margens negativas devolvem o espaço ao layout, para a barra do telefone não
+ *  crescer 8px em toda página. */
 const BrandLogo = ({ className }: { className?: string }) => {
     const navigate = useNavigate();
     return (
@@ -43,7 +46,7 @@ const BrandLogo = ({ className }: { className?: string }) => {
             type="button"
             onClick={() => navigate("/backstage/home")}
             aria-label="Ir para a home do Backstage"
-            className="flex shrink-0 items-center rounded-md transition-opacity duration-100 ease-linear hover:opacity-80"
+            className="-mx-1 -my-1.5 flex shrink-0 items-center rounded-md px-1 py-3 transition-opacity duration-100 ease-linear hover:opacity-80"
         >
             <img src={LogoBlack} alt="Ingresse" className={cx("block dark:hidden", className)} />
             <img src={LogoWhite} alt="Ingresse" className={cx("hidden dark:block", className)} />

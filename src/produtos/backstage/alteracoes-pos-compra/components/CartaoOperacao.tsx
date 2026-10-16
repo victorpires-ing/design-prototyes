@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FC, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowRight, Check, CheckCircle, ChevronDown, Clock, Copy01, RefreshCcw01, Send01, XCircle } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
@@ -7,6 +7,7 @@ import { Input } from "@/components/base/input/input";
 import { RadioGroupRadioButton } from "@/components/base/radio-groups/radio-group-radio-button";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cx } from "@/utils/cx";
 import { FOCO, Regra, ResumoFinanceiro, TIPO_OPERACAO_ICONE, mascararDestino, useContagem } from "./pos-compra-ui";
@@ -87,7 +88,17 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
     const [reenviarAberto, setReenviarAberto] = useState(false);
     const [pagamentoAberto, setPagamentoAberto] = useState(false);
     const [cancelarAberto, setCancelarAberto] = useState(false);
+    const [maisAcoesAberto, setMaisAcoesAberto] = useState(false);
     const { copied, copy } = useClipboard();
+    const isDesktop = useBreakpoint("md");
+
+    const escolherNaFolha = (acao: "registrar" | "cancelar") => {
+        setMaisAcoesAberto(false);
+        /* Espera a folha terminar de sair antes de abrir o modal. Dois overlays do React Aria
+           vivos ao mesmo tempo disputam o bloqueio de rolagem, e quem perde deixa a página
+           presa quando o segundo fecha. */
+        window.setTimeout(() => (acao === "registrar" ? setPagamentoAberto(true) : setCancelarAberto(true)), 200);
+    };
 
     const pagante = quemPaga(pedido, solicitacao);
     const resumo = resumoDoCartao(pedido, solicitacao);
@@ -167,36 +178,57 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
 
             {/* 3. O que fazer agora */}
             {aguardando && (
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                        <Button size="sm" color="secondary" iconLeading={copied ? Check : Copy01} onClick={() => copy(`https://${solicitacao.linkPagamento}`)}>
-                            {copied ? "Link copiado" : "Copiar link"}
-                        </Button>
-                        <Button size="sm" color="secondary" iconLeading={Send01} onClick={() => setReenviarAberto(true)}>
-                            Reenviar
-                        </Button>
+                <div className="flex flex-wrap items-center justify-between gap-3 max-md:flex-col max-md:items-stretch">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 max-md:flex-col max-md:items-stretch">
+                        {/* Abaixo de md os dois botões dividem uma linha de 44px. Em fileira única
+                            eles cabiam, mas a frase do destino tomava a linha seguinte e empurrava
+                            o menu para uma terceira. */}
+                        <div className="flex gap-3 max-md:gap-2">
+                            <Button
+                                size={isDesktop ? "sm" : "lg"}
+                                color="secondary"
+                                className="max-md:flex-1"
+                                iconLeading={copied ? Check : Copy01}
+                                onClick={() => copy(`https://${solicitacao.linkPagamento}`)}
+                            >
+                                {copied ? "Link copiado" : "Copiar link"}
+                            </Button>
+                            <Button size={isDesktop ? "sm" : "lg"} color="secondary" className="max-md:flex-1" iconLeading={Send01} onClick={() => setReenviarAberto(true)}>
+                                Reenviar
+                            </Button>
+                        </div>
                         <span className="text-sm text-tertiary">
                             Enviado por {canalLabel(solicitacao.canalEnvio)} para {mascararDestino(solicitacao.destinatarioEnvio)}
                         </span>
                     </div>
                     {/* As duas saídas de exceção ficam juntas e longe do caminho comum: registrar
                         pagamento não volta, e não pode estar a um clique errado do "Copiar link". */}
-                    <Dropdown.Root>
-                        <Button size="sm" color="tertiary" iconTrailing={ChevronDown}>
+                    {isDesktop ? (
+                        <Dropdown.Root>
+                            <Button size="sm" color="tertiary" iconTrailing={ChevronDown}>
+                                Mais ações
+                            </Button>
+                            <Dropdown.Popover placement="bottom end" className="w-auto min-w-64">
+                                <Dropdown.Menu
+                                    onAction={(chave) => {
+                                        if (chave === "registrar") setPagamentoAberto(true);
+                                        if (chave === "cancelar") setCancelarAberto(true);
+                                    }}
+                                >
+                                    <Dropdown.Item id="registrar" icon={CheckCircle} label="Registrar pagamento recebido" />
+                                    <Dropdown.Item id="cancelar" icon={XCircle} label="Cancelar alteração" />
+                                </Dropdown.Menu>
+                            </Dropdown.Popover>
+                        </Dropdown.Root>
+                    ) : (
+                        /* A 390px o menu suspenso quebrava para uma terceira linha e, sozinho num
+                           justify-between, encostava à esquerda, a um polegar do "Copiar link": a
+                           distância que protege as duas saídas só existia no desktop. A folha
+                           inferior devolve a distância e dá 48px a cada opção. */
+                        <Button size="lg" color="tertiary" iconTrailing={ChevronDown} onClick={() => setMaisAcoesAberto(true)}>
                             Mais ações
                         </Button>
-                        <Dropdown.Popover placement="bottom end" className="w-auto min-w-64">
-                            <Dropdown.Menu
-                                onAction={(chave) => {
-                                    if (chave === "registrar") setPagamentoAberto(true);
-                                    if (chave === "cancelar") setCancelarAberto(true);
-                                }}
-                            >
-                                <Dropdown.Item id="registrar" icon={CheckCircle} label="Registrar pagamento recebido" />
-                                <Dropdown.Item id="cancelar" icon={XCircle} label="Cancelar alteração" />
-                            </Dropdown.Menu>
-                        </Dropdown.Popover>
-                    </Dropdown.Root>
+                    )}
                 </div>
             )}
 
@@ -207,7 +239,9 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
 
             {/* 4. Detalhe, sob demanda */}
             <details className="group border-t border-secondary pt-3">
-                <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-sm font-semibold text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover [&::-webkit-details-marker]:hidden">
+                {/* Abaixo de md o gatilho ocupa a linha toda e ganha 44px: `w-fit` deixava um
+                    alvo da altura do texto para abrir a quebra da cobrança. */}
+                <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-sm font-semibold text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover max-md:min-h-11 max-md:w-full max-md:justify-between [&::-webkit-details-marker]:hidden">
                     Detalhes da cobrança
                     <ChevronDown className="size-4 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
                 </summary>
@@ -225,10 +259,52 @@ export function CartaoOperacao({ pedido, solicitacao }: { pedido: Pedido; solici
                 </div>
             </details>
 
+            <FolhaMaisAcoes isOpen={maisAcoesAberto} onClose={() => setMaisAcoesAberto(false)} onEscolher={escolherNaFolha} />
             <ModalReenviarLink isOpen={reenviarAberto} onClose={() => setReenviarAberto(false)} pedidoId={pedido.id} solicitacao={solicitacao} pagante={pagante} />
             <ModalRegistrarPagamento isOpen={pagamentoAberto} onClose={() => setPagamentoAberto(false)} pedidoId={pedido.id} solicitacao={solicitacao} />
             <ModalCancelarAlteracao isOpen={cancelarAberto} onClose={() => setCancelarAberto(false)} pedidoId={pedido.id} solicitacaoId={solicitacao.id} />
         </section>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Mais ações no telefone: folha inferior no lugar do menu suspenso   */
+/* ------------------------------------------------------------------ */
+
+/** Linha da folha: 48px, ícone e rótulo, como um item de menu que coube no polegar. */
+const LinhaDaFolha = ({ icone: Icone, destrutiva = false, onClick, children }: { icone: FC<{ className?: string }>; destrutiva?: boolean; onClick: () => void; children: ReactNode }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className={cx(
+            "flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition duration-100 ease-linear",
+            destrutiva ? "text-error-primary hover:bg-error-primary" : "text-primary hover:bg-primary_hover",
+        )}
+    >
+        <Icone className={cx("size-5 shrink-0", destrutiva ? "text-fg-error-secondary" : "text-fg-quaternary")} aria-hidden="true" />
+        {children}
+    </button>
+);
+
+/** As duas saídas de exceção fora da fileira de ações, com o cancelamento separado por divisor:
+ *  no telefone elas não têm como ficar na ponta oposta da linha, então ficam atrás de um toque. */
+function FolhaMaisAcoes({ isOpen, onClose, onEscolher }: { isOpen: boolean; onClose: () => void; onEscolher: (acao: "registrar" | "cancelar") => void }) {
+    return (
+        <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()} isDismissable>
+            <Modal className="sm:max-w-md">
+                <Dialog aria-label="Mais ações desta alteração">
+                    <div className="flex w-full flex-col rounded-2xl bg-primary p-2 shadow-xl ring-1 ring-border-secondary">
+                        <LinhaDaFolha icone={CheckCircle} onClick={() => onEscolher("registrar")}>
+                            Registrar pagamento recebido
+                        </LinhaDaFolha>
+                        <div className="my-2 border-t border-secondary" />
+                        <LinhaDaFolha icone={XCircle} destrutiva onClick={() => onEscolher("cancelar")}>
+                            Cancelar alteração
+                        </LinhaDaFolha>
+                    </div>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
     );
 }
 

@@ -104,17 +104,25 @@ export const EditorResposta = ({ pergunta, valor, valorOriginal, onChange }: Edi
         return (
             <div className="flex flex-col gap-1.5">
                 <p className="text-sm font-medium text-secondary">{pergunta.label}</p>
-                <div className="flex flex-wrap items-center gap-2 rounded-lg bg-secondary px-3 py-2">
-                    <Paperclip className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary">{valor || "Sem arquivo enviado"}</span>
-                    <Button size="sm" color="secondary" onClick={() => inputArquivo.current?.click()}>
-                        {valor ? "Substituir arquivo" : "Enviar arquivo"}
-                    </Button>
-                    {valor !== valorOriginal && (
-                        <Button size="sm" color="link-gray" onClick={() => onChange(valorOriginal)}>
-                            Desfazer
+                {/* Abaixo de md o nome do arquivo fica sozinho na primeira linha e os botões descem.
+                    Na mesma fileira sobravam uns 45px para ele: os dois botões são nowrap e não
+                    encolhem, então quem encolhia era o nome, e "atestado-medico.pdf" virava "atest…".
+                    É justamente o dado que o atendente precisa ler antes de substituir o anexo. */}
+                <div className="flex flex-wrap items-center gap-2 rounded-lg bg-secondary px-3 py-2 max-md:flex-col max-md:items-stretch">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <Paperclip className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary">{valor || "Sem arquivo enviado"}</span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                        <Button size="sm" color="secondary" onClick={() => inputArquivo.current?.click()}>
+                            {valor ? "Substituir arquivo" : "Enviar arquivo"}
                         </Button>
-                    )}
+                        {valor !== valorOriginal && (
+                            <Button size="sm" color="link-gray" onClick={() => onChange(valorOriginal)}>
+                                Desfazer
+                            </Button>
+                        )}
+                    </div>
                 </div>
                 <input
                     ref={inputArquivo}

@@ -2,12 +2,15 @@ import { useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "r
 import { useLocation, useNavigate, useParams } from "react-router";
 import { Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ArrowLeft, Calendar, Check, Copy01, Mail01, Phone, Tag01, User01 } from "@untitledui/icons";
+import { toast } from "sonner";
+import { AlertTriangle, ArrowLeft, Calendar, Check, ChevronRight, Copy01, Mail01, Phone, Tag01, User01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { AvatarProfilePhoto } from "@/components/base/avatar/avatar-profile-photo";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Tabs } from "@/components/application/tabs/tabs";
+import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
@@ -50,6 +53,13 @@ const formaDePagamento = (meio: string) => meio.replace(/\s*\((\d+)x\)/, " em $1
 type Aba = "itens" | "historico";
 
 const TIPO_DO_VERBO: Record<Verbo, TipoOperacao> = { transferir: "troca-titularidade", trocar: "troca-item", formulario: "alterar-respostas" };
+
+/** O mesmo texto serve ao leitor de tela, no desktop, e ao toast, no telefone. */
+const CONFIRMACAO_COPIA: Record<string, string> = {
+    id: "ID do pedido copiado",
+    email: "E-mail copiado",
+    celular: "Celular copiado",
+};
 
 export function DetalhePedido() {
     const { pedidoId } = useParams();
@@ -119,7 +129,7 @@ export function DetalhePedido() {
                 transition={{ duration: 0.28, ease: "easeOut" }}
             >
                 <div>
-                    <Button size="sm" color="link-gray" iconLeading={ArrowLeft} href={voltarPara}>
+                    <Button size="sm" color="link-gray" className="max-md:min-h-11 max-md:px-2" iconLeading={ArrowLeft} href={voltarPara}>
                         Pedidos
                     </Button>
                 </div>
@@ -139,10 +149,22 @@ export function DetalhePedido() {
                 <div className="flex min-w-0 flex-1 flex-col gap-5">
                     <RegiaoAlteracoes pedido={pedido} />
 
-                    <Tabs selectedKey={aba} onSelectionChange={(key) => setAba(key as Aba)}>
+                    {/* Abaixo de md as duas abas dividem a largura e a fileira gruda logo abaixo
+                        da barra do Backstage. Encostadas à esquerda e paradas no topo da página,
+                        voltar para o Histórico depois de percorrer os itens custava rolar a tela
+                        inteira de volta até um alvo de 40px no canto que o polegar não alcança. */}
+                    <Tabs
+                        selectedKey={aba}
+                        onSelectionChange={(key) => setAba(key as Aba)}
+                        className="max-md:sticky max-md:top-[60px] max-md:z-20 max-md:-mx-4 max-md:w-auto max-md:bg-primary_alt max-md:px-4 max-md:py-2"
+                    >
                         <Tabs.List type="underline" size="sm">
-                            <Tabs.Item id="itens">Itens</Tabs.Item>
-                            <Tabs.Item id="historico">Histórico</Tabs.Item>
+                            <Tabs.Item id="itens" className="max-md:flex-1">
+                                Itens
+                            </Tabs.Item>
+                            <Tabs.Item id="historico" className="max-md:flex-1">
+                                Histórico
+                            </Tabs.Item>
                         </Tabs.List>
                     </Tabs>
 
@@ -176,10 +198,16 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
     const idCompleto = useRef<HTMLSpanElement>(null);
     const rotuloCompra = pedido.canal === "Online" ? "Compra online" : pedido.canal === "Bilheteria" ? "Compra na bilheteria" : "Cortesia emitida";
     const { final, cortesia } = usePagamento(pedido);
+    const isDesktop = useBreakpoint("md");
 
     const copiarId = async () => {
         const resultado = await copy(pedido.id, "id");
-        if (resultado.success) return;
+        if (resultado.success) {
+            /* No telefone o dedo cobre o ícone que vira check, então a confirmação sai no toast.
+               Sem ela o atendente ditava de volta o que já estava na área de transferência. */
+            if (!isDesktop) toast.success(CONFIRMACAO_COPIA.id);
+            return;
+        }
         setFalhaCopia(true);
         requestAnimationFrame(() => {
             const selecao = window.getSelection();
@@ -210,12 +238,12 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
             */}
             <div className="flex flex-col gap-4 overflow-hidden rounded-2xl bg-primary px-3 pt-3 pb-0 ring-1 ring-border-secondary">
                 {evento?.capa && (
-                    <div className="aspect-[256/160] w-full overflow-hidden rounded-xl bg-secondary">
+                    <div className="aspect-[256/160] w-full overflow-hidden rounded-xl bg-secondary max-md:hidden">
                         <img src={evento.capa} alt="" className="size-full object-cover" />
                     </div>
                 )}
 
-                <div className={cx("flex flex-col gap-4 px-1", evento?.capa && "-mt-10")}>
+                <div className={cx("flex flex-col gap-4 px-1", evento?.capa && "md:-mt-10")}>
                     <AvatarProfilePhoto size="sm" alt={comprador?.nome ?? "Comprador"} initials={iniciaisDe(comprador?.nome ?? "?")} />
 
                     <div className="min-w-0">
@@ -233,16 +261,16 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
                             </ItemDeContato>
                         )}
                         {comprador && (
-                            <ItemDeContato icone={Mail01}>
+                            <ItemDeContato icone={Mail01} alvoDeToque>
                                 <Contato valor={comprador.email} textoCopia={comprador.email} rotulo="Copiar e-mail" chave="email" copied={copied} copy={copy} />
                             </ItemDeContato>
                         )}
                         {comprador?.celular && (
-                            <ItemDeContato icone={Phone}>
+                            <ItemDeContato icone={Phone} alvoDeToque>
                                 <Contato valor={comprador.celular} textoCopia={telefoneParaCopia(comprador.celular)} rotulo="Copiar celular" chave="celular" copied={copied} copy={copy} />
                             </ItemDeContato>
                         )}
-                        <ItemDeContato icone={Tag01}>
+                        <ItemDeContato icone={Tag01} alvoDeToque>
                             <Contato valor={pedido.id} textoCopia={pedido.id} rotulo="Copiar ID do pedido" chave="id" copied={copied} copy={copy} onCopiar={copiarId} mono />
                         </ItemDeContato>
                     </ul>
@@ -253,12 +281,16 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
                         ponta a ponta; cada Estatistica repõe o mesmo 4 em padding para o texto seguir
                         alinhado com os contatos. Embaixo não há borda própria: o cartão não tem padding
                         inferior e o ring dele já desenha 1px na mesma cor ali, duas linhas somariam 2px. */}
-                    <dl className="-mx-4 flex flex-col divide-y divide-border-secondary border-t border-secondary">
+                    {/* Abaixo de md os três viram uma fileira: empilhados custavam ~150px de
+                        altura numa tela em que o item do pedido já começa longe. */}
+                    <dl className="-mx-4 flex border-t border-secondary max-md:divide-x max-md:divide-border-secondary md:flex-col md:divide-y md:divide-border-secondary">
                         <Estatistica rotulo="Pago">
                             {cortesia ? (
                                 "Sem valor"
                             ) : (
-                                <span className="flex items-baseline gap-2">
+                                /* Abaixo de md o valor e o "Detalhes" empilham: lado a lado, o
+                                   gatilho ficava com a altura do texto e sem folga nenhuma. */
+                                <span className="flex items-baseline gap-2 max-md:flex-col max-md:items-stretch max-md:gap-0">
                                     <span className="tabular-nums">{formatarMoeda(final)}</span>
                                     <DetalhePagamento pedido={pedido} />
                                 </span>
@@ -274,7 +306,7 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
             </div>
 
             <span role="status" className="sr-only">
-                {copied === "id" ? "ID do pedido copiado" : copied === "email" ? "E-mail copiado" : copied === "celular" ? "Celular copiado" : ""}
+                {typeof copied === "string" ? (CONFIRMACAO_COPIA[copied] ?? "") : ""}
             </span>
             {falhaCopia && (
                 <p className="text-sm text-warning-primary">
@@ -285,29 +317,70 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
     );
 };
 
+/**
+ * Conferência sob demanda: popover ancorado no desktop, folha inferior no telefone.
+ *
+ * A 390px o popover de 288px cobria justamente o cartão com que se estava comparando e fechava
+ * no primeiro toque fora, então conferir dois portadores seguidos custava acertar duas vezes um
+ * alvo da altura do texto. A folha ancora no rodapé, perto do polegar, e tem título.
+ */
+const Conferencia = ({ rotulo, gatilho, children }: { rotulo: string; gatilho: ReactNode; children: ReactNode }) => {
+    const isDesktop = useBreakpoint("md");
+
+    return (
+        <AriaDialogTrigger>
+            {gatilho}
+            {isDesktop ? (
+                <AriaPopover
+                    offset={8}
+                    placement="bottom start"
+                    className={({ isEntering, isExiting }) =>
+                        cx(
+                            "origin-(--trigger-anchor-point) will-change-transform",
+                            isEntering && "duration-150 ease-out animate-in fade-in placement-top:slide-in-from-bottom-0.5 placement-bottom:slide-in-from-top-0.5",
+                            isExiting && "duration-100 ease-in animate-out fade-out placement-top:slide-out-to-bottom-0.5 placement-bottom:slide-out-to-top-0.5",
+                        )
+                    }
+                >
+                    <AriaDialog aria-label={rotulo} className="w-72 rounded-2xl bg-primary p-4 shadow-xl ring ring-secondary_alt outline-hidden">
+                        {children}
+                    </AriaDialog>
+                </AriaPopover>
+            ) : (
+                <ModalOverlay isDismissable>
+                    <Modal className="sm:max-w-md">
+                        <Dialog aria-label={rotulo}>
+                            <div className="flex w-full flex-col gap-3 rounded-2xl bg-primary p-5 shadow-xl ring-1 ring-border-secondary">
+                                <h2 className="text-md font-semibold text-primary">{rotulo}</h2>
+                                {children}
+                            </div>
+                        </Dialog>
+                    </Modal>
+                </ModalOverlay>
+            )}
+        </AriaDialogTrigger>
+    );
+};
+
+/** Gatilho das conferências: link na altura do texto no desktop, linha de 44px com chevron
+ *  abaixo de md, que é onde o alvo de 20px ficava impossível de acertar. */
+const GatilhoDeConferencia = ({ className, children }: { className?: string; children: ReactNode }) => (
+    <Button
+        size="sm"
+        color="link-gray"
+        iconTrailing={<ChevronRight data-icon className="md:hidden" />}
+        className={cx("text-utility-blue-600 hover:text-utility-blue-700 max-md:min-h-11 max-md:w-full max-md:justify-between max-md:gap-3", className)}
+    >
+        {children}
+    </Button>
+);
+
 /** Detalhe do pagamento sobre o resumo, não dentro dele: a quebra por cupom interessa em poucos
  *  atendimentos e não vale uma faixa fixa ocupando o cabeçalho de todos os outros. */
 const DetalhePagamento = ({ pedido }: { pedido: Pedido }) => (
-    <AriaDialogTrigger>
-        <Button size="sm" color="link-gray" className="text-utility-blue-600 hover:text-utility-blue-700">
-            Detalhes
-        </Button>
-        <AriaPopover
-            offset={8}
-            placement="bottom start"
-            className={({ isEntering, isExiting }) =>
-                cx(
-                    "origin-(--trigger-anchor-point) will-change-transform",
-                    isEntering && "duration-150 ease-out animate-in fade-in placement-top:slide-in-from-bottom-0.5 placement-bottom:slide-in-from-top-0.5",
-                    isExiting && "duration-100 ease-in animate-out fade-out placement-top:slide-out-to-bottom-0.5 placement-bottom:slide-out-to-top-0.5",
-                )
-            }
-        >
-            <AriaDialog aria-label="Detalhe do pagamento" className="w-72 rounded-2xl bg-primary p-4 shadow-xl ring ring-secondary_alt outline-hidden">
-                <LinhasPagamento pedido={pedido} />
-            </AriaDialog>
-        </AriaPopover>
-    </AriaDialogTrigger>
+    <Conferencia rotulo="Detalhe do pagamento" gatilho={<GatilhoDeConferencia>Detalhes</GatilhoDeConferencia>}>
+        <LinhasPagamento pedido={pedido} />
+    </Conferencia>
 );
 
 /** Um número da compra, no formato da fileira de estatísticas do cartão de perfil. */
@@ -320,15 +393,29 @@ const DetalhePagamento = ({ pedido }: { pedido: Pedido }) => (
  * referência de atendimento, não a manchete do cartão.
  */
 const Estatistica = ({ rotulo, children }: { rotulo: string; children: ReactNode }) => (
-    <div className="flex flex-col gap-0.5 px-4 py-2.5">
+    /* Em fileira no telefone, os três dividem a largura igualmente; em coluna no desktop, cada um
+       ocupa a largura do trilho. */
+    <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-4 py-2.5 max-md:px-3">
         <dt className="text-sm font-medium text-quaternary">{rotulo}</dt>
         <dd className="text-sm font-semibold text-primary">{children}</dd>
     </div>
 );
 
-/** Linha da lista de conferência: ícone apagado e o dado, como o bloco "About" do cartão. */
-const ItemDeContato = ({ icone: Icone, children }: { icone: FC<{ className?: string }>; children: ReactNode }) => (
-    <li className="flex items-center gap-2 text-sm text-tertiary">
+/**
+ * Linha da lista de conferência: ícone apagado e o dado, como o bloco "About" do cartão.
+ *
+ * Com `alvoDeToque`, abaixo de md a linha ganha 48px de altura e vira a âncora do botão de
+ * cópia, que se estica por cima dela.
+ */
+const ItemDeContato = ({ icone: Icone, alvoDeToque = false, children }: { icone: FC<{ className?: string }>; alvoDeToque?: boolean; children: ReactNode }) => (
+    <li
+        className={cx(
+            "flex items-center gap-2 text-sm text-tertiary",
+            /* O realce do toque é da linha, não do botão: esticado por cima do texto, o fundo
+               do botão escondia justamente o valor que se quer conferir antes de copiar. */
+            alvoDeToque && "relative transition duration-100 ease-linear max-md:min-h-12 max-md:rounded-lg max-md:has-[button:hover]:bg-primary_hover",
+        )}
+    >
         <Icone className="size-5 shrink-0 text-fg-quaternary" aria-hidden="true" />
         {children}
     </li>
@@ -357,18 +444,37 @@ const Contato = ({
     rotulo: string;
     chave: string;
     copied: string | boolean;
-    copy: (texto: string, id?: string) => unknown;
+    copy: (texto: string, id?: string) => Promise<{ success: boolean; error?: Error }>;
     /** Caminho próprio de cópia, para quem tem plano B quando a área de transferência falha. */
     onCopiar?: () => void;
     mono?: boolean;
-}) => (
-    <span className="flex min-w-0 items-center gap-0.5">
-        <span className={cx("truncate", mono && "font-mono select-all")} title={mono ? valor : undefined}>
-            {valor}
+}) => {
+    const isDesktop = useBreakpoint("md");
+
+    const copiar = async () => {
+        const { success } = await copy(textoCopia, chave);
+        if (success && !isDesktop) toast.success(CONFIRMACAO_COPIA[chave] ?? "Copiado");
+    };
+
+    return (
+        <span className="flex min-w-0 items-center gap-0.5">
+            <span className={cx("truncate", mono && "font-mono select-all")} title={mono ? valor : undefined}>
+                {valor}
+            </span>
+            {/* Abaixo de md o botão cobre a linha inteira em vez de ser um quadrado de 28px colado
+                a 2px do valor: o toque que escorregava para a esquerda caía no texto select-all e
+                selecionava o ID em vez de copiá-lo, sem avisar que nada tinha sido copiado. */}
+            <ButtonUtility
+                size="xs"
+                color="tertiary"
+                icon={copied === chave ? Check : Copy01}
+                aria-label={rotulo}
+                onClick={() => (onCopiar ? onCopiar() : copiar())}
+                className="max-md:absolute max-md:inset-0 max-md:h-auto max-md:justify-end max-md:rounded-lg max-md:px-2 max-md:hover:bg-transparent"
+            />
         </span>
-        <ButtonUtility size="xs" color="tertiary" icon={copied === chave ? Check : Copy01} aria-label={rotulo} onClick={() => (onCopiar ? onCopiar() : copy(textoCopia, chave))} />
-    </span>
-);
+    );
+};
 
 /* ------------------------------------------------------------------ */
 /*  Pagamento                                                          */
@@ -585,24 +691,31 @@ const CartaoDaUnidade = ({ pedido, item, linha, onAbrir }: { pedido: Pedido } & 
 
     return (
         <article className={CARTAO}>
+            {/* O preço era a terceira coluna da fileira e agora fecha a primeira linha do texto.
+                Como coluna, ele comia 82px da largura em todas as linhas do cartão e sobravam
+                ~170px para o texto a 390px, cabendo 23 caracteres por linha; e ele mudava de
+                altura a cada unidade, porque a coluna ao lado tem de uma a oito linhas, então
+                conferir valores deixava de ser uma varredura vertical. */}
             <div className="flex items-start gap-3 px-4 py-4 lg:px-5">
                 <Miniatura item={item} />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        {/* O único text-md do cartão: é por ele que se varre a coluna. */}
-                        <p className="text-md font-semibold text-primary">{item.nome}</p>
-                        {item.segmentacao && (
-                            <Badge size="md" type="modern" color="gray">
-                                {RESTRICAO_DO_ITEM[item.segmentacao]}
-                            </Badge>
-                        )}
+                    <div className="flex items-start gap-3">
+                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                            {/* O único text-md do cartão: é por ele que se varre a coluna. */}
+                            <p className="text-md font-semibold text-primary">{item.nome}</p>
+                            {item.segmentacao && (
+                                <Badge size="md" type="modern" color="gray">
+                                    {RESTRICAO_DO_ITEM[item.segmentacao]}
+                                </Badge>
+                            )}
+                        </div>
+                        <p className="shrink-0 text-sm font-semibold text-primary tabular-nums">{formatarMoeda(linha.valorPago)}</p>
                     </div>
                     {caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
                     {item.datasCombo && item.datasCombo.length > 0 && <p className="text-sm text-tertiary">{item.datasCombo.join(" · ")}</p>}
                     {item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
                     <PortadorDaUnidade linha={linha} />
                 </div>
-                <p className="shrink-0 text-sm font-semibold text-primary tabular-nums">{formatarMoeda(linha.valorPago)}</p>
             </div>
 
             {temFatos && (
@@ -707,38 +820,32 @@ const PortadorDaUnidade = ({ linha }: { linha: PedidoItem }) => {
     const origem = [linha.transferidoEmLabel && `em ${linha.transferidoEmLabel}`, linha.transferidoPor && `por ${linha.transferidoPor}`].filter(Boolean).join(" ");
     return (
         <p className="flex flex-wrap items-center gap-x-2 text-sm text-tertiary">
-            <span>Portado por {conta.nome}</span>
-            <span className="text-quaternary" aria-hidden="true">
+            {/* Abaixo de md a linha inteira é o gatilho e o nome entra dentro dele. Solto depois
+                do separador, numa coluna estreita, o "Detalhes" caía sozinho numa linha quebrada
+                com a altura do texto, e é por ele que se confere o CPF de quem porta. */}
+            <span className="max-md:hidden">Portado por {conta.nome}</span>
+            <span className="text-quaternary max-md:hidden" aria-hidden="true">
                 |
             </span>
-            <AriaDialogTrigger>
-                <Button size="sm" color="link-gray" className="text-utility-blue-600 hover:text-utility-blue-700">
-                    Detalhes
-                </Button>
-                <AriaPopover
-                    offset={8}
-                    placement="bottom start"
-                    className={({ isEntering, isExiting }) =>
-                        cx(
-                            "origin-(--trigger-anchor-point) will-change-transform",
-                            isEntering && "duration-150 ease-out animate-in fade-in placement-top:slide-in-from-bottom-0.5 placement-bottom:slide-in-from-top-0.5",
-                            isExiting && "duration-100 ease-in animate-out fade-out placement-top:slide-out-to-bottom-0.5 placement-bottom:slide-out-to-top-0.5",
-                        )
-                    }
-                >
-                    <AriaDialog aria-label="Detalhe da titularidade" className="w-72 rounded-2xl bg-primary p-4 shadow-xl ring ring-secondary_alt outline-hidden">
-                        <dl className="flex flex-col gap-2">
-                            <Campo rotulo="Portador">{conta.nome}</Campo>
-                            {conta.cpf && <Campo rotulo="CPF">{formatarCPF(conta.cpf)}</Campo>}
-                            {conta.email && <Campo rotulo="E-mail">{conta.email}</Campo>}
-                            <div className="flex flex-col gap-0.5 border-t border-secondary pt-2">
-                                <dt className="text-sm text-tertiary">Recebeu por transferência</dt>
-                                <dd className="text-sm text-primary">{origem || "Sem registro da data"}</dd>
-                            </div>
-                        </dl>
-                    </AriaDialog>
-                </AriaPopover>
-            </AriaDialogTrigger>
+            <Conferencia
+                rotulo="Detalhe da titularidade"
+                gatilho={
+                    <GatilhoDeConferencia className="max-md:text-left max-md:whitespace-normal max-md:text-tertiary">
+                        <span className="max-md:hidden">Detalhes</span>
+                        <span className="md:hidden">Portado por {conta.nome}</span>
+                    </GatilhoDeConferencia>
+                }
+            >
+                <dl className="flex flex-col gap-2">
+                    <Campo rotulo="Portador">{conta.nome}</Campo>
+                    {conta.cpf && <Campo rotulo="CPF">{formatarCPF(conta.cpf)}</Campo>}
+                    {conta.email && <Campo rotulo="E-mail">{conta.email}</Campo>}
+                    <div className="flex flex-col gap-0.5 border-t border-secondary pt-2">
+                        <dt className="text-sm text-tertiary">Recebeu por transferência</dt>
+                        <dd className="text-sm text-primary">{origem || "Sem registro da data"}</dd>
+                    </div>
+                </dl>
+            </Conferencia>
         </p>
     );
 };

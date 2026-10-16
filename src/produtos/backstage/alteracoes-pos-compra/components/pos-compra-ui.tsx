@@ -189,9 +189,23 @@ export const CampoMotivo = ({ valor, onChange }: { valor: Motivo; onChange: (val
             isRequired
             hint="Obrigatório: liga a alteração ao atendimento que a originou."
         />
-        <RadioGroup aria-label="Motivo da alteração" value={valor.categoria} onChange={(categoria) => onChange({ ...valor, categoria: categoria as CategoriaMotivo })} className="gap-3">
+        {/* Cada opção tem a moldura dela, como na lista de unidades. Sem padding na linha, o alvo era
+            a altura do rótulo, 20px, com 12px entre um e outro: a geometria em que o dedo acerta a
+            opção vizinha. E o erro é mudo, grava a categoria errada no histórico sem avisar ninguém.
+            A className do RadioButton aceita função do estado, então isso sai sem tocar no DS. */}
+        <RadioGroup aria-label="Motivo da alteração" value={valor.categoria} onChange={(categoria) => onChange({ ...valor, categoria: categoria as CategoriaMotivo })} className="gap-2">
             {CATEGORIAS.map((categoria) => (
-                <RadioButton key={categoria} value={categoria} label={CATEGORIA_MOTIVO_LABEL[categoria]} />
+                <RadioButton
+                    key={categoria}
+                    value={categoria}
+                    label={CATEGORIA_MOTIVO_LABEL[categoria]}
+                    className={({ isSelected }) =>
+                        cx(
+                            "w-full cursor-pointer items-center rounded-lg px-4 py-3 ring-1 transition duration-100 ease-linear max-md:min-h-14",
+                            isSelected ? "bg-secondary ring-brand" : "bg-primary ring-border-secondary hover:bg-primary_hover",
+                        )
+                    }
+                />
             ))}
         </RadioGroup>
         <TextArea
@@ -298,7 +312,10 @@ export const Stepper = ({
         maxValue={maximo}
         onChange={(proximo) => onChange(Number.isNaN(proximo) ? 0 : proximo)}
         aria-label={`Quantidade de ${rotulo}`}
-        inputClassName="text-center tabular-nums"
+        /* 16px no mobile: com fonte menor o Safari do iPhone amplia a página inteira ao focar o campo
+           e não volta ao sair, e a etapa continua ampliada e rolando de lado até alguém fazer pinça.
+           A largura não muda, o campo é flexível dentro dos 120px, e o grupo sobe para 40px. */
+        inputClassName="text-center tabular-nums max-md:text-md"
         className="w-[120px] shrink-0"
     />
 );

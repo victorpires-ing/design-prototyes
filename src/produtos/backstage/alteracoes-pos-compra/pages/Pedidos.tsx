@@ -17,6 +17,7 @@ import {
     getConta,
     getEvento,
     usePedidos,
+    uuidCurto,
     type Pedido,
 } from "../data/pos-compra-store";
 
@@ -130,7 +131,9 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                         </div>
                     ) : (
                         <>
-                        {/* No celular, tabela vira lista: sem rolagem lateral para ler valor e situação. */}
+                        {/* No celular, tabela vira lista: sem rolagem lateral para ler valor e situação.
+                            Duas linhas no lugar de cinco: o cartão de 164px fazia 25 pedidos virarem
+                            5,5 telas de rolagem, com dois cabendo na primeira. Agora cabem seis. */}
                         <ul className="flex flex-col divide-y divide-border-secondary md:hidden">
                             {visiveis.map((pedido) => {
                                 const comprador = getConta(pedido.compradorId);
@@ -140,21 +143,28 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                             type="button"
                                             onClick={() => abrirPedido(pedido.id)}
                                             className={cx(
-                                                "flex w-full flex-col gap-2 p-4 text-left transition duration-100 ease-linear hover:bg-secondary",
+                                                "flex w-full flex-col gap-1 px-4 py-4 text-left transition duration-100 ease-linear hover:bg-secondary",
                                                 FOCO,
                                             )}
                                         >
-                                            <span className="font-mono text-sm font-semibold break-all text-primary">{pedido.id}</span>
-                                            <span className="block text-sm font-medium text-primary">{comprador?.nome}</span>
-                                            <span className="block text-sm text-tertiary">{comprador?.email}</span>
-                                            <span className="block text-sm text-tertiary">{getEvento(pedido.eventoId)?.nome}</span>
-                                            <span className="flex flex-wrap items-center justify-between gap-2">
-                                                <span className="text-sm text-quaternary">
-                                                    {pedido.itens.length} {pedido.itens.length === 1 ? "item" : "itens"}
-                                                </span>
-                                                <span className="text-sm font-medium text-primary tabular-nums">
+                                            {/* O UUID inteiro liderava o cartão, em mono e semibold: 36
+                                                caracteres tomavam a largura útil e o leitor de tela soletrava
+                                                o hash antes de dizer de quem era o pedido. O atendente tem o
+                                                nome na mão, e é por ele que a busca casa. */}
+                                            <span className="flex w-full items-baseline justify-between gap-3">
+                                                <span className="truncate text-sm font-medium text-primary">{comprador?.nome}</span>
+                                                <span className="shrink-0 text-sm font-medium text-primary tabular-nums">
                                                     {formatarMoeda(totalPago(pedido))}
                                                 </span>
+                                            </span>
+                                            <span className="flex w-full items-baseline gap-1 text-sm text-tertiary">
+                                                <span className="truncate">{getEvento(pedido.eventoId)?.nome}</span>
+                                                <span className="shrink-0 whitespace-nowrap text-quaternary tabular-nums">
+                                                    · {pedido.itens.length} {pedido.itens.length === 1 ? "item" : "itens"}
+                                                </span>
+                                                {/* A forma curta que o resto do produto já usa nos títulos. O ID
+                                                    inteiro continua no detalhe, com o botão de copiar. */}
+                                                <span className="shrink-0 font-mono text-quaternary">· {uuidCurto(pedido.id)}</span>
                                             </span>
                                         </button>
                                     </li>
@@ -274,8 +284,10 @@ interface RodapeTabelaProps {
 const RodapeTabela = ({ inicio, fim, total, pagina, totalPaginas, porPagina, onPorPagina, onPagina }: RodapeTabelaProps) => (
     <div className="flex flex-col gap-3 border-t border-secondary px-4 py-3 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-2">
-            <span className="text-sm whitespace-nowrap text-tertiary">Itens por página</span>
-            <div className="w-20">
+            {/* Trocar o tamanho da página não é a tarefa de quem procura um pedido no telefone, e
+                o seletor era mais um alvo de 36px numa fileira que já não cabia. A contagem fica. */}
+            <span className="hidden text-sm whitespace-nowrap text-tertiary md:inline">Itens por página</span>
+            <div className="hidden w-20 md:block">
                 <Select
                     aria-label="Itens por página"
                     size="sm"
@@ -292,11 +304,25 @@ const RodapeTabela = ({ inicio, fim, total, pagina, totalPaginas, porPagina, onP
         </div>
 
         <nav className="flex items-center justify-between gap-1 md:justify-end" aria-label="Paginação">
-            <Button size="sm" color="secondary" iconLeading={ArrowLeft} isDisabled={pagina <= 1} onClick={() => onPagina(pagina - 1)}>
+            <Button
+                size="sm"
+                color="secondary"
+                iconLeading={ArrowLeft}
+                isDisabled={pagina <= 1}
+                onClick={() => onPagina(pagina - 1)}
+                className="max-md:py-3"
+            >
                 Anterior
             </Button>
 
-            <div className="flex items-center gap-0.5">
+            {/* Os cinco números somavam 188px e empurravam Próxima 59px para fora da tela: para
+                alcançar a página seguinte o atendente arrastava a lista inteira de lado. No
+                telefone eles viram a posição atual e a navegação fica nos dois botões. */}
+            <span className="text-sm whitespace-nowrap text-tertiary tabular-nums md:hidden">
+                Página {pagina} de {totalPaginas}
+            </span>
+
+            <div className="hidden items-center gap-0.5 md:flex">
                 {paginasVisiveis(pagina, totalPaginas).map((p, indice) =>
                     p === "..." ? (
                         <span key={`elipse-${indice}`} className="px-1 text-sm text-quaternary" aria-hidden="true">
@@ -326,6 +352,7 @@ const RodapeTabela = ({ inicio, fim, total, pagina, totalPaginas, porPagina, onP
                 iconTrailing={ArrowRight}
                 isDisabled={pagina >= totalPaginas}
                 onClick={() => onPagina(pagina + 1)}
+                className="max-md:py-3"
             >
                 Próxima
             </Button>

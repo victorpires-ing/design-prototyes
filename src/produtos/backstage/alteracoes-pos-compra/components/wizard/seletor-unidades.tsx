@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { toast } from "sonner";
-import { Package, Ticket01 } from "@untitledui/icons";
+import { ChevronRight, Package, Ticket01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { InputNumber } from "@/components/base/input/input-number";
 import { cx } from "@/utils/cx";
-import { ListaLimitada, caminhoDoItem, formatarCPF } from "../pos-compra-ui";
+import { FOCO, ListaLimitada, caminhoDoItem, formatarCPF } from "../pos-compra-ui";
 import {
     getConta,
     getItem,
@@ -128,7 +128,13 @@ export function SeletorUnidades({
                         return (
                             <li
                                 key={`${grupo.itemId}|${grupo.titularId}`}
-                                className={cx("flex items-center gap-3 px-4 py-3 transition duration-100 ease-linear hover:bg-primary_hover", marcado && "bg-secondary")}
+                                /* Abaixo de md o seletor de quantidade sai da linha e vai para baixo. Lado a lado,
+                                   ele comia 120px dos 326px e sobravam 110px para a identidade da unidade: nome,
+                                   lote, sessão e titular quebravam em uma fita de quinze caracteres. */
+                                className={cx(
+                                    "flex gap-3 px-4 py-3 transition duration-100 ease-linear hover:bg-primary_hover max-md:flex-col md:items-center",
+                                    marcado && "bg-secondary",
+                                )}
                             >
                                 {/*
                                   Miniatura e texto vão dentro do `label`, não no `hint`:
@@ -165,9 +171,12 @@ export function SeletorUnidades({
                                         value={marcado ? escolhidas : 1}
                                         isDisabled={!marcado}
                                         onChange={(quantas) => escolher(grupo.unidades, Number.isFinite(quantas) ? quantas : 1)}
-                                        className="w-auto shrink-0"
-                                        wrapperClassName="w-auto"
-                                        inputClassName="w-12 px-0 text-center tabular-nums"
+                                        /* O campo vai a 16px no mobile: abaixo disso o Safari do iPhone amplia a
+                                           página ao focar e não desfaz o zoom na saída, deixando o resto do fluxo
+                                           ampliado e com rolagem lateral até alguém fazer pinça. */
+                                        className="w-auto shrink-0 max-md:w-full"
+                                        wrapperClassName="w-auto max-md:w-full"
+                                        inputClassName="w-12 px-0 text-center tabular-nums max-md:w-full max-md:text-md"
                                     />
                                 )}
                             </li>
@@ -233,14 +242,30 @@ export function ResumoUnidades({
 
     return (
         <div className="w-full rounded-xl bg-primary ring-1 ring-border-secondary">
-            <div className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-3">
-                <p className="text-sm font-semibold text-primary">{titulo}</p>
-                {onAlterar && (
-                    <Button size="sm" color="link-color" onClick={onAlterar}>
+            {/* A linha inteira do cabeçalho é o alvo, não a palavra "Alterar". No estilo de link o design
+                system zera o padding, e o alvo ficava em 20px de altura por 48 de largura, menos de um
+                quarto da área de toque recomendada, encostado no título do cartão. É por aqui que se
+                volta para trocar a seleção com o cliente esperando no telefone. */}
+            {onAlterar ? (
+                <button
+                    type="button"
+                    onClick={onAlterar}
+                    className={cx(
+                        "flex w-full items-center justify-between gap-3 rounded-t-xl border-b border-secondary px-4 py-3 text-left transition duration-100 ease-linear hover:bg-primary_hover max-md:min-h-14",
+                        FOCO,
+                    )}
+                >
+                    <span className="text-sm font-semibold text-primary">{titulo}</span>
+                    <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-brand-secondary">
                         Alterar
-                    </Button>
-                )}
-            </div>
+                        <ChevronRight className="size-4" aria-hidden="true" />
+                    </span>
+                </button>
+            ) : (
+                <div className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-3">
+                    <p className="text-sm font-semibold text-primary">{titulo}</p>
+                </div>
+            )}
             <div className="px-4 py-1">
                 {/* Agregado como na etapa de seleção: 40 inscrições iguais são uma linha
                     "40x Corrida 5 km", não quarenta linhas idênticas de conferir uma a uma. */}
@@ -270,7 +295,10 @@ export function ResumoUnidades({
             </div>
             {irmas.length > 0 && (
                 <div className="border-t border-secondary px-4 py-3">
-                    <Button size="sm" color="link-color" onClick={() => onIncluir?.(irmas.map((l) => l.id))}>
+                    {/* Botão de verdade, não link: como link-color o atalho era um alvo de 20px de altura
+                        colado na borda do cartão. No mobile ele toma a largura do cartão e deixa o rótulo
+                        quebrar, que é longo e não encolhe sozinho porque todo botão do DS é nowrap. */}
+                    <Button size="md" color="secondary" className="max-md:w-full max-md:whitespace-normal" onClick={() => onIncluir?.(irmas.map((l) => l.id))}>
                         {irmas.length === 1 ? `Incluir a outra unidade de ${nomeDasIrmas}` : `Incluir as outras ${irmas.length} unidades de ${nomeDasIrmas}`}
                     </Button>
                 </div>

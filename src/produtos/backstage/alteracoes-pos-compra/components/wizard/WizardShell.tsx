@@ -85,7 +85,9 @@ export function WizardShell({
                     `onVoltar` sempre significou nos quatro chamadores. A seta chamava `onClose`,
                     então não havia como voltar uma etapa em lugar nenhum; o stepper do DS não é
                     clicável e os links "Alterar" que compensavam isso saíram das etapas 2. */}
-                <ButtonUtility size="sm" color="tertiary" icon={ArrowLeft} tooltip={indiceAtual === 0 ? "Voltar para o pedido" : "Voltar uma etapa"} onClick={onVoltar} />
+                {/* `md` no telefone: é o único caminho de volta do fluxo e, em `sm`, o alvo é de
+                    32px no canto mais longe do polegar. */}
+                <ButtonUtility size="sm" color="tertiary" className="max-md:size-11" icon={ArrowLeft} tooltip={indiceAtual === 0 ? "Voltar para o pedido" : "Voltar uma etapa"} onClick={onVoltar} />
                 <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 flex-col items-center text-center max-md:static max-md:translate-x-0 max-md:items-start max-md:text-left">
                     <h1 className="text-display-xs font-bold text-primary">{titulo}</h1>
                     {subtitulo && <p className="text-sm text-tertiary">{subtitulo}</p>}
@@ -135,15 +137,22 @@ export function WizardShell({
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: "100%", opacity: 0 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
-                        className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-secondary bg-primary_alt px-4 py-4 md:px-6"
+                        /* Abaixo de md a barra empilha: o texto em cima, o botão ocupando a linha. Em
+                           fileira única o botão não encolhe nem quebra, e um rótulo como "Enviar cobrança
+                           de R$ 120,00 para a***@email.com" passava da largura da tela e levava a ação
+                           principal para fora dela, com rolagem lateral na barra colada no rodapé. */
+                        className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-secondary bg-primary_alt px-4 py-4 max-md:flex-col max-md:items-stretch max-md:gap-2 md:px-6"
                     >
-                        <div className="min-w-0 text-sm text-tertiary">{infoRodape}</div>
+                        {/* Só existe quando tem o que dizer: empilhada, a div vazia abria um vão acima do botão. */}
+                        {infoRodape && <div className="min-w-0 text-sm text-tertiary">{infoRodape}</div>}
+                        {/* `whitespace-normal` deixa o rótulo quebrar em duas linhas em vez de estourar a
+                           barra: todo botão do DS é nowrap, e quem passa o rótulo é cada fluxo. */}
                         {ultimaEtapa ? (
-                            <Button size="md" isDisabled={!podeAvancar} onClick={onConfirmar}>
+                            <Button size="md" className="max-md:w-full max-md:whitespace-normal md:ml-auto" isDisabled={!podeAvancar} onClick={onConfirmar}>
                                 {rotuloConfirmar}
                             </Button>
                         ) : (
-                            <Button size="md" isDisabled={!podeAvancar} onClick={onAvancar}>
+                            <Button size="md" className="max-md:w-full max-md:whitespace-normal md:ml-auto" isDisabled={!podeAvancar} onClick={onAvancar}>
                                 {rotuloAvancar}
                             </Button>
                         )}

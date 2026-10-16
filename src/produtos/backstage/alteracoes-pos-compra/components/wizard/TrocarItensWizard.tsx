@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { ArrowDown, ChevronDown, SearchLg } from "@untitledui/icons";
@@ -64,8 +64,6 @@ const combina = (termo: string, ...campos: Array<string | undefined>) => {
     if (!busca) return true;
     return campos.some((campo) => campo?.toLowerCase().includes(busca));
 };
-
-const interromper = (event: MouseEvent) => event.stopPropagation();
 
 interface TrocarItensWizardProps {
     pedido: Pedido;
@@ -249,7 +247,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
             noPedido={noPedidoPorItem.get(item.id) ?? 0}
             saindo={saindoPorItem.get(item.id) ?? 0}
             onChange={(valor) => setEntram((atual) => (totalSaem === 1 ? (valor > 0 ? { [item.id]: valor } : {}) : { ...atual, [item.id]: valor }))}
-            onTodas={() => setEntram({ [item.id]: totalSaem })}
         />
     );
 
@@ -327,7 +324,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                     ? "Enviar cobrança"
                     : calculo.total === 0
                       ? "Aplicar troca sem cobrança"
-                      : `Enviar cobrança de ${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}`
+                      : "Enviar cobrança"
             }
             onVoltar={voltar}
             onAvancar={avancar}
@@ -340,6 +337,8 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                         </span>{" "}
                         escolhidos
                     </span>
+                ) : etapa === "revisao" && calculo && calculo.total > 0 ? (
+                    `${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}`
                 ) : undefined
             }
         >
@@ -359,8 +358,10 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                         {/* O campo vai dentro de uma div própria: o `wrapperClassName` do InputBase
                             cai num elemento interno, então o filho do flex precisa ser este div. */}
                         <div className="min-w-0 flex-1">
+                            {/* `md` em vez de `sm`: abaixo de 16px o Safari do iPhone amplia a página
+                                ao focar o campo e não desfaz ao sair. */}
                             <InputBase
-                                size="sm"
+                                size="md"
                                 icon={SearchLg}
                                 value={termo}
                                 aria-label="Buscar item"
@@ -402,24 +403,31 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                     {paresComFormulario.map(({ linha, novoItem }, posicao) => {
                         const pendentes = faltando(linha, novoItem);
                         const { nome } = identidadeDaLinha(pedido, linha);
+                        const rotuloPendencia = pendentes.length === 0 ? "Respondido" : pendentes.length === 1 ? "Falta 1 resposta" : `Faltam ${pendentes.length} respostas`;
+                        const corPendencia = pendentes.length === 0 ? "text-success-primary" : "text-warning-primary";
                         return (
                             <Accordion
                                 key={linha.id}
                                 defaultOpen={pendentes.length > 0 && posicao === paresComFormulario.findIndex((p) => faltando(p.linha, p.novoItem).length > 0)}
                                 cabecalho={
+                                    /* No telefone a contagem desce para a terceira linha do bloco de texto. Na
+                                       mesma fileira ela levava 126px dos 234 disponíveis e cortava as duas coisas
+                                       que identificam o formulário: o nome do item e o de quem vai usá-lo. */
                                     <span className="flex min-w-0 flex-1 items-center gap-3">
                                         <Miniatura item={novoItem} />
                                         <span className="min-w-0 flex-1">
                                             <span className="block truncate text-sm font-semibold text-primary">{novoItem.nome}</span>
                                             <span className="block truncate text-sm text-tertiary">{nome}</span>
+                                            <span className={cx("block truncate text-sm md:hidden", corPendencia)}>{rotuloPendencia}</span>
                                         </span>
-                                        <span className={cx("shrink-0 text-sm", pendentes.length === 0 ? "text-success-primary" : "text-warning-primary")}>
-                                            {pendentes.length === 0 ? "Respondido" : pendentes.length === 1 ? "Falta 1 resposta" : `Faltam ${pendentes.length} respostas`}
-                                        </span>
+                                        <span className={cx("hidden shrink-0 text-sm md:block", corPendencia)}>{rotuloPendencia}</span>
                                     </span>
                                 }
                             >
-                                <div className="flex max-h-[28rem] flex-col gap-4 overflow-y-auto p-4">
+                                {/* Sem janela de rolagem própria: quem rola é a página. Um rolador de
+                                    448px dentro dela obrigava a acertar o dedo na faixa certa e perdia a
+                                    posição a cada toque. */}
+                                <div className="flex flex-col gap-4 p-4">
                                     {perguntasDoItem(novoItem).map((pergunta) => (
                                         <EditorResposta
                                             key={pergunta.id}
@@ -524,7 +532,6 @@ const LinhaCatalogo = ({
     noPedido,
     saindo,
     onChange,
-    onTodas,
 }: {
     item: CatalogoItem;
     pedido: Pedido;
@@ -536,8 +543,6 @@ const LinhaCatalogo = ({
     noPedido: number;
     saindo: number;
     onChange: (valor: number) => void;
-    /** Várias unidades saindo: um clique no item troca todas por ele, sem mexer no stepper. */
-    onTodas: () => void;
 }) => {
     const impedimento = linhaReferencia ? validarTrocaItem(pedido, linhaReferencia, item) : null;
     const bloqueado = Boolean(impedimento) && impedimento?.curto !== "Item atual";
@@ -549,32 +554,50 @@ const LinhaCatalogo = ({
     const diferenca = precoSaida !== undefined ? item.precoIntegral - precoSaida : undefined;
     const estoqueCurto = !bloqueado && item.estoque < totalSaem;
 
+    /* Com várias unidades saindo, o toque na linha soma UMA, o mesmo que o mais do stepper.
+       Antes ele trocava todas por este item de uma vez: refazia a escolha do zero e apagava o
+       que já tinha sido marcado nos outros itens. O gesto destrutivo da etapa era o maior alvo
+       da tela, mudo e sem desfazer. Quem quer as N no mesmo item chega lá pelo stepper. */
+    const somavel = !naoSelecionavel && quantidade < maximo;
+    const ativavel = unico ? !naoSelecionavel : somavel;
+
     return (
         <li
-            onClick={naoSelecionavel ? undefined : unico ? () => onChange(escolhido ? 0 : 1) : item.estoque >= totalSaem ? onTodas : undefined}
-            aria-pressed={unico ? escolhido : undefined}
             className={cx(
                 "flex flex-col gap-3 p-4 transition duration-100 ease-linear sm:flex-row sm:items-center sm:justify-between",
                 naoSelecionavel ? "opacity-60" : escolhido && "bg-secondary",
-                !naoSelecionavel && (unico || item.estoque >= totalSaem) && "cursor-pointer hover:bg-primary_hover",
             )}
         >
-            <div className="flex min-w-0 flex-1 items-start gap-3">
+            {/* Botão de verdade, não div com onClick: no telefone a linha não tem hover para
+                anunciar que é tocável, e o min-h garante alvo mesmo no item de uma linha só. */}
+            <button
+                type="button"
+                disabled={!ativavel}
+                onClick={unico ? () => onChange(escolhido ? 0 : 1) : () => onChange(quantidade + 1)}
+                aria-pressed={unico ? escolhido : undefined}
+                className={cx(
+                    "flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left transition duration-100 ease-linear max-md:min-h-16",
+                    ativavel && "cursor-pointer",
+                    ativavel && (escolhido ? "hover:bg-secondary_hover" : "hover:bg-primary_hover"),
+                    FOCO,
+                )}
+            >
                 {unico && <RadioButtonBase size="sm" isSelected={escolhido} isDisabled={naoSelecionavel} className="mt-0.5 shrink-0" />}
-                <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-primary">{item.nome}</p>
-                    {item.lote && <p className="text-sm text-tertiary">{item.lote}</p>}
-                    {item.tipo !== "ingresso" && item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>}
+                <span className="min-w-0 flex-1">
+                    {!unico && <span className="sr-only">Adicionar 1 unidade de </span>}
+                    <span className="block text-sm font-semibold text-primary">{item.nome}</span>
+                    {item.lote && <span className="block text-sm text-tertiary">{item.lote}</span>}
+                    {item.tipo !== "ingresso" && item.descricao && <span className="block text-sm text-tertiary">{item.descricao}</span>}
                     {(saindo > 0 || noPedido > 0 || bloqueado || estoqueCurto) && (
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        <span className="mt-1.5 flex flex-wrap gap-1.5">
                             {saindo > 0 && <Badge size="md" type="pill-color" color="gray">{saindo === 1 ? "Item sendo trocado" : `${saindo} itens sendo trocados`}</Badge>}
                             {saindo === 0 && noPedido > 0 && <Badge size="md" type="pill-color" color="blue">{noPedido === 1 ? "1 igual no pedido" : `${noPedido} iguais no pedido`}</Badge>}
                             {bloqueado && <Badge size="md" type="pill-color" color="error">{impedimento?.curto}</Badge>}
                             {estoqueCurto && <Badge size="md" type="pill-color" color="warning">Só {item.estoque} {item.estoque === 1 ? "disponível" : "disponíveis"}</Badge>}
-                        </div>
+                        </span>
                     )}
-                </div>
-            </div>
+                </span>
+            </button>
 
             <div className="flex items-center justify-between gap-4 sm:justify-end">
                 <div className="sm:text-right">
@@ -583,11 +606,7 @@ const LinhaCatalogo = ({
                         <p className="text-sm text-tertiary tabular-nums">{diferenca > 0 ? `+${formatarMoeda(diferenca)} por unidade` : `${formatarMoeda(diferenca)} por unidade`}</p>
                     )}
                 </div>
-                {!bloqueado && !unico && !itemAtual && (
-                    <div className="flex items-center" onClick={interromper}>
-                        <Stepper valor={quantidade} maximo={maximo} rotulo={item.nome} onChange={onChange} />
-                    </div>
-                )}
+                {!bloqueado && !unico && !itemAtual && <Stepper valor={quantidade} maximo={maximo} rotulo={item.nome} onChange={onChange} />}
             </div>
         </li>
     );

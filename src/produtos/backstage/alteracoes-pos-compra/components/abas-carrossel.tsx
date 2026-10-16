@@ -7,10 +7,9 @@ import { cx } from "@/utils/cx";
 /**
  * Carrossel horizontal de abas: datas da sessão e tipos de item.
  *
- * Uma fileira só, que rola por toque e por setas que aparecem apenas quando há
- * aba daquele lado. No toque as setas convivem com o arrasto: quem desliza não
- * precisa delas, mas sem nenhuma affordance a fila cortada na borda não se
- * anuncia como rolável.
+ * Uma fileira só, que rola por arrasto e, no desktop, por setas que aparecem
+ * apenas quando há aba daquele lado. Abaixo de md as setas saem: o dedo já
+ * arrasta, e o chip cortado na borda anuncia que a fila continua.
  *
  * É o mesmo seletor da bilheteria, para o operador reconhecer na troca a tira
  * que já usa para vender. Cópia e não import: o repo não deixa um produto
@@ -108,13 +107,19 @@ export function AbasCarrossel({ abas, ativa, ariaLabel, onSelecionar }: AbasCarr
 
     return (
         <div className="flex items-center">
-            <AnimatePresence initial={false}>
-                {temAnterior && (
-                    <SetaAnimada key="anteriores" lado={-1}>
-                        <ButtonUtility size="xs" color="tertiary" icon={ChevronLeft} tooltip="Abas anteriores" onClick={() => rolar(-1)} />
-                    </SetaAnimada>
-                )}
-            </AnimatePresence>
+            {/* As setas somem abaixo de md. No toque elas eram redundantes com o arrasto e cobravam
+                caro: 72px de uma pista de 358px, em alvos de 28px, e a de voltar nascia no primeiro
+                pixel de rolagem, encolhendo o trilho 36px com o dedo ainda na tela. O chip cortado na
+                borda é a affordance que resta, e é a que o arrasto já usa. */}
+            <div className="shrink-0 max-md:hidden">
+                <AnimatePresence initial={false}>
+                    {temAnterior && (
+                        <SetaAnimada key="anteriores" lado={-1}>
+                            <ButtonUtility size="xs" color="tertiary" icon={ChevronLeft} tooltip="Abas anteriores" onClick={() => rolar(-1)} />
+                        </SetaAnimada>
+                    )}
+                </AnimatePresence>
+            </div>
 
             <div
                 ref={trilhoRef}
@@ -150,13 +155,15 @@ export function AbasCarrossel({ abas, ativa, ariaLabel, onSelecionar }: AbasCarr
                 })}
             </div>
 
-            <AnimatePresence initial={false}>
-                {temProxima && (
-                    <SetaAnimada key="proximas" lado={1}>
-                        <ButtonUtility size="xs" color="tertiary" icon={ChevronRight} tooltip="Próximas abas" onClick={() => rolar(1)} />
-                    </SetaAnimada>
-                )}
-            </AnimatePresence>
+            <div className="shrink-0 max-md:hidden">
+                <AnimatePresence initial={false}>
+                    {temProxima && (
+                        <SetaAnimada key="proximas" lado={1}>
+                            <ButtonUtility size="xs" color="tertiary" icon={ChevronRight} tooltip="Próximas abas" onClick={() => rolar(1)} />
+                        </SetaAnimada>
+                    )}
+                </AnimatePresence>
+            </div>
         </div>
     );
 }

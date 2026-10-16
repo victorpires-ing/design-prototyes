@@ -84,15 +84,28 @@ interface TransferirTitularidadeWizardProps {
     onEnviado: (solicitacaoId: string) => void;
 }
 
+/** E-mail e CPF de uma conta. No telefone o CPF ganha linha própria: na mesma linha do e-mail
+ *  sobravam 210px para 46 caracteres, e o pedaço que o truncate comia era o documento, que é
+ *  justamente como o atendente separa duas contas de mesmo nome. */
+const IdentidadeConta = ({ conta }: { conta: Conta }) => (
+    <>
+        <span className="block truncate text-sm text-tertiary">
+            {conta.email}
+            {conta.cpf && <span className="hidden md:inline"> · CPF {formatarCPF(conta.cpf)}</span>}
+        </span>
+        {conta.cpf && <span className="block text-sm tabular-nums text-tertiary md:hidden">CPF {formatarCPF(conta.cpf)}</span>}
+    </>
+);
+
 /** Resultado da busca no formato da nova venda: ícone de estado, identidade e, quando há, o que
  *  aquele estado implica para a operação. */
-const CartaoResultado = ({ icone, titulo, apoio, children }: { icone: ReactNode; titulo: string; apoio?: string; children?: ReactNode }) => (
+const CartaoResultado = ({ icone, titulo, apoio, children }: { icone: ReactNode; titulo: string; apoio?: ReactNode; children?: ReactNode }) => (
     <div className="flex w-full flex-col gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
         <div className="flex items-center gap-3">
             {icone}
             <div className="flex min-w-0 flex-col">
                 <p className="truncate text-sm font-semibold text-primary">{titulo}</p>
-                {apoio && <p className="truncate text-sm text-tertiary">{apoio}</p>}
+                {apoio && <div className="min-w-0">{apoio}</div>}
             </div>
         </div>
         {children && <div className="text-sm text-tertiary">{children}</div>}
@@ -107,7 +120,9 @@ const CartaoDestinatario = ({ conta, onAlterar }: { conta: Conta; onAlterar: () 
             <p className="truncate text-sm font-semibold text-primary">{conta.nome}</p>
             <p className="truncate text-sm text-tertiary">{conta.email}</p>
         </div>
-        <Button size="sm" color="link-color" onClick={onAlterar}>
+        {/* `link-color` carrega `p-0!`, então padding não pega: a altura mínima é o que leva o
+            alvo aos 44px sem tocar o design system. */}
+        <Button size="sm" color="link-color" className="max-md:min-h-11 max-md:px-2" onClick={onAlterar}>
             Alterar
         </Button>
     </div>
@@ -343,7 +358,10 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
             ocultarRodape={etapa === "destinatario"}
             rotuloAvancar={rotuloAvancar}
             ultimaEtapa={etapa === "revisao"}
-            rotuloConfirmar={`Enviar cobrança de ${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}`}
+            rotuloConfirmar="Enviar cobrança"
+            /* O que custa e para quem fica acima do botão, não dentro dele: a frase inteira
+               enchia três linhas de um botão de largura total no telefone. */
+            infoRodape={etapa === "revisao" ? `${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}` : undefined}
             onVoltar={voltar}
             onAvancar={avancar}
             onConfirmar={confirmar}
@@ -475,10 +493,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                                                     <Avatar size="md" initials={iniciaisDe(conta.nome)} alt={conta.nome} />
                                                     <span className="min-w-0 flex-1">
                                                         <span className="block text-sm font-semibold text-primary">{conta.nome}</span>
-                                                        <span className="block truncate text-sm text-tertiary">
-                                                            {conta.email}
-                                                            {conta.cpf && ` · CPF ${formatarCPF(conta.cpf)}`}
-                                                        </span>
+                                                        <IdentidadeConta conta={conta} />
                                                     </span>
                                                     {impedida ? (
                                                         <span className="shrink-0 text-sm text-warning-primary">{impedida.curto}</span>
@@ -501,7 +516,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             <CartaoResultado
                                 icone={<FeaturedIcon icon={CheckCircle} color="success" theme="dark" size="md" className="shrink-0 rounded-full" />}
                                 titulo={selecionada.nome}
-                                apoio={`${selecionada.email}${selecionada.cpf ? ` · CPF ${formatarCPF(selecionada.cpf)}` : ""}`}
+                                apoio={<IdentidadeConta conta={selecionada} />}
                             />
                         )}
 

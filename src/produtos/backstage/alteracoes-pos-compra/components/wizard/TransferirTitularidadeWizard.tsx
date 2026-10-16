@@ -56,10 +56,16 @@ const MINIMO_SUGESTOES = 132;
  * ancestral que esconde o que passa da borda. O overlay é um desses — a lista nascia
  * com 288px fixos, era pintada para fora dele e as sugestões de baixo não recebiam
  * clique nenhum (elementFromPoint devolvia nada nelas).
+ *
+ * A base vem do viewport VISUAL, não de `window.innerHeight`: no iOS o teclado não muda
+ * `innerHeight`, então a conta achava que havia tela sobrando embaixo do campo e desenhava
+ * metade da lista atrás do teclado, justamente quando ele está aberto, que é o tempo todo
+ * nesta busca.
  */
 const areaVisivel = (no: HTMLElement) => {
     let topo = 0;
-    let base = window.innerHeight;
+    const vv = window.visualViewport;
+    let base = vv ? vv.offsetTop + vv.height : window.innerHeight;
     for (let pai = no.parentElement; pai; pai = pai.parentElement) {
         const estilo = getComputedStyle(pai);
         if (estilo.overflowY === "visible" && estilo.overflowX === "visible") continue;
@@ -214,9 +220,14 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
            do container interno, que não borbulha. */
         window.addEventListener("resize", medir);
         document.addEventListener("scroll", medir, true);
+        /* Abrir e fechar o teclado no iOS não dispara `resize` na janela, só no viewport visual. */
+        window.visualViewport?.addEventListener("resize", medir);
+        window.visualViewport?.addEventListener("scroll", medir);
         return () => {
             window.removeEventListener("resize", medir);
             document.removeEventListener("scroll", medir, true);
+            window.visualViewport?.removeEventListener("resize", medir);
+            window.visualViewport?.removeEventListener("scroll", medir);
         };
     }, [sugestoesAbertas, encontradas.length]);
 
@@ -437,11 +448,22 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                                                     type="button"
                                                     tabIndex={-1}
                                                     onMouseEnter={() => setFocado(i)}
-                                                    /* Escolhe ao apertar, não ao soltar: se a lista se mexer entre o
-                                                       mousedown e o mouseup — rolagem, reposicionamento — o clique
-                                                       nunca chega. É o que o combobox do React Aria também faz. */
+                                                    /* No mouse, escolhe ao apertar: se a lista se mexer entre o mousedown
+                                                       e o mouseup, por rolagem ou reposicionamento, o clique nunca chega.
+                                                       É o que o combobox do React Aria também faz.
+
+                                                       No toque, não: `pointerdown` é o começo de TODO gesto, inclusive o
+                                                       de arrastar para rolar a lista, e escolher ali fazia o dedo que
+                                                       procurava a pessoa certa selecionar quem estivesse embaixo dele e
+                                                       pular para a etapa 2. O dedo vai pelo `click`, que o browser só
+                                                       emite quando o gesto não virou rolagem. */
                                                     onPointerDown={(e) => {
+                                                        if (e.pointerType !== "mouse") return;
                                                         e.preventDefault();
+                                                        escolherDestinatario(conta);
+                                                    }}
+                                                    onClick={(e) => {
+                                                        if ((e.nativeEvent as PointerEvent).pointerType === "mouse") return;
                                                         escolherDestinatario(conta);
                                                     }}
                                                     className={cx(

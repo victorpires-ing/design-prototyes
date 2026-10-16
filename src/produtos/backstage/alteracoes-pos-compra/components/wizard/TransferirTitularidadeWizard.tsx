@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { toast } from "sonner";
-import { ChevronRight, SearchLg } from "@untitledui/icons";
+import { ChevronDown, ChevronRight, SearchLg } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
-import { Aviso, CampoMotivo, MOTIVO_INICIAL, ResumoFinanceiro, SetaParaBaixo, iniciaisDe, formatarCPF, mascararEmail } from "../pos-compra-ui";
+import { Aviso, CampoMotivo, MOTIVO_INICIAL, Regra, ResumoFinanceiro, SetaParaBaixo, iniciaisDe, formatarCPF, mascararEmail } from "../pos-compra-ui";
 import {
     buscarContas,
     calcularTrocaTitularidade,
@@ -27,18 +27,19 @@ import {
     type Pergunta,
 } from "../../data/pos-compra-store";
 import { WizardShell } from "./WizardShell";
-import { ResumoUnidades, SeletorUnidades, detalheDoItem } from "./seletor-unidades";
+import { ResumoUnidades, SeletorUnidades, detalheDoItem, identidadeDaLinha } from "./seletor-unidades";
 
 /*
   Sem etapa de formulário: a titularidade NÃO altera respostas. O novo possuidor
   herda todas (576978948 §4 e H-23); mudar resposta é a Troca de perguntas, feita
   depois e como operação separada (§10, C12).
 */
-type Etapa = "itens" | "destinatario" | "revisao";
+type Etapa = "itens" | "destinatario" | "formulario" | "revisao";
 
 const TITULO_ETAPA: Record<Etapa, string> = {
     itens: "Itens",
     destinatario: "Destinatário",
+    formulario: "Formulário",
     revisao: "Confirmar",
 };
 
@@ -101,6 +102,44 @@ const IdentidadeConta = ({ conta }: { conta: Conta }) => (
     </>
 );
 
+/**
+ * As respostas de uma unidade, para conferir. Só leitura: a titularidade não as altera, e dar
+ * campos editáveis aqui prometeria uma operação que esta não é.
+ *
+ * Recolhida quando há mais de uma unidade: o formulário completo tem vinte perguntas, e três
+ * unidades abertas viram sessenta linhas antes do botão.
+ */
+const RespostasDaUnidade = ({ pedido, linha, perguntas, aberto }: { pedido: Pedido; linha: PedidoItem; perguntas: Pergunta[]; aberto: boolean }) => {
+    const item = getItem(linha.itemId);
+    const semResposta = perguntas.filter((p) => !(linha.respostas[p.id] ?? "").trim()).length;
+
+    return (
+        <details open={aberto} className="group w-full overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+            <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 transition duration-100 ease-linear hover:bg-primary_hover max-md:min-h-11 [&::-webkit-details-marker]:hidden">
+                <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm font-semibold text-primary">{item?.nome}</span>
+                    <span className="truncate text-sm text-tertiary">{identidadeDaLinha(pedido, linha).nome}</span>
+                </span>
+                {semResposta > 0 && (
+                    <span className="shrink-0 text-sm text-tertiary">{semResposta === 1 ? "1 sem resposta" : `${semResposta} sem resposta`}</span>
+                )}
+                <ChevronDown className="size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <dl className="flex flex-col gap-3 border-t border-secondary px-4 py-3">
+                {perguntas.map((pergunta) => {
+                    const resposta = (linha.respostas[pergunta.id] ?? "").trim();
+                    return (
+                        <div key={pergunta.id} className="flex flex-col gap-0.5">
+                            <dt className="text-sm text-tertiary">{pergunta.label}</dt>
+                            <dd className={cx("text-sm", resposta ? "text-primary" : "text-quaternary")}>{resposta || "Sem resposta"}</dd>
+                        </div>
+                    );
+                })}
+            </dl>
+        </details>
+    );
+};
+
 /** Quem recebe, com o caminho de volta para trocar de pessoa sem mexer no stepper. */
 const CartaoDestinatario = ({ conta, onAlterar }: { conta: Conta; onAlterar: () => void }) => (
     <div className="flex w-full items-center gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
@@ -153,6 +192,9 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     const [busca, setBusca] = useState("");
     const [motivo, setMotivo] = useState<Motivo>(MOTIVO_INICIAL);
     const [selecionada, setSelecionada] = useState<Conta | null>(null);
+    /* Trava a etapa do formulário depois que o fluxo passa por ela: desmarcar a última unidade
+       com formulário encolheria o stepper com a pessoa dentro dele. */
+    const [conferiuFormulario, setConferiuFormulario] = useState(false);
     /* Conta clicada que não recebe nada do pedido: não vira destinatário e não avança. Uma frase
        só, que a etapa mostra abaixo do campo de busca. */
     const [recusada, setRecusada] = useState<string | null>(null);
@@ -229,9 +271,17 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     /*  Etapas                                                             */
     /* ------------------------------------------------------------------ */
 
-    /* "Itens" é sempre a primeira etapa: vindo de uma linha, ela já nasce concluída e o fluxo
+    /* O formulário não é opcional: a titularidade não altera resposta nenhuma, mas quem recebe
+       herda tudo como está, e isso precisa ser visto antes de a cobrança sair. A etapa é de
+       leitura — editar resposta é a outra operação, e o rodapé da revisão diz como.
+
+       Ela existe quando alguma unidade em transferência tem formulário, e fica fixa depois que o
+       fluxo passa por ela, para o stepper não mudar de tamanho no meio do caminho.
+
+       "Itens" é sempre a primeira etapa: vindo de uma linha, ela já nasce concluída e o fluxo
        começa no destinatário, mas "Alterar" e "Voltar" levam até ela sem fechar o overlay. */
-    const etapas: Etapa[] = ["destinatario", "itens", "revisao"];
+    const temEtapaFormulario = conferiuFormulario || comFormulario.length > 0;
+    const etapas: Etapa[] = ["destinatario", "itens", ...(temEtapaFormulario ? (["formulario"] as Etapa[]) : []), "revisao"];
     const etapa = etapas[Math.min(indice, etapas.length - 1)];
 
     /*
@@ -320,11 +370,14 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
             ? Boolean(selecionada)
             : etapa === "itens"
               ? linhas.length > 0 && bloqueiosPorLinha.length === 0
-              : /* A revisão também exige unidade: outra operação pode levar as unidades no meio
+              : etapa === "formulario"
+                ? true
+                : /* A revisão também exige unidade: outra operação pode levar as unidades no meio
                     do caminho, e sem isso o envio da cobrança liberava com zero unidades. */
                 Boolean(selecionada) && linhas.length > 0 && motivoValido(motivo);
 
-    const rotuloAvancar = etapa === "destinatario" ? "Escolher itens" : "Revisar transferência";
+    const rotuloAvancar =
+        etapa === "destinatario" ? "Escolher itens" : etapa === "itens" && temEtapaFormulario ? "Conferir formulário" : "Revisar transferência";
 
     /* O que a casca pergunta antes de descartar. Ela deduz sozinha, mas aqui dá para ser exato:
        as unidades que já vieram marcadas do kebab não são trabalho de ninguém, e o motivo escrito
@@ -335,7 +388,10 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
        que o pedido registra, como nas três EFs. */
     const fechar = () => onFechar();
 
-    const avancar = () => setIndice((i) => i + 1);
+    const avancar = () => {
+        if (etapa === "itens" && comFormulario.length > 0) setConferiuFormulario(true);
+        setIndice((i) => i + 1);
+    };
 
     /* Voltar para o destinatário é voltar para escolher outra pessoa: escolher alguém já avança
        sozinho, então não existe outro motivo para estar nesta etapa de novo. Ela volta ao estado
@@ -636,6 +692,28 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             <p role="alert" className="text-sm text-error-primary">
                                 {recusada}
                             </p>
+                        )}
+                    </>
+                )}
+
+                {etapa === "formulario" && (
+                    <>
+                        {comFormulario.length === 0 ? (
+                            /* A etapa fica fixa depois que o fluxo passa por ela, então a escolha
+                               pode mudar e deixá-la sem nada. */
+                            <p className="w-full rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">
+                                Nenhuma unidade escolhida tem formulário. Pode seguir para a revisão.
+                            </p>
+                        ) : (
+                            <>
+                                <Regra>
+                                    As respostas seguem com a unidade, sem alteração. Confira antes de enviar a cobrança: para mudar alguma, faça uma troca de
+                                    perguntas depois que a transferência concluir.
+                                </Regra>
+                                {comFormulario.map((linha) => (
+                                    <RespostasDaUnidade key={linha.id} pedido={pedido} linha={linha} perguntas={perguntasDaLinha(linha)} aberto={comFormulario.length === 1} />
+                                ))}
+                            </>
                         )}
                     </>
                 )}

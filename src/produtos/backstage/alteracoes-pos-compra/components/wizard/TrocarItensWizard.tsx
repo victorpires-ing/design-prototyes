@@ -260,10 +260,15 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
     /*  Etapas                                                             */
     /* ------------------------------------------------------------------ */
 
-    /* A etapa de formulários só existe quando o item que entra tem pergunta sem resposta. Ela
-       fica fixa depois de entrar no fluxo, para o stepper não mudar de tamanho enquanto a pessoa
+    /* A etapa existe sempre que o item que entra TEM formulário, respondido ou não: a resposta
+       herdada veio de outro item e pode não servir para este, então ela é para conferir, não só
+       para completar. Antes a etapa só nascia com pergunta em branco, e uma troca entre itens do
+       mesmo formulário ia direto para a cobrança sem ninguém olhar o que o participante tinha
+       respondido.
+
+       Fica fixa depois de entrar no fluxo, para o stepper não mudar de tamanho enquanto a pessoa
        responde. */
-    const comFormularios = precisaFormulario || paresIncompletos.length > 0;
+    const comFormularios = precisaFormulario || paresComFormulario.length > 0;
     const etapas: Etapa[] = ["saem", "entram", ...(comFormularios ? (["formularios"] as Etapa[]) : []), "revisao"];
     const etapa = etapas[Math.min(indice, etapas.length - 1)];
 
@@ -301,14 +306,23 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
     };
     const falta = oQueFalta();
 
-    const rotuloAvancar = etapa === "saem" ? "Escolher os novos itens" : etapa === "entram" && comFormularios ? "Responder formulários" : "Revisar troca";
+    /* "Conferir" e não "Responder": com tudo herdado não há o que responder, e o rótulo prometia
+       trabalho que a etapa não pede. */
+    const rotuloAvancar =
+        etapa === "saem"
+            ? "Escolher os novos itens"
+            : etapa === "entram" && comFormularios
+              ? paresIncompletos.length > 0
+                  ? "Responder formulários"
+                  : "Conferir formulários"
+              : "Revisar troca";
 
     /* Fechar sai do fluxo. Não há rascunho: a solicitação, com a cobrança, é a primeira coisa
        que o pedido registra, como nas três EFs. */
     const fechar = () => onFechar();
 
     const avancar = () => {
-        if (etapa === "entram" && paresIncompletos.length > 0) setPrecisaFormulario(true);
+        if (etapa === "entram" && paresComFormulario.length > 0) setPrecisaFormulario(true);
         setIndice((i) => i + 1);
     };
     const voltar = () => (indice === 0 ? fechar() : setIndice((i) => i - 1));

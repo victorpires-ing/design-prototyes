@@ -1,10 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { toast } from "sonner";
-import { CheckCircle, ChevronRight, SearchLg } from "@untitledui/icons";
+import { ChevronRight, SearchLg } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import { Aviso, CampoMotivo, MOTIVO_INICIAL, ResumoFinanceiro, SetaParaBaixo, iniciaisDe, formatarCPF, mascararEmail } from "../pos-compra-ui";
 import {
@@ -102,21 +101,6 @@ const IdentidadeConta = ({ conta }: { conta: Conta }) => (
     </>
 );
 
-/** Resultado da busca no formato da nova venda: ícone de estado, identidade e, quando há, o que
- *  aquele estado implica para a operação. */
-const CartaoResultado = ({ icone, titulo, apoio, children }: { icone: ReactNode; titulo: string; apoio?: ReactNode; children?: ReactNode }) => (
-    <div className="flex w-full flex-col gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
-        <div className="flex items-center gap-3">
-            {icone}
-            <div className="flex min-w-0 flex-col">
-                <p className="truncate text-sm font-semibold text-primary">{titulo}</p>
-                {apoio && <div className="min-w-0">{apoio}</div>}
-            </div>
-        </div>
-        {children && <div className="text-sm text-tertiary">{children}</div>}
-    </div>
-);
-
 /** Quem recebe, com o caminho de volta para trocar de pessoa sem mexer no stepper. */
 const CartaoDestinatario = ({ conta, onAlterar }: { conta: Conta; onAlterar: () => void }) => (
     <div className="flex w-full items-center gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
@@ -147,6 +131,21 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     const [indice, setIndice] = useState(0);
     const buscaRef = useRef<HTMLDivElement>(null);
     const [sugerindo, setSugerindo] = useState(false);
+    /* Pedido de cursor para o campo de busca, consumido quando ele entra no DOM.
+
+       Pelo ref e não por efeito: a etapa troca com animação, e no efeito o campo da etapa que
+       está entrando ainda não existe — o foco caía no vazio e o cursor ficava na seta de voltar.
+       O ref roda no instante em que o campo monta, seja qual for a duração da animação.
+
+       Só a pedido, nunca na montagem do fluxo: abrir a transferência já com o teclado do celular
+       aberto cobriria o stepper. */
+    const focarBusca = useRef(false);
+    const montarBusca = useCallback((no: HTMLDivElement | null) => {
+        buscaRef.current = no;
+        if (!no || !focarBusca.current) return;
+        focarBusca.current = false;
+        no.querySelector("input")?.focus();
+    }, []);
     const [buscando, setBuscando] = useState(false);
     const timerBusca = useRef<number | null>(null);
     const [encaixe, setEncaixe] = useState({ altura: ALTURA_SUGESTOES, acima: false });
@@ -333,7 +332,31 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     const fechar = () => onFechar();
 
     const avancar = () => setIndice((i) => i + 1);
-    const voltar = () => (indice === 0 ? fechar() : setIndice((i) => i - 1));
+
+    /* Voltar para o destinatário é voltar para escolher outra pessoa: escolher alguém já avança
+       sozinho, então não existe outro motivo para estar nesta etapa de novo. Ela volta ao estado
+       de busca vazia, com o cursor esperando no campo.
+
+       Antes ela reaparecia dizendo duas coisas ao mesmo tempo: o campo guardava o termo digitado,
+       que já não abria lista nenhuma, e embaixo dele ficava o cartão verde de quem estava
+       escolhido. Um dizia que nada tinha sido escolhido, o outro que alguém tinha. */
+    const reiniciarDestinatario = () => {
+        if (timerBusca.current) window.clearTimeout(timerBusca.current);
+        setSelecionada(null);
+        setBusca("");
+        setSugerindo(false);
+        setBuscando(false);
+        setFocado(0);
+        focarBusca.current = true;
+    };
+
+    const voltar = () => {
+        if (indice === 0) return fechar();
+        /* Índice 1 é "itens": recuar dele cai no destinatário. O voltar do navegador passa por
+           aqui também, pela casca. */
+        if (indice === 1) reiniciarDestinatario();
+        setIndice((i) => i - 1);
+    };
     const incluir = (ids: string[]) => setSelecao((atual) => ({ ...atual, ...Object.fromEntries(ids.map((id) => [id, true])) }));
 
     /* Clicar no card já escolhe e avança. Só não avança quando a conta está bloqueada para algum
@@ -410,15 +433,10 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
             etapas={etapas.map((e) => (e === "itens" && selecionada ? `Itens para ${primeiroNome(selecionada.nome)}` : TITULO_ETAPA[e]))}
             indiceAtual={indice}
             podeAvancar={podeAvancar}
-            /* Com pessoa escolhida o rodapé volta, com o "Escolher itens" que já estava escrito.
-               Escondido sempre, voltar da revisão pelo "Alterar" caía numa etapa sem saída: a
-               única forma de seguir era digitar na busca, e o primeiro caractere apagava a
-               pessoa que se tinha acabado de conferir.
-
-               Com a lista de sugestões aberta ele sai: a barra é colada no fim da janela e a
-               conta que mede o espaço livre abaixo do campo não a enxerga, então as últimas
-               sugestões ficariam atrás dela. */
-            ocultarRodape={etapa === "destinatario" && (!selecionada || sugestoesAbertas)}
+            /* Sem rodapé ao escolher quem recebe: o clique na sugestão já avança, e a etapa nunca
+               fica parada com alguém escolhido — voltar a ela a devolve vazia. Um "Escolher itens"
+               aqui seria um botão que nunca tem o que fazer. */
+            ocultarRodape={etapa === "destinatario"}
             trabalhoEmAndamento={temTrabalho}
             rotuloAvancar={rotuloAvancar}
             ultimaEtapa={etapa === "revisao"}
@@ -477,7 +495,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             <label htmlFor="destinatario-busca" className="text-sm font-medium text-secondary">
                                 Quem vai receber?
                             </label>
-                            <div ref={buscaRef} className="relative w-full">
+                            <div ref={montarBusca} className="relative w-full">
                                 <InputBase
                                     id="destinatario-busca"
                                     size="md"
@@ -581,16 +599,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             <p className="text-sm text-tertiary">Busque pelo nome, não precisa saber o e-mail ou CPF de cor.</p>
                         </div>
 
-                        {/* Voltando pelo "Alterar", a conta já escolhida fica à vista para conferência,
-                            como a conta encontrada da nova venda. */}
-                        {selecionada && (
-                            <CartaoResultado
-                                icone={<FeaturedIcon icon={CheckCircle} color="success" theme="dark" size="md" className="shrink-0 rounded-full" />}
-                                titulo={selecionada.nome}
-                                apoio={<IdentidadeConta conta={selecionada} />}
-                            />
-                        )}
-
                     </>
                 )}
 
@@ -613,7 +621,13 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             bloqueioExtra={motivoParaDestinatario}
                         />
                         <SetaParaBaixo />
-                        <CartaoDestinatario conta={selecionada} onAlterar={() => setIndice(0)} />
+                        <CartaoDestinatario
+                            conta={selecionada}
+                            onAlterar={() => {
+                                reiniciarDestinatario();
+                                setIndice(0);
+                            }}
+                        />
 
                         <CampoMotivo valor={motivo} onChange={setMotivo} />
 

@@ -1951,7 +1951,7 @@ export const ultimoEnvio = (pedido: Pedido, solicitacaoId: string) =>
 
 /** Aplica o que a solicitação prometeu e tira ela da lista de operações abertas. */
 const aplicarSolicitacao = (p: Pedido, solicitacao: Solicitacao): Pedido => {
-    const { aplicar, tipo, resumo, total, detalhes } = solicitacao;
+    const { aplicar, tipo, resumo, total, detalhes, mudancas } = solicitacao;
     const trocasPorLinha = new Map((aplicar.trocas ?? []).map((t) => [t.pedidoItemId, t.novoItemId]));
     const quando = agoraLabel();
 

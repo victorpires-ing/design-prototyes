@@ -153,9 +153,9 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     const [busca, setBusca] = useState("");
     const [motivo, setMotivo] = useState<Motivo>(MOTIVO_INICIAL);
     const [selecionada, setSelecionada] = useState<Conta | null>(null);
-    /* Conta clicada que não recebe nada do pedido: não vira destinatário e não avança. Guarda o
-       nome e o porquê, que a etapa mostra acima da busca. */
-    const [recusada, setRecusada] = useState<{ titulo: string; motivos: string[] } | null>(null);
+    /* Conta clicada que não recebe nada do pedido: não vira destinatário e não avança. Uma frase
+       só, que a etapa mostra abaixo do campo de busca. */
+    const [recusada, setRecusada] = useState<string | null>(null);
     const [selecao, setSelecao] = useState<Record<string, boolean>>(() => Object.fromEntries(linhasIniciais.map((id) => [id, true])));
     const [aberta, setAberta] = useState<string | null>(null);
     const destino = selecionada?.email ?? "";
@@ -374,17 +374,11 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     const escolherDestinatario = (conta: Conta) => {
         if (naoRecebeNada(conta)) {
             const jaPorta = linhasDisponiveis.every((l) => (l.titularId ?? pedido.compradorId) === conta.id);
+            /* A saída vem primeiro, o porquê depois: é o que a pessoa precisa fazer agora. */
             setRecusada(
                 jaPorta
-                    ? {
-                          titulo: `${conta.nome} já porta ${linhasDisponiveis.length === 1 ? "esta unidade" : "estas unidades"}`,
-                          /* O motivo do store repetiria o título. Aqui vale mais dizer a saída. */
-                          motivos: ["Escolha outra pessoa para receber a transferência."],
-                      }
-                    : {
-                          titulo: `Nenhuma unidade pode ir para ${conta.nome}`,
-                          motivos: [...new Set(linhasDisponiveis.map((l) => motivoDaConta(conta, l)).filter(Boolean) as string[])],
-                      },
+                    ? `Escolha outra pessoa para receber a transferência. ${conta.nome} já possui esses itens.`
+                    : `Escolha outra pessoa para receber a transferência. ${[...new Set(linhasDisponiveis.map((l) => motivoDaConta(conta, l)).filter(Boolean) as string[])].join(" ")}`,
             );
             /* A lista sai de cena: ela vira para cima quando falta espaço embaixo do campo, e aí
                cobria justamente o aviso que o clique acabou de produzir. Volta num clique no
@@ -520,23 +514,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                           procura por nome, não tem o documento de cor, e esperar um submit só
                           colocaria um passo entre ele e a lista.
                         */}
-                        {/* Acima da busca, não abaixo: embaixo dela o popover de sugestões cobriria
-                            o aviso justamente enquanto a lista está aberta, que é quando ele nasce.
-                            A lista fica aberta de propósito, para escolher outra pessoa sem
-                            precisar buscar de novo. */}
-                        {recusada && (
-                            <div role="alert" className="flex flex-col gap-2">
-                                <Aviso titulo={recusada.titulo} descricao={recusada.motivos.length === 1 ? recusada.motivos[0] : undefined} />
-                                {recusada.motivos.length > 1 && (
-                                    <ul className="flex flex-col gap-1 pl-11 text-sm text-tertiary">
-                                        {recusada.motivos.map((texto) => (
-                                            <li key={texto}>{texto}</li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                        )}
-
                         <div className="flex w-full flex-col gap-1.5 rounded-xl bg-primary p-4 ring-1 ring-border-secondary md:p-5">
                             <label htmlFor="destinatario-busca" className="text-sm font-medium text-secondary">
                                 Quem vai receber?
@@ -651,6 +628,14 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             <p className="text-sm text-tertiary">Busque pelo nome, não precisa saber o e-mail ou CPF de cor.</p>
                         </div>
 
+                        {/* Abaixo do card, não dentro nem acima: a lista de sugestões vira para
+                            cima quando falta espaço embaixo do campo, e por isso ela fecha ao
+                            recusar. Com a lista fechada este é o lugar onde o olho já está. */}
+                        {recusada && (
+                            <p role="alert" className="text-sm text-error-primary">
+                                {recusada}
+                            </p>
+                        )}
                     </>
                 )}
 

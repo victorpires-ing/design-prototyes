@@ -1,13 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
-import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { CheckCircle, ChevronDown, ChevronRight, Copy01, SearchLg } from "@untitledui/icons";
+import { CheckCircle, ChevronRight, SearchLg } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
-import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, SetaParaBaixo, iniciaisDe, formatarCPF, mascararEmail } from "../pos-compra-ui";
+import { Aviso, CampoMotivo, MOTIVO_INICIAL, ResumoFinanceiro, SetaParaBaixo, iniciaisDe, formatarCPF, mascararEmail } from "../pos-compra-ui";
 import {
     buscarContas,
     calcularTrocaTitularidade,
@@ -41,9 +40,15 @@ type Etapa = "itens" | "destinatario" | "revisao";
 const TITULO_ETAPA: Record<Etapa, string> = {
     itens: "Itens",
     destinatario: "Destinatário",
-    formularios: "Formulários",
     revisao: "Revisão",
 };
+
+/** Só o primeiro nome. O rótulo da etapa divide uma faixa de 560px com outros dois e, com o nome
+ *  inteiro, "Itens para Ana Paula Souza" empurra o stepper para duas linhas. */
+const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0];
+
+/** "A, B e C". Em português o último nome entra com "e", não com vírgula. */
+const listarNomes = (nomes: string[]) => (nomes.length < 2 ? nomes.join("") : `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`);
 
 /** Teto da lista quando há espaço de sobra, e o respiro até a borda que a recorta. */
 const ALTURA_SUGESTOES = 288;
@@ -116,9 +121,13 @@ const CartaoResultado = ({ icone, titulo, apoio, children }: { icone: ReactNode;
 const CartaoDestinatario = ({ conta, onAlterar }: { conta: Conta; onAlterar: () => void }) => (
     <div className="flex w-full items-center gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
         <Avatar size="md" initials={iniciaisDe(conta.nome)} alt={conta.nome} />
+        {/* Mesma identidade da busca, CPF incluído. Sem ele a conferência final, que acontece
+            na tela que autoriza a cobrança e troca o dono do ingresso, era por nome e e-mail:
+            com duas "Ana Paula Souza" na base, o documento é o que separa as duas. O nome sobe
+            um degrau para parar de pesar igual ao lote do ingresso logo acima. */}
         <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-primary">{conta.nome}</p>
-            <p className="truncate text-sm text-tertiary">{conta.email}</p>
+            <p className="truncate text-md font-semibold text-primary">{conta.nome}</p>
+            <IdentidadeConta conta={conta} />
         </div>
         {/* `link-color` carrega `p-0!`, então padding não pega: a altura mínima é o que leva o
             alvo aos 44px sem tocar o design system. */}
@@ -137,7 +146,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
        pré-marcada na etapa de itens e a entrada é uma só. */
     const [indice, setIndice] = useState(0);
     const buscaRef = useRef<HTMLDivElement>(null);
-    const avisoRef = useRef<HTMLDivElement>(null);
     const [sugerindo, setSugerindo] = useState(false);
     const [buscando, setBuscando] = useState(false);
     const timerBusca = useRef<number | null>(null);
@@ -152,8 +160,12 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
 
     const linhas = linhasDisponiveis.filter((l) => selecao[l.id]);
     const calculo = calcularTrocaTitularidade(linhas.length);
-    const titularAtual = linhas[0] ? titularDaLinha(pedido, linhas[0]) : undefined;
     const comprador = getConta(pedido.compradorId);
+    /* De quem as unidades saem. O cabeçalho do fluxo mostra o COMPRADOR e o resumo mostra só o
+       item, então o nome de quem PERDE o ingresso não aparecia em tela nenhuma: num pedido com
+       dois titulares dava para confirmar a cobrança sem saber que a unidade estava com a Carol,
+       que a recebeu por transferência, e não com quem comprou. */
+    const titularesDeOrigem = [...new Set(linhas.map((l) => titularDaLinha(pedido, l)?.nome ?? "Comprador"))];
 
 
     /* ------------------------------------------------------------------ */
@@ -182,6 +194,27 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     useEffect(() => () => void (timerBusca.current && window.clearTimeout(timerBusca.current)), []);
 
     const bloqueiosPorLinha = selecionada ? bloqueiosDaConta(selecionada) : [];
+
+    /* O que a linha bloqueada mostra. Era só o `curto`, duas palavras ("Restrito", "Já vinculado")
+       que o atendente lia como defeito do ingresso e repetia ao telefone como "esse ingresso não
+       pode ser transferido", quando o mesmo ingresso iria sem problema para outra pessoa. A frase
+       inteira do store diz de quem é o impedimento; onde ela chama a pessoa de "essa conta" entra
+       o nome, que é como ela está sendo chamada na ligação. */
+    const motivoParaDestinatario = (linha: PedidoItem): string | null => {
+        if (!selecionada) return null;
+        const bloqueio = validarNovoTitular(pedido, linha, selecionada, linhas);
+        if (!bloqueio) return null;
+        /* Sem "a titular": o nome na frente deixa a concordância errada metade das vezes. */
+        if ((linha.titularId ?? pedido.compradorId) === selecionada.id) return `${selecionada.nome} já está com esta unidade.`;
+        return bloqueio.descricao.replace(/essa conta/g, selecionada.nome);
+    };
+
+    /* Nada do pedido pode ir para esta pessoa. Os motivos entram sem repetição: o aviso usava a
+       descrição da primeira unidade como se valesse para todas, e com três unidades barradas por
+       três razões diferentes ele afirmava uma e escondia duas. */
+    const motivosDeTudo = selecionada && linhasDisponiveis.length > 0 ? linhasDisponiveis.map((l) => motivoParaDestinatario(l)) : [];
+    const nadaPodeIr = motivosDeTudo.length > 0 && motivosDeTudo.every(Boolean);
+    const motivosDistintos = nadaPodeIr ? [...new Set(motivosDeTudo as string[])] : [];
 
     /* ------------------------------------------------------------------ */
     /*  Formulários                                                        */
@@ -290,6 +323,11 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
 
     const rotuloAvancar = etapa === "destinatario" ? "Escolher itens" : "Revisar transferência";
 
+    /* O que a casca pergunta antes de descartar. Ela deduz sozinha, mas aqui dá para ser exato:
+       as unidades que já vieram marcadas do kebab não são trabalho de ninguém, e o motivo escrito
+       é trabalho que a dedução não enxerga. */
+    const temTrabalho = Boolean(selecionada) || motivoValido(motivo) || linhas.some((l) => !linhasIniciais.includes(l.id));
+
     /* Fechar sai do fluxo. Não há rascunho: a solicitação, com a cobrança, é a primeira coisa
        que o pedido registra, como nas três EFs. */
     const fechar = () => onFechar();
@@ -312,11 +350,21 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
         if (!selecionada) return;
 
         /* H-23: o novo possuidor herda as respostas como estão. A titularidade não as altera. */
-        const porItem = new Map<string, number>();
-        linhas.forEach((l) => porItem.set(l.itemId, (porItem.get(l.itemId) ?? 0) + 1));
-        const detalhes = [...porItem.entries()].map(([itemId, quantidade]) => {
+        /* Agrupado por item E por titular de origem. Só por item, duas saídas de pessoas
+           diferentes viravam uma linha só e o registro ficava sem dizer de quem cada unidade
+           saiu. O nome entra apenas quando há mais de um titular: com um só ele repetiria a
+           mesma pessoa em toda linha. */
+        const porGrupo = new Map<string, { itemId: string; titular: string; quantidade: number }>();
+        linhas.forEach((l) => {
+            const titular = titularDaLinha(pedido, l)?.nome ?? "Comprador";
+            const chave = `${l.itemId}|${titular}`;
+            const grupo = porGrupo.get(chave) ?? { itemId: l.itemId, titular, quantidade: 0 };
+            grupo.quantidade += 1;
+            porGrupo.set(chave, grupo);
+        });
+        const detalhes = [...porGrupo.values()].map(({ itemId, titular, quantidade }) => {
             const item = getItem(itemId);
-            return [`${quantidade}x ${item?.nome}`, detalheDoItem(item)].filter(Boolean).join(" · ");
+            return [`${quantidade}x ${item?.nome}`, detalheDoItem(item), titularesDeOrigem.length > 1 && `de ${titular}`].filter(Boolean).join(" · ");
         });
         /* Uma mudança por unidade, com o portador de origem de cada uma: num pedido com dois
            titulares, dizer "De Fulano" no singular atribuía a saída inteira a um só. */
@@ -357,10 +405,21 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
             onClose={fechar}
             titulo="Transferir"
             subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}
-            etapas={etapas.map((e) => TITULO_ETAPA[e])}
+            /* A etapa 2 carrega o nome de quem recebe. O subtítulo logo acima é o COMPRADOR, e
+               só "Itens" deixava as duas pessoas do fluxo reduzidas a uma. */
+            etapas={etapas.map((e) => (e === "itens" && selecionada ? `Itens para ${primeiroNome(selecionada.nome)}` : TITULO_ETAPA[e]))}
             indiceAtual={indice}
             podeAvancar={podeAvancar}
-            ocultarRodape={etapa === "destinatario"}
+            /* Com pessoa escolhida o rodapé volta, com o "Escolher itens" que já estava escrito.
+               Escondido sempre, voltar da revisão pelo "Alterar" caía numa etapa sem saída: a
+               única forma de seguir era digitar na busca, e o primeiro caractere apagava a
+               pessoa que se tinha acabado de conferir.
+
+               Com a lista de sugestões aberta ele sai: a barra é colada no fim da janela e a
+               conta que mede o espaço livre abaixo do campo não a enxerga, então as últimas
+               sugestões ficariam atrás dela. */
+            ocultarRodape={etapa === "destinatario" && (!selecionada || sugestoesAbertas)}
+            trabalhoEmAndamento={temTrabalho}
             rotuloAvancar={rotuloAvancar}
             ultimaEtapa={etapa === "revisao"}
             rotuloConfirmar="Enviar cobrança"
@@ -375,23 +434,30 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
 
                 {etapa === "itens" && selecionada && (
                     <div className="flex w-full flex-col gap-4">
-                        <SeletorUnidades
-                            pedido={pedido}
-                            verbo="transferir"
-                            selecao={selecao}
-                            onChange={setSelecao}
-                            bloqueioExtra={(linha) => validarNovoTitular(pedido, linha, selecionada, linhas)?.curto ?? null}
-                        />
-                        {/* Resta o caso em que NADA cabe: a lista fica vazia e sem isso a etapa
-                            não diria por quê. Unidade a unidade o motivo já está na própria linha. */}
-                        {linhasDisponiveis.length > 0 && linhasDisponiveis.every((l) => validarNovoTitular(pedido, l, selecionada, linhas)) && (
-                            <div ref={avisoRef}>
-                                <Aviso
-                                    titulo={`Nada deste pedido pode ir para ${selecionada.nome}`}
-                                    descricao={validarNovoTitular(pedido, linhasDisponiveis[0], selecionada, linhas)?.descricao}
-                                />
+                        {/* Quem recebe é nomeado no próprio stepper, "Itens para Juliana", e não
+                            num cartão em cima da lista: o cartão foi removido daqui de propósito,
+                            porque ocupava o topo inteiro da etapa. O nome precisa estar na tela
+                            para o atendente não ler o bloqueio como propriedade do ingresso, mas
+                            cabe no rótulo da etapa. */}
+                        {/* O caso em que NADA cabe vem ANTES da lista: embaixo dela, o atendente já
+                            tinha lido a lista vazia e concluído que o pedido é intransferível. O
+                            problema é a pessoa, e é a primeira coisa a dizer. */}
+                        {nadaPodeIr && (
+                            <div role="alert" className="flex flex-col gap-2">
+                                <Aviso titulo={`Nenhuma unidade pode ir para ${selecionada.nome}`} descricao={motivosDistintos.length === 1 ? motivosDistintos[0] : undefined} />
+                                {/* Motivos diferentes viram linhas diferentes: uma frase só teria
+                                    de escolher um deles e calar os outros. */}
+                                {motivosDistintos.length > 1 && (
+                                    <ul className="flex flex-col gap-1 pl-11 text-sm text-tertiary">
+                                        {motivosDistintos.map((texto) => (
+                                            <li key={texto}>{texto}</li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
                         )}
+
+                        <SeletorUnidades pedido={pedido} verbo="transferir" selecao={selecao} onChange={setSelecao} bloqueioExtra={motivoParaDestinatario} />
                     </div>
                 )}
 
@@ -530,6 +596,11 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
 
                 {etapa === "revisao" && selecionada && (
                     <>
+                        {/* De quem as unidades saem, antes de dizer para onde vão. O cartão lista
+                            só o item, e sem esta linha dava para autorizar a cobrança sem saber
+                            que o ingresso estava com a Carol, que o recebeu por transferência, e
+                            não com o comprador que aparece no cabeçalho. */}
+                        {titularesDeOrigem.length > 0 && <p className="w-full text-sm font-medium text-secondary">Sai de {listarNomes(titularesDeOrigem)}</p>}
                         {/* O que sai em cima, quem recebe embaixo: a seta lê "estas unidades vão
                             para esta pessoa", na ordem em que a frase acontece. */}
                         <ResumoUnidades
@@ -539,7 +610,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             titulo="Transferindo"
                             onAlterar={() => setIndice(1)}
                             onIncluir={incluir}
-                            bloqueioExtra={(linha) => validarNovoTitular(pedido, linha, selecionada, linhas)?.curto ?? null}
+                            bloqueioExtra={motivoParaDestinatario}
                         />
                         <SetaParaBaixo />
                         <CartaoDestinatario conta={selecionada} onAlterar={() => setIndice(0)} />

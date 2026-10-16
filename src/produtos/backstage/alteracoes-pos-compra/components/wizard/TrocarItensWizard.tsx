@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { ArrowDown, ChevronDown, SearchLg } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
+import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { Tabs } from "@/components/application/tabs/tabs";
@@ -48,6 +49,8 @@ const TITULO_ETAPA: Record<Etapa, string> = {
 };
 
 const ROTULO_TIPO: Record<TipoItem, string> = { ingresso: "Ingressos", produto: "Produtos", combo: "Combos" };
+/** O mesmo tipo no singular, para a frase que diz o que a busca não achou. */
+const ROTULO_TIPO_SINGULAR: Record<TipoItem, string> = { ingresso: "ingresso", produto: "produto", combo: "combo" };
 
 /** Partes da data para o chip: dia da semana em cima, dia e mês em destaque. */
 const partesDaSessao = (inicio: number) => {
@@ -64,6 +67,17 @@ const combina = (termo: string, ...campos: Array<string | undefined>) => {
     if (!busca) return true;
     return campos.some((campo) => campo?.toLowerCase().includes(busca));
 };
+
+/** Teto de unidades de um item: o estoque, o que ainda falta escolher e o que sai do pedido.
+ *  Mora aqui porque a linha do catálogo e o bloco de escolhidos precisam do mesmo número. */
+const tetoDoItem = (item: CatalogoItem, quantidade: number, restante: number, totalSaem: number, saindo: number) =>
+    Math.min(item.estoque, quantidade + Math.max(0, restante), Math.max(0, totalSaem - saindo));
+
+const contar = (n: number, singular: string, plural: string) => `${n} ${n === 1 ? singular : plural}`;
+
+/** Bloqueio que depende de QUEM é a unidade que sai. "Esgotado" e "Sessão encerrada" são do
+ *  item: tirar alguém da troca não libera nenhum dos dois, e oferecer isso seria mentira. */
+const BLOQUEIO_DA_UNIDADE = new Set(["Sessão realizada", "Já vinculado", "Restrito"]);
 
 interface TrocarItensWizardProps {
     pedido: Pedido;
@@ -82,6 +96,8 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
     const [termo, setTermo] = useState("");
     const [aba, setAba] = useState("");
     const [tipo, setTipo] = useState<TipoItem>("ingresso");
+    /* Aba de tipo que a busca trocou sozinha, para a tela dizer que trocou. */
+    const [trocaDeTipo, setTrocaDeTipo] = useState<{ de: TipoItem; para: TipoItem } | null>(null);
     const [motivo, setMotivo] = useState<Motivo>(MOTIVO_INICIAL);
     const [aceitouSobra, setAceitouSobra] = useState(false);
     const [saem, setSaem] = useState<Record<string, boolean>>(() => Object.fromEntries(linhasIniciais.map((id) => [id, true])));
@@ -109,46 +125,79 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
        debaixo do dedo enquanto a pessoa digita. */
     const tiposDisponiveis = (["ingresso", "produto", "combo"] as TipoItem[]).filter((t) => doEvento.some((i) => i.tipo === t));
     const tipoAtivo = tiposDisponiveis.includes(tipo) ? tipo : (tiposDisponiveis[0] ?? "ingresso");
-    const candidatos = doEvento.filter((i) => i.tipo === tipoAtivo && combina(termo, i.nome, i.grupo, i.lote, i.descricao, sessaoLabel(i)));
-    const sessoes = SESSOES.filter((s) => s.eventoId === pedido.eventoId)
-        .sort((a, b) => a.inicio - b.inicio)
-        .map((sessao) => {
-            const grupos = new Map<string, CatalogoItem[]>();
-            candidatos.filter((i) => i.sessaoId === sessao.id).forEach((item) => grupos.set(item.grupo ?? "Outros", [...(grupos.get(item.grupo ?? "Outros") ?? []), item]));
-            return { sessao, grupos: [...grupos.entries()] };
-        })
-        .filter(({ grupos }) => grupos.length > 0);
+    const termoBusca = termo.trim();
+    const achaItem = (i: CatalogoItem) => combina(termo, i.nome, i.grupo, i.lote, i.descricao, sessaoLabel(i));
+    /* A busca varre o catálogo inteiro e a contagem por tipo vai para a aba. Antes ela só
+       enxergava o tipo aberto: pedir "camiseta" com a aba em Ingressos respondia que o item não
+       existe, e ele estava em Produtos, a um toque de distância. */
+    const achadosPorTipo = new Map<TipoItem, number>(tiposDisponiveis.map((t): [TipoItem, number] => [t, doEvento.filter((i) => i.tipo === t && achaItem(i)).length]));
+    const outrosTiposComAchado = tiposDisponiveis.filter((t) => t !== tipoAtivo && (achadosPorTipo.get(t) ?? 0) > 0);
+    const candidatos = doEvento.filter((i) => i.tipo === tipoAtivo && achaItem(i));
+
+    const sessoesDoEvento = SESSOES.filter((s) => s.eventoId === pedido.eventoId).sort((a, b) => a.inicio - b.inicio);
+    /* As datas vêm do catálogo do tipo, não do resultado da busca: a data que a pessoa abriu
+       precisa continuar lá enquanto ela digita. Antes a aba sem resultado saía da lista e a tela
+       caía sozinha na primeira data futura, mostrando a lista de outro dia sem dizer nada. */
+    const sessoesDoTipo = sessoesDoEvento.filter((s) => doEvento.some((i) => i.tipo === tipoAtivo && i.sessaoId === s.id));
+    const achadosPorSessao = new Map<string, number>(sessoesDoTipo.map((s): [string, number] => [s.id, candidatos.filter((i) => i.sessaoId === s.id).length]));
+
+    const abasDisponiveis = sessoesDoTipo.map((s) => s.id);
+    /* Abre na primeira sessão que ainda vai acontecer: nada entra numa sessão encerrada, e
+       cair numa delas faz a etapa nascer com uma lista inteira de item bloqueado. */
+    const padrao = sessoesDoTipo.find((s) => s.inicio > Date.now())?.id ?? abasDisponiveis[0] ?? "";
+    const abaAtiva = abasDisponiveis.includes(aba) ? aba : padrao;
+    const sessaoAtiva = sessoesDoTipo.find((s) => s.id === abaAtiva);
+    const gruposDaSessaoAtiva = [
+        ...candidatos
+            .filter((i) => i.sessaoId === abaAtiva)
+            .reduce((grupos, item) => grupos.set(item.grupo ?? "Outros", [...(grupos.get(item.grupo ?? "Outros") ?? []), item]), new Map<string, CatalogoItem[]>())
+            .entries(),
+    ];
+    const achadosEmOutrasDatas = candidatos.filter((i) => i.sessaoId && i.sessaoId !== abaAtiva).length;
     /* Produto e combo não têm data: viram lista direta, sem carrossel. */
     const semSessao = candidatos.filter((i) => !i.sessaoId);
 
-    const abasDisponiveis = sessoes.map(({ sessao }) => sessao.id);
-    /* Abre na primeira sessão que ainda vai acontecer: nada entra numa sessão encerrada, e
-       cair numa delas faz a etapa nascer com uma lista inteira de item bloqueado. */
-    const padrao = sessoes.find(({ sessao }) => sessao.inicio > Date.now())?.sessao.id ?? abasDisponiveis[0] ?? "";
-    const abaAtiva = abasDisponiveis.includes(aba) ? aba : padrao;
-    const sessaoAtiva = sessoes.find(({ sessao }) => sessao.id === abaAtiva);
+    const abasDoCatalogo: AbaItem[] = sessoesDoTipo.map((sessao) => {
+        const { diaSemana, dia, mes } = partesDaSessao(sessao.inicio);
+        const encerrada = sessao.inicio <= Date.now();
+        const achados = achadosPorSessao.get(sessao.id) ?? 0;
+        return {
+            id: sessao.id,
+            /* Nada entra numa sessão que já aconteceu: a data continua à vista, para não
+               parecer que sumiu do evento, mas não abre. */
+            bloqueada: encerrada,
+            conteudo: (ativo: boolean) => (
+                <>
+                    <ChipLegenda ativo={ativo}>{diaSemana}</ChipLegenda>
+                    <span className="text-md font-bold">
+                        {dia} {mes}
+                    </span>
+                    {/* Durante a busca a legenda vira a contagem: é ela que diz em qual data está o
+                        que a pessoa procura, sem precisar abrir uma data de cada vez. */}
+                    <ChipLegenda ativo={ativo}>{encerrada ? "encerrada" : termoBusca ? contar(achados, "resultado", "resultados") : sessao.horaLabel}</ChipLegenda>
+                </>
+            ),
+        };
+    });
 
-    const abasDoCatalogo: AbaItem[] = [
-        ...sessoes.map(({ sessao }) => {
-            const { diaSemana, dia, mes } = partesDaSessao(sessao.inicio);
-            const encerrada = sessao.inicio <= Date.now();
-            return {
-                id: sessao.id,
-                /* Nada entra numa sessão que já aconteceu: a data continua à vista, para não
-                   parecer que sumiu do evento, mas não abre. */
-                bloqueada: encerrada,
-                conteudo: (ativo: boolean) => (
-                    <>
-                        <ChipLegenda ativo={ativo}>{diaSemana}</ChipLegenda>
-                        <span className="text-md font-bold">
-                            {dia} {mes}
-                        </span>
-                        <ChipLegenda ativo={ativo}>{encerrada ? "encerrada" : sessao.horaLabel}</ChipLegenda>
-                    </>
-                ),
-            };
-        }),
-    ];
+    /* Busca sem nada no tipo aberto e com resultado em exatamente um outro: a tela troca de aba
+       sozinha e diz que trocou. O efeito depende só do termo de propósito. Com o tipo nas
+       dependências, abrir na mão a aba vazia era impossível: a troca automática desfazia o
+       clique no mesmo instante. */
+    useEffect(() => {
+        if (!termoBusca || (achadosPorTipo.get(tipoAtivo) ?? 0) > 0) {
+            setTrocaDeTipo(null);
+            return;
+        }
+        const comAchado = tiposDisponiveis.filter((t) => (achadosPorTipo.get(t) ?? 0) > 0);
+        if (comAchado.length !== 1) {
+            setTrocaDeTipo(null);
+            return;
+        }
+        setTipo(comAchado[0]);
+        setTrocaDeTipo({ de: tipoAtivo, para: comAchado[0] });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [termoBusca]);
 
     /* A elegibilidade é da dupla possuidor + item de destino. Escolher a referência pelo TIPO
        do item testava a regra contra outra unidade, de outro possuidor: num pedido com titulares
@@ -164,6 +213,9 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
 
     const itensQueEntram = Object.entries(entram).filter(([, q]) => q > 0);
     const totalEntram = itensQueEntram.reduce((soma, [, q]) => soma + q, 0);
+    const restante = totalSaem - totalEntram;
+    /* Com um único item escolhido dá para nomeá-lo na instrução do limite. */
+    const unicoEscolhido = itensQueEntram.length === 1 ? getItem(itensQueEntram[0][0]) : undefined;
     const destinosItens = itensQueEntram.flatMap(([itemId, q]) => {
         const item = getItem(itemId);
         return item ? Array.from({ length: q }, () => item) : [];
@@ -184,6 +236,18 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                 .flatMap(([id, q]) => Array<string>(q).fill(id))
                 .sort()
                 .join("|");
+
+    /* Quem fica com qual item, pela mesma regra do seletor de unidades: o nome só entra quando
+       distingue uma linha de outra. Com um titular só ele repetiria a mesma pessoa em todas as
+       linhas, e a troca já é identificada pelo item que sai. */
+    const titularesQueSaem = new Set(linhasSaem.map((l) => l.titularId ?? pedido.compradorId));
+    const mostrarPortador = titularesQueSaem.size > 1;
+    const topicosDaConta = [
+        "Diferença e taxas",
+        cortesia ? "cortesia" : null,
+        pedido.cupom && (calculo?.descontoPerdido ?? 0) > 0 ? "cupom" : null,
+        "prazo e estoque",
+    ].filter(Boolean) as string[];
 
     /* ------------------------------------------------------------------ */
     /*  Formulários: herdados da unidade que sai, nada inventado           */
@@ -222,6 +286,31 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                 ? paresIncompletos.length === 0
                 : Boolean(calculo) && motivoValido(motivo) && (!precisaAceite || aceitouSobra);
 
+    /* O que falta, sempre por escrito. O botão cinza sem pista era a lacuna de duas etapas: na
+       de novos itens não havia rodapé nenhum com uma unidade só saindo, e na revisão o verde do
+       "2 de 2" convivia com o botão travado. O verde agora só aparece quando o botão libera. */
+    const oQueFalta = () => {
+        if (etapa === "saem") return totalSaem === 0 ? "Marque ao menos 1 item" : null;
+        if (etapa === "entram") {
+            if (totalEntram === 0) return `Escolha ${contar(totalSaem, "item", "itens")}`;
+            if (totalEntram < totalSaem) return `Escolha mais ${contar(totalSaem - totalEntram, "item", "itens")}`;
+            if (totalEntram > totalSaem) return `Tire ${contar(totalEntram - totalSaem, "item", "itens")}: há mais entrando do que saindo`;
+            if (selecaoIgual) return "Escolha ao menos um item diferente do atual";
+            return null;
+        }
+        if (etapa === "formularios") return paresIncompletos.length === 0 ? null : `Falta responder ${contar(paresIncompletos.length, "formulário", "formulários")}`;
+        const pendentes = [
+            !motivo.categoria ? "Escolha o motivo" : null,
+            motivo.categoria === "outro" && !motivo.nota.trim() ? "Descreva o motivo" : null,
+            !motivo.chamado.trim() ? "Falta o número do chamado" : null,
+            precisaAceite && !aceitouSobra ? `Falta confirmar que ${formatarMoeda(naoDevolvido)} não voltam` : null,
+        ].filter(Boolean) as string[];
+        if (pendentes.length === 0) return null;
+        const resto = pendentes.length - 1;
+        return resto === 0 ? pendentes[0] : `${pendentes[0]} e mais ${contar(resto, "pendência", "pendências")}`;
+    };
+    const falta = oQueFalta();
+
     const rotuloAvancar = etapa === "saem" ? "Escolher os novos itens" : etapa === "entram" && comFormularios ? "Responder formulários" : "Revisar troca";
 
     /* Fechar sai do fluxo. Não há rascunho: a solicitação, com a cobrança, é a primeira coisa
@@ -234,40 +323,28 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
     };
     const voltar = () => (indice === 0 ? fechar() : setIndice((i) => i - 1));
 
-    const cartaoCatalogo = (item: CatalogoItem) => (
-        <LinhaCatalogo
-            key={item.id}
-            item={item}
-            pedido={pedido}
-            linhaReferencia={referenciaDoItem(item)}
-            quantidade={entram[item.id] ?? 0}
-            restante={totalSaem - totalEntram}
-            totalSaem={totalSaem}
-            precoSaida={precoSaida}
-            noPedido={noPedidoPorItem.get(item.id) ?? 0}
-            saindo={saindoPorItem.get(item.id) ?? 0}
-            onChange={(valor) => setEntram((atual) => (totalSaem === 1 ? (valor > 0 ? { [item.id]: valor } : {}) : { ...atual, [item.id]: valor }))}
-        />
-    );
-
-    const renderSessao = ({ sessao, grupos }: (typeof sessoes)[number]) => (
-        <div key={sessao.id} className="flex flex-col gap-2">
-            {grupos.map(([grupo, itens], posicao) => (
-                <Accordion
-                    key={grupo}
-                    defaultOpen={posicao === 0 || Boolean(termo.trim())}
-                    cabecalho={
-                        <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                            <span className="truncate text-sm font-semibold text-primary">{grupo}</span>
-                            <span className="shrink-0 text-sm text-tertiary">{itens.length === 1 ? "1 item" : `${itens.length} itens`}</span>
-                        </span>
-                    }
-                >
-                    <ul className="flex flex-col divide-y divide-border-secondary">{itens.map(cartaoCatalogo)}</ul>
-                </Accordion>
-            ))}
-        </div>
-    );
+    const cartaoCatalogo = (item: CatalogoItem) => {
+        const referencia = referenciaDoItem(item);
+        return (
+            <LinhaCatalogo
+                key={item.id}
+                item={item}
+                pedido={pedido}
+                linhaReferencia={referencia}
+                /* Na busca o resultado sai do contexto do chip de data, então a linha passa a
+                   dizer de que sessão ele é. */
+                mostrarSessao={Boolean(termoBusca)}
+                quantidade={entram[item.id] ?? 0}
+                restante={restante}
+                totalSaem={totalSaem}
+                precoSaida={precoSaida}
+                noPedido={noPedidoPorItem.get(item.id) ?? 0}
+                saindo={saindoPorItem.get(item.id) ?? 0}
+                onTirarUnidade={referencia ? () => setSaem((atual) => ({ ...atual, [referencia.id]: false })) : undefined}
+                onChange={(valor) => setEntram((atual) => (totalSaem === 1 ? (valor > 0 ? { [item.id]: valor } : {}) : { ...atual, [item.id]: valor }))}
+            />
+        );
+    };
 
     const confirmar = () => {
         if (!calculo || pares.length === 0) return;
@@ -337,15 +414,20 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
             onAvancar={avancar}
             onConfirmar={confirmar}
             infoRodape={
-                etapa === "entram" && totalSaem > 1 ? (
-                    <span className={cx("tabular-nums", totalEntram === totalSaem ? "text-success-primary" : "text-tertiary")}>
+                falta ? (
+                    <span className="text-tertiary">{falta}</span>
+                ) : etapa === "revisao" && calculo && calculo.total > 0 ? (
+                    `${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}`
+                ) : (etapa === "entram" || etapa === "formularios") && calculo ? (
+                    /* O total vem para cá assim que existe. A etapa só mostrava "+R$ 60,00 por
+                       unidade" na linha, que é a diferença de um item e não o preço da operação:
+                       o atendente lia sessenta ao telefone numa troca de oitenta e seis. */
+                    <span className="text-success-primary tabular-nums">
                         <span className="font-semibold">
                             {totalEntram} de {totalSaem}
                         </span>{" "}
-                        escolhidos
+                        escolhidos · <span className="font-semibold">Total {formatarMoeda(calculo.total)}</span>
                     </span>
-                ) : etapa === "revisao" && calculo && calculo.total > 0 ? (
-                    `${formatarMoeda(calculo.total)} para ${mascararEmail(destino)}`
                 ) : undefined
             }
         >
@@ -379,24 +461,137 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                         {tiposDisponiveis.length > 1 && (
                             /* `w-auto` derruba o `w-full` que o Tabs do DS aplica; sem isso a tira
                                ocupava a linha toda e a busca encolhia até sumir. */
-                            <Tabs selectedKey={tipoAtivo} onSelectionChange={(chave) => setTipo(chave as TipoItem)} className="w-auto shrink-0">
-                                <Tabs.List type="button-border" size="sm" items={tiposDisponiveis.map((t) => ({ id: t, label: ROTULO_TIPO[t] }))}>
+                            <Tabs
+                                selectedKey={tipoAtivo}
+                                onSelectionChange={(chave) => {
+                                    setTipo(chave as TipoItem);
+                                    setTrocaDeTipo(null);
+                                }}
+                                className="w-auto shrink-0"
+                            >
+                                {/* Buscando, a aba carrega a contagem: é o que mostra que o item existe
+                                    em outro tipo antes de a pessoa concluir que ele não existe. */}
+                                <Tabs.List
+                                    type="button-border"
+                                    size="sm"
+                                    items={tiposDisponiveis.map((t) => ({ id: t, label: termoBusca ? `${ROTULO_TIPO[t]} ${achadosPorTipo.get(t) ?? 0}` : ROTULO_TIPO[t] }))}
+                                >
                                     {({ id, label }) => <Tabs.Item id={id}>{label}</Tabs.Item>}
                                 </Tabs.List>
                             </Tabs>
                         )}
                     </div>
 
+                    {trocaDeTipo && termoBusca && (
+                        <Regra>
+                            Nenhum {ROTULO_TIPO_SINGULAR[trocaDeTipo.de]} para "{termo}". Abrimos {ROTULO_TIPO[trocaDeTipo.para]}, onde está o resultado.
+                        </Regra>
+                    )}
+
                     {/* Só ingresso tem data. A tira é a mesma da bilheteria, uma data por chip. */}
                     {abasDoCatalogo.length > 0 && <AbasCarrossel abas={abasDoCatalogo} ativa={abaAtiva} ariaLabel="Datas à venda" onSelecionar={setAba} />}
 
                     {selecaoIgual && <Aviso titulo="A seleção é igual ao que já está no pedido" descricao="Escolha pelo menos um item diferente para a troca fazer sentido." />}
 
-                    {candidatos.length === 0 && (
-                        <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">Nenhum item encontrado para a busca.</p>
+                    {totalSaem > 1 && totalEntram > 0 && (
+                        /* Os escolhidos ficam no topo, com o seletor à mão. Tirar uma unidade exigia
+                           reencontrar a linha no meio das datas, e com a conta fechada o catálogo
+                           inteiro para de aceitar toque: sem este bloco não havia saída à vista. */
+                        <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+                            <p className="border-b border-secondary px-4 py-3 text-sm font-semibold text-primary">Escolhidos</p>
+                            <ul className="flex flex-col divide-y divide-border-secondary">
+                                {itensQueEntram.map(([itemId, quantidade]) => {
+                                    const item = getItem(itemId);
+                                    if (!item) return null;
+                                    const detalhe = detalheDoItem(item);
+                                    /* Abaixo de md o seletor desce: lado a lado ele comia 120px dos 326px e o nome
+                                       do item ficava numa fita de quinze caracteres. */
+                                    return (
+                                        <li key={itemId} className="flex gap-3 px-4 py-3 max-md:flex-col md:items-center md:justify-between">
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-sm font-semibold text-primary">
+                                                    {quantidade}x {item.nome}
+                                                </span>
+                                                {detalhe && <span className="block truncate text-sm text-tertiary">{detalhe}</span>}
+                                            </span>
+                                            <Stepper
+                                                valor={quantidade}
+                                                maximo={tetoDoItem(item, quantidade, restante, totalSaem, saindoPorItem.get(itemId) ?? 0)}
+                                                rotulo={item.nome}
+                                                onChange={(valor) => setEntram((atual) => ({ ...atual, [itemId]: valor }))}
+                                            />
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
                     )}
 
-                    {sessaoAtiva && renderSessao(sessaoAtiva)}
+                    {totalSaem > 1 && restante === 0 && (
+                        /* Com a conta fechada o catálogo para de responder. Antes o toque morria em
+                           silêncio e o atendente tocava de novo, achando que a tela travou. */
+                        <Regra>
+                            Limite atingido. {unicoEscolhido ? `Tire 1 de ${unicoEscolhido.nome}` : "Tire um dos escolhidos acima"} para escolher outro item.
+                        </Regra>
+                    )}
+
+                    {candidatos.length === 0 &&
+                        (outrosTiposComAchado.length > 0 ? (
+                            /* Estado vazio que é caminho, não negativa: o item existe, só está em
+                               outro tipo, e o botão leva até ele. */
+                            <div className="flex flex-col items-center gap-3 rounded-xl bg-primary px-4 py-8 text-center ring-1 ring-border-secondary">
+                                <p className="text-sm text-tertiary">
+                                    Nenhum {ROTULO_TIPO_SINGULAR[tipoAtivo]} para "{termo}".
+                                </p>
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    {outrosTiposComAchado.map((t) => (
+                                        <Button
+                                            key={t}
+                                            size="md"
+                                            color="secondary"
+                                            className="max-md:w-full"
+                                            onClick={() => {
+                                                setTipo(t);
+                                                setTrocaDeTipo(null);
+                                            }}
+                                        >
+                                            {achadosPorTipo.get(t) ?? 0} em {ROTULO_TIPO[t]}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">Nenhum item encontrado para a busca.</p>
+                        ))}
+
+                    {gruposDaSessaoAtiva.length > 0 && (
+                        <div className="flex flex-col gap-2">
+                            {gruposDaSessaoAtiva.map(([grupo, itens], posicao) => (
+                                <Accordion
+                                    key={grupo}
+                                    defaultOpen={posicao === 0 || Boolean(termoBusca)}
+                                    cabecalho={
+                                        <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                                            <span className="truncate text-sm font-semibold text-primary">{grupo}</span>
+                                            <span className="shrink-0 text-sm text-tertiary">{contar(itens.length, "item", "itens")}</span>
+                                        </span>
+                                    }
+                                >
+                                    <ul className="flex flex-col divide-y divide-border-secondary">{itens.map(cartaoCatalogo)}</ul>
+                                </Accordion>
+                            ))}
+                        </div>
+                    )}
+
+                    {sessaoAtiva && gruposDaSessaoAtiva.length === 0 && candidatos.length > 0 && (
+                        /* A data aberta continua aberta mesmo sem resultado, e a tela diz onde está
+                           o que a pessoa procura. Trocar de data é decisão do atendente, não efeito
+                           colateral de digitar. */
+                        <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">
+                            Nada em {sessaoAtiva.dataLabel} para "{termo}".
+                            {achadosEmOutrasDatas > 0 && ` ${contar(achadosEmOutrasDatas, "resultado", "resultados")} em outras datas, nos chips acima.`}
+                        </p>
+                    )}
 
                     {semSessao.length > 0 && (
                         <ul className="flex flex-col divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">{semSessao.map(cartaoCatalogo)}</ul>
@@ -404,52 +599,59 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                 </>
             )}
 
-            {etapa === "formularios" && (
-                <>
-                    <Regra>As respostas que já existiam vêm da unidade que sai. Só as perguntas novas do item que entra precisam de resposta.</Regra>
-                    {paresComFormulario.map(({ linha, novoItem }, posicao) => {
-                        const pendentes = faltando(linha, novoItem);
-                        const { nome } = identidadeDaLinha(pedido, linha);
-                        const rotuloPendencia = pendentes.length === 0 ? "Respondido" : pendentes.length === 1 ? "Falta 1 resposta" : `Faltam ${pendentes.length} respostas`;
-                        const corPendencia = pendentes.length === 0 ? "text-success-primary" : "text-warning-primary";
-                        return (
-                            <Accordion
-                                key={linha.id}
-                                defaultOpen={pendentes.length > 0 && posicao === paresComFormulario.findIndex((p) => faltando(p.linha, p.novoItem).length > 0)}
-                                cabecalho={
-                                    /* No telefone a contagem desce para a terceira linha do bloco de texto. Na
-                                       mesma fileira ela levava 126px dos 234 disponíveis e cortava as duas coisas
-                                       que identificam o formulário: o nome do item e o de quem vai usá-lo. */
-                                    <span className="flex min-w-0 flex-1 items-center gap-3">
-                                        <Miniatura item={novoItem} />
-                                        <span className="min-w-0 flex-1">
-                                            <span className="block truncate text-sm font-semibold text-primary">{novoItem.nome}</span>
-                                            <span className="block truncate text-sm text-tertiary">{nome}</span>
-                                            <span className={cx("block truncate text-sm md:hidden", corPendencia)}>{rotuloPendencia}</span>
+            {etapa === "formularios" &&
+                (paresComFormulario.length === 0 ? (
+                    /* A etapa fica fixa depois de entrar no fluxo, então a escolha pode mudar e
+                       deixá-la sem nada. Antes sobrava só a regra solta, como tela quebrada. */
+                    <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">
+                        Nenhum item escolhido pede formulário. Pode seguir para a revisão.
+                    </p>
+                ) : (
+                    <>
+                        <Regra>As respostas que já existiam vêm da unidade que sai. Só as perguntas novas do item que entra precisam de resposta.</Regra>
+                        {paresComFormulario.map(({ linha, novoItem }, posicao) => {
+                            const pendentes = faltando(linha, novoItem);
+                            const { nome } = identidadeDaLinha(pedido, linha);
+                            const rotuloPendencia = pendentes.length === 0 ? "Respondido" : pendentes.length === 1 ? "Falta 1 resposta" : `Faltam ${pendentes.length} respostas`;
+                            const corPendencia = pendentes.length === 0 ? "text-success-primary" : "text-warning-primary";
+                            return (
+                                <Accordion
+                                    key={linha.id}
+                                    defaultOpen={pendentes.length > 0 && posicao === paresComFormulario.findIndex((p) => faltando(p.linha, p.novoItem).length > 0)}
+                                    cabecalho={
+                                        /* No telefone a contagem desce para a terceira linha do bloco de texto. Na
+                                           mesma fileira ela levava 126px dos 234 disponíveis e cortava as duas coisas
+                                           que identificam o formulário: o nome do item e o de quem vai usá-lo. */
+                                        <span className="flex min-w-0 flex-1 items-center gap-3">
+                                            <Miniatura item={novoItem} />
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-sm font-semibold text-primary">{novoItem.nome}</span>
+                                                <span className="block truncate text-sm text-tertiary">{nome}</span>
+                                                <span className={cx("block truncate text-sm md:hidden", corPendencia)}>{rotuloPendencia}</span>
+                                            </span>
+                                            <span className={cx("hidden shrink-0 text-sm md:block", corPendencia)}>{rotuloPendencia}</span>
                                         </span>
-                                        <span className={cx("hidden shrink-0 text-sm md:block", corPendencia)}>{rotuloPendencia}</span>
-                                    </span>
-                                }
-                            >
-                                {/* Sem janela de rolagem própria: quem rola é a página. Um rolador de
-                                    448px dentro dela obrigava a acertar o dedo na faixa certa e perdia a
-                                    posição a cada toque. */}
-                                <div className="flex flex-col gap-4 p-4">
-                                    {perguntasDoItem(novoItem).map((pergunta) => (
-                                        <EditorResposta
-                                            key={pergunta.id}
-                                            pergunta={pergunta}
-                                            valor={valoresDoPar(linha, novoItem)[pergunta.id] ?? ""}
-                                            valorOriginal={linha.respostas[pergunta.id] ?? ""}
-                                            onChange={(valor) => setRespostasEntram((atual) => ({ ...atual, [linha.id]: { ...(atual[linha.id] ?? {}), [pergunta.id]: valor } }))}
-                                        />
-                                    ))}
-                                </div>
-                            </Accordion>
-                        );
-                    })}
-                </>
-            )}
+                                    }
+                                >
+                                    {/* Sem janela de rolagem própria: quem rola é a página. Um rolador de
+                                        448px dentro dela obrigava a acertar o dedo na faixa certa e perdia a
+                                        posição a cada toque. */}
+                                    <div className="flex flex-col gap-4 p-4">
+                                        {perguntasDoItem(novoItem).map((pergunta) => (
+                                            <EditorResposta
+                                                key={pergunta.id}
+                                                pergunta={pergunta}
+                                                valor={valoresDoPar(linha, novoItem)[pergunta.id] ?? ""}
+                                                valorOriginal={linha.respostas[pergunta.id] ?? ""}
+                                                onChange={(valor) => setRespostasEntram((atual) => ({ ...atual, [linha.id]: { ...(atual[linha.id] ?? {}), [pergunta.id]: valor } }))}
+                                            />
+                                        ))}
+                                    </div>
+                                </Accordion>
+                            );
+                        })}
+                    </>
+                ))}
 
             {etapa === "revisao" && calculo && (
                 <>
@@ -457,16 +659,23 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                         <div className="flex items-center justify-between gap-3 border-b border-secondary px-4 py-3">
                             <p className="text-sm font-semibold text-primary">Trocando</p>
                         </div>
+                        {pares.length > 1 && (
+                            /* O par sai de parearTroca, que ordena os dois lados por valor: quem
+                               recebe o quê é decisão da ordenação, não do atendente. Calado, isso
+                               vira uma escolha que ele acha que fez. */
+                            <Regra className="border-b border-secondary px-4 py-3">O par de cada unidade é escolhido pelo menor valor total.</Regra>
+                        )}
                         <ul className="flex flex-col divide-y divide-border-secondary">
                             {pares.map(({ linha, novoItem }) => {
                                 const itemSai = getItem(linha.itemId);
                                 return (
-                                    /* Sem o nome do portador: a troca é do item, e numa lista de pares
-                                       o nome se repetia em todas as linhas sem distinguir nenhuma.
-                                       Os dois ícones ficam na mesma coluna, à esquerda: a seta puxa o
+                                    /* Os dois ícones ficam na mesma coluna, à esquerda: a seta puxa o
                                        olho do item que sai para o que entra, e o ponto marca onde parou.
                                        O risco fica no texto, não na linha toda, para não cortar o ícone. */
                                     <li key={linha.id} className="flex flex-col gap-1.5 p-4">
+                                        {/* Sem o nome, uma lista de pares não diz quem fica com qual item,
+                                            e o pareamento foi feito por uma ordenação que ninguém viu. */}
+                                        {mostrarPortador && <p className="text-sm font-semibold text-primary">{identidadeDaLinha(pedido, linha).nome}</p>}
                                         <p className="flex items-center gap-2 text-sm text-tertiary">
                                             <ArrowDown className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
                                             <span className="line-through">
@@ -474,13 +683,13 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                                                 {detalheDoItem(itemSai) && ` · ${detalheDoItem(itemSai)}`}
                                             </span>
                                         </p>
-                                        <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+                                        <p className="flex items-center gap-2 text-md font-semibold text-primary">
                                             <span className="flex size-4 shrink-0 items-center justify-center" aria-hidden="true">
                                                 <span className="size-1.5 rounded-full bg-fg-quaternary" />
                                             </span>
                                             <span>
                                                 {novoItem.nome}
-                                                {detalheDoItem(novoItem) && <span className="font-normal text-tertiary"> · {detalheDoItem(novoItem)}</span>}
+                                                {detalheDoItem(novoItem) && <span className="text-sm font-normal text-tertiary"> · {detalheDoItem(novoItem)}</span>}
                                             </span>
                                         </p>
                                     </li>
@@ -489,35 +698,65 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                         </ul>
                     </div>
 
-                    {precisaAceite && (
-                        <Aviso
-                            tom="warning"
-                            titulo={`${formatarMoeda(naoDevolvido)} não serão devolvidos`}
-                            descricao="O item novo é mais barato. A sobra abate a cobrança da troca e o que resta fica com a Ingresse: não vira devolução, crédito nem saldo."
-                        />
-                    )}
-                    {cortesia && <Aviso tom="warning" titulo="Há cortesia na troca." descricao="Unidade de cortesia não tem valor pago: a diferença é o preço cheio do item novo." />}
+                    {/* A consequência primeiro: ao telefone a conversa é "o valor é X, o senhor
+                        concorda?", e a tela abria pelo cartão de motivo. O aceite da sobra mora
+                        dentro deste bloco, colado ao aviso que ele aceita. */}
+                    <div className="flex w-full flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
+                        <div className="flex items-baseline justify-between gap-4">
+                            <p className="text-sm font-semibold text-primary">{calculo.total > 0 ? "Total a cobrar" : "Total"}</p>
+                            <p className="text-display-xs font-bold text-primary tabular-nums">{formatarMoeda(calculo.total)}</p>
+                        </div>
+                        <Regra>
+                            {calculo.total === 0
+                                ? "Sem valor a pagar: a troca é aplicada na hora, sem link e sem prazo."
+                                : `A troca só é efetivada depois do pagamento. O link vai para ${destino}, com prazo de ${PRAZO_REAL_LABEL}.`}
+                        </Regra>
+                        {precisaAceite && (
+                            <>
+                                <Aviso
+                                    tom="warning"
+                                    titulo={`${formatarMoeda(naoDevolvido)} não serão devolvidos`}
+                                    descricao="O item novo é mais barato. A sobra abate a cobrança da troca e o que resta fica com a Ingresse: não vira devolução, crédito nem saldo."
+                                />
+                                <Checkbox
+                                    isSelected={aceitouSobra}
+                                    onChange={setAceitouSobra}
+                                    label={`Confirmo, em nome do comprador, que ${formatarMoeda(naoDevolvido)} não serão devolvidos`}
+                                    hint="O aceite fica registrado no histórico junto com o motivo e o chamado."
+                                />
+                            </>
+                        )}
+                    </div>
 
+                    {/* As regras informativas eram até quatro banners empilhados acima do número que
+                        o atendente precisa ler. Juntas e recolhidas, continuam a um toque. */}
+                    <Accordion
+                        defaultOpen={false}
+                        cabecalho={
+                            <span className="flex min-w-0 flex-1 flex-col">
+                                <span className="text-sm font-semibold text-primary">Como esta cobrança foi calculada</span>
+                                <span className="truncate text-sm text-tertiary">{topicosDaConta.join(" · ")}</span>
+                            </span>
+                        }
+                    >
+                        <div className="flex flex-col gap-3 pb-3">
+                            <ResumoFinanceiro linhas={calculo.linhas} semMoldura />
+                            <div className="flex flex-col gap-3 px-4">
+                                {cortesia && <Regra>Há cortesia na troca: unidade de cortesia não tem valor pago, então a diferença é o preço cheio do item novo.</Regra>}
+                                {pedido.cupom && (calculo.descontoPerdido ?? 0) > 0 && (
+                                    <Regra>
+                                        Inclui {formatarMoeda(calculo.descontoPerdido ?? 0)} do cupom {pedido.cupom}: o desconto da compra não vale para o item novo, e a diferença usa o preço cheio dele.
+                                    </Regra>
+                                )}
+                                {/* §11: criar a solicitação valida o estoque, não o reserva. */}
+                                <Regra>A troca está sujeita à disponibilidade de estoque: a solicitação confere o estoque, não reserva.</Regra>
+                            </div>
+                        </div>
+                    </Accordion>
+
+                    {/* A burocracia por último: é o que o atendente registra depois de combinar o
+                        valor, não antes. */}
                     <CampoMotivo valor={motivo} onChange={setMotivo} />
-
-                    <ResumoFinanceiro linhas={calculo.linhas} />
-                    {precisaAceite && (
-                        <Checkbox
-                            isSelected={aceitouSobra}
-                            onChange={setAceitouSobra}
-                            label={`Confirmo, em nome do comprador, que ${formatarMoeda(naoDevolvido)} não serão devolvidos`}
-                            hint="O aceite fica registrado no histórico junto com o motivo e o chamado."
-                        />
-                    )}
-                    {/* §11: criar a solicitação valida o estoque, não o reserva. */}
-                    <Regra>
-                        {calculo.total === 0
-                            ? "Sem valor a pagar: a troca é aplicada na hora, sem link e sem prazo."
-                            : `A troca só será efetivada após o pagamento e está sujeita à disponibilidade de estoque. Prazo de ${PRAZO_REAL_LABEL}. O link vai para ${destino}.`}
-                    </Regra>
-                    {pedido.cupom && (calculo.descontoPerdido ?? 0) > 0 && (
-                        <Aviso tom="warning" titulo={`Inclui ${formatarMoeda(calculo.descontoPerdido ?? 0)} do cupom ${pedido.cupom}`} descricao="O desconto da compra não vale para o item novo: a diferença usa o preço cheio dele." />
-                    )}
                 </>
             )}
         </WizardShell>
@@ -532,6 +771,7 @@ const LinhaCatalogo = ({
     item,
     pedido,
     linhaReferencia,
+    mostrarSessao,
     quantidade,
     restante,
     totalSaem,
@@ -539,10 +779,13 @@ const LinhaCatalogo = ({
     noPedido,
     saindo,
     onChange,
+    onTirarUnidade,
 }: {
     item: CatalogoItem;
     pedido: Pedido;
     linhaReferencia?: PedidoItem;
+    /** Na busca o item aparece fora do chip de data, então a linha carrega a sessão. */
+    mostrarSessao: boolean;
     quantidade: number;
     restante: number;
     totalSaem: number;
@@ -550,16 +793,20 @@ const LinhaCatalogo = ({
     noPedido: number;
     saindo: number;
     onChange: (valor: number) => void;
+    /** Tira da troca a unidade que bloqueia este item, sem sair da etapa. */
+    onTirarUnidade?: () => void;
 }) => {
     const impedimento = linhaReferencia ? validarTrocaItem(pedido, linhaReferencia, item) : null;
     const bloqueado = Boolean(impedimento) && impedimento?.curto !== "Item atual";
-    const maximo = bloqueado ? 0 : Math.min(item.estoque, quantidade + Math.max(0, restante), Math.max(0, totalSaem - saindo));
+    const maximo = bloqueado ? 0 : tetoDoItem(item, quantidade, restante, totalSaem, saindo);
     const unico = totalSaem === 1;
     const itemAtual = saindo > 0 && saindo === totalSaem;
     const naoSelecionavel = bloqueado || itemAtual;
     const escolhido = quantidade > 0;
     const diferenca = precoSaida !== undefined ? item.precoIntegral - precoSaida : undefined;
     const estoqueCurto = !bloqueado && item.estoque < totalSaem;
+    const perguntasDoFormulario = getFormulario(item.formularioId)?.perguntaIds.length ?? 0;
+    const sessao = sessaoLabel(item);
 
     /* Com várias unidades saindo, o toque na linha soma UMA, o mesmo que o mais do stepper.
        Antes ele trocava todas por este item de uma vez: refazia a escolha do zero e apagava o
@@ -567,54 +814,89 @@ const LinhaCatalogo = ({
        da tela, mudo e sem desfazer. Quem quer as N no mesmo item chega lá pelo stepper. */
     const somavel = !naoSelecionavel && quantidade < maximo;
     const ativavel = unico ? !naoSelecionavel : somavel;
+    /* Linha que não aceita mais nada fica com a cara de bloqueada. Acesa, ela recebia o toque
+       sem reagir e sem mudar de aparência: o atendente tocava duas, três vezes. */
+    const inerte = naoSelecionavel || (!unico && !somavel && !escolhido);
+    const nomeReferencia = linhaReferencia ? identidadeDaLinha(pedido, linhaReferencia).nome : "";
+    const podeTirarReferencia = Boolean(bloqueado && linhaReferencia && onTirarUnidade && totalSaem > 1 && impedimento && BLOQUEIO_DA_UNIDADE.has(impedimento.curto));
 
     return (
-        <li
-            className={cx(
-                "flex flex-col gap-3 p-4 transition duration-100 ease-linear sm:flex-row sm:items-center sm:justify-between",
-                naoSelecionavel ? "opacity-60" : escolhido && "bg-secondary",
-            )}
-        >
-            {/* Botão de verdade, não div com onClick: no telefone a linha não tem hover para
-                anunciar que é tocável, e o min-h garante alvo mesmo no item de uma linha só. */}
-            <button
-                type="button"
-                disabled={!ativavel}
-                onClick={unico ? () => onChange(escolhido ? 0 : 1) : () => onChange(quantidade + 1)}
-                aria-pressed={unico ? escolhido : undefined}
-                className={cx(
-                    "flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left transition duration-100 ease-linear max-md:min-h-16",
-                    ativavel && "cursor-pointer",
-                    ativavel && (escolhido ? "hover:bg-secondary_hover" : "hover:bg-primary_hover"),
-                    FOCO,
-                )}
-            >
-                {unico && <RadioButtonBase size="sm" isSelected={escolhido} isDisabled={naoSelecionavel} className="mt-0.5 shrink-0" />}
-                <span className="min-w-0 flex-1">
-                    {!unico && <span className="sr-only">Adicionar 1 unidade de </span>}
-                    <span className="block text-sm font-semibold text-primary">{item.nome}</span>
-                    {item.lote && <span className="block text-sm text-tertiary">{item.lote}</span>}
-                    {item.tipo !== "ingresso" && item.descricao && <span className="block text-sm text-tertiary">{item.descricao}</span>}
-                    {(saindo > 0 || noPedido > 0 || bloqueado || estoqueCurto) && (
-                        <span className="mt-1.5 flex flex-wrap gap-1.5">
-                            {saindo > 0 && <Badge size="md" type="pill-color" color="gray">{saindo === 1 ? "Item sendo trocado" : `${saindo} itens sendo trocados`}</Badge>}
-                            {saindo === 0 && noPedido > 0 && <Badge size="md" type="pill-color" color="blue">{noPedido === 1 ? "1 igual no pedido" : `${noPedido} iguais no pedido`}</Badge>}
-                            {bloqueado && <Badge size="md" type="pill-color" color="error">{impedimento?.curto}</Badge>}
-                            {estoqueCurto && <Badge size="md" type="pill-color" color="warning">Só {item.estoque} {item.estoque === 1 ? "disponível" : "disponíveis"}</Badge>}
-                        </span>
+        <li className={cx("flex flex-col gap-3 p-4 transition duration-100 ease-linear", !inerte && escolhido && "bg-secondary")}>
+            {/* A opacidade fica na fileira, não na linha inteira: o motivo do bloqueio e a saída
+                dele ficam embaixo e precisam de contraste cheio. */}
+            <div className={cx("flex flex-col gap-3 transition duration-100 ease-linear sm:flex-row sm:items-center sm:justify-between", inerte && "opacity-60")}>
+                {/* Botão de verdade, não div com onClick: no telefone a linha não tem hover para
+                    anunciar que é tocável, e o min-h garante alvo mesmo no item de uma linha só. */}
+                <button
+                    type="button"
+                    disabled={!ativavel}
+                    onClick={unico ? () => onChange(escolhido ? 0 : 1) : () => onChange(quantidade + 1)}
+                    aria-pressed={unico ? escolhido : undefined}
+                    className={cx(
+                        "flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left transition duration-100 ease-linear max-md:min-h-16",
+                        ativavel && "cursor-pointer",
+                        ativavel && (escolhido ? "hover:bg-secondary_hover" : "hover:bg-primary_hover"),
+                        FOCO,
                     )}
-                </span>
-            </button>
+                >
+                    {unico && <RadioButtonBase size="sm" isSelected={escolhido} isDisabled={naoSelecionavel} className="mt-0.5 shrink-0" />}
+                    <span className="min-w-0 flex-1">
+                        {!unico && <span className="sr-only">Adicionar 1 unidade de </span>}
+                        <span className="block text-sm font-semibold text-primary">{item.nome}</span>
+                        {item.lote && <span className="block text-sm text-tertiary">{item.lote}</span>}
+                        {/* Na busca a única pista de qual dia é o item era o chip de data, que pode
+                            nem ser o dele. */}
+                        {mostrarSessao && sessao && <span className="block text-sm text-tertiary">{sessao}</span>}
+                        {item.tipo !== "ingresso" && item.descricao && <span className="block text-sm text-tertiary">{item.descricao}</span>}
+                        {(saindo > 0 || noPedido > 0 || bloqueado || estoqueCurto || perguntasDoFormulario > 0) && (
+                            <span className="mt-1.5 flex flex-wrap gap-1.5">
+                                {saindo > 0 && <Badge size="md" type="pill-color" color="gray">{saindo === 1 ? "Item sendo trocado" : `${saindo} itens sendo trocados`}</Badge>}
+                                {saindo === 0 && noPedido > 0 && <Badge size="md" type="pill-color" color="blue">{noPedido === 1 ? "1 igual no pedido" : `${noPedido} iguais no pedido`}</Badge>}
+                                {bloqueado && <Badge size="md" type="pill-color" color="error">{impedimento?.curto}</Badge>}
+                                {estoqueCurto && <Badge size="md" type="pill-color" color="warning">Só {item.estoque} {item.estoque === 1 ? "disponível" : "disponíveis"}</Badge>}
+                                {/* O custo da escolha fica legível no momento da escolha: escolher um
+                                    item com formulário fazia o stepper crescer de três para quatro
+                                    etapas no instante do toque, sem nada ter avisado. */}
+                                {!bloqueado && perguntasDoFormulario > 0 && (
+                                    <Badge size="md" type="pill-color" color="gray">Pede formulário · {perguntasDoFormulario === 1 ? "1 pergunta" : `${perguntasDoFormulario} perguntas`}</Badge>
+                                )}
+                            </span>
+                        )}
+                    </span>
+                </button>
 
-            <div className="flex items-center justify-between gap-4 sm:justify-end">
-                <div className="sm:text-right">
-                    <p className="text-sm font-semibold text-primary tabular-nums">{formatarMoeda(item.precoIntegral)}</p>
-                    {!bloqueado && diferenca !== undefined && diferenca !== 0 && (
-                        <p className="text-sm text-tertiary tabular-nums">{diferenca > 0 ? `+${formatarMoeda(diferenca)} por unidade` : `${formatarMoeda(diferenca)} por unidade`}</p>
+                <div className="flex items-center justify-between gap-4 sm:justify-end">
+                    <div className="sm:text-right">
+                        <p className="text-sm font-semibold text-primary tabular-nums">{formatarMoeda(item.precoIntegral)}</p>
+                        {/* "+R$ 60,00 por unidade" lia como preço da operação. É a diferença de um
+                            item: a taxa proporcional e a cobrança da troca entram só no total. */}
+                        {!bloqueado && diferenca !== undefined && diferenca !== 0 && (
+                            <p className="text-sm text-tertiary tabular-nums">
+                                {diferenca > 0 ? `${formatarMoeda(diferenca)} a mais que o atual` : `${formatarMoeda(Math.abs(diferenca))} a menos que o atual`}
+                            </p>
+                        )}
+                    </div>
+                    {!bloqueado && !unico && !itemAtual && <Stepper valor={quantidade} maximo={maximo} rotulo={item.nome} onChange={onChange} />}
+                </div>
+            </div>
+
+            {/* O badge dá a marca rápida e jogava fora a frase que nomeia a pessoa e o critério.
+                É ela que diz por que o item não serve e, com várias unidades saindo, qual delas
+                precisa sair da troca para liberá-lo. */}
+            {bloqueado && impedimento?.descricao && (
+                <div className="flex flex-col items-start gap-1">
+                    <p className="text-sm text-tertiary">
+                        {/* "o titular atual" não identifica ninguém com três unidades saindo. */}
+                        {podeTirarReferencia && <span className="font-semibold text-secondary">{nomeReferencia}: </span>}
+                        {impedimento.descricao}
+                    </p>
+                    {podeTirarReferencia && (
+                        <Button size="sm" color="link-color" className="max-md:min-h-11" onClick={onTirarUnidade}>
+                            Tirar a unidade de {nomeReferencia} desta troca
+                        </Button>
                     )}
                 </div>
-                {!bloqueado && !unico && !itemAtual && <Stepper valor={quantidade} maximo={maximo} rotulo={item.nome} onChange={onChange} />}
-            </div>
+            )}
         </li>
     );
 };

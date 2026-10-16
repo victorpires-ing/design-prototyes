@@ -254,13 +254,16 @@ export const formatarContagem = (ms: number) => {
 export function ListaLimitada<T>({
     itens,
     limite = 4,
-    rotulo,
+    rotuloVerTodos,
     children,
 }: {
     itens: T[];
     limite?: number;
-    /** Palavra usada no botão, no plural (ex.: "respostas"). */
-    rotulo: string;
+    /** Texto do botão que abre o resto, com o total já dentro: "Ver todas as 5 respostas".
+     *  A lista recebe a frase pronta porque não tem como saber o gênero do que mostra, e
+     *  concatenando um artigo fixo escrevia "Ver todas as 5 itens" na tela que autoriza a
+     *  cobrança. */
+    rotuloVerTodos: (total: number) => string;
     children: (item: T, indice: number) => ReactNode;
 }) {
     const [expandido, setExpandido] = useState(false);
@@ -281,7 +284,7 @@ export function ListaLimitada<T>({
                         FOCO,
                     )}
                 >
-                    {expandido ? "Ver menos" : `Ver todas as ${itens.length} ${rotulo}`}
+                    {expandido ? "Ver menos" : rotuloVerTodos(itens.length)}
                     <ChevronDown
                         className={cx("size-4 transition-transform duration-100 ease-linear", expandido && "rotate-180")}
                         aria-hidden="true"

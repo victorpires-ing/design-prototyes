@@ -12,13 +12,16 @@ import { TrocarItensWizard } from "../components/wizard/TrocarItensWizard";
 import { getConta, retomarPedido, usePedidos, uuidCurto, type Pedido, type Verbo } from "../data/pos-compra-store";
 
 /**
- * Os três fluxos de alteração como TELA, não como modal — o padrão da bilheteria.
+ * Os três fluxos de alteração como TELA, não como modal, no padrão da bilheteria.
  *
- * O que o modal não dava: endereço. Recarregar a página perdia o fluxo inteiro, e não havia
- * link para mandar a um colega. Agora a unidade escolhida viaja na URL em `?linhas=`, então
- * recarregar e voltar pelo navegador levam ao mesmo lugar.
+ * O que o modal não dava: endereço. A unidade escolhida viaja na URL em `?linhas=` e a etapa em
+ * `?etapa=`, escrita pela casca do wizard: voltar no navegador recua uma etapa, em vez de sair
+ * do fluxo inteiro levando junto o que já foi digitado.
  *
  * O trabalho em si não é guardado: enquanto a cobrança não é criada, não existe nada a retomar.
+ * Por isso sair com algo montado pergunta antes, e recarregar passa pelo aviso do navegador.
+ * Falta a outra metade do endereço: nenhum wizard nasce lendo `?etapa=`, então o recarregar
+ * ainda cai na primeira etapa do fluxo.
  */
 const WIZARD_DO_VERBO: Record<Verbo, string> = { transferir: "Transferir", trocar: "Trocar", formulario: "Editar formulário" };
 

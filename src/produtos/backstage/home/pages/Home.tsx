@@ -179,7 +179,7 @@ export function Home() {
         <BackstageLayout showEventContext={false}>
             <div className="grid min-w-0 flex-1 gap-6 py-8 md:px-2 lg:grid-cols-3">
                 {/* Colunas 1–2: dashboard (fixados + eventos) */}
-                <div className="flex flex-col gap-8 lg:col-span-2">
+                <div className="flex min-w-0 flex-col gap-8 lg:col-span-2">
                     {fixados.length > 0 && (
                         <section className="flex flex-col gap-4">
                             <h2 className="text-lg font-semibold text-primary">Fixados no dashboard</h2>
@@ -198,7 +198,7 @@ export function Home() {
                 </div>
 
                 {/* Coluna 3: chat (fixo) — gráfico aparece aqui e pode ser fixado */}
-                <div className="lg:col-span-1">
+                <div className="min-w-0 lg:col-span-1">
                     <ChatConversacional onPin={fixar} />
                 </div>
             </div>

@@ -220,11 +220,10 @@ export default function App() {
       <Routes>
         <Route path="/" element={<ProductSelection />} />
         <Route path="/loading" element={<CymaticsShowcase />} />
-        <Route path="/backstage" element={<BackstageEventos />} />
+        <Route path="/backstage" element={<BackstageHome />} />
         <Route path="/backstage/eventos" element={<BackstageEventos />} />
         <Route path="/backstage/evento/visao-geral" element={<VisaoGeralEvento />} />
         <Route path="/backstage/informacoes-evento" element={<InformacoesEvento />} />
-        <Route path="/backstage/home" element={<BackstageHome />} />
         <Route path="/backstage/pedidos" element={<PedidosPosCompra />} />
         <Route path="/backstage/pedidos/:pedidoId" element={<DetalhePedidoPosCompra />} />
         <Route path="/backstage/pedidos/:pedidoId/transferir" element={<AlterarPedido verbo="transferir" />} />

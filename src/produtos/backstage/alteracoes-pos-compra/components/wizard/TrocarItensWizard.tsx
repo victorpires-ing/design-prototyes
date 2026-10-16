@@ -434,7 +434,9 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
 
             {etapa === "saem" && (
                 <>
-                    <Regra>Marque os itens que serão substituídos. Os novos vêm na próxima etapa.</Regra>
+                    {/* Sem o ícone da `Regra`: aqui a frase é a instrução da etapa, a primeira
+                        coisa escrita na tela, e não uma ressalva ao lado de outro conteúdo. */}
+                    <p className="text-sm text-tertiary">Marque os itens que serão substituídos. Os novos vêm na próxima etapa.</p>
                     <SeletorUnidades pedido={pedido} verbo="trocar" selecao={saem} onChange={setSaem} />
                 </>
             )}
@@ -821,7 +823,18 @@ const LinhaCatalogo = ({
     const podeTirarReferencia = Boolean(bloqueado && linhaReferencia && onTirarUnidade && totalSaem > 1 && impedimento && BLOQUEIO_DA_UNIDADE.has(impedimento.curto));
 
     return (
-        <li className={cx("flex flex-col gap-3 p-4 transition duration-100 ease-linear", !inerte && escolhido && "bg-secondary")}>
+        <li
+            className={cx(
+                "relative flex flex-col gap-3 p-4 transition duration-100 ease-linear",
+                /* O hover mora aqui, não no botão: ele cobria só o nome e os selos, e metade da
+                   linha (preço, diferença, espaço vazio) ficava morta ao passar o mouse.
+
+                   Sem fundo para o item escolhido: o rádio marcado e a quantidade no stepper já
+                   dizem isso, e os escolhidos ainda aparecem reunidos no bloco acima. O fundo
+                   gastava uma cor para repetir o que três lugares já diziam. */
+                ativavel && "cursor-pointer hover:bg-primary_hover",
+            )}
+        >
             {/* A opacidade fica na fileira, não na linha inteira: o motivo do bloqueio e a saída
                 dele ficam embaixo e precisam de contraste cheio. */}
             <div className={cx("flex flex-col gap-3 transition duration-100 ease-linear sm:flex-row sm:items-center sm:justify-between", inerte && "opacity-60")}>
@@ -834,8 +847,11 @@ const LinhaCatalogo = ({
                     aria-pressed={unico ? escolhido : undefined}
                     className={cx(
                         "flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left transition duration-100 ease-linear max-md:min-h-16",
-                        ativavel && "cursor-pointer",
-                        ativavel && (escolhido ? "hover:bg-secondary_hover" : "hover:bg-primary_hover"),
+                        /* O pseudo-elemento se estica sobre o `li` inteiro e entrega o clique a
+                           este botão, então preço, diferença e espaço vazio também escolhem o
+                           item. Aninhar o stepper dentro do botão não é possível, e por isso ele
+                           sobe no empilhamento logo abaixo em vez de entrar aqui. */
+                        ativavel && "before:absolute before:inset-0",
                         FOCO,
                     )}
                 >
@@ -876,7 +892,14 @@ const LinhaCatalogo = ({
                             </p>
                         )}
                     </div>
-                    {!bloqueado && !unico && !itemAtual && <Stepper valor={quantidade} maximo={maximo} rotulo={item.nome} onChange={onChange} />}
+                    {/* Acima do alvo da linha: o stepper tem os próprios botões e precisa receber
+                        o clique antes dela. O preço fica de fora de propósito, para continuar
+                        valendo como parte do alvo. */}
+                    {!bloqueado && !unico && !itemAtual && (
+                        <span className="relative z-10 flex">
+                            <Stepper valor={quantidade} maximo={maximo} rotulo={item.nome} onChange={onChange} />
+                        </span>
+                    )}
                 </div>
             </div>
 

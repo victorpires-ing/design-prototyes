@@ -15,6 +15,7 @@ import {
     type CatalogoItem,
     type Pedido,
     type PedidoItem,
+    type TipoItem,
     type Verbo,
 } from "../../data/pos-compra-store";
 
@@ -62,6 +63,14 @@ const agruparIguais = (linhas: PedidoItem[], pedido: Pedido) => {
     }
     return [...grupos.values()];
 };
+
+/** Os três tipos, na ordem e com os rótulos da aba de itens do pedido: trocar de tela durante
+ *  um atendimento tem que parecer o mesmo produto. */
+const TIPOS_EM_ORDEM: Array<{ tipo: TipoItem; rotulo: string }> = [
+    { tipo: "ingresso", rotulo: "Ingressos" },
+    { tipo: "produto", rotulo: "Produtos" },
+    { tipo: "combo", rotulo: "Combos" },
+];
 
 /** O que a unidade barrada não pode sofrer, na voz do fluxo. "Não podem entrar" servia aos três
  *  e não dizia nada em nenhum: entrar onde, se a lista é do próprio pedido. */
@@ -122,12 +131,21 @@ export function SeletorUnidades({
               O seletor só aparece onde há quantidade a escolher, e nasce desabilitado: a
               ordem é marcar o item e então dizer quantas unidades dele entram.
             */}
-            {grupos.length > 0 && (
-                /* Moldura em volta da lista, igual à do resumo: solta na página, ela não tinha
-                   onde começar nem onde terminar, e encostava no bloco seguinte. O bloco de
-                   indisponíveis fica fora dela, com a moldura própria que já tinha. */
-                <ul className="flex flex-col divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-                    {grupos.map((grupo) => {
+            {/* Um bloco por tipo, empilhados e rotulados, como a aba de itens do pedido: ingresso,
+                produto e combo são coisas diferentes, e numa lista corrida o atendente lia
+                "Camiseta extra" entre dois ingressos sem nada dizendo que ali mudou de natureza.
+                O tipo sem unidade não aparece. */}
+            {TIPOS_EM_ORDEM.map(({ tipo, rotulo }) => {
+                const doTipo = grupos.filter((g) => getItem(g.itemId)?.tipo === tipo);
+                if (doTipo.length === 0) return null;
+                return (
+                <div key={tipo} className="flex flex-col gap-3">
+                    <h3 className="text-sm font-semibold text-secondary">{rotulo}</h3>
+                    {/* Moldura em volta da lista, igual à do resumo: solta na página, ela não
+                        tinha onde começar nem onde terminar, e encostava no bloco seguinte. O
+                        bloco de indisponíveis fica fora dela, com a moldura que já tinha. */}
+                    <ul className="flex flex-col divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
+                    {doTipo.map((grupo) => {
                         const item = getItem(grupo.itemId);
                         const sessao = sessaoDoItem(item) ? sessaoLabel(item) : null;
                         const total = grupo.unidades.length;
@@ -191,7 +209,9 @@ export function SeletorUnidades({
                         );
                     })}
                 </ul>
-            )}
+                </div>
+                );
+            })}
 
             {indisponiveis.length > 0 && (
                 <details className="group rounded-xl bg-primary ring-1 ring-border-secondary">

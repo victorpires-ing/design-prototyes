@@ -83,7 +83,7 @@ export function EditarFormularioWizard({ pedido, linhaId, onFechar, onEnviado }:
     return (
         <WizardShell
             onClose={onFechar}
-            titulo="Formulário"
+            titulo="Editar formulário"
             subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}
             etapas={["Respostas", "Revisão"]}
             indiceAtual={etapa === "revisao" ? 1 : 0}
@@ -99,7 +99,6 @@ export function EditarFormularioWizard({ pedido, linhaId, onFechar, onEnviado }:
 
             {etapa === "respostas" && (
                 <>
-                    <Regra>Mude só o que precisa. A edição custa {formatarMoeda(calculo.total)} por vez, não importa quantas respostas mudem.</Regra>
                     <div className="flex flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
                         {perguntasDoItem.map((pergunta) => (
                             <EditorResposta key={pergunta.id} pergunta={pergunta} valor={valorDaResposta(pergunta.id)} valorOriginal={linha.respostas[pergunta.id] ?? ""} onChange={(valor) => setNovos((mapa) => ({ ...mapa, [pergunta.id]: valor }))} />

@@ -13,7 +13,7 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { CartaoOperacao, idDoCartao } from "../components/CartaoOperacao";
 import {
-    TIPO_OPERACAO_ICONE, FOCO, FOCO_ESCOPO, Miniatura, iniciaisDe, formatarCPF, telefoneParaCopia } from "../components/pos-compra-ui";
+    TIPO_OPERACAO_ICONE, FOCO, FOCO_ESCOPO, Miniatura, caminhoDoItem, iniciaisDe, formatarCPF, telefoneParaCopia } from "../components/pos-compra-ui";
 import { descartarRascunho } from "../components/wizard/seletor-unidades";
 import {
     SESSOES,
@@ -43,7 +43,6 @@ import {
 } from "../data/pos-compra-store";
 
 const plural = (n: number, singular: string, varios: string) => `${n} ${n === 1 ? singular : varios}`;
-const rotuloDoLote = (lote: string) => (lote.toLowerCase().startsWith("lote") ? lote : `Lote ${lote}`);
 const tituloDaSessao = (sessao: Sessao) => `${sessao.dataLabel}, ${sessao.horaLabel.replace(":", "h")}`;
 const horaDe = (instante: number) => new Date(instante).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 const dataDoLabel = (dataLabel: string) => dataLabel.split(", ")[0];
@@ -583,14 +582,6 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
         </section>
     );
 };
-
-/**
- * Onde o ingresso mora: grupo e lote sob o nome. O ingresso é identificado pelo caminho
- * grupo > ingresso > lote, e sem o grupo na própria linha um item fora do contexto da sessão
- * deixa de se explicar — "Corrida 5 km" existe em mais de um grupo. Produto não tem nem um
- * nem outro, e aí a linha simplesmente não aparece.
- */
-const caminhoDoItem = (item: CatalogoItem) => [item.grupo, item.lote && rotuloDoLote(item.lote)].filter(Boolean).join(" · ");
 
 /** "Qua, 11 de nov., 06h00" e, quando a sessão já passou, o que isso restringe. */
 const MarcaDaSessao = ({ sessao }: { sessao: Sessao }) => (

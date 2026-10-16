@@ -22,7 +22,7 @@ import { getConta, retomarPedido, usePedidos, useRascunhos, uuidCurto, type Pedi
  * `?linhas=` são as unidades que o operador escolheu antes de entrar. `?rascunho=` retoma um
  * rascunho salvo.
  */
-const WIZARD_DO_VERBO: Record<Verbo, string> = { transferir: "Transferir", trocar: "Trocar", formulario: "Formulário" };
+const WIZARD_DO_VERBO: Record<Verbo, string> = { transferir: "Transferir", trocar: "Trocar", formulario: "Editar formulário" };
 
 export function AlterarPedido({ verbo }: { verbo: Verbo }) {
     const { pedidoId } = useParams();

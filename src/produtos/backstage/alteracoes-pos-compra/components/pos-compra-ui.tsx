@@ -389,6 +389,18 @@ export const SetaParaBaixo = () => (
     </span>
 );
 
+/** "Lote 2" já vem escrito assim no catálogo; "2" sozinho não se explica. */
+export const rotuloDoLote = (lote: string) => (lote.toLowerCase().startsWith("lote") ? lote : `Lote ${lote}`);
+
+/**
+ * Onde o item mora: grupo e lote, na mesma frase em toda a superfície.
+ *
+ * O ingresso é identificado pelo caminho grupo > ingresso > lote, e sem o grupo um item fora do
+ * contexto da sessão deixa de se explicar: "Corrida 5 km" existe em mais de um grupo. Produto
+ * não tem nem um nem outro, e aí a linha simplesmente não aparece.
+ */
+export const caminhoDoItem = (item: CatalogoItem) => [item.grupo, item.lote && rotuloDoLote(item.lote)].filter(Boolean).join(" · ");
+
 /** Foto do produto quando existe; ingresso e combo usam um ícone — não têm imagem própria no catálogo. */
 export const Miniatura = ({ item }: { item: CatalogoItem }) => {
     if (item.foto) return <img src={item.foto} alt="" className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-border-primary" />;

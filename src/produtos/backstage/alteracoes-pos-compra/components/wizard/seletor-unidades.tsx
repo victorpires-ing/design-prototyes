@@ -5,7 +5,7 @@ import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { InputNumber } from "@/components/base/input/input-number";
 import { cx } from "@/utils/cx";
-import { ListaLimitada, formatarCPF } from "../pos-compra-ui";
+import { ListaLimitada, caminhoDoItem, formatarCPF } from "../pos-compra-ui";
 import {
     getConta,
     getItem,
@@ -252,13 +252,15 @@ export function ResumoUnidades({
                         const item = getItem(grupo.itemId);
                         const sessao = sessaoDoItem(item) ? sessaoLabel(item) : null;
                         return (
+                            /* Mesma forma do cartão do item no detalhe do pedido: nome numa
+                               linha, grupo e lote na de baixo. Antes o lote vinha colado ao nome
+                               e o grupo não aparecia, e "Corrida 5 km" existe em mais de um.
+                               A quantidade só entra quando é maior que uma: "1x" não informa. */
                             <div key={`${grupo.itemId}|${grupo.titularId}`} className="flex gap-3 py-3">
-                                <span className="shrink-0 text-sm font-semibold text-secondary tabular-nums">{grupo.unidades.length}x</span>
+                                {grupo.unidades.length > 1 && <span className="shrink-0 text-sm font-semibold text-secondary tabular-nums">{grupo.unidades.length}x</span>}
                                 <div className="min-w-0">
-                                    <p className="text-sm font-medium text-primary">
-                                        {item?.nome}
-                                        {item?.lote && <span className="font-normal text-tertiary"> | {item.lote}</span>}
-                                    </p>
+                                    <p className="text-sm font-medium text-primary">{item?.nome}</p>
+                                    {item && caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
                                     {sessao && <p className="text-sm text-tertiary">{sessao}</p>}
                                 </div>
                             </div>

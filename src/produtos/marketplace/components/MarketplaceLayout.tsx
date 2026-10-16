@@ -1,4 +1,5 @@
 import { useEffect, type CSSProperties, type ReactNode } from "react";
+import ingresseLogoLight from "../assets/ingresse-logo-light.svg";
 import { ArrowLeft, HelpCircle, Share07 } from "@untitledui/icons";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -80,7 +81,9 @@ export function accentVars(accent?: string): CSSProperties | undefined {
 }
 
 /** Logo oficial da Ingresse (versão clara, para a barra escura). */
-const INGRESSE_LOGO = "https://auth.prod.ingresse.com/resources/2ibrw/login/custom/img/ingresse-light.svg";
+// Local, não remoto: a URL de produção redireciona e a logo quebrava em toda
+// tela do fluxo. Variante clara porque o header é escuro.
+const INGRESSE_LOGO = ingresseLogoLight;
 
 /**
  * Chrome do checkout Ingresse: barra superior escura (marca + usuário + país)

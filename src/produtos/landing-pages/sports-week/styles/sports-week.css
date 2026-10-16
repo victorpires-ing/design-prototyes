@@ -1,0 +1,408 @@
+/* SPORTS WEEK — base visual da campanha.
+   CSS puro de propósito: tudo fica escopado em `.sw-root`/`.sw-camada`, sem `@theme`, para
+   não tocar no design system do projeto nem duplicar a saída do Tailwind.
+   As cores primitivas são os hex exatos do Figma oficial; as derivadas existem
+   só para garantir contraste AA na tela (o pôster impresso não precisa disso). */
+
+/* `.sw-root` é o shell da PÁGINA. `.sw-camada` é a mesma campanha para quem vive
+   FORA dela: as peças portadas para o `document.body` (bottom sheet, CTA fixo)
+   precisam das variáveis, da fonte e do container nomeado, mas NÃO podem herdar o
+   fundo da página — um overlay que pinta ink opaco em cima da tela inteira engole
+   o próprio scrim e a página some atrás de um retângulo preto. Quem precisa de
+   fundo pinta o seu, no elemento certo. */
+.sw-root,
+.sw-camada {
+    /* A LP responde à LARGURA DA COLUNA, não à da janela: hoje a coluna é a
+       janela inteira, mas a campanha também é embutida em recortes mais estreitos,
+       e `lg:` daria layout de desktop dentro deles.
+       `inline-size` contém só o eixo horizontal, então sticky continua funcionando;
+       os elementos `fixed` da campanha já saem por portal para o body. */
+    container-type: inline-size;
+    container-name: sw;
+
+    /* primitivas de marca */
+    --sw-lime: #b3f300;
+    --sw-magenta: #ff1289;
+    --sw-blue: #0099ff;
+    --sw-navy: #0b2559;
+    --sw-white: #ffffff;
+    --sw-black: #000000;
+
+    /* derivadas para contraste */
+    --sw-ink: #07132e;
+    --sw-raised: #122f6b;
+    --sw-blue-ink: #0073bf;
+    --sw-magenta-ink: #cc0e6e;
+    --sw-line: #1e3a73;
+    --sw-line-strong: #355cb5;
+    --sw-muted: #9db3e0;
+    --sw-subtle: #7d97cc;
+
+    /* Os dois acima são para texto sobre o ink. Estes são a contraparte para
+       superfície clara: `--sw-muted` no branco dá 2:1 e some. Valores escolhidos
+       pelo contraste medido, 6.1:1 e 5.0:1, não pelo que parecia certo. */
+    --sw-muted-on-light: #4f6287;
+    --sw-subtle-on-light: #5e7093;
+
+    --sw-display: "Boldonse", "Boldonse Fallback", ui-sans-serif, system-ui, sans-serif;
+    --sw-body: "Sora", ui-sans-serif, system-ui, sans-serif;
+    --sw-ui: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+    color: var(--sw-white);
+    font-family: var(--sw-body);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Só o shell da página pinta o fundo e preenche a janela. Sem moldura de
+   protótipo, a campanha é o fundo da tela inclusive quando a página é mais
+   curta que ela. */
+.sw-root {
+    background-color: var(--sw-ink);
+    min-height: 100dvh;
+}
+
+/* ============================================================
+   CONTAINER DA CAMPANHA
+
+   A LP responde à LARGURA DA COLUNA, nunca à da janela. Hoje as
+   duas coincidem, mas a regra vale sempre: é PROIBIDA media query
+   de viewport aqui.
+
+   Degraus, sempre na forma nomeada /sw:
+     @3xl/sw   48rem    768px   tablet
+     @5xl/sw   64rem   1024px   desktop, o cartaz liga
+     @7xl/sw   80rem   1280px   largo
+   Proibido @3xs @2xs @xs @sm: 384px dispara dentro de um telefone.
+   ============================================================ */
+
+/* Um elemento não pode consultar o próprio container, então toda variável
+   responsiva mora num descendente, nunca no `.sw-root`.
+
+   Mede o cromo fixo. Fica acima da página porque o header é IRMÃO dela: se as
+   variáveis morassem em `.sw-pagina`, o header não as enxergaria e nasceria sem
+   altura, ficando por cima do conteúdo. */
+.sw-area {
+    --sw-chrome-h: 56px;
+    --sw-rail: 0px;
+    --sw-gutter: 20px;
+}
+
+/* Alvo de âncora não pode parar embaixo do header fixo. O `padding-top` do
+   `.sw-pagina` reserva o cromo para o FLUXO, mas `scrollIntoView` alinha o topo
+   do alvo com o topo da janela e ignora isso, então o menu do header levava a
+   pessoa para a seção com o próprio título escondido atrás do cromo. */
+.sw-area [id] {
+    scroll-margin-top: calc(var(--sw-chrome-h) + 16px);
+}
+
+.sw-pagina {
+    /* Reserva do cromo fixo, para nada correr por baixo dele. */
+    padding-top: var(--sw-chrome-h);
+    padding-left: var(--sw-rail);
+
+    --sw-campo: 100%;
+    --sw-gap: 12px;
+
+    --sw-ritmo: 56px;
+    --sw-ritmo-cor: 56px;
+
+    /* Escala de display (Boldonse). Piso absoluto de 20px. */
+    --sw-fs-hero: 34px;
+    --sw-fs-d2: 32px;
+    --sw-fs-d1: 30px;
+    --sw-fs-d0: 26px;
+    --sw-fs-num: 30px;
+    --sw-fs-cd: 34px;
+    --sw-fs-mq: 22px;
+    --sw-ls-hero: -0.035em;
+
+    /* Corpo (Sora) e interface (Inter). Piso absoluto de 14px. */
+    --sw-fs-corpo: 16px;
+    --sw-fs-apoio: 18px;
+
+    /* Xadrez e listra TILAM: a densidade muda por degrau, não escala junto. */
+    --sw-checker-faixa: 14px;
+    --sw-stripe-bloco: 10px;
+
+    /* Corte diagonal proporcional. 36px fixos dão 5,3 graus a 390px e 1,4 grau
+       a 1280px, que lê como borda torta. `cqi` mede o container; `vw` mediria a
+       janela e estaria errado aqui. */
+    --sw-diag: clamp(36px, 9.2cqi, 140px);
+}
+
+@container sw (width >= 48rem) {
+    .sw-area {
+        --sw-gutter: 32px;
+    }
+
+    .sw-pagina {
+        --sw-ritmo: 72px;
+        --sw-ritmo-cor: 80px;
+        --sw-fs-hero: 50px;
+        --sw-fs-d2: 44px;
+        --sw-fs-d1: 36px;
+        --sw-fs-d0: 30px;
+        --sw-fs-num: 40px;
+        --sw-fs-cd: 40px;
+        --sw-fs-mq: 24px;
+    }
+}
+
+@container sw (width >= 64rem) {
+    .sw-area {
+        --sw-gutter: 40px;
+        --sw-chrome-h: 88px;
+        --sw-rail: 72px;
+    }
+
+    .sw-pagina {
+        --sw-campo: 1112px;
+        --sw-gap: 24px;
+
+        --sw-ritmo: 112px;
+        --sw-ritmo-cor: 160px;
+
+        --sw-fs-hero: 72px;
+        --sw-fs-d2: 72px;
+        --sw-fs-d1: 56px;
+        --sw-fs-d0: 40px;
+        --sw-fs-num: 64px;
+        --sw-fs-cd: 52px;
+        --sw-fs-mq: 30px;
+        --sw-ls-hero: -0.045em;
+
+        --sw-fs-corpo: 17px;
+        --sw-fs-apoio: 20px;
+
+        --sw-checker-faixa: 56px;
+        --sw-stripe-bloco: 20px;
+    }
+}
+
+@container sw (width >= 80rem) {
+    .sw-area {
+        --sw-gutter: 48px;
+        --sw-chrome-h: 96px;
+    }
+
+    .sw-pagina {
+        --sw-campo: 1168px;
+        --sw-ritmo: 128px;
+        --sw-ritmo-cor: 184px;
+        --sw-fs-hero: 84px;
+        --sw-fs-d2: 80px;
+        --sw-fs-d1: 64px;
+        --sw-fs-d0: 44px;
+        --sw-fs-num: 72px;
+        --sw-fs-cd: 56px;
+        --sw-fs-mq: 32px;
+        --sw-checker-faixa: 64px;
+    }
+}
+
+/* ------------------------------ Tipografia ----------------------------- */
+
+/* Boldonse tem um único peso e cap height de 1.19em: a caixa alta é mais alta
+   que o próprio em. Por isso o tracking negativo e o line-height apertado.
+   `text-box` recorta a caixa na altura das maiúsculas, o que deixa empilhar
+   blocos de cor colados na letra. Onde não houver suporte, só fica mais folgado. */
+@font-face {
+    font-family: "Boldonse Fallback";
+    src: local("Arial Black"), local("Impact"), local("Haettenschweiler");
+    size-adjust: 135%;
+    ascent-override: 119%;
+    descent-override: 25%;
+    line-gap-override: 0%;
+}
+
+.sw-display {
+    font-family: var(--sw-display);
+    font-weight: 400;
+    font-synthesis: none;
+    text-transform: uppercase;
+    text-wrap: balance;
+    letter-spacing: -0.03em;
+}
+
+@supports (text-box: trim-both cap alphabetic) {
+    .sw-display {
+        text-box: trim-both cap alphabetic;
+    }
+}
+
+/* Dentro de uma máscara de reveal o recorte na altura das maiúsculas corta o
+   acento, que vive ACIMA do cap height. Aí a caixa volta a ser a da fonte. */
+.sw-display-integral {
+    text-box: normal;
+}
+
+.sw-ui {
+    font-family: var(--sw-ui);
+}
+
+.sw-overline {
+    font-family: var(--sw-ui);
+    font-weight: 800;
+    font-size: 0.875rem;
+    line-height: 1.2;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+/* Contorno de verdade na letra. `paint-order` é obrigatório: sem ele o traço
+   pinta por cima e come o miolo do glifo. */
+.sw-stroke {
+    -webkit-text-stroke: 3px var(--sw-navy);
+    paint-order: stroke fill;
+}
+
+.sw-outline {
+    color: transparent;
+    -webkit-text-stroke: 2px currentColor;
+}
+
+/* Sombra dura, sem blur: é a estética de pôster da campanha. */
+/* Sombra sólida deslocada. Funciona em raio baixo; numa pílula vira halo torto.
+   O movimento é o que vende o clique: no toque o bloco desce e a sombra some. */
+.sw-hard-shadow {
+    box-shadow: 4px 4px 0 0 var(--sw-magenta);
+}
+
+.sw-hard-shadow-lime {
+    box-shadow: 4px 4px 0 0 var(--sw-lime);
+}
+
+/* ------------------------------- Foco ---------------------------------- */
+
+/* Anel de dois tons para funcionar sobre qualquer superfície da campanha,
+   inclusive sobre o próprio lime. */
+.sw-root :focus-visible,
+.sw-camada :focus-visible {
+    outline: none;
+    box-shadow:
+        0 0 0 2px var(--sw-ink),
+        0 0 0 5px var(--sw-lime);
+}
+
+/* ------------------------------ Padrões -------------------------------- */
+
+/* Bandeira quadriculada da linha de chegada. O tamanho do quadro vem de
+   --sw-checker-size para a faixa poder mudar de escala sem recriar a classe. */
+.sw-checker {
+    --sw-checker-size: var(--sw-checker-faixa, 14px);
+    background-image: repeating-conic-gradient(
+        var(--sw-checker-a, #ffffff) 0% 25%,
+        var(--sw-checker-b, #000000) 0% 50%
+    );
+    background-size: var(--sw-checker-size) var(--sw-checker-size);
+}
+
+/* Listras diagonais tremulando, o segundo padrão do kit. */
+.sw-stripes {
+    --sw-stripe-size: var(--sw-stripe-bloco, 10px);
+    background-image: repeating-linear-gradient(
+        135deg,
+        var(--sw-stripe-a, #ff1289) 0 var(--sw-stripe-size),
+        var(--sw-stripe-b, #ffffff) var(--sw-stripe-size) calc(var(--sw-stripe-size) * 2)
+    );
+}
+
+/* Ondulação aplicada aos padrões, para a faixa parecer uma bandeira tremulando
+   em vez de um retângulo chapado. */
+.sw-wave {
+    filter: url(#sw-wave);
+}
+
+/* Grão por cima de blocos de cor cheia, para a tela não ficar plástica.
+   `soft-light` em vez de `overlay`: medido lado a lado, overlay lava o navy.
+   O pai precisa de `isolation: isolate` para o blend não vazar para fora. */
+.sw-grain {
+    isolation: isolate;
+}
+
+.sw-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.45;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ------------------------------ Marquee -------------------------------- */
+
+@keyframes sw-marquee {
+    from {
+        transform: translate3d(0, 0, 0);
+    }
+    to {
+        transform: translate3d(-50%, 0, 0);
+    }
+}
+
+.sw-marquee-track {
+    display: flex;
+    width: max-content;
+    flex: 0 0 auto;
+    will-change: transform;
+    animation: sw-marquee var(--sw-marquee-speed, 18s) linear infinite;
+    animation-direction: var(--sw-marquee-dir, normal);
+}
+
+.sw-marquee-track[data-paused="true"] {
+    animation-play-state: paused;
+}
+
+/* ------------------------- Movimento reduzido -------------------------- */
+
+/* A página continua a mesma: o que some é o deslocamento, não o conteúdo. */
+@media (prefers-reduced-motion: reduce) {
+    .sw-marquee-track {
+        animation: none !important;
+        transform: none !important;
+    }
+    .sw-wave {
+        filter: none;
+    }
+}
+
+/* ------------------------------ Cursor --------------------------------- */
+
+@media (hover: hover) and (pointer: fine) {
+    .sw-root .sw-cursor-retro,
+    .sw-camada .sw-cursor-retro {
+        cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='32' viewBox='0 0 12 16' shape-rendering='crispEdges'%3E%3Cpath fill='%23fff' d='M1 0h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1H7v1h1v1h1v2H7v-1H6v-1H5v-1H4v1H3v1H2v1H1z'/%3E%3Cpath fill='%2307132E' d='M2 2h1v1h1v1h1v1h1v1h1v1h1v1h1v1H6v1h1v1h1v1H6v-1H5v-1H4v1H3v1H2z'/%3E%3C/svg%3E") 0 0, pointer;
+    }
+}
+
+/* ---------------------------- Ornamentos ------------------------------- */
+
+/* Segunda onda, recalibrada para tela larga: a calibragem de 390px vira tremor
+   imperceptível a 1280px, ao custo de muito mais rasterização. */
+.sw-wave-lg {
+    filter: url(#sw-wave-lg);
+}
+
+/* Deriva lenta da fileira de asteriscos: um módulo em 9s. */
+@keyframes sw-aster-deriva {
+    from {
+        transform: translate3d(0, 0, 0);
+    }
+    to {
+        transform: translate3d(-72px, 0, 0);
+    }
+}
+
+.sw-aster-deriva {
+    animation: sw-aster-deriva 9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sw-aster-deriva {
+        animation: none !important;
+    }
+    .sw-wave-lg {
+        filter: none;
+    }
+}

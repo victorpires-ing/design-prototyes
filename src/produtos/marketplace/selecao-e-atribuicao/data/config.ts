@@ -7,6 +7,9 @@ import {
     INGRESSOS,
     PERGUNTAS,
     PRODUTOS,
+    QUANTITATIVO_PADRAO,
+    TAXA_PADRAO,
+    TAXA_PRODUTO_PADRAO,
     type ComboDinamico,
     type ComboFixo,
     type Cupom,
@@ -15,11 +18,21 @@ import {
     type Ingresso,
     type PerguntaEvento,
     type Produto,
+    type Quantitativo,
+    type TaxaProduto,
+    type TaxaServico,
 } from "./combos";
 
 /* ------------------------------------------------------------------ */
 /*  Configuração do evento (serializável na URL via ?cfg=)            */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Chave do rascunho local, compartilhada por Config, seleção e sucesso.
+ * v3: passa a carregar taxa de serviço e quantitativo por grupo. Vive aqui
+ * porque editor e leitores precisam concordar: divergir quebra o handoff.
+ */
+export const STORAGE_KEY = "marketplace:lastConfig:v3";
 
 export interface EventConfig {
     nome: string;
@@ -35,6 +48,20 @@ export interface EventConfig {
     exibirVoltar?: boolean;
     /** Como o formulário de perguntas é exibido na atribuição: modal (padrão) ou accordion inline. */
     modoAtribuicao?: "modal" | "accordion";
+    /**
+     * Art. 1º §2º: o Decreto 13.108/2026 não alcança evento esportivo, regido
+     * pela Lei 14.597/2023. O protótipo aplica o regime do decreto nos dois
+     * casos e usa este campo só para sinalizar a diferença no editor.
+     */
+    categoria?: "cultural" | "esportivo";
+    /** Taxa acessória única do evento (art. 3º V, 6º e 9º). */
+    taxaServico: TaxaServico;
+    /** Cobrança acessória do produto: outra alíquota e outro nome. */
+    taxaProduto?: TaxaProduto;
+    /** Art. 11: quantitativo ofertado por nome de grupo de ingresso. */
+    quantitativoPorGrupo?: Record<string, Quantitativo>;
+    /** Art. 11 p.ú.: divulgado até 30 dias após o evento. Null enquanto não houver. */
+    percentualMeiaVendido?: number | null;
     exibir: Exibir;
     ingressos: Ingresso[];
     produtos: Produto[];
@@ -58,6 +85,11 @@ export const DEFAULT_CONFIG: EventConfig = {
     corDestaque: "",
     exibirVoltar: true,
     modoAtribuicao: "modal",
+    categoria: "cultural",
+    taxaServico: TAXA_PADRAO,
+    taxaProduto: TAXA_PRODUTO_PADRAO,
+    quantitativoPorGrupo: QUANTITATIVO_PADRAO,
+    percentualMeiaVendido: null,
     exibir: EXIBIR_PADRAO,
     ingressos: INGRESSOS,
     produtos: PRODUTOS,
@@ -104,6 +136,24 @@ export function decodeConfig(param: string): EventConfig | null {
             corDestaque: obj.corDestaque ?? "",
             exibirVoltar: obj.exibirVoltar ?? true,
             modoAtribuicao: obj.modoAtribuicao === "accordion" ? "accordion" : "modal",
+            categoria: obj.categoria === "esportivo" ? "esportivo" : "cultural",
+            // Link ?cfg= antigo não tem taxa. Assumir zero renderiria o estado que
+            // o próprio desenho declara irregular, então o default é a taxa padrão:
+            // links já compartilhados passam a exibir 20%.
+            taxaServico: {
+                nome: obj.taxaServico?.nome || TAXA_PADRAO.nome,
+                aliquota: typeof obj.taxaServico?.aliquota === "number" ? Math.max(0, obj.taxaServico.aliquota) : TAXA_PADRAO.aliquota,
+                descricao: obj.taxaServico?.descricao || TAXA_PADRAO.descricao,
+                criteriosUrl: obj.taxaServico?.criteriosUrl || undefined,
+            },
+            taxaProduto: {
+                nome: obj.taxaProduto?.nome || TAXA_PRODUTO_PADRAO.nome,
+                aliquota: typeof obj.taxaProduto?.aliquota === "number" ? Math.max(0, obj.taxaProduto.aliquota) : TAXA_PRODUTO_PADRAO.aliquota,
+                modo: obj.taxaProduto?.modo === "embutida" ? "embutida" : TAXA_PRODUTO_PADRAO.modo,
+                descricao: obj.taxaProduto?.descricao || TAXA_PRODUTO_PADRAO.descricao,
+            },
+            quantitativoPorGrupo: obj.quantitativoPorGrupo && typeof obj.quantitativoPorGrupo === "object" ? obj.quantitativoPorGrupo : {},
+            percentualMeiaVendido: typeof obj.percentualMeiaVendido === "number" ? obj.percentualMeiaVendido : null,
             exibir: { datas: true, combosFixos: true, combosDinamicos: true, ...(obj.exibir ?? {}) },
             ingressos: Array.isArray(obj.ingressos) ? obj.ingressos : [],
             produtos: Array.isArray(obj.produtos) ? obj.produtos : [],

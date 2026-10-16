@@ -8,13 +8,15 @@ import { Input } from "@/components/base/input/input";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { addCargo, cargoById, isCargoSistema, updateCargo } from "../../components/membros-store";
+import { addCargo, cargoById, isCargoSistema, updateCargo, useMembros } from "../../components/membros-store";
+import { ResumoCargoModal } from "../components/resumo-cargo-modal";
 import {
-    ACOES_BASE,
     CATALOGO_PERMISSOES,
+    acoesDaSecao,
     chavePermissao,
     chavesDoRecurso,
-    GRUPOS_PAI,
+    completarSelecao,
+    semDependentesOrfaos,
     type AcaoBase,
     type RecursoPermissao,
     type SecaoPermissao,
@@ -42,17 +44,14 @@ export function CriarCargo() {
     const [nome, setNome] = useState(cargo?.nome ?? "");
     const [descricao, setDescricao] = useState(cargo?.descricao ?? "");
     const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set(cargo?.acoes ?? []));
+    const [revisando, setRevisando] = useState(false);
+    const membros = useMembros();
 
     const setChaves = (chaves: string[], marcar: boolean) => {
         setSelecionadas((prev) => {
             const next = new Set(prev);
             chaves.forEach((k) => (marcar ? next.add(k) : next.delete(k)));
-            if (marcar) {
-                for (const g of GRUPOS_PAI) {
-                    if (g.filhos.every((k) => next.has(k))) next.add(g.pai);
-                }
-            }
-            return next;
+            return marcar ? completarSelecao(next) : semDependentesOrfaos(next);
         });
     };
 
@@ -60,11 +59,15 @@ export function CriarCargo() {
         return <Navigate to="/backstage/membros" replace />;
     }
 
-    const handleSalvar = () => {
+    const revisar = () => {
         if (!nome.trim() || !descricao.trim()) {
             toast.error(!nome.trim() ? "Informe o nome do cargo" : "Informe a descrição do cargo");
             return;
         }
+        setRevisando(true);
+    };
+
+    const salvar = () => {
         if (cargo) {
             updateCargo(cargo.id, {
                 nome: nome.trim(),
@@ -122,12 +125,22 @@ export function CriarCargo() {
                         <Button size="md" color="secondary" onClick={() => navigate("/backstage/membros")}>
                             Cancelar
                         </Button>
-                        <Button size="md" color="primary" onClick={handleSalvar} isDisabled={!nome.trim() || !descricao.trim()}>
+                        <Button size="md" color="primary" onClick={revisar} isDisabled={!nome.trim() || !descricao.trim()}>
                             {editando ? "Salvar alterações" : "Criar cargo"}
                         </Button>
                     </div>
                 </footer>
             </div>
+
+            <ResumoCargoModal
+                isOpen={revisando}
+                nome={nome.trim()}
+                selecionadas={selecionadas}
+                originais={cargo ? new Set(cargo.acoes ?? []) : undefined}
+                membrosAfetados={cargo ? membros.filter((m) => m.cargoIds.includes(cargo.id)).length : 0}
+                onClose={() => setRevisando(false)}
+                onConfirm={salvar}
+            />
         </BackstageLayout>
     );
 }
@@ -142,22 +155,16 @@ function SecaoTabela({ secao, selecionadas, onSet }: SecaoTabelaProps) {
     const [preview, setPreview] = useState<Preview | null>(null);
     const previsualizar = (origem: string, chaves: string[] | null) => {
         if (!chaves?.length) return setPreview(null);
-        const previstas = new Set(chaves);
-        // Inclui os pais que ficariam marcados por terem todos os sub-itens marcados.
-        for (const g of GRUPOS_PAI) {
-            if (g.filhos.every((k) => selecionadas.has(k) || previstas.has(k))) {
-                previstas.add(g.pai);
-            }
-        }
-        setPreview({ origem, chaves: previstas });
+        // Inclui o que viria junto: pais completos e os Visualizar exigidos.
+        setPreview({ origem, chaves: completarSelecao(new Set([...selecionadas, ...chaves])) });
     };
     const soltar = (origem: string) => setPreview((p) => (p?.origem === origem ? null : p));
     const naoMarcadas = (chaves: string[]) => chaves.filter((k) => !selecionadas.has(k));
 
     const todasChaves = useMemo(() => secao.recursos.flatMap((r) => chavesDoRecurso(r)), [secao]);
-    const tudoMarcado = todasChaves.every((k) => selecionadas.has(k));
 
-    const colunas = ACOES_BASE.filter((a) => secao.recursos.some((r) => r.base.includes(a.id)));
+    const acoes = acoesDaSecao(secao);
+    const colunas = acoes.filter((a) => secao.recursos.some((r) => r.base.includes(a.id)));
     const filhosDe = (i: number) => {
         if (secao.recursos[i].nivel) return [];
         const filhos: RecursoPermissao[] = [];
@@ -168,39 +175,47 @@ function SecaoTabela({ secao, selecionadas, onSet }: SecaoTabelaProps) {
         return filhos;
     };
     const chavesDaColuna = (acao: AcaoBase) => secao.recursos.filter((r) => r.base.includes(acao)).map((r) => chavePermissao(r.id, acao));
+    const tituloId = `secao-${secao.id}`;
 
     return (
-        <section className="overflow-clip rounded-xl bg-primary ring-1 ring-secondary">
-            <div className="sticky top-0 z-10 grid items-center border-b border-secondary bg-secondary" style={gridStyle(colunas.length)}>
-                <div className="flex flex-col items-start gap-1 px-5 py-4">
-                    <h2 className="text-md font-semibold text-primary">{secao.nome}</h2>
-                    <Button
-                        size="sm"
-                        color="link-gray"
-                        className="*:data-text:decoration-current!"
-                        onClick={() => onSet(todasChaves, !tudoMarcado)}
-                        onHoverStart={() => !tudoMarcado && previsualizar("secao", naoMarcadas(todasChaves))}
-                        onHoverEnd={() => soltar("secao")}
-                    >
-                        {tudoMarcado ? "Desmarcar seção" : "Marcar seção"}
-                    </Button>
+        <section aria-labelledby={tituloId} className="overflow-clip rounded-xl bg-primary ring-1 ring-secondary">
+            <div className="sticky top-0 z-10 grid items-center border-b border-secondary bg-secondary" style={gridStyle(acoes.length)}>
+                <div className="flex items-start gap-3 px-5 py-4">
+                    <CheckboxMassa
+                        className="mt-0.5"
+                        aria-label={`Todas as permissões de ${secao.nome}`}
+                        chaves={todasChaves}
+                        origem="secao"
+                        selecionadas={selecionadas}
+                        preview={preview}
+                        onSet={onSet}
+                        onPreview={previsualizar}
+                        onPreviewEnd={soltar}
+                        naoMarcadas={naoMarcadas}
+                    />
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                        <h2 id={tituloId} className="text-md font-semibold text-primary">
+                            {secao.nome}
+                        </h2>
+                        {secao.descricao && <p className="text-sm text-tertiary">{secao.descricao}</p>}
+                    </div>
                 </div>
-                {colunas.map((acao) => {
-                    const chaves = chavesDaColuna(acao.id);
-                    const colunaMarcada = chaves.length > 0 && chaves.every((k) => selecionadas.has(k));
+                {acoes.map((acao) => {
+                    if (!colunas.includes(acao)) return <div key={acao.id} aria-hidden="true" />;
                     return (
-                        <div key={acao.id} className="flex flex-col items-center gap-1 px-2 py-4 text-center">
+                        <div key={acao.id} className="flex flex-col items-center gap-2 px-2 py-4 text-center">
                             <span className="text-sm font-semibold text-primary">{acao.nome}</span>
-                            <Button
-                                size="sm"
-                                color="link-gray"
-                                className="*:data-text:decoration-current!"
-                                onClick={() => onSet(chaves, !colunaMarcada)}
-                                onHoverStart={() => !colunaMarcada && previsualizar(`coluna:${acao.id}`, naoMarcadas(chaves))}
-                                onHoverEnd={() => soltar(`coluna:${acao.id}`)}
-                            >
-                                {colunaMarcada ? "Desmarcar coluna" : "Marcar coluna"}
-                            </Button>
+                            <CheckboxMassa
+                                aria-label={`${acao.nome} em todas as permissões de ${secao.nome}`}
+                                chaves={chavesDaColuna(acao.id)}
+                                origem={`coluna:${acao.id}`}
+                                selecionadas={selecionadas}
+                                preview={preview}
+                                onSet={onSet}
+                                onPreview={previsualizar}
+                                onPreviewEnd={soltar}
+                                naoMarcadas={naoMarcadas}
+                            />
                         </div>
                     );
                 })}
@@ -211,6 +226,7 @@ function SecaoTabela({ secao, selecionadas, onSet }: SecaoTabelaProps) {
                     key={recurso.id}
                     recurso={recurso}
                     filhos={filhosDe(i)}
+                    acoes={acoes}
                     colunas={colunas}
                     selecionadas={selecionadas}
                     onSet={onSet}
@@ -224,6 +240,41 @@ function SecaoTabela({ secao, selecionadas, onSet }: SecaoTabelaProps) {
     );
 }
 
+interface CheckboxMassaProps {
+    "aria-label": string;
+    className?: string;
+    chaves: string[];
+    origem: string;
+    selecionadas: Set<string>;
+    preview: Preview | null;
+    onSet: (chaves: string[], marcar: boolean) => void;
+    onPreview: (origem: string, chaves: string[] | null) => void;
+    onPreviewEnd: (origem: string) => void;
+    naoMarcadas: (chaves: string[]) => string[];
+}
+
+/** Checkbox do cabeçalho: marca ou desmarca um conjunto (seção ou coluna); parcial quando só parte está marcada. */
+function CheckboxMassa({ chaves, origem, selecionadas, preview, onSet, onPreview, onPreviewEnd, naoMarcadas, className, ...props }: CheckboxMassaProps) {
+    const marcadas = chaves.filter((k) => selecionadas.has(k)).length;
+    const previstas = preview && preview.origem !== origem ? chaves.filter((k) => selecionadas.has(k) || preview.chaves.has(k)).length : marcadas;
+    const emPreview = previstas > marcadas;
+    const exibidas = emPreview ? previstas : marcadas;
+    const total = chaves.length;
+    return (
+        <Checkbox
+            size="md"
+            aria-label={props["aria-label"]}
+            // Área de clique maior que o quadrado, sem mudar o layout.
+            className={cx(CHECKBOX_HOVER, "-m-1 cursor-pointer p-1", emPreview && "[&>div:first-of-type]:opacity-50", className)}
+            isSelected={total > 0 && exibidas === total}
+            isIndeterminate={exibidas > 0 && exibidas < total}
+            onChange={() => onSet(chaves, marcadas < total)}
+            onHoverStart={() => marcadas < total && onPreview(origem, naoMarcadas(chaves))}
+            onHoverEnd={() => onPreviewEnd(origem)}
+        />
+    );
+}
+
 /** Chaves que o controle sob o mouse marcaria ao ser clicado. */
 interface Preview {
     origem: string;
@@ -234,7 +285,9 @@ interface LinhaRecursoProps {
     recurso: RecursoPermissao;
     /** Sub-recursos: o checkbox do pai agrega a coluna deles. */
     filhos: RecursoPermissao[];
-    colunas: typeof ACOES_BASE;
+    /** Todas as trilhas da tabela; `colunas` são as que a seção usa. */
+    acoes: { id: AcaoBase; nome: string }[];
+    colunas: { id: AcaoBase; nome: string }[];
     selecionadas: Set<string>;
     onSet: (chaves: string[], marcar: boolean) => void;
     preview: Preview | null;
@@ -243,17 +296,22 @@ interface LinhaRecursoProps {
     ultima: boolean;
 }
 
-function LinhaRecurso({ recurso, filhos, colunas, selecionadas, onSet, preview, onPreview, onPreviewEnd, ultima }: LinhaRecursoProps) {
+function LinhaRecurso({ recurso, filhos, acoes, colunas, selecionadas, onSet, preview, onPreview, onPreviewEnd, ultima }: LinhaRecursoProps) {
     return (
         <div
             className={cx("grid items-start transition duration-100 ease-linear hover:bg-primary_hover", !ultima && "border-b border-secondary")}
-            style={gridStyle(colunas.length)}
+            style={gridStyle(acoes.length)}
         >
             <div className={cx("flex min-w-0 flex-col gap-3 py-3.5 pr-4", recurso.nivel ? "pl-10" : "pl-5")}>
                 <span className={cx("text-sm", recurso.nivel ? "text-tertiary" : "font-medium text-secondary")}>{recurso.nome}</span>
             </div>
-            {colunas.map((acao) => {
-                const grupo = [recurso, ...filhos].filter((r) => r.base.includes(acao.id)).map((r) => chavePermissao(r.id, acao.id));
+            {acoes.map((acao) => {
+                if (!colunas.includes(acao)) return <div key={acao.id} aria-hidden="true" />;
+                // O pai só agrega os filhos nas colunas que ele próprio tem; sem isso, ganharia
+                // uma célula que apenas duplica a do sub-item.
+                const grupo = recurso.base.includes(acao.id)
+                    ? [recurso, ...filhos].filter((r) => r.base.includes(acao.id)).map((r) => chavePermissao(r.id, acao.id))
+                    : [];
                 const marcadas = grupo.filter((k) => selecionadas.has(k)).length;
                 const disponivel = grupo.length > 0;
                 const origem = `celula:${recurso.id}:${acao.id}`;

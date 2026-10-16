@@ -176,7 +176,7 @@ const ComboRow = ({ item, onRemove }: RowProps<ComboItemDetails>) => (
         <ul className="flex flex-col gap-2.5">
             {item.subItems.map((sub, i) => (
                 <li key={`${item.id}-sub-${i}`} className="flex items-start gap-2.5">
-                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-quaternary text-[10px] font-semibold text-white">
+                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-quaternary text-[10px] font-semibold text-base-white">
                         {i + 1}
                     </span>
                     <div className="flex min-w-0 flex-1 flex-col">

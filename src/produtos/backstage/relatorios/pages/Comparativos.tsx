@@ -1592,7 +1592,7 @@ const ComparativoChart = ({
               }}
             >
               <div className="flex w-max flex-col gap-1 rounded-lg bg-primary-solid px-3 py-2 shadow-lg">
-                <span className="text-sm font-semibold whitespace-nowrap text-white">
+                <span className="text-sm font-semibold whitespace-nowrap text-base-white">
                   {labelTempo(xAtivo, alignment)}
                 </span>
                 <ul className="flex flex-col gap-0.5">
@@ -1611,7 +1611,7 @@ const ComparativoChart = ({
                         <span className="text-tooltip-supporting-text">
                           {ev.curto}
                         </span>
-                        <span className="ml-auto pl-3 font-semibold text-white tabular-nums">
+                        <span className="ml-auto pl-3 font-semibold text-base-white tabular-nums">
                           {v == null
                             ? "sem venda"
                             : fmtMetric(Number(v), metric)}
@@ -1630,7 +1630,7 @@ const ComparativoChart = ({
                     onClick={() => andar(-1)}
                     disabled={idx === 0}
                     aria-label="Ponto anterior"
-                    className="flex size-6 items-center justify-center rounded text-white/60 transition duration-100 ease-linear hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex size-6 items-center justify-center rounded text-base-white/60 transition duration-100 ease-linear hover:bg-white/10 hover:text-base-white disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronLeft className="size-4" aria-hidden="true" />
                   </button>
@@ -1654,9 +1654,9 @@ const ComparativoChart = ({
                       }
                     }}
                     className={cx(
-                      "flex size-6 touch-none items-center justify-center rounded text-white/40 transition duration-100 ease-linear hover:bg-white/10 hover:text-white/70",
+                      "flex size-6 touch-none items-center justify-center rounded text-base-white/40 transition duration-100 ease-linear hover:bg-white/10 hover:text-base-white/70",
                       arrastando
-                        ? "cursor-grabbing text-white/70"
+                        ? "cursor-grabbing text-base-white/70"
                         : "cursor-grab",
                     )}
                   >
@@ -1667,7 +1667,7 @@ const ComparativoChart = ({
                     onClick={() => andar(1)}
                     disabled={idx === rows.length - 1}
                     aria-label="Próximo ponto"
-                    className="flex size-6 items-center justify-center rounded text-white/60 transition duration-100 ease-linear hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex size-6 items-center justify-center rounded text-base-white/60 transition duration-100 ease-linear hover:bg-white/10 hover:text-base-white disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronRight className="size-4" aria-hidden="true" />
                   </button>
@@ -1906,7 +1906,7 @@ const FaturamentoPorMes = ({
     const row = payload[0].payload;
     return (
       <div className="flex flex-col gap-1.5 rounded-lg bg-primary-solid px-3 py-2.5 shadow-lg">
-        <p className="text-sm font-semibold text-white">{String(label)}</p>
+        <p className="text-sm font-semibold text-base-white">{String(label)}</p>
         <ul className="flex flex-col gap-1">
           {events.map((ev) => {
             const v = row[ev.id];
@@ -1918,7 +1918,7 @@ const FaturamentoPorMes = ({
                   style={{ background: ev.cor }}
                 />
                 <span className="text-tooltip-supporting-text">{ev.curto}</span>
-                <span className="ml-auto pl-3 font-semibold text-white tabular-nums">
+                <span className="ml-auto pl-3 font-semibold text-base-white tabular-nums">
                   {/* Fora da janela e venda zerada são coisas diferentes. */}
                   {v == null
                     ? "fora da janela"
@@ -2380,7 +2380,7 @@ const PrecoEAmplitude = ({
 
     return (
       <div className="flex flex-col gap-1.5 rounded-lg bg-primary-solid px-3 py-2.5 shadow-lg">
-        <p className="text-sm font-semibold text-white">
+        <p className="text-sm font-semibold text-base-white">
           {labelTempo(x, alignment)}
         </p>
         <ul className="flex flex-col gap-1">
@@ -2398,7 +2398,7 @@ const PrecoEAmplitude = ({
                   {ev.curto}
                   {vigente ? ` · ${vigente.nome}` : ""}
                 </span>
-                <span className="ml-auto pl-3 font-semibold text-white tabular-nums">
+                <span className="ml-auto pl-3 font-semibold text-base-white tabular-nums">
                   {currencyFormatter.format(Number(entry!.value))}
                 </span>
               </li>

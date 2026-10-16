@@ -268,7 +268,7 @@ export function EditarGrupos() {
                                                         tooltip="Duplicar para outras sessões"
                                                         tooltipPlacement="bottom"
                                                         onClick={() => abrirCopia(sessao.id, g.id)}
-                                                        className="text-white! hover:text-white!"
+                                                        className="text-base-white! hover:text-base-white!"
                                                     />
                                                     <button
                                                         type="button"

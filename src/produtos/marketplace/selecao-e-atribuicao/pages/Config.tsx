@@ -12,12 +12,18 @@ import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
 import { MarketplaceLayout } from "../../components/MarketplaceLayout";
 import { Slideout } from "../components/Slideout";
-import type { ComboDinamico, ComboFixo, ComboFixoInclui, DataEvento, Ingresso, PerguntaEvento, Produto, TipoPergunta } from "../data/combos";
-import { DEFAULT_CONFIG, buildShortShareUrl, decodeConfig, encodeConfig, type EventConfig } from "../data/config";
+import type { Beneficio, ComboDinamico, ComboFixo, ComboFixoInclui, DataEvento, Ingresso, PerguntaEvento, Produto, TipoPergunta } from "../data/combos";
+import { DEFAULT_CONFIG, STORAGE_KEY, buildShortShareUrl, decodeConfig, encodeConfig, type EventConfig } from "../data/config";
+import { brl, faceBeneficio, precoComTaxa } from "../utils/preco";
 
-const STORAGE_KEY = "marketplace:lastConfig:v2";
 const uid = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : `id-${Math.round(performance.now())}`);
-const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const BENEFICIOS: { id: Beneficio; label: string }[] = [
+    { id: "inteira", label: "Inteira" },
+    { id: "meia-entrada", label: "Meia-entrada" },
+    { id: "promocional", label: "Promocional" },
+    { id: "cortesia", label: "Cortesia" },
+];
 
 const TIPOS: { id: TipoPergunta; label: string }[] = [
     { id: "texto", label: "Texto" },
@@ -70,6 +76,44 @@ export function Config() {
 
     const patch = (p: Partial<EventConfig>) => setCfg((c) => ({ ...c, ...p }));
     const itensVinculaveis = useMemo(() => [...cfg.ingressos, ...cfg.produtos].map((x) => ({ id: x.id, nome: x.nome })), [cfg.ingressos, cfg.produtos]);
+
+    /** Grupos distintos declarados nos ingressos. Enumerado, não campo livre: typo aqui vira quantitativo órfão. */
+    const gruposDeIngresso = useMemo(() => {
+        const nomes = new Set<string>();
+        for (const i of cfg.ingressos) {
+            for (const g of (i.grupo ?? "").split(",").map((x) => x.trim()).filter(Boolean)) nomes.add(g);
+        }
+        return Array.from(nomes);
+    }, [cfg.ingressos]);
+
+    /** Preview vivo da taxa com um par inteira/meia real do evento. */
+    const previewTaxa = useMemo(() => {
+        // Prefere uma inteira que tenha meia derivada: é o par que demonstra a proporcionalidade.
+        const candidatas = cfg.ingressos.filter((i) => i.beneficio !== "meia-entrada" && (i.preco ?? 0) > 0);
+        const inteira = candidatas.find((i) => cfg.ingressos.some((m) => m.beneficio === "meia-entrada" && m.baseId === i.id)) ?? candidatas[0];
+        if (!inteira) return "";
+        const faceInteira = inteira.preco ?? 0;
+        const p = precoComTaxa(faceInteira, cfg.taxaServico.aliquota);
+        const meia = cfg.ingressos.find((i) => i.beneficio === "meia-entrada" && i.baseId === inteira.id);
+        const partes = [`${inteira.grupo ? `${inteira.grupo} ` : ""}${inteira.nome || "Inteira"}: ${brl(p.face)} + ${brl(p.taxa)} = ${brl(p.total)}.`];
+        if (meia) {
+            const pm = precoComTaxa(faceBeneficio(faceInteira, meia.percentualBeneficio ?? 0.5), cfg.taxaServico.aliquota);
+            partes.push(`Meia: ${brl(pm.face)} + ${brl(pm.taxa)} = ${brl(pm.total)}.`);
+        }
+        return partes.join(" ");
+    }, [cfg.ingressos, cfg.taxaServico.aliquota]);
+
+    /** Lei 12.933/2013: a cota é apurada sobre o evento, não por grupo. */
+    const avisoCota = useMemo(() => {
+        const q = Object.values(cfg.quantitativoPorGrupo ?? {});
+        const ofertados = q.reduce((a, x) => a + x.ofertados, 0);
+        if (ofertados === 0) return "";
+        const meia = q.reduce((a, x) => a + x.ofertadosMeia, 0);
+        const pct = (meia / ofertados) * 100;
+        return pct < 40
+            ? `A cota de meia-entrada está em ${pct.toFixed(1).replace(".", ",")}% do total ofertado, abaixo dos 40% da Lei 12.933/2013.`
+            : "";
+    }, [cfg.quantitativoPorGrupo]);
 
     const [linkCurto, setLinkCurto] = useState("");
     const [gerando, setGerando] = useState(false);
@@ -151,7 +195,7 @@ export function Config() {
         const { tipo, index } = edicao;
         if (tipo === "ingresso" && cfg.ingressos[index]) {
             const it = cfg.ingressos[index];
-            return { title: "Editar ingresso", body: <IngressoFields value={it} onPatch={(p) => patch({ ingressos: upd(cfg.ingressos, index, p) })} /> };
+            return { title: "Editar ingresso", body: <IngressoFields value={it} ingressos={cfg.ingressos} aliquota={cfg.taxaServico.aliquota} onPatch={(p) => patch({ ingressos: upd(cfg.ingressos, index, p) })} /> };
         }
         if (tipo === "produto" && cfg.produtos[index]) {
             const it = cfg.produtos[index];
@@ -163,11 +207,11 @@ export function Config() {
         }
         if (tipo === "comboFixo" && cfg.combosFixos[index]) {
             const it = cfg.combosFixos[index];
-            return { title: "Editar combo fixo", body: <ComboFixoFields value={it} onPatch={(p) => patch({ combosFixos: upd(cfg.combosFixos, index, p) })} /> };
+            return { title: "Editar combo fixo", body: <ComboFixoFields value={it} aliquota={cfg.taxaServico.aliquota} onPatch={(p) => patch({ combosFixos: upd(cfg.combosFixos, index, p) })} /> };
         }
         if (tipo === "comboDinamico" && cfg.combosDinamicos[index]) {
             const it = cfg.combosDinamicos[index];
-            return { title: "Editar combo dinâmico", body: <ComboDinamicoFields value={it} datas={cfg.datas} ingressos={cfg.ingressos} produtos={cfg.produtos} onPatch={(p) => patch({ combosDinamicos: upd(cfg.combosDinamicos, index, p) })} /> };
+            return { title: "Editar combo dinâmico", body: <ComboDinamicoFields value={it} datas={cfg.datas} ingressos={cfg.ingressos} produtos={cfg.produtos} aliquota={cfg.taxaServico.aliquota} onPatch={(p) => patch({ combosDinamicos: upd(cfg.combosDinamicos, index, p) })} /> };
         }
         if (tipo === "pergunta" && cfg.perguntas[index]) {
             const it = cfg.perguntas[index];
@@ -213,6 +257,95 @@ export function Config() {
                                     </Button>
                                 )}
                             </div>
+                        </div>
+                    </Secao>
+
+                    {/* Taxa de serviço e quantitativo (Decreto 13.108/2026) */}
+                    <Secao titulo="Taxa de serviço e quantitativo">
+                        <p className="text-sm text-tertiary">
+                            Decreto nº 13.108/2026. A taxa é única e percentual: piso, teto ou valor fixo quebram a proporcionalidade exigida
+                            pelo art. 9º e encarecem a meia-entrada em termos relativos.
+                        </p>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <Input
+                                size="sm"
+                                label="Taxa de serviço (%)"
+                                type="number"
+                                value={String(Math.round(cfg.taxaServico.aliquota * 1000) / 10)}
+                                onChange={(v) => patch({ taxaServico: { ...cfg.taxaServico, aliquota: Math.max(0, Number(v) || 0) / 100 } })}
+                            />
+                            <Input
+                                size="sm"
+                                label="Nome exibido"
+                                value={cfg.taxaServico.nome}
+                                onChange={(v) => patch({ taxaServico: { ...cfg.taxaServico, nome: v } })}
+                            />
+                        </div>
+                        {previewTaxa && <p className="rounded-lg bg-secondary px-3 py-2 text-sm text-tertiary tabular-nums">{previewTaxa}</p>}
+                        <Input
+                            size="sm"
+                            label="O que a taxa remunera"
+                            value={cfg.taxaServico.descricao}
+                            onChange={(v) => patch({ taxaServico: { ...cfg.taxaServico, descricao: v } })}
+                        />
+                        <Input
+                            size="sm"
+                            label="Link dos critérios da taxa (art. 7º §3º)"
+                            placeholder="https://..."
+                            value={cfg.taxaServico.criteriosUrl ?? ""}
+                            onChange={(v) => patch({ taxaServico: { ...cfg.taxaServico, criteriosUrl: v || undefined } })}
+                        />
+
+                        <div className="flex flex-col gap-2 border-t border-secondary pt-3">
+                            <span className="text-sm font-medium text-secondary">Quantitativo por grupo (art. 11)</span>
+                            {gruposDeIngresso.length === 0 ? (
+                                <p className="text-sm text-tertiary">Defina o grupo dos ingressos para informar o quantitativo.</p>
+                            ) : (
+                                gruposDeIngresso.map((grupo) => {
+                                    const q = cfg.quantitativoPorGrupo?.[grupo] ?? { ofertados: 0, ofertadosMeia: 0 };
+                                    const setQ = (p: Partial<typeof q>) =>
+                                        patch({ quantitativoPorGrupo: { ...(cfg.quantitativoPorGrupo ?? {}), [grupo]: { ...q, ...p } } });
+                                    return (
+                                        <div key={grupo} className="flex flex-col gap-1.5">
+                                            <span className="text-sm text-secondary">{grupo}</span>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <Input
+                                                    size="sm"
+                                                    label="Disponibilizados"
+                                                    type="number"
+                                                    value={String(q.ofertados)}
+                                                    onChange={(v) => setQ({ ofertados: Math.max(0, Number(v) || 0) })}
+                                                />
+                                                <Input
+                                                    size="sm"
+                                                    label="Com meia-entrada"
+                                                    type="number"
+                                                    value={String(q.ofertadosMeia)}
+                                                    onChange={(v) => setQ({ ofertadosMeia: Math.max(0, Number(v) || 0) })}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                            {avisoCota && <p className="text-sm text-warning-primary">{avisoCota}</p>}
+                        </div>
+
+                        <div className="flex items-start justify-between gap-3 border-t border-secondary pt-3">
+                            <div className="flex min-w-0 flex-col">
+                                <span className="text-sm font-medium text-secondary">Evento esportivo</span>
+                                <span className="text-sm text-tertiary">
+                                    O decreto não alcança evento esportivo (art. 1º §2º), que segue a Lei 14.597/2023. O protótipo aplica o
+                                    regime mais estrito nos dois casos.
+                                </span>
+                            </div>
+                            <Toggle
+                                size="sm"
+                                className="mt-0.5 shrink-0"
+                                isSelected={cfg.categoria === "esportivo"}
+                                onChange={(on) => patch({ categoria: on ? "esportivo" : "cultural" })}
+                                aria-label="Evento esportivo"
+                            />
                         </div>
                     </Secao>
 
@@ -455,7 +588,24 @@ function PickIds({ options, selected, onToggle, vazio }: { options: { id: string
 /*  Formulários (dentro do slideout)                                  */
 /* ------------------------------------------------------------------ */
 
-function IngressoFields({ value, onPatch }: { value: Ingresso; onPatch: (p: Partial<Ingresso>) => void }) {
+function IngressoFields({
+    value,
+    ingressos,
+    aliquota,
+    onPatch,
+}: {
+    value: Ingresso;
+    ingressos: Ingresso[];
+    aliquota: number;
+    onPatch: (p: Partial<Ingresso>) => void;
+}) {
+    const ehMeia = value.beneficio === "meia-entrada";
+    const bases = ingressos.filter((i) => i.id !== value.id && i.beneficio !== "meia-entrada");
+    const faceBase = bases.find((i) => i.id === value.baseId)?.preco ?? 0;
+    // Derivada, nunca digitada: é o que garante a proporcionalidade do art. 9º.
+    const faceEfetiva = ehMeia ? faceBeneficio(faceBase, value.percentualBeneficio ?? 0.5) : (value.preco ?? 0);
+    const comTaxa = precoComTaxa(faceEfetiva, aliquota);
+
     return (
         <>
             <Input size="sm" label="Nome" value={value.nome} onChange={(v) => onPatch({ nome: v })} />
@@ -473,7 +623,74 @@ function IngressoFields({ value, onPatch }: { value: Ingresso; onPatch: (p: Part
             <RichTextEditor label="Descrição" value={value.descricao ?? ""} onChange={(html) => onPatch({ descricao: html || undefined })} />
             <Input size="sm" label="Link da imagem" placeholder="https://..." value={value.imagem ?? ""} onChange={(v) => onPatch({ imagem: v || undefined })} />
             {value.imagem && <img src={value.imagem} alt="" className="max-h-40 w-auto self-start rounded-lg object-cover ring-1 ring-border-secondary" />}
-            <Input size="sm" label="Preço (R$)" type="number" value={value.preco != null ? String(value.preco) : ""} onChange={(v) => onPatch({ preco: v === "" ? undefined : Number(v) || 0 })} />
+
+            <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-secondary">Tipo</span>
+                <div className="flex flex-wrap gap-2">
+                    {BENEFICIOS.map((b) => (
+                        <button
+                            key={b.id}
+                            type="button"
+                            onClick={() => onPatch({ beneficio: b.id, ...(b.id === "meia-entrada" ? {} : { baseId: undefined }) })}
+                            className={cx(
+                                "rounded-lg px-3 py-2 text-sm font-medium ring-1 transition duration-100 ease-linear",
+                                (value.beneficio ?? "inteira") === b.id
+                                    ? "bg-brand-primary text-primary ring-brand"
+                                    : "text-secondary ring-border-secondary hover:bg-primary_hover",
+                            )}
+                        >
+                            {b.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {ehMeia ? (
+                <>
+                    <div className="flex flex-col gap-1.5">
+                        <span className="text-sm font-medium text-secondary">Ingresso base</span>
+                        <select
+                            value={value.baseId ?? ""}
+                            onChange={(e) => onPatch({ baseId: e.target.value || undefined })}
+                            className="rounded-lg bg-primary px-3 py-2 text-sm text-primary ring-1 ring-border-primary outline-none focus:ring-2 focus:ring-brand"
+                        >
+                            <option value="">Selecione</option>
+                            {bases.map((i) => (
+                                <option key={i.id} value={i.id}>
+                                    {[i.grupo, i.nome].filter(Boolean).join(" ")} {i.preco != null ? `(${brl(i.preco)})` : ""}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <Input
+                        size="sm"
+                        label="Percentual do benefício (%)"
+                        type="number"
+                        hint="A face da meia é derivada da base, nunca digitada."
+                        value={String(Math.round((value.percentualBeneficio ?? 0.5) * 1000) / 10)}
+                        onChange={(v) => onPatch({ percentualBeneficio: Math.max(0, Number(v) || 0) / 100 })}
+                    />
+                    <Checkbox
+                        size="sm"
+                        label="Cota de meia-entrada esgotada"
+                        hint="A linha continua visível com o stepper travado. Sumir com ela é restrição artificiosa da oferta (art. 8º I)."
+                        isSelected={!!value.cotaEsgotada}
+                        onChange={(on) => onPatch({ cotaEsgotada: on })}
+                    />
+                </>
+            ) : (
+                <Input
+                    size="sm"
+                    label="Preço de face (R$)"
+                    type="number"
+                    value={value.preco != null ? String(value.preco) : ""}
+                    onChange={(v) => onPatch({ preco: v === "" ? undefined : Number(v) || 0 })}
+                />
+            )}
+
+            <p className="rounded-lg bg-secondary px-3 py-2 text-sm text-tertiary tabular-nums">
+                O comprador vê {brl(comTaxa.total)}, sendo {brl(comTaxa.face)} de face mais {brl(comTaxa.taxa)} de taxa.
+            </p>
         </>
     );
 }
@@ -692,15 +909,19 @@ function ItemArrastavel({ id, index, item, onRemover, controles }: { id: string;
     );
 }
 
-function ComboFixoFields({ value, onPatch }: { value: ComboFixo; onPatch: (p: Partial<ComboFixo>) => void }) {
+function ComboFixoFields({ value, aliquota, onPatch }: { value: ComboFixo; aliquota: number; onPatch: (p: Partial<ComboFixo>) => void }) {
+    const comTaxa = precoComTaxa(value.preco, aliquota);
     return (
         <>
             <Input size="sm" label="Nome da aba" placeholder="PASSAPORTE" value={value.tab} onChange={(v) => onPatch({ tab: v })} />
             <Input size="sm" label="Nome do combo" value={value.nome} onChange={(v) => onPatch({ nome: v })} />
             <div className="grid grid-cols-2 gap-2">
                 <Input size="sm" label="Lote" placeholder="LOTE 2" value={value.lote ?? ""} onChange={(v) => onPatch({ lote: v })} />
-                <Input size="sm" label="Preço (R$)" type="number" value={String(value.preco)} onChange={(v) => onPatch({ preco: Number(v) || 0 })} />
+                <Input size="sm" label="Preço de face (R$)" type="number" value={String(value.preco)} onChange={(v) => onPatch({ preco: Number(v) || 0 })} />
             </div>
+            <p className="rounded-lg bg-secondary px-3 py-2 text-sm text-tertiary tabular-nums">
+                O comprador vê {brl(comTaxa.total)}, sendo {brl(comTaxa.face)} de face mais {brl(comTaxa.taxa)} de taxa.
+            </p>
             <Input size="sm" label="Descrição" value={value.descricao ?? ""} onChange={(v) => onPatch({ descricao: v })} />
 
             <span className="text-sm font-medium text-tertiary">Ingressos inclusos (Detalhes)</span>
@@ -740,15 +961,17 @@ function ComboDinamicoFields({
     datas,
     ingressos,
     produtos,
+    aliquota,
     onPatch,
 }: {
     value: ComboDinamico;
     datas: DataEvento[];
     ingressos: Ingresso[];
     produtos: Produto[];
+    aliquota: number;
     onPatch: (p: Partial<ComboDinamico>) => void;
 }) {
-    const toggleArr = (campo: "obrigatorios" | "precoVisivel" | "ocultos", id: string) => {
+    const toggleArr = (campo: "obrigatorios" | "ocultos", id: string) => {
         const atual = value[campo] ?? [];
         onPatch({ [campo]: atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id] } as Partial<ComboDinamico>);
     };
@@ -782,19 +1005,19 @@ function ComboDinamicoFields({
             </div>
             <Input size="sm" label="Tags (separadas por vírgula)" value={value.tags.join(", ")} onChange={(v) => onPatch({ tags: v.split(",").map((s) => s.trim()).filter(Boolean) })} />
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[160px_1fr] sm:items-end">
-                <Input
-                    size="sm"
-                    label="Preço do combo (R$)"
-                    type="number"
-                    value={value.preco != null ? String(value.preco) : ""}
-                    onChange={(v) => onPatch({ preco: v === "" ? undefined : Number(v) || 0 })}
-                />
-                <label className="flex items-center gap-2 pb-2 text-sm text-tertiary">
-                    <Toggle size="sm" isSelected={!!value.exibirPreco} onChange={(on) => onPatch({ exibirPreco: on })} aria-label="Exibir preço na seleção" />
-                    Exibir preço no card de seleção
-                </label>
-            </div>
+            {/* O toggle "exibir preço" saiu: valor que entra no carrinho precisa estar
+                na tela antes de entrar (art. 7º §2º). O card sempre mostra o preço. */}
+            <Input
+                size="sm"
+                label="Preço de face do combo (R$)"
+                type="number"
+                value={value.preco != null ? String(value.preco) : ""}
+                onChange={(v) => onPatch({ preco: v === "" ? undefined : Number(v) || 0 })}
+            />
+            <p className="rounded-lg bg-secondary px-3 py-2 text-sm text-tertiary tabular-nums">
+                O comprador vê {brl(precoComTaxa(value.preco ?? 0, aliquota).total)}, sendo {brl(value.preco ?? 0)} de face mais{" "}
+                {brl(precoComTaxa(value.preco ?? 0, aliquota).taxa)} de taxa.
+            </p>
 
             <SeletorOrdenavel titulo="Datas (sessões) do combo" options={datasOpts} selected={value.datas} onChange={(ids) => onPatch({ datas: ids })} vazio="Cadastre datas primeiro." />
 
@@ -811,10 +1034,6 @@ function ComboDinamicoFields({
                                 <label className={cx("flex items-center gap-1.5 text-sm text-tertiary", oculto && "pointer-events-none opacity-40")}>
                                     <Checkbox size="sm" isSelected={value.obrigatorios.includes(id)} isDisabled={oculto} onChange={() => toggleArr("obrigatorios", id)} />
                                     Incluso
-                                </label>
-                                <label className={cx("flex items-center gap-1.5 text-sm text-tertiary", oculto && "pointer-events-none opacity-40")}>
-                                    <Checkbox size="sm" isSelected={value.precoVisivel.includes(id)} isDisabled={oculto} onChange={() => toggleArr("precoVisivel", id)} />
-                                    Mostrar preço
                                 </label>
                                 <label className="flex items-center gap-1.5 text-sm text-tertiary">
                                     <Checkbox size="sm" isSelected={oculto} onChange={() => toggleArr("ocultos", id)} />

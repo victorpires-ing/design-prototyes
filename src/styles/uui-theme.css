@@ -115,6 +115,8 @@
     --color-transparent: rgb(0 0 0 / 0);
 
     --color-white: rgb(255 255 255);
+    /* Colors/Base/white do Figma: branco nos dois modos, para texto sobre foto ou fundo escuro fixo. */
+    --color-base-white: var(--color-white);
     --color-black: rgb(0 0 0);
 
     /* These will be inverted in dark mode. */
@@ -659,7 +661,7 @@
     --color-border-error: var(--color-red-500);
     --color-border-error_subtle: var(--color-red-300);
     --color-border-brand: var(--color-neutral-700);
-    --color-border-brand_alt: var(--color-neutral-900);
+    --color-border-brand_alt: var(--color-neutral-700);
 
     /* FOREGROUND COLORS */
     --color-fg-secondary: var(--color-neutral-700);
@@ -691,7 +693,7 @@
     --color-bg-warning-secondary: var(--color-yellow-100);
     --color-bg-success-primary: var(--color-green-50);
     --color-bg-success-secondary: var(--color-green-100);
-    --color-bg-brand-solid: var(--color-brand-600);
+    --color-bg-brand-solid: var(--color-brand-950);
     --color-bg-secondary-solid: var(--color-neutral-600);
     --color-bg-error-solid: var(--color-red-600);
     --color-bg-warning-solid: var(--color-yellow-600);
@@ -699,14 +701,14 @@
     --color-bg-secondary_hover: var(--color-neutral-300);
     --color-bg-primary_hover: var(--color-neutral-100);
     --color-bg-active: var(--color-neutral-50);
-    --color-bg-brand-solid_hover: var(--color-brand-700);
+    --color-bg-brand-solid_hover: var(--color-brand-800);
     --color-bg-error-primary: var(--color-red-50);
     --color-bg-brand-secondary: var(--color-brand-100);
     --color-bg-secondary: var(--color-neutral-50);
     /* quaternary mais escuro que o tertiary (neutral-200) no modo claro */
     --color-bg-quaternary: var(--color-neutral-300);
     /* Fundo da aplicação: sempre um degrau atrás do bg-primary, que é a superfície. */
-    --color-bg-primary_alt: var(--color-neutral-50);
+    --color-bg-primary_alt: var(--color-neutral-100);
     --color-bg-brand-primary_alt: var(--color-brand-50);
     --color-bg-secondary_alt: var(--color-neutral-200);
     --color-bg-overlay: var(--color-neutral-950);
@@ -716,8 +718,8 @@
     --color-bg-error-solid_hover: var(--color-red-700);
 
     /* COMPONENT COLORS */
-    --color-app-store-badge-border: 166 166 166 1;
-    --color-avatar-styles-bg-neutral: 224 224 224 1;
+    --color-app-store-badge-border: rgb(166 166 166);
+    --color-avatar-styles-bg-neutral: rgb(224 224 224);
     --color-featured-icon-light-fg-brand: var(--color-brand-600);
     --color-featured-icon-light-fg-error: var(--color-red-600);
     --color-featured-icon-light-fg-gray: var(--color-neutral-500);
@@ -772,7 +774,8 @@
     --background-color-border-brand_alt: var(--color-border-brand_alt);
 
     /* TEXT PROPERTY COLORS */
-    --color-text-white: var(--color-white);
+    /* text-white segue o token semântico: no escuro do AFTER DS ele vira preto (texto sobre bg-brand-solid branco). */
+    --text-color-white: var(--color-text-white);
     --text-color-primary: var(--color-text-primary);
     --text-color-secondary: var(--color-text-secondary);
     --text-color-secondary_hover: var(--color-text-secondary_hover);
@@ -838,6 +841,9 @@
     /* DARK MODE VARIABLES */
 
     .dark-mode {
+        /* Tokens que só mudam no escuro, conforme o Figma (1. Color modes). */
+        --color-app-store-badge-border: var(--color-white);
+
         --color-alpha-white: rgb(12 14 18);
         --color-alpha-black: rgb(255 255 255);
 
@@ -997,7 +1003,7 @@
         --color-text-error-primary: var(--color-red-400);
         --color-text-warning-primary: var(--color-yellow-400);
         --color-text-success-primary: var(--color-green-400);
-        --color-text-white: var(--color-white);
+        --color-text-white: var(--color-black);
         --color-text-secondary: var(--color-neutral-300);
         --color-text-secondary_hover: var(--color-neutral-200);
         --color-text-tertiary_hover: var(--color-neutral-300);
@@ -1028,14 +1034,14 @@
         --color-fg-secondary: var(--color-neutral-300);
         --color-fg-warning-primary: var(--color-yellow-500);
         --color-fg-success-primary: var(--color-green-500);
-        --color-fg-white: var(--color-white);
+        --color-fg-white: var(--color-neutral-900);
         --color-fg-success-secondary: var(--color-green-400);
         --color-fg-secondary_hover: var(--color-neutral-200);
         --color-fg-primary: var(--color-white);
         --color-fg-brand-secondary: var(--color-brand-500);
         --color-fg-brand-primary: var(--color-brand-500);
-        --color-fg-quaternary: var(--color-neutral-600);
-        --color-fg-quaternary_hover: var(--color-neutral-500);
+        --color-fg-quaternary: var(--color-neutral-500);
+        --color-fg-quaternary_hover: var(--color-neutral-400);
         --color-fg-error-primary: var(--color-red-500);
         --color-fg-warning-secondary: var(--color-yellow-400);
         --color-fg-error-secondary: var(--color-red-400);
@@ -1053,31 +1059,31 @@
         --color-bg-warning-secondary: var(--color-yellow-600);
         --color-bg-success-primary: var(--color-green-950);
         --color-bg-success-secondary: var(--color-green-600);
-        --color-bg-brand-solid: var(--color-brand-600);
+        --color-bg-brand-solid: var(--color-brand-50);
         --color-bg-secondary-solid: var(--color-neutral-600);
         --color-bg-error-solid: var(--color-red-600);
         --color-bg-warning-solid: var(--color-yellow-600);
         --color-bg-success-solid: var(--color-green-600);
         --color-bg-secondary_hover: var(--color-neutral-600);
-        --color-bg-primary_hover: var(--color-neutral-800);
+        --color-bg-primary_hover: var(--color-neutral-700);
         --color-bg-active: var(--color-neutral-800);
-        --color-bg-brand-solid_hover: var(--color-brand-500);
+        --color-bg-brand-solid_hover: var(--color-brand-200);
         --color-bg-error-primary: var(--color-red-950);
         --color-bg-brand-secondary: var(--color-brand-600);
         --color-bg-secondary: var(--color-neutral-800);
         /* quaternary mais claro que o tertiary (neutral-600) no modo escuro */
-        --color-bg-quaternary: var(--color-neutral-500);
+        --color-bg-quaternary: var(--color-neutral-700);
         --color-bg-primary_alt: var(--color-neutral-950);
         --color-bg-brand-primary_alt: var(--color-bg-secondary);
-        --color-bg-secondary_alt: var(--color-neutral-700);
+        --color-bg-secondary_alt: var(--color-neutral-800);
         --color-bg-overlay: var(--color-neutral-800);
         --color-bg-brand-section: var(--color-bg-secondary);
         --color-bg-brand-section_subtle: var(--color-bg-primary);
-        --color-bg-primary-solid: var(--color-bg-secondary);
+        --color-bg-primary-solid: var(--color-fg-primary);
         --color-bg-error-solid_hover: var(--color-red-500);
 
         --color-app-store-badg-border: var(--color-white);
-        --color-avatar-styles-bg-neutral: 224 224 224 1;
+        --color-avatar-styles-bg-neutral: rgb(224 224 224);
         --color-featured-icon-light-fg-brand: var(--color-brand-200);
         --color-featured-icon-light-fg-error: var(--color-red-200);
         --color-featured-icon-light-fg-gray: var(--color-neutral-200);
@@ -1095,7 +1101,7 @@
         --color-toggle-border: var(--color-transparent);
         --color-toggle-slim-border_pressed-hover: var(--color-transparent);
         --color-toggle-slim-border_pressed: var(--color-transparent);
-        --color-tooltip-supporting-text: var(--color-neutral-300);
+        --color-tooltip-supporting-text: var(--color-neutral-500);
 
         /* BACKGROUND PROPERTY COLORS */
         --background-color-primary: var(--color-bg-primary);

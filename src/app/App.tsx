@@ -155,11 +155,14 @@ import { LandingPagesMenu } from '../produtos/landing-pages/menu/pages/LandingPa
 import { Inscricao as TicketSportsInscricao } from '../produtos/ticketsports/inscricao/pages/Inscricao';
 import { SaoSilvestre } from '../produtos/landing-pages/sao-silvestre/pages/SaoSilvestre';
 import { LoungePremiumBahia } from '../produtos/landing-pages/lounge-premium-bahia/pages/LoungePremiumBahia';
+import { SportsWeek } from '../produtos/landing-pages/sports-week/pages/SportsWeek';
 import { SolicitacaoVagas } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoVagas';
 import { SolicitacaoBeneficioPcd } from '../produtos/landing-pages/sao-silvestre/pages/SolicitacaoBeneficioPcd';
 import { Carteira as CarteiraWeb } from '../produtos/carteira-web/pages/Carteira';
 import { TransferirInscricao as CarteiraWebTransferir } from '../produtos/carteira-web/pages/TransferirInscricao';
 import { TrocaOnboardingWeb as CarteiraWebTrocaOnboarding } from '../produtos/carteira-web/pages/TrocaOnboardingWeb';
+import { Home as RevendaHome } from '../produtos/revenda/home/pages/Home';
+import { Evento as RevendaEvento } from '../produtos/revenda/evento/pages/Evento';
 import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/SolicitacoesInbox';
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
 import { Pedidos as PedidosPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/Pedidos';
@@ -365,6 +368,9 @@ export default function App() {
         <Route path="/testes/:id/resultados" element={<UsabilidadeGate><TesteResultados /></UsabilidadeGate>} />
         <Route path="/t/:id" element={<EntradaTeste />} />
         <Route path="/landing-pages" element={<LandingPagesMenu />} />
+        {/* Sub-roteador próprio: as três páginas da campanha trocam entre si com
+            transição, sem mexer no <Routes> plano do app. */}
+        <Route path="/landing-pages/sports-week/*" element={<SportsWeek />} />
         {/* Link separado — não listado na ProductSelection (home) */}
         <Route path="/ticketsports/inscricao" element={<TicketSportsInscricao />} />
         <Route path="/landing-pages/lounge-premium-bahia" element={<LoungePremiumBahia />} />
@@ -374,6 +380,8 @@ export default function App() {
         <Route path="/carteira-web" element={<CarteiraWeb />} />
         <Route path="/carteira-web/transferir" element={<CarteiraWebTransferir />} />
         <Route path="/carteira-web/troca-onboarding" element={<CarteiraWebTrocaOnboarding />} />
+        <Route path="/revenda" element={<RevendaHome />} />
+        <Route path="/revenda/:slug" element={<RevendaEvento />} />
         <Route path="/aprovacoes/solicitacoes" element={<SolicitacoesInbox />} />
         <Route path="/backstage/publico" element={<Publico />} />
         <Route path="/backstage/publico/formularios" element={<FormulariosParticipacao />} />

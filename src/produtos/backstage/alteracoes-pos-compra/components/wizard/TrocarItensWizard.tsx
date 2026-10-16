@@ -495,45 +495,14 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
 
                     {selecaoIgual && <Aviso titulo="A seleção é igual ao que já está no pedido" descricao="Escolha pelo menos um item diferente para a troca fazer sentido." />}
 
-                    {totalSaem > 1 && totalEntram > 0 && (
-                        /* Os escolhidos ficam no topo, com o seletor à mão. Tirar uma unidade exigia
-                           reencontrar a linha no meio das datas, e com a conta fechada o catálogo
-                           inteiro para de aceitar toque: sem este bloco não havia saída à vista. */
-                        <div className="overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-                            <p className="border-b border-secondary px-4 py-3 text-sm font-semibold text-primary">Escolhidos</p>
-                            <ul className="flex flex-col divide-y divide-border-secondary">
-                                {itensQueEntram.map(([itemId, quantidade]) => {
-                                    const item = getItem(itemId);
-                                    if (!item) return null;
-                                    const detalhe = detalheDoItem(item);
-                                    /* Abaixo de md o seletor desce: lado a lado ele comia 120px dos 326px e o nome
-                                       do item ficava numa fita de quinze caracteres. */
-                                    return (
-                                        <li key={itemId} className="flex gap-3 px-4 py-3 max-md:flex-col md:items-center md:justify-between">
-                                            <span className="min-w-0 flex-1">
-                                                <span className="block truncate text-sm font-semibold text-primary">
-                                                    {quantidade}x {item.nome}
-                                                </span>
-                                                {detalhe && <span className="block truncate text-sm text-tertiary">{detalhe}</span>}
-                                            </span>
-                                            <Stepper
-                                                valor={quantidade}
-                                                maximo={tetoDoItem(item, quantidade, restante, totalSaem, saindoPorItem.get(itemId) ?? 0)}
-                                                rotulo={item.nome}
-                                                onChange={(valor) => setEntram((atual) => ({ ...atual, [itemId]: valor }))}
-                                            />
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </div>
-                    )}
-
                     {totalSaem > 1 && restante === 0 && (
                         /* Com a conta fechada o catálogo para de responder. Antes o toque morria em
                            silêncio e o atendente tocava de novo, achando que a tela travou. */
                         <Regra>
-                            Limite atingido. {unicoEscolhido ? `Tire 1 de ${unicoEscolhido.nome}` : "Tire um dos escolhidos acima"} para escolher outro item.
+                            {/* Sem "os escolhidos acima": o bloco que ficava ali saiu, e a frase
+                                apontava para o vazio. Quem tem quantidade mostra o stepper na
+                                própria linha do catálogo. */}
+                            Limite atingido. {unicoEscolhido ? `Tire 1 de ${unicoEscolhido.nome}` : "Tire 1 de um item já escolhido"} para escolher outro item.
                         </Regra>
                     )}
 

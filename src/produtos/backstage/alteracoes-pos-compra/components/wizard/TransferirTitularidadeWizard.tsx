@@ -9,8 +9,6 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { cx } from "@/utils/cx";
 import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, SetaParaBaixo, iniciaisDe, formatarCPF, mascararEmail } from "../pos-compra-ui";
 import {
-    OPERADOR_ATUAL,
-    TIPO_OPERACAO_LABEL,
     buscarContas,
     calcularTrocaTitularidade,
     criarSolicitacao,
@@ -19,14 +17,9 @@ import {
     getConta,
     getFormulario,
     getItem,
-    getRascunho,
     motivoValido,
-    novoRascunhoId,
-    removerRascunho,
-    salvarRascunho,
     titularDaLinha,
     usePerguntas,
-    useRascunhos,
     uuidCurto,
     validarNovoTitular,
     type Conta,
@@ -34,10 +27,9 @@ import {
     type Pedido,
     type PedidoItem,
     type Pergunta,
-    type Rascunho,
 } from "../../data/pos-compra-store";
 import { WizardShell } from "./WizardShell";
-import { ResumoUnidades, SeletorUnidades, avisarRascunhoSalvo, detalheDoItem } from "./seletor-unidades";
+import { ResumoUnidades, SeletorUnidades, detalheDoItem } from "./seletor-unidades";
 
 /*
   Sem etapa de formulário: a titularidade NÃO altera respostas. O novo possuidor
@@ -81,7 +73,6 @@ const areaVisivel = (no: HTMLElement) => {
 interface TransferirTitularidadeWizardProps {
     pedido: Pedido;
     linhasIniciais: string[];
-    rascunhoInicial?: Rascunho;
     onFechar: () => void;
     /** Cobrança criada: o pedido rola até o cartão novo. */
     onEnviado: (solicitacaoId: string) => void;
@@ -116,17 +107,9 @@ const CartaoDestinatario = ({ conta, onAlterar }: { conta: Conta; onAlterar: () 
     </div>
 );
 
-export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoInicial, onFechar, onEnviado }: TransferirTitularidadeWizardProps) {
+export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar, onEnviado }: TransferirTitularidadeWizardProps) {
     const perguntas = usePerguntas();
-    const rascunhos = useRascunhos(pedido.id);
-    const rascunhoId = useState(() => rascunhoInicial?.id ?? novoRascunhoId())[0];
-
-    /* Retomar de verdade: destinatário, busca, respostas e motivo voltam como estavam. Antes a
-       retomada restaurava só a seleção e a etapa, e as etapas seguintes abriam em branco. */
-    const contaInicial = getConta(rascunhoInicial?.destinatarioId ?? Object.values(rascunhoInicial?.titularPorLinha ?? {})[0] ?? "");
     const linhasDisponiveis = pedido.itens.filter((l) => disponivelPara(pedido, l, "transferir"));
-    const pedidas = rascunhoInicial?.linhasSelecionadas ?? linhasIniciais;
-    const perdidas = rascunhoInicial ? pedidas.filter((id) => !linhasDisponiveis.some((l) => l.id === id)).length : 0;
 
     /* Sempre pela porta da frente. Antes, vir do kebab de uma linha pulava para a etapa 2 porque
        o item já era conhecido; com o destinatário primeiro, a unidade escolhida só aparece
@@ -139,10 +122,10 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
     const timerBusca = useRef<number | null>(null);
     const [encaixe, setEncaixe] = useState({ altura: ALTURA_SUGESTOES, acima: false });
     const [focado, setFocado] = useState(0);
-    const [busca, setBusca] = useState(rascunhoInicial?.busca ?? contaInicial?.nome ?? "");
-    const [motivo, setMotivo] = useState<Motivo>(rascunhoInicial?.motivo ?? MOTIVO_INICIAL);
-    const [selecionada, setSelecionada] = useState<Conta | null>(contaInicial ?? null);
-    const [selecao, setSelecao] = useState<Record<string, boolean>>(() => Object.fromEntries(pedidas.map((id) => [id, true])));
+    const [busca, setBusca] = useState("");
+    const [motivo, setMotivo] = useState<Motivo>(MOTIVO_INICIAL);
+    const [selecionada, setSelecionada] = useState<Conta | null>(null);
+    const [selecao, setSelecao] = useState<Record<string, boolean>>(() => Object.fromEntries(linhasIniciais.map((id) => [id, true])));
     const [aberta, setAberta] = useState<string | null>(null);
     const destino = selecionada?.email ?? "";
 
@@ -150,7 +133,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
     const calculo = calcularTrocaTitularidade(linhas.length);
     const titularAtual = linhas[0] ? titularDaLinha(pedido, linhas[0]) : undefined;
     const comprador = getConta(pedido.compradorId);
-    const emOutroRascunho = rascunhos.find((r) => r.id !== rascunhoId && r.linhasSelecionadas.some((id) => selecao[id]));
 
 
     /* ------------------------------------------------------------------ */
@@ -271,54 +253,22 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
         }
     };
 
-    useEffect(() => {
-        if (!rascunhoInicial) return;
-        const alvo = etapas.indexOf(rascunhoInicial.etapa as Etapa);
-        if (alvo >= 0) setIndice(alvo);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     const podeAvancar =
         etapa === "destinatario"
             ? Boolean(selecionada)
             : etapa === "itens"
               ? linhas.length > 0 && bloqueiosPorLinha.length === 0
-              : /* A revisão também exige unidade: dá para chegar aqui com a seleção vazia, por
-                    rascunho retomado ou porque outra operação levou as unidades no meio do
-                    caminho, e sem isso o envio da cobrança liberava com zero unidades. */
+              : /* A revisão também exige unidade: outra operação pode levar as unidades no meio
+                    do caminho, e sem isso o envio da cobrança liberava com zero unidades. */
                 Boolean(selecionada) && linhas.length > 0 && motivoValido(motivo);
 
     const rotuloAvancar = etapa === "destinatario" ? "Escolher itens" : "Revisar transferência";
 
-    const salvarProgresso = (proximaEtapa: string, destinatario: Conta | null = selecionada) =>
-        salvarRascunho({
-            id: rascunhoId,
-            pedidoId: pedido.id,
-            tipo: "troca-titularidade",
-            etapa: proximaEtapa,
-            linhasSelecionadas: linhas.map((l) => l.id),
-            titularPorLinha: destinatario ? Object.fromEntries(linhas.map((l) => [l.id, destinatario.id])) : undefined,
-            destinatarioId: destinatario?.id,
-            motivo,
-            busca,
-            operador: OPERADOR_ATUAL,
-        });
+    /* Fechar sai do fluxo. Não há rascunho: a solicitação, com a cobrança, é a primeira coisa
+       que o pedido registra, como nas três EFs. */
+    const fechar = () => onFechar();
 
-    /* Fechar nunca perde trabalho: se já havia algo além da unidade escolhida, guarda o rascunho
-       e avisa, com "Descartar". Abrir e fechar sem fazer nada não deixa rastro. */
-    const fechar = () => {
-        const fezAlgo = Boolean(rascunhoInicial || selecionada || termo || motivo.nota.trim() || motivo.chamado.trim());
-        if (fezAlgo && (linhas.length > 0 || selecionada)) {
-            salvarProgresso(etapa);
-            avisarRascunhoSalvo(getRascunho(rascunhoId));
-        }
-        onFechar();
-    };
-
-    const avancar = () => {
-        salvarProgresso(etapas[Math.min(indice + 1, etapas.length - 1)]);
-        setIndice((i) => i + 1);
-    };
+    const avancar = () => setIndice((i) => i + 1);
     const voltar = () => (indice === 0 ? fechar() : setIndice((i) => i - 1));
     const incluir = (ids: string[]) => setSelecao((atual) => ({ ...atual, ...Object.fromEntries(ids.map((id) => [id, true])) }));
 
@@ -329,7 +279,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
     const escolherDestinatario = (conta: Conta) => {
         setSelecionada(conta);
         setSugerindo(false);
-        salvarProgresso(etapas[Math.min(indice + 1, etapas.length - 1)], conta);
         setIndice((i) => i + 1);
     };
 
@@ -366,7 +315,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
             return;
         }
 
-        removerRascunho(rascunhoId);
         toast.success(`Cobrança de transferência enviada para ${destino}.`);
         onEnviado(id);
     };
@@ -390,16 +338,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
             onConfirmar={confirmar}
         >
             <div className={cx("flex w-full flex-col gap-5", colunaEstreita && "items-center")}>
-                {perdidas > 0 && (
-                    <div className="w-full">
-                        <Aviso tom="warning" titulo={perdidas === 1 ? "1 unidade saiu desta transferência" : `${perdidas} unidades saíram desta transferência`} descricao="Elas já estão em outra alteração ou com outro titular." />
-                    </div>
-                )}
-                {emOutroRascunho && (
-                    <div className="w-full">
-                        <Aviso tom="warning" titulo={`Unidade também está num rascunho de ${TIPO_OPERACAO_LABEL[emOutroRascunho.tipo].toLowerCase()}`} descricao={`Não enviado, de ${emOutroRascunho.operador}. Rascunho não trava a unidade: quem enviar primeiro vale.`} />
-                    </div>
-                )}
 
                 {etapa === "itens" && selecionada && (
                     <div className="flex w-full flex-col gap-4">

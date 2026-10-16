@@ -10,13 +10,12 @@ import { EtapaCompacta } from "../pos-compra-ui";
 /**
  * Casca compartilhada dos três fluxos de alteração (troca, transferência, formulário).
  *
- * É uma TELA, não um modal, como na bilheteria: o fluxo tem rota própria, a pessoa pode recarregar
- * a página sem perder o trabalho e o link volta para onde parou. Enquanto era overlay, o rascunho
- * existia mas não havia endereço que levasse de volta a ele. O fundo vem do BackstageLayout, que
+ * É uma TELA, não um modal, como na bilheteria: o fluxo tem rota própria, então recarregar não
+ * perde o endereço e o link leva um colega ao mesmo lugar. O fundo vem do BackstageLayout, que
  * já é `bg-primary_alt`.
  *
- * Voltar tem um comportamento só: o fluxo decide se guarda um rascunho (só quando já há algo feito
- * além da unidade escolhida) e então navega de volta ao pedido.
+ * Voltar tem um comportamento só: uma etapa para trás, e para fora do fluxo quando já está na
+ * primeira.
  */
 export function WizardShell({
     onClose,

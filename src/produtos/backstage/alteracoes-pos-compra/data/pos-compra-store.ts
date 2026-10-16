@@ -283,38 +283,6 @@ export interface Solicitacao {
     reservas: Array<{ tipo: "item"; itemId: string } | { tipo: "resposta"; perguntaId: string; valor: string }>;
 }
 
-export type TipoRascunho = "troca-item" | "troca-titularidade";
-
-/**
- * Uma operação em montagem, ainda sem cobrança gerada — não reserva estoque nem trava linha.
- * Vive no store (não em local/sessionStorage) para sobreviver a F5, fechar a aba, ou ser
- * retomada por qualquer operador que reabrir o pedido depois, inclusive dias depois.
- */
-export interface Rascunho {
-    id: string;
-    pedidoId: string;
-    tipo: TipoRascunho;
-    /** Etapa em que o operador parou, para o wizard retomar exatamente ali. */
-    etapa: string;
-    linhasSelecionadas: string[];
-    /** Troca: item de destino escolhido por linha. */
-    destinoPorLinha?: Record<string, string>;
-    /** Transferência: novo titular escolhido por linha. */
-    titularPorLinha?: Record<string, string>;
-    /** Transferência: o destinatário escolhido, independente de haver linha marcada. Com o
-     *  destinatário vindo antes dos itens, existe um rascunho legítimo de conta escolhida e
-     *  nenhuma unidade, e `titularPorLinha` (indexado por linha) não tem onde guardá-lo. */
-    destinatarioId?: string;
-    respostasPorLinha?: Record<string, Record<string, string>>;
-    motivo?: Motivo;
-    /** Texto da busca de destinatário, para a retomada não abrir em branco. */
-    busca?: string;
-    atualizadoEm: number;
-    atualizadoEmLabel: string;
-    /** Último operador a tocar o rascunho — alimenta o indicador leve de concorrência. */
-    operador: string;
-}
-
 export interface Pedido {
     /** Identificador do pedido: UUID, como no sistema. Também é o id da rota. */
     id: string;
@@ -1265,14 +1233,12 @@ interface Estado {
     pedidos: Pedido[];
     catalogo: CatalogoItem[];
     perguntas: Pergunta[];
-    rascunhos: Rascunho[];
 }
 
 let estado: Estado = {
     pedidos: PEDIDOS_INICIAIS.map((pedido) => ({ ...pedido, baseStatus: pedido.status, solicitacoes: [] })),
     catalogo: CATALOGO,
     perguntas: PERGUNTAS,
-    rascunhos: [],
 };
 
 const listeners = new Set<() => void>();
@@ -2176,30 +2142,3 @@ export const cancelarSolicitacao = (pedidoId: string, solicitacaoId: string) =>
 /** Volta o pedido de falha ou expirado para o estado operável. */
 export const retomarPedido = (pedidoId: string) =>
     atualizarPedido(pedidoId, (p) => comStatus({ ...p, baseStatus: statusBase(p) }));
-
-/* ------------------------------------------------------------------ */
-/*  Rascunhos: operação em montagem, sem cobrança gerada ainda         */
-/* ------------------------------------------------------------------ */
-
-/** Rascunhos do pedido, do mais recente para o mais antigo. */
-export const useRascunhos = (pedidoId: string) => {
-    const todos = useSyncExternalStore(subscribe, () => estado.rascunhos);
-    return todos.filter((r) => r.pedidoId === pedidoId).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
-};
-
-export const getRascunho = (id: string) => estado.rascunhos.find((r) => r.id === id);
-
-export const novoRascunhoId = () => novoId("rasc");
-
-/** Grava (cria ou atualiza) um rascunho: ao avançar uma etapa e ao fechar o overlay. */
-export const salvarRascunho = (rascunho: Omit<Rascunho, "atualizadoEm" | "atualizadoEmLabel">) =>
-    setEstado((atual) => ({
-        ...atual,
-        rascunhos: [...atual.rascunhos.filter((r) => r.id !== rascunho.id), { ...rascunho, atualizadoEm: Date.now(), atualizadoEmLabel: agoraLabel() }],
-    }));
-
-/** Remove o rascunho: ao enviar a cobrança (ele vira Solicitacao) ou ao descartar deliberadamente. */
-export const removerRascunho = (id: string) => setEstado((atual) => ({ ...atual, rascunhos: atual.rascunhos.filter((r) => r.id !== id) }));
-
-/** Desfaz um descarte: devolve o rascunho exatamente como estava. */
-export const restaurarRascunho = (rascunho: Rascunho) => setEstado((atual) => ({ ...atual, rascunhos: [...atual.rascunhos.filter((r) => r.id !== rascunho.id), rascunho] }));

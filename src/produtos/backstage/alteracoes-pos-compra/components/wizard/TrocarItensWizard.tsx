@@ -12,10 +12,8 @@ import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinan
 import { AbasCarrossel, ChipLegenda, type AbaItem } from "../abas-carrossel";
 import { EditorResposta } from "../respostas-ui";
 import {
-    OPERADOR_ATUAL,
     PRAZO_REAL_LABEL,
     SESSOES,
-    TIPO_OPERACAO_LABEL,
     calcularTrocaItens,
     criarSolicitacao,
     disponivelPara,
@@ -23,16 +21,11 @@ import {
     getConta,
     getFormulario,
     getItem,
-    getRascunho,
     motivoValido,
-    novoRascunhoId,
     parearTroca,
-    removerRascunho,
-    salvarRascunho,
     sessaoLabel,
     useCatalogo,
     usePerguntas,
-    useRascunhos,
     uuidCurto,
     validarTrocaItem,
     type CatalogoItem,
@@ -41,10 +34,9 @@ import {
     type Pedido,
     type PedidoItem,
     type Pergunta,
-    type Rascunho,
 } from "../../data/pos-compra-store";
 import { WizardShell } from "./WizardShell";
-import { SeletorUnidades, avisarRascunhoSalvo, detalheDoItem, identidadeDaLinha } from "./seletor-unidades";
+import { SeletorUnidades, detalheDoItem, identidadeDaLinha } from "./seletor-unidades";
 
 type Etapa = "saem" | "entram" | "formularios" | "revisao";
 
@@ -78,40 +70,27 @@ const interromper = (event: MouseEvent) => event.stopPropagation();
 interface TrocarItensWizardProps {
     pedido: Pedido;
     linhasIniciais: string[];
-    /** Retomando um rascunho salvo: chega com a seleção, os destinos, as respostas e o motivo. */
-    rascunhoInicial?: Rascunho;
     onFechar: () => void;
     /** Cobrança criada: o pedido rola até o cartão novo. */
     onEnviado: (solicitacaoId: string) => void;
 }
 
-export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onFechar, onEnviado }: TrocarItensWizardProps) {
+export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado }: TrocarItensWizardProps) {
     const catalogo = useCatalogo();
     const perguntas = usePerguntas();
-    const rascunhos = useRascunhos(pedido.id);
-    const rascunhoId = useState(() => rascunhoInicial?.id ?? novoRascunhoId())[0];
-
     const linhasDisponiveis = pedido.itens.filter((l) => disponivelPara(pedido, l, "trocar"));
-    const pedidas = rascunhoInicial?.linhasSelecionadas ?? linhasIniciais;
-    const perdidas = rascunhoInicial ? pedidas.filter((id) => !linhasDisponiveis.some((l) => l.id === id)).length : 0;
 
     const [indice, setIndice] = useState(() => (linhasDisponiveis.some((l) => linhasIniciais.includes(l.id)) ? 1 : 0));
     const [termo, setTermo] = useState("");
     const [aba, setAba] = useState("");
     const [tipo, setTipo] = useState<TipoItem>("ingresso");
-    const [motivo, setMotivo] = useState<Motivo>(rascunhoInicial?.motivo ?? MOTIVO_INICIAL);
+    const [motivo, setMotivo] = useState<Motivo>(MOTIVO_INICIAL);
     const [aceitouSobra, setAceitouSobra] = useState(false);
-    const [saem, setSaem] = useState<Record<string, boolean>>(() => Object.fromEntries(pedidas.map((id) => [id, true])));
-    const [entram, setEntram] = useState<Record<string, number>>(() => {
-        const contagem: Record<string, number> = {};
-        Object.values(rascunhoInicial?.destinoPorLinha ?? {}).forEach((itemId) => {
-            contagem[itemId] = (contagem[itemId] ?? 0) + 1;
-        });
-        return contagem;
-    });
+    const [saem, setSaem] = useState<Record<string, boolean>>(() => Object.fromEntries(linhasIniciais.map((id) => [id, true])));
+    const [entram, setEntram] = useState<Record<string, number>>({});
     /* Respostas por unidade, não por item: duas pessoas trocando para o mesmo item continuam
        com as próprias respostas. */
-    const [respostasEntram, setRespostasEntram] = useState<Record<string, Record<string, string>>>(rascunhoInicial?.respostasPorLinha ?? {});
+    const [respostasEntram, setRespostasEntram] = useState<Record<string, Record<string, string>>>({});
     const comprador = getConta(pedido.compradorId);
     /* A cobrança da troca vai para o e-mail do comprador do pedido. */
     const destino = comprador?.email ?? "";
@@ -122,7 +101,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
 
     const linhasSaem = linhasDisponiveis.filter((l) => saem[l.id]);
     const totalSaem = linhasSaem.length;
-    const emOutroRascunho = rascunhos.find((r) => r.id !== rascunhoId && r.linhasSelecionadas.some((id) => saem[id]));
 
     /* ------------------------------------------------------------------ */
     /*  O que entra                                                        */
@@ -237,13 +215,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
     const etapas: Etapa[] = ["saem", "entram", ...(comFormularios ? (["formularios"] as Etapa[]) : []), "revisao"];
     const etapa = etapas[Math.min(indice, etapas.length - 1)];
 
-    useEffect(() => {
-        if (!rascunhoInicial) return;
-        const alvo = etapas.indexOf(rascunhoInicial.etapa as Etapa);
-        if (alvo >= 0) setIndice(alvo);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     const podeAvancar =
         etapa === "saem"
             ? totalSaem > 0
@@ -255,34 +226,12 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
 
     const rotuloAvancar = etapa === "saem" ? "Escolher os novos itens" : etapa === "entram" && comFormularios ? "Responder formulários" : "Revisar troca";
 
-    const salvarProgresso = (proximaEtapa: string) => {
-        const destinoPorLinha: Record<string, string> = {};
-        pares.forEach(({ linha, novoItem }) => (destinoPorLinha[linha.id] = novoItem.id));
-        salvarRascunho({
-            id: rascunhoId,
-            pedidoId: pedido.id,
-            tipo: "troca-item",
-            etapa: proximaEtapa,
-            linhasSelecionadas: linhasSaem.map((l) => l.id),
-            destinoPorLinha,
-            respostasPorLinha: respostasEntram,
-            motivo,
-            operador: OPERADOR_ATUAL,
-        });
-    };
-
-    const fechar = () => {
-        const fezAlgo = Boolean(rascunhoInicial || totalEntram > 0 || motivo.nota.trim() || Object.keys(respostasEntram).length);
-        if (fezAlgo && totalSaem > 0) {
-            salvarProgresso(etapa);
-            avisarRascunhoSalvo(getRascunho(rascunhoId));
-        }
-        onFechar();
-    };
+    /* Fechar sai do fluxo. Não há rascunho: a solicitação, com a cobrança, é a primeira coisa
+       que o pedido registra, como nas três EFs. */
+    const fechar = () => onFechar();
 
     const avancar = () => {
         if (etapa === "entram" && paresIncompletos.length > 0) setPrecisaFormulario(true);
-        salvarProgresso(etapas[Math.min(indice + 1, etapas.length - 1)]);
         setIndice((i) => i + 1);
     };
     const voltar = () => (indice === 0 ? fechar() : setIndice((i) => i - 1));
@@ -359,7 +308,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
             toast.error("Uma das unidades entrou em outra alteração enquanto você montava esta. Confira o pedido e tente de novo.");
             return;
         }
-        removerRascunho(rascunhoId);
         toast.success(`Cobrança de troca enviada para ${destino}.`);
         onEnviado(id);
     };
@@ -395,12 +343,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
                 ) : undefined
             }
         >
-            {perdidas > 0 && (
-                <Aviso tom="warning" titulo={perdidas === 1 ? "1 unidade saiu desta troca" : `${perdidas} unidades saíram desta troca`} descricao="Elas já estão em outra alteração, com outro titular ou a sessão já aconteceu." />
-            )}
-            {emOutroRascunho && (
-                <Aviso tom="warning" titulo={`Unidade também está num rascunho de ${TIPO_OPERACAO_LABEL[emOutroRascunho.tipo].toLowerCase()}`} descricao={`Não enviado, de ${emOutroRascunho.operador}. Rascunho não trava a unidade: quem enviar primeiro vale.`} />
-            )}
 
             {etapa === "saem" && (
                 <>

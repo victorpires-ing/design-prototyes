@@ -491,3 +491,40 @@ A regra não aparece em lugar nenhum do protótipo.
 - **C11** — Pergunta que define elegibilidade: item restrito à faixa 60+ com resposta 60+, alterar para 30–39 é bloqueado com V10 e o operador é orientado a usar a Troca de item.
 - **C13** — Kit já retirado: ao abrir o pedido, a ação Trocar respostas aparece indisponível com V06.
 
+
+## O que foi feito depois do levantamento
+
+### Removido
+
+| Regra nossa | Por quê |
+| --- | --- |
+| Prazo de 24 horas de antecedência para troca | Nenhuma EF prevê antecedência: o período vem do encerramento do evento e da abertura Pós-venda |
+| Envio do link por WhatsApp | §25 da EF de troca põe o envio automático fora do escopo; §15 define e-mail |
+| Criação de conta dentro do fluxo | §4 e §18 da EF de titularidade põem fora do escopo, e o formulário coletava gênero e vínculo de sócio, que são o que a segmentação usa para bloquear |
+| Rascunho de alteração | Nenhuma EF menciona, e a máquina de estados começa em AGUARDANDO PAGAMENTO: não existe nada antes da solicitação criada com cobrança. A reunião de 14/10 também não tratou do assunto |
+
+### Corrigido para seguir a especificação
+
+| Regra | O que mudou |
+| --- | --- |
+| H-06 | Pagamento aprovado com revalidação reprovada agora estorna integral e termina em REPROVADA. Havia um `aguardando-financeiro` no lugar, fora da máquina documentada |
+| H-07 | O motivo não vem mais pré-marcado: com a categoria já escolhida, todo histórico saía "Pedido do cliente" por omissão |
+| §8, elegibilidade | O catálogo de troca validava contra a unidade de mesmo tipo, não contra a que receberia o item |
+
+### Mantido como decisão de protótipo, declarada
+
+Lote de unidades numa solicitação e cobrança endereçada ao destinatário: as duas foram
+confirmadas na reunião de 14/10, então deixam de contar como invenção.
+
+`PRAZO_DEMO_SEGUNDOS = 60` contra os 15 minutos da EF: deliberado, para a expiração ser visível
+numa demonstração.
+
+"Registrar pagamento recebido": a reunião decidiu que não é regra de produto, é controle só do
+protótipo, e pediu aparência propositalmente fora do design. **A aparência ainda não foi feita.**
+
+### Em aberto, sem decisão
+
+Cobrança da transferência multiplicada pela quantidade · pareamento N→N por valor · exigência de
+mesma quantidade entrando e saindo · `valorPago` pós-troca igual ao maior entre pago e preço novo ·
+"sessão realizada" bloqueando só a troca · a ausência do conceito de abertura de vendas no canal
+Pós-venda, que é a maior lacuna isolada das EFs.

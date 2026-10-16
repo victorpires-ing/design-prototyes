@@ -14,7 +14,6 @@ import { BackstageLayout } from "../../components/Backstage";
 import { CartaoOperacao, idDoCartao } from "../components/CartaoOperacao";
 import {
     TIPO_OPERACAO_ICONE, FOCO, FOCO_ESCOPO, Miniatura, caminhoDoItem, iniciaisDe, formatarCPF, telefoneParaCopia } from "../components/pos-compra-ui";
-import { descartarRascunho } from "../components/wizard/seletor-unidades";
 import {
     SESSOES,
     TIPO_OPERACAO_CURTO,
@@ -29,13 +28,11 @@ import {
     temFormulario,
     totaisDoPedido,
     usePedidos,
-    useRascunhos,
     uuidCurto,
     type CatalogoItem,
     type EntradaHistorico,
     type Pedido,
     type PedidoItem,
-    type Rascunho,
     type Sessao,
     type Solicitacao,
     type TipoOperacao,
@@ -53,7 +50,6 @@ const formaDePagamento = (meio: string) => meio.replace(/\s*\((\d+)x\)/, " em $1
 type Aba = "itens" | "historico";
 
 const TIPO_DO_VERBO: Record<Verbo, TipoOperacao> = { transferir: "troca-titularidade", trocar: "troca-item", formulario: "alterar-respostas" };
-const VERBO_DO_TIPO: Record<TipoOperacao, Verbo> = { "troca-titularidade": "transferir", "troca-item": "trocar", "alterar-respostas": "formulario" };
 
 export function DetalhePedido() {
     const { pedidoId } = useParams();
@@ -61,7 +57,6 @@ export function DetalhePedido() {
     const location = useLocation();
     const pedidos = usePedidos();
     const pedido = pedidos.find((p) => p.id === pedidoId);
-    const rascunhos = useRascunhos(pedidoId ?? "");
     /* Sempre abre em Itens e nada troca de aba sozinho: a mesma ação (abrir o pedido) leva sempre
        ao mesmo lugar. O que está em andamento fica acima das abas, visível de qualquer uma. */
     const [aba, setAba] = useState<Aba>("itens");
@@ -108,22 +103,12 @@ export function DetalhePedido() {
         );
     }
 
-    /* Os fluxos são telas com rota própria. A unidade escolhida e o rascunho viajam na URL, então
-       recarregar a página ou mandar o link para um colega cai no mesmo ponto do atendimento. */
-    const rotaDoFluxo = (verbo: Verbo, linhas: string[], rascunhoId?: string) => {
-        const query = new URLSearchParams();
-        if (linhas.length > 0) query.set("linhas", linhas.join(","));
-        if (rascunhoId) query.set("rascunho", rascunhoId);
-        const busca = query.toString();
-        return `/backstage/pedidos/${pedido.id}/${verbo}${busca ? `?${busca}` : ""}`;
-    };
+    /* Os fluxos são telas com rota própria e a unidade escolhida viaja na URL, então recarregar
+       a página ou mandar o link para um colega cai no mesmo ponto do atendimento. */
     const abrir = (verbo: Verbo, linhas: string[]) => {
-        /* Um rascunho por unidade: o mesmo verbo numa unidade que já está num rascunho retoma ele. */
-        const tipo = TIPO_DO_VERBO[verbo];
-        const rascunho = linhas.length === 1 ? rascunhos.find((r) => r.tipo === tipo && r.linhasSelecionadas.includes(linhas[0])) : undefined;
-        navigate(rotaDoFluxo(verbo, linhas, rascunho?.id));
+        const query = linhas.length > 0 ? `?linhas=${linhas.join(",")}` : "";
+        navigate(`/backstage/pedidos/${pedido.id}/${verbo}${query}`);
     };
-    const continuar = (rascunho: Rascunho) => navigate(rotaDoFluxo(VERBO_DO_TIPO[rascunho.tipo], rascunho.linhasSelecionadas, rascunho.id));
 
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
@@ -152,7 +137,7 @@ export function DetalhePedido() {
                   volta o tempo todo.
                 */}
                 <div className="flex min-w-0 flex-1 flex-col gap-5">
-                    <RegiaoAlteracoes pedido={pedido} rascunhos={rascunhos} onContinuar={continuar} />
+                    <RegiaoAlteracoes pedido={pedido} />
 
                     <Tabs selectedKey={aba} onSelectionChange={(key) => setAba(key as Aba)}>
                         <Tabs.List type="underline" size="sm">
@@ -162,7 +147,7 @@ export function DetalhePedido() {
                     </Tabs>
 
                     {aba === "itens" ? (
-                        <ListaDeItens pedido={pedido} rascunhos={rascunhos} onAbrir={abrir} onContinuar={continuar} />
+                        <ListaDeItens pedido={pedido} onAbrir={abrir} />
                     ) : (
                         <Historico pedido={pedido} onVerAlteracao={(id) => setFocar(idDoCartao(id))} />
                     )}
@@ -431,9 +416,9 @@ const ORDEM_ESTADO: Record<Solicitacao["estado"], number> = { falha: 0, reprovad
 
 /** O que está aberto neste pedido, sempre acima das abas: usado ao mesmo tempo que a lista, não
  *  pode ficar atrás de um clique. Falha primeiro. Só existe quando há alguma coisa aberta. */
-const RegiaoAlteracoes = ({ pedido, rascunhos, onContinuar }: { pedido: Pedido; rascunhos: Rascunho[]; onContinuar: (rascunho: Rascunho) => void }) => {
+const RegiaoAlteracoes = ({ pedido }: { pedido: Pedido }) => {
     const abertas = [...pedido.solicitacoes].sort((a, b) => ORDEM_ESTADO[a.estado] - ORDEM_ESTADO[b.estado] || a.expiraEm - b.expiraEm);
-    if (abertas.length === 0 && rascunhos.length === 0) return null;
+    if (abertas.length === 0) return null;
     const precisam = abertas.filter((s) => s.estado === "falha").length;
 
     return (
@@ -454,46 +439,10 @@ const RegiaoAlteracoes = ({ pedido, rascunhos, onContinuar }: { pedido: Pedido; 
                 </>
             )}
 
-            {rascunhos.length > 0 && (
-                <div className="flex flex-col gap-2">
-                    <h2 className="text-sm font-semibold text-secondary">Não enviadas ({rascunhos.length})</h2>
-                    {rascunhos.map((rascunho) => (
-                        <CartaoRascunho key={rascunho.id} pedido={pedido} rascunho={rascunho} onContinuar={() => onContinuar(rascunho)} />
-                    ))}
-                </div>
-            )}
         </section>
     );
 };
 
-/** Rascunho com cara de rascunho: fundo neutro, sem cor de tipo, sem prazo. Não se confunde com
- *  uma cobrança enviada. */
-const CartaoRascunho = ({ pedido, rascunho, onContinuar }: { pedido: Pedido; rascunho: Rascunho; onContinuar: () => void }) => {
-    const destino = rascunho.titularPorLinha ? getConta(Object.values(rascunho.titularPorLinha)[0] ?? "") : undefined;
-    const unidades = plural(rascunho.linhasSelecionadas.length, "unidade", "unidades");
-    const titulo = rascunho.tipo === "troca-titularidade" ? `Rascunho de transferência${destino ? ` para ${destino.nome}` : ""} · ${unidades}` : `Rascunho de troca · ${unidades}`;
-    const itens = [...new Set(rascunho.linhasSelecionadas.map((id) => getItem(pedido.itens.find((l) => l.id === id)?.itemId ?? "")?.nome).filter(Boolean))].join(", ");
-
-    return (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-secondary p-4 ring-1 ring-border-secondary">
-            <div className="flex min-w-0 flex-col gap-0.5">
-                <p className="text-sm font-semibold text-primary">{titulo}</p>
-                {itens && <p className="text-sm text-tertiary">{itens}</p>}
-                <p className="text-sm text-tertiary">
-                    Atualizado por {rascunho.operador} às {horaDoLabel(rascunho.atualizadoEmLabel)}. Nada foi cobrado nem reservado.
-                </p>
-            </div>
-            <div className="flex items-center gap-4">
-                <Button size="sm" color="link-gray" onClick={() => descartarRascunho(rascunho)}>
-                    Descartar
-                </Button>
-                <Button size="sm" color="secondary" onClick={onContinuar}>
-                    Continuar
-                </Button>
-            </div>
-        </div>
-    );
-};
 
 /* ------------------------------------------------------------------ */
 /*  Itens                                                              */
@@ -509,7 +458,6 @@ interface UnidadeDoPedido {
 
 interface AcoesDaLista {
     onAbrir: (verbo: Verbo, linhas: string[]) => void;
-    onContinuar: (rascunho: Rascunho) => void;
 }
 
 /**
@@ -517,7 +465,7 @@ interface AcoesDaLista {
  * acontece dentro do overlay, depois de saber o verbo, porque o que pode entrar depende dele.
  * Nada desabilitado: o que não é possível não aparece, e o motivo fica perto.
  */
-const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunhos: Rascunho[] } & AcoesDaLista) => {
+const ListaDeItens = ({ pedido, ...acoes }: { pedido: Pedido } & AcoesDaLista) => {
     const estrutura = useMemo(() => {
         /* Ordem da compra, sem reordenar: linha que troca de lugar faz o próximo clique cair
            na vizinha. */
@@ -537,7 +485,7 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
     const motivoGeral =
         nTransferir === 0 ? "Todas as unidades estão em outra alteração ou com outro titular." : pedidoEncerrado(pedido) ? "As sessões deste pedido já aconteceram. Só a transferência continua disponível." : null;
 
-    const renderUnidade = (unidade: UnidadeDoPedido) => <CartaoDaUnidade key={unidade.linha.id} pedido={pedido} rascunhos={rascunhos} {...unidade} {...acoes} />;
+    const renderUnidade = (unidade: UnidadeDoPedido) => <CartaoDaUnidade key={unidade.linha.id} pedido={pedido} {...unidade} {...acoes} />;
 
     return (
         /* Sem moldura: os itens já estão dentro da coluna de trabalho, que o trilho à esquerda
@@ -626,11 +574,11 @@ const RESTRICAO_DO_ITEM: Record<NonNullable<CatalogoItem["segmentacao"]>, string
  * comprador vê, ou uma coluna com a resposta de uma pergunta eleita entre vinte. Repetir o
  * cartão custa altura e resolve as duas: a cópia é o objeto, e o formulário dela é a ação.
  */
-const CartaoDaUnidade = ({ pedido, rascunhos, item, linha, onAbrir, ...resto }: { pedido: Pedido; rascunhos: Rascunho[] } & UnidadeDoPedido & AcoesDaLista) => {
-    const estado = lerUnidade(pedido, rascunhos, linha);
+const CartaoDaUnidade = ({ pedido, item, linha, onAbrir }: { pedido: Pedido } & UnidadeDoPedido & AcoesDaLista) => {
+    const estado = lerUnidade(pedido, linha);
     /* Só o que está em curso abre um andar próprio. Quem porta a unidade subiu para o
        cabeçalho: é identidade, não acontecimento. */
-    const temFatos = Boolean(estado.solicitacao || estado.rascunho);
+    const temFatos = Boolean(estado.solicitacao);
     /* O formulário é desta unidade, com as respostas dela: a porta é o cartão, não um botão de
        pedido inteiro. Some quando o item não tem formulário ou a unidade está travada. */
     const podeFormulario = temFormulario(item) && disponivelPara(pedido, linha, "formulario");
@@ -719,13 +667,12 @@ const VERBOS_EM_MASSA: Array<{ verbo: Verbo; rotulo: string }> = [
  * Tudo o que se sabe sobre uma unidade, lido de um lugar só: a linha da lista e o cartão de
  * unidade única consultam daqui, e assim nunca discordam sobre o que oferecer.
  */
-const lerUnidade = (pedido: Pedido, rascunhos: Rascunho[], linha: PedidoItem) => {
+const lerUnidade = (pedido: Pedido, linha: PedidoItem) => {
     const solicitacao = solicitacaoDaLinha(pedido, linha.id);
     const transferida = Boolean(linha.titularId);
     return {
         solicitacao,
         transferida,
-        rascunho: rascunhos.find((r) => r.linhasSelecionadas.includes(linha.id)),
     };
 };
 
@@ -733,21 +680,13 @@ type EstadoLido = ReturnType<typeof lerUnidade>;
 
 /** O que aconteceu com a unidade. Fica sempre na coluna de texto, nunca na de controle: a
  *  direita do cartão é o que se pode fazer, não o que já foi feito. */
-const FatosDaUnidade = ({ pedido, linha, estado, onContinuar }: { pedido: Pedido; linha: PedidoItem; estado: EstadoLido } & Omit<AcoesDaLista, "onAbrir">) => {
-    const { solicitacao, rascunho } = estado;
+const FatosDaUnidade = ({ pedido, linha, estado }: { pedido: Pedido; linha: PedidoItem; estado: EstadoLido }) => {
+    const { solicitacao } = estado;
     return (
         <>
             {/* Só a frase de estado: o cartão da operação já está na tela, logo acima das abas,
                 então "Ver alteração" rolava até algo que a pessoa está vendo. */}
             {solicitacao && <EstadoDaUnidade pedido={pedido} linha={linha} solicitacao={solicitacao} />}
-            {!solicitacao && rascunho && (
-                <p className="flex flex-wrap items-center gap-x-2 text-sm text-tertiary">
-                    Rascunho de {rascunho.tipo === "troca-titularidade" ? "transferência" : "troca"} não enviado
-                    <Button size="sm" color="link-color" onClick={() => onContinuar(rascunho)}>
-                        Continuar
-                    </Button>
-                </p>
-            )}
         </>
     );
 };

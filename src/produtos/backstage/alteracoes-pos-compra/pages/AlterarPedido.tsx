@@ -9,18 +9,16 @@ import { SeletorUnidades } from "../components/wizard/seletor-unidades";
 import { WizardShell } from "../components/wizard/WizardShell";
 import { TransferirTitularidadeWizard } from "../components/wizard/TransferirTitularidadeWizard";
 import { TrocarItensWizard } from "../components/wizard/TrocarItensWizard";
-import { getConta, retomarPedido, usePedidos, useRascunhos, uuidCurto, type Pedido, type Verbo } from "../data/pos-compra-store";
+import { getConta, retomarPedido, usePedidos, uuidCurto, type Pedido, type Verbo } from "../data/pos-compra-store";
 
 /**
  * Os três fluxos de alteração como TELA, não como modal — o padrão da bilheteria.
  *
- * O que o modal não dava: endereço. O rascunho já era salvo, mas fechar o overlay não deixava
- * nenhum caminho de volta para ele, e recarregar a página perdia o fluxo inteiro. Agora a unidade
- * escolhida e o rascunho viajam na URL, então recarregar, voltar pelo navegador e colar o link
- * para um colega levam todos ao mesmo lugar.
+ * O que o modal não dava: endereço. Recarregar a página perdia o fluxo inteiro, e não havia
+ * link para mandar a um colega. Agora a unidade escolhida viaja na URL em `?linhas=`, então
+ * recarregar e voltar pelo navegador levam ao mesmo lugar.
  *
- * `?linhas=` são as unidades que o operador escolheu antes de entrar. `?rascunho=` retoma um
- * rascunho salvo.
+ * O trabalho em si não é guardado: enquanto a cobrança não é criada, não existe nada a retomar.
  */
 const WIZARD_DO_VERBO: Record<Verbo, string> = { transferir: "Transferir", trocar: "Trocar", formulario: "Editar formulário" };
 
@@ -30,13 +28,11 @@ export function AlterarPedido({ verbo }: { verbo: Verbo }) {
     const [params] = useSearchParams();
     const pedidos = usePedidos();
     const pedido = pedidos.find((p) => p.id === pedidoId);
-    const rascunhos = useRascunhos(pedidoId ?? "");
 
     const linhas = (params.get("linhas") ?? "").split(",").filter(Boolean);
     /* O formulário é de uma unidade por vez e a porta do pedido não diz qual: a escolha
        acontece aqui, na primeira tela do fluxo. */
     const [escolhida, setEscolhida] = useState<string | null>(null);
-    const rascunho = rascunhos.find((r) => r.id === params.get("rascunho"));
     const comprador = pedido ? getConta(pedido.compradorId) : undefined;
     const subtitulo = pedido ? `${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}` : "";
     const voltarPara = `/backstage/pedidos/${pedidoId}`;
@@ -76,7 +72,7 @@ export function AlterarPedido({ verbo }: { verbo: Verbo }) {
        fazia por estado interno e agora atravessa a navegação. */
     const enviado = (solicitacaoId: string) => navigate(`${voltarPara}?focar=${idDoCartao(solicitacaoId)}`);
 
-    const comum = { pedido, rascunhoInicial: rascunho, onFechar: fechar, onEnviado: enviado };
+    const comum = { pedido, onFechar: fechar, onEnviado: enviado };
 
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">

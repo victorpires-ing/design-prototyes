@@ -10,14 +10,11 @@ import {
     getConta,
     getItem,
     motivoIndisponivel,
-    removerRascunho,
-    restaurarRascunho,
     sessaoDoItem,
     sessaoLabel,
     type CatalogoItem,
     type Pedido,
     type PedidoItem,
-    type Rascunho,
     type Verbo,
 } from "../../data/pos-compra-store";
 
@@ -283,17 +280,3 @@ export function ResumoUnidades({
     );
 }
 
-/** Ao fechar com algo feito, o rascunho já está salvo: o aviso diz isso e oferece descartar,
- *  com desfazer. Nenhum modal pergunta "deseja salvar?" (fechar nunca perde trabalho). */
-export const avisarRascunhoSalvo = (rascunho: Rascunho | undefined) => {
-    if (!rascunho) return;
-    toast("Rascunho salvo no pedido", {
-        description: "Nada foi cobrado nem reservado.",
-        action: { label: "Descartar", onClick: () => descartarRascunho(rascunho) },
-    });
-};
-
-export const descartarRascunho = (rascunho: Rascunho) => {
-    removerRascunho(rascunho.id);
-    toast("Rascunho descartado", { action: { label: "Desfazer", onClick: () => restaurarRascunho(rascunho) } });
-};

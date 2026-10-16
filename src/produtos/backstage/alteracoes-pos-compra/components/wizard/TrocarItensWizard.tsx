@@ -8,7 +8,7 @@ import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { cx } from "@/utils/cx";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, SetaParaBaixo, Stepper, mascararEmail } from "../pos-compra-ui";
+import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, Stepper, mascararEmail } from "../pos-compra-ui";
 import { AbasCarrossel, ChipLegenda, type AbaItem } from "../abas-carrossel";
 import { EditorResposta } from "../respostas-ui";
 import {
@@ -44,7 +44,7 @@ import {
     type Rascunho,
 } from "../../data/pos-compra-store";
 import { WizardShell } from "./WizardShell";
-import { ResumoUnidades, SeletorUnidades, avisarRascunhoSalvo, detalheDoItem, identidadeDaLinha } from "./seletor-unidades";
+import { SeletorUnidades, avisarRascunhoSalvo, detalheDoItem, identidadeDaLinha } from "./seletor-unidades";
 
 type Etapa = "saem" | "entram" | "formularios" | "revisao";
 
@@ -123,7 +123,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
     const linhasSaem = linhasDisponiveis.filter((l) => saem[l.id]);
     const totalSaem = linhasSaem.length;
     const emOutroRascunho = rascunhos.find((r) => r.id !== rascunhoId && r.linhasSelecionadas.some((id) => saem[id]));
-    const incluir = (ids: string[]) => setSaem((atual) => ({ ...atual, ...Object.fromEntries(ids.map((id) => [id, true])) }));
 
     /* ------------------------------------------------------------------ */
     /*  O que entra                                                        */
@@ -403,9 +402,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, rascunhoInicial, onF
 
             {etapa === "entram" && (
                 <>
-                    <ResumoUnidades pedido={pedido} linhas={linhasSaem} verbo="trocar" titulo={`Substituindo (${totalSaem})`} onAlterar={() => setIndice(0)} onIncluir={incluir} />
-                    <SetaParaBaixo />
-
                     {/* Busca e tipo na mesma linha. O tipo era um título no meio da lista: para
                         chegar aos produtos era preciso rolar todas as datas de ingresso. */}
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

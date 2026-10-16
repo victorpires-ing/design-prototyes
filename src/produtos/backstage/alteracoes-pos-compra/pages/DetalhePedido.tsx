@@ -564,13 +564,12 @@ const ListaDeItens = ({ pedido, rascunhos, ...acoes }: { pedido: Pedido; rascunh
                 o que separa itens agora e o ar, nao mais o fio do divide-y. */}
             <div className="flex flex-col gap-6">
                 {estrutura.sessoes.length > 0 && (
-                    /* Uma sessao so: "Ingressos" e a data cabem na mesma linha. Dois titulos
-                       empilhados sobre um cartao que ja tem borda eram tres caixas para dizer
-                       uma coisa. Com duas ou mais sessoes os niveis voltam a existir. */
-                    <GrupoDeItens titulo="Ingressos" sessao={estrutura.sessoes.length === 1 ? estrutura.sessoes[0].sessao : undefined}>
+                    /* A data fica numa linha própria abaixo de "Ingressos", sempre: com uma
+                       sessão ou com várias, é o mesmo nível de informação no mesmo lugar. */
+                    <GrupoDeItens titulo="Ingressos">
                         {estrutura.sessoes.map(({ sessao, unidades }) => (
-                            <div key={sessao.id} className="flex flex-col gap-3">
-                                {estrutura.sessoes.length > 1 && <TituloDaSessao sessao={sessao} />}
+                            <div key={sessao.id} className="flex flex-col gap-2">
+                                <TituloDaSessao sessao={sessao} />
                                 {unidades.map(renderUnidade)}
                             </div>
                         ))}
@@ -592,22 +591,11 @@ const MarcaDaSessao = ({ sessao }: { sessao: Sessao }) => (
     </>
 );
 
-/** Quando o grupo tem uma sessão só, ela sobe para a mesma linha do título. */
-const GrupoDeItens = ({ titulo, sessao, children }: { titulo: string; sessao?: Sessao; children: ReactNode }) => (
+const GrupoDeItens = ({ titulo, children }: { titulo: string; children: ReactNode }) => (
     <div className="flex flex-col gap-3">
         {/* Etiqueta de arquivo, não capítulo: a 16/700 competia de igual para igual com o nome
             do item, que é o alvo da varredura. Desce para o andar do detalhe. */}
-        <h3 className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-semibold text-secondary">
-            {titulo}
-            {sessao && (
-                <>
-                    <span className="text-quaternary" aria-hidden="true">
-                        ·
-                    </span>
-                    <MarcaDaSessao sessao={sessao} />
-                </>
-            )}
-        </h3>
+        <h3 className="text-sm font-semibold text-secondary">{titulo}</h3>
         {children}
     </div>
 );

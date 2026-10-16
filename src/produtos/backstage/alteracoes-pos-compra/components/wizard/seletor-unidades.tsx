@@ -118,7 +118,10 @@ export function SeletorUnidades({
               ordem é marcar o item e então dizer quantas unidades dele entram.
             */}
             {grupos.length > 0 && (
-                <ul className="flex flex-col divide-y divide-border-secondary">
+                /* Moldura em volta da lista, igual à do resumo: solta na página, ela não tinha
+                   onde começar nem onde terminar, e encostava no bloco seguinte. O bloco de
+                   indisponíveis fica fora dela, com a moldura própria que já tinha. */
+                <ul className="flex flex-col divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
                     {grupos.map((grupo) => {
                         const item = getItem(grupo.itemId);
                         const sessao = sessaoDoItem(item) ? sessaoLabel(item) : null;

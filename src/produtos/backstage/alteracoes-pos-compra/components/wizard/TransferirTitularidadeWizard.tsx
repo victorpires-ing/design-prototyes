@@ -104,7 +104,7 @@ const CartaoResultado = ({ icone, titulo, apoio, children }: { icone: ReactNode;
 
 /** Quem recebe, com o caminho de volta para trocar de pessoa sem mexer no stepper. */
 const CartaoDestinatario = ({ conta, onAlterar }: { conta: Conta; onAlterar: () => void }) => (
-    <div className="flex w-full items-center gap-3 rounded-xl bg-secondary p-4">
+    <div className="flex w-full items-center gap-3 rounded-xl bg-primary p-4 ring-1 ring-border-secondary">
         <Avatar size="md" initials={iniciaisDe(conta.nome)} alt={conta.nome} />
         <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-primary">{conta.nome}</p>
@@ -400,10 +400,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
                 {etapa === "itens" && selecionada && (
                     <div className="flex w-full flex-col gap-4">
-                        {/* Quem recebe fica à vista enquanto se escolhe o que mandar: é a pessoa que
-                            define o que cabe, e trocar de ideia sobre ela não exige voltar no stepper. */}
-                        <CartaoDestinatario conta={selecionada} onAlterar={() => setIndice(0)} />
-                        <SetaParaBaixo />
                         <SeletorUnidades
                             pedido={pedido}
                             verbo="transferir"
@@ -551,8 +547,8 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
 
                 {etapa === "revisao" && selecionada && (
                     <>
-                        <CartaoDestinatario conta={selecionada} onAlterar={() => setIndice(0)} />
-                        <SetaParaBaixo />
+                        {/* O que sai em cima, quem recebe embaixo: a seta lê "estas unidades vão
+                            para esta pessoa", na ordem em que a frase acontece. */}
                         <ResumoUnidades
                             pedido={pedido}
                             linhas={linhas}
@@ -562,23 +558,24 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, rascunhoI
                             onIncluir={incluir}
                             bloqueioExtra={(linha) => validarNovoTitular(pedido, linha, selecionada, linhas)?.curto ?? null}
                         />
-
-                        <div className="flex w-full flex-col gap-2">
-
-                            {/* §8 E4: o resumo declara a herança das respostas. Alterar resposta aqui não existe. */}
-                            {comFormulario.length > 0 && (
-                                <p className="text-sm text-tertiary">
-                                    O destinatário herda as respostas do formulário sem alteração. Para mudar, faça uma troca de perguntas depois que concluir a
-                                    transferência.
-                                </p>
-                            )}
-                        </div>
+                        <SetaParaBaixo />
+                        <CartaoDestinatario conta={selecionada} onAlterar={() => setIndice(0)} />
 
                         <CampoMotivo valor={motivo} onChange={setMotivo} />
 
                         <div className="w-full">
                             <ResumoFinanceiro linhas={calculo.linhas} />
                         </div>
+
+                        {/* §8 E4: o resumo declara a herança das respostas. Alterar resposta aqui
+                            não existe. Fica no fim, depois da cobrança: é a letra miúda do que foi
+                            combinado, não uma decisão a tomar no meio do caminho. */}
+                        {comFormulario.length > 0 && (
+                            <p className="w-full text-sm text-tertiary">
+                                O destinatário herda as respostas do formulário sem alteração. Para mudar, faça uma troca de perguntas depois que concluir a
+                                transferência.
+                            </p>
+                        )}
                     </>
                 )}
             </div>

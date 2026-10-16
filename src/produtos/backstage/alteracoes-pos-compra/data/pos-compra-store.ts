@@ -136,10 +136,17 @@ export interface CatalogoItem {
     foto?: string;
     /** Datas cobertas por um combo. */
     datasCombo?: string[];
+    /** O que o combo empacota: ids dos itens do próprio catálogo, na ordem configurada. O combo
+     *  não é a unidade atômica — ele agrupa ingressos (cada um com grupo e lote) e produtos. */
+    itensCombo?: string[];
     /** Controle de nominalidade: uma unidade por documento/conta. Sem valor explícito, segue o padrão do tipo
         (ingresso é nominal, produto e combo não são). */
     nominal?: boolean;
 }
+
+/** O que o combo empacota, resolvido no catálogo. Vazio para quem não é combo. */
+export const itensDoCombo = (item?: CatalogoItem): CatalogoItem[] =>
+    (item?.itensCombo ?? []).map((id) => getItem(id)).filter(Boolean) as CatalogoItem[];
 
 /** Se o item exige uma unidade por participante — ingresso é nominal por padrão, salvo override explícito. */
 export const nominalDoItem = (item: CatalogoItem) => item.nominal ?? item.tipo === "ingresso";
@@ -556,6 +563,8 @@ export const CATALOGO: CatalogoItem[] = [
         estoque: 24,
         formularioId: "f-corrida",
         datasCombo: [SESSOES[2].dataLabel, SESSOES[3].dataLabel],
+        /* R$ 440 avulsos por R$ 420 no pacote. */
+        itensCombo: ["it-mar-10k", "it-mar-21k"],
     },
     {
         id: "cb-mar-dupla",
@@ -567,6 +576,8 @@ export const CATALOGO: CatalogoItem[] = [
         precoIntegral: 230,
         estoque: 40,
         datasCombo: [SESSOES[2].dataLabel],
+        /* Ingresso mais produto: o combo mistura os dois tipos. R$ 260 avulsos por R$ 230. */
+        itensCombo: ["it-mar-10k", "pr-camiseta-extra"],
     },
 
     /* Combos removidos por hora — "combo" segue existindo em TipoItem para religar rápido depois. */

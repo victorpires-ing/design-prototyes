@@ -29,6 +29,7 @@ import {
     getItem,
     pedidoEncerrado,
     solicitacaoDaLinha,
+    itensDoCombo,
     temFormulario,
     totaisDoPedido,
     usePedidos,
@@ -689,6 +690,7 @@ const CartaoDaUnidade = ({ pedido, item, linha, onAbrir }: { pedido: Pedido } & 
     /* O formulário é desta unidade, com as respostas dela: a porta é o cartão, não um botão de
        pedido inteiro. Some quando o item não tem formulário ou a unidade está travada. */
     const podeFormulario = temFormulario(item) && disponivelPara(pedido, linha, "formulario");
+    const partesDoCombo = itensDoCombo(item);
 
     return (
         <article className={CARTAO}>
@@ -714,22 +716,31 @@ const CartaoDaUnidade = ({ pedido, item, linha, onAbrir }: { pedido: Pedido } & 
                     </div>
                     {caminhoDoItem(item) && <p className="text-sm text-tertiary">{caminhoDoItem(item)}</p>}
                     {item.datasCombo && item.datasCombo.length > 0 && <p className="text-sm text-tertiary">{item.datasCombo.join(" · ")}</p>}
-                    {/* No combo a descrição é o que vem dentro do pacote: um texto corrido que
-                        ocupava uma linha inteira em toda unidade e empurrava o portador para
-                        baixo. Recolhida, fica a um clique, e a régua à esquerda diz que ela
-                        pertence ao item acima sem precisar de um cartão dentro do cartão. */}
-                    {item.descricao &&
-                        (item.tipo === "combo" ? (
-                            <details className="group">
-                                <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-sm text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover max-md:min-h-11 [&::-webkit-details-marker]:hidden">
-                                    Detalhes
-                                    <ChevronDown className="size-4 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
-                                </summary>
-                                <p className="mt-1 border-l border-secondary pl-3 text-sm text-tertiary">{item.descricao}</p>
-                            </details>
-                        ) : (
-                            <p className="text-sm text-tertiary">{item.descricao}</p>
-                        ))}
+                    {/* O combo não é a unidade atômica: ele empacota ingressos, cada um com seu
+                        grupo e lote, e produtos. Recolhido, o cartão volta a ser varrido pelo nome
+                        do pacote; aberto, diz o que tem dentro. A régua à esquerda liga a lista ao
+                        item acima sem precisar de um cartão dentro do cartão.
+
+                        A descrição do combo saiu: ela contava a mesma coisa em prosa publicitária,
+                        e quem atende precisa dos itens, não da frase de venda. */}
+                    {partesDoCombo.length > 0 ? (
+                        <details className="group">
+                            <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-sm text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover max-md:min-h-11 [&::-webkit-details-marker]:hidden">
+                                Detalhes
+                                <ChevronDown className="size-4 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
+                            </summary>
+                            <ul className="mt-1 flex flex-col gap-1 border-l border-secondary pl-3">
+                                {partesDoCombo.map((parte) => (
+                                    <li key={parte.id} className="text-sm text-tertiary">
+                                        {parte.nome}
+                                        {caminhoDoItem(parte) && <span className="text-quaternary"> · {caminhoDoItem(parte)}</span>}
+                                    </li>
+                                ))}
+                            </ul>
+                        </details>
+                    ) : (
+                        item.descricao && <p className="text-sm text-tertiary">{item.descricao}</p>
+                    )}
                     <PortadorDaUnidade linha={linha} />
                 </div>
             </div>

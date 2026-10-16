@@ -28,7 +28,7 @@ const RemixContext = createContext<RemixContextValue | null>(null);
 const nomeDoEvento = (id: string) => eventos.find((e) => e.id === id)?.nome;
 
 /** Rotas da organização — fora delas, o contexto é o evento aberto. */
-const ROTAS_ORGANIZACAO = ["/backstage/eventos", "/backstage/home", "/backstage/membros", "/backstage/publico"];
+const ROTAS_ORGANIZACAO = ["/backstage", "/backstage/eventos", "/backstage/membros", "/backstage/publico"];
 
 export function RemixProvider({ children }: { children: ReactNode }) {
     const { pathname } = useLocation();

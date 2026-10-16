@@ -40,7 +40,7 @@ export function DetalheGrupo() {
                 {/* Breadcrumb */}
                 <div className="px-6 pt-6">
                     <nav className="flex items-center gap-1.5 text-sm text-tertiary">
-                        <button type="button" onClick={() => navigate("/backstage/home")} aria-label="Início" className="transition duration-100 ease-linear hover:text-secondary">
+                        <button type="button" onClick={() => navigate("/backstage")} aria-label="Início" className="transition duration-100 ease-linear hover:text-secondary">
                             <HomeLine className="size-4" aria-hidden="true" />
                         </button>
                         <ChevronRight className="size-3.5" aria-hidden="true" />

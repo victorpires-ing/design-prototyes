@@ -7,6 +7,7 @@ import { InputBase } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { Aviso, CampoMotivo, MOTIVO_INICIAL, Regra, ResumoFinanceiro, SetaParaBaixo, iniciaisDe, formatarCPF, mascararEmail } from "../pos-compra-ui";
 import {
+    COBRANCA_TROCA_PERGUNTAS,
     buscarContas,
     calcularTrocaTitularidade,
     criarSolicitacao,
@@ -27,6 +28,7 @@ import {
     type Pergunta,
 } from "../../data/pos-compra-store";
 import { WizardShell } from "./WizardShell";
+import { EditorResposta } from "../respostas-ui";
 import { ResumoUnidades, SeletorUnidades, detalheDoItem, identidadeDaLinha } from "./seletor-unidades";
 
 /*
@@ -46,6 +48,9 @@ const TITULO_ETAPA: Record<Etapa, string> = {
 /** Só o primeiro nome. O rótulo da etapa divide uma faixa de 560px com outros dois e, com o nome
  *  inteiro, "Itens para Ana Paula Souza" empurra o stepper para duas linhas. */
 const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0];
+
+/** "a alteração" / "as 3 alterações": a frase da revisão muda de número com o que foi mexido. */
+const contarAlteradas = (quantas: number) => (quantas === 1 ? "a alteração" : `as ${quantas} alterações`);
 
 /** "A, B e C". Em português o último nome entra com "e", não com vírgula. */
 const listarNomes = (nomes: string[]) => (nomes.length < 2 ? nomes.join("") : `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`);
@@ -103,15 +108,32 @@ const IdentidadeConta = ({ conta }: { conta: Conta }) => (
 );
 
 /**
- * As respostas de uma unidade, para conferir. Só leitura: a titularidade não as altera, e dar
- * campos editáveis aqui prometeria uma operação que esta não é.
+ * As respostas de uma unidade, para conferir e corrigir. Mexer numa resposta que já existia
+ * cobra a troca de perguntas, uma vez por operação; preencher pergunta em branco não cobra.
  *
  * Recolhida quando há mais de uma unidade: o formulário completo tem vinte perguntas, e três
  * unidades abertas viram sessenta linhas antes do botão.
  */
-const RespostasDaUnidade = ({ pedido, linha, perguntas, aberto }: { pedido: Pedido; linha: PedidoItem; perguntas: Pergunta[]; aberto: boolean }) => {
+const RespostasDaUnidade = ({
+    pedido,
+    linha,
+    perguntas,
+    aberto,
+    valorDe,
+    alterada,
+    onChange,
+}: {
+    pedido: Pedido;
+    linha: PedidoItem;
+    perguntas: Pergunta[];
+    aberto: boolean;
+    valorDe: (perguntaId: string) => string;
+    alterada: (perguntaId: string) => boolean;
+    onChange: (perguntaId: string, valor: string) => void;
+}) => {
     const item = getItem(linha.itemId);
-    const semResposta = perguntas.filter((p) => !(linha.respostas[p.id] ?? "").trim()).length;
+    const semResposta = perguntas.filter((p) => !valorDe(p.id).trim()).length;
+    const mexidas = perguntas.filter((p) => alterada(p.id)).length;
 
     return (
         <details open={aberto} className="group w-full overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
@@ -120,22 +142,24 @@ const RespostasDaUnidade = ({ pedido, linha, perguntas, aberto }: { pedido: Pedi
                     <span className="truncate text-sm font-semibold text-primary">{item?.nome}</span>
                     <span className="truncate text-sm text-tertiary">{identidadeDaLinha(pedido, linha).nome}</span>
                 </span>
-                {semResposta > 0 && (
-                    <span className="shrink-0 text-sm text-tertiary">{semResposta === 1 ? "1 sem resposta" : `${semResposta} sem resposta`}</span>
+                {mexidas > 0 ? (
+                    <span className="shrink-0 text-sm text-brand-secondary">{mexidas === 1 ? "1 alterada" : `${mexidas} alteradas`}</span>
+                ) : (
+                    semResposta > 0 && <span className="shrink-0 text-sm text-tertiary">{semResposta === 1 ? "1 sem resposta" : `${semResposta} sem resposta`}</span>
                 )}
                 <ChevronDown className="size-5 shrink-0 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
             </summary>
-            <dl className="flex flex-col gap-3 border-t border-secondary px-4 py-3">
-                {perguntas.map((pergunta) => {
-                    const resposta = (linha.respostas[pergunta.id] ?? "").trim();
-                    return (
-                        <div key={pergunta.id} className="flex flex-col gap-0.5">
-                            <dt className="text-sm text-tertiary">{pergunta.label}</dt>
-                            <dd className={cx("text-sm", resposta ? "text-primary" : "text-quaternary")}>{resposta || "Sem resposta"}</dd>
-                        </div>
-                    );
-                })}
-            </dl>
+            <div className="flex flex-col gap-4 border-t border-secondary px-4 py-4">
+                {perguntas.map((pergunta) => (
+                    <EditorResposta
+                        key={pergunta.id}
+                        pergunta={pergunta}
+                        valor={valorDe(pergunta.id)}
+                        valorOriginal={linha.respostas[pergunta.id] ?? ""}
+                        onChange={(valor) => onChange(pergunta.id, valor)}
+                    />
+                ))}
+            </div>
         </details>
     );
 };
@@ -195,6 +219,8 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     /* Trava a etapa do formulário depois que o fluxo passa por ela: desmarcar a última unidade
        com formulário encolheria o stepper com a pessoa dentro dele. */
     const [conferiuFormulario, setConferiuFormulario] = useState(false);
+    /* Respostas mexidas nesta transferência, por unidade. Só o que difere do que já estava. */
+    const [respostasNovas, setRespostasNovas] = useState<Record<string, Record<string, string>>>({});
     /* Conta clicada que não recebe nada do pedido: não vira destinatário e não avança. Uma frase
        só, que a etapa mostra abaixo do campo de busca. */
     const [recusada, setRecusada] = useState<string | null>(null);
@@ -203,7 +229,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     const destino = selecionada?.email ?? "";
 
     const linhas = linhasDisponiveis.filter((l) => selecao[l.id]);
-    const calculo = calcularTrocaTitularidade(linhas);
     const comprador = getConta(pedido.compradorId);
     /* De quem as unidades saem. O cabeçalho do fluxo mostra o COMPRADOR e o resumo mostra só o
        item, então o nome de quem PERDE o ingresso não aparecia em tela nenhuma: num pedido com
@@ -267,6 +292,23 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
 
     const perguntasDaLinha = (linha: PedidoItem): Pergunta[] => (getFormulario(getItem(linha.itemId)?.formularioId)?.perguntaIds ?? []).map((id) => perguntas.find((p) => p.id === id)).filter(Boolean) as Pergunta[];
     const comFormulario = linhas.filter((linha) => perguntasDaLinha(linha).length > 0);
+    const valorDaResposta = (linha: PedidoItem, perguntaId: string) => respostasNovas[linha.id]?.[perguntaId] ?? linha.respostas[perguntaId] ?? "";
+    /* Só conta como alteração mexer no que já tinha resposta: preencher pergunta em branco é
+       completar o cadastro, não trocar o que o participante respondeu. A cobrança segue essa
+       distinção, e por isso ela mora aqui e não num "mudou alguma coisa". */
+    const respostaAlterada = (linha: PedidoItem, perguntaId: string) => {
+        const original = (linha.respostas[perguntaId] ?? "").trim();
+        return original !== "" && valorDaResposta(linha, perguntaId).trim() !== original;
+    };
+    const alteradas = comFormulario.flatMap((linha) => perguntasDaLinha(linha).filter((p) => respostaAlterada(linha, p.id)).map((p) => ({ linha, pergunta: p })));
+    const respostasPorItem = Object.fromEntries(
+        comFormulario
+            .map((linha) => [linha.id, Object.fromEntries(perguntasDaLinha(linha).map((p) => [p.id, valorDaResposta(linha, p.id)]))] as const)
+            .filter(([linhaId]) => Object.keys(respostasNovas[linhaId] ?? {}).length > 0),
+    );
+    /* Depois dos derivados que ele usa: declarado antes, `alteradas` ainda estaria na zona morta
+       e a etapa quebrava na montagem. */
+    const calculo = calcularTrocaTitularidade(linhas, alteradas.length > 0);
     /* ------------------------------------------------------------------ */
     /*  Etapas                                                             */
     /* ------------------------------------------------------------------ */
@@ -485,7 +527,12 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
             resumo: `${linhas.length} ${linhas.length === 1 ? "item transferido" : "itens transferidos"} para ${selecionada.nome}. Comprador original preservado.`,
             calculo,
             /* Só o possuidor muda. As respostas seguem como estão, herdadas (H-23). */
-            aplicar: { titularPorLinha: Object.fromEntries(linhas.map((l) => [l.id, selecionada.id])) },
+            aplicar: {
+                titularPorLinha: Object.fromEntries(linhas.map((l) => [l.id, selecionada.id])),
+                /* As respostas mexidas vão junto: sem isto a cobrança da troca de perguntas saía
+                   e a correção morria na tela. */
+                respostasPorItem: Object.keys(respostasPorItem).length > 0 ? respostasPorItem : undefined,
+            },
             reservas: [],
             canalEnvio: "email",
             destinatarioEnvio: destino,
@@ -707,11 +754,23 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                         ) : (
                             <>
                                 <Regra>
-                                    As respostas seguem com a unidade, sem alteração. Confira antes de enviar a cobrança: para mudar alguma, faça uma troca de
-                                    perguntas depois que a transferência concluir.
+                                    As respostas seguem com a unidade. Corrija o que precisar antes de enviar a cobrança: mudar uma resposta que já existia
+                                    soma {formatarMoeda(COBRANCA_TROCA_PERGUNTAS)} ao total, uma vez só, não importa quantas mudem. Preencher pergunta em
+                                    branco não custa nada.
                                 </Regra>
                                 {comFormulario.map((linha) => (
-                                    <RespostasDaUnidade key={linha.id} pedido={pedido} linha={linha} perguntas={perguntasDaLinha(linha)} aberto={comFormulario.length === 1} />
+                                    <RespostasDaUnidade
+                                        key={linha.id}
+                                        pedido={pedido}
+                                        linha={linha}
+                                        perguntas={perguntasDaLinha(linha)}
+                                        aberto={comFormulario.length === 1}
+                                        valorDe={(perguntaId) => valorDaResposta(linha, perguntaId)}
+                                        alterada={(perguntaId) => respostaAlterada(linha, perguntaId)}
+                                        onChange={(perguntaId, valor) =>
+                                            setRespostasNovas((atual) => ({ ...atual, [linha.id]: { ...(atual[linha.id] ?? {}), [perguntaId]: valor } }))
+                                        }
+                                    />
                                 ))}
                             </>
                         )}
@@ -756,14 +815,15 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             <ResumoFinanceiro linhas={calculo.linhas} semMoldura />
                         </div>
 
-                        {/* §8 E4: o resumo declara a herança das respostas. Fora do cartão e por
-                            último: o resumo é a conta, e isto é o que acontece com as respostas.
-                            Alterar resposta aqui não existe, então é letra miúda do que foi
-                            combinado, não uma decisão a tomar no meio do caminho. */}
+                        {/* A herança das respostas, fora do cartão e por último: o resumo é a
+                            conta, e isto é o que acontece com o formulário. A frase dizia "sem
+                            alteração" e mandava fazer uma troca de perguntas depois; desde que a
+                            etapa do formulário aceita edição, as duas metades eram falsas. */}
                         {comFormulario.length > 0 && (
                             <p className="w-full text-sm text-tertiary">
-                                O destinatário herda as respostas do formulário sem alteração. Para mudar, faça uma troca de perguntas depois que concluir a
-                                transferência.
+                                {alteradas.length === 0
+                                    ? "O destinatário herda as respostas do formulário como estão hoje."
+                                    : `O destinatário herda as respostas do formulário com ${contarAlteradas(alteradas.length)} que você corrigiu.`}
                             </p>
                         )}
                     </>

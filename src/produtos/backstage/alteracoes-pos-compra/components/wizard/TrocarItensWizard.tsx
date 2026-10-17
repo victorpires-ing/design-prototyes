@@ -10,6 +10,7 @@ import { Tabs } from "@/components/application/tabs/tabs";
 import { cx } from "@/utils/cx";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, Stepper, mascararEmail } from "../pos-compra-ui";
+import { COBRANCA_TROCA_PERGUNTAS } from "../../data/pos-compra-store";
 import { AbasCarrossel, ChipLegenda, type AbaItem } from "../abas-carrossel";
 import { EditorResposta } from "../respostas-ui";
 import {
@@ -218,11 +219,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
         return item ? Array.from({ length: q }, () => item) : [];
     });
     const pares = parearTroca(linhasSaem, destinosItens);
-    const calculo = pares.length > 0 && totalEntram === totalSaem ? calcularTrocaItens(pares) : null;
     const cortesia = linhasSaem.some((l) => l.valorPago === 0);
-    /* §10.2: a sobra do downgrade fica com a Ingresse e a tela exige aceite explícito. */
-    const naoDevolvido = calculo?.naoDevolvido ?? 0;
-    const precisaAceite = naoDevolvido > 0;
     const selecaoIgual =
         totalSaem > 0 &&
         linhasSaem
@@ -254,6 +251,21 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
     const faltando = (linha: PedidoItem, novoItem: CatalogoItem) => perguntasDoItem(novoItem).filter((p) => !(valoresDoPar(linha, novoItem)[p.id] ?? "").trim());
     const paresComFormulario = pares.filter(({ novoItem }) => perguntasDoItem(novoItem).length > 0);
     const paresIncompletos = paresComFormulario.filter(({ linha, novoItem }) => faltando(linha, novoItem).length > 0);
+    /* Corrigir resposta que o participante já tinha dado é troca de perguntas e cobra; responder
+       pergunta que só o item novo faz é requisito da própria troca e não cobra. A cobrança segue
+       essa linha, então ela mora aqui e não num "mexeu em alguma coisa". */
+    const respostasCorrigidas = paresComFormulario.flatMap(({ linha, novoItem }) =>
+        perguntasDoItem(novoItem).filter((p) => {
+            const original = (linha.respostas[p.id] ?? "").trim();
+            return original !== "" && (valoresDoPar(linha, novoItem)[p.id] ?? "").trim() !== original;
+        }),
+    );
+    /* Depois dos derivados que ele usa: declarado lá em cima, `respostasCorrigidas` ainda estaria
+       na zona morta e a etapa quebrava na montagem. */
+    const calculo = pares.length > 0 && totalEntram === totalSaem ? calcularTrocaItens(pares, respostasCorrigidas.length > 0) : null;
+    /* §10.2: a sobra do downgrade fica com a Ingresse e a tela exige aceite explícito. */
+    const naoDevolvido = calculo?.naoDevolvido ?? 0;
+    const precisaAceite = naoDevolvido > 0;
     const [precisaFormulario, setPrecisaFormulario] = useState(false);
 
     /* ------------------------------------------------------------------ */
@@ -573,7 +585,10 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                     </p>
                 ) : (
                     <>
-                        <Regra>As respostas que já existiam vêm da unidade que sai. Só as perguntas novas do item que entra precisam de resposta.</Regra>
+                        <Regra>
+                            As respostas que já existiam vêm da unidade que sai, e só as perguntas novas do item que entra precisam de resposta. Corrigir uma
+                            resposta que já existia soma {formatarMoeda(COBRANCA_TROCA_PERGUNTAS)} ao total, uma vez só, não importa quantas mudem.
+                        </Regra>
                         {paresComFormulario.map(({ linha, novoItem }, posicao) => {
                             const pendentes = faltando(linha, novoItem);
                             const { nome } = identidadeDaLinha(pedido, linha);

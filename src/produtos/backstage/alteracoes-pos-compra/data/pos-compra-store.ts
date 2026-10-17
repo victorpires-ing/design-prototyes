@@ -27,6 +27,8 @@ export const COBRANCA_TROCA_ITEM_INGRESSE = 5;
  * de item, uma vez por operação (575635517 §6.2 e §9.2).
  */
 export const COBRANCA_TROCA_PERGUNTAS = 10;
+/** A mesma frase nas três operações: a cobrança é uma por operação, não por resposta. */
+const COBRANCA_PERGUNTAS_REGRA = "Entrada própria no finance. Cobrada uma vez por operação, independente de quantas respostas mudam.";
 /** Cobrança da titularidade: segue a configuração da transferência paga (576978948 §6). */
 export const COBRANCA_TITULARIDADE = 15;
 /** Prazo real de pagamento: 15 minutos (544309249 §4, 575995905 H-09, 575635517 §11.1).
@@ -1451,7 +1453,7 @@ export const parearTroca = (linhasSaem: PedidoItem[], itensEntram: CatalogoItem[
  *
  * Não existe taxa de processamento: "Não existe outra taxa na operação" (§10.1).
  */
-export const calcularTrocaItens = (pares: ParTroca[]): Calculo => {
+export const calcularTrocaItens = (pares: ParTroca[], respostasAlteradas = false): Calculo => {
     const diferenca = arredondar(pares.reduce((soma, { linha, novoItem }) => soma + novoItem.precoIntegral - linha.valorPago, 0));
     const taxaProporcional = arredondar(
         pares.reduce((soma, { linha, novoItem }) => soma + Math.max(0, taxaServicoSobre(novoItem.precoIntegral, novoItem) - taxaPagaNaLinha(linha)), 0),
@@ -1465,7 +1467,8 @@ export const calcularTrocaItens = (pares: ParTroca[]): Calculo => {
         }, 0),
     );
 
-    const bruto = arredondar(diferenca + taxaProporcional + COBRANCA_TROCA_ITEM);
+    const cobrancaPerguntas = respostasAlteradas ? COBRANCA_TROCA_PERGUNTAS : 0;
+    const bruto = arredondar(diferenca + taxaProporcional + COBRANCA_TROCA_ITEM + cobrancaPerguntas);
     const total = Math.max(0, bruto);
     const naoDevolvido = Math.max(0, arredondar(-bruto));
 
@@ -1486,6 +1489,10 @@ export const calcularTrocaItens = (pares: ParTroca[]): Calculo => {
             regra: `Cobrada uma vez por operação, independente de quantos itens mudam. Dividida em ${formatarMoeda(COBRANCA_TROCA_ITEM_PRODUTOR)} para o produtor e ${formatarMoeda(COBRANCA_TROCA_ITEM_INGRESSE)} para a Ingresse.`,
         },
     ];
+    /* §9.1: entrada própria no finance, separada da troca de item. Entra só quando o operador
+       mudou uma resposta que já existia: responder pergunta nova do item que entra é parte da
+       troca, e cobrar por isso seria cobrar pelo requisito da própria operação. */
+    if (respostasAlteradas) linhas.push({ label: "Cobrança da troca de perguntas", valor: COBRANCA_TROCA_PERGUNTAS, regra: COBRANCA_PERGUNTAS_REGRA });
     /* A sobra do downgrade NÃO entra no recibo: ela não é cobrança e, somada às
        parcelas, fazia a lista deixar de fechar com o total. Ela aparece onde age,
        no aviso e no aceite da revisão (§10.2). */
@@ -1501,7 +1508,7 @@ export const calcularTrocaItem = (linha: PedidoItem, novoItem: CatalogoItem): Ca
  * Titularidade (576978948 §6): o item não muda, então não há diferença nem taxa
  * de serviço proporcional. Vale a cobrança da transferência paga.
  */
-export const calcularTrocaTitularidade = (unidades: PedidoItem[]): Calculo => {
+export const calcularTrocaTitularidade = (unidades: PedidoItem[], respostasAlteradas = false): Calculo => {
     const cobranca = arredondar(unidades.length * COBRANCA_TITULARIDADE);
 
     /* As mesmas parcelas da troca, na mesma ordem, inclusive as que dão zero. Uma linha só com
@@ -1511,7 +1518,6 @@ export const calcularTrocaTitularidade = (unidades: PedidoItem[]): Calculo => {
     return {
         diferencaBruta: 0,
         semCredito: false,
-        total: cobranca,
         linhas: [
             {
                 label: "Diferença dos itens",
@@ -1528,8 +1534,13 @@ export const calcularTrocaTitularidade = (unidades: PedidoItem[]): Calculo => {
                 valor: cobranca,
                 regra: `${formatarMoeda(COBRANCA_TITULARIDADE)} por unidade, pela configuração da transferência paga.`,
             },
-            { label: "Total", valor: cobranca, destaque: true },
+            /* §9.1: entrada própria no finance, cobrada uma vez por operação. Entra só quando o
+               operador mudou uma resposta que já existia: completar pergunta em branco é parte
+               da alteração, não uma troca de respostas. */
+            ...(respostasAlteradas ? [{ label: "Cobrança da troca de perguntas", valor: COBRANCA_TROCA_PERGUNTAS, regra: COBRANCA_PERGUNTAS_REGRA }] : []),
+            { label: "Total", valor: arredondar(cobranca + (respostasAlteradas ? COBRANCA_TROCA_PERGUNTAS : 0)), destaque: true },
         ],
+        total: arredondar(cobranca + (respostasAlteradas ? COBRANCA_TROCA_PERGUNTAS : 0)),
     };
 };
 

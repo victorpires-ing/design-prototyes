@@ -459,7 +459,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                 <>
                     {/* Sem o ícone da `Regra`: aqui a frase é a instrução da etapa, a primeira
                         coisa escrita na tela, e não uma ressalva ao lado de outro conteúdo. */}
-                    <p className="text-sm text-tertiary">Marque os itens que serão substituídos. Os novos vêm na próxima etapa.</p>
+                    <p className="text-sm text-tertiary">Marque os itens que serão substituídos</p>
                     <SeletorUnidades pedido={pedido} verbo="trocar" selecao={saem} onChange={setSaem} />
                 </>
             )}
@@ -591,7 +591,6 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                     </p>
                 ) : (
                     <>
-                        <Regra>As respostas que já existiam vêm da unidade que sai, e só as perguntas novas do item que entra precisam de resposta.</Regra>
                         {paresComFormulario.map(({ linha, novoItem }, posicao) => {
                             const pendentes = faltando(linha, novoItem);
                             const { nome } = identidadeDaLinha(pedido, linha);

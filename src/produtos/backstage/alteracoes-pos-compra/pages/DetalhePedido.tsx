@@ -9,6 +9,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { AvatarProfilePhoto } from "@/components/base/avatar/avatar-profile-photo";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
@@ -219,13 +220,15 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
     const { pago, cortesia } = usePagamento(pedido);
     const isDesktop = useBreakpoint("md");
 
+    /* Devolve se copiou: o tooltip de confirmação só pode abrir quando de fato copiou, e este
+       caminho tem plano B justamente para quando a área de transferência falha. */
     const copiarId = async () => {
         const resultado = await copy(pedido.id, "id");
         if (resultado.success) {
             /* No telefone o dedo cobre o ícone que vira check, então a confirmação sai no toast.
                Sem ela o atendente ditava de volta o que já estava na área de transferência. */
             if (!isDesktop) toast.success(CONFIRMACAO_COPIA.id);
-            return;
+            return true;
         }
         setFalhaCopia(true);
         requestAnimationFrame(() => {
@@ -466,15 +469,19 @@ const Contato = ({
     chave: string;
     copied: string | boolean;
     copy: (texto: string, id?: string) => Promise<{ success: boolean; error?: Error }>;
-    /** Caminho próprio de cópia, para quem tem plano B quando a área de transferência falha. */
-    onCopiar?: () => void;
+    /** Caminho próprio de cópia, para quem tem plano B quando a área de transferência falha.
+     *  Devolve se copiou, para a confirmação não aparecer quando o plano B entrou em cena. */
+    onCopiar?: () => Promise<boolean | void>;
     mono?: boolean;
 }) => {
     const isDesktop = useBreakpoint("md");
 
+    const { aberto, setAberto, confirmar } = useTooltipQueSobreviveAoClique();
     const copiar = async () => {
         const { success } = await copy(textoCopia, chave);
-        if (success && !isDesktop) toast.success(CONFIRMACAO_COPIA[chave] ?? "Copiado");
+        if (!success) return;
+        if (isDesktop) confirmar();
+        else toast.success(CONFIRMACAO_COPIA[chave] ?? "Copiado");
     };
 
     return (
@@ -485,18 +492,23 @@ const Contato = ({
             {/* Abaixo de md o botão cobre a linha inteira em vez de ser um quadrado de 28px colado
                 a 2px do valor: o toque que escorregava para a esquerda caía no texto select-all e
                 selecionava o ID em vez de copiá-lo, sem avisar que nada tinha sido copiado. */}
-            <ButtonUtility
-                size="xs"
-                color="tertiary"
-                icon={copied === chave ? Check : Copy01}
-                /* O `aria-label` continua específico ("Copiar e-mail"): no leitor de tela, três
-                   botões chamados "Copiar" na mesma lista não dizem qual é qual. O tooltip é
-                   para o olho, que já vê ao lado de quê o botão está. */
-                tooltip={copied === chave ? "Copiado" : "Copiar"}
-                aria-label={rotulo}
-                onClick={() => (onCopiar ? onCopiar() : copiar())}
-                className="max-md:absolute max-md:inset-0 max-md:h-auto max-md:justify-end max-md:rounded-lg max-md:px-2 max-md:hover:bg-transparent"
-            />
+            {/* O `aria-label` continua específico ("Copiar e-mail"): no leitor de tela, três
+                botões chamados "Copiar" na mesma lista não dizem qual é qual. O tooltip é para o
+                olho, que já vê ao lado de quê o botão está. */}
+            <Tooltip title={copied === chave ? "Copiado" : "Copiar"} isOpen={aberto} onOpenChange={setAberto} placement="top">
+                <ButtonUtility
+                    size="xs"
+                    color="tertiary"
+                    icon={copied === chave ? Check : Copy01}
+                    aria-label={rotulo}
+                    onClick={async () => {
+                    if (!onCopiar) return copiar();
+                    const copiou = await onCopiar();
+                    if (copiou && isDesktop) confirmar();
+                }}
+                    className="max-md:absolute max-md:inset-0 max-md:h-auto max-md:justify-end max-md:rounded-lg max-md:px-2 max-md:hover:bg-transparent"
+                />
+            </Tooltip>
         </span>
     );
 };
@@ -827,6 +839,31 @@ const EstadoDaUnidade = ({ pedido, linha, solicitacao }: { pedido: Pedido; linha
  * Editar formulário não está aqui. Ele não tem versão geral: o formulário é de uma unidade,
  * com as respostas dela, então a porta dele é o cartão da unidade.
  */
+/**
+ * Mantém o tooltip aberto depois do clique.
+ *
+ * O React Aria fecha o tooltip ao apertar o gatilho, de propósito: o tooltip descreve o que o
+ * botão FAZ, não o que ele acabou de fazer. Aqui a confirmação é justamente o que interessa, e
+ * ela cabe no lugar onde o olho já estava, então reabrimos no quadro seguinte — depois do
+ * fechamento da biblioteca, senão ele desfaz o que acabamos de pedir.
+ *
+ * O fechamento automático existe porque o ponteiro pode ter saído do botão antes da reabertura,
+ * e aí nenhum `mouseleave` viria para fechá-lo.
+ */
+const useTooltipQueSobreviveAoClique = (janelaMs = 2000) => {
+    const [aberto, setAberto] = useState(false);
+    const timer = useRef<number | null>(null);
+    useEffect(() => () => void (timer.current && window.clearTimeout(timer.current)), []);
+    const confirmar = () => {
+        requestAnimationFrame(() => {
+            setAberto(true);
+            if (timer.current) window.clearTimeout(timer.current);
+            timer.current = window.setTimeout(() => setAberto(false), janelaMs);
+        });
+    };
+    return { aberto, setAberto, confirmar };
+};
+
 /** O que foi comprado, uma linha por item, com a quantidade na frente quando repete. O nome
  *  vem do catálogo, então a lista nunca discorda da aba de itens. */
 const itensDaCompra = (pedido: Pedido) => {
@@ -849,21 +886,18 @@ const itensDaCompra = (pedido: Pedido) => {
 const CopiarIdDoPedido = ({ id }: { id: string }) => {
     const { copied, copy } = useClipboard();
     const isDesktop = useBreakpoint("md");
+    const { aberto, setAberto, confirmar } = useTooltipQueSobreviveAoClique();
     const copiar = async () => {
         const resultado = await copy(id, "id");
+        if (!resultado.success) return;
         /* No telefone o dedo cobre o ícone que vira check, então a confirmação sai no toast. */
-        if (resultado.success && !isDesktop) toast.success(CONFIRMACAO_COPIA.id);
+        if (isDesktop) confirmar();
+        else toast.success(CONFIRMACAO_COPIA.id);
     };
     return (
-        <ButtonUtility
-            size="sm"
-            color="tertiary"
-            className="max-md:size-11"
-            icon={copied === "id" ? Check : Copy01}
-            tooltip={copied === "id" ? "Copiado" : "Copiar"}
-            aria-label="Copiar ID do pedido"
-            onClick={copiar}
-        />
+        <Tooltip title={copied === "id" ? "Copiado" : "Copiar"} isOpen={aberto} onOpenChange={setAberto} placement="top">
+            <ButtonUtility size="sm" color="tertiary" className="max-md:size-11" icon={copied === "id" ? Check : Copy01} aria-label="Copiar ID do pedido" onClick={copiar} />
+        </Tooltip>
     );
 };
 

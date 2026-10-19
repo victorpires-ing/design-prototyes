@@ -462,7 +462,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                 <>
                     {/* Sem o ícone da `Regra`: aqui a frase é a instrução da etapa, a primeira
                         coisa escrita na tela, e não uma ressalva ao lado de outro conteúdo. */}
-                    <p className="text-sm text-tertiary">Marque o que será substituído</p>
+                    <p className="text-sm text-tertiary">Marque o que será trocado</p>
                     <SeletorUnidades pedido={pedido} verbo="trocar" selecao={saem} onChange={setSaem} />
                 </>
             )}

@@ -381,10 +381,11 @@ export const SESSOES: Sessao[] = [
     criarSessao("s-trail-d2", "ev-trail", 70, 4, 30),
     criarSessao("s-tri-d1", "ev-triathlon", 83, 6, 0),
     criarSessao("s-tri-d2", "ev-triathlon", 84, 7, 0),
-    /* Esporte: dois eventos para o vocabulário aparecer em tela. */
-    criarSessao("s-nat-d1", "ev-natal", 41, 6, 0),
-    criarSessao("s-nat-d2", "ev-natal", 42, 6, 30),
-    criarSessao("s-cbranca-d1", "ev-costa-branca", 55, 5, 30),
+    /* Esporte. O Running Music é corrida e show no mesmo dia; o Mares tem a prova noturna
+       separada das de manhã, e é por isso que o nome da categoria carrega "NOTURNO". */
+    criarSessao("s-rmusic-rio", "ev-running-music", 38, 16, 0),
+    criarSessao("s-mares-manha", "ev-mares-ubatuba", 59, 7, 0),
+    criarSessao("s-mares-noturno", "ev-mares-ubatuba", 59, 18, 30),
 ];
 
 /*
@@ -414,10 +415,21 @@ export const EVENTOS: EventoOrg[] = [
         data: SESSOES[6].dataLabel,
         capa: "https://kraken.ingresse.com/event/posters/108467/large/1790120499.9730182.jpg",
     },
-    /* Os dois de esporte. Sem pôster por enquanto: o trilho já trata capa ausente, e inventar
-       uma URL de pôster daria imagem quebrada em toda tela do pedido. */
-    { id: "ev-natal", nome: "Maratona de Natal 2026", data: SESSOES[8].dataLabel, tipo: "esporte" },
-    { id: "ev-costa-branca", nome: "Desafio Costa Branca", data: SESSOES[10].dataLabel, tipo: "esporte" },
+    /* Os dois de esporte, com os pôsteres do TicketSports. */
+    {
+        id: "ev-running-music",
+        nome: "CIRCUITO RUNNING MUSIC - ETAPA RIO DE JANEIRO",
+        data: SESSOES[8].dataLabel,
+        capa: "https://cdn.ticketsports.com.br/ticketagora/images/thumb/SS34QQ8A4WM3KO7YENANCNKMXNSY8MIECH0WSI7KX0UK3R8YKU.png",
+        tipo: "esporte",
+    },
+    {
+        id: "ev-mares-ubatuba",
+        nome: "CIRCUITO MARES 2026 - ETAPA UBATUBA",
+        data: SESSOES[9].dataLabel,
+        capa: "https://cdn.ticketsports.com.br/ticketagora/images/thumb/754OS4399UVBPNC4JGNCGNZ2GTUE75QQ291FPN2LF8L107EAIN.png",
+        tipo: "esporte",
+    },
 ];
 
 /** Nível 2 e 3: cada item pertence a um grupo dentro de uma sessão. */
@@ -426,11 +438,18 @@ const GRUPO_LONGAS = "Provas longas";
 const GRUPO_TRAIL = "Trail";
 const GRUPO_INDIVIDUAL = "Provas individuais";
 const GRUPO_EQUIPE = "Provas em equipe";
-/* Esporte: o nível 2 é a modalidade, e é por ela que o atendente procura. */
-const MOD_CORRIDA = "Corrida de rua";
-const MOD_CAMINHADA = "Caminhada";
-const MOD_TRAIL_CB = "Trail run";
-const MOD_MTB = "Mountain bike";
+/* Esporte: o nível 2 é a modalidade, e é por ela que o atendente procura. No Running Music a
+   modalidade é a faixa de acesso, e a distância é a categoria dentro dela. */
+const MOD_RM_GERAL = "PÚBLICO GERAL";
+const MOD_RM_60PCD = "PÚBLICO GERAL - PÚBLICO 60+ / PÚBLICO PCD (CORRIDA + SHOW)";
+const MOD_RM_PREMIUM = "PREMIUM (CORRIDA + SHOW)";
+const MOD_MARES_NOTURNO = "Desafio Mares NOTURNO - Público Geral";
+const MOD_MARES_AGUAS = "ÁGUAS ABERTAS";
+const MOD_MARES_AQUATHLON = "AQUATHLON";
+const MOD_MARES_NATACAO_KIDS = "NATAÇÃO KIDS";
+const MOD_MARES_CORRIDA = "CORRIDA";
+const MOD_MARES_CORRIDA_KIDS = "CORRIDA KIDS";
+const MOD_MARES_PADDLE = "PADDLEBOARD";
 
 export const PERGUNTAS: Pergunta[] = [
     {
@@ -592,19 +611,33 @@ export const CATALOGO: CatalogoItem[] = [
     { id: "pr-foto", tipo: "produto", eventoId: "ev-maratona", foto: FOTO_COPO, nome: "Pacote de fotos", modalidade: "Unidade", descricao: "Todas as fotos do atleta em alta resolução.", precoIntegral: 45, estoque: 200 },
     { id: "pr-trail-bastao", tipo: "produto", eventoId: "ev-trail", foto: FOTO_SACOCHILA, nome: "Bastão de trail", modalidade: "Par", descricao: "Aluguel do par de bastões para a prova.", precoIntegral: 70, estoque: 18 },
     { id: "pr-trail-transfer", tipo: "produto", eventoId: "ev-trail", foto: FOTO_KIT, nome: "Transfer para a largada", modalidade: "Ida e volta", descricao: "Saída de Natal às 4h.", precoIntegral: 55, estoque: 24 },
-    /* Maratona de Natal: duas modalidades, cinco categorias, em dois dias de prova. */
-    { id: "it-nat-5k", tipo: "ingresso", eventoId: "ev-natal", sessaoId: "s-nat-d1", grupo: MOD_CORRIDA, lote: "Lote 2", nome: "5 km", modalidade: "5 km", precoIntegral: 110, estoque: 180, formularioId: "f-ficha" },
-    { id: "it-nat-10k", tipo: "ingresso", eventoId: "ev-natal", sessaoId: "s-nat-d1", grupo: MOD_CORRIDA, lote: "Lote 2", nome: "10 km", modalidade: "10 km", precoIntegral: 160, estoque: 95, formularioId: "f-ficha" },
-    { id: "it-nat-21k", tipo: "ingresso", eventoId: "ev-natal", sessaoId: "s-nat-d2", grupo: MOD_CORRIDA, lote: "Lote 3", nome: "21 km", modalidade: "21 km", precoIntegral: 240, estoque: 40, formularioId: "f-ficha" },
-    { id: "it-nat-42k", tipo: "ingresso", eventoId: "ev-natal", sessaoId: "s-nat-d2", grupo: MOD_CORRIDA, lote: "Lote 3", nome: "42 km", modalidade: "42 km", precoIntegral: 320, estoque: 18, formularioId: "f-ficha" },
-    { id: "it-nat-cam", tipo: "ingresso", eventoId: "ev-natal", sessaoId: "s-nat-d1", grupo: MOD_CAMINHADA, lote: "Lote único", nome: "Caminhada 3 km", modalidade: "3 km", precoIntegral: 70, estoque: 220, formularioId: "f-ficha" },
-    { id: "pr-nat-kit", tipo: "produto", eventoId: "ev-natal", foto: FOTO_KIT, nome: "Kit extra do atleta", modalidade: "Unidade", descricao: "Segundo kit com camiseta, sacochila e número.", precoIntegral: 95, estoque: 60 },
+    /* Running Music, etapa Rio. A mesma distância é vendida em três faixas de acesso, e é a
+       faixa que vira modalidade: "PÚBLICO GERAL - CORRIDA 5KM" é modalidade mais categoria. */
+    { id: "it-rm-geral-5k", tipo: "ingresso", eventoId: "ev-running-music", sessaoId: "s-rmusic-rio", grupo: MOD_RM_GERAL, lote: "Lote 2", nome: "CORRIDA 5KM", modalidade: "5 km", precoIntegral: 129, estoque: 420, formularioId: "f-ficha" },
+    { id: "it-rm-geral-3k", tipo: "ingresso", eventoId: "ev-running-music", sessaoId: "s-rmusic-rio", grupo: MOD_RM_GERAL, lote: "Lote 2", nome: "CAMINHADA 3KM", modalidade: "3 km", precoIntegral: 109, estoque: 380, formularioId: "f-ficha" },
+    { id: "it-rm-60-5k", tipo: "ingresso", eventoId: "ev-running-music", sessaoId: "s-rmusic-rio", grupo: MOD_RM_60PCD, lote: "Lote único", nome: "CORRIDA 5KM", modalidade: "5 km", precoIntegral: 64.5, estoque: 90, formularioId: "f-ficha" },
+    { id: "it-rm-60-3k", tipo: "ingresso", eventoId: "ev-running-music", sessaoId: "s-rmusic-rio", grupo: MOD_RM_60PCD, lote: "Lote único", nome: "CAMINHADA 3KM", modalidade: "3 km", precoIntegral: 54.5, estoque: 110, formularioId: "f-ficha" },
+    { id: "it-rm-prem-5k", tipo: "ingresso", eventoId: "ev-running-music", sessaoId: "s-rmusic-rio", grupo: MOD_RM_PREMIUM, lote: "Lote 1", nome: "CORRIDA 5KM", modalidade: "5 km", precoIntegral: 219, estoque: 60, formularioId: "f-ficha" },
+    { id: "it-rm-prem-3k", tipo: "ingresso", eventoId: "ev-running-music", sessaoId: "s-rmusic-rio", grupo: MOD_RM_PREMIUM, lote: "Lote 1", nome: "CAMINHADA 3KM", modalidade: "3 km", precoIntegral: 199, estoque: 45, formularioId: "f-ficha" },
 
-    /* Desafio Costa Branca: duas modalidades num dia só. */
-    { id: "it-cb-trail-15", tipo: "ingresso", eventoId: "ev-costa-branca", sessaoId: "s-cbranca-d1", grupo: MOD_TRAIL_CB, lote: "Lote 2", nome: "Trail 15 km", modalidade: "15 km", precoIntegral: 170, estoque: 55, formularioId: "f-ficha" },
-    { id: "it-cb-trail-30", tipo: "ingresso", eventoId: "ev-costa-branca", sessaoId: "s-cbranca-d1", grupo: MOD_TRAIL_CB, lote: "Lote 2", nome: "Trail 30 km", modalidade: "30 km", precoIntegral: 250, estoque: 22, formularioId: "f-ficha" },
-    { id: "it-cb-mtb-50", tipo: "ingresso", eventoId: "ev-costa-branca", sessaoId: "s-cbranca-d1", grupo: MOD_MTB, lote: "Lote 1", nome: "MTB 50 km", modalidade: "50 km", precoIntegral: 290, estoque: 30, formularioId: "f-ficha" },
-    { id: "pr-cb-transfer", tipo: "produto", eventoId: "ev-costa-branca", foto: FOTO_KIT, nome: "Transfer para a largada", modalidade: "Ida e volta", descricao: "Saída de Natal às 3h30.", precoIntegral: 60, estoque: 40 },
+    /* Circuito Mares, etapa Ubatuba. Sete modalidades no mesmo dia; a noturna tem sessão
+       própria, as outras saem de manhã. */
+    { id: "it-mar-not-m", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-noturno", grupo: MOD_MARES_NOTURNO, lote: "Lote 2", nome: "Masculino - NOTURNO 750m - Ubatuba", modalidade: "750 m", precoIntegral: 299, estoque: 70, formularioId: "f-ficha" },
+    { id: "it-mar-not-f", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-noturno", grupo: MOD_MARES_NOTURNO, lote: "Lote 2", nome: "Feminino - NOTURNO 750m - Ubatuba", modalidade: "750 m", precoIntegral: 299, estoque: 70, formularioId: "f-ficha" },
+    { id: "it-mar-ag-start", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-manha", grupo: MOD_MARES_AGUAS, lote: "Lote 2", nome: "ÁGUAS ABERTAS | START - 500M", modalidade: "500 m", precoIntegral: 299, estoque: 85, formularioId: "f-ficha" },
+    { id: "it-mar-ag-short", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-manha", grupo: MOD_MARES_AGUAS, lote: "Lote 2", nome: "ÁGUAS ABERTAS | SHORT - 1KM", modalidade: "1 km", precoIntegral: 299, estoque: 64, formularioId: "f-ficha" },
+    { id: "it-mar-ag-marathon", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-manha", grupo: MOD_MARES_AGUAS, lote: "Lote 2", nome: "ÁGUAS ABERTAS | MARATHON - 2,5KM", modalidade: "2,5 km", precoIntegral: 299, estoque: 38, formularioId: "f-ficha" },
+    /* Revezamento: o preço é por grupo, não por atleta. */
+    { id: "it-mar-aq-m", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-manha", grupo: MOD_MARES_AQUATHLON, lote: "Lote 1", nome: "AQUATHLON - REVEZAMENTO MASCULINO (1KM NATAÇÃO / 5KM CORRIDA)", modalidade: "Revezamento", precoIntegral: 469, estoque: 24, formularioId: "f-ficha" },
+    { id: "it-mar-aq-f", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-manha", grupo: MOD_MARES_AQUATHLON, lote: "Lote 1", nome: "AQUATHLON - REVEZAMENTO FEMININO (1KM NATAÇÃO / 5KM CORRIDA)", modalidade: "Revezamento", precoIntegral: 469, estoque: 24, formularioId: "f-ficha" },
+    { id: "it-mar-nk-50", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-manha", grupo: MOD_MARES_NATACAO_KIDS, lote: "Lote único", nome: "NATAÇÃO KIDS - 50M", modalidade: "50 m", precoIntegral: 189, estoque: 50, formularioId: "f-ficha" },
+    { id: "it-mar-nk-100", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-manha", grupo: MOD_MARES_NATACAO_KIDS, lote: "Lote único", nome: "NATAÇÃO KIDS - 100M", modalidade: "100 m", precoIntegral: 189, estoque: 50, formularioId: "f-ficha" },
+    { id: "it-mar-co-5k", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-manha", grupo: MOD_MARES_CORRIDA, lote: "Lote 2", nome: "CORRIDA ADULTO - 5KM", modalidade: "5 km", precoIntegral: 209, estoque: 120, formularioId: "f-ficha" },
+    { id: "it-mar-ck-100", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-manha", grupo: MOD_MARES_CORRIDA_KIDS, lote: "Lote único", nome: "CORRIDA KIDS - 100M", modalidade: "100 m", precoIntegral: 189, estoque: 60, formularioId: "f-ficha" },
+    { id: "it-mar-ck-200", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-manha", grupo: MOD_MARES_CORRIDA_KIDS, lote: "Lote único", nome: "CORRIDA KIDS - 200M", modalidade: "200 m", precoIntegral: 189, estoque: 60, formularioId: "f-ficha" },
+    { id: "it-mar-pad-25", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-manha", grupo: MOD_MARES_PADDLE, lote: "Lote 2", nome: "PADDLEBOARD - 2.5KM", modalidade: "2,5 km", precoIntegral: 239, estoque: 32, formularioId: "f-ficha" },
+    { id: "it-mar-sup-fun", tipo: "ingresso", eventoId: "ev-mares-ubatuba", sessaoId: "s-mares-manha", grupo: MOD_MARES_PADDLE, lote: "Lote 2", nome: "STANDUP PADDLE - SUP | FUN - 2.5M", modalidade: "2,5 m", precoIntegral: 239, estoque: 28, formularioId: "f-ficha" },
+    { id: "pr-mares-kit", tipo: "produto", eventoId: "ev-mares-ubatuba", foto: FOTO_KIT, nome: "CIRCUITO MARES - KIT PREMIUM - UBATUBA", modalidade: "Unidade", descricao: "Kit premium da etapa, retirado na arena.", precoIntegral: 189, estoque: 90 },
 
     { id: "pr-tri-aluguel", tipo: "produto", eventoId: "ev-triathlon", foto: FOTO_SACOCHILA, nome: "Aluguel de roupa de neoprene", modalidade: "Unidade", descricao: "Retirada na véspera, na arena de transição.", precoIntegral: 110, estoque: 9 },
 
@@ -1304,7 +1337,7 @@ PEDIDOS_INICIAIS.push({
    trocado onde ele importa: o rótulo do nível 2, o do item e o da ficha. */
 PEDIDOS_INICIAIS.push({
     id: uuidDeterministico(12),
-    eventoId: "ev-natal",
+    eventoId: "ev-running-music",
     compradorId: "c-carol",
     dataCompraLabel: "28 set 2026",
     canal: "Online",
@@ -1312,9 +1345,9 @@ PEDIDOS_INICIAIS.push({
     criadoEmLabel: "28 set 2026, 09:12",
     atualizadoEmLabel: "28 set 2026, 09:12",
     itens: [
-        { id: "li-12a", itemId: "it-nat-21k", valorPago: 240, respostas: { ...respostasCompletas("it-nat-21k"), "p-camiseta": "M", "p-kit": ARENA } },
-        { id: "li-12b", itemId: "it-nat-cam", titularId: "c-diego", valorPago: 70, respostas: { ...respostasCompletas("it-nat-cam"), "p-camiseta": "G", "p-kit": ARENA } },
-        { id: "li-12c", itemId: "pr-nat-kit", valorPago: 95, respostas: {} },
+        { id: "li-12a", itemId: "it-rm-prem-5k", valorPago: 219, respostas: { ...respostasCompletas("it-rm-prem-5k"), "p-camiseta": "M", "p-kit": ARENA } },
+        { id: "li-12b", itemId: "it-rm-geral-3k", titularId: "c-diego", valorPago: 109, respostas: { ...respostasCompletas("it-rm-geral-3k"), "p-camiseta": "G", "p-kit": ARENA } },
+        { id: "li-12c", itemId: "it-rm-60-3k", valorPago: 54.5, respostas: { ...respostasCompletas("it-rm-60-3k"), "p-camiseta": "P", "p-kit": ARENA } },
     ],
     status: "ativo",
     historico: [
@@ -1324,8 +1357,8 @@ PEDIDOS_INICIAIS.push({
             responsavel: "Carolina Sampaio",
             titulo: "Pedido criado",
             marco: "compra" as const,
-            descricao: "21 km, caminhada de 3 km e um kit extra.",
-            valor: 405,
+            descricao: "Corrida 5 km premium, caminhada 3 km geral e caminhada 3 km 60+.",
+            valor: 382.5,
             estado: "concluido",
         },
     ],
@@ -1333,7 +1366,7 @@ PEDIDOS_INICIAIS.push({
 
 PEDIDOS_INICIAIS.push({
     id: uuidDeterministico(13),
-    eventoId: "ev-costa-branca",
+    eventoId: "ev-mares-ubatuba",
     compradorId: "c-leticia",
     dataCompraLabel: "02 out 2026",
     canal: "Online",
@@ -1341,9 +1374,10 @@ PEDIDOS_INICIAIS.push({
     criadoEmLabel: "02 out 2026, 20:05",
     atualizadoEmLabel: "02 out 2026, 20:05",
     itens: [
-        { id: "li-13a", itemId: "it-cb-trail-30", valorPago: 250, respostas: { ...respostasCompletas("it-cb-trail-30"), "p-camiseta": "P", "p-kit": PONTA_NEGRA } },
-        { id: "li-13b", itemId: "it-cb-mtb-50", valorPago: 290, respostas: { ...respostasCompletas("it-cb-mtb-50"), "p-camiseta": "GG", "p-kit": PONTA_NEGRA } },
-        { id: "li-13c", itemId: "pr-cb-transfer", valorPago: 60, respostas: {} },
+        { id: "li-13a", itemId: "it-mar-ag-marathon", valorPago: 299, respostas: { ...respostasCompletas("it-mar-ag-marathon"), "p-camiseta": "P", "p-kit": PONTA_NEGRA } },
+        { id: "li-13b", itemId: "it-mar-not-f", valorPago: 299, respostas: { ...respostasCompletas("it-mar-not-f"), "p-camiseta": "M", "p-kit": PONTA_NEGRA } },
+        { id: "li-13c", itemId: "it-mar-ck-200", titularId: "c-carol", valorPago: 189, respostas: { ...respostasCompletas("it-mar-ck-200"), "p-camiseta": "PP", "p-kit": PONTA_NEGRA } },
+        { id: "li-13d", itemId: "pr-mares-kit", valorPago: 189, respostas: {} },
     ],
     status: "ativo",
     historico: [
@@ -1353,8 +1387,8 @@ PEDIDOS_INICIAIS.push({
             responsavel: "Letícia Amaral",
             titulo: "Pedido criado",
             marco: "compra" as const,
-            descricao: "Trail de 30 km, MTB de 50 km e transfer para a largada.",
-            valor: 600,
+            descricao: "Águas abertas 2,5 km, noturno feminino 750 m, corrida kids 200 m e um kit premium.",
+            valor: 976,
             estado: "concluido",
         },
     ],

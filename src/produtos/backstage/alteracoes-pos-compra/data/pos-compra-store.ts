@@ -23,7 +23,7 @@ export const COBRANCA_TROCA_ITEM = 20;
 export const COBRANCA_TROCA_ITEM_PRODUTOR = 15;
 export const COBRANCA_TROCA_ITEM_INGRESSE = 5;
 /**
- * Cobrança da troca de perguntas. Entrada PRÓPRIA no finance, separada da troca
+ * Taxa de edição do formulário. Entrada PRÓPRIA no finance, separada da troca
  * de item, uma vez por operação (575635517 §6.2 e §9.2).
  */
 export const COBRANCA_TROCA_PERGUNTAS = 10;
@@ -1492,7 +1492,7 @@ export const calcularTrocaItens = (pares: ParTroca[], respostasAlteradas = false
     /* §9.1: entrada própria no finance, separada da troca de item. Entra só quando o operador
        mudou uma resposta que já existia: responder pergunta nova do item que entra é parte da
        troca, e cobrar por isso seria cobrar pelo requisito da própria operação. */
-    if (respostasAlteradas) linhas.push({ label: "Cobrança da troca de perguntas", valor: COBRANCA_TROCA_PERGUNTAS, regra: COBRANCA_PERGUNTAS_REGRA });
+    if (respostasAlteradas) linhas.push({ label: "Taxa de edição do formulário", valor: COBRANCA_TROCA_PERGUNTAS, regra: COBRANCA_PERGUNTAS_REGRA });
     /* A sobra do downgrade NÃO entra no recibo: ela não é cobrança e, somada às
        parcelas, fazia a lista deixar de fechar com o total. Ela aparece onde age,
        no aviso e no aceite da revisão (§10.2). */
@@ -1506,38 +1506,28 @@ export const calcularTrocaItem = (linha: PedidoItem, novoItem: CatalogoItem): Ca
 
 /**
  * Titularidade (576978948 §6): o item não muda, então não há diferença nem taxa
- * de serviço proporcional. Vale a cobrança da transferência paga.
+ * de serviço proporcional. Vale a taxa da transferência paga.
  */
 export const calcularTrocaTitularidade = (unidades: PedidoItem[], respostasAlteradas = false): Calculo => {
     const cobranca = arredondar(unidades.length * COBRANCA_TITULARIDADE);
 
-    /* As mesmas parcelas da troca, na mesma ordem, inclusive as que dão zero. Uma linha só com
-       a conta embutida no rótulo ("Cobrança da transferência · 2 unidades") não dizia de onde
-       vinha o valor nem por que não havia mais nada: os dois zeros são a resposta, e dizem que
-       a titularidade não mexe no preço nem na taxa. */
+    /* Sem as linhas zeradas de diferença e de taxa proporcional. Elas existiam para dizer que a
+       titularidade não mexe no preço, mas na titularidade elas são sempre zero: duas linhas que
+       nunca mudam fazem o operador procurar o que mudou justamente onde nada muda. O que esta
+       operação cobra é a taxa, e é só ela que aparece. */
     return {
         diferencaBruta: 0,
         semCredito: false,
         linhas: [
             {
-                label: "Diferença dos itens",
-                valor: 0,
-                regra: "A titularidade não troca o item: o que sai e o que fica é o mesmo ingresso, pelo mesmo preço.",
-            },
-            {
-                label: "Taxa de serviço proporcional",
-                valor: 0,
-                regra: "Sem item novo não há taxa de serviço nova para comparar com a já paga.",
-            },
-            {
-                label: "Cobrança da transferência",
+                label: "Taxa da transferência",
                 valor: cobranca,
                 regra: `${formatarMoeda(COBRANCA_TITULARIDADE)} por unidade, pela configuração da transferência paga.`,
             },
             /* §9.1: entrada própria no finance, cobrada uma vez por operação. Entra só quando o
                operador mudou uma resposta que já existia: completar pergunta em branco é parte
                da alteração, não uma troca de respostas. */
-            ...(respostasAlteradas ? [{ label: "Cobrança da troca de perguntas", valor: COBRANCA_TROCA_PERGUNTAS, regra: COBRANCA_PERGUNTAS_REGRA }] : []),
+            ...(respostasAlteradas ? [{ label: "Taxa de edição do formulário", valor: COBRANCA_TROCA_PERGUNTAS, regra: COBRANCA_PERGUNTAS_REGRA }] : []),
             { label: "Total", valor: arredondar(cobranca + (respostasAlteradas ? COBRANCA_TROCA_PERGUNTAS : 0)), destaque: true },
         ],
         total: arredondar(cobranca + (respostasAlteradas ? COBRANCA_TROCA_PERGUNTAS : 0)),

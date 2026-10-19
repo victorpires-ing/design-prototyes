@@ -51,7 +51,7 @@ vem de nenhuma das três especificações**. Esta é a lista que o segundo commi
 
 ### 2. A cobrança da troca de titularidade é multiplicada pelo número de unidades transferidas (R$ 15,00 × quantidade).
 
-- **Onde:** src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1540 (arredondar(quantidade * COBRANCA_TITULARIDADE)); components/wizard/TransferirTitularidadeWizard.tsx:150
+- **Onde:** src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1530 (arredondar(quantidade * COBRANCA_TITULARIDADE)); components/wizard/TransferirTitularidadeWizard.tsx:150
 - **Contraria:** 576978948 §6 e H-01/H-24: o valor segue a configuração da transferência paga, e a mecânica de cobrança das EFs é "uma vez por operação" (575995905 §10.1, 575635517 §9.1). Nenhum documento autoriza multiplicar por unidade.
 - **Risco:** Cobra valores que o finance não configurou. Uma assessoria transferindo 40 inscrições recebe uma cobrança de R$ 600,00 que nenhuma regra documentada sustenta, e a diferença entre "por operação" e "por unidade" é dinheiro real repassado a produtor e Ingresse.
 
@@ -75,7 +75,7 @@ vem de nenhuma das três especificações**. Esta é a lista que o segundo commi
 
 ### 6. Em "Mais ações" o operador pode "Registrar pagamento recebido": digita uma referência de comprovante (mínimo 4 caracteres) e a solicitação vai para processando e é efetivada, sem nenhuma confirmação de pagamento real.
 
-- **Onde:** src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:2076-2135 (registrarPagamento); components/CartaoOperacao.tsx:300-345 (ModalRegistrarPagamento)
+- **Onde:** src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:2066-2135 (registrarPagamento); components/CartaoOperacao.tsx:300-345 (ModalRegistrarPagamento)
 - **Contraria:** 575995905 §12.1/§12.2 e §16 B6: a efetivação é disparada pela confirmação do pagamento do link/checkout. Nenhuma das três EFs prevê confirmação manual de pagamento pelo Backstage; o painel só tem Cancelar e Reprocessar (§17).
 - **Risco:** Dá ao atendimento o poder de efetivar troca, transferência e alteração de respostas sem dinheiro recebido, com um campo de texto livre como única evidência. É fraude a um clique e sem reversão (o próprio modal avisa que não dá para desfazer). O protótipo até criou um cenário de escalonamento chamado "pagamento registrado por engano", o que mostra que o buraco é conhecido.
 
@@ -99,13 +99,13 @@ vem de nenhuma das três especificações**. Esta é a lista que o segundo commi
 
 ### 10. Ao efetivar uma troca, o valor pago da linha passa a ser o maior entre o que já estava pago e o preço integral do novo item.
 
-- **Onde:** src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:2013 (valorPago: Math.max(linha.valorPago, precoNovo))
+- **Onde:** src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:2003 (valorPago: Math.max(linha.valorPago, precoNovo))
 - **Contraria:** §10.1: o crédito do item atual é o valor efetivamente pago, e §10.2: no downgrade a sobra não vira crédito nem saldo e fica com a Ingresse. Nenhuma EF define o valor pago da linha depois da troca.
 - **Risco:** Depois de um downgrade de R$ 150 para R$ 80, a linha continua valendo R$ 150 de crédito. Na troca seguinte o cliente recupera, como abatimento, exatamente a sobra que o documento diz que ficou com a Ingresse. Duas trocas em sequência devolvem o que uma não devolve.
 
 ### 11. Quando a sessão da unidade já aconteceu, só a troca é bloqueada; transferir titularidade e editar o formulário continuam disponíveis, e a tela diz isso em texto ("Sessão realizada. Só a transferência continua disponível").
 
-- **Onde:** src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1776 (motivoIndisponivel só bloqueia o verbo "trocar"); pages/DetalhePedido.tsx:588-589
+- **Onde:** src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1766 (motivoIndisponivel só bloqueia o verbo "trocar"); pages/DetalhePedido.tsx:588-589
 - **Contraria:** 576978948 V03/C05 ("Este evento foi encerrado; o item não pode mais mudar de possuidor") e 575635517 V03/§6.1 (evento encerrado bloqueia a troca de respostas). O protótipo troca "evento encerrado" por "sessão realizada" e libera dois fluxos que a EF manda bloquear.
 - **Risco:** Permite transferir titularidade e trocar respostas de um ingresso já usado ou de uma sessão que acabou, exatamente o que H-05 e V06 existem para impedir. Como não há bloqueio por check-in nem por kit retirado, essa é a única barreira de "item já consumido" que o protótipo tem, e ela está aberta para dois dos três fluxos.
 
@@ -189,7 +189,7 @@ O protótipo trata o assunto, de um jeito diferente do que a especificação man
 
 - **§3.2** — Nada muda antes do pagamento: item atual, respostas e estoques permanecem intactos; o usuário é avisado de que a troca só se efetiva após o pagamento e está sujeita a estoque.
   <br>O pedido, o item atual e suas respostas ficam intactos (conforme), e o aviso existe na revisão (TrocarItensWizard:549-554). Mas criarSolicitacao já decrementa o estoque do item de DESTINO na criação, antes de qualquer pagamento. A regra manda não mexer em estoque nenhum nesse momento (§11).
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1865`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1855`
 - **§5 itens de acesso** — Itens de acesso são ingresso, inscrição e combo; produto não é item de acesso.
   <br>nominalDoItem = item.nominal ?? item.tipo === 'ingresso'. Combo fica fora da regra de item de acesso por padrão, quando a EF o inclui. Produto fora está correto.
   <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:143`
@@ -201,16 +201,16 @@ O protótipo trata o assunto, de um jeito diferente do que a especificação man
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/TrocarItensWizard.tsx:594-599`
 - **§7.2 segmentação do item** — Item com tipo de portador segmentado é listado e selecionável, mas a troca só se efetiva se o possuidor atender ao critério; caso contrário, erro de público específico.
   <br>A validação sobre o possuidor existe (feminino e sócio). Mas o protótipo bloqueia já na LISTA, com badge 'Restrito' e item não selecionável (TrocarItensWizard:594-599), quando a regra manda listar e selecionável e só barrar na efetivação. Só dois critérios são simulados; idade, PCD, membership e lista de documentos não existem.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1676-1689`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1666-1689`
 - **§8 nominalidade** — Em evento nominal, o possuidor só pode ter 1 item de acesso por sessão; o item atual, que será substituído, não conta como duplicidade; produto não entra na regra.
   <br>A regra é por SESSÃO e por item de acesso. O código compara apenas l.itemId === novoItem.id dentro do mesmo pedido: dois itens de acesso diferentes na mesma sessão passam, e duplicidade em outro pedido do mesmo documento passa. O 'item atual não conta' está correto (l.id !== linha.id) e produto está corretamente fora (nominalDoItem).
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1642-1653`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1632-1653`
 - **§8 segmentação do item** — O possuidor precisa pertencer ao público do novo item: idade, PCD, membership, lista manual de documentos e demais segmentações existentes.
   <br>Só existem dois critérios simulados: 'feminino' (contra conta.genero) e 'socio' (contra conta.socio). Idade, PCD, membership e lista de documentos não têm representação no modelo.
   <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:125-126`
 - **§8 estoque** — Elegibilidade inclui estoque disponível no grupo, no item, no lote e nas respostas com estoque do destino.
   <br>Valida só o estoque do ITEM (novoItem.estoque <= 0). Não valida grupo (não existe estoque de grupo), nem lote (não existe), nem as respostas com estoque do destino — a etapa de formulário da troca não impede escolher uma opção esgotada e não consome o estoque dela.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1654-1660`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1644-1660`
 - **§10.2 downgrade não devolve** — No downgrade o crédito abate primeiro a cobrança da troca; a sobra não é devolvida, não vira crédito nem saldo e fica com a Ingresse. A tela informa isso e exige aceite explícito.
   <br>O cálculo está certo (naoDevolvido, store:1505), o aviso aparece (TrocarItensWizard:529-535) e há um Checkbox de aceite que bloqueia a confirmação (podeAvancar, linha 250). Mas o aceite NÃO é gravado: aceitouSobra é estado local e não é enviado a criarSolicitacao (336-351), apesar de o hint prometer 'O aceite fica registrado no histórico'.
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/TrocarItensWizard.tsx:541-548`
@@ -222,10 +222,10 @@ O protótipo trata o assunto, de um jeito diferente do que a especificação man
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/TrocarItensWizard.tsx:596`
 - **§11 pagamento confirmado** — Pagamento confirmado e efetivado: estoque do destino consumido definitivamente e estoque do item atual devolvido, com as respostas descontinuadas.
   <br>A devolução do estoque de origem acontece no momento certo (devolverEstoqueDasOrigens antes de aplicar). O consumo do destino, porém, já tinha acontecido na criação. E o estoque das respostas descontinuadas não volta na troca de item (§9).
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:2134`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:2124`
 - **§12.1 unicidade** — Só pode existir uma solicitação em AGUARDANDO PAGAMENTO, PAGO/PROCESSANDO ou FALHA DE PROCESSAMENTO por item; depois de EXPIRADA, CANCELADA ou REPROVADA uma nova pode ser criada.
   <br>A unicidade enquanto a solicitação está aberta funciona (ocupada → retorna null). A segunda metade não: depois de uma 'falha' (que representa a REPROVADA da EF) a solicitação nunca sai da lista, então a unidade fica bloqueada para sempre (motivoIndisponivel:1769) e nenhuma nova solicitação pode ser criada.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1860-1861`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1850-1861`
 - **§12.1 prazo e meios** — Prazo de 15 minutos; meios de pagamento conforme o evento, sem boleto.
   <br>O prazo de 15 minutos é declarado e exibido (PRAZO_REAL_LABEL, usado em TrocarItensWizard:553), com timer acelerado assumido como recurso de demonstração. Os meios de pagamento da cobrança não existem no protótipo: não há checkout, então 'sem boleto' não é verificável.
   <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:32-36`
@@ -240,28 +240,28 @@ O protótipo trata o assunto, de um jeito diferente do que a especificação man
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/TrocarItensWizard.tsx:103`
 - **V06** — Operação pendente sobre o item, em B1: 'Existe uma operação em andamento ({tipo}). Conclua ou cancele antes de prosseguir.'
   <br>O bloqueio existe e o texto nomeia o tipo ('Em troca', 'Em transferência para X', 'Em edição do formulário'), mas não diz 'conclua ou cancele antes de prosseguir' nem dá o caminho para cancelar dentro do fluxo.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1767-1775`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1757-1775`
 - **V07** — Destino igual ao atual, em B2: 'Selecione um item diferente do atual.'
   <br>Com uma unidade, o item atual não é selecionável. Com várias, o aviso só dispara quando o conjunto de destinos é IDÊNTICO ao de origem (selecaoIgual, 197-206); misturando itens, parearTroca pode casar uma linha com o próprio item dela e a solicitação é criada — a recusa só vem na revalidação pós-pagamento (store:1637-1639).
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/TrocarItensWizard.tsx:437`
 - **V08** — Nominalidade, em B3: 'O possuidor já possui um item de acesso nesta sessão do evento vinculado ao mesmo documento.'
   <br>A mensagem existe ('Fulano já tem uma unidade de X neste pedido') mas afirma coisa diferente: a verificação é por item idêntico dentro do mesmo pedido, não por item de acesso na mesma sessão vinculado ao mesmo documento.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1646-1652`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1636-1652`
 - **V13** — Estoque acabou durante a operação, em B2/B4/B6: 'A opção {item ou resposta} esgotou durante a operação. Escolha entre as opções disponíveis.' Sem nenhuma opção: 'Estoque esgotado.'
   <br>Em B2 há bloqueio e badge 'Esgotado' no item, mas é o estado inicial, não o 'esgotou durante a operação'. Em B4 a opção de resposta esgotada aparece desabilitada, sem a mensagem. Em B6 não há verificação nenhuma: criarSolicitacao decrementa sem checar, então o esgotamento na confirmação passa em silêncio.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1654-1660`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1644-1660`
 - **C06** — Downgrade sem pagamento: cobrança R$50, item pago R$150, destino R$80, aceite registrado → total R$0, troca efetivada na hora e R$20 de sobra ficam com a Ingresse.
   <br>A mecânica de total zero aplicando na hora funciona e a sobra é calculada. Dois desvios: a cobrança de R$50 não é configurável, e o aceite exigido pelo cenário não é registrado em lugar nenhum.
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/TrocarItensWizard.tsx:103`
 - **C13** — Segmentação do item: item com segmentação PCD selecionado para possuidor não PCD → troca bloqueada com a mensagem de público específico.
   <br>O bloqueio por segmentação do item existe, mas com outros critérios (feminino, sócio) e aplicado já na listagem, não na seleção. PCD não existe.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1676-1689`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1666-1689`
 - **C16** — Nominalidade por sessão: bloqueia trocar um produto por uma inscrição na sessão em que o possuidor já tem ingresso, e permite trocar o próprio ingresso de sábado por outro ingresso de sábado.
   <br>A segunda metade funciona (o item atual não conta). A primeira não: trocar um produto por uma inscrição numa sessão onde o possuidor já tem outro item de acesso passa, porque a comparação é por itemId igual, não por sessão.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1642-1653`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1632-1653`
 - **C23** — Operação concorrente: com uma troca pendente sobre um item, a tentativa de trocar a titularidade dele é bloqueada e a opção de cancelar a solicitação pendente é oferecida.
   <br>O bloqueio acontece para os três verbos. A oferta de cancelar a pendente não aparece junto da mensagem: o operador tem que sair do fluxo e usar 'Mais ações' no cartão da alteração.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1767-1775`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1757-1775`
 - **§25 sem WhatsApp automático** — Envio automático do link por WhatsApp está fora do escopo (o operador pode copiar e colar o link).
   <br>O protótipo implementa envio por WhatsApp como canal de reenvio, com seleção de canal e campo de telefone validado, e o tipo CanalEnvio (store:60) trata WhatsApp como um dos 'únicos dois canais'. A EF põe isso fora do escopo do MVP.
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/CartaoOperacao.tsx:271-281`
@@ -270,10 +270,10 @@ O protótipo trata o assunto, de um jeito diferente do que a especificação man
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/TrocarItensWizard.tsx:624`
 - **CA: Na efetivação, o estoque anterior é devolvido e o do novo consumido, na mesma transação** — Critério de aceite de estoque.
   <br>A devolução acontece na efetivação, mas o consumo do novo aconteceu lá atrás, na criação, e as duas atualizações de estado não formam uma transação.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:2134-2139`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:2124-2139`
 - **CA: Toda tentativa aparece no histórico com canal, autor, valores, divisão e movimentações** — Critério de aceite de histórico.
   <br>Canal, autor, data e valores estão lá, e toda tentativa (aplicada, expirada, cancelada, falha) gera entrada. Faltam a divisão produtor/Ingresse e as movimentações de estoque.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1946-1961`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1936-1961`
 
 ### Troca de titularidade
 
@@ -288,34 +288,34 @@ O protótipo trata o assunto, de um jeito diferente do que a especificação man
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/TransferirTitularidadeWizard.tsx:487`
 - **§8 E3 nominalidade** — Em evento nominal o novo possuidor só pode ter 1 item de acesso por sessão do evento; produto não entra nessa regra.
   <br>A regra é por SESSÃO. O código compara l.itemId === item.id (mesmo item do catálogo) e só dentro do mesmo pedido: o novo possuidor pode receber dois ingressos diferentes da mesma sessão, e nada enxerga itens que ele já tenha em outro pedido. O recorte de produto está certo (nominalDoItem, store:143).
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1706`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1696`
 - **§8 E3 segmentação** — O novo possuidor precisa atender ao critério do item: idade, PCD, membership, lista manual de documentos e demais segmentações.
   <br>A regra lista idade, PCD, membership e lista manual. O catálogo só tem segmentacao?: "feminino" | "socio" e validarNovoTitular (store:1717-1730) só checa gênero e flag socio. O exemplo da própria EF (60+ não vai para alguém de 30) não é verificável: Conta tem nascimento mas ninguém o lê.
   <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:126`
 - **§8 E5 estado inicial** — Cria a solicitação de troca vinculada ao pedido, item, possuidor atual e novo possuidor, em AGUARDANDO PAGAMENTO, com os valores congelados.
   <br>A solicitação nasce em estado "aguardando" com pedido, linhas afetadas, novo possuidor e valores congelados — mas o possuidor ATUAL não é gravado na solicitação; ele é derivado da linha, e depois da efetivação deixa de ser recuperável pela solicitação.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1916`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1906`
 - **§11.1 unicidade** — Só pode existir uma solicitação em AGUARDANDO PAGAMENTO, PAGO/PROCESSANDO ou FALHA DE PROCESSAMENTO por item.
   <br>A unicidade é garantida por LINHA do pedido (solicitacaoDaLinha sobre linhasAfetadas), não por item do catálogo: duas linhas do mesmo item do catálogo podem estar em duas solicitações abertas ao mesmo tempo.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1860`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1850`
 - **§11.2 mensagem com ação** — A mensagem indica a solicitação em aberto e oferece a ação de cancelá-la.
   <br>A regra pede a ação de cancelar junto da mensagem. A linha da unidade mostra só a frase de estado; o comentário do código diz que o "Ver alteração" foi retirado de propósito, e cancelar fica apenas no cartão da operação, acima das abas.
   <br>`src/produtos/backstage/alteracoes-pos-compra/pages/DetalhePedido.tsx:737`
 - **H-08** — A chave de bloqueio entre operações pós-compra é o item do catálogo (ingresso, inscrição, produto ou combo).
   <br>A regra diz item do catálogo; solicitacaoDaLinha casa por linhaId (a unidade do pedido). O comentário em motivoIndisponivel (1765) até cita H-08, mas a implementação usa outra chave: um pedido com duas unidades do mesmo item pode ter duas operações abertas sobre o mesmo item do catálogo.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1737`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1727`
 - **§11.3 cadeia preservada** — A troca nunca apaga nem sobrescreve o possuidor anterior; sempre é possível saber quem comprou, quem foram os possuidores anteriores e quem é o atual.
   <br>Não existe estrutura de cadeia: a linha guarda só titularId atual e sobrescreve transferidoEmLabel/transferidoPor a cada troca. O rastro anterior só sobrevive solto no histórico do pedido, na frase "De {X} para {Y}" gravada em detalhes (wizard:344).
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:2018`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:2008`
 - **V03** — Evento encerrado (E1/E6): "Este evento foi encerrado; o item não pode mais mudar de possuidor."
   <br>A regra manda bloquear. motivoIndisponivel só bloqueia sessão realizada para o verbo "trocar"; para "transferir" o protótipo faz o oposto e anuncia "As sessões deste pedido já aconteceram. Só a transferência continua disponível." (DetalhePedido.tsx:539).
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1778`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1768`
 - **V11** — Nominalidade (E3/E6): "O novo participante já possui um item de acesso nesta sessão do evento vinculado ao mesmo documento."
   <br>Existe a validação e a mensagem ("Ingresso nominal: uma unidade por pessoa"), mas o escopo é outro: mesmo ITEM e mesmo PEDIDO, não "item de acesso na mesma sessão" nem por documento em toda a base. Roda também na revalidação (store:2063), como a regra pede.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1706`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1696`
 - **V12** — Segmentação não atendida (E3/E6): "O novo participante não atende ao critério exigido por este item: {critério}."
   <br>Existe a mensagem com o critério ("restrito ao público feminino", "exclusivo para sócios"), mas só para dois critérios inventados; idade, PCD, membership e lista manual de documentos não são verificáveis.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1717`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1707`
 - **V15** — Motivo ou chamado não informado (E4): "Informe o motivo e o número do chamado para continuar."
   <br>A obrigatoriedade é real para o chamado (botão desabilitado), mas não há a mensagem da regra: o operador só vê o botão inerte. Além disso o motivo nunca bloqueia, porque CampoMotivo já nasce com a categoria "pedido-cliente" pré-selecionada (MOTIVO_INICIAL, pos-compra-ui.tsx:208).
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/pos-compra-ui.tsx:177`
@@ -327,7 +327,7 @@ O protótipo trata o assunto, de um jeito diferente do que a especificação man
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/TransferirTitularidadeWizard.tsx:487`
 - **C16** — Evento nominal em que o destinatário já tem um item de acesso na mesma sessão: a troca é bloqueada com V11.
   <br>Só bloqueia se for o MESMO item do catálogo e dentro do mesmo pedido. Dois ingressos diferentes da mesma sessão, ou um item que a pessoa já tenha em outro pedido, passam.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1706`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1696`
 - **C23** — Item que passou por Maria, João e Pedro: o operador vê o comprador original e os três possuidores em ordem, com data, canal, autor e valor de cada troca.
   <br>O popover mostra só o portador atual e a última transferência. A sequência completa só pode ser inferida lendo entrada por entrada do histórico do pedido, sem ordenação por item, sem canal e sem a figura do comprador original ao lado.
   <br>`src/produtos/backstage/alteracoes-pos-compra/pages/DetalhePedido.tsx:766`
@@ -351,18 +351,18 @@ O protótipo trata o assunto, de um jeito diferente do que a especificação man
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/TransferirTitularidadeWizard.tsx:571`
 - **CA: Sem cobrança, a troca efetiva na hora, com histórico** — Cobrança zero gera efetivação imediata com registro.
   <br>Implementado em criarSolicitacao, mas inalcançável pela titularidade (total sempre ≥ 15).
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1873`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1863`
 
 ### Troca de perguntas do formulário
 
 - **§6.1** — A ação é bloqueada quando o evento foi encerrado.
   <br>A regra manda bloquear. O código só checa a sessão realizada quando o verbo é "trocar": `if (verbo === "trocar" && linhaEncerrada(linha))`. Com verbo "formulario" a checagem é pulada, então uma unidade cuja sessão já aconteceu continua mostrando o botão "Editar formulário" (DetalhePedido.tsx:637) e aceita criar solicitação.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1776`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1766`
 - **E1** — Quando a ação não estiver disponível, o sistema mostra o motivo em vez de esconder o botão.
-  <br>A regra manda mostrar o motivo. O código esconde o rodapé inteiro quando `podeFormulario` é falso. O motivo só aparece quando a causa é solicitação pendente, por outro caminho (FatosDaUnidade/EstadoDaUnidade, linha 663). Quando a causa é "Sem formulário" — o texto existe em motivoIndisponivel, pos-compra-store.ts:1777 — nada é exibido no cartão.
+  <br>A regra manda mostrar o motivo. O código esconde o rodapé inteiro quando `podeFormulario` é falso. O motivo só aparece quando a causa é solicitação pendente, por outro caminho (FatosDaUnidade/EstadoDaUnidade, linha 663). Quando a causa é "Sem formulário" — o texto existe em motivoIndisponivel, pos-compra-store.ts:1767 — nada é exibido no cartão.
   <br>`src/produtos/backstage/alteracoes-pos-compra/pages/DetalhePedido.tsx:666`
 - **E3** — Resposta com controle de estoque: a seleção valida a disponibilidade da nova opção; a opção anterior continua consumida até a efetivação.
-  <br>A segunda metade está conforme: a opção anterior só é devolvida em devolverEstoqueDasOrigens, chamada na efetivação (pos-compra-store.ts:2134). A primeira não: a disponibilidade é checada só na RENDERIZAÇÃO do Select (isDisabled calculado a partir de `o.estoque <= 0`), não no ato da seleção nem depois. Entre abrir o wizard e confirmar, nada revalida.
+  <br>A segunda metade está conforme: a opção anterior só é devolvida em devolverEstoqueDasOrigens, chamada na efetivação (pos-compra-store.ts:2124). A primeira não: a disponibilidade é checada só na RENDERIZAÇÃO do Select (isDisabled calculado a partir de `o.estoque <= 0`), não no ato da seleção nem depois. Entre abrir o wizard e confirmar, nada revalida.
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/respostas-ui.tsx:150`
 - **E4** — O resumo avisa que a troca só será efetivada após o pagamento e está sujeita à disponibilidade de estoque.
   <br>A regra pede as duas condições. O texto é "As respostas novas valem assim que o pagamento for confirmado. O link vai para {destino}" — fala só do pagamento, omite a sujeição ao estoque. O wizard de troca de item traz a frase completa (TrocarItensWizard.tsx:553), então a omissão é desta tela.
@@ -372,28 +372,28 @@ O protótipo trata o assunto, de um jeito diferente do que a especificação man
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/editar-formulario-wizard.tsx:122`
 - **§9.1** — Cobrança da troca: opcional, cobrada uma vez por operação independentemente de quantas respostas forem alteradas, dividida entre produtor e Ingresse.
   <br>"Uma vez por operação" está conforme e até explicitado no texto da regra da linha ("as N respostas alteradas juntas custam o mesmo que uma"). "Opcional" e "dividida entre produtor e Ingresse" não existem: valor fixo, sem configuração e sem divisão.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1565`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1555`
 - **§9.2** — Total zero: sem pagamento, a troca é efetivada na hora.
   <br>A mecânica existe no store mas o total nunca é zero neste fluxo, porque a cobrança é constante. Ver E7.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1873`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1863`
 - **§9.3** — Os quatro exemplos da tabela produzem exatamente os totais e a divisão indicados (R$ 20,00 com R$ 15,00 produtor e R$ 5,00 Ingresse; três respostas pelo mesmo total; 100% produtor; sem cobrança igual a R$ 0,00 com efetivação imediata).
   <br>Nenhum dos quatro é reproduzível: o total é R$ 10,00 fixo em vez de R$ 20,00, não há divisão produtor/Ingresse para conferir, não há configuração 100% produtor e o caso sem cobrança é inalcançável. O comportamento que o exemplo 2 testa (três respostas, um total) está conforme.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1565`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1555`
 - **§10** — Troca sem cobrança: a nova resposta é revalidada e consumida no ato e a anterior é devolvida na mesma transação.
   <br>O consumo e a devolução na mesma transação estão implementados (linhas 1865 e 1893), mas sem revalidação e, de novo, por caminho inalcançável — a cobrança nunca é zero neste fluxo.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1893`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1883`
 - **§11.1** — Estado AGUARDANDO PAGAMENTO: solicitação criada e cobrança gerada com valores congelados, respostas atuais vigentes, prazo de 15 minutos.
   <br>Tudo bate menos o prazo: `expiraEm: agora + PRAZO_DEMO_SEGUNDOS * 1000`, com PRAZO_DEMO_SEGUNDOS = 60. São 60 segundos, não 15 minutos. A constante correta existe (PRAZO_REAL_LABEL = "15 minutos", linha 34) e é usada só em textos (EtapaEnvio.tsx:68, TrocarItensWizard.tsx:553), nunca no relógio.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1933`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1923`
 - **§11.1** — Estado CANCELADA: cancelada antes do pagamento pelo operador ou por estoque esgotado na abertura do link, estado final.
   <br>O cancelamento pelo operador está conforme (cancelarSolicitacao, mesma reversão da expiração, marco "cancelada"). O segundo gatilho da regra — cancelamento automático por estoque esgotado na abertura do link — não existe. Ver H-39 e C03.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:2186`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:2176`
 - **§13** — A mensagem indica a solicitação em aberto e oferece a ação de cancelá-la.
   <br>A mensagem indica a solicitação ("Aguardando pagamento da edição do formulário até {hora}", EstadoDaUnidade) mas não oferece o cancelar ali. O cancelamento está noutro lugar da página, dentro do dropdown "Mais ações" do CartaoOperacao, sem link entre os dois pontos.
   <br>`src/produtos/backstage/alteracoes-pos-compra/pages/DetalhePedido.tsx:689`
 - **V03** — Evento encerrado, em E1: "Este evento foi encerrado; as respostas não podem mais ser alteradas."
   <br>A regra manda bloquear com mensagem. O código tem a infraestrutura (`linhaEncerrada`, `sessaoRealizada`) mas só a aplica ao verbo "trocar": `if (verbo === "trocar" && linhaEncerrada(linha)) return "Sessão realizada"`. Para "formulario" não há checagem nem mensagem, e a edição fica disponível numa sessão já realizada.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1776`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1766`
 - **H-09** — Prazo de pagamento de 15 minutos.
   <br>PRAZO_DEMO_SEGUNDOS = 60 é o valor usado em `expiraEm` (linha 1933). O prazo real está declarado só como rótulo de texto (PRAZO_REAL_LABEL). A divergência é deliberada e documentada no comentário ("No protótipo o timer roda acelerado"), mas registro porque a regra é numérica.
   <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:36`
@@ -402,19 +402,19 @@ O protótipo trata o assunto, de um jeito diferente do que a especificação man
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/editar-formulario-wizard.tsx:103`
 - **H-20** — Não há período de troca no Backstage: a troca fica disponível até o encerramento do evento, a retirada do kit ou o check-in.
   <br>"Não há período de troca" está conforme — PRAZO_TROCA_HORAS não é aplicado ao verbo "formulario". Mas as três fronteiras que substituem o período não existem para este fluxo: encerramento do evento não é checado (só para "trocar"), e kit/check-in não existem no modelo.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1776`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1766`
 - **CA: A ação Trocar respostas está disponível sem configuração e sem período, desde que o evento não esteja encerrado, o pedido pago, o item ativo, kit não retirado, check-in não realizado e sem operação pendente; caso contrário o motivo é exibido** — Conjunto completo das condições de disponibilidade mais a exibição do motivo.
   <br>Das sete condições, duas são verificadas (item com formulário e sem operação pendente). Evento encerrado é verificado para outro verbo e não para este; pedido pago, item ativo, kit retirado e check-in não existem no modelo. E quando a ação fica indisponível o botão desaparece em vez de exibir o motivo.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1776`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1766`
 - **C04** — Troca sem cobrança: evento sem cobrança configurada, o estoque de G é revalidado, a troca é efetivada na hora, sem link, G é consumida, M volta ao estoque e a operação é registrada.
   <br>O caminho existe e faz tudo isso (menos revalidar), mas é inalcançável: a cobrança de perguntas é fixa em R$ 10,00.
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1873`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1863`
 - **C12** — Dado cadastral: ao tentar alterar o CPF do possuidor, o campo não é editável e o sistema exibe V11.
   <br>O efeito protegido está garantido (CPF não é editável porque não é campo do formulário), mas o cenário como descrito não é reproduzível: não há campo cadastral exibido no formulário e, portanto, nem o estado não-editável nem a mensagem V11.
   <br>`src/produtos/backstage/alteracoes-pos-compra/components/wizard/editar-formulario-wizard.tsx:103`
 - **C20** — Operação concorrente: com solicitação de troca de respostas pendente, a operação é bloqueada com V07 e com a opção de cancelar a solicitação pendente.
   <br>O bloqueio acontece e o motivo com o tipo da operação é exibido. Falta a segunda parte: a mensagem não oferece cancelar a solicitação pendente — a ação existe, mas em outro ponto da página (dropdown do CartaoOperacao).
-  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1769`
+  <br>`src/produtos/backstage/alteracoes-pos-compra/data/pos-compra-store.ts:1759`
 
 ## Ausências no nosso escopo
 

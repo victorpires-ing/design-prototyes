@@ -130,14 +130,6 @@ export function DetalhePedido() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.28, ease: "easeOut" }}
             >
-                <div>
-                    <Button size="sm" color="link-gray" className="max-md:min-h-11 max-md:px-2" iconLeading={ArrowLeft} href={voltarPara}>
-                        Pedidos
-                    </Button>
-                </div>
-
-                {/* Trilho e trabalho começam na mesma altura: o voltar subiu para fora das duas
-                    colunas, senão as abas nasciam acima do topo do cartão. */}
                 <div className="flex flex-col gap-5 md:flex-row md:items-start md:gap-5">
                     <TrilhoDoComprador pedido={pedido} />
 
@@ -149,6 +141,20 @@ export function DetalhePedido() {
                   volta o tempo todo.
                 */}
                 <div className="flex min-w-0 flex-1 flex-col gap-5">
+                    {/* Título e ações na mesma faixa, depois do trilho, como no detalhe de grupo
+                        da equipe de operação: o voltar e o nome da página abrem a coluna de
+                        trabalho, e o que se pode fazer com o pedido fica no canto, à vista em
+                        qualquer aba. Antes o voltar morava acima das duas colunas e as ações
+                        estavam enterradas no topo da lista de itens, onde só existiam enquanto a
+                        aba Itens estivesse aberta. */}
+                    <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <ButtonUtility size="sm" color="tertiary" className="max-md:size-11" icon={ArrowLeft} tooltip="Voltar para os pedidos" onClick={() => navigate(voltarPara)} />
+                            <h1 className="truncate text-display-xs font-bold text-primary">Pedido {uuidCurto(pedido.id)}</h1>
+                        </div>
+                        <AcoesDoPedido pedido={pedido} onAbrir={abrir} />
+                    </header>
+
                     <RegiaoAlteracoes pedido={pedido} />
 
                     {/* Abaixo de md as duas abas dividem a largura e a fileira gruda logo abaixo
@@ -589,7 +595,6 @@ const ListaDeItens = ({ pedido, ...acoes }: { pedido: Pedido } & AcoesDaLista) =
        e troca, e com o corte antigo de duas unidades 17 dos 25 pedidos ficavam sem ação. */
     const elegiveis = (verbo: Verbo) => pedido.itens.filter((l) => disponivelPara(pedido, l, verbo)).length;
     const nTransferir = elegiveis("transferir");
-    const verbos = VERBOS_EM_MASSA.filter(({ verbo }) => elegiveis(verbo) > 0);
     const motivoGeral =
         nTransferir === 0 ? "Todas as unidades estão em outra alteração ou com outro titular." : pedidoEncerrado(pedido) ? "As sessões deste pedido já aconteceram. Só a transferência continua disponível." : null;
 
@@ -600,20 +605,9 @@ const ListaDeItens = ({ pedido, ...acoes }: { pedido: Pedido } & AcoesDaLista) =
            delimita. Um cartão em volta deles acrescentava uma segunda borda ao redor do mesmo
            conteúdo e empurrava tudo 20px para dentro, estreitando a linha sem separar nada. */
         <section className="flex flex-col gap-5">
-            {(verbos.length > 0 || motivoGeral) && (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    {verbos.length > 0 && (
-                        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-                            {verbos.map(({ verbo, rotulo }) => (
-                                <Button key={verbo} size="sm" color="secondary" iconLeading={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO[verbo]]} className="max-sm:flex-1" onClick={() => acoes.onAbrir(verbo, [])}>
-                                    {rotulo}
-                                </Button>
-                            ))}
-                        </div>
-                    )}
-                    {motivoGeral && <p className="text-sm text-secondary">{motivoGeral}</p>}
-                </div>
-            )}
+            {/* Os botões subiram para o cabeçalho da coluna. Aqui fica só o porquê de não haver
+                nenhum: é explicação sobre estas unidades, e o lugar dela é junto delas. */}
+            {motivoGeral && <p className="text-sm text-secondary">{motivoGeral}</p>}
 
             {/* gap-6 entre grupos, gap-3 entre cartoes: o cartao traz a propria moldura, entao
                 o que separa itens agora e o ar, nao mais o fio do divide-y. */}
@@ -799,6 +793,30 @@ const EstadoDaUnidade = ({ pedido, linha, solicitacao }: { pedido: Pedido; linha
  * Editar formulário não está aqui. Ele não tem versão geral: o formulário é de uma unidade,
  * com as respostas dela, então a porta dele é o cartão da unidade.
  */
+/** As ações do pedido, no canto do cabeçalho. Um verbo entra quando ao menos uma unidade o
+ *  aceita: é a única porta de transferência e troca, e exigir duas deixava a maioria dos
+ *  pedidos sem ação nenhuma. */
+const AcoesDoPedido = ({ pedido, onAbrir }: { pedido: Pedido; onAbrir: (verbo: Verbo, linhas: string[]) => void }) => {
+    const verbos = VERBOS_EM_MASSA.filter(({ verbo }) => pedido.itens.some((l) => disponivelPara(pedido, l, verbo)));
+    if (verbos.length === 0) return null;
+    return (
+        <div className="flex shrink-0 flex-wrap gap-2 max-md:w-full">
+            {verbos.map(({ verbo, rotulo }) => (
+                <Button
+                    key={verbo}
+                    size="md"
+                    color="secondary"
+                    iconLeading={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO[verbo]]}
+                    className="max-md:flex-1"
+                    onClick={() => onAbrir(verbo, [])}
+                >
+                    {rotulo}
+                </Button>
+            ))}
+        </div>
+    );
+};
+
 const VERBOS_EM_MASSA: Array<{ verbo: Verbo; rotulo: string }> = [
     { verbo: "transferir", rotulo: "Transferir itens" },
     { verbo: "trocar", rotulo: "Trocar itens" },

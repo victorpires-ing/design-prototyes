@@ -301,7 +301,7 @@ export function ResumoUnidades({
             <div className="px-4 py-1">
                 {/* Agregado como na etapa de seleção: 40 inscrições iguais são uma linha
                     "40x Corrida 5 km", não quarenta linhas idênticas de conferir uma a uma. */}
-                <ListaLimitada itens={agruparIguais(linhas, pedido)} limite={3} rotuloVerTodos={(total) => `Ver todos os ${total} itens`}>
+                <ListaLimitada itens={agruparIguais(linhas, pedido)} limite={3} rotuloVerTodos={(total) => `Ver todos os ${total}`}>
                     {(grupo) => {
                         /* Só o item: quem é o portador não ajuda aqui. Na transferência
                            ele é a pessoa que SAI, e a etapa seguinte é justamente sobre

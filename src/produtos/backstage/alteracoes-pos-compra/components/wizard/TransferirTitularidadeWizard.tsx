@@ -40,7 +40,8 @@ import { ResumoUnidades, SeletorUnidades, detalheDoItem, identidadeDaLinha } fro
 type Etapa = "itens" | "destinatario" | "formulario" | "revisao";
 
 const TITULO_ETAPA: Record<Etapa, string> = {
-    itens: "Itens",
+    /* Sem substantivo, como na troca: a etapa trata ingresso, produto e combo juntos. */
+    itens: "O que vai",
     destinatario: "Destinatário",
     formulario: "Formulário",
     revisao: "Confirmar",
@@ -421,7 +422,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                 Boolean(selecionada) && linhas.length > 0 && motivoValido(motivo);
 
     const rotuloAvancar =
-        etapa === "destinatario" ? "Escolher itens" : etapa === "itens" && temEtapaFormulario ? `Conferir ${vocab.formulario}` : "Revisar transferência";
+        etapa === "destinatario" ? "Escolher o que vai" : etapa === "itens" && temEtapaFormulario ? `Conferir ${vocab.formulario}` : "Revisar transferência";
 
     /* O que a casca pergunta antes de descartar. Ela deduz sozinha, mas aqui dá para ser exato:
        as unidades que já vieram marcadas do kebab não são trabalho de ninguém, e o motivo escrito
@@ -526,7 +527,9 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
             detalhes,
             mudancas,
             linhasAfetadas: linhas.map((l) => l.id),
-            resumo: `${linhas.length} ${linhas.length === 1 ? "item transferido" : "itens transferidos"} para ${selecionada.nome}. Comprador original preservado.`,
+            /* O resumo vai para o histórico, onde o cartão já lista o que mudou: aqui basta a
+               quantidade e para quem. */
+            resumo: `${linhas.length === 1 ? "1 unidade transferida" : `${linhas.length} unidades transferidas`} para ${selecionada.nome}. Comprador original preservado.`,
             calculo,
             /* Só o possuidor muda. As respostas seguem como estão, herdadas (H-23). */
             aplicar: {
@@ -559,7 +562,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
             /* A etapa 2 carrega o nome de quem recebe. O subtítulo logo acima é o COMPRADOR, e
                só "Itens" deixava as duas pessoas do fluxo reduzidas a uma. */
             etapas={etapas.map((e) =>
-                e === "itens" && selecionada ? `Itens para ${primeiroNome(selecionada.nome)}` : e === "formulario" ? capitalizar(vocab.formulario) : TITULO_ETAPA[e],
+                e === "itens" && selecionada ? `O que vai para ${primeiroNome(selecionada.nome)}` : e === "formulario" ? capitalizar(vocab.formulario) : TITULO_ETAPA[e],
             )}
             indiceAtual={indice}
             podeAvancar={podeAvancar}

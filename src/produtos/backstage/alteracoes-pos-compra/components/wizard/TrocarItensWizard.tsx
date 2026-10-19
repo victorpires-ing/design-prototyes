@@ -42,8 +42,11 @@ import { SeletorUnidades, detalheDoItem, identidadeDaLinha } from "./seletor-uni
 type Etapa = "saem" | "entram" | "formularios" | "revisao";
 
 const TITULO_ETAPA: Record<Etapa, string> = {
-    saem: "Itens atuais",
-    entram: "Novos itens",
+    /* Sem substantivo: a etapa trata ingresso, produto e combo juntos, e não existe palavra para
+       esse conjunto na boca do operador — "itens" é nossa, e no esporte nem isso. Dizer o que a
+       etapa faz resolve nos dois tipos de evento e nunca mente sobre o que está na lista. */
+    saem: "O que sai",
+    entram: "O que entra",
     formularios: "Formulários",
     revisao: "Confirmar",
 };
@@ -301,12 +304,12 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
        de novos itens não havia rodapé nenhum com uma unidade só saindo, e na revisão o verde do
        "2 de 2" convivia com o botão travado. O verde agora só aparece quando o botão libera. */
     const oQueFalta = () => {
-        if (etapa === "saem") return totalSaem === 0 ? "Marque ao menos 1 item" : null;
+        if (etapa === "saem") return totalSaem === 0 ? "Marque ao menos 1" : null;
         if (etapa === "entram") {
-            if (totalEntram === 0) return `Escolha ${contar(totalSaem, "item", "itens")}`;
-            if (totalEntram < totalSaem) return `Escolha mais ${contar(totalSaem - totalEntram, "item", "itens")}`;
-            if (totalEntram > totalSaem) return `Tire ${contar(totalEntram - totalSaem, "item", "itens")}: há mais entrando do que saindo`;
-            if (selecaoIgual) return "Escolha ao menos um item diferente do atual";
+            if (totalEntram === 0) return `Escolha ${totalSaem}`;
+            if (totalEntram < totalSaem) return `Escolha mais ${totalSaem - totalEntram}`;
+            if (totalEntram > totalSaem) return `Tire ${totalEntram - totalSaem}: há mais entrando do que saindo`;
+            if (selecaoIgual) return "Escolha ao menos um diferente do atual";
             return null;
         }
         if (etapa === "formularios") return paresIncompletos.length === 0 ? null : `Falta responder ${contar(paresIncompletos.length, vocab.formulario, vocab.formularios)}`;
@@ -326,7 +329,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
        trabalho que a etapa não pede. */
     const rotuloAvancar =
         etapa === "saem"
-            ? "Escolher os novos itens"
+            ? "Escolher o que entra"
             : etapa === "entram" && comFormularios
               ? paresIncompletos.length > 0
                   ? `Responder ${vocab.formularios}`
@@ -459,7 +462,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                 <>
                     {/* Sem o ícone da `Regra`: aqui a frase é a instrução da etapa, a primeira
                         coisa escrita na tela, e não uma ressalva ao lado de outro conteúdo. */}
-                    <p className="text-sm text-tertiary">Marque os itens que serão substituídos</p>
+                    <p className="text-sm text-tertiary">Marque o que será substituído</p>
                     <SeletorUnidades pedido={pedido} verbo="trocar" selecao={saem} onChange={setSaem} />
                 </>
             )}
@@ -478,9 +481,9 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                                 size="md"
                                 icon={SearchLg}
                                 value={termo}
-                                aria-label="Buscar item"
+                                aria-label="Buscar"
                                 onChange={(evento) => setTermo(evento.target.value)}
-                                placeholder="Busque por sessão, grupo, lote ou item"
+                                placeholder={`Busque por sessão, ${vocab.grupo.toLowerCase()}, lote ou nome`}
                             />
                         </div>
                         {tiposDisponiveis.length > 1 && (
@@ -516,7 +519,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                     {/* Só ingresso tem data. A tira é a mesma da bilheteria, uma data por chip. */}
                     {abasDoCatalogo.length > 0 && <AbasCarrossel abas={abasDoCatalogo} ativa={abaAtiva} ariaLabel="Datas à venda" onSelecionar={setAba} />}
 
-                    {selecaoIgual && <Aviso titulo="A seleção é igual ao que já está no pedido" descricao="Escolha pelo menos um item diferente para a troca fazer sentido." />}
+                    {selecaoIgual && <Aviso titulo="A seleção é igual ao que já está no pedido" descricao="Escolha pelo menos um diferente para a troca fazer sentido." />}
 
                     {candidatos.length === 0 &&
                         (outrosTiposComAchado.length > 0 ? (
@@ -544,7 +547,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                                 </div>
                             </div>
                         ) : (
-                            <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">Nenhum item encontrado para a busca.</p>
+                            <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">Nada encontrado para a busca.</p>
                         ))}
 
                     {gruposDaSessaoAtiva.length > 0 && (
@@ -556,7 +559,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                                     cabecalho={
                                         <span className="flex min-w-0 flex-1 items-baseline gap-2">
                                             <span className="truncate text-sm font-semibold text-primary">{grupo}</span>
-                                            <span className="shrink-0 text-sm text-tertiary">{contar(itens.length, "item", "itens")}</span>
+                                            <span className="shrink-0 text-sm text-tertiary">{itens.length}</span>
                                         </span>
                                     }
                                 >
@@ -698,7 +701,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                         <p className="text-sm font-semibold text-primary">Resumo da cobrança</p>
                         <ResumoFinanceiro linhas={calculo.linhas} semMoldura />
                         <div className="flex flex-col gap-3">
-                                {cortesia && <Regra>Há cortesia na troca: unidade de cortesia não tem valor pago, então a diferença é o preço cheio do item novo.</Regra>}
+                                {cortesia && <Regra>Há cortesia na troca: unidade de cortesia não tem valor pago, então a diferença é o preço cheio do que entra.</Regra>}
                                 {pedido.cupom && (calculo.descontoPerdido ?? 0) > 0 && (
                                     <Regra>
                                         Inclui {formatarMoeda(calculo.descontoPerdido ?? 0)} do cupom {pedido.cupom}: o desconto da compra não vale para o item novo, e a diferença usa o preço cheio dele.
@@ -868,7 +871,7 @@ const LinhaCatalogo = ({
                         {item.tipo !== "ingresso" && item.descricao && <span className="block text-sm text-tertiary">{item.descricao}</span>}
                         {(saindo > 0 || noPedido > 0 || bloqueado || estoqueCurto || perguntasDoFormulario > 0) && (
                             <span className="mt-1.5 flex flex-wrap gap-1.5">
-                                {saindo > 0 && <Badge size="md" type="pill-color" color="gray">{saindo === 1 ? "Item sendo trocado" : `${saindo} itens sendo trocados`}</Badge>}
+                                {saindo > 0 && <Badge size="md" type="pill-color" color="gray">{saindo === 1 ? "Sendo trocado" : `${saindo} sendo trocados`}</Badge>}
                                 {saindo === 0 && noPedido > 0 && <Badge size="md" type="pill-color" color="blue">{noPedido === 1 ? "1 igual no pedido" : `${noPedido} iguais no pedido`}</Badge>}
                                 {bloqueado && <Badge size="md" type="pill-color" color="error">{impedimento?.curto}</Badge>}
                                 {estoqueCurto && <Badge size="md" type="pill-color" color="warning">Só {item.estoque} {item.estoque === 1 ? "disponível" : "disponíveis"}</Badge>}

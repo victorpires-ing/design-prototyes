@@ -757,11 +757,6 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             </p>
                         ) : (
                             <>
-                                <Regra>
-                                    As respostas seguem com a unidade. Corrija o que precisar antes de enviar a cobrança: mudar uma resposta que já existia
-                                    soma {formatarMoeda(COBRANCA_TROCA_PERGUNTAS)} ao total, uma vez só, não importa quantas mudem. Preencher pergunta em
-                                    branco não custa nada.
-                                </Regra>
                                 {comFormulario.map((linha) => (
                                     <RespostasDaUnidade
                                         key={linha.id}
@@ -776,6 +771,13 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                                         }
                                     />
                                 ))}
+                                {/* A regra fecha a etapa, não a abre: o que custa dinheiro é
+                                    consequência do que foi mexido, e lida antes de haver qualquer
+                                    alteração ela era aviso sobre nada. */}
+                                <Regra>
+                                    Mudar respostas que já existiam soma {formatarMoeda(COBRANCA_TROCA_PERGUNTAS)} ao custo da transferência. Preencher
+                                    pergunta em branco não custa nada.
+                                </Regra>
                             </>
                         )}
                     </>
@@ -800,6 +802,10 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             bloqueioExtra={motivoParaDestinatario}
                         />
                         <SetaParaBaixo />
+                        {/* "Vai para" fecha o par com o "Sai de" lá em cima. A seta sozinha pedia
+                            que o atendente deduzisse a direção de um ícone, e ele está ao
+                            telefone lendo em voz alta de quem para quem a unidade vai. */}
+                        <p className="w-full text-sm font-medium text-secondary">Vai para</p>
                         <CartaoDestinatario
                             conta={selecionada}
                             onAlterar={() => {
@@ -823,11 +829,9 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             conta, e isto é o que acontece com o formulário. A frase dizia "sem
                             alteração" e mandava fazer uma troca de perguntas depois; desde que a
                             etapa do formulário aceita edição, as duas metades eram falsas. */}
-                        {comFormulario.length > 0 && (
+                        {alteradas.length > 0 && (
                             <p className="w-full text-sm text-tertiary">
-                                {alteradas.length === 0
-                                    ? `O destinatário herda as respostas d${vocab.oFormulario.slice(1)} como estão hoje.`
-                                    : `O destinatário herda as respostas d${vocab.oFormulario.slice(1)} com ${contarAlteradas(alteradas.length)} que você corrigiu.`}
+                                {`O destinatário herda as respostas ${vocab.doFormulario} com ${contarAlteradas(alteradas.length)} que você corrigiu.`}
                             </p>
                         )}
                     </>

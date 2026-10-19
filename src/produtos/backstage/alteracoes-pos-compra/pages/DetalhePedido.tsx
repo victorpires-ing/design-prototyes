@@ -156,7 +156,12 @@ export function DetalhePedido() {
                     <header className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-4">
                         <div className="flex items-center gap-3">
                             <ButtonUtility size="sm" color="tertiary" className="max-md:size-11" icon={ArrowLeft} tooltip="Voltar para os pedidos" onClick={() => navigate(voltarPara)} />
-                            <h1 className="text-display-xs font-bold text-primary">Pedido {uuidCurto(pedido.id)}</h1>
+                            {/* Só o id: a palavra "Pedido" repetia o que a aba do navegador, o
+                                caminho de volta e a tela inteira já dizem. Mostra a forma curta,
+                                que é por onde o pedido é chamado, e copia a completa, que é a que
+                                se cola em outro sistema. */}
+                            <h1 className="text-display-xs font-bold text-primary">{uuidCurto(pedido.id)}</h1>
+                            <CopiarIdDoPedido id={pedido.id} />
                         </div>
                         <AcoesDoPedido pedido={pedido} onAbrir={abrir} />
                     </header>
@@ -211,7 +216,7 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
     const [falhaCopia, setFalhaCopia] = useState(false);
     const idCompleto = useRef<HTMLSpanElement>(null);
     const rotuloCompra = pedido.canal === "Online" ? "Compra online" : pedido.canal === "Bilheteria" ? "Compra na bilheteria" : "Cortesia emitida";
-    const { final, cortesia } = usePagamento(pedido);
+    const { pago, cortesia } = usePagamento(pedido);
     const isDesktop = useBreakpoint("md");
 
     const copiarId = async () => {
@@ -298,6 +303,11 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
                     {/* Abaixo de md os três viram uma fileira: empilhados custavam ~150px de
                         altura numa tela em que o item do pedido já começa longe. */}
                     <dl className="-mx-4 flex border-t border-secondary max-md:divide-x max-md:divide-border-secondary md:flex-col md:divide-y md:divide-border-secondary">
+                        {/* O número é o que saiu do bolso, taxa e proteção incluídas: o cartão
+                            mostrava a soma dos valores de face e chamava de "Pago", então batia
+                            com a nota do cliente só nos pedidos sem taxa. A quebra está em
+                            "Detalhes". A contagem de unidades saiu: a lista de itens, logo ao
+                            lado, diz isso com mais precisão do que um resumo. */}
                         <Estatistica rotulo="Pago">
                             {cortesia ? (
                                 "Sem valor"
@@ -305,13 +315,10 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
                                 /* Abaixo de md o valor e o "Detalhes" empilham: lado a lado, o
                                    gatilho ficava com a altura do texto e sem folga nenhuma. */
                                 <span className="flex items-baseline gap-2 max-md:flex-col max-md:items-stretch max-md:gap-0">
-                                    <span className="tabular-nums">{formatarMoeda(final)}</span>
+                                    <span className="tabular-nums">{formatarMoeda(pago)}</span>
                                     <DetalhePagamento pedido={pedido} />
                                 </span>
                             )}
-                        </Estatistica>
-                        <Estatistica rotulo="No pedido">
-                            {plural(pedido.itens.length, "unidade", "unidades")} em {plural(new Set(pedido.itens.map((l) => l.itemId)).size, "item", "itens")}
                         </Estatistica>
                         <Estatistica rotulo={rotuloCompra}>{pedido.criadoEmLabel}</Estatistica>
                     </dl>
@@ -482,6 +489,10 @@ const Contato = ({
                 size="xs"
                 color="tertiary"
                 icon={copied === chave ? Check : Copy01}
+                /* O `aria-label` continua específico ("Copiar e-mail"): no leitor de tela, três
+                   botões chamados "Copiar" na mesma lista não dizem qual é qual. O tooltip é
+                   para o olho, que já vê ao lado de quê o botão está. */
+                tooltip={copied === chave ? "Copiado" : "Copiar"}
                 aria-label={rotulo}
                 onClick={() => (onCopiar ? onCopiar() : copiar())}
                 className="max-md:absolute max-md:inset-0 max-md:h-auto max-md:justify-end max-md:rounded-lg max-md:px-2 max-md:hover:bg-transparent"
@@ -501,22 +512,39 @@ const usePagamento = (pedido: Pedido) => {
     return { ...totais, comCupom: Boolean(pedido.cupom) && totais.desconto > 0, cortesia: pedido.canal === "Cortesia" || totais.final === 0 };
 };
 
+/**
+ * O recibo da compra: cada parcela do que foi cobrado e o total que bate com a fatura do
+ * cliente. Antes vinham só o cupom e a forma de pagamento, e o "Total pago" era a soma dos
+ * valores de face — o atendente lia um número que o cliente não encontrava no extrato.
+ */
 const LinhasPagamento = ({ pedido }: { pedido: Pedido }) => {
-    const { original, desconto, final, comCupom, cortesia } = usePagamento(pedido);
+    const { original, desconto, final, taxaServico, protecao, pago, comCupom, cortesia } = usePagamento(pedido);
     if (cortesia) return <p className="text-sm text-primary">Cortesia, sem valor pago</p>;
     return (
         <dl className="flex flex-col gap-2">
-            {comCupom && (
+            {comCupom ? (
                 <>
-                    <ParValor rotulo="Valor sem desconto" valor={formatarMoeda(original)} />
-                    <ParValor rotulo={`Cupom ${pedido.cupom}`} valor={`-${formatarMoeda(desconto)}`} />
+                    <ParValor rotulo="Itens sem desconto" valor={formatarMoeda(original)} />
+                    <ParValor rotulo={`Cupom ${pedido.cupom}`} valor={`−${formatarMoeda(desconto)}`} />
+                    <ParValor rotulo="Itens" valor={formatarMoeda(final)} />
                 </>
+            ) : (
+                <ParValor rotulo="Itens" valor={formatarMoeda(final)} />
             )}
-            <ParValor rotulo="Total pago" valor={formatarMoeda(final)} destaque />
+            {taxaServico > 0 && <ParValor rotulo="Taxa de serviço" valor={formatarMoeda(taxaServico)} />}
+            {protecao > 0 && <ParValor rotulo="Proteção do pedido" valor={formatarMoeda(protecao)} />}
+
+            <div className="mt-1 border-t border-secondary pt-2">
+                <ParValor rotulo="Total pago" valor={formatarMoeda(pago)} destaque />
+            </div>
+
             <div className="flex flex-col gap-0.5 border-t border-secondary pt-2">
                 <dt className="text-sm text-tertiary">Forma de pagamento</dt>
                 <dd className="text-sm text-primary">{formaDePagamento(pedido.meioPagamento)}</dd>
             </div>
+            {protecao > 0 && (
+                <p className="text-sm text-tertiary">A proteção cobre cancelamento e remarcação pelo cliente, e não é devolvida em alteração do Backstage.</p>
+            )}
         </dl>
     );
 };
@@ -799,6 +827,46 @@ const EstadoDaUnidade = ({ pedido, linha, solicitacao }: { pedido: Pedido; linha
  * Editar formulário não está aqui. Ele não tem versão geral: o formulário é de uma unidade,
  * com as respostas dela, então a porta dele é o cartão da unidade.
  */
+/** O que foi comprado, uma linha por item, com a quantidade na frente quando repete. O nome
+ *  vem do catálogo, então a lista nunca discorda da aba de itens. */
+const itensDaCompra = (pedido: Pedido) => {
+    const porItem = new Map<string, { chave: string; nome: string; detalhe: string; quantidade: number }>();
+    pedido.itens.forEach((linha) => {
+        const item = getItem(linha.itemId);
+        if (!item) return;
+        const atual = porItem.get(linha.itemId) ?? { chave: linha.itemId, nome: item.nome, detalhe: caminhoDoItem(item), quantidade: 0 };
+        atual.quantidade++;
+        porItem.set(linha.itemId, atual);
+    });
+    return [...porItem.values()].map(({ chave, nome, detalhe, quantidade }) => ({
+        chave,
+        rotulo: [quantidade > 1 ? `${quantidade}x ${nome}` : nome, detalhe].filter(Boolean).join(" · "),
+    }));
+};
+
+/** O id completo do pedido na área de transferência, ao lado do título. O trilho também copia,
+ *  mas lá o id é uma linha de conferência entre outras; aqui ele é o nome da tela. */
+const CopiarIdDoPedido = ({ id }: { id: string }) => {
+    const { copied, copy } = useClipboard();
+    const isDesktop = useBreakpoint("md");
+    const copiar = async () => {
+        const resultado = await copy(id, "id");
+        /* No telefone o dedo cobre o ícone que vira check, então a confirmação sai no toast. */
+        if (resultado.success && !isDesktop) toast.success(CONFIRMACAO_COPIA.id);
+    };
+    return (
+        <ButtonUtility
+            size="sm"
+            color="tertiary"
+            className="max-md:size-11"
+            icon={copied === "id" ? Check : Copy01}
+            tooltip={copied === "id" ? "Copiado" : "Copiar"}
+            aria-label="Copiar ID do pedido"
+            onClick={copiar}
+        />
+    );
+};
+
 /** "ingressos", "categorias e produtos", "ingressos, produtos e combos": o que o verbo alcança
  *  neste pedido, na voz do evento. "Itens" é palavra nossa — o operador conhece ingresso,
  *  produto e combo, e no esporte categoria. */
@@ -1080,7 +1148,17 @@ const CompraNoHistorico = ({ pedido, compra }: { pedido: Pedido; compra: Entrada
                             </>
                         )}
                     </dl>
-                    {compra.descricao && <p className="rounded-lg bg-secondary p-3 text-sm text-secondary">{compra.descricao}</p>}
+                    {/* Os itens empilhados com régua à esquerda, como o "Detalhes" do combo: é o
+                        mesmo gesto, abrir um item para ver o que tem dentro, e vale a pena ser o
+                        mesmo desenho. Entra a lista do pedido no lugar da frase que resumia a
+                        compra em prosa. */}
+                    <div className="flex flex-col gap-1 border-l border-secondary pl-3">
+                        {itensDaCompra(pedido).map(({ chave, rotulo }) => (
+                            <p key={chave} className="text-sm text-tertiary">
+                                {rotulo}
+                            </p>
+                        ))}
+                    </div>
                 </div>
             </details>
         </div>

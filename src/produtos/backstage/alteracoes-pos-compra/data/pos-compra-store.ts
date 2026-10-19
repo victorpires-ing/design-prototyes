@@ -192,11 +192,15 @@ export interface Vocabulario {
     formularios: string;
     /** Com artigo, para as frases: "o formulário" / "a ficha de inscrição". */
     oFormulario: string;
+    /** Com a preposição contraída: "do formulário" / "da ficha de inscrição". Montar isto com
+     *  `"d" + oFormulario.slice(1)` produzia "d formulário", porque o corte tirava o artigo e
+     *  deixava o espaço. */
+    doFormulario: string;
 }
 
 export const VOCABULARIO: Record<TipoEvento, Vocabulario> = {
-    entretenimento: { grupo: "Grupo", ingresso: "Ingresso", ingressos: "Ingressos", formulario: "formulário", formularios: "formulários", oFormulario: "o formulário" },
-    esporte: { grupo: "Modalidade", ingresso: "Categoria", ingressos: "Categorias", formulario: "ficha de inscrição", formularios: "fichas de inscrição", oFormulario: "a ficha de inscrição" },
+    entretenimento: { grupo: "Grupo", ingresso: "Ingresso", ingressos: "Ingressos", formulario: "formulário", formularios: "formulários", oFormulario: "o formulário", doFormulario: "do formulário" },
+    esporte: { grupo: "Modalidade", ingresso: "Categoria", ingressos: "Categorias", formulario: "ficha de inscrição", formularios: "fichas de inscrição", oFormulario: "a ficha de inscrição", doFormulario: "da ficha de inscrição" },
 };
 
 export interface EventoOrg {
@@ -338,6 +342,8 @@ export interface Pedido {
     /* Metadados da compra, mostrados no cabeçalho do pedido. */
     canal: "Online" | "Bilheteria" | "Cortesia";
     meioPagamento: string;
+    /** Proteção contratada na compra: cancelamento e remarcação. Nem todo pedido tem. */
+    protecao?: number;
     cupom?: string;
     criadoEmLabel: string;
     atualizadoEmLabel: string;
@@ -1342,6 +1348,7 @@ PEDIDOS_INICIAIS.push({
     dataCompraLabel: "28 set 2026",
     canal: "Online",
     meioPagamento: "Pix",
+    protecao: 19.9,
     criadoEmLabel: "28 set 2026, 09:12",
     atualizadoEmLabel: "28 set 2026, 09:12",
     itens: [
@@ -1371,6 +1378,7 @@ PEDIDOS_INICIAIS.push({
     dataCompraLabel: "02 out 2026",
     canal: "Online",
     meioPagamento: "Cartão de crédito (2x)",
+    protecao: 49.9,
     criadoEmLabel: "02 out 2026, 20:05",
     atualizadoEmLabel: "02 out 2026, 20:05",
     itens: [
@@ -1468,11 +1476,21 @@ export const getFormulario = (id?: string) => (id ? FORMULARIOS.find((f) => f.id
 /** Totais do pedido, derivados das linhas: nada de valor solto que possa divergir dos itens.
  *  Desconto só existe quando houve cupom: diferença de lote não é desconto, e sem essa regra
  *  um pedido sem cupom mostrava "desconto" comparando com o preço de hoje do catálogo. */
+/**
+ * O que a compra custou, parcela por parcela.
+ *
+ * `final` é a soma dos valores de face, que é o crédito que a troca usa por unidade. `pago` é o
+ * que saiu do bolso: face mais taxa de serviço mais proteção. Os dois existem porque são números
+ * diferentes, e o cartão mostrava o primeiro chamando-o de "Pago".
+ */
 export const totaisDoPedido = (pedido: Pedido) => {
     const final = arredondar(pedido.itens.reduce((soma, l) => soma + l.valorPago, 0));
-    if (!pedido.cupom) return { final, original: final, desconto: 0 };
-    const original = arredondar(pedido.itens.reduce((soma, l) => soma + Math.max(l.valorPago, getItem(l.itemId)?.precoIntegral ?? l.valorPago), 0));
-    return { final, original, desconto: arredondar(original - final) };
+    const taxaServico = arredondar(pedido.itens.reduce((soma, l) => soma + taxaPagaNaLinha(l), 0));
+    const protecao = pedido.protecao ?? 0;
+    const original = pedido.cupom
+        ? arredondar(pedido.itens.reduce((soma, l) => soma + Math.max(l.valorPago, getItem(l.itemId)?.precoIntegral ?? l.valorPago), 0))
+        : final;
+    return { final, original, desconto: arredondar(original - final), taxaServico, protecao, pago: arredondar(final + taxaServico + protecao) };
 };
 
 export const formatarMoeda = (valor: number) =>

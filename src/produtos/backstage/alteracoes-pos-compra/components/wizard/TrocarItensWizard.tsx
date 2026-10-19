@@ -591,10 +591,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                     </p>
                 ) : (
                     <>
-                        <Regra>
-                            As respostas que já existiam vêm da unidade que sai, e só as perguntas novas do item que entra precisam de resposta. Corrigir uma
-                            resposta que já existia soma {formatarMoeda(COBRANCA_TROCA_PERGUNTAS)} ao total, uma vez só, não importa quantas mudem.
-                        </Regra>
+                        <Regra>As respostas que já existiam vêm da unidade que sai, e só as perguntas novas do item que entra precisam de resposta.</Regra>
                         {paresComFormulario.map(({ linha, novoItem }, posicao) => {
                             const pendentes = faltando(linha, novoItem);
                             const { nome } = identidadeDaLinha(pedido, linha);
@@ -636,6 +633,13 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                                 </Accordion>
                             );
                         })}
+                        {/* A regra fecha a etapa, não a abre: o que custa dinheiro é consequência
+                            do que foi mexido, e lida antes de haver qualquer alteração ela era
+                            aviso sobre nada. */}
+                        <Regra>
+                            Mudar respostas que já existiam soma {formatarMoeda(COBRANCA_TROCA_PERGUNTAS)} ao custo da troca. Preencher pergunta em branco não
+                            custa nada.
+                        </Regra>
                     </>
                 ))}
 

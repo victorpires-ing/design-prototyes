@@ -410,6 +410,10 @@ export const SetaParaBaixo = () => (
 );
 
 /** "Lote 2" já vem escrito assim no catálogo; "2" sozinho não se explica. */
+/** Primeira letra maiúscula. O vocabulário guarda os nomes em minúscula, porque a maioria dos
+ *  usos é no meio de frase; título e stepper pedem a versão capitalizada. */
+export const capitalizar = (texto: string) => texto.charAt(0).toUpperCase() + texto.slice(1);
+
 export const rotuloDoLote = (lote: string) => (lote.toLowerCase().startsWith("lote") ? lote : `Lote ${lote}`);
 
 /**

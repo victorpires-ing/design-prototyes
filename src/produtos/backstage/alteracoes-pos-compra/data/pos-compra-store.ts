@@ -173,12 +173,40 @@ export interface PedidoItem {
     respostas: Record<string, string>;
 }
 
+/**
+ * Esporte e entretenimento vendem a mesma estrutura com nomes diferentes. No teste de
+ * usabilidade a maior dificuldade foi semântica: quem vinha da plataforma antiga, feita para
+ * esporte, procurava "modalidade" e "categoria" numa tela que dizia "grupo" e "ingresso", e
+ * procurava a "ficha de inscrição" onde estava escrito "formulário".
+ */
+export type TipoEvento = "entretenimento" | "esporte";
+
+export interface Vocabulario {
+    /** O que o nível 2 da hierarquia se chama: grupo de ingressos ou modalidade da prova. */
+    grupo: string;
+    /** O item vendido: ingresso ou categoria. */
+    ingresso: string;
+    ingressos: string;
+    /** O questionário do participante: formulário ou ficha de inscrição. */
+    formulario: string;
+    formularios: string;
+    /** Com artigo, para as frases: "o formulário" / "a ficha de inscrição". */
+    oFormulario: string;
+}
+
+export const VOCABULARIO: Record<TipoEvento, Vocabulario> = {
+    entretenimento: { grupo: "Grupo", ingresso: "Ingresso", ingressos: "Ingressos", formulario: "formulário", formularios: "formulários", oFormulario: "o formulário" },
+    esporte: { grupo: "Modalidade", ingresso: "Categoria", ingressos: "Categorias", formulario: "ficha de inscrição", formularios: "fichas de inscrição", oFormulario: "a ficha de inscrição" },
+};
+
 export interface EventoOrg {
     id: string;
     nome: string;
     data: string;
-    /** Arte do evento, mostrada no cabeçalho do pedido. */
-    capa: string;
+    /** Arte do evento, mostrada no cabeçalho do pedido. Esporte ainda não tem pôster. */
+    capa?: string;
+    /** Sem valor explícito, entretenimento: é o que a maioria do catálogo é hoje. */
+    tipo?: TipoEvento;
 }
 
 /** O fato que uma entrada do histórico registra. Fatos não mudam: o resultado de uma alteração
@@ -353,6 +381,10 @@ export const SESSOES: Sessao[] = [
     criarSessao("s-trail-d2", "ev-trail", 70, 4, 30),
     criarSessao("s-tri-d1", "ev-triathlon", 83, 6, 0),
     criarSessao("s-tri-d2", "ev-triathlon", 84, 7, 0),
+    /* Esporte: dois eventos para o vocabulário aparecer em tela. */
+    criarSessao("s-nat-d1", "ev-natal", 41, 6, 0),
+    criarSessao("s-nat-d2", "ev-natal", 42, 6, 30),
+    criarSessao("s-cbranca-d1", "ev-costa-branca", 55, 5, 30),
 ];
 
 /*
@@ -382,6 +414,10 @@ export const EVENTOS: EventoOrg[] = [
         data: SESSOES[6].dataLabel,
         capa: "https://kraken.ingresse.com/event/posters/108467/large/1790120499.9730182.jpg",
     },
+    /* Os dois de esporte. Sem pôster por enquanto: o trilho já trata capa ausente, e inventar
+       uma URL de pôster daria imagem quebrada em toda tela do pedido. */
+    { id: "ev-natal", nome: "Maratona de Natal 2026", data: SESSOES[8].dataLabel, tipo: "esporte" },
+    { id: "ev-costa-branca", nome: "Desafio Costa Branca", data: SESSOES[10].dataLabel, tipo: "esporte" },
 ];
 
 /** Nível 2 e 3: cada item pertence a um grupo dentro de uma sessão. */
@@ -390,6 +426,11 @@ const GRUPO_LONGAS = "Provas longas";
 const GRUPO_TRAIL = "Trail";
 const GRUPO_INDIVIDUAL = "Provas individuais";
 const GRUPO_EQUIPE = "Provas em equipe";
+/* Esporte: o nível 2 é a modalidade, e é por ela que o atendente procura. */
+const MOD_CORRIDA = "Corrida de rua";
+const MOD_CAMINHADA = "Caminhada";
+const MOD_TRAIL_CB = "Trail run";
+const MOD_MTB = "Mountain bike";
 
 export const PERGUNTAS: Pergunta[] = [
     {
@@ -470,6 +511,8 @@ export const PERGUNTAS: Pergunta[] = [
 
 export const FORMULARIOS: Formulario[] = [
     { id: "f-corrida", nome: "Formulário de corrida de rua", perguntaIds: ["p-camiseta", "p-kit", "p-equipe"] },
+    /* A ficha de inscrição dos eventos de esporte: o que a prova precisa saber do atleta. */
+    { id: "f-ficha", nome: "Ficha de inscrição", perguntaIds: ["p-camiseta", "p-kit", "p-emergencia", "p-categoria-etaria", "p-genero-prova", "p-nivel"] },
     { id: "f-trail", nome: "Formulário de trail", perguntaIds: ["p-camiseta", "p-equipe", "p-emergencia", "p-historico", "p-atestado"] },
     { id: "f-triathlon", nome: "Formulário de triathlon", perguntaIds: ["p-camiseta", "p-kit", "p-emergencia"] },
     {
@@ -549,6 +592,20 @@ export const CATALOGO: CatalogoItem[] = [
     { id: "pr-foto", tipo: "produto", eventoId: "ev-maratona", foto: FOTO_COPO, nome: "Pacote de fotos", modalidade: "Unidade", descricao: "Todas as fotos do atleta em alta resolução.", precoIntegral: 45, estoque: 200 },
     { id: "pr-trail-bastao", tipo: "produto", eventoId: "ev-trail", foto: FOTO_SACOCHILA, nome: "Bastão de trail", modalidade: "Par", descricao: "Aluguel do par de bastões para a prova.", precoIntegral: 70, estoque: 18 },
     { id: "pr-trail-transfer", tipo: "produto", eventoId: "ev-trail", foto: FOTO_KIT, nome: "Transfer para a largada", modalidade: "Ida e volta", descricao: "Saída de Natal às 4h.", precoIntegral: 55, estoque: 24 },
+    /* Maratona de Natal: duas modalidades, cinco categorias, em dois dias de prova. */
+    { id: "it-nat-5k", tipo: "ingresso", eventoId: "ev-natal", sessaoId: "s-nat-d1", grupo: MOD_CORRIDA, lote: "Lote 2", nome: "5 km", modalidade: "5 km", precoIntegral: 110, estoque: 180, formularioId: "f-ficha" },
+    { id: "it-nat-10k", tipo: "ingresso", eventoId: "ev-natal", sessaoId: "s-nat-d1", grupo: MOD_CORRIDA, lote: "Lote 2", nome: "10 km", modalidade: "10 km", precoIntegral: 160, estoque: 95, formularioId: "f-ficha" },
+    { id: "it-nat-21k", tipo: "ingresso", eventoId: "ev-natal", sessaoId: "s-nat-d2", grupo: MOD_CORRIDA, lote: "Lote 3", nome: "21 km", modalidade: "21 km", precoIntegral: 240, estoque: 40, formularioId: "f-ficha" },
+    { id: "it-nat-42k", tipo: "ingresso", eventoId: "ev-natal", sessaoId: "s-nat-d2", grupo: MOD_CORRIDA, lote: "Lote 3", nome: "42 km", modalidade: "42 km", precoIntegral: 320, estoque: 18, formularioId: "f-ficha" },
+    { id: "it-nat-cam", tipo: "ingresso", eventoId: "ev-natal", sessaoId: "s-nat-d1", grupo: MOD_CAMINHADA, lote: "Lote único", nome: "Caminhada 3 km", modalidade: "3 km", precoIntegral: 70, estoque: 220, formularioId: "f-ficha" },
+    { id: "pr-nat-kit", tipo: "produto", eventoId: "ev-natal", foto: FOTO_KIT, nome: "Kit extra do atleta", modalidade: "Unidade", descricao: "Segundo kit com camiseta, sacochila e número.", precoIntegral: 95, estoque: 60 },
+
+    /* Desafio Costa Branca: duas modalidades num dia só. */
+    { id: "it-cb-trail-15", tipo: "ingresso", eventoId: "ev-costa-branca", sessaoId: "s-cbranca-d1", grupo: MOD_TRAIL_CB, lote: "Lote 2", nome: "Trail 15 km", modalidade: "15 km", precoIntegral: 170, estoque: 55, formularioId: "f-ficha" },
+    { id: "it-cb-trail-30", tipo: "ingresso", eventoId: "ev-costa-branca", sessaoId: "s-cbranca-d1", grupo: MOD_TRAIL_CB, lote: "Lote 2", nome: "Trail 30 km", modalidade: "30 km", precoIntegral: 250, estoque: 22, formularioId: "f-ficha" },
+    { id: "it-cb-mtb-50", tipo: "ingresso", eventoId: "ev-costa-branca", sessaoId: "s-cbranca-d1", grupo: MOD_MTB, lote: "Lote 1", nome: "MTB 50 km", modalidade: "50 km", precoIntegral: 290, estoque: 30, formularioId: "f-ficha" },
+    { id: "pr-cb-transfer", tipo: "produto", eventoId: "ev-costa-branca", foto: FOTO_KIT, nome: "Transfer para a largada", modalidade: "Ida e volta", descricao: "Saída de Natal às 3h30.", precoIntegral: 60, estoque: 40 },
+
     { id: "pr-tri-aluguel", tipo: "produto", eventoId: "ev-triathlon", foto: FOTO_SACOCHILA, nome: "Aluguel de roupa de neoprene", modalidade: "Unidade", descricao: "Retirada na véspera, na arena de transição.", precoIntegral: 110, estoque: 9 },
 
     /* Combos: um pacote vendido como item único que cobre mais de uma data. O tipo existia no
@@ -1243,6 +1300,66 @@ PEDIDOS_INICIAIS.push({
     ],
 });
 
+/* Esporte. Um pedido por evento, com mais de uma modalidade, para a tela mostrar o vocabulário
+   trocado onde ele importa: o rótulo do nível 2, o do item e o da ficha. */
+PEDIDOS_INICIAIS.push({
+    id: uuidDeterministico(12),
+    eventoId: "ev-natal",
+    compradorId: "c-carol",
+    dataCompraLabel: "28 set 2026",
+    canal: "Online",
+    meioPagamento: "Pix",
+    criadoEmLabel: "28 set 2026, 09:12",
+    atualizadoEmLabel: "28 set 2026, 09:12",
+    itens: [
+        { id: "li-12a", itemId: "it-nat-21k", valorPago: 240, respostas: { ...respostasCompletas("it-nat-21k"), "p-camiseta": "M", "p-kit": ARENA } },
+        { id: "li-12b", itemId: "it-nat-cam", titularId: "c-diego", valorPago: 70, respostas: { ...respostasCompletas("it-nat-cam"), "p-camiseta": "G", "p-kit": ARENA } },
+        { id: "li-12c", itemId: "pr-nat-kit", valorPago: 95, respostas: {} },
+    ],
+    status: "ativo",
+    historico: [
+        {
+            id: "h-12",
+            dataLabel: "28 set 2026, 09:12",
+            responsavel: "Carolina Sampaio",
+            titulo: "Pedido criado",
+            marco: "compra" as const,
+            descricao: "21 km, caminhada de 3 km e um kit extra.",
+            valor: 405,
+            estado: "concluido",
+        },
+    ],
+});
+
+PEDIDOS_INICIAIS.push({
+    id: uuidDeterministico(13),
+    eventoId: "ev-costa-branca",
+    compradorId: "c-leticia",
+    dataCompraLabel: "02 out 2026",
+    canal: "Online",
+    meioPagamento: "Cartão de crédito (2x)",
+    criadoEmLabel: "02 out 2026, 20:05",
+    atualizadoEmLabel: "02 out 2026, 20:05",
+    itens: [
+        { id: "li-13a", itemId: "it-cb-trail-30", valorPago: 250, respostas: { ...respostasCompletas("it-cb-trail-30"), "p-camiseta": "P", "p-kit": PONTA_NEGRA } },
+        { id: "li-13b", itemId: "it-cb-mtb-50", valorPago: 290, respostas: { ...respostasCompletas("it-cb-mtb-50"), "p-camiseta": "GG", "p-kit": PONTA_NEGRA } },
+        { id: "li-13c", itemId: "pr-cb-transfer", valorPago: 60, respostas: {} },
+    ],
+    status: "ativo",
+    historico: [
+        {
+            id: "h-13",
+            dataLabel: "02 out 2026, 20:05",
+            responsavel: "Letícia Amaral",
+            titulo: "Pedido criado",
+            marco: "compra" as const,
+            descricao: "Trail de 30 km, MTB de 50 km e transfer para a largada.",
+            valor: 600,
+            estado: "concluido",
+        },
+    ],
+});
+
 PEDIDOS_INICIAIS.push(...gerarPedidosExtra(101));
 
 /* ------------------------------------------------------------------ */
@@ -1303,6 +1420,10 @@ export const buscarContas = (termo: string, limite = 8): Conta[] => {
    e um formulário inline que coletava inclusive gênero e vínculo de sócio, os dois campos que a
    segmentação usa para decidir: o operador declararia o dado que o bloqueia. */
 export const getEvento = (id: string) => EVENTOS.find((e) => e.id === id);
+
+/** O vocabulário do evento de um pedido. Toda tela que nomeia grupo, ingresso ou formulário
+ *  passa por aqui, para a mesma operação não mudar de nome entre duas telas. */
+export const vocabularioDoEvento = (eventoId: string) => VOCABULARIO[getEvento(eventoId)?.tipo ?? "entretenimento"];
 export const getPergunta = (id: string) => estado.perguntas.find((p) => p.id === id);
 export const getFormulario = (id?: string) => (id ? FORMULARIOS.find((f) => f.id === id) : undefined);
 

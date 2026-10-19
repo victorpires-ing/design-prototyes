@@ -9,7 +9,7 @@ import { SeletorUnidades } from "../components/wizard/seletor-unidades";
 import { WizardShell } from "../components/wizard/WizardShell";
 import { TransferirTitularidadeWizard } from "../components/wizard/TransferirTitularidadeWizard";
 import { TrocarItensWizard } from "../components/wizard/TrocarItensWizard";
-import { getConta, retomarPedido, usePedidos, uuidCurto, type Pedido, type Verbo } from "../data/pos-compra-store";
+import { getConta, retomarPedido, usePedidos, uuidCurto, type Pedido, type Verbo, vocabularioDoEvento } from "../data/pos-compra-store";
 
 /**
  * Os três fluxos de alteração como TELA, não como modal, no padrão da bilheteria.
@@ -106,12 +106,12 @@ const EscolherUnidade = ({ pedido, subtitulo, onFechar, onEscolher }: { pedido: 
     return (
         <WizardShell
             onClose={onFechar}
-            titulo="Editar formulário"
+            titulo={`Editar ${vocabularioDoEvento(pedido.eventoId).formulario}`}
             subtitulo={subtitulo}
             etapas={[]}
             indiceAtual={0}
             podeAvancar={Boolean(marcada)}
-            rotuloAvancar="Abrir formulário"
+            rotuloAvancar={`Abrir ${vocabularioDoEvento(pedido.eventoId).formulario}`}
             ultimaEtapa={false}
             rotuloConfirmar=""
             rotuloContinuar="Continuar escolhendo"

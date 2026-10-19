@@ -34,6 +34,7 @@ import {
     totaisDoPedido,
     usePedidos,
     uuidCurto,
+    vocabularioDoEvento,
     type CatalogoItem,
     type EntradaHistorico,
     type Pedido,
@@ -615,7 +616,7 @@ const ListaDeItens = ({ pedido, ...acoes }: { pedido: Pedido } & AcoesDaLista) =
                 {estrutura.sessoes.length > 0 && (
                     /* A data fica numa linha própria abaixo de "Ingressos", sempre: com uma
                        sessão ou com várias, é o mesmo nível de informação no mesmo lugar. */
-                    <GrupoDeItens titulo="Ingressos">
+                    <GrupoDeItens titulo={vocabularioDoEvento(pedido.eventoId).ingressos}>
                         {estrutura.sessoes.map(({ sessao, unidades }) => (
                             <div key={sessao.id} className="flex flex-col gap-2">
                                 <TituloDaSessao sessao={sessao} />
@@ -748,7 +749,7 @@ const CartaoDaUnidade = ({ pedido, item, linha, onAbrir }: { pedido: Pedido } & 
             {podeFormulario && (
                 <footer className="flex border-t border-secondary px-4 py-3 lg:px-5">
                     <Button size="sm" color="secondary" iconLeading={TIPO_OPERACAO_ICONE[TIPO_DO_VERBO.formulario]} className="max-sm:flex-1" onClick={() => onAbrir("formulario", [linha.id])}>
-                        Editar formulário
+                        Editar {vocabularioDoEvento(pedido.eventoId).formulario}
                     </Button>
                 </footer>
             )}

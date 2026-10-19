@@ -9,8 +9,8 @@ import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { cx } from "@/utils/cx";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, Stepper, mascararEmail } from "../pos-compra-ui";
-import { COBRANCA_TROCA_PERGUNTAS } from "../../data/pos-compra-store";
+import { Aviso, CampoMotivo, FOCO, MOTIVO_INICIAL, Miniatura, Regra, ResumoFinanceiro, Stepper, capitalizar, mascararEmail } from "../pos-compra-ui";
+import { COBRANCA_TROCA_PERGUNTAS, vocabularioDoEvento, type Vocabulario } from "../../data/pos-compra-store";
 import { AbasCarrossel, ChipLegenda, type AbaItem } from "../abas-carrossel";
 import { EditorResposta } from "../respostas-ui";
 import {
@@ -48,9 +48,9 @@ const TITULO_ETAPA: Record<Etapa, string> = {
     revisao: "Confirmar",
 };
 
-const ROTULO_TIPO: Record<TipoItem, string> = { ingresso: "Ingressos", produto: "Produtos", combo: "Combos" };
+const rotuloTipo = (v: Vocabulario): Record<TipoItem, string> => ({ ingresso: v.ingressos, produto: "Produtos", combo: "Combos" });
 /** O mesmo tipo no singular, para a frase que diz o que a busca não achou. */
-const ROTULO_TIPO_SINGULAR: Record<TipoItem, string> = { ingresso: "ingresso", produto: "produto", combo: "combo" };
+const rotuloTipoSingular = (v: Vocabulario): Record<TipoItem, string> => ({ ingresso: v.ingresso.toLowerCase(), produto: "produto", combo: "combo" });
 
 /** Partes da data para o chip: dia da semana em cima, dia e mês em destaque. */
 const partesDaSessao = (inicio: number) => {
@@ -240,6 +240,10 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
     /*  Formulários: herdados da unidade que sai, nada inventado           */
     /* ------------------------------------------------------------------ */
 
+    const vocab = vocabularioDoEvento(pedido.eventoId);
+    const ROTULO_TIPO = rotuloTipo(vocab);
+    const ROTULO_TIPO_SINGULAR = rotuloTipoSingular(vocab);
+
     const perguntasDoItem = (item?: CatalogoItem) => (getFormulario(item?.formularioId)?.perguntaIds ?? []).map((id) => perguntas.find((p) => p.id === id)).filter(Boolean) as Pergunta[];
     /* A pessoa é a mesma: as perguntas em comum vêm das respostas dela; as novas começam em
        branco e são obrigatórias. Antes o item que entrava nascia com respostas inventadas
@@ -305,7 +309,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
             if (selecaoIgual) return "Escolha ao menos um item diferente do atual";
             return null;
         }
-        if (etapa === "formularios") return paresIncompletos.length === 0 ? null : `Falta responder ${contar(paresIncompletos.length, "formulário", "formulários")}`;
+        if (etapa === "formularios") return paresIncompletos.length === 0 ? null : `Falta responder ${contar(paresIncompletos.length, vocab.formulario, vocab.formularios)}`;
         const pendentes = [
             !motivo.categoria ? "Escolha o motivo" : null,
             motivo.categoria === "outro" && !motivo.nota.trim() ? "Descreva o motivo" : null,
@@ -325,8 +329,8 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
             ? "Escolher os novos itens"
             : etapa === "entram" && comFormularios
               ? paresIncompletos.length > 0
-                  ? "Responder formulários"
-                  : "Conferir formulários"
+                  ? `Responder ${vocab.formularios}`
+                  : `Conferir ${vocab.formularios}`
               : "Revisar troca";
 
     /* Fechar sai do fluxo. Não há rascunho: a solicitação, com a cobrança, é a primeira coisa
@@ -414,7 +418,9 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
             onClose={fechar}
             titulo="Trocar"
             subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}
-            etapas={etapas.map((e) => TITULO_ETAPA[e])}
+            /* "Formulários" vira "Fichas de inscrição" no esporte: é o nome que o atendente
+               procura, e o stepper é onde ele confere em que ponto está. */
+            etapas={etapas.map((e) => (e === "formularios" ? capitalizar(vocab.formularios) : TITULO_ETAPA[e]))}
             indiceAtual={indice}
             podeAvancar={podeAvancar}
             rotuloAvancar={rotuloAvancar}
@@ -581,7 +587,7 @@ export function TrocarItensWizard({ pedido, linhasIniciais, onFechar, onEnviado 
                     /* A etapa fica fixa depois de entrar no fluxo, então a escolha pode mudar e
                        deixá-la sem nada. Antes sobrava só a regra solta, como tela quebrada. */
                     <p className="rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">
-                        Nenhum item escolhido pede formulário. Pode seguir para a revisão.
+                        Nenhum item escolhido pede {vocab.formulario}. Pode seguir para a revisão.
                     </p>
                 ) : (
                     <>

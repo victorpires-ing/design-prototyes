@@ -15,6 +15,7 @@ import {
     type Motivo,
     type Pedido,
     type Pergunta,
+    vocabularioDoEvento,
 } from "../../data/pos-compra-store";
 import { WizardShell } from "./WizardShell";
 import { ResumoUnidades } from "./seletor-unidades";
@@ -84,7 +85,7 @@ export function EditarFormularioWizard({ pedido, linhaId, onFechar, onEnviado }:
     return (
         <WizardShell
             onClose={onFechar}
-            titulo="Editar formulário"
+            titulo={`Editar ${vocabularioDoEvento(pedido.eventoId).formulario}`}
             subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}
             etapas={["Respostas", "Revisão"]}
             indiceAtual={etapa === "revisao" ? 1 : 0}

@@ -5,7 +5,7 @@ import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { InputBase } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
-import { Aviso, CampoMotivo, MOTIVO_INICIAL, Regra, ResumoFinanceiro, SetaParaBaixo, iniciaisDe, formatarCPF, mascararEmail } from "../pos-compra-ui";
+import { Aviso, CampoMotivo, MOTIVO_INICIAL, Regra, ResumoFinanceiro, SetaParaBaixo, capitalizar, iniciaisDe, formatarCPF, mascararEmail } from "../pos-compra-ui";
 import {
     COBRANCA_TROCA_PERGUNTAS,
     buscarContas,
@@ -20,6 +20,7 @@ import {
     titularDaLinha,
     usePerguntas,
     uuidCurto,
+    vocabularioDoEvento,
     validarNovoTitular,
     type Conta,
     type Motivo,
@@ -290,6 +291,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
     /*  Formulários                                                        */
     /* ------------------------------------------------------------------ */
 
+    const vocab = vocabularioDoEvento(pedido.eventoId);
     const perguntasDaLinha = (linha: PedidoItem): Pergunta[] => (getFormulario(getItem(linha.itemId)?.formularioId)?.perguntaIds ?? []).map((id) => perguntas.find((p) => p.id === id)).filter(Boolean) as Pergunta[];
     const comFormulario = linhas.filter((linha) => perguntasDaLinha(linha).length > 0);
     const valorDaResposta = (linha: PedidoItem, perguntaId: string) => respostasNovas[linha.id]?.[perguntaId] ?? linha.respostas[perguntaId] ?? "";
@@ -419,7 +421,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                 Boolean(selecionada) && linhas.length > 0 && motivoValido(motivo);
 
     const rotuloAvancar =
-        etapa === "destinatario" ? "Escolher itens" : etapa === "itens" && temEtapaFormulario ? "Conferir formulário" : "Revisar transferência";
+        etapa === "destinatario" ? "Escolher itens" : etapa === "itens" && temEtapaFormulario ? `Conferir ${vocab.formulario}` : "Revisar transferência";
 
     /* O que a casca pergunta antes de descartar. Ela deduz sozinha, mas aqui dá para ser exato:
        as unidades que já vieram marcadas do kebab não são trabalho de ninguém, e o motivo escrito
@@ -556,7 +558,9 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
             subtitulo={`${comprador?.nome ?? "Comprador"} · Pedido ${uuidCurto(pedido.id)}`}
             /* A etapa 2 carrega o nome de quem recebe. O subtítulo logo acima é o COMPRADOR, e
                só "Itens" deixava as duas pessoas do fluxo reduzidas a uma. */
-            etapas={etapas.map((e) => (e === "itens" && selecionada ? `Itens para ${primeiroNome(selecionada.nome)}` : TITULO_ETAPA[e]))}
+            etapas={etapas.map((e) =>
+                e === "itens" && selecionada ? `Itens para ${primeiroNome(selecionada.nome)}` : e === "formulario" ? capitalizar(vocab.formulario) : TITULO_ETAPA[e],
+            )}
             indiceAtual={indice}
             podeAvancar={podeAvancar}
             /* Sem rodapé ao escolher quem recebe: o clique na sugestão já avança, e a etapa nunca
@@ -749,7 +753,7 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                             /* A etapa fica fixa depois que o fluxo passa por ela, então a escolha
                                pode mudar e deixá-la sem nada. */
                             <p className="w-full rounded-xl bg-primary px-4 py-8 text-center text-sm text-tertiary ring-1 ring-border-secondary">
-                                Nenhuma unidade escolhida tem formulário. Pode seguir para a revisão.
+                                Nenhuma unidade escolhida tem {vocab.formulario}. Pode seguir para a revisão.
                             </p>
                         ) : (
                             <>
@@ -822,8 +826,8 @@ export function TransferirTitularidadeWizard({ pedido, linhasIniciais, onFechar,
                         {comFormulario.length > 0 && (
                             <p className="w-full text-sm text-tertiary">
                                 {alteradas.length === 0
-                                    ? "O destinatário herda as respostas do formulário como estão hoje."
-                                    : `O destinatário herda as respostas do formulário com ${contarAlteradas(alteradas.length)} que você corrigiu.`}
+                                    ? `O destinatário herda as respostas d${vocab.oFormulario.slice(1)} como estão hoje.`
+                                    : `O destinatário herda as respostas d${vocab.oFormulario.slice(1)} com ${contarAlteradas(alteradas.length)} que você corrigiu.`}
                             </p>
                         )}
                     </>

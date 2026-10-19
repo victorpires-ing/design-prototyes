@@ -16,6 +16,8 @@ import {
     type Pedido,
     type PedidoItem,
     type TipoItem,
+    type Vocabulario,
+    vocabularioDoEvento,
     type Verbo,
 } from "../../data/pos-compra-store";
 
@@ -66,8 +68,8 @@ const agruparIguais = (linhas: PedidoItem[], pedido: Pedido) => {
 
 /** Os três tipos, na ordem e com os rótulos da aba de itens do pedido: trocar de tela durante
  *  um atendimento tem que parecer o mesmo produto. */
-const TIPOS_EM_ORDEM: Array<{ tipo: TipoItem; rotulo: string }> = [
-    { tipo: "ingresso", rotulo: "Ingressos" },
+const tiposEmOrdem = (v: Vocabulario): Array<{ tipo: TipoItem; rotulo: string }> => [
+    { tipo: "ingresso", rotulo: v.ingressos },
     { tipo: "produto", rotulo: "Produtos" },
     { tipo: "combo", rotulo: "Combos" },
 ];
@@ -135,7 +137,7 @@ export function SeletorUnidades({
                 produto e combo são coisas diferentes, e numa lista corrida o atendente lia
                 "Camiseta extra" entre dois ingressos sem nada dizendo que ali mudou de natureza.
                 O tipo sem unidade não aparece. */}
-            {TIPOS_EM_ORDEM.map(({ tipo, rotulo }) => {
+            {tiposEmOrdem(vocabularioDoEvento(pedido.eventoId)).map(({ tipo, rotulo }) => {
                 const doTipo = grupos.filter((g) => getItem(g.itemId)?.tipo === tipo);
                 if (doTipo.length === 0) return null;
                 return (

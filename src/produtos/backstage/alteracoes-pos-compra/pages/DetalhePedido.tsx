@@ -35,6 +35,8 @@ import {
     usePedidos,
     uuidCurto,
     vocabularioDoEvento,
+    type TipoItem,
+    type Vocabulario,
     type CatalogoItem,
     type EntradaHistorico,
     type Pedido,
@@ -148,10 +150,13 @@ export function DetalhePedido() {
                         qualquer aba. Antes o voltar morava acima das duas colunas e as ações
                         estavam enterradas no topo da lista de itens, onde só existiam enquanto a
                         aba Itens estivesse aberta. */}
-                    <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
-                        <div className="flex min-w-0 items-center gap-3">
+                    {/* `flex-wrap`: com os três tipos no nome dos botões eles somam mais de 70
+                        caracteres, e como `shrink-0` espremiam o título até "Pedid...". Agora
+                        descem para a própria linha quando não cabem, e o título fica inteiro. */}
+                    <header className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-4">
+                        <div className="flex items-center gap-3">
                             <ButtonUtility size="sm" color="tertiary" className="max-md:size-11" icon={ArrowLeft} tooltip="Voltar para os pedidos" onClick={() => navigate(voltarPara)} />
-                            <h1 className="truncate text-display-xs font-bold text-primary">Pedido {uuidCurto(pedido.id)}</h1>
+                            <h1 className="text-display-xs font-bold text-primary">Pedido {uuidCurto(pedido.id)}</h1>
                         </div>
                         <AcoesDoPedido pedido={pedido} onAbrir={abrir} />
                     </header>
@@ -794,15 +799,26 @@ const EstadoDaUnidade = ({ pedido, linha, solicitacao }: { pedido: Pedido; linha
  * Editar formulário não está aqui. Ele não tem versão geral: o formulário é de uma unidade,
  * com as respostas dela, então a porta dele é o cartão da unidade.
  */
+/** "ingressos", "categorias e produtos", "ingressos, produtos e combos": o que o verbo alcança
+ *  neste pedido, na voz do evento. "Itens" é palavra nossa — o operador conhece ingresso,
+ *  produto e combo, e no esporte categoria. */
+const tiposAlcancados = (pedido: Pedido, verbo: Verbo, v: Vocabulario) => {
+    const tem = (tipo: TipoItem) => pedido.itens.some((l) => getItem(l.itemId)?.tipo === tipo && disponivelPara(pedido, l, verbo));
+    const nomes = [tem("ingresso") && v.ingressos.toLowerCase(), tem("produto") && "produtos", tem("combo") && "combos"].filter(Boolean) as string[];
+    if (nomes.length < 2) return nomes.join("");
+    return `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
+};
+
 /** As ações do pedido, no canto do cabeçalho. Um verbo entra quando ao menos uma unidade o
  *  aceita: é a única porta de transferência e troca, e exigir duas deixava a maioria dos
  *  pedidos sem ação nenhuma. */
 const AcoesDoPedido = ({ pedido, onAbrir }: { pedido: Pedido; onAbrir: (verbo: Verbo, linhas: string[]) => void }) => {
-    const verbos = VERBOS_EM_MASSA.filter(({ verbo }) => pedido.itens.some((l) => disponivelPara(pedido, l, verbo)));
+    const v = vocabularioDoEvento(pedido.eventoId);
+    const verbos = VERBOS_EM_MASSA.map(({ verbo, rotulo }) => ({ verbo, rotulo, tipos: tiposAlcancados(pedido, verbo, v) })).filter(({ tipos }) => tipos !== "");
     if (verbos.length === 0) return null;
     return (
         <div className="flex shrink-0 flex-wrap gap-2 max-md:w-full">
-            {verbos.map(({ verbo, rotulo }) => (
+            {verbos.map(({ verbo, rotulo, tipos }) => (
                 <Button
                     key={verbo}
                     size="md"
@@ -811,7 +827,7 @@ const AcoesDoPedido = ({ pedido, onAbrir }: { pedido: Pedido; onAbrir: (verbo: V
                     className="max-md:flex-1"
                     onClick={() => onAbrir(verbo, [])}
                 >
-                    {rotulo}
+                    {rotulo} {tipos}
                 </Button>
             ))}
         </div>
@@ -819,8 +835,8 @@ const AcoesDoPedido = ({ pedido, onAbrir }: { pedido: Pedido; onAbrir: (verbo: V
 };
 
 const VERBOS_EM_MASSA: Array<{ verbo: Verbo; rotulo: string }> = [
-    { verbo: "transferir", rotulo: "Transferir itens" },
-    { verbo: "trocar", rotulo: "Trocar itens" },
+    { verbo: "transferir", rotulo: "Transferir" },
+    { verbo: "trocar", rotulo: "Trocar" },
 ];
 /**
  * Tudo o que se sabe sobre uma unidade, lido de um lugar só: a linha da lista e o cartão de
@@ -983,34 +999,20 @@ const Historico = ({ pedido, onVerAlteracao }: { pedido: Pedido; onVerAlteracao:
         <section className="flex flex-col gap-4">
             <p className="text-sm text-secondary">{resumo}</p>
 
-            {visiveis.length > 0 && (
-                <ol className="flex flex-col gap-2">
-                    {visiveis.map((grupo) => (
-                        <GrupoDoHistorico key={grupo.chave} pedido={pedido} grupo={grupo} onVerAlteracao={onVerAlteracao} />
-                    ))}
-                </ol>
-            )}
+            {/* A compra entra na mesma pilha e no mesmo cartão das alterações. Ela era um bloco
+                solto depois de uma régua, com tipografia própria, e lia como se não fizesse parte
+                do histórico — sendo que é a primeira linha dele. */}
+            <ol className="flex flex-col gap-2">
+                {visiveis.map((grupo) => (
+                    <GrupoDoHistorico key={grupo.chave} pedido={pedido} grupo={grupo} onVerAlteracao={onVerAlteracao} />
+                ))}
+                {compra && <CompraNoHistorico pedido={pedido} compra={compra} />}
+            </ol>
             {lista.length > LIMITE_GRUPOS && (
                 <div>
                     <Button size="sm" color="link-color" onClick={() => setTodos((atual) => !atual)}>
                         {todos ? "Mostrar menos" : `Mostrar mais ${lista.length - LIMITE_GRUPOS} alterações`}
                     </Button>
-                </div>
-            )}
-
-            {compra && (
-                <div className="flex flex-col gap-1 border-t border-secondary pt-4">
-                    <p className="text-sm font-semibold text-primary">Compra</p>
-                    <p className="text-sm text-tertiary">
-                        {[pedido.criadoEmLabel, pedido.canal, formaDePagamento(pedido.meioPagamento), pedido.cupom && `Cupom ${pedido.cupom}`].filter(Boolean).join(" · ")}
-                        {typeof compra.valor === "number" && (
-                            <>
-                                {" · "}
-                                <span className="font-medium text-primary tabular-nums">{formatarMoeda(compra.valor)}</span> pagos na compra
-                            </>
-                        )}
-                    </p>
-                    <p className="text-sm text-tertiary">{compra.descricao}</p>
                 </div>
             )}
         </section>
@@ -1030,6 +1032,61 @@ const Historico = ({ pedido, onVerAlteracao }: { pedido: Pedido; onVerAlteracao:
  * A exceção deliberada é a alteração que ainda pede trabalho: ela nasce aberta, porque é para
  * onde ele ia de qualquer jeito.
  */
+/**
+ * A compra, no cartão das alterações: mesmo ícone à esquerda, mesmo título de 16px, mesmo
+ * dinheiro à direita e o mesmo campo "Detalhes" no pé. O que ela tem de próprio é o conteúdo:
+ * canal, forma de pagamento, cupom e o que foi comprado.
+ */
+const CompraNoHistorico = ({ pedido, compra }: { pedido: Pedido; compra: EntradaHistorico }) => (
+    <li className="scroll-mt-24">
+        <div className={cx("rounded-xl bg-primary ring-1 ring-border-secondary", FOCO_ESCOPO)}>
+            <div className="flex items-start gap-3 p-4">
+                <FeaturedIcon icon={Tag01} color="gray" theme="modern" size="sm" className="mt-0.5 shrink-0" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <p className="text-md font-semibold text-primary">Compra</p>
+                    <p className="text-sm text-tertiary">
+                        <span className="tabular-nums">{horaDoLabel(pedido.criadoEmLabel) || pedido.criadoEmLabel}</span> · {pedido.canal}
+                    </p>
+                </div>
+                {typeof compra.valor === "number" && (
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                        <p className="text-md font-semibold text-primary tabular-nums">{formatarMoeda(compra.valor)}</p>
+                        <p className="text-sm text-tertiary">pagos na compra</p>
+                    </div>
+                )}
+            </div>
+
+            <details className="group border-t border-secondary">
+                <summary
+                    className={cx(
+                        "flex cursor-pointer list-none items-center gap-1 px-4 py-3 text-sm text-tertiary transition duration-100 ease-linear hover:text-tertiary_hover max-md:min-h-11 [&::-webkit-details-marker]:hidden",
+                        FOCO,
+                    )}
+                >
+                    Detalhes
+                    <ChevronDown className="size-4 text-fg-quaternary transition-transform duration-100 ease-linear group-open:rotate-180" aria-hidden="true" />
+                </summary>
+
+                <div className="flex flex-col gap-3 px-4 pb-4">
+                    <dl className="grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1.5">
+                        <dt className="text-sm text-tertiary">Data</dt>
+                        <dd className="text-sm text-secondary">{pedido.criadoEmLabel}</dd>
+                        <dt className="text-sm text-tertiary">Pagamento</dt>
+                        <dd className="text-sm text-secondary">{formaDePagamento(pedido.meioPagamento)}</dd>
+                        {pedido.cupom && (
+                            <>
+                                <dt className="text-sm text-tertiary">Cupom</dt>
+                                <dd className="text-sm text-secondary">{pedido.cupom}</dd>
+                            </>
+                        )}
+                    </dl>
+                    {compra.descricao && <p className="rounded-lg bg-secondary p-3 text-sm text-secondary">{compra.descricao}</p>}
+                </div>
+            </details>
+        </div>
+    </li>
+);
+
 const GrupoDoHistorico = ({ pedido, grupo, onVerAlteracao }: { pedido: Pedido; grupo: GrupoHistorico; onVerAlteracao: (solicitacaoId: string) => void }) => {
     const { rotulo, tom, dinheiro, viva } = resultadoDoGrupo(pedido, grupo);
     const abertura = grupo.entradas.find((e) => e.marco === "solicitada") ?? grupo.entradas[0];

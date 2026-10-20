@@ -39,6 +39,10 @@ const HIERARQUIA: Record<string, string> = {
     "link-color": "Link color",
 };
 
+const INPUT_FIELD_KEY = "aa8e6d0ec44345c6942f05e820b6e6bb5a7b45a9"; // Input field
+const PROGRESS_ICONS_CENTERED_KEY = "a1aba09b1f5d9e3c33a3b751e31b3052e4a7275e"; // Progress icons centered (horizontal)
+const PROGRESS_ICONS_TEXT_KEY = "92601df408522a449529281a959f492f3c6cca44"; // Progress icons with text (vertical)
+
 export const DS_REGISTRY: Record<string, RegistryEntry> = {
     Button: {
         figmaKey: BUTTON_KEY,
@@ -264,6 +268,144 @@ export const DS_REGISTRY: Record<string, RegistryEntry> = {
     MetricsIcon01: { figmaKey: "5f2e67f1c889afd93cb36212bfd57aba9e11f252", resolve: () => ({ properties: { Type: "Icon 01" } }) },
     MetricsIcon02: { figmaKey: "5f2e67f1c889afd93cb36212bfd57aba9e11f252", resolve: () => ({ properties: { Type: "Icon 02" } }) },
     MetricsIcon03: { figmaKey: "5f2e67f1c889afd93cb36212bfd57aba9e11f252", resolve: () => ({ properties: { Type: "Icon 03" } }) },
+
+    /* ---------------------- Progress steps (stepper) ---------------------- */
+    // Atenção: as duas orientações do React são DOIS sets diferentes no Figma, com
+    // vocabulário de Type distinto ("Featured icon" no centered, "Icon featured" no
+    // icons-with-text). Resolver pela key, não só pela variante.
+    IconsWithText: {
+        figmaKey: PROGRESS_ICONS_TEXT_KEY,
+        resolve: (p) => {
+            const horizontal = String(p.orientation ?? "vertical") === "horizontal";
+            const tipo = String(p.type ?? "icon");
+            const size = String(p.size ?? "sm") === "md" ? "md" : "sm";
+            if (horizontal) {
+                return {
+                    figmaKey: PROGRESS_ICONS_CENTERED_KEY,
+                    properties: {
+                        Size: size,
+                        Type: { icon: "Icon", number: "Number", "featured-icon": "Featured icon" }[tipo] ?? "Icon",
+                        Breakpoint: "Desktop",
+                    },
+                };
+            }
+            return {
+                figmaKey: PROGRESS_ICONS_TEXT_KEY,
+                // Sem eixo Breakpoint neste set.
+                properties: {
+                    Size: size,
+                    Type: { icon: "Icon", number: "Number", "featured-icon": "Icon featured" }[tipo] ?? "Icon",
+                },
+            };
+        },
+    },
+    MinimalIcons: {
+        figmaKey: "ff0c16151d3c0f38d0a29cba2c04607d2b374934",
+        resolve: (p) => ({ properties: { Size: String(p.size ?? "sm") === "md" ? "md" : "sm", Type: "Check", Breakpoint: "Desktop" } }),
+    },
+    MinimalIconsConnected: {
+        figmaKey: "d97980363522b252e656f72eefd6619669a9f6f7",
+        resolve: (p) => ({ properties: { Size: String(p.size ?? "sm") === "md" ? "md" : "sm", Type: "Check", Breakpoint: "Desktop" } }),
+    },
+    TextWithLine: {
+        figmaKey: "bb3355e3c2d20ed85674fb431d5b569869fb3754",
+        resolve: (p) => ({ properties: { Size: String(p.size ?? "sm") === "md" ? "md" : "sm", Breakpoint: "Desktop" } }),
+    },
+
+    /* ---------------------- Campos ---------------------- */
+    // InputBase é o campo visível usado solto (sem o wrapper TextField) em várias telas.
+    // Não colide com Input/InputGroup: o nó DS externo poda os filhos antes de chegar aqui.
+    InputBase: {
+        figmaKey: INPUT_FIELD_KEY,
+        resolve: (p) => ({
+            properties: { Size: String(p.size ?? "md"), Type: String(p.type) === "password" ? "Password" : "Default" },
+        }),
+    },
+    InputNumber: {
+        figmaKey: INPUT_FIELD_KEY,
+        resolve: (p) => ({
+            properties: {
+                Size: String(p.size ?? "md"),
+                Type: String(p.orientation ?? "vertical") === "horizontal" ? "Number counter horizontal" : "Number counter vertical",
+            },
+        }),
+    },
+    InputTags: {
+        figmaKey: INPUT_FIELD_KEY,
+        resolve: (p) => ({ properties: { Size: String(p.size ?? "md"), Type: "Tags inner" } }),
+    },
+    InputDate: {
+        figmaKey: INPUT_FIELD_KEY,
+        resolve: (p) => ({ properties: { Size: String(p.size ?? "md"), Type: "Date and time" } }),
+    },
+
+    /* ---------------------- Seleção (caixinha sem label) ---------------------- */
+    // Text=False é variante publicada do mesmo set: a caixa sozinha existe no Figma.
+    CheckboxBase: {
+        figmaKey: "b1c045937a4fa80ac59ef95fd9c2b53aea4ffef2",
+        resolve: (p) => ({
+            properties: {
+                Size: String(p.size ?? "sm"),
+                Type: "Checkbox",
+                Checked: p.isSelected || p.isIndeterminate ? "True" : "False",
+                Indeterminate: p.isIndeterminate ? "True" : "False",
+                Text: "False",
+                State: p.isDisabled ? "Disabled" : p.isFocusVisible ? "Focused" : "Default",
+            },
+        }),
+    },
+    RadioButtonBase: {
+        figmaKey: "b1c045937a4fa80ac59ef95fd9c2b53aea4ffef2",
+        resolve: (p) => ({
+            properties: {
+                Size: String(p.size ?? "sm"),
+                Type: "Radio",
+                Checked: p.isSelected ? "True" : "False",
+                Indeterminate: "False",
+                Text: "False",
+                State: p.isDisabled ? "Disabled" : p.isFocusVisible ? "Focused" : "Default",
+            },
+        }),
+    },
+
+    /* ---------------------- Diversos ---------------------- */
+    PaginationCardAdvanced: {
+        figmaKey: "2e24e5b674946e159b516774f6b7199eb91b33a2",
+        resolve: (p) => ({
+            properties: {
+                Type: String(p.align ?? "space-between") === "center" ? "Card advanced center aligned" : "Card advanced",
+                Shape: "Square",
+                Breakpoint: "Desktop",
+            },
+        }),
+    },
+    DateRangePicker: {
+        figmaKey: "5cba3791edb126709e76d0094615321a3c33eb9c",
+        resolve: (p) => ({
+            properties: {
+                Type: "Dual dates",
+                Opened: (p.isOpen ?? p.defaultOpen) ? "True" : "False",
+                State: (p.value ?? p.defaultValue) ? "Active" : "Placeholder",
+                Breakpoint: "Desktop",
+            },
+        }),
+    },
+    CountBadge: {
+        figmaKey: "389f60cc5418361a548e04c81d296c08d4879966",
+        textProp: "count",
+        resolve: () => ({ properties: { Size: "sm", Type: "Badge modern", Color: "Gray", Icon: "False" } }),
+    },
+    AvatarProfilePhoto: {
+        figmaKey: "39370f18f294bba4431f3099fc47014ca5b095f1",
+        textProp: "initials",
+        resolve: (p) => ({
+            properties: {
+                Size: String(p.size ?? "md"),
+                Placeholder: p.src ? "False" : "True",
+                Text: !p.src && p.initials ? "True" : "False",
+            },
+        }),
+    },
 
     // Nota: rail/card/menu do Backstage NÃO são componentes publicados isoladamente
     // (só existem dentro do "Backstage Template"), então NÃO entram aqui — senão a

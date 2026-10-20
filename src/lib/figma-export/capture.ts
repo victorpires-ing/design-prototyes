@@ -369,6 +369,31 @@ function textoDireto(el: Element): string | null {
     return t || null;
 }
 
+/**
+ * Componente React que renderizou este elemento, pulando fibers sem nome (Fragment,
+ * memo, context provider). Sem o pulo, um único provider entre o componente e o `div`
+ * já fazia a detecção falhar — era o caso do BackstageLayout.
+ */
+function paiComponente(el: Element, max = 5): string | null {
+    let f = getFiber(el)?.return ?? null;
+    for (let i = 0; f && i < max; i++) {
+        const nome = componentName(f.type);
+        if (nome) return nome;
+        f = f.return ?? null;
+    }
+    return null;
+}
+
+/** O fiber do componente nomeado acima de `el` (para ler memoizedProps). */
+function fiberDoComponente(el: Element, nome: string, max = 5): Fiber | null {
+    let f = getFiber(el)?.return ?? null;
+    for (let i = 0; f && i < max; i++) {
+        if (componentName(f.type) === nome) return f;
+        f = f.return ?? null;
+    }
+    return null;
+}
+
 let contador = 0;
 
 function walk(el: Element): CapturedNode | null {
@@ -376,7 +401,11 @@ function walk(el: Element): CapturedNode | null {
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) return null;
     const cs = getComputedStyle(el);
-    if (cs.display === "none" || cs.visibility === "hidden" || +cs.opacity === 0) return null;
+    if (cs.display === "none" || cs.visibility === "hidden") return null;
+    // Opacidade NÃO poda: o motion anima a entrada por JS (fora da Web Animations API, logo
+    // invisível para getAnimations), e exportar durante a animação derrubava a subárvore
+    // inteira em silêncio — o JSON "dava certo" contendo só a sidebar. A opacidade fica
+    // registrada em `style` e o plugin decide o que fazer com ela.
 
     const rect: Rect = { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height };
     const style = styleSubset(cs, rect);
@@ -385,9 +414,10 @@ function walk(el: Element): CapturedNode | null {
 
     // Backstage: o elemento renderizado diretamente pelo BackstageLayout → componente Backstage
     // Template (rail/card/menu vêm do template; só o conteúdo da página entra no slot `content`).
-    const pai = getFiber(el)?.return;
-    if (pai && componentName(pai.type) === "BackstageLayout") {
-        const props = primProps((pai.memoizedProps ?? {}) as Record<string, unknown>);
+    const paiNome = paiComponente(el);
+    if (paiNome === "BackstageLayout") {
+        const pai = fiberDoComponente(el, "BackstageLayout");
+        const props = primProps((pai?.memoizedProps ?? {}) as Record<string, unknown>);
         const content = conteudoBackstage(el);
         const filhos = content ? [walk(content)].filter((n): n is CapturedNode => !!n).map(aplainar) : [];
         return {
@@ -406,6 +436,13 @@ function walk(el: Element): CapturedNode | null {
     if (ds) {
         const entry = DS_REGISTRY[ds.name];
         const raw = primProps(ds.props);
+        // InputBase dentro de TextField/InputGroup recebe o tamanho por contexto React, que não
+        // aparece nas props do fiber. O wrapper expõe o valor em [data-input-size]; sem isso um
+        // <TextField size="lg"> exportaria o campo como "md".
+        if (ds.name === "InputBase" && raw.size === undefined) {
+            const herdado = el.closest("[data-input-size]")?.getAttribute("data-input-size");
+            if (herdado) raw.size = herdado;
+        }
         const resolved = entry.resolve ? entry.resolve(raw) : { properties: {} as Record<string, string | boolean> };
         const icones = iconesDoComponente(el);
         const abas = abasDoComponente(el);
@@ -445,7 +482,9 @@ function walk(el: Element): CapturedNode | null {
                               .filter((t) => t && t.length < 40)
                         : undefined,
                 emptyState: ds.name === "EmptyState" ? conteudoEmptyState(el) : undefined,
-                input: ["Input", "Select", "MultiSelect", "ComboBox"].includes(ds.name) ? conteudoInput(el, raw) : undefined,
+                input: ["Input", "InputBase", "InputNumber", "InputTags", "InputDate", "Select", "MultiSelect", "ComboBox"].includes(ds.name)
+                    ? conteudoInput(el, raw)
+                    : undefined,
                 rawProps: raw,
             },
             children: [],
@@ -676,6 +715,27 @@ function capturarTokens(): Record<string, string> {
     return out;
 }
 
+/**
+ * Espera as animações em curso terminarem (máx. `limite` ms). Sem isso, exportar logo
+ * depois de abrir um slideout/modal captura o painel no meio do caminho: posição e
+ * opacidade ainda são as do início da animação.
+ */
+export async function aguardarEstabilidade(limite = 800): Promise<void> {
+    const alvo = document.body as Element & { getAnimations?: (o?: { subtree?: boolean }) => Animation[] };
+    await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+    if (typeof alvo.getAnimations !== "function") return;
+    try {
+        const correndo = alvo.getAnimations({ subtree: true }).filter((a) => a.playState === "running");
+        if (!correndo.length) return;
+        await Promise.race([
+            Promise.allSettled(correndo.map((a) => a.finished)),
+            new Promise((r) => setTimeout(r, limite)),
+        ]);
+    } catch {
+        /* animações não suportadas: segue sem esperar */
+    }
+}
+
 /** Captura a árvore a partir de um elemento raiz (default: #root ou body). */
 export function capturarTela(rootEl?: Element): CapturedScreen | null {
     contador = 0;
@@ -700,7 +760,13 @@ export function resumo(screen: CapturedScreen): { nos: number; ds: number } {
         nos++;
         if (n.role === "ds") ds++;
         n.children.forEach(visita);
+        // Conteúdo de slot (template do Backstage, modal, slideout, tabela) também conta:
+        // sem isso uma tela inteira dentro do slot `content` era reportada como "1 nó".
+        n.ds?.slotContent?.forEach(visita);
+        n.ds?.table?.headers.forEach(visita);
+        n.ds?.table?.rows.forEach((linha) => linha.forEach(visita));
     };
     visita(screen.root);
+    screen.overlays?.forEach(visita);
     return { nos, ds };
 }

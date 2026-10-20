@@ -132,13 +132,28 @@
 
       function setStatus(msg, kind) { statusEl.textContent = msg; statusEl.className = "status " + (kind || ""); }
 
+      // Resumo do que o import fez com o slot do shell. Sem isso, "importou mas veio vazio"
+      // não diz em que etapa o conteúdo se perdeu.
+      function diagTexto(m) {
+        var d = m && m.diag && m.diag.shell;
+        if (!d) return m && m.versao ? " · plugin " + m.versao : "";
+        return " · plugin " + (m.versao || "?") +
+          " · slot " + (d.slot || "NÃO ACHADO") +
+          " · recebidos " + d.recebidos +
+          " · construídos " + d.construidos +
+          " · injetados " + d.injetados +
+          " · no slot " + d.filhosNoSlotFinal +
+          (d.erroInjecao ? " · ERRO injeção: " + d.erroInjecao : "") +
+          (d.erroBuild ? " · ERRO build: " + d.erroBuild : "");
+      }
+
       onmessage = (e) => {
         const m = e.data.pluginMessage;
         if (!m) return;
         btn.textContent = "Importar";
         btn.disabled = !dados;
-        if (m.type === "done") setStatus(m.message || "Tela importada ✓", "ok");
-        if (m.type === "error") setStatus("Erro: " + m.message, "err");
+        if (m.type === "done") setStatus((m.message || "Tela importada ✓") + diagTexto(m), "ok");
+        if (m.type === "error") setStatus("Erro: " + m.message + diagTexto(m), "err");
       };
     </script>
   </body>

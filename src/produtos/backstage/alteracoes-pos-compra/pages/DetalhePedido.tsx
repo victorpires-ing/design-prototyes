@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router";
 import { Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, Calendar, Check, ChevronDown, ChevronRight, Copy01, Mail01, Phone, Tag01, User01 } from "@untitledui/icons";
+import { AlertTriangle, ArrowLeft, Calendar, Check, ChevronDown, ChevronRight, Copy01, Mail01, Phone, Tag01, User01, XClose } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { AvatarProfilePhoto } from "@/components/base/avatar/avatar-profile-photo";
@@ -134,6 +134,11 @@ export function DetalhePedido() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.28, ease: "easeOut" }}
             >
+                {/* Abaixo de md o trilho não cabe ao lado, e empilhado ele empurrava a lista de
+                    itens para a segunda tela. Vira uma barra de identificação de uma linha, e o
+                    cartão inteiro passa a morar atrás de "Detalhes". */}
+                <BarraDoPedido pedido={pedido} onVoltar={() => navigate(voltarPara)} />
+
                 <div className="flex flex-col gap-5 md:flex-row md:items-start md:gap-5">
                     <TrilhoDoComprador pedido={pedido} />
 
@@ -155,8 +160,10 @@ export function DetalhePedido() {
                         caracteres, e como `shrink-0` espremiam o título até "Pedid...". Agora
                         descem para a própria linha quando não cabem, e o título fica inteiro. */}
                     <header className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-4">
-                        <div className="flex items-center gap-3">
-                            <ButtonUtility size="sm" color="tertiary" className="max-md:size-11" icon={ArrowLeft} tooltip="Voltar para os pedidos" onClick={() => navigate(voltarPara)} />
+                        {/* Abaixo de md quem identifica o pedido é a barra: repetir voltar e ID
+                            aqui dava dois caminhos de volta e dois IDs na mesma tela. */}
+                        <div className="flex items-center gap-3 max-md:hidden">
+                            <ButtonUtility size="sm" color="tertiary" icon={ArrowLeft} tooltip="Voltar para os pedidos" onClick={() => navigate(voltarPara)} />
                             {/* Só o id: a palavra "Pedido" repetia o que a aba do navegador, o
                                 caminho de volta e a tela inteira já dizem. Mostra a forma curta,
                                 que é por onde o pedido é chamado, e copia a completa, que é a que
@@ -206,18 +213,100 @@ export function DetalhePedido() {
 /* ------------------------------------------------------------------ */
 
 /**
- * Trilho do comprador, na forma do trilho do evento: um aside de 280px, grudado, com um card
- * de capa, identidade e números. De quem é o pedido é a pergunta que volta durante o
- * atendimento inteiro, e como faixa no topo ela saía da tela no primeiro scroll da lista.
+ * A identidade do pedido no telefone: voltar, a arte do evento, o ID e o evento numa linha só,
+ * e o cartão inteiro atrás de "Detalhes".
+ *
+ * Empilhado acima do conteúdo, o trilho custava a primeira tela inteira — capa, avatar, quatro
+ * contatos e a conta — antes do primeiro item do pedido, que é o que o atendente veio ver. A
+ * barra guarda o que identifica (é este pedido, deste evento) e manda para a folha o que se
+ * consulta (CPF, e-mail, celular, a conta aberta), que é consulta de quando o cliente pergunta,
+ * não leitura de todo atendimento.
+ *
+ * Sangra as bordas e encosta na barra do Backstage, na forma da faixa de evento da shell
+ * (Backstage.tsx, MobileTopBar): é a mesma natureza de informação, dizer em que contexto a
+ * tela está, e como cartão flutuante ela abria um vão entre o menu e o conteúdo que nenhuma
+ * outra tela do produto tem.
  */
-const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
+const BarraDoPedido = ({ pedido, onVoltar }: { pedido: Pedido; onVoltar: () => void }) => {
+    const evento = getEvento(pedido.eventoId);
+    return (
+        /* Sangrar custa duas calhas, não uma: os 16px do `p-4` desta página e, acima dela, os
+           8px laterais e 12px de topo do `px-2 py-3` da shell. Daí 24 e 28, e não 16. */
+        <div className="-mx-6 -mt-7 flex items-center gap-2.5 border-b border-secondary bg-primary px-4 py-2 md:hidden">
+            {/* `-ml-2.5` tira o alvo de 44px para fora da calha sem tirar o ícone: ele fica na
+                mesma vertical em que a capa do evento começa na faixa da shell. */}
+            <ButtonUtility size="sm" color="tertiary" className="-ml-2.5 size-11 shrink-0" icon={ArrowLeft} tooltip="Voltar para os pedidos" onClick={onVoltar} />
+            {evento?.capa && <img src={evento.capa} alt="" className="size-9 shrink-0 rounded-md object-cover" />}
+            {/* O ID inteiro, truncado: é o que se cola em outro sistema, e o começo basta para
+                reconhecer de qual pedido se trata. A cópia continua no cartão, atrás de
+                "Detalhes", onde ela já tem o plano B para quando a área de transferência falha. */}
+            <div className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-sm leading-tight font-semibold text-primary">{pedido.id}</span>
+                <span className="truncate text-sm text-tertiary">{evento?.nome}</span>
+            </div>
+            <AriaDialogTrigger>
+                <Button size="sm" color="link-gray" className="shrink-0 text-utility-blue-600 hover:text-utility-blue-700">
+                    Detalhes
+                </Button>
+                {/* Folha inferior: sangra as três bordas e arredonda só o topo, então o cartão
+                    sobe do rodapé em vez de flutuar no meio com margem de todos os lados. */}
+                <ModalOverlay isDismissable className="max-sm:px-0 max-sm:pt-0 max-sm:pb-0">
+                    {/* Teto de 88%: o cartão tem quase a altura da tela, e sem o teto a folha
+                        cobria tudo menos uma fresta de 8px — o toque fora, que é como se fecha
+                        uma folha, não tinha onde cair, e no telefone não há Esc. */}
+                    <Modal className="max-sm:max-h-[88%] sm:max-w-md">
+                        <Dialog aria-label={`Detalhes do pedido ${uuidCurto(pedido.id)}`}>
+                            {({ close }) => (
+                                /* Fechar sobre a capa, no canto: a folha cobre a tela quase
+                                   inteira e o toque fora é uma faixa estreita no topo. O fundo
+                                   opaco é por causa da arte do evento — sobre pôster claro um
+                                   ícone solto some. */
+                                <div className="relative w-full">
+                                    <CartaoDoComprador pedido={pedido} className="max-sm:rounded-b-none max-sm:pb-2" />
+                                    <ButtonUtility
+                                        size="sm"
+                                        color="tertiary"
+                                        className="absolute top-5 right-5 size-11 bg-primary/90 backdrop-blur-sm"
+                                        icon={XClose}
+                                        aria-label="Fechar os detalhes do pedido"
+                                        onClick={close}
+                                    />
+                                </div>
+                            )}
+                        </Dialog>
+                    </Modal>
+                </ModalOverlay>
+            </AriaDialogTrigger>
+        </div>
+    );
+};
+
+const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => (
+    /* `top` acompanha a shell: a variante com barra no topo define --bs-header-offset, a de
+       sidebar não define e o fallback zera. Mesma convenção do RelatorioPageHeader. */
+    /* Sticky sem teto de altura: o trilho tem a altura do próprio cartão. Chegou a ter altura
+       de janela com rolagem interna, para prender em qualquer tela, mas rolar por dentro de um
+       cartão de identidade é pior que ele descer junto num pedido curto. */
+    <aside className="hidden w-[280px] shrink-0 flex-col gap-3 md:sticky md:top-[calc(var(--bs-header-offset,0px)+1.5rem)] md:flex">
+        <CartaoDoComprador pedido={pedido} />
+    </aside>
+);
+
+/**
+ * O cartão em si, sem a casca: o trilho o prende à coluna no desktop e a barra o serve dentro
+ * de uma folha inferior no telefone. Um lugar só, para as duas superfícies nunca divergirem
+ * sobre o que o atendente lê de volta ao cliente.
+ *
+ * `className` chega no cartão, não no invólucro: é por ela que a folha quadra o canto de baixo
+ * para encostar no rodapé.
+ */
+const CartaoDoComprador = ({ pedido, className }: { pedido: Pedido; className?: string }) => {
     const comprador = getConta(pedido.compradorId);
     const evento = getEvento(pedido.eventoId);
     const { copied, copy } = useClipboard();
     const [falhaCopia, setFalhaCopia] = useState(false);
     const idCompleto = useRef<HTMLSpanElement>(null);
     const rotuloCompra = pedido.canal === "Online" ? "Compra online" : pedido.canal === "Bilheteria" ? "Compra na bilheteria" : "Cortesia emitida";
-    const { pago, cortesia } = usePagamento(pedido);
     const isDesktop = useBreakpoint("md");
 
     /* Devolve se copiou: o tooltip de confirmação só pode abrir quando de fato copiou, e este
@@ -242,12 +331,7 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
     };
 
     return (
-        /* `top` acompanha a shell: a variante com barra no topo define --bs-header-offset, a de
-           sidebar não define e o fallback zera. Mesma convenção do RelatorioPageHeader. */
-        /* Sticky sem teto de altura: o trilho tem a altura do próprio cartão. Chegou a ter altura
-           de janela com rolagem interna, para prender em qualquer tela, mas rolar por dentro de um
-           cartão de identidade é pior que ele descer junto num pedido curto. */
-        <aside className="flex w-full shrink-0 flex-col gap-3 md:sticky md:top-[calc(var(--bs-header-offset,0px)+1.5rem)] md:w-[280px]">
+        <div className="flex w-full flex-col gap-3">
             {/*
               Cartão de perfil: a capa do evento, o comprador sobreposto a ela, e a compra como
               uma fileira de números. O `capa` do evento existia no modelo com o comentário
@@ -258,14 +342,14 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
               compra é uma fileira de quatro números legíveis de relance, e o que serve para
               conferir identidade ao telefone desce para uma lista de contato com ícone.
             */}
-            <div className="flex flex-col gap-4 overflow-hidden rounded-2xl bg-primary px-3 pt-3 pb-0 ring-1 ring-border-secondary">
+            <div className={cx("flex flex-col gap-4 overflow-hidden rounded-2xl bg-primary px-3 pt-3 pb-0 ring-1 ring-border-secondary", className)}>
                 {evento?.capa && (
-                    <div className="aspect-[256/160] w-full overflow-hidden rounded-xl bg-secondary max-md:hidden">
+                    <div className="aspect-[256/160] w-full overflow-hidden rounded-xl bg-secondary">
                         <img src={evento.capa} alt="" className="size-full object-cover" />
                     </div>
                 )}
 
-                <div className={cx("flex flex-col gap-4 px-1", evento?.capa && "md:-mt-10")}>
+                <div className={cx("flex flex-col gap-4 px-1", evento?.capa && "-mt-10")}>
                     <AvatarProfilePhoto size="sm" alt={comprador?.nome ?? "Comprador"} initials={iniciaisDe(comprador?.nome ?? "?")} />
 
                     <div className="min-w-0">
@@ -297,34 +381,24 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
                         </ItemDeContato>
                     </ul>
 
-                    {/* Em 280px os números empilham. O rótulo fica em text-sm por regra do projeto
-                        (nada abaixo disso), então o contraste vem do peso e da cor. */}
                     {/* `-mx-4` desfaz o px-3 do cartão mais o px-1 do miolo, então as réguas vão de
-                        ponta a ponta; cada Estatistica repõe o mesmo 4 em padding para o texto seguir
-                        alinhado com os contatos. Embaixo não há borda própria: o cartão não tem padding
-                        inferior e o ring dele já desenha 1px na mesma cor ali, duas linhas somariam 2px. */}
-                    {/* Abaixo de md os três viram uma fileira: empilhados custavam ~150px de
-                        altura numa tela em que o item do pedido já começa longe. */}
-                    <dl className="-mx-4 flex border-t border-secondary max-md:divide-x max-md:divide-border-secondary md:flex-col md:divide-y md:divide-border-secondary">
-                        {/* O número é o que saiu do bolso, taxa e proteção incluídas: o cartão
-                            mostrava a soma dos valores de face e chamava de "Pago", então batia
-                            com a nota do cliente só nos pedidos sem taxa. A quebra está em
-                            "Detalhes". A contagem de unidades saiu: a lista de itens, logo ao
-                            lado, diz isso com mais precisão do que um resumo. */}
-                        <Estatistica rotulo="Pago">
-                            {cortesia ? (
-                                "Sem valor"
-                            ) : (
-                                /* Abaixo de md o valor e o "Detalhes" empilham: lado a lado, o
-                                   gatilho ficava com a altura do texto e sem folga nenhuma. */
-                                <span className="flex items-baseline gap-2 max-md:flex-col max-md:items-stretch max-md:gap-0">
-                                    <span className="tabular-nums">{formatarMoeda(pago)}</span>
-                                    <DetalhePagamento pedido={pedido} />
-                                </span>
-                            )}
-                        </Estatistica>
-                        <Estatistica rotulo={rotuloCompra}>{pedido.criadoEmLabel}</Estatistica>
-                    </dl>
+                        ponta a ponta; cada bloco repõe o mesmo 4 em padding para o texto seguir
+                        alinhado com os contatos. Embaixo não há borda própria: o cartão não tem
+                        padding inferior e o ring dele já desenha 1px na mesma cor ali. */}
+                    <div className="-mx-4 flex flex-col divide-y divide-border-secondary border-t border-secondary">
+                        <div className="flex flex-col gap-0.5 px-4 py-2.5">
+                            <p className="text-sm text-tertiary">{rotuloCompra}</p>
+                            <p className="text-sm font-semibold text-primary">{pedido.criadoEmLabel}</p>
+                        </div>
+
+                        {/* A conta aberta no próprio cartão, não atrás de "Detalhes": o que o
+                            cliente pergunta ao telefone é por que o total não bate com o preço
+                            do ingresso, e a resposta é a taxa de serviço — esconder a linha que
+                            responde isso custava um clique em todo atendimento de cobrança. */}
+                        <div className="px-4 py-2.5">
+                            <LinhasPagamento pedido={pedido} />
+                        </div>
+                    </div>
 
                 </div>
             </div>
@@ -337,7 +411,7 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
                     Não foi possível copiar. O ID está selecionado, use Ctrl+C ou ⌘C: <span ref={idCompleto} className="font-mono select-all">{pedido.id}</span>
                 </p>
             )}
-        </aside>
+        </div>
     );
 };
 
@@ -397,32 +471,6 @@ const GatilhoDeConferencia = ({ className, children }: { className?: string; chi
     >
         {children}
     </Button>
-);
-
-/** Detalhe do pagamento sobre o resumo, não dentro dele: a quebra por cupom interessa em poucos
- *  atendimentos e não vale uma faixa fixa ocupando o cabeçalho de todos os outros. */
-const DetalhePagamento = ({ pedido }: { pedido: Pedido }) => (
-    <Conferencia rotulo="Detalhe do pagamento" gatilho={<GatilhoDeConferencia>Detalhes</GatilhoDeConferencia>}>
-        <LinhasPagamento pedido={pedido} />
-    </Conferencia>
-);
-
-/** Um número da compra, no formato da fileira de estatísticas do cartão de perfil. */
-/**
- * Rótulo sobre valor, como o bloco de status do trilho do evento: em 280px o par lado a lado
- * quebrava o valor em duas linhas e desalinhava a coluna inteira.
- *
- * O valor fica um degrau abaixo do nome do comprador. A 16/600 ele empatava com o nome em
- * 16/700 e o trilho ficava com dois níveis disputando o topo; pago, quantidade e data são
- * referência de atendimento, não a manchete do cartão.
- */
-const Estatistica = ({ rotulo, children }: { rotulo: string; children: ReactNode }) => (
-    /* Em fileira no telefone, os três dividem a largura igualmente; em coluna no desktop, cada um
-       ocupa a largura do trilho. */
-    <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-4 py-2.5 max-md:px-3">
-        <dt className="text-sm font-medium text-quaternary">{rotulo}</dt>
-        <dd className="text-sm font-semibold text-primary">{children}</dd>
-    </div>
 );
 
 /**

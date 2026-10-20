@@ -419,14 +419,26 @@ function walk(el: Element): CapturedNode | null {
         const pai = fiberDoComponente(el, "BackstageLayout");
         const props = primProps((pai?.memoizedProps ?? {}) as Record<string, unknown>);
         const content = conteudoBackstage(el);
+        // Ordem importa: as ações são percorridas ANTES de marcar o header como ignorado,
+        // senão seriam puladas junto com ele.
+        const cabecalho = content ? cabecalhoDaPagina(content) : null;
+        if (cabecalho) cabecalho.el.setAttribute("data-fig-skip", "shell-header");
         const filhos = content ? [walk(content)].filter((n): n is CapturedNode => !!n).map(aplainar) : [];
+        if (cabecalho) cabecalho.el.removeAttribute("data-fig-skip");
         return {
             id,
             role: "ds",
             tag,
             rect,
             style,
-            ds: { component: "BackstageTemplate", figmaKey: BACKSTAGE_TEMPLATE_KEY, slotContent: filhos, showEventDetail: props.showEventContext !== false },
+            ds: {
+                component: "BackstageTemplate",
+                figmaKey: BACKSTAGE_TEMPLATE_KEY,
+                slotContent: filhos,
+                showEventDetail: props.showEventContext !== false,
+                tipoTela: tipoDeTela(props),
+                shellHeader: cabecalho ? { titulo: cabecalho.titulo, acoes: cabecalho.acoes } : undefined,
+            },
             children: [],
         };
     }
@@ -570,6 +582,43 @@ function conteudoBackstage(el: Element): Element | null {
     const inner = Array.from(el.children).find((c) => c.tagName === "DIV" && getComputedStyle(c).display !== "none");
     if (!inner) return null;
     return Array.from(inner.children).find((c) => c.tagName !== "ASIDE" && c.tagName !== "HEADER" && getComputedStyle(c).display !== "none") || null;
+}
+
+/**
+ * Que contexto a tela ocupa no shell. O shell do Figma é genérico e expõe um toggle por
+ * contexto; qual acender vem das props do BackstageLayout, não do caminho da URL:
+ * tela de evento usa activeSection e mantém showEventContext; tela de pedido desliga o
+ * contexto do evento e marca activeProducer="pedidos"; o resto é tela de produtor.
+ */
+const PRODUTORES_DE_PEDIDO = new Set(["pedidos"]);
+
+function tipoDeTela(props: Record<string, string | number | boolean>): "event" | "order" | "producer" {
+    if (props.showEventContext !== false) return "event";
+    if (PRODUTORES_DE_PEDIDO.has(String(props.activeProducer ?? ""))) return "order";
+    return "producer";
+}
+
+/**
+ * Cabeçalho da página: o <header> com o título (id do pedido, nome da tela) e as ações à
+ * direita. No shell isso não é corpo — é o `_shellHeader`, com o título próprio e o slot
+ * `actions`. Devolve também o elemento, para que o corpo seja capturado SEM ele e o
+ * cabeçalho não apareça duas vezes.
+ */
+function cabecalhoDaPagina(content: Element): { titulo?: string; acoes: CapturedNode[]; el: Element } | null {
+    const header = content.querySelector("header");
+    if (!header || !header.children.length) return null;
+    const tituloEl = header.querySelector("h1, h2");
+    const titulo = tituloEl ? (tituloEl.textContent ?? "").trim().replace(/\s+/g, " ") : undefined;
+    const filhos = Array.from(header.children);
+    const idx = tituloEl ? filhos.findIndex((c) => c === tituloEl || c.contains(tituloEl)) : -1;
+    // Tudo depois do bloco do título é ação. Sem título identificável, assume o primeiro
+    // bloco como título e o resto como ações.
+    const acoesEls = filhos.slice(idx >= 0 ? idx + 1 : 1);
+    const acoes = acoesEls
+        .map((c) => walk(c))
+        .filter((n): n is CapturedNode => !!n)
+        .map(aplainar);
+    return { titulo, acoes, el: header };
 }
 
 /** Extrai a tabela transposta: cabeçalhos (th) + linhas (td) como nós de célula + larguras. */
@@ -763,6 +812,7 @@ export function resumo(screen: CapturedScreen): { nos: number; ds: number } {
         // Conteúdo de slot (template do Backstage, modal, slideout, tabela) também conta:
         // sem isso uma tela inteira dentro do slot `content` era reportada como "1 nó".
         n.ds?.slotContent?.forEach(visita);
+        n.ds?.shellHeader?.acoes.forEach(visita);
         n.ds?.table?.headers.forEach(visita);
         n.ds?.table?.rows.forEach((linha) => linha.forEach(visita));
     };

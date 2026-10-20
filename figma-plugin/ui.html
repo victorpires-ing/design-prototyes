@@ -144,7 +144,18 @@
           " · injetados " + d.injetados +
           " · no slot " + d.filhosNoSlotFinal +
           (d.erroInjecao ? " · ERRO injeção: " + d.erroInjecao : "") +
-          (d.erroBuild ? " · ERRO build: " + d.erroBuild : "");
+          (d.erroBuild ? " · ERRO build: " + d.erroBuild : "") +
+          (d.tipo ? " · tipo " + d.tipo : "") +
+          cabecalhoTexto(m);
+      }
+
+      function cabecalhoTexto(m) {
+        var h = m && m.diag && m.diag.header;
+        if (!h) return "";
+        return " · header " + (h.achouHeader ? "ok" : "NÃO ACHADO") +
+          (h.titulo ? ' "' + h.titulo + '"' : "") +
+          " · ações " + (h.acoesInjetadas != null ? h.acoesInjetadas : 0) + "/" + h.acoesRecebidas +
+          (h.slotAcoes ? "" : " · slot de ações NÃO ACHADO");
       }
 
       onmessage = (e) => {

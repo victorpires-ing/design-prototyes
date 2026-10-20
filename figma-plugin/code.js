@@ -750,7 +750,7 @@ async function construirTabela(node) {
   return inst;
 }
 
-const VERSAO_PLUGIN = "2026-10-20a";
+const VERSAO_PLUGIN = "2026-10-20b";
 // Diagnóstico do último import: sem isso, "importou mas o slot veio vazio" vira adivinhação.
 const DIAG = {};
 
@@ -803,9 +803,22 @@ async function construirBackstage(node) {
   DIAG.shell.variante = base ? base.name : null;
   if (!base) return null;
   const inst = base.createInstance();
-  const sd = propPorNome(inst, "show event");
-  DIAG.shell.propEvento = sd || null;
-  if (sd) { try { inst.setProperties({ [sd]: node.ds.showEventDetail !== false }); } catch (e) { DIAG.shell.erroProp = String(e && e.message || e); } }
+
+  // O shell é genérico: cada tipo de tela acende o seu contexto. Tela de evento liga o menu
+  // do evento; tela de pedido liga o detalhe do pedido; tela de produtor não liga nenhum.
+  // Ligar os dois (ou nenhum) descaracteriza a tela no padrão do arquivo.
+  const tipo = node.ds.tipoTela || (node.ds.showEventDetail !== false ? "event" : "producer");
+  const pEvento = propPorNome(inst, "show event");
+  const pPedido = propPorNome(inst, "show order");
+  DIAG.shell.tipo = tipo;
+  DIAG.shell.propEvento = pEvento || null;
+  DIAG.shell.propPedido = pPedido || null;
+  const aLigar = {};
+  if (pEvento) aLigar[pEvento] = tipo === "event";
+  if (pPedido) aLigar[pPedido] = tipo === "order";
+  if (Object.keys(aLigar).length) {
+    try { inst.setProperties(aLigar); } catch (e) { DIAG.shell.erroProp = String(e && e.message || e); }
+  }
 
   const slot = slotDoConteudo(inst);
   DIAG.shell.slot = slot ? slot.name : null;
@@ -825,9 +838,56 @@ async function construirBackstage(node) {
     }
     DIAG.shell.filhosNoSlotDepois = slot.children.length;
   }
+  await preencherShellHeader(inst, node.ds.shellHeader);
+
   try { inst.resize(node.rect.width, node.rect.height); } catch (e) { DIAG.shell.erroResize = String(e && e.message || e); }
   DIAG.shell.filhosNoSlotFinal = slot && "children" in slot ? slot.children.length : null;
   return inst;
+}
+
+// Cabeçalho da tela: o `_shellHeader` do shell é quem mostra o título (id do pedido, nome
+// da tela) e abriga as ações no slot `actions`. Sem isso o cabeçalho ou some, ou é
+// reconstruído como frame solto dentro do corpo — e aí a tela deixa de seguir o padrão.
+async function preencherShellHeader(inst, cab) {
+  if (!cab) return;
+  DIAG.header = { titulo: cab.titulo || null, acoesRecebidas: (cab.acoes || []).length };
+  const header = inst.findAll((n) => /shell\s*header/i.test(n.name))[0];
+  DIAG.header.achouHeader = !!header;
+  if (!header) return;
+
+  if (cab.titulo) {
+    // Se o título for propriedade TEXT do componente, escrever no nó falha EM SILÊNCIO —
+    // instância só aceita texto por setProperties. Tenta a propriedade primeiro.
+    const props = header.componentProperties || {};
+    const chaveTexto = Object.keys(props).find((k) => props[k] && props[k].type === "TEXT" && /t[íi]tulo|title|nome|name|id|header/i.test(k)) ||
+                       Object.keys(props).find((k) => props[k] && props[k].type === "TEXT");
+    DIAG.header.propsTexto = Object.keys(props).filter((k) => props[k] && props[k].type === "TEXT");
+    let aplicou = false;
+    if (chaveTexto) {
+      try { header.setProperties({ [chaveTexto]: cab.titulo }); aplicou = true; DIAG.header.tituloVia = "propriedade " + chaveTexto; }
+      catch (e) { DIAG.header.erroTitulo = String(e && e.message || e); }
+    }
+    if (!aplicou) {
+      // Maior texto do cabeçalho = o título. fontSize pode vir figma.mixed num texto com
+      // trechos de tamanhos diferentes; nesse caso o nó perde a disputa em vez de quebrar.
+      const tamanho = (t) => (typeof t.fontSize === "number" ? t.fontSize : 0);
+      const textos = header.findAll((n) => n.type === "TEXT").sort((a, b) => tamanho(b) - tamanho(a));
+      DIAG.header.textosNoHeader = textos.map((t) => t.name);
+      if (textos[0]) { await setChars(textos[0], cab.titulo); DIAG.header.tituloVia = "nó " + textos[0].name; }
+    }
+  }
+
+  const slotAcoes = header.findAll((n) => n.type === "SLOT" && /action|a\u00e7|acoes/i.test(n.name))[0];
+  DIAG.header.slotAcoes = slotAcoes ? slotAcoes.name : null;
+  if (!slotAcoes || !(cab.acoes || []).length) return;
+  try { for (const c of [...slotAcoes.children]) c.remove(); } catch (e) { DIAG.header.erroLimpeza = String(e && e.message || e); }
+  DIAG.header.acoesInjetadas = 0;
+  for (const a of cab.acoes) {
+    const built = await buildNode(a);
+    if (!built) continue;
+    try { slotAcoes.appendChild(built); DIAG.header.acoesInjetadas++; }
+    catch (e) { DIAG.header.erroInjecao = String(e && e.message || e); }
+  }
 }
 
 // Roteia um modal/slideout capturado para DENTRO do Backstage Template (toggle + slot interno),
@@ -1146,7 +1206,17 @@ figma.ui.onmessage = async (msg) => {
       })();
     }
     figma.ui.postMessage({ type: "done", message: "Tela importada com sucesso.", versao: VERSAO_PLUGIN, diag: DIAG });
-    figma.notify("Tela importada ✓ (plugin " + VERSAO_PLUGIN + ")");
+    // O aviso carrega o diagnóstico: sem ele, "não veio o shell" não diz em que etapa parou,
+    // e cada rodada de teste custa um ciclo inteiro de export + import.
+    const d = DIAG.shell || {};
+    const h = DIAG.header || {};
+    const partes = ["plugin " + VERSAO_PLUGIN];
+    if (d.tipo) partes.push("tipo " + d.tipo);
+    else partes.push("SEM tipoTela (JSON antigo)");
+    if (d.slot) partes.push("slot " + d.slot + " " + d.injetados + "/" + d.recebidos);
+    if (DIAG.header) partes.push("header " + (h.achouHeader ? "ok" : "NÃO ACHADO") + " ações " + (h.acoesInjetadas || 0) + "/" + h.acoesRecebidas);
+    else if (d.tipo) partes.push("sem shellHeader no JSON");
+    figma.notify("Importado ✓ · " + partes.join(" · "), { timeout: 12000 });
   } catch (e) {
     figma.ui.postMessage({ type: "error", message: String((e && e.message) || e), versao: VERSAO_PLUGIN, diag: DIAG });
     figma.notify("Falha ao importar: " + String((e && e.message) || e), { error: true });

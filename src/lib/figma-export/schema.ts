@@ -98,6 +98,14 @@ export interface DsMark {
     table?: { headers: CapturedNode[]; rows: CapturedNode[][]; colWidths: number[] };
     /** Backstage Template: liga "Show Event Detail" (card + funcionalidades) conforme showEventContext. */
     showEventDetail?: boolean;
+    /**
+     * Que contexto a tela ocupa no shell. O shell é genérico: "Show Event Menu" acende em
+     * tela de evento, "Show Order Detail" em tela de pedido, e tela de produtor não acende
+     * nenhum dos dois. Sem isso o import não tem como escolher o toggle certo.
+     */
+    tipoTela?: "event" | "order" | "producer";
+    /** Cabeçalho da página (título + ações) → vai para o `_shellHeader`, não para o corpo. */
+    shellHeader?: { titulo?: string; acoes: CapturedNode[] };
     /** Dropdown: rótulo do trigger (quando Type="Button simple"). */
     triggerLabel?: string;
     /** Dropdown: largura real do menu aberto (para redimensionar a frame "Menu"). */

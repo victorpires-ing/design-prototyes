@@ -18,6 +18,7 @@ import {
     Menu02,
     Package,
     Settings01,
+    Settings03,
     ShoppingCart01,
     Ticket01,
     Users01,
@@ -576,7 +577,7 @@ const EVENT_NAV_GESTAO_OPERACAO: EventNavSection[] = [
         ],
     },
     // Primeiro nível, logo abaixo de Cortesias e sem submenu — como no Figma.
-    { id: "gerenciamento-cotas", label: "Gerenciamento de cotas", icon: Users01, items: [] },
+    { id: "gerenciamento-cotas", label: "Gerenciamento de cotas", icon: Settings03, items: [] },
     {
         id: "relatorios", label: "Relatórios", icon: File03, items: [
             { id: "vendas-por-grupo", label: "Vendas", href: "/backstage/relatorios/vendas-por-grupo" },
@@ -1151,7 +1152,7 @@ const EventFunctionalitiesList = ({ activeSection, activeItem, railVariant }: Ev
                 </TreeView.Item>
 
                 <TreeView.Item id="gerenciamento-cotas" textValue="Gerenciamento de cotas" href="/backstage/equipe-de-operacao/v3">
-                    <TreeView.ItemContent icon={Users01} className={activeSection === "gerenciamento-cotas" ? ACTIVE_CLASS : undefined}>
+                    <TreeView.ItemContent icon={Settings03} className={activeSection === "gerenciamento-cotas" ? ACTIVE_CLASS : undefined}>
                         Gerenciamento de cotas
                     </TreeView.ItemContent>
                 </TreeView.Item>

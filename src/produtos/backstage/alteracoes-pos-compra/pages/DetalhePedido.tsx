@@ -134,6 +134,8 @@ export function DetalhePedido() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.28, ease: "easeOut" }}
             >
+                <FaixaDoPedido pedido={pedido} aoVoltar={() => navigate(voltarPara)} />
+
                 <div className="flex flex-col gap-5 md:flex-row md:items-start md:gap-5">
                     <TrilhoDoComprador pedido={pedido} />
 
@@ -155,7 +157,7 @@ export function DetalhePedido() {
                         caracteres, e como `shrink-0` espremiam o título até "Pedid...". Agora
                         descem para a própria linha quando não cabem, e o título fica inteiro. */}
                     <header className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-4">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 max-md:hidden">
                             <ButtonUtility size="sm" color="tertiary" className="max-md:size-11" icon={ArrowLeft} tooltip="Voltar para os pedidos" onClick={() => navigate(voltarPara)} />
                             {/* Só o id: a palavra "Pedido" repetia o que a aba do navegador, o
                                 caminho de volta e a tela inteira já dizem. Mostra a forma curta,
@@ -176,7 +178,9 @@ export function DetalhePedido() {
                     <Tabs
                         selectedKey={aba}
                         onSelectionChange={(key) => setAba(key as Aba)}
-                        className="max-md:sticky max-md:top-[60px] max-md:z-20 max-md:-mx-4 max-md:w-auto max-md:bg-primary_alt max-md:px-4 max-md:py-2"
+                        /* 129px = barra do Backstage (61) + a faixa do pedido (68). As abas encostam no fim da
+                           faixa; um pixel a menos e o conteúdo aparecia na fresta entre as duas. */
+                        className="max-md:sticky max-md:top-[129px] max-md:z-20 max-md:-mx-4 max-md:w-auto max-md:bg-primary_alt max-md:px-4 max-md:py-2"
                     >
                         <Tabs.List type="underline" size="sm">
                             <Tabs.Item id="itens" className="max-md:flex-1">
@@ -210,7 +214,7 @@ export function DetalhePedido() {
  * de capa, identidade e números. De quem é o pedido é a pergunta que volta durante o
  * atendimento inteiro, e como faixa no topo ela saía da tela no primeiro scroll da lista.
  */
-const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
+const TrilhoDoComprador = ({ pedido, emPainel = false }: { pedido: Pedido; emPainel?: boolean }) => {
     const comprador = getConta(pedido.compradorId);
     const evento = getEvento(pedido.eventoId);
     const { copied, copy } = useClipboard();
@@ -247,7 +251,14 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
         /* Sticky sem teto de altura: o trilho tem a altura do próprio cartão. Chegou a ter altura
            de janela com rolagem interna, para prender em qualquer tela, mas rolar por dentro de um
            cartão de identidade é pior que ele descer junto num pedido curto. */
-        <aside className="flex w-full shrink-0 flex-col gap-3 md:sticky md:top-[calc(var(--bs-header-offset,0px)+1.5rem)] md:w-[280px]">
+        <aside
+            className={cx(
+                "flex w-full shrink-0 flex-col gap-3",
+                // Na coluna: grudado e com 280px, e invisível no telefone — lá a identidade é a
+                // faixa do topo, e este cartão inteiro vive dentro do painel de Detalhes.
+                !emPainel && "max-md:hidden md:sticky md:top-[calc(var(--bs-header-offset,0px)+1.5rem)] md:w-[280px]",
+            )}
+        >
             {/*
               Cartão de perfil: a capa do evento, o comprador sobreposto a ela, e a compra como
               uma fileira de números. O `capa` do evento existia no modelo com o comentário
@@ -338,6 +349,56 @@ const TrilhoDoComprador = ({ pedido }: { pedido: Pedido }) => {
                 </p>
             )}
         </aside>
+    );
+};
+
+/**
+ * Identidade do pedido no telefone: miniatura do evento, id curto e nome, com "Detalhes"
+ * abrindo o trilho inteiro numa folha.
+ *
+ * O cartão de identidade ocupava a primeira tela inteira a 375px — avatar, nome, quatro linhas
+ * de contato e a fileira de números — e o atendimento só começava depois de rolar tudo. Como
+ * faixa, a mesma pergunta ("de quem é este pedido") fica respondida em duas linhas e grudada no
+ * topo, e o resto segue a um toque de distância em vez de na frente.
+ */
+const FaixaDoPedido = ({ pedido, aoVoltar }: { pedido: Pedido; aoVoltar: () => void }) => {
+    const evento = getEvento(pedido.eventoId);
+    const comprador = getConta(pedido.compradorId);
+
+    return (
+        <div className="sticky top-[60px] z-30 -mx-4 flex items-center gap-3 border-b border-secondary bg-primary_alt px-4 py-3 md:hidden">
+            <ButtonUtility size="sm" color="tertiary" className="size-11" icon={ArrowLeft} tooltip="Voltar para os pedidos" onClick={aoVoltar} />
+
+            {evento?.capa ? (
+                <img src={evento.capa} alt="" className="size-11 shrink-0 rounded-lg object-cover ring-1 ring-border-primary" />
+            ) : (
+                <AvatarProfilePhoto size="sm" alt={comprador?.nome ?? "Comprador"} initials={iniciaisDe(comprador?.nome ?? "?")} />
+            )}
+
+            <div className="min-w-0 flex-1">
+                <p className="truncate text-md font-bold text-primary">{uuidCurto(pedido.id)}…</p>
+                <p className="truncate text-sm text-tertiary">{evento?.nome}</p>
+            </div>
+
+            <AriaDialogTrigger>
+                {/* Azul utilitário, não a marca: no tema escuro `text-brand-secondary` resolve
+                    para cinza claro e o link não se lê como link. Mesmo par de classes do
+                    "Detalhes" do pagamento, logo abaixo nesta tela. */}
+                <Button size="sm" color="link-gray" className="min-h-11 shrink-0 text-utility-blue-600 hover:text-utility-blue-700">
+                    Detalhes
+                </Button>
+                <ModalOverlay isDismissable>
+                    <Modal className="sm:max-w-md">
+                        <Dialog aria-label="Detalhes do pedido">
+                            <div className="flex w-full flex-col gap-3 rounded-2xl bg-primary p-5 shadow-xl ring-1 ring-border-secondary">
+                                <h2 className="text-md font-semibold text-primary">Detalhes do pedido</h2>
+                                <TrilhoDoComprador pedido={pedido} emPainel />
+                            </div>
+                        </Dialog>
+                    </Modal>
+                </ModalOverlay>
+            </AriaDialogTrigger>
+        </div>
     );
 };
 

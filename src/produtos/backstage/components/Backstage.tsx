@@ -6,6 +6,8 @@ import {
     Bank,
     Calendar,
     ChevronDown,
+    ClipboardCheck,
+    CoinsHand,
     Eye,
     File03,
     Globe01,
@@ -63,8 +65,14 @@ export type BackstageSection =
     | "pesquisas"
     | "cortesias"
     | "equipe-de-operacao"
+    | "estrategias-venda"
+    | "gerenciamento-cotas"
+    | "coleta-dados"
     | "relatorios"
     | "marketing";
+
+/** Variante do event rail. "gestao-operacao" é o menu usado no contexto da Equipe de operação v3. */
+export type RailVariant = "gestao-operacao";
 
 export type BackstageItem =
     | "informacoes-gerais"
@@ -77,6 +85,8 @@ export type BackstageItem =
     | "emissao-cortesias"
     | "bilheteria-online"
     | "grupos-operacao"
+    | "lotes-sincronizados"
+    | "compras-em-grupo"
     | "vendas-por-grupo"
     | "transacoes"
     | "acesso"
@@ -105,6 +115,8 @@ interface BackstageLayoutProps {
     showEventContext?: boolean;
     /** Mostra o switch flutuante de variante de layout (clássico/topbar). Default: true. */
     showLayoutSwitcher?: boolean;
+    /** Variante do menu de funcionalidades do evento (event rail). Default: menu padrão. */
+    railVariant?: RailVariant;
     children: ReactNode;
 }
 
@@ -165,6 +177,7 @@ export function BackstageLayout({
     activeProducer,
     showEventContext = true,
     showLayoutSwitcher = true,
+    railVariant,
     children,
 }: BackstageLayoutProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -203,6 +216,7 @@ export function BackstageLayout({
                 activeProducer={activeProducer}
                 activeSection={activeSection}
                 activeItem={activeItem}
+                railVariant={railVariant}
             />
         </>
     );
@@ -227,7 +241,7 @@ export function BackstageLayout({
                     {mobileChrome}
                     <OrgTopBar activeProducer={activeProducer} />
                     <div className="flex flex-col gap-3 px-2 py-3 md:flex-row md:gap-6 md:px-6 md:py-6">
-                        {showEventContext && <EventRailTop activeSection={activeSection} activeItem={activeItem} />}
+                        {showEventContext && <EventRailTop activeSection={activeSection} activeItem={activeItem} railVariant={railVariant} />}
                         <main className="flex min-w-0 flex-1 flex-col">
                             <div className="mx-auto flex w-full max-w-[1088px] flex-1 flex-col">{children}</div>
                         </main>
@@ -246,7 +260,7 @@ export function BackstageLayout({
                 {mobileChrome}
                 <div className="flex min-h-screen flex-col gap-3 px-2 py-3 md:flex-row md:px-3 md:py-6">
                     <ProducerRail activeProducer={activeProducer} />
-                    {showEventContext && <EventRail activeSection={activeSection} activeItem={activeItem} />}
+                    {showEventContext && <EventRail activeSection={activeSection} activeItem={activeItem} railVariant={railVariant} />}
                     {children}
                     <RemixDock />
                 </div>
@@ -453,6 +467,7 @@ interface MobileDrawerProps {
     activeSection?: BackstageSection;
     activeItem?: BackstageItem;
     activeProducer?: string;
+    railVariant?: RailVariant;
 }
 
 const PRODUCER_NAV: Array<{
@@ -538,6 +553,46 @@ const EVENT_NAV: EventNavSection[] = [
     { id: "marketing", label: "Marketing", icon: Announcement01, items: [{ id: "chave-de-acesso", label: "Chave de acesso", href: "/backstage/marketing/chave-de-acesso" }] },
 ];
 
+// Menu do contexto da Equipe de operação v3 (variante "gestao-operacao").
+const EVENT_NAV_GESTAO_OPERACAO: EventNavSection[] = [
+    { id: "informacoes-evento", label: "Informações do evento", icon: InfoCircle, items: [{ id: "informacoes-gerais", label: "Informações do evento", href: "/backstage/informacoes-evento" }] },
+    {
+        id: "itens", label: "Itens", icon: ShoppingCart01, items: [
+            { id: "catalogo-ingressos", label: "Ingressos", href: "/backstage/catalogo/ingressos" },
+            { id: "catalogo-combos", label: "Combos", href: "/backstage/catalogo/ingressos" },
+            { id: "catalogo-produtos", label: "Produtos", href: "/backstage/catalogo/ingressos", novo: true },
+        ],
+    },
+    {
+        id: "estrategias-venda", label: "Estratégias de venda", icon: CoinsHand, items: [
+            { id: "lotes-sincronizados", label: "Lotes Sincronizados", href: "#" },
+            { id: "compras-em-grupo", label: "Compras em grupo", href: "#" },
+        ],
+    },
+    {
+        id: "cortesias", label: "Cortesias", icon: Ticket01, items: [
+            { id: "emissao-cortesias", label: "Cortesia", href: "/backstage/cortesias" },
+            { id: "bilheteria-online", label: "Bilheteria online", href: "/backstage/bilheteria" },
+        ],
+    },
+    // Primeiro nível, logo abaixo de Cortesias e sem submenu — como no Figma.
+    { id: "gerenciamento-cotas", label: "Gerenciamento de cotas", icon: Users01, items: [] },
+    {
+        id: "relatorios", label: "Relatórios", icon: File03, items: [
+            { id: "vendas-por-grupo", label: "Vendas", href: "/backstage/relatorios/vendas-por-grupo" },
+            { id: "transacoes", label: "Transações", href: "/backstage/relatorios/transacoes" },
+            { id: "acesso", label: "Acesso", href: "/backstage/relatorios/acesso" },
+            { id: "bordero", label: "Borderô", href: "/backstage/relatorios/bordero" },
+            { id: "transferencias", label: "Transferências", href: "/backstage/relatorios/transferencias" },
+            { id: "comparativos", label: "Comparativos", href: "/backstage/relatorios/comparativos" },
+            { id: "relatorio-questionarios", label: "Questionários", href: "/backstage/relatorios/questionarios" },
+            { id: "relatorio-personalizado", label: "Relatório personalizado", href: "/backstage/relatorios/relatorio-personalizado", ia: true },
+        ],
+    },
+    { id: "marketing", label: "Marketing", icon: Announcement01, items: [{ id: "chave-de-acesso", label: "Chave de acesso", href: "/backstage/marketing/chave-de-acesso" }] },
+    { id: "coleta-dados", label: "Coleta de dados", icon: ClipboardCheck, items: [] },
+];
+
 const ItemBadges = ({ item }: { item: EventNavItem }) => (
     <>
         {item.novo && <Badge size="sm" type="pill-color" color="error">Novo</Badge>}
@@ -545,15 +600,16 @@ const ItemBadges = ({ item }: { item: EventNavItem }) => (
     </>
 );
 
-const MobileEventNav = ({ activeSection, activeItem, onNavigate }: { activeSection?: BackstageSection; activeItem?: BackstageItem; onNavigate: (href: string) => void }) => {
+const MobileEventNav = ({ activeSection, activeItem, railVariant, onNavigate }: { activeSection?: BackstageSection; activeItem?: BackstageItem; railVariant?: RailVariant; onNavigate: (href: string) => void }) => {
     const [open, setOpen] = useState<Set<string>>(() => new Set(activeSection ? [activeSection] : []));
     const toggle = (id: string) => setOpen((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
     const rowBase = "flex items-center gap-3 rounded-lg px-3 py-3 text-left transition duration-100 ease-linear";
+    const nav = railVariant === "gestao-operacao" ? EVENT_NAV_GESTAO_OPERACAO : EVENT_NAV;
 
     return (
         <div className="flex flex-col gap-0.5">
-            {EVENT_NAV.map((sec) => {
+            {nav.map((sec) => {
                 const active = activeSection === sec.id;
                 const rowCls = cx(rowBase, active ? "bg-tertiary text-primary" : "text-secondary hover:bg-tertiary");
                 const badge = sec.novo && <Badge size="sm" type="pill-color" color="error">Novo</Badge>;
@@ -611,7 +667,7 @@ const MobileEventNav = ({ activeSection, activeItem, onNavigate }: { activeSecti
     );
 };
 
-const MobileDrawer = ({ isOpen, onClose, showEventContext, activeSection, activeItem, activeProducer }: MobileDrawerProps) => {
+const MobileDrawer = ({ isOpen, onClose, showEventContext, activeSection, activeItem, activeProducer, railVariant }: MobileDrawerProps) => {
     const navigate = useNavigate();
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     if (!isOpen) return null;
@@ -646,6 +702,7 @@ const MobileDrawer = ({ isOpen, onClose, showEventContext, activeSection, active
                             <MobileEventNav
                                 activeSection={activeSection}
                                 activeItem={activeItem}
+                                railVariant={railVariant}
                                 onNavigate={(href) => { navigate(href); onClose(); }}
                             />
                         </div>
@@ -821,6 +878,7 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
 interface EventRailProps {
     activeSection?: BackstageSection;
     activeItem?: BackstageItem;
+    railVariant?: RailVariant;
 }
 
 /** Scrollbar suave (fino, track transparente, thumb em cor de borda) — evita
@@ -828,10 +886,10 @@ interface EventRailProps {
 const SOFT_SCROLLBAR =
     "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--color-border-secondary)] hover:[&::-webkit-scrollbar-thumb]:bg-[var(--color-border-primary)]";
 
-const EventRail = ({ activeSection, activeItem }: EventRailProps) => (
+const EventRail = ({ activeSection, activeItem, railVariant }: EventRailProps) => (
     <aside className={cx("sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex", SOFT_SCROLLBAR)}>
         <EventDetailsCard />
-        <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
+        <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} railVariant={railVariant} />
     </aside>
 );
 
@@ -896,10 +954,10 @@ const OrgTopBar = ({ activeProducer }: { activeProducer?: string }) => {
 };
 
 /** Menu do evento à esquerda na nova shell (offset abaixo da barra do topo). */
-const EventRailTop = ({ activeSection, activeItem }: EventRailProps) => (
+const EventRailTop = ({ activeSection, activeItem, railVariant }: EventRailProps) => (
     <aside className={cx("sticky top-22 hidden h-[calc(100vh-7rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex", SOFT_SCROLLBAR)}>
         <EventDetailsCard />
-        <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
+        <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} railVariant={railVariant} />
     </aside>
 );
 
@@ -1021,11 +1079,12 @@ const EventDetailsCard = () => {
 interface EventFunctionalitiesListProps {
     activeSection?: BackstageSection;
     activeItem?: BackstageItem;
+    railVariant?: RailVariant;
 }
 
 const ACTIVE_CLASS = "bg-tertiary hover:bg-tertiary";
 
-const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctionalitiesListProps) => {
+const EventFunctionalitiesList = ({ activeSection, activeItem, railVariant }: EventFunctionalitiesListProps) => {
     const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(
         () => new Set(activeSection ? [activeSection] : []),
     );
@@ -1037,6 +1096,116 @@ const EventFunctionalitiesList = ({ activeSection, activeItem }: EventFunctional
     }, [activeSection]);
 
     const itemClass = (id: BackstageItem) => (activeItem === id ? ACTIVE_CLASS : undefined);
+
+    // Variante "gestao-operacao" — menu usado no contexto da Equipe de operação v3.
+    if (railVariant === "gestao-operacao") {
+        return (
+            <TreeView
+                aria-label="Funcionalidades do evento"
+                size="sm"
+                selectionMode="none"
+                disabledKeys={[...DISABLED_KEYS, "lotes-sincronizados", "compras-em-grupo", "coleta-dados"]}
+                expandedKeys={expandedKeys}
+                onExpandedChange={(keys: Set<Key>) => setExpandedKeys(new Set(keys))}
+            >
+                <TreeView.Item id="informacoes-evento" textValue="Informações do evento" href="/backstage/informacoes-evento">
+                    <TreeView.ItemContent icon={InfoCircle} className={activeSection === "informacoes-evento" ? ACTIVE_CLASS : undefined}>
+                        Informações do evento
+                    </TreeView.ItemContent>
+                </TreeView.Item>
+
+                <TreeView.Item id="itens" textValue="Itens">
+                    <TreeView.ItemContent icon={ShoppingCart01}>Itens</TreeView.ItemContent>
+                    <TreeView.Item id="catalogo-ingressos" textValue="Ingressos" href="/backstage/catalogo/ingressos">
+                        <TreeView.ItemContent className={itemClass("catalogo-ingressos")}>Ingressos</TreeView.ItemContent>
+                    </TreeView.Item>
+                    <TreeView.Item id="catalogo-combos" textValue="Combos">
+                        <TreeView.ItemContent className={itemClass("catalogo-combos")}>Combos</TreeView.ItemContent>
+                    </TreeView.Item>
+                    <TreeView.Item id="catalogo-produtos" textValue="Produtos">
+                        <TreeView.ItemContent className={itemClass("catalogo-produtos")}>Produtos</TreeView.ItemContent>
+                    </TreeView.Item>
+                    <TreeView.Item id="catalogo-aberturas" textValue="Aberturas de vendas" href="/backstage/catalogo/aberturas-de-vendas">
+                        <TreeView.ItemContent className={itemClass("catalogo-aberturas")}>Aberturas de vendas</TreeView.ItemContent>
+                    </TreeView.Item>
+                </TreeView.Item>
+
+                <TreeView.Item id="estrategias-venda" textValue="Estratégias de venda">
+                    <TreeView.ItemContent icon={CoinsHand}>Estratégias de venda</TreeView.ItemContent>
+                    <TreeView.Item id="lotes-sincronizados" textValue="Lotes Sincronizados">
+                        <TreeView.ItemContent>Lotes Sincronizados</TreeView.ItemContent>
+                    </TreeView.Item>
+                    <TreeView.Item id="compras-em-grupo" textValue="Compras em grupo">
+                        <TreeView.ItemContent>Compras em grupo</TreeView.ItemContent>
+                    </TreeView.Item>
+                </TreeView.Item>
+
+                <TreeView.Item id="cortesias" textValue="Cortesias">
+                    <TreeView.ItemContent icon={Ticket01}>Cortesias</TreeView.ItemContent>
+                    <TreeView.Item id="emissao-cortesias" textValue="Cortesia" href="/backstage/cortesias">
+                        <TreeView.ItemContent className={itemClass("emissao-cortesias")}>Cortesia</TreeView.ItemContent>
+                    </TreeView.Item>
+                    <TreeView.Item id="bilheteria-online" textValue="Bilheteria online" href="/backstage/bilheteria">
+                        <TreeView.ItemContent className={itemClass("bilheteria-online")}>Bilheteria online</TreeView.ItemContent>
+                    </TreeView.Item>
+                </TreeView.Item>
+
+                <TreeView.Item id="gerenciamento-cotas" textValue="Gerenciamento de cotas" href="/backstage/equipe-de-operacao/v3">
+                    <TreeView.ItemContent icon={Users01} className={activeSection === "gerenciamento-cotas" ? ACTIVE_CLASS : undefined}>
+                        Gerenciamento de cotas
+                    </TreeView.ItemContent>
+                </TreeView.Item>
+
+                <TreeView.Item id="relatorios" textValue="Relatórios">
+                    <TreeView.ItemContent icon={File03}>Relatórios</TreeView.ItemContent>
+                    <TreeView.Item id="vendas-por-grupo" textValue="Vendas" href="/backstage/relatorios/vendas-por-grupo">
+                        <TreeView.ItemContent className={itemClass("vendas-por-grupo")}>Vendas</TreeView.ItemContent>
+                    </TreeView.Item>
+                    <TreeView.Item id="transacoes" textValue="Transações" href="/backstage/relatorios/transacoes">
+                        <TreeView.ItemContent className={itemClass("transacoes")}>Transações</TreeView.ItemContent>
+                    </TreeView.Item>
+                    <TreeView.Item id="acesso" textValue="Acesso" href="/backstage/relatorios/acesso">
+                        <TreeView.ItemContent className={itemClass("acesso")}>Acesso</TreeView.ItemContent>
+                    </TreeView.Item>
+                    <TreeView.Item id="bordero" textValue="Borderô" href="/backstage/relatorios/bordero">
+                        <TreeView.ItemContent className={itemClass("bordero")}>Borderô</TreeView.ItemContent>
+                    </TreeView.Item>
+                    <TreeView.Item id="transferencias" textValue="Transferências" href="/backstage/relatorios/transferencias">
+                        <TreeView.ItemContent className={itemClass("transferencias")}>Transferências</TreeView.ItemContent>
+                    </TreeView.Item>
+                    <TreeView.Item id="comparativos" textValue="Comparativos" href="/backstage/relatorios/comparativos">
+                        <TreeView.ItemContent className={itemClass("comparativos")}>Comparativos</TreeView.ItemContent>
+                    </TreeView.Item>
+                    <TreeView.Item id="relatorio-questionarios" textValue="Questionários" href="/backstage/relatorios/questionarios">
+                        <TreeView.ItemContent className={itemClass("relatorio-questionarios")}>Questionários</TreeView.ItemContent>
+                    </TreeView.Item>
+                    <TreeView.Item id="relatorio-personalizado" textValue="Relatório personalizado" href="/backstage/relatorios/relatorio-personalizado">
+                        <TreeView.ItemContent
+                            className={itemClass("relatorio-personalizado")}
+                            action={
+                                <Badge size="sm" type="pill-color" color="brand">
+                                    IA
+                                </Badge>
+                            }
+                        >
+                            Relatório personalizado
+                        </TreeView.ItemContent>
+                    </TreeView.Item>
+                </TreeView.Item>
+
+                <TreeView.Item id="marketing" textValue="Marketing">
+                    <TreeView.ItemContent icon={Announcement01}>Marketing</TreeView.ItemContent>
+                    <TreeView.Item id="chave-de-acesso" textValue="Chave de acesso" href="/backstage/marketing/chave-de-acesso">
+                        <TreeView.ItemContent className={itemClass("chave-de-acesso")}>Chave de acesso</TreeView.ItemContent>
+                    </TreeView.Item>
+                </TreeView.Item>
+
+                <TreeView.Item id="coleta-dados" textValue="Coleta de dados">
+                    <TreeView.ItemContent icon={ClipboardCheck}>Coleta de dados</TreeView.ItemContent>
+                </TreeView.Item>
+            </TreeView>
+        );
+    }
 
     return (
         <TreeView

@@ -44,6 +44,10 @@ import { EquipeV2Provider } from '../produtos/backstage/equipe-de-operacao-v2/da
 import { EquipeDeOperacaoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/EquipeDeOperacaoV2';
 import { CriarGrupoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/CriarGrupoV2';
 import { DetalheGrupoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/DetalheGrupoV2';
+import { EquipeV3Provider } from '../produtos/backstage/equipe-de-operacao-v3/data/equipe-v3-store';
+import { EquipeDeOperacaoV3 } from '../produtos/backstage/equipe-de-operacao-v3/pages/EquipeDeOperacaoV3';
+import { CriarGrupoV3 } from '../produtos/backstage/equipe-de-operacao-v3/pages/CriarGrupoV3';
+import { DetalheGrupoV3 } from '../produtos/backstage/equipe-de-operacao-v3/pages/DetalheGrupoV3';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VenderIngressos } from '../produtos/backstage/bilheteria/pages/VenderIngressos';
 import { IngressoPdf } from '../produtos/backstage/bilheteria/pages/IngressoPdf';
@@ -217,6 +221,7 @@ export default function App() {
       <PesquisasProvider>
       <EquipeProvider>
       <EquipeV2Provider>
+      <EquipeV3Provider>
       <Routes>
         <Route path="/" element={<ProductSelection />} />
         <Route path="/loading" element={<CymaticsShowcase />} />
@@ -240,6 +245,11 @@ export default function App() {
         <Route path="/backstage/equipe-de-operacao/v2/criar" element={<CriarGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao/v2/:grupoId" element={<DetalheGrupoV2 />} />
         <Route path="/backstage/equipe-de-operacao/v2/:grupoId/editar" element={<CriarGrupoV2 />} />
+        {/* v3: variação sobre a v2. */}
+        <Route path="/backstage/equipe-de-operacao/v3" element={<EquipeDeOperacaoV3 />} />
+        <Route path="/backstage/equipe-de-operacao/v3/criar" element={<CriarGrupoV3 />} />
+        <Route path="/backstage/equipe-de-operacao/v3/:grupoId" element={<DetalheGrupoV3 />} />
+        <Route path="/backstage/equipe-de-operacao/v3/:grupoId/editar" element={<CriarGrupoV3 />} />
         <Route path="/backstage/equipe-de-operacao/criar" element={<CriarGrupoOperacao />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId" element={<DetalheGrupoOperacao />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId/editar-itens" element={<EditarItensCotas />} />
@@ -410,6 +420,7 @@ export default function App() {
         <Route path="/checkout/melhorias-de-compra/nao-autorizado" element={<CheckoutNaoAutorizado />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
+      </EquipeV3Provider>
       </EquipeV2Provider>
       </EquipeProvider>
       </PesquisasProvider>

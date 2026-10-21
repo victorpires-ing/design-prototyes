@@ -750,25 +750,157 @@ async function construirTabela(node) {
   return inst;
 }
 
-const BACKSTAGE_TEMPLATE_KEY = "16a29e24192fc7a4af6a847e5c08db12bb1fa5da"; // Backstage Template
+const VERSAO_PLUGIN = "2026-10-21a";
+// Diagnóstico do último import: sem isso, "importou mas o slot veio vazio" vira adivinhação.
+const DIAG = {};
+
+const BACKSTAGE_TEMPLATE_KEY = "16a29e24192fc7a4af6a847e5c08db12bb1fa5da"; // "Backstage shell" na lib
+
+// Acha uma propriedade de componente pelo começo do nome, ignorando caixa. As keys vêm com
+// sufixo (#20707:1) e a caixa muda entre versões da lib ("Show Modal" x "Show modal"), então
+// comparar exato é frágil: já quebrou silenciosamente uma vez.
+function propPorNome(inst, nome) {
+  const alvo = String(nome).toLowerCase();
+  return Object.keys((inst && inst.componentProperties) || {}).find((k) => k.toLowerCase().indexOf(alvo) >= 0);
+}
+
+// Slot onde a página entra. O shell tem VÁRIOS slots (Desktop: Slot, actions, container,
+// Modal, Panel; Mobile: só Slot, Modal, Panel), então "o primeiro" ou "o maior" não serve.
+// O slot do conteúdo chama-se "Slot" — não "content", que é o nome de uns FRAMEs soltos na
+// árvore — e o sinal estável é estar dentro da instância "Conteúdo": o aninhamento muda por
+// breakpoint (Desktop: Conteúdo > Frame 1 > Slot; Mobile: Conteúdo > Slot), o ancestral não.
+function dentroDeConteudo(no, raiz) {
+  for (let c = no.parent; c && c.id !== raiz.id; c = c.parent) {
+    if (/^(conte[úu]do|content)$/i.test(c.name)) return true;
+  }
+  return false;
+}
+
+function slotDoConteudo(inst) {
+  const slots = inst.findAll((n) => n.type === "SLOT");
+  if (!slots.length) return null;
+  const vazio = (s) => "children" in s && s.children.length === 0;
+  const maior = (lista) => lista.slice().sort((a, b) => b.width * b.height - a.width * a.height)[0];
+
+  const noConteudo = slots.filter((s) => dentroDeConteudo(s, inst));
+  if (noConteudo.length) return maior(noConteudo.filter(vazio)) || maior(noConteudo);
+
+  for (const nome of ["Slot", "content", "Content"]) {
+    const achado = slots.find((s) => s.name === nome);
+    if (achado) return achado;
+  }
+  return maior(slots.filter(vazio)) || maior(slots);
+}
 
 // Shell do backstage: instancia o template (rail/card/menu vêm prontos), liga "Show Event
 // Detail" e injeta o conteúdo da página no slot "content" (limpando o placeholder antes).
 async function construirBackstage(node) {
+  DIAG.shell = { versao: VERSAO_PLUGIN };
   const comp = await importarSet(BACKSTAGE_TEMPLATE_KEY);
+  DIAG.shell.importou = !!comp;
   if (!comp) return null;
   const base = variantBase(comp);
+  DIAG.shell.variante = base ? base.name : null;
   if (!base) return null;
   const inst = base.createInstance();
-  const sd = Object.keys(inst.componentProperties || {}).find((k) => k.indexOf("Show Event") >= 0);
-  if (sd) { try { inst.setProperties({ [sd]: node.ds.showEventDetail !== false }); } catch (e) {} }
-  const slot = inst.findOne((n) => n.type === "SLOT" && n.name === "content");
-  if (slot && "children" in slot) {
-    try { for (const c of [...slot.children]) c.remove(); } catch (e) {}
-    for (const child of node.ds.slotContent || []) { const built = await buildNode(child); if (built) { try { slot.appendChild(built); } catch (e) {} } }
+
+  // O shell é genérico: cada tipo de tela acende o seu contexto. Tela de evento liga o menu
+  // do evento; tela de pedido liga o detalhe do pedido; tela de produtor não liga nenhum.
+  // Ligar os dois (ou nenhum) descaracteriza a tela no padrão do arquivo.
+  const tipo = node.ds.tipoTela || (node.ds.showEventDetail !== false ? "event" : "producer");
+  const pEvento = propPorNome(inst, "show event");
+  const pPedido = propPorNome(inst, "show order");
+  DIAG.shell.tipo = tipo;
+  DIAG.shell.propEvento = pEvento || null;
+  DIAG.shell.propPedido = pPedido || null;
+  const aLigar = {};
+  if (pEvento) aLigar[pEvento] = tipo === "event";
+  if (pPedido) aLigar[pPedido] = tipo === "order";
+  if (Object.keys(aLigar).length) {
+    try { inst.setProperties(aLigar); } catch (e) { DIAG.shell.erroProp = String(e && e.message || e); }
   }
-  try { inst.resize(node.rect.width, node.rect.height); } catch (e) {}
+
+  const slot = slotDoConteudo(inst);
+  DIAG.shell.slot = slot ? slot.name : null;
+  DIAG.shell.slotsDisponiveis = inst.findAll((n) => n.type === "SLOT").map((x) => x.name);
+  DIAG.shell.recebidos = (node.ds.slotContent || []).length;
+  DIAG.shell.construidos = 0;
+  DIAG.shell.injetados = 0;
+
+  if (slot && "children" in slot) {
+    try { for (const c of [...slot.children]) c.remove(); } catch (e) { DIAG.shell.erroLimpeza = String(e && e.message || e); }
+    for (const child of node.ds.slotContent || []) {
+      const built = await buildNode(child);
+      if (!built) { DIAG.shell.erroBuild = DIAG.shell.erroBuild || "buildNode devolveu null"; continue; }
+      DIAG.shell.construidos++;
+      try { slot.appendChild(built); DIAG.shell.injetados++; }
+      catch (e) { DIAG.shell.erroInjecao = String(e && e.message || e); }
+    }
+    DIAG.shell.filhosNoSlotDepois = slot.children.length;
+  }
+  await preencherShellHeader(inst, node.ds.shellHeader);
+
+  try { inst.resize(node.rect.width, node.rect.height); } catch (e) { DIAG.shell.erroResize = String(e && e.message || e); }
+  DIAG.shell.filhosNoSlotFinal = slot && "children" in slot ? slot.children.length : null;
   return inst;
+}
+
+// Cabeçalho da tela: o `_shellHeader` do shell é quem mostra o título (id do pedido, nome
+// da tela) e abriga as ações no slot `actions`. Sem isso o cabeçalho ou some, ou é
+// reconstruído como frame solto dentro do corpo — e aí a tela deixa de seguir o padrão.
+async function preencherShellHeader(inst, cab) {
+  if (!cab) return;
+  DIAG.header = { titulo: cab.titulo || null, acoesRecebidas: (cab.acoes || []).length };
+  const header = inst.findAll((n) => /shell\s*header/i.test(n.name))[0];
+  DIAG.header.achouHeader = !!header;
+  if (!header) return;
+
+  // Booleanos próprios do _shellHeader. Deixar no default faz o cabeçalho mentir: mostra um
+  // voltar que a tela não tem e reserva a faixa de ações numa tela sem ações.
+  const liga = {};
+  const pVoltar = Object.keys(header.componentProperties || {}).find((k) => /back/i.test(k));
+  const pAcoes = Object.keys(header.componentProperties || {}).find((k) => /^show\s*action/i.test(k));
+  if (pVoltar) liga[pVoltar] = cab.temVoltar === true;
+  if (pAcoes) liga[pAcoes] = (cab.acoes || []).length > 0;
+  DIAG.header.propVoltar = pVoltar || null;
+  DIAG.header.propAcoes = pAcoes || null;
+  if (Object.keys(liga).length) {
+    try { header.setProperties(liga); } catch (e) { DIAG.header.erroBooleanos = String(e && e.message || e); }
+  }
+
+  if (cab.titulo) {
+    // Se o título for propriedade TEXT do componente, escrever no nó falha EM SILÊNCIO —
+    // instância só aceita texto por setProperties. Tenta a propriedade primeiro.
+    const props = header.componentProperties || {};
+    const chaveTexto = Object.keys(props).find((k) => props[k] && props[k].type === "TEXT" && /t[íi]tulo|title|nome|name|id|header/i.test(k)) ||
+                       Object.keys(props).find((k) => props[k] && props[k].type === "TEXT");
+    DIAG.header.propsTexto = Object.keys(props).filter((k) => props[k] && props[k].type === "TEXT");
+    let aplicou = false;
+    if (chaveTexto) {
+      try { header.setProperties({ [chaveTexto]: cab.titulo }); aplicou = true; DIAG.header.tituloVia = "propriedade " + chaveTexto; }
+      catch (e) { DIAG.header.erroTitulo = String(e && e.message || e); }
+    }
+    if (!aplicou) {
+      // Maior texto do cabeçalho = o título. fontSize pode vir figma.mixed num texto com
+      // trechos de tamanhos diferentes; nesse caso o nó perde a disputa em vez de quebrar.
+      const tamanho = (t) => (typeof t.fontSize === "number" ? t.fontSize : 0);
+      const textos = header.findAll((n) => n.type === "TEXT").sort((a, b) => tamanho(b) - tamanho(a));
+      DIAG.header.textosNoHeader = textos.map((t) => t.name);
+      if (textos[0]) { await setChars(textos[0], cab.titulo); DIAG.header.tituloVia = "nó " + textos[0].name; }
+    }
+  }
+
+  const slotAcoes = header.findAll((n) => n.type === "SLOT" && /action|a\u00e7|acoes/i.test(n.name))[0];
+  DIAG.header.slotAcoes = slotAcoes ? slotAcoes.name : null;
+  if (!slotAcoes || !(cab.acoes || []).length) return;
+  try { for (const c of [...slotAcoes.children]) c.remove(); } catch (e) { DIAG.header.erroLimpeza = String(e && e.message || e); }
+  DIAG.header.acoesInjetadas = 0;
+  for (const a of cab.acoes) {
+    const built = await buildNode(a);
+    if (!built) continue;
+    try { slotAcoes.appendChild(built); DIAG.header.acoesInjetadas++; }
+    catch (e) { DIAG.header.erroInjecao = String(e && e.message || e); }
+  }
 }
 
 // Roteia um modal/slideout capturado para DENTRO do Backstage Template (toggle + slot interno),
@@ -778,16 +910,27 @@ async function construirBackstage(node) {
 // topo-direito — instâncias não aceitam appendChild, mas o SLOT aceita.
 async function rotearOverlayBackstage(root, ov) {
   if (ov.ds.component === "Modal") {
-    const showKey = Object.keys(root.componentProperties || {}).find((k) => k.indexOf("Show modal") >= 0);
+    const showKey = propPorNome(root, "show modal");
     if (showKey) { try { root.setProperties({ [showKey]: true }); } catch (e) {} }
     const child = root.findOne((n) => n.type === "INSTANCE" && n.name === "Modal");
     if (child && ov.ds.slotContent && ov.ds.slotContent.length) await preencherSlot(child, ov.ds.slotContent);
     return;
   }
-  // Slideout
+  // Slideout: o shell tem "show Slide Out" + o slot "Panel" próprios. Usa esse caminho quando
+  // existir; senão, mantém o antigo (instância standalone ancorada no slot do conteúdo).
+  const showSlide = propPorNome(root, "slide out");
+  const painel = root.findAll((n) => n.type === "SLOT" && n.name === "Panel")[0];
+  if (showSlide && painel) {
+    try { root.setProperties({ [showSlide]: true }); } catch (e) {}
+    if (ov.ds.slotContent && ov.ds.slotContent.length) {
+      try { for (const c of [...painel.children]) c.remove(); } catch (e) {}
+      for (const child of ov.ds.slotContent) { const built = await buildNode(child); if (built) { try { painel.appendChild(built); } catch (e) {} } }
+    }
+    return;
+  }
   const node = await buildNode(ov);
   if (!node) return;
-  const slot = root.findOne((n) => n.type === "SLOT" && n.name === "content") || root.findOne((n) => n.type === "SLOT");
+  const slot = slotDoConteudo(root);
   if (!slot) return;
   try { slot.appendChild(node); } catch (e) { return; }
   try { node.layoutPositioning = "ABSOLUTE"; } catch (e) {}
@@ -1070,10 +1213,25 @@ figma.ui.onmessage = async (msg) => {
 
     figma.currentPage.selection = [root];
     figma.viewport.scrollAndZoomIntoView([root]);
-    figma.ui.postMessage({ type: "done", message: "Tela importada com sucesso." });
-    figma.notify("Tela importada ✓");
+    if (DIAG.shell && "filhosNoSlotFinal" in DIAG.shell) {
+      DIAG.shell.filhosNoSlotAoFinalDoImport = (() => {
+        try { const s2 = slotDoConteudo(root); return s2 && "children" in s2 ? s2.children.length : null; } catch (e) { return "erro: " + String(e && e.message || e); }
+      })();
+    }
+    figma.ui.postMessage({ type: "done", message: "Tela importada com sucesso.", versao: VERSAO_PLUGIN, diag: DIAG });
+    // O aviso carrega o diagnóstico: sem ele, "não veio o shell" não diz em que etapa parou,
+    // e cada rodada de teste custa um ciclo inteiro de export + import.
+    const d = DIAG.shell || {};
+    const h = DIAG.header || {};
+    const partes = ["plugin " + VERSAO_PLUGIN];
+    if (d.tipo) partes.push("tipo " + d.tipo);
+    else partes.push("SEM tipoTela (JSON antigo)");
+    if (d.slot) partes.push("slot " + d.slot + " " + d.injetados + "/" + d.recebidos);
+    if (DIAG.header) partes.push("header " + (h.achouHeader ? "ok" : "NÃO ACHADO") + " ações " + (h.acoesInjetadas || 0) + "/" + h.acoesRecebidas);
+    else if (d.tipo) partes.push("sem shellHeader no JSON");
+    figma.notify("Importado ✓ · " + partes.join(" · "), { timeout: 12000 });
   } catch (e) {
-    figma.ui.postMessage({ type: "error", message: String((e && e.message) || e) });
+    figma.ui.postMessage({ type: "error", message: String((e && e.message) || e), versao: VERSAO_PLUGIN, diag: DIAG });
     figma.notify("Falha ao importar: " + String((e && e.message) || e), { error: true });
   }
 };

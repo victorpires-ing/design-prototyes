@@ -10,7 +10,7 @@ import { createPortal } from "react-dom";
 import { AlertCircle, CheckCircle, Copy01, Figma } from "@untitledui/icons";
 import { useLocation } from "react-router";
 import { cx } from "@/utils/cx";
-import { capturarTela, resumo } from "./capture";
+import { aguardarEstabilidade, capturarTela, resumo } from "./capture";
 
 const ENABLED_KEY = "design-prototyes:figma-export:enabled";
 
@@ -91,6 +91,7 @@ export function FigmaExportLayer() {
     const exportar = async () => {
         setOcupado(true);
         try {
+            await aguardarEstabilidade();
             const screen = capturarTela();
             if (!screen) {
                 mostrarAviso({ tipo: "erro", titulo: "Nada para capturar nesta tela." });

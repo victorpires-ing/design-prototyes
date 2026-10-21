@@ -369,6 +369,31 @@ function textoDireto(el: Element): string | null {
     return t || null;
 }
 
+/**
+ * Componente React que renderizou este elemento, pulando fibers sem nome (Fragment,
+ * memo, context provider). Sem o pulo, um único provider entre o componente e o `div`
+ * já fazia a detecção falhar — era o caso do BackstageLayout.
+ */
+function paiComponente(el: Element, max = 5): string | null {
+    let f = getFiber(el)?.return ?? null;
+    for (let i = 0; f && i < max; i++) {
+        const nome = componentName(f.type);
+        if (nome) return nome;
+        f = f.return ?? null;
+    }
+    return null;
+}
+
+/** O fiber do componente nomeado acima de `el` (para ler memoizedProps). */
+function fiberDoComponente(el: Element, nome: string, max = 5): Fiber | null {
+    let f = getFiber(el)?.return ?? null;
+    for (let i = 0; f && i < max; i++) {
+        if (componentName(f.type) === nome) return f;
+        f = f.return ?? null;
+    }
+    return null;
+}
+
 let contador = 0;
 
 function walk(el: Element): CapturedNode | null {
@@ -376,7 +401,11 @@ function walk(el: Element): CapturedNode | null {
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) return null;
     const cs = getComputedStyle(el);
-    if (cs.display === "none" || cs.visibility === "hidden" || +cs.opacity === 0) return null;
+    if (cs.display === "none" || cs.visibility === "hidden") return null;
+    // Opacidade NÃO poda: o motion anima a entrada por JS (fora da Web Animations API, logo
+    // invisível para getAnimations), e exportar durante a animação derrubava a subárvore
+    // inteira em silêncio — o JSON "dava certo" contendo só a sidebar. A opacidade fica
+    // registrada em `style` e o plugin decide o que fazer com ela.
 
     const rect: Rect = { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height };
     const style = styleSubset(cs, rect);
@@ -385,18 +414,31 @@ function walk(el: Element): CapturedNode | null {
 
     // Backstage: o elemento renderizado diretamente pelo BackstageLayout → componente Backstage
     // Template (rail/card/menu vêm do template; só o conteúdo da página entra no slot `content`).
-    const pai = getFiber(el)?.return;
-    if (pai && componentName(pai.type) === "BackstageLayout") {
-        const props = primProps((pai.memoizedProps ?? {}) as Record<string, unknown>);
+    const paiNome = paiComponente(el);
+    if (paiNome === "BackstageLayout") {
+        const pai = fiberDoComponente(el, "BackstageLayout");
+        const props = primProps((pai?.memoizedProps ?? {}) as Record<string, unknown>);
         const content = conteudoBackstage(el);
+        // Ordem importa: as ações são percorridas ANTES de marcar o header como ignorado,
+        // senão seriam puladas junto com ele.
+        const cabecalho = content ? cabecalhoDaPagina(content) : null;
+        if (cabecalho) cabecalho.el.setAttribute("data-fig-skip", "shell-header");
         const filhos = content ? [walk(content)].filter((n): n is CapturedNode => !!n).map(aplainar) : [];
+        if (cabecalho) cabecalho.el.removeAttribute("data-fig-skip");
         return {
             id,
             role: "ds",
             tag,
             rect,
             style,
-            ds: { component: "BackstageTemplate", figmaKey: BACKSTAGE_TEMPLATE_KEY, slotContent: filhos, showEventDetail: props.showEventContext !== false },
+            ds: {
+                component: "BackstageTemplate",
+                figmaKey: BACKSTAGE_TEMPLATE_KEY,
+                slotContent: filhos,
+                showEventDetail: props.showEventContext !== false,
+                tipoTela: tipoDeTela(props),
+                shellHeader: cabecalho ? { titulo: cabecalho.titulo, acoes: cabecalho.acoes, temVoltar: cabecalho.temVoltar } : undefined,
+            },
             children: [],
         };
     }
@@ -406,6 +448,13 @@ function walk(el: Element): CapturedNode | null {
     if (ds) {
         const entry = DS_REGISTRY[ds.name];
         const raw = primProps(ds.props);
+        // InputBase dentro de TextField/InputGroup recebe o tamanho por contexto React, que não
+        // aparece nas props do fiber. O wrapper expõe o valor em [data-input-size]; sem isso um
+        // <TextField size="lg"> exportaria o campo como "md".
+        if (ds.name === "InputBase" && raw.size === undefined) {
+            const herdado = el.closest("[data-input-size]")?.getAttribute("data-input-size");
+            if (herdado) raw.size = herdado;
+        }
         const resolved = entry.resolve ? entry.resolve(raw) : { properties: {} as Record<string, string | boolean> };
         const icones = iconesDoComponente(el);
         const abas = abasDoComponente(el);
@@ -445,7 +494,9 @@ function walk(el: Element): CapturedNode | null {
                               .filter((t) => t && t.length < 40)
                         : undefined,
                 emptyState: ds.name === "EmptyState" ? conteudoEmptyState(el) : undefined,
-                input: ["Input", "Select", "MultiSelect", "ComboBox"].includes(ds.name) ? conteudoInput(el, raw) : undefined,
+                input: ["Input", "InputBase", "InputNumber", "InputTags", "InputDate", "Select", "MultiSelect", "ComboBox"].includes(ds.name)
+                    ? conteudoInput(el, raw)
+                    : undefined,
                 rawProps: raw,
             },
             children: [],
@@ -531,6 +582,47 @@ function conteudoBackstage(el: Element): Element | null {
     const inner = Array.from(el.children).find((c) => c.tagName === "DIV" && getComputedStyle(c).display !== "none");
     if (!inner) return null;
     return Array.from(inner.children).find((c) => c.tagName !== "ASIDE" && c.tagName !== "HEADER" && getComputedStyle(c).display !== "none") || null;
+}
+
+/**
+ * Que contexto a tela ocupa no shell. O shell do Figma é genérico e expõe um toggle por
+ * contexto; qual acender vem das props do BackstageLayout, não do caminho da URL:
+ * tela de evento usa activeSection e mantém showEventContext; tela de pedido desliga o
+ * contexto do evento e marca activeProducer="pedidos"; o resto é tela de produtor.
+ */
+const PRODUTORES_DE_PEDIDO = new Set(["pedidos"]);
+
+function tipoDeTela(props: Record<string, string | number | boolean>): "event" | "order" | "producer" {
+    if (props.showEventContext !== false) return "event";
+    if (PRODUTORES_DE_PEDIDO.has(String(props.activeProducer ?? ""))) return "order";
+    return "producer";
+}
+
+/**
+ * Cabeçalho da página: o <header> com o título (id do pedido, nome da tela) e as ações à
+ * direita. No shell isso não é corpo — é o `_shellHeader`, com o título próprio e o slot
+ * `actions`. Devolve também o elemento, para que o corpo seja capturado SEM ele e o
+ * cabeçalho não apareça duas vezes.
+ */
+function cabecalhoDaPagina(content: Element): { titulo?: string; acoes: CapturedNode[]; temVoltar: boolean; el: Element } | null {
+    const header = content.querySelector("header");
+    if (!header || !header.children.length) return null;
+    const tituloEl = header.querySelector("h1, h2");
+    const titulo = tituloEl ? (tituloEl.textContent ?? "").trim().replace(/\s+/g, " ") : undefined;
+    const filhos = Array.from(header.children);
+    const idx = tituloEl ? filhos.findIndex((c) => c === tituloEl || c.contains(tituloEl)) : -1;
+    // Tudo depois do bloco do título é ação. Sem título identificável, assume o primeiro
+    // bloco como título e o resto como ações.
+    const acoesEls = filhos.slice(idx >= 0 ? idx + 1 : 1);
+    const acoes = acoesEls
+        .map((c) => walk(c))
+        .filter((n): n is CapturedNode => !!n)
+        .map(aplainar);
+    // O `_shellHeader` tem botão de voltar próprio, ligado por propriedade. Precisa saber se
+    // esta tela tem um — senão o header mostra um voltar que a tela não oferece.
+    const blocoTitulo = filhos[idx >= 0 ? idx : 0];
+    const temVoltar = !!blocoTitulo && Array.from(blocoTitulo.querySelectorAll("svg")).some((sv) => iconeDoNode(sv) === "ArrowLeft");
+    return { titulo, acoes, temVoltar, el: header };
 }
 
 /** Extrai a tabela transposta: cabeçalhos (th) + linhas (td) como nós de célula + larguras. */
@@ -676,6 +768,27 @@ function capturarTokens(): Record<string, string> {
     return out;
 }
 
+/**
+ * Espera as animações em curso terminarem (máx. `limite` ms). Sem isso, exportar logo
+ * depois de abrir um slideout/modal captura o painel no meio do caminho: posição e
+ * opacidade ainda são as do início da animação.
+ */
+export async function aguardarEstabilidade(limite = 800): Promise<void> {
+    const alvo = document.body as Element & { getAnimations?: (o?: { subtree?: boolean }) => Animation[] };
+    await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+    if (typeof alvo.getAnimations !== "function") return;
+    try {
+        const correndo = alvo.getAnimations({ subtree: true }).filter((a) => a.playState === "running");
+        if (!correndo.length) return;
+        await Promise.race([
+            Promise.allSettled(correndo.map((a) => a.finished)),
+            new Promise((r) => setTimeout(r, limite)),
+        ]);
+    } catch {
+        /* animações não suportadas: segue sem esperar */
+    }
+}
+
 /** Captura a árvore a partir de um elemento raiz (default: #root ou body). */
 export function capturarTela(rootEl?: Element): CapturedScreen | null {
     contador = 0;
@@ -700,7 +813,14 @@ export function resumo(screen: CapturedScreen): { nos: number; ds: number } {
         nos++;
         if (n.role === "ds") ds++;
         n.children.forEach(visita);
+        // Conteúdo de slot (template do Backstage, modal, slideout, tabela) também conta:
+        // sem isso uma tela inteira dentro do slot `content` era reportada como "1 nó".
+        n.ds?.slotContent?.forEach(visita);
+        n.ds?.shellHeader?.acoes.forEach(visita);
+        n.ds?.table?.headers.forEach(visita);
+        n.ds?.table?.rows.forEach((linha) => linha.forEach(visita));
     };
     visita(screen.root);
+    screen.overlays?.forEach(visita);
     return { nos, ds };
 }

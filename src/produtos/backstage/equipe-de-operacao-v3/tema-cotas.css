@@ -1,0 +1,96 @@
+/*
+ * Gerenciamento de cotas usa o vermelho de marca do AfterDS (#ff271a) em CTAs,
+ * toggles, checkboxes, radios e barras de progresso — no Figma é assim. O tema
+ * global do Backstage pinta "brand" de branco/cinza, então o fluxo redefine os
+ * tokens de marca só dentro de `.tema-cotas`.
+ *
+ * Os tokens do tema são cadeias de var(); uma var é resolvida onde é declarada,
+ * por isso cada elo da cadeia precisa ser redeclarado aqui, não só a origem.
+ */
+.tema-cotas {
+    /*
+     * O Figma usa Elza em todos os textos. Sem ela o fluxo cai na fonte do sistema,
+     * cujo semibold/bold pesa bem mais — era o que deixava os pesos "estranhos".
+     * A fonte já é carregada em styles/fonts.css; aqui só é aplicada ao fluxo.
+     */
+    font-family: "Elza", ui-sans-serif, system-ui, sans-serif;
+
+    --cotas-brand: #ff271a;
+    --cotas-brand-hover: #e01b0f;
+    --cotas-brand-claro: #ff4a40;
+
+    --color-bg-brand-solid: var(--cotas-brand);
+    --color-bg-brand-solid_hover: var(--cotas-brand-hover);
+    --background-color-brand-solid: var(--cotas-brand);
+    --background-color-brand-solid_hover: var(--cotas-brand-hover);
+    --border-color-brand-solid: var(--cotas-brand);
+    --border-color-brand-solid_hover: var(--cotas-brand-hover);
+    --ring-color-brand-solid: var(--cotas-brand);
+    --ring-color-brand-solid_hover: var(--cotas-brand-hover);
+    --outline-color-brand-solid: var(--cotas-brand);
+
+    --color-border-brand: var(--cotas-brand-claro);
+    --ring-color-brand: var(--cotas-brand-claro);
+    --outline-color-brand: var(--cotas-brand-claro);
+    --border-color-brand: var(--cotas-brand-claro);
+
+    --color-fg-brand-primary: var(--cotas-brand-claro);
+    --background-color-fg-brand-primary: var(--cotas-brand-claro);
+    --text-color-fg-brand-primary: var(--cotas-brand-claro);
+
+    /* Texto e miolo sobre a marca voltam a ser brancos de verdade. */
+    --color-text-white: #ffffff;
+    --text-color-white: #ffffff;
+    --color-fg-white: #ffffff;
+    --background-color-fg-white: #ffffff;
+}
+
+/*
+ * O que abre num portal (tooltips, modais, listas de select) fica fora de
+ * .tema-cotas. Enquanto uma tela do fluxo está aberta, o <body> recebe .cotas-aberto
+ * e esses elementos herdam a fonte também. Só a fonte: as cores seguem o tema global.
+ */
+body.cotas-aberto [role="tooltip"],
+body.cotas-aberto [role="dialog"],
+body.cotas-aberto [role="listbox"] {
+    font-family: "Elza", ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+ * Fundo da página: no Figma todas as telas do fluxo têm a página em preto puro (#000),
+ * e os cards (#0a0a0a, #171717) se destacam sobre ele. O layout do Backstage usa
+ * #0a0a0a — a mesma cor dos cards de sessão, que sumiam no fundo. Enquanto o fluxo
+ * estiver na tela, o fundo do layout vira preto; o resto do Backstage não muda.
+ */
+.tema-cotas {
+    --cotas-fundo-pagina: #000000;
+}
+.min-h-screen.bg-primary_alt:has(.tema-cotas) {
+    background-color: #000000;
+}
+
+/*
+ * Tooltips do fluxo: no Figma são escuros (fundo #262626 / bg-primary-solid, texto branco).
+ * No tema do Backstage o tooltip do design system sai branco com texto escuro, então
+ * aqui as duas variáveis voltam aos valores do Figma — fundo, seta e texto juntos.
+ */
+body.cotas-aberto [role="tooltip"],
+.tema-cotas .tooltip-cotas {
+    --color-bg-primary-solid: #262626;
+    --background-color-primary-solid: #262626;
+    --color-text-white: #ffffff;
+    --text-color-white: #ffffff;
+    /* Texto de apoio legível sobre o fundo escuro (o tema dark do DS usa neutral-500). */
+    --color-tooltip-supporting-text: var(--color-neutral-300);
+    --text-color-tooltip-supporting-text: var(--color-neutral-300);
+}
+
+/*
+ * Mesma camada elevada do dropdown de grupos: fundo #262626 + borda border-primary.
+ * Sem a borda, o tooltip some sobre os cards (o fundo fica quase igual).
+ */
+body.cotas-aberto [role="tooltip"] > div,
+.tema-cotas .tooltip-cotas {
+    outline: 1px solid var(--color-border-primary);
+    outline-offset: -1px;
+}

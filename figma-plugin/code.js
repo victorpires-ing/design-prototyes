@@ -750,7 +750,7 @@ async function construirTabela(node) {
   return inst;
 }
 
-const VERSAO_PLUGIN = "2026-10-20b";
+const VERSAO_PLUGIN = "2026-10-21a";
 // Diagnóstico do último import: sem isso, "importou mas o slot veio vazio" vira adivinhação.
 const DIAG = {};
 
@@ -854,6 +854,19 @@ async function preencherShellHeader(inst, cab) {
   const header = inst.findAll((n) => /shell\s*header/i.test(n.name))[0];
   DIAG.header.achouHeader = !!header;
   if (!header) return;
+
+  // Booleanos próprios do _shellHeader. Deixar no default faz o cabeçalho mentir: mostra um
+  // voltar que a tela não tem e reserva a faixa de ações numa tela sem ações.
+  const liga = {};
+  const pVoltar = Object.keys(header.componentProperties || {}).find((k) => /back/i.test(k));
+  const pAcoes = Object.keys(header.componentProperties || {}).find((k) => /^show\s*action/i.test(k));
+  if (pVoltar) liga[pVoltar] = cab.temVoltar === true;
+  if (pAcoes) liga[pAcoes] = (cab.acoes || []).length > 0;
+  DIAG.header.propVoltar = pVoltar || null;
+  DIAG.header.propAcoes = pAcoes || null;
+  if (Object.keys(liga).length) {
+    try { header.setProperties(liga); } catch (e) { DIAG.header.erroBooleanos = String(e && e.message || e); }
+  }
 
   if (cab.titulo) {
     // Se o título for propriedade TEXT do componente, escrever no nó falha EM SILÊNCIO —

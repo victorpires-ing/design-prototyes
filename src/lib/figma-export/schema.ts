@@ -105,7 +105,7 @@ export interface DsMark {
      */
     tipoTela?: "event" | "order" | "producer";
     /** Cabeçalho da página (título + ações) → vai para o `_shellHeader`, não para o corpo. */
-    shellHeader?: { titulo?: string; acoes: CapturedNode[] };
+    shellHeader?: { titulo?: string; acoes: CapturedNode[]; temVoltar?: boolean };
     /** Dropdown: rótulo do trigger (quando Type="Button simple"). */
     triggerLabel?: string;
     /** Dropdown: largura real do menu aberto (para redimensionar a frame "Menu"). */

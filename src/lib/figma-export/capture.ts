@@ -437,7 +437,7 @@ function walk(el: Element): CapturedNode | null {
                 slotContent: filhos,
                 showEventDetail: props.showEventContext !== false,
                 tipoTela: tipoDeTela(props),
-                shellHeader: cabecalho ? { titulo: cabecalho.titulo, acoes: cabecalho.acoes } : undefined,
+                shellHeader: cabecalho ? { titulo: cabecalho.titulo, acoes: cabecalho.acoes, temVoltar: cabecalho.temVoltar } : undefined,
             },
             children: [],
         };
@@ -604,7 +604,7 @@ function tipoDeTela(props: Record<string, string | number | boolean>): "event" |
  * `actions`. Devolve também o elemento, para que o corpo seja capturado SEM ele e o
  * cabeçalho não apareça duas vezes.
  */
-function cabecalhoDaPagina(content: Element): { titulo?: string; acoes: CapturedNode[]; el: Element } | null {
+function cabecalhoDaPagina(content: Element): { titulo?: string; acoes: CapturedNode[]; temVoltar: boolean; el: Element } | null {
     const header = content.querySelector("header");
     if (!header || !header.children.length) return null;
     const tituloEl = header.querySelector("h1, h2");
@@ -618,7 +618,11 @@ function cabecalhoDaPagina(content: Element): { titulo?: string; acoes: Captured
         .map((c) => walk(c))
         .filter((n): n is CapturedNode => !!n)
         .map(aplainar);
-    return { titulo, acoes, el: header };
+    // O `_shellHeader` tem botão de voltar próprio, ligado por propriedade. Precisa saber se
+    // esta tela tem um — senão o header mostra um voltar que a tela não oferece.
+    const blocoTitulo = filhos[idx >= 0 ? idx : 0];
+    const temVoltar = !!blocoTitulo && Array.from(blocoTitulo.querySelectorAll("svg")).some((sv) => iconeDoNode(sv) === "ArrowLeft");
+    return { titulo, acoes, temVoltar, el: header };
 }
 
 /** Extrai a tabela transposta: cabeçalhos (th) + linhas (td) como nós de célula + larguras. */

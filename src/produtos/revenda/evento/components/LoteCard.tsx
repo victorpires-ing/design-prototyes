@@ -1,114 +1,133 @@
-import { InfoCircle } from "@untitledui/icons";
+import type { FC } from "react";
+import { InfoCircle, TrendDown01, TrendUp01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import {
     brl,
     compararComOriginal,
     ofertasDoLote,
     plural,
+    precoOriginal,
     totalOferta,
-    valor,
     type ComparacaoValor,
     type LoteRevenda,
     type OfertaRevenda,
 } from "../../data/eventos";
 
-/** Como a oferta se posiciona frente ao valor de face — medidas do Figma 16420:25547. */
-const BADGES: Record<ComparacaoValor, { texto: string; estilo: string }> = {
-    abaixo: { texto: "Abaixo do valor original", estilo: "border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]" },
-    igual: { texto: "Valor igual ao original", estilo: "border-[#e5e5e5] bg-[#fafafa] text-[#404040]" },
-    acima: { texto: "Acima do valor original", estilo: "border-[#fef08a] bg-[#fefce8] text-[#a16207]" },
-};
-
-function BadgeValor({ comparacao, className }: { comparacao: ComparacaoValor; className?: string }) {
-    const { texto, estilo } = BADGES[comparacao];
+/** Tooltip escuro do DS (bg-primary-solid no light). `lado` define de onde ele sai. */
+function Dica({ children, lado }: { children: string; lado: "cima" | "direita" }) {
     return (
         <span
+            role="tooltip"
+            aria-hidden="true"
             className={cx(
-                "shrink-0 items-center rounded-full border px-2 py-0.5 text-xs leading-[18px] font-medium whitespace-nowrap",
-                estilo,
-                className,
+                "pointer-events-none absolute z-40 scale-95 rounded-lg bg-[#0a0a0a] px-2.5 py-1.5 text-xs leading-[18px] font-semibold whitespace-nowrap text-white opacity-0 transition duration-100 ease-out",
+                "group-hover/dica:scale-100 group-hover/dica:opacity-100 group-focus-within/dica:scale-100 group-focus-within/dica:opacity-100",
+                lado === "cima" && "bottom-full left-1/2 mb-2 -translate-x-1/2",
+                lado === "direita" && "top-1/2 left-full ml-2 -translate-y-1/2",
             )}
         >
-            {texto}
+            {children}
+            {lado === "cima" ? (
+                <span aria-hidden="true" className="absolute top-full left-1/2 -ml-1 size-0 border-x-4 border-t-4 border-x-transparent border-t-[#0a0a0a]" />
+            ) : (
+                <span aria-hidden="true" className="absolute top-1/2 right-full -mt-1 size-0 border-y-4 border-r-4 border-y-transparent border-r-[#0a0a0a]" />
+            )}
         </span>
     );
 }
 
+/** Seta ao lado de "Preço na revenda" — Figma 16795:1997. Igual ao original: sem seta. */
+const INDICATIVO: Record<Exclude<ComparacaoValor, "igual">, { Icone: FC<{ className?: string; strokeWidth?: number }>; cor: string; texto: string }> = {
+    acima: { Icone: TrendUp01, cor: "text-[#a16207]", texto: "Acima do preço original" },
+    abaixo: { Icone: TrendDown01, cor: "text-[#1d4ed8]", texto: "Abaixo do preço original" },
+};
+
+function Indicativo({ comparacao }: { comparacao: ComparacaoValor }) {
+    if (comparacao === "igual") return null;
+    const { Icone, cor, texto } = INDICATIVO[comparacao];
+    return (
+        <span className="group/dica relative flex">
+            {/* Botão para o toque abrir a dica no mobile (foco), já que lá não há hover */}
+            <button type="button" aria-label={texto} className={cx("flex focus-visible:outline-none", cor)}>
+                {/* 2.25 no viewBox 24 = 1,5px no ícone de 16px, a espessura do Figma */}
+                <Icone className="size-4" strokeWidth={2.25} aria-hidden="true" />
+            </button>
+            <Dica lado="direita">{texto}</Dica>
+        </span>
+    );
+}
+
+/** Mobile 14px (Figma 16795:2128); no desktop segue 12px. No mobile os valores usam text-primary (#171717), no desktop #212b36. */
+const Rotulo = ({ children }: { children: string }) => <span className="text-sm leading-5 font-medium text-[#525252] sm:text-xs sm:leading-[18px]">{children}</span>;
+
 /**
- * Linha de oferta com a quebra de preço do decreto:
- * valor do ingresso + valor das taxas e, à direita, o total.
- * Desktop: tudo numa linha (h 57). Mobile: preço/taxa em cima e total embaixo (h 86).
- * Medidas do Figma 16414:25113 (desktop) e 16501:48493 (mobile).
+ * Linha de oferta: preço original (primário, sem taxas), preço na revenda + taxas e o total.
+ * Desktop: tudo numa linha. Mobile: os valores empilhados e o Comprar na largura toda.
+ * Figma 16795:1997 (desktop) e 16795:2128 (mobile).
  */
-function LinhaOferta({ oferta, valorOriginal, aoAbrirTaxas }: { oferta: OfertaRevenda; valorOriginal: number; aoAbrirTaxas: () => void }) {
-    const comparacao = compararComOriginal(oferta, valorOriginal);
+function LinhaOferta({ oferta, original, aoAbrirTaxas }: { oferta: OfertaRevenda; original: number; aoAbrirTaxas: () => void }) {
+    const comparacao = compararComOriginal(oferta, original);
 
     return (
-        <li className="flex w-full items-center justify-between gap-2 rounded-xl bg-[#fafafa] px-2 py-3 sm:gap-[14px] sm:px-4">
-            {/* O `gap` garante a folga mínima quando o space-between se fecha em telas estreitas */}
-            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                {/* No mobile a badge abre a pilha; no desktop ela acompanha o total, à direita */}
-                <BadgeValor comparacao={comparacao} className="inline-flex self-start sm:hidden" />
+        <li className="flex w-full flex-col gap-4 rounded-xl bg-[#fafafa] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-6">
+                <span className="flex flex-col gap-0.5 sm:w-[120px]">
+                    <Rotulo>Preço original</Rotulo>
+                    <span className="text-base leading-6 text-[#171717] sm:text-[18px] sm:leading-7 sm:text-[#212b36]">{brl(original)}</span>
+                </span>
 
-                {/*
-                 * Preço, taxa e disponibilidade compartilham a linha de base (como em produção:
-                 * `_price_1340n` usa align-items: baseline). Centrar as caixas deixaria os
-                 * textos de 18px e 14px desalinhados entre si em ~3,5px.
-                 */}
-                <span className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
-                    <span className="text-base leading-6 text-[#212b36] sm:text-[18px] sm:leading-7">{brl(oferta.ingresso)}</span>
-                    <span className="flex items-baseline gap-1">
-                        <span className="text-sm leading-5 text-[#212b36] sm:leading-[1.2]">+ {valor(oferta.taxa)} de taxa</span>
-                        {/* No desktop a taxa tem entrelinha 16,8 e o círculo cai 2px abaixo do centro óptico do texto */}
-                        <span className="group/taxa relative flex self-center sm:-translate-y-0.5">
-                            <button
-                                type="button"
-                                onClick={aoAbrirTaxas}
-                                aria-label="Entenda as taxas"
-                                className="relative flex size-5 shrink-0 items-center justify-center text-[#8c8c8c] transition duration-100 ease-linear hover:text-[#525252] focus-visible:text-[#525252] focus-visible:outline-none before:absolute before:-inset-1 before:content-['']"
-                            >
-                                <InfoCircle className="size-5" strokeWidth={2} aria-hidden="true" />
-                            </button>
-
-                            {/* Dica no hover; o clique promove para o modal completo */}
-                            <span
-                                role="tooltip"
-                                aria-hidden="true"
-                                className="pointer-events-none absolute bottom-full left-1/2 z-40 mb-2 -translate-x-1/2 translate-y-0.5 scale-95 rounded-lg bg-[#0a0a0a] px-2.5 py-1.5 text-xs leading-[18px] font-semibold whitespace-nowrap text-white opacity-0 transition duration-100 ease-out group-hover/taxa:translate-y-0 group-hover/taxa:scale-100 group-hover/taxa:opacity-100 group-focus-within/taxa:translate-y-0 group-focus-within/taxa:scale-100 group-focus-within/taxa:opacity-100"
-                            >
-                                Entenda as taxas
-                                <span aria-hidden="true" className="absolute top-full left-1/2 -ml-1 size-0 border-x-4 border-t-4 border-x-transparent border-t-[#0a0a0a]" />
+                <span className="flex flex-col gap-0.5 sm:min-w-[236px]">
+                    <span className="flex items-center gap-1">
+                        <Rotulo>Preço na revenda</Rotulo>
+                        <Indicativo comparacao={comparacao} />
+                    </span>
+                    <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5 sm:flex-nowrap sm:gap-x-1.5 sm:whitespace-nowrap">
+                        <span className="text-[18px] leading-7 text-[#171717] sm:text-[#212b36]">{brl(oferta.ingresso)}</span>
+                        <span className="flex items-center gap-1">
+                            <span className="text-base leading-6 text-[#171717] sm:text-[#212b36]">+ {brl(oferta.taxa)} de taxas</span>
+                            <span className="group/dica relative flex">
+                                <button
+                                    type="button"
+                                    onClick={aoAbrirTaxas}
+                                    aria-label="Entenda as taxas"
+                                    className="relative flex size-[18px] shrink-0 items-center justify-center text-[#8c8c8c] transition duration-100 ease-linear hover:text-[#525252] focus-visible:text-[#525252] focus-visible:outline-none before:absolute before:-inset-1 before:content-['']"
+                                >
+                                    <InfoCircle className="size-[18px]" strokeWidth={2} aria-hidden="true" />
+                                </button>
+                                {/* Dica no hover; o clique abre o modal completo */}
+                                <Dica lado="cima">Entenda as taxas</Dica>
                             </span>
                         </span>
                     </span>
-                    {/* O Figma esconde a disponibilidade no mobile para a linha caber em 2 alturas */}
-                    <span className="hidden text-sm leading-[1.2] text-[#212b36] sm:ml-1 sm:inline">
-                        ({plural(oferta.disponiveis, "disponível", "disponíveis")})
-                    </span>
                 </span>
 
-                {/* Badge + total, agrupados à direita no desktop */}
-                <span className="flex shrink-0 items-center gap-2">
-                    <BadgeValor comparacao={comparacao} className="hidden sm:inline-flex" />
-                    <span className="flex items-baseline gap-1 sm:w-[118px]">
-                        <span className="text-sm leading-5 text-[#212b36] sm:leading-[1.2]">total</span>
-                        <span className="text-[18px] leading-7 font-bold text-[#212b36] sm:leading-[1.4]">{brl(totalOferta(oferta))}</span>
-                    </span>
+                {/* Mobile: o total vira um terceiro bloco da pilha */}
+                <span className="flex flex-col gap-0.5 sm:hidden">
+                    <Rotulo>Total</Rotulo>
+                    <span className="text-[18px] leading-7 font-semibold text-[#171717]">{brl(totalOferta(oferta))}</span>
                 </span>
             </div>
 
-            {/* Altura fixa + centragem por flex: o rótulo não fica à mercê da entrelinha */}
-            <button
-                type="button"
-                className="inline-flex h-8 w-[92px] shrink-0 items-center justify-center rounded-lg bg-[#ff271a] text-sm leading-none font-semibold text-white transition duration-100 ease-linear hover:bg-[#e11b10] sm:h-[33px] sm:w-auto sm:px-5"
-            >
-                Comprar
-            </button>
+            <div className="flex items-center gap-3">
+                <span className="hidden text-sm leading-[1.2] text-[#212b36] sm:inline">({plural(oferta.disponiveis, "disponível", "disponíveis")})</span>
+                <span className="hidden items-baseline gap-1 sm:flex">
+                    {/* Mesmo estilo dos rótulos "Preço original" e "Preço na revenda" (Figma 16795:61711) */}
+                    <Rotulo>Total</Rotulo>
+                    <span className="text-[18px] leading-[1.4] font-bold text-[#212b36]">{brl(totalOferta(oferta))}</span>
+                </span>
+                {/* Altura fixa + centragem por flex: o rótulo não fica à mercê da entrelinha */}
+                <button
+                    type="button"
+                    className="inline-flex h-8 w-full shrink-0 items-center justify-center rounded-lg bg-[#ff271a] text-sm leading-none font-semibold text-white transition duration-100 ease-linear hover:bg-[#e11b10] sm:h-[33px] sm:w-auto sm:px-5"
+                >
+                    Comprar
+                </button>
+            </div>
         </li>
     );
 }
 
-/** Card de um lote/setor: cabeçalho com valor de face + as ofertas de revenda. */
+/** Card de um tipo/modalidade (sem divisão por lote) com as ofertas de revenda. */
 export function LoteCard({ lote, aoAbrirTaxas }: { lote: LoteRevenda; aoAbrirTaxas: () => void }) {
     const disponiveis = ofertasDoLote(lote);
 
@@ -123,7 +142,7 @@ export function LoteCard({ lote, aoAbrirTaxas }: { lote: LoteRevenda; aoAbrirTax
 
             <ul className="flex w-full flex-col gap-3">
                 {lote.ofertas.map((o) => (
-                    <LinhaOferta key={o.id} oferta={o} valorOriginal={lote.valorOriginal} aoAbrirTaxas={aoAbrirTaxas} />
+                    <LinhaOferta key={o.id} oferta={o} original={precoOriginal(o, lote)} aoAbrirTaxas={aoAbrirTaxas} />
                 ))}
             </ul>
         </article>

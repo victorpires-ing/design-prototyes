@@ -366,7 +366,11 @@ const FaixaDoPedido = ({ pedido, aoVoltar }: { pedido: Pedido; aoVoltar: () => v
     const comprador = getConta(pedido.compradorId);
 
     return (
-        <div className="sticky top-[60px] z-30 -mx-4 flex items-center gap-3 border-b border-secondary bg-primary_alt px-4 py-3 md:hidden">
+        /* `-mt-11` encosta a faixa na barra do Backstage. Ela nasce dentro de três paddings
+           somados — py-3 da linha do layout (12) + p-4 do wrapper do BackstageLayout (16) +
+           p-4 da página (16) = 44px —, então o respiro em cima era quase quatro vezes o py-3
+           dela mesma embaixo. Cancelado o vão, sobra só o padding próprio nos dois lados. */
+        <div className="sticky top-[60px] z-30 -mx-4 -mt-11 flex items-center gap-3 border-b border-secondary bg-primary_alt px-4 py-3 md:hidden">
             <ButtonUtility size="sm" color="tertiary" className="size-11" icon={ArrowLeft} tooltip="Voltar para os pedidos" onClick={aoVoltar} />
 
             {evento?.capa ? (

@@ -179,7 +179,11 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                         <Th>Pedido</Th>
                                         <Th>Comprador</Th>
                                         <Th>Evento</Th>
-                                        <Th>Itens</Th>
+                                        {/* A contagem de itens saiu: era um número solto que não
+                                            respondia nada sozinho — dois itens podem ser dois
+                                            ingressos ou um ingresso e uma camiseta. Quem precisa
+                                            saber o quê abre o pedido, onde a lista diz. O que
+                                            decide a triagem na lista é quanto saiu do bolso. */}
                                         <Th>Total pago</Th>
                                         <th className="w-16 px-4 py-3" />
                                     </tr>
@@ -201,7 +205,6 @@ Troca de item, troca de titularidade e edição de respostas do formulário.
                                                     <p className="text-sm text-tertiary">{comprador?.email}</p>
                                                 </td>
                                                 <td className="px-4 py-4 text-sm text-tertiary">{getEvento(pedido.eventoId)?.nome}</td>
-                                                <td className="px-4 py-4 text-sm text-tertiary tabular-nums">{pedido.itens.length}</td>
                                                 <td className="px-4 py-4 text-sm whitespace-nowrap text-primary tabular-nums">
                                                     {formatarMoeda(totalPago(pedido))}
                                                 </td>

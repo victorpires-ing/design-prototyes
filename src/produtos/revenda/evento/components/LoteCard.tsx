@@ -1,6 +1,7 @@
 import type { FC } from "react";
 import { InfoCircle, TrendDown01, TrendUp01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
+import { SOMBRA_BOTAO } from "../../components/RevendaHeader";
 import {
     brl,
     compararComOriginal,
@@ -70,38 +71,41 @@ function LinhaOferta({ oferta, original, aoAbrirTaxas }: { oferta: OfertaRevenda
 
     return (
         <li className="flex w-full flex-col gap-4 rounded-xl bg-[#fafafa] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-6">
-                <span className="flex flex-col gap-0.5 sm:w-[120px]">
-                    <Rotulo>Preço original</Rotulo>
-                    <span className="text-base leading-6 text-[#171717] sm:text-[18px] sm:leading-7 sm:text-[#212b36]">{brl(original)}</span>
-                </span>
-
-                <span className="flex flex-col gap-0.5 sm:min-w-[236px]">
-                    <span className="flex items-center gap-1">
-                        <Rotulo>Preço na revenda</Rotulo>
-                        <Indicativo comparacao={comparacao} />
-                    </span>
-                    <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5 sm:flex-nowrap sm:gap-x-1.5 sm:whitespace-nowrap">
-                        <span className="text-[18px] leading-7 text-[#171717] sm:text-[#212b36]">{brl(oferta.ingresso)}</span>
+            <div className="flex flex-col gap-4">
+                {/* Preço na revenda em destaque; o original vem embaixo, pequeno e numa linha só (Figma 16815:63151 / 16795:62330) */}
+                <div className="flex flex-col gap-2">
+                    <span className="flex flex-col gap-0.5">
                         <span className="flex items-center gap-1">
-                            <span className="text-base leading-6 text-[#171717] sm:text-[#212b36]">+ {brl(oferta.taxa)} de taxas</span>
-                            <span className="group/dica relative flex">
-                                <button
-                                    type="button"
-                                    onClick={aoAbrirTaxas}
-                                    aria-label="Entenda as taxas"
-                                    className="relative flex size-[18px] shrink-0 items-center justify-center text-[#8c8c8c] transition duration-100 ease-linear hover:text-[#525252] focus-visible:text-[#525252] focus-visible:outline-none before:absolute before:-inset-1 before:content-['']"
-                                >
-                                    <InfoCircle className="size-[18px]" strokeWidth={2} aria-hidden="true" />
-                                </button>
-                                {/* Dica no hover; o clique abre o modal completo */}
-                                <Dica lado="cima">Entenda as taxas</Dica>
+                            <Rotulo>Preço na revenda</Rotulo>
+                            <Indicativo comparacao={comparacao} />
+                        </span>
+                        <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5 sm:flex-nowrap sm:gap-x-1.5 sm:whitespace-nowrap">
+                            <span className="text-[18px] leading-7 text-[#171717] sm:text-[#212b36]">{brl(oferta.ingresso)}</span>
+                            <span className="flex items-center gap-1">
+                                <span className="text-base leading-6 text-[#171717] sm:text-[#212b36]">+ {brl(oferta.taxa)} de taxas</span>
+                                <span className="group/dica relative flex">
+                                    <button
+                                        type="button"
+                                        onClick={aoAbrirTaxas}
+                                        aria-label="Entenda as taxas"
+                                        className="relative flex size-[18px] shrink-0 items-center justify-center text-[#8c8c8c] transition duration-100 ease-linear hover:text-[#525252] focus-visible:text-[#525252] focus-visible:outline-none before:absolute before:-inset-1 before:content-['']"
+                                    >
+                                        <InfoCircle className="size-[18px]" strokeWidth={2} aria-hidden="true" />
+                                    </button>
+                                    {/* Dica no hover; o clique abre o modal completo */}
+                                    <Dica lado="cima">Entenda as taxas</Dica>
+                                </span>
                             </span>
                         </span>
                     </span>
-                </span>
 
-                {/* Mobile: o total vira um terceiro bloco da pilha */}
+                    <span className="flex items-center gap-0.5 text-xs leading-[18px] text-[#737373]">
+                        <span className="font-medium">Preço original:</span>
+                        <span>{brl(original)}</span>
+                    </span>
+                </div>
+
+                {/* Mobile: o total vira o último bloco da pilha */}
                 <span className="flex flex-col gap-0.5 sm:hidden">
                     <Rotulo>Total</Rotulo>
                     <span className="text-[18px] leading-7 font-semibold text-[#171717]">{brl(totalOferta(oferta))}</span>
@@ -111,14 +115,21 @@ function LinhaOferta({ oferta, original, aoAbrirTaxas }: { oferta: OfertaRevenda
             <div className="flex items-center gap-3">
                 <span className="hidden text-sm leading-[1.2] text-[#212b36] sm:inline">({plural(oferta.disponiveis, "disponível", "disponíveis")})</span>
                 <span className="hidden items-baseline gap-1 sm:flex">
-                    {/* Mesmo estilo dos rótulos "Preço original" e "Preço na revenda" (Figma 16795:61711) */}
-                    <Rotulo>Total</Rotulo>
+                    <span className="text-sm leading-[1.2] text-[#212b36]">total</span>
                     <span className="text-[18px] leading-[1.4] font-bold text-[#212b36]">{brl(totalOferta(oferta))}</span>
                 </span>
-                {/* Altura fixa + centragem por flex: o rótulo não fica à mercê da entrelinha */}
+                {/*
+                 * Altura fixa + centragem por flex. `pt-px`: a Elza tem a caixa do texto alta e
+                 * o rótulo ficava 1px acima do Figma. `antialiased`: sem ele o macOS engrossa o
+                 * branco sobre o vermelho. Pesos do Figma: Semibold no mobile, Bold no desktop.
+                 */}
                 <button
                     type="button"
-                    className="inline-flex h-8 w-full shrink-0 items-center justify-center rounded-lg bg-[#ff271a] text-sm leading-none font-semibold text-white transition duration-100 ease-linear hover:bg-[#e11b10] sm:h-[33px] sm:w-auto sm:px-5"
+                    className={cx(
+                        "inline-flex h-8 w-full shrink-0 items-center justify-center rounded-lg bg-[#ff271a] pt-px text-sm leading-none font-semibold text-white antialiased transition duration-100 ease-linear hover:bg-[#e11b10] sm:h-[33px] sm:w-auto sm:px-5 sm:font-bold sm:shadow-none",
+                        // No mobile o Figma usa o Button do DS, com borda interna e sombra; no desktop, não.
+                        SOMBRA_BOTAO,
+                    )}
                 >
                     Comprar
                 </button>

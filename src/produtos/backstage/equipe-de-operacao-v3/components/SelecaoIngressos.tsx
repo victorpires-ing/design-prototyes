@@ -10,7 +10,6 @@ import {
     COMBOS,
     INGRESSOS,
     ITEM_POR_ID,
-    MAX_ITENS,
     PRODUTOS,
     SESSAO_POR_ID,
     type Combo,
@@ -27,12 +26,12 @@ const ABAS: Array<{ id: TipoItem; label: string }> = [
     { id: "combo", label: "Combos" },
 ];
 
+const SINGULAR: Record<TipoItem, string> = { ingresso: "ingresso", produto: "produto", combo: "combo" };
+
 const CATALOGO: Record<TipoItem, ItemCatalogo[]> = { ingresso: INGRESSOS, produto: PRODUTOS, combo: COMBOS };
 
 const textoBusca = (i: ItemCatalogo) =>
-    [i.nome, i.tipo === "produto" ? i.descricao : i.grupo, i.tipo === "produto" ? "" : i.categoria, SESSAO_POR_ID[i.sessaoId]?.rotulo]
-        .join(" ")
-        .toLowerCase();
+    [i.nome, i.tipo === "produto" ? i.descricao : i.grupo, i.tipo === "produto" ? "" : i.categoria, SESSAO_POR_ID[i.sessaoId]?.rotulo].join(" ").toLowerCase();
 
 interface Props {
     /** Ids dos itens que o grupo poderá operar, na ordem em que foram escolhidos. */
@@ -45,25 +44,44 @@ export function SelecaoIngressos({ selecionados, onChange }: Props) {
     const [aba, setAba] = useState<TipoItem>("ingresso");
     const [busca, setBusca] = useState("");
     const set = useMemo(() => new Set(selecionados), [selecionados]);
-    const lotado = selecionados.length >= MAX_ITENS;
 
     const alternar = (id: string, marcar: boolean) => {
-        if (marcar && (set.has(id) || lotado)) return;
+        if (marcar && set.has(id)) return;
         onChange(marcar ? [...selecionados, id] : selecionados.filter((i) => i !== id));
     };
 
-    const sessoes = useMemo(() => {
+    // O que está na tela: a aba atual, filtrada pela busca.
+    const visiveis = useMemo(() => {
         const q = busca.trim().toLowerCase();
-        const lista = CATALOGO[aba].filter((i) => !q || textoBusca(i).includes(q));
-        return agruparPorSessao(lista);
+        return CATALOGO[aba].filter((i) => !q || textoBusca(i).includes(q));
     }, [aba, busca]);
+    const sessoes = useMemo(() => agruparPorSessao(visiveis), [visiveis]);
+
+    // "Selecionar todos" vale para o que está visível (aba + busca), sem mexer no resto da seleção.
+    const marcadosVisiveis = visiveis.filter((i) => set.has(i.id)).length;
+    const todosMarcados = visiveis.length > 0 && marcadosVisiveis === visiveis.length;
+    const alternarTodos = () => {
+        if (todosMarcados) {
+            const ids = new Set(visiveis.map((i) => i.id));
+            onChange(selecionados.filter((id) => !ids.has(id)));
+        } else {
+            onChange([...selecionados, ...visiveis.filter((i) => !set.has(i.id)).map((i) => i.id)]);
+        }
+    };
 
     return (
         <div className="flex w-full items-start gap-4">
             <section className="flex min-w-0 flex-1 flex-col gap-4">
                 <div className="flex items-center justify-between gap-4">
                     <div className="w-full max-w-[300px]">
-                        <Input size="sm" icon={SearchLg} placeholder="Busque por nome do grupo ou item" value={busca} onChange={setBusca} aria-label="Buscar itens" />
+                        <Input
+                            size="sm"
+                            icon={SearchLg}
+                            placeholder="Busque por nome do grupo ou item"
+                            value={busca}
+                            onChange={setBusca}
+                            aria-label="Buscar itens"
+                        />
                     </div>
                     <div role="tablist" className="inline-flex shrink-0 overflow-hidden rounded-lg border border-primary">
                         {ABAS.map((t, i) => (
@@ -90,24 +108,27 @@ export function SelecaoIngressos({ selecionados, onChange }: Props) {
                         {busca.trim() ? "Nenhum item corresponde à busca." : `Este evento não tem ${ABAS.find((a) => a.id === aba)?.label.toLowerCase()}.`}
                     </div>
                 ) : (
-                    sessoes.map(({ sessao, grupos }) => (
-                        <CardSessao key={sessao.id} rotulo={sessao.rotulo}>
-                            {grupos.map((grupo) => (
-                                <div key={grupo.nome} className="flex flex-col">
-                                    <p className="flex h-8 items-center text-sm font-semibold text-primary">{grupo.nome}</p>
-                                    {grupo.itens.map((item) => (
-                                        <LinhaItem
-                                            key={item.id}
-                                            item={item}
-                                            marcado={set.has(item.id)}
-                                            bloqueado={lotado && !set.has(item.id)}
-                                            onChange={(m) => alternar(item.id, m)}
-                                        />
-                                    ))}
-                                </div>
-                            ))}
-                        </CardSessao>
-                    ))
+                    <>
+                        <SelecionarTodos
+                            marcado={todosMarcados}
+                            parcial={marcadosVisiveis > 0 && !todosMarcados}
+                            total={visiveis.length}
+                            rotulo={visiveis.length === 1 ? SINGULAR[aba] : ABAS.find((a) => a.id === aba)!.label.toLowerCase()}
+                            onChange={alternarTodos}
+                        />
+                        {sessoes.map(({ sessao, grupos }) => (
+                            <CardSessao key={sessao.id} rotulo={sessao.rotulo}>
+                                {grupos.map((grupo) => (
+                                    <div key={grupo.nome} className="flex flex-col">
+                                        <p className="flex h-8 items-center text-sm font-semibold text-primary">{grupo.nome}</p>
+                                        {grupo.itens.map((item) => (
+                                            <LinhaItem key={item.id} item={item} marcado={set.has(item.id)} onChange={(m) => alternar(item.id, m)} />
+                                        ))}
+                                    </div>
+                                ))}
+                            </CardSessao>
+                        ))}
+                    </>
                 )}
             </section>
 
@@ -119,28 +140,22 @@ export function SelecaoIngressos({ selecionados, onChange }: Props) {
 /* --------------------------------- Linha -------------------------------- */
 
 /** A linha inteira é o checkbox: um clique em qualquer ponto marca ou desmarca o item. */
-const LinhaItem = ({ item, marcado, bloqueado, onChange }: { item: ItemCatalogo; marcado: boolean; bloqueado: boolean; onChange: (m: boolean) => void }) => (
+const LinhaItem = ({ item, marcado, onChange }: { item: ItemCatalogo; marcado: boolean; onChange: (m: boolean) => void }) => (
     <div
         role="checkbox"
         aria-checked={marcado}
-        aria-disabled={bloqueado || undefined}
         aria-label={item.nome}
-        tabIndex={bloqueado ? -1 : 0}
-        onClick={() => !bloqueado && onChange(!marcado)}
+        tabIndex={0}
+        onClick={() => onChange(!marcado)}
         onKeyDown={(e) => {
-            if (bloqueado || (e.key !== " " && e.key !== "Enter")) return;
+            if (e.key !== " " && e.key !== "Enter") return;
             e.preventDefault();
             onChange(!marcado);
         }}
-        className={cx(
-            "flex min-h-[54px] items-center gap-2 rounded-xl px-4 py-4 outline-none transition duration-100 ease-linear select-none focus-visible:bg-secondary",
-            bloqueado ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-secondary",
-        )}
+        className="flex min-h-[54px] cursor-pointer items-center gap-2 rounded-xl px-4 py-4 outline-none transition duration-100 ease-linear select-none hover:bg-secondary focus-visible:bg-secondary"
     >
-        <CheckboxBase isSelected={marcado} isDisabled={bloqueado} />
-        {item.tipo === "produto" && (
-            <img src={item.imagem} alt="" className="size-8 shrink-0 rounded-md bg-primary object-cover ring-1 ring-border-primary" />
-        )}
+        <CheckboxBase isSelected={marcado} />
+        {item.tipo === "produto" && <img src={item.imagem} alt="" className="size-8 shrink-0 rounded-md bg-primary object-cover ring-1 ring-border-primary" />}
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <span className="truncate text-sm font-medium text-secondary">{item.nome}</span>
             {item.tipo !== "produto" && <BadgeTipo>{item.categoria}</BadgeTipo>}
@@ -148,10 +163,45 @@ const LinhaItem = ({ item, marcado, bloqueado, onChange }: { item: ItemCatalogo;
         </span>
         {item.tipo === "ingresso" && <span className="shrink-0 text-sm font-medium text-secondary">{item.lote}</span>}
         {item.tipo === "combo" && (
-            <span className="shrink-0 text-sm text-tertiary">
-                {item.componentes.map((c) => `${c.quantidade}x ${c.nome}`).join(" + ")}
-            </span>
+            <span className="shrink-0 text-sm text-tertiary">{item.componentes.map((c) => `${c.quantidade}x ${c.nome}`).join(" + ")}</span>
         )}
+    </div>
+);
+
+/* --------------------------- Selecionar todos --------------------------- */
+
+/** Fica antes das sessões; marca ou desmarca tudo o que está visível (aba + busca). */
+const SelecionarTodos = ({
+    marcado,
+    parcial,
+    total,
+    rotulo,
+    onChange,
+}: {
+    marcado: boolean;
+    parcial: boolean;
+    total: number;
+    rotulo: string;
+    onChange: () => void;
+}) => (
+    <div
+        role="checkbox"
+        aria-checked={parcial ? "mixed" : marcado}
+        aria-label="Selecionar todos"
+        tabIndex={0}
+        onClick={onChange}
+        onKeyDown={(e) => {
+            if (e.key !== " " && e.key !== "Enter") return;
+            e.preventDefault();
+            onChange();
+        }}
+        className="flex cursor-pointer items-center gap-2 rounded-xl bg-primary_alt px-4 py-3 ring-1 ring-border-secondary outline-none transition duration-100 ease-linear select-none ring-inset hover:bg-secondary focus-visible:bg-secondary"
+    >
+        <CheckboxBase isSelected={marcado} isIndeterminate={parcial} />
+        <span className="flex-1 text-sm font-semibold text-secondary">Selecionar todos</span>
+        <span className="shrink-0 text-sm text-tertiary">
+            {total} {rotulo}
+        </span>
     </div>
 );
 
@@ -166,14 +216,11 @@ const Resumo = ({ selecionados, onRemover, onLimpar }: { selecionados: string[];
     return (
         <aside
             style={{ top: ALTURA_CABECALHO + 24, maxHeight: `calc(100vh - ${ALTURA_CABECALHO + 48}px)` }}
-            className="sticky hidden w-[330px] shrink-0 flex-col overflow-hidden rounded-2xl border border-primary bg-primary lg:flex">
+            className="sticky hidden w-[330px] shrink-0 flex-col overflow-hidden rounded-2xl border border-primary bg-primary lg:flex"
+        >
             <header className="flex shrink-0 items-center justify-between gap-2 border-b border-secondary p-4">
                 <h3 className="text-sm font-medium text-primary">Resumo</h3>
-                {itens.length === 0 ? (
-                    <span className="text-xs font-medium text-tertiary">
-                        0 de {MAX_ITENS} itens selecionados
-                    </span>
-                ) : (
+                {itens.length > 0 && (
                     <button
                         type="button"
                         onClick={onLimpar}

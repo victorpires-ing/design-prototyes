@@ -8,6 +8,7 @@ import { motion } from "motion/react";
 import { Calendar, ChevronLeft } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
+import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
 import "../tema-cotas.css";
 
@@ -18,6 +19,16 @@ export const TemaCotas = ({ children, className }: { children: ReactNode; classN
     useEffect(() => {
         document.body.classList.add("cotas-aberto");
         return () => document.body.classList.remove("cotas-aberto");
+    }, []);
+
+    // O fluxo só existe em dark no Figma. O tema fica salvo no navegador (a revenda, por
+    // exemplo, força light), então ao abrir as telas de cotas força dark e devolve ao sair.
+    const { theme, setTheme } = useTheme();
+    useEffect(() => {
+        const anterior = theme;
+        setTheme("dark");
+        return () => setTheme(anterior);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return <div className={cx("tema-cotas flex min-w-0 flex-1 flex-col", className)}>{children}</div>;

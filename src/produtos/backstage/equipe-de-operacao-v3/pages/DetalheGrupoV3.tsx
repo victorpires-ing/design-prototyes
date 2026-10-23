@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Edit01, HelpCircle, HomeLine, XClose } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -11,7 +11,7 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ModalDesativar } from "../components/modal-desativar";
 import { BadgeInativo, BarraUso, TemaCotas } from "../components/ui-cotas";
-import { apoioDoItem, ITEM_POR_ID, SESSAO_POR_ID } from "../data/catalogo-evento";
+import { apoioDoItem, estoqueDoItem, ITEM_POR_ID, SESSAO_POR_ID } from "../data/catalogo-evento";
 import { itensValidos, limiteDoGrupo, plural, ROTULO_ATUACAO, ROTULO_COTA, useEquipeV3, usadasDoGrupo, type GrupoCotas } from "../data/equipe-v3-store";
 
 const BASE = "/backstage/equipe-de-operacao/v3";
@@ -22,6 +22,19 @@ export function DetalheGrupoV3() {
     const { getGrupo, toggleOperador, operadorAtivo } = useEquipeV3();
     const grupo = getGrupo(grupoId);
     const [desligando, setDesligando] = useState<string | null>(null);
+
+    // Voltar de "Editar itens" (ou abrir o grupo) começa do topo, não onde a tela anterior estava.
+    useEffect(() => {
+        window.scrollTo({ top: 0 });
+    }, [grupoId]);
+
+    // Voltando de "Editar itens", a lista "recarrega" (halo no card + linhas em cascata) só nesta chegada.
+    const location = useLocation();
+    const [atualizado] = useState(() => Boolean((location.state as { atualizado?: boolean } | null)?.atualizado));
+    useEffect(() => {
+        if (atualizado) navigate(location.pathname, { replace: true, state: null });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const voltar = () => navigate(BASE);
 
@@ -80,7 +93,7 @@ export function DetalheGrupoV3() {
                         </div>
                     </div>
 
-                    <CardItensECotas grupo={grupo} onEditar={() => navigate(`${BASE}/${grupo.id}/editar?etapa=itens`)} />
+                    <CardItensECotas grupo={grupo} atualizado={atualizado} onEditar={() => navigate(`${BASE}/${grupo.id}/editar?etapa=itens`)} />
 
                     <section className="flex flex-col gap-3 rounded-2xl bg-primary px-5 py-4 ring-1 ring-border-secondary ring-inset">
                         {/* Operadores vêm do grupo de Membros: adicionar/remover é lá; aqui só liga e desliga. */}
@@ -111,7 +124,7 @@ export function DetalheGrupoV3() {
                             {grupo.operadores.map((email) => {
                                 const ativo = operadorAtivo(grupo, email);
                                 const emitidos = grupo.emitidosPorOperador[email] ?? 0;
-                                // Inativo: e-mail e "utilizações" a 50%, só o toggle segue a 100% — como os cards da listagem.
+                                // Inativo: e-mail e "emitidos" a 50%, só o toggle segue a 100% — como os cards da listagem.
                                 const apagado = cx("transition-opacity duration-300 ease-out", !ativo && "opacity-50");
                                 return (
                                     <li key={email} className="flex items-center gap-4">
@@ -125,7 +138,7 @@ export function DetalheGrupoV3() {
                                             <span className={cx("truncate text-sm text-secondary", apagado)}>{email}</span>
                                         </span>
                                         <span className={cx("shrink-0 text-sm font-medium text-secondary tabular-nums", apagado)}>
-                                            {plural(emitidos, "utilização", "utilizações")}
+                                            {plural(emitidos, "emitido", "emitidos")}
                                         </span>
                                     </li>
                                 );
@@ -157,7 +170,7 @@ export function DetalheGrupoV3() {
 
 /* ------------------------- Itens e cotas -------------------------- */
 
-const CardItensECotas = ({ grupo, onEditar }: { grupo: GrupoCotas; onEditar: () => void }) => {
+const CardItensECotas = ({ grupo, atualizado, onEditar }: { grupo: GrupoCotas; atualizado: boolean; onEditar: () => void }) => {
     const tipo = grupo.cota.tipo;
     const limite = limiteDoGrupo(grupo);
     const usadas = usadasDoGrupo(grupo);
@@ -167,12 +180,36 @@ const CardItensECotas = ({ grupo, onEditar }: { grupo: GrupoCotas; onEditar: () 
     const [editando, setEditando] = useState<string | null>(null);
 
     return (
-        <section className="flex flex-col gap-3 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary ring-inset">
+        <section className="relative flex flex-col gap-3 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary ring-inset">
+            {/* Halo: um anel da marca que se abre em volta do card e some, uma vez, ao voltar da edição */}
+            {atualizado && (
+                <motion.span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 rounded-2xl"
+                    // O contorno acende na cor da marca e o anel se abre para fora, apagando junto.
+                    initial={{ boxShadow: "0 0 0 0px rgba(255, 39, 26, 0.7), inset 0 0 0 1px rgba(255, 74, 64, 1)" }}
+                    animate={{ boxShadow: "0 0 0 20px rgba(255, 39, 26, 0), inset 0 0 0 1px rgba(255, 74, 64, 0)" }}
+                    transition={{ duration: 1.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                />
+            )}
             <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-60 flex-col gap-1">
-                    <h2 className="text-sm font-medium whitespace-nowrap text-primary">
-                        {ROTULO_ATUACAO[grupo.atuacao]} · {ROTULO_COTA[tipo]}
-                    </h2>
+                    <div className="flex items-center gap-1">
+                        <h2 className="text-sm font-medium whitespace-nowrap text-primary">
+                            {ROTULO_ATUACAO[grupo.atuacao]} · {ROTULO_COTA[tipo]}
+                        </h2>
+                        {/* Sem cota, o número de referência de cada item é o estoque: o tooltip explica isso */}
+                        {tipo === "sem-limite" && (
+                            <Tooltip title={<span className="font-normal whitespace-nowrap">Sem cota definida: o limite de cada item é o estoque disponível.</span>} placement="right" arrow>
+                                <TooltipTrigger
+                                    aria-label="Como o limite é calculado"
+                                    className="flex text-fg-quaternary transition duration-100 ease-linear hover:text-fg-quaternary_hover"
+                                >
+                                    <HelpCircle className="size-4" aria-hidden="true" />
+                                </TooltipTrigger>
+                            </Tooltip>
+                        )}
+                    </div>
                     {/* Só a compartilhada tem um saldo único do grupo para mostrar no topo. */}
                     {tipo === "compartilhada" && limite !== null && (
                         <CotaDoItem
@@ -199,12 +236,19 @@ const CardItensECotas = ({ grupo, onEditar }: { grupo: GrupoCotas; onEditar: () 
 
             {/* Grade com subgrid: a coluna de uso tem a largura do maior texto, e todas as barras acompanham. */}
             <ul className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-4">
-                {itens.map((id) => {
+                {itens.map((id, idx) => {
                     const item = ITEM_POR_ID[id];
                     const uso = grupo.usoPorItem[id] ?? 0;
                     const cotaItem = grupo.cota.porItem[id] ?? 0;
                     return (
-                        <li key={id} className="col-span-2 grid grid-cols-subgrid items-center">
+                        <motion.li
+                            key={id}
+                            // Ao voltar da edição as linhas reaparecem em cascata, de cima para baixo.
+                            initial={atualizado ? { opacity: 0, y: 8 } : false}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: 0.15 + idx * 0.05 }}
+                            className="col-span-2 grid grid-cols-subgrid items-center"
+                        >
                             <span className="flex min-w-0 flex-1 flex-col">
                                 <span className="text-sm font-medium text-primary">{item.nome}</span>
                                 <span className="text-xs text-tertiary">{apoioDoItem(item)}</span>
@@ -223,12 +267,20 @@ const CardItensECotas = ({ grupo, onEditar }: { grupo: GrupoCotas; onEditar: () 
                                         setEditando(null);
                                     }}
                                 />
+                            ) : tipo === "sem-limite" ? (
+                                // Sem cota: a referência é o estoque do item, só para leitura (sem lápis).
+                                <span className="flex min-w-[131px] flex-col gap-2">
+                                    <span className="text-sm font-medium whitespace-nowrap text-secondary tabular-nums">
+                                        {uso} de {Math.max(estoqueDoItem(item), uso)} emissões
+                                    </span>
+                                    <BarraUso usadas={uso} total={Math.max(estoqueDoItem(item), uso)} />
+                                </span>
                             ) : (
                                 <span className="justify-self-end text-sm font-medium whitespace-nowrap text-secondary tabular-nums">
-                                    {plural(uso, "utilizada", "utilizadas")}
+                                    {plural(uso, "emissão", "emissões")}
                                 </span>
                             )}
-                        </li>
+                        </motion.li>
                     );
                 })}
             </ul>
@@ -334,7 +386,7 @@ const CotaDoItem = ({
             }
             if (valor < uso) {
                 setErro({
-                    titulo: "Cota menor que o já utilizado",
+                    titulo: "Cota menor que o já emitido",
                     descricao: `Informe ${uso} ou mais.`,
                 });
                 return setEstado("erro");
@@ -444,7 +496,7 @@ const CotaDoItem = ({
                     <span className="flex min-w-[131px] flex-1 flex-col gap-2">
                         {/* Nunca quebra: o número de referência fica sempre numa linha. */}
                         <span className="text-sm font-medium whitespace-nowrap text-secondary tabular-nums">
-                            {uso} de {cota} utilizadas
+                            {uso} de {cota} emissões
                         </span>
                         <BarraUso usadas={uso} total={cota} />
                     </span>

@@ -23,7 +23,7 @@ const CANAIS: Array<{ id: FiltroCanal; label: string }> = [
     { id: "todos", label: "Todos" },
     { id: "pdv", label: "PDV" },
     { id: "cortesia", label: "Cortesia" },
-    { id: "bilheteria", label: "Bilheteria" },
+    { id: "bilheteria", label: "Bilheteria Online" },
 ];
 
 const STATUS: Array<{ id: FiltroStatus; label: string }> = [
@@ -278,7 +278,7 @@ const LinhaGrupo = ({ grupo, destaque = false, onToggle, onAbrir }: { grupo: Gru
 
             <div className={cx("relative flex w-[280px] shrink-0 items-center justify-end gap-3 px-6 py-4", apagado)}>
                 {limite === null ? (
-                    <span className="text-sm font-medium text-primary">Sem limite de cotas: {plural(usadas, "utilizada", "utilizadas")}</span>
+                    <span className="text-sm font-medium text-primary">Sem limite de cotas: {plural(usadas, "emissão", "emissões")}</span>
                 ) : (
                     <>
                         <BarraUso usadas={usadas} total={limite} className="w-[150px]" />

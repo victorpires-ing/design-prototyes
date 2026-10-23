@@ -50,6 +50,41 @@ export function SelecaoIngressos({ selecionados, onChange }: Props) {
         onChange(marcar ? [...selecionados, id] : selecionados.filter((i) => i !== id));
     };
 
+    /*
+     * Ingresso com lotes: marcar o ingresso guarda só o id dele (vale para todos os lotes);
+     * marcar lotes avulsos guarda os ids dos lotes. Quando todos os lotes ficam marcados,
+     * eles voltam a ser o ingresso inteiro.
+     */
+    const estado = (item: ItemCatalogo): Estado => {
+        if (set.has(item.id)) return "todos";
+        if (item.tipo !== "ingresso" || item.lotes.length < 2) return "nenhum";
+        return item.lotes.some((l) => set.has(l.id)) ? "parcial" : "nenhum";
+    };
+    const semIngresso = (lista: string[], item: ItemCatalogo) => {
+        const ids = new Set([item.id, ...(item.tipo === "ingresso" ? item.lotes.map((l) => l.id) : [])]);
+        return lista.filter((id) => !ids.has(id));
+    };
+    // Parcial + clique completa a seleção (todos os lotes); marcado + clique desmarca tudo.
+    const alternarItem = (item: ItemCatalogo) =>
+        onChange(estado(item) === "todos" ? semIngresso(selecionados, item) : [...semIngresso(selecionados, item), item.id]);
+    const alternarLote = (item: Ingresso, loteId: string) => {
+        if (set.has(item.id)) return onChange([...semIngresso(selecionados, item), ...item.lotes.filter((l) => l.id !== loteId).map((l) => l.id)]);
+        const proxima = set.has(loteId) ? selecionados.filter((id) => id !== loteId) : [...selecionados, loteId];
+        const todos = item.lotes.every((l) => proxima.includes(l.id));
+        onChange(todos ? [...semIngresso(proxima, item), item.id] : proxima);
+    };
+
+    // Grupo e sessão: marcados quando todos os itens estão; parcial quando só alguns.
+    const estadoLista = (itens: ItemCatalogo[]): Estado => {
+        const e = itens.map(estado);
+        if (e.length && e.every((x) => x === "todos")) return "todos";
+        return e.some((x) => x !== "nenhum") ? "parcial" : "nenhum";
+    };
+    const alternarLista = (itens: ItemCatalogo[]) => {
+        const limpa = itens.reduce((lista, item) => semIngresso(lista, item), selecionados);
+        onChange(estadoLista(itens) === "todos" ? limpa : [...limpa, ...itens.map((i) => i.id)]);
+    };
+
     // O que está na tela: a aba atual, filtrada pela busca.
     const visiveis = useMemo(() => {
         const q = busca.trim().toLowerCase();
@@ -58,16 +93,7 @@ export function SelecaoIngressos({ selecionados, onChange }: Props) {
     const sessoes = useMemo(() => agruparPorSessao(visiveis), [visiveis]);
 
     // "Selecionar todos" vale para o que está visível (aba + busca), sem mexer no resto da seleção.
-    const marcadosVisiveis = visiveis.filter((i) => set.has(i.id)).length;
-    const todosMarcados = visiveis.length > 0 && marcadosVisiveis === visiveis.length;
-    const alternarTodos = () => {
-        if (todosMarcados) {
-            const ids = new Set(visiveis.map((i) => i.id));
-            onChange(selecionados.filter((id) => !ids.has(id)));
-        } else {
-            onChange([...selecionados, ...visiveis.filter((i) => !set.has(i.id)).map((i) => i.id)]);
-        }
-    };
+    const estadoVisiveis = estadoLista(visiveis);
 
     return (
         <div className="flex w-full items-start gap-4">
@@ -110,19 +136,39 @@ export function SelecaoIngressos({ selecionados, onChange }: Props) {
                 ) : (
                     <>
                         <SelecionarTodos
-                            marcado={todosMarcados}
-                            parcial={marcadosVisiveis > 0 && !todosMarcados}
+                            estado={estadoVisiveis}
                             total={visiveis.length}
                             rotulo={visiveis.length === 1 ? SINGULAR[aba] : ABAS.find((a) => a.id === aba)!.label.toLowerCase()}
-                            onChange={alternarTodos}
+                            onChange={() => alternarLista(visiveis)}
                         />
                         {sessoes.map(({ sessao, grupos }) => (
                             <CardSessao key={sessao.id} rotulo={sessao.rotulo}>
                                 {grupos.map((grupo) => (
                                     <div key={grupo.nome} className="flex flex-col">
-                                        <p className="flex h-8 items-center text-sm font-semibold text-primary">{grupo.nome}</p>
+                                        {/* O grupo também se marca: vale para todos os itens dele */}
+                                        <LinhaCheck
+                                            nivel={0}
+                                            destaque
+                                            estado={estadoLista(grupo.itens)}
+                                            rotulo={grupo.nome}
+                                            onChange={() => alternarLista(grupo.itens)}
+                                        />
                                         {grupo.itens.map((item) => (
-                                            <LinhaItem key={item.id} item={item} marcado={set.has(item.id)} onChange={(m) => alternar(item.id, m)} />
+                                            <div key={item.id} className="flex flex-col">
+                                                <LinhaItem item={item} estado={estado(item)} onChange={() => alternarItem(item)} />
+                                                {/* Lotes logo abaixo do ingresso, um nível para dentro */}
+                                                {item.tipo === "ingresso" &&
+                                                    item.lotes.length > 1 &&
+                                                    item.lotes.map((l) => (
+                                                        <LinhaCheck
+                                                            key={l.id}
+                                                            nivel={2}
+                                                            estado={set.has(item.id) || set.has(l.id) ? "todos" : "nenhum"}
+                                                            rotulo={l.nome}
+                                                            onChange={() => alternarLote(item, l.id)}
+                                                        />
+                                                    ))}
+                                            </div>
                                         ))}
                                     </div>
                                 ))}
@@ -137,67 +183,102 @@ export function SelecaoIngressos({ selecionados, onChange }: Props) {
     );
 }
 
-/* --------------------------------- Linha -------------------------------- */
+/* --------------------------------- Linhas ------------------------------- */
 
-/** A linha inteira é o checkbox: um clique em qualquer ponto marca ou desmarca o item. */
-const LinhaItem = ({ item, marcado, onChange }: { item: ItemCatalogo; marcado: boolean; onChange: (m: boolean) => void }) => (
+type Estado = "nenhum" | "parcial" | "todos";
+
+/** Tecla espaço/Enter numa "linha-checkbox". */
+const teclaMarca = (fn: () => void) => (e: React.KeyboardEvent) => {
+    if (e.key !== " " && e.key !== "Enter") return;
+    e.preventDefault();
+    fn();
+};
+
+/** Recuo de cada nível: grupo, item e lote. */
+const RECUO = ["pl-4", "pl-11", "pl-[72px]"] as const;
+
+/** Linha inteira clicável com checkbox de 3 estados. Base de todas as linhas da lista. */
+const LinhaBase = ({
+    nivel,
+    estado,
+    rotulo,
+    onChange,
+    children,
+}: {
+    nivel: 0 | 1 | 2;
+    estado: Estado;
+    rotulo: string;
+    onChange: () => void;
+    children: React.ReactNode;
+}) => (
     <div
         role="checkbox"
-        aria-checked={marcado}
-        aria-label={item.nome}
+        aria-checked={estado === "parcial" ? "mixed" : estado === "todos"}
+        aria-label={rotulo}
         tabIndex={0}
-        onClick={() => onChange(!marcado)}
-        onKeyDown={(e) => {
-            if (e.key !== " " && e.key !== "Enter") return;
-            e.preventDefault();
-            onChange(!marcado);
-        }}
-        className="flex min-h-[54px] cursor-pointer items-center gap-2 rounded-xl px-4 py-4 outline-none transition duration-100 ease-linear select-none hover:bg-secondary focus-visible:bg-secondary"
+        onClick={onChange}
+        onKeyDown={teclaMarca(onChange)}
+        className={cx(
+            "flex min-h-[50px] cursor-pointer items-center gap-2 rounded-xl py-3 pr-4 outline-none transition duration-100 ease-linear select-none hover:bg-secondary focus-visible:bg-secondary",
+            RECUO[nivel],
+        )}
     >
-        <CheckboxBase isSelected={marcado} />
+        <CheckboxBase isSelected={estado === "todos"} isIndeterminate={estado === "parcial"} />
+        {children}
+    </div>
+);
+
+/** Linha só com texto: grupo e lote. */
+const LinhaCheck = ({
+    nivel,
+    destaque,
+    estado,
+    rotulo,
+    onChange,
+}: {
+    nivel: 0 | 1 | 2;
+    destaque?: boolean;
+    estado: Estado;
+    rotulo: string;
+    onChange: () => void;
+}) => (
+    <LinhaBase nivel={nivel} estado={estado} rotulo={rotulo} onChange={onChange}>
+        <span className={cx("text-sm text-secondary", destaque ? "font-semibold text-primary" : "font-normal")}>{rotulo}</span>
+    </LinhaBase>
+);
+
+/** Ingresso, produto ou combo, um nível abaixo do grupo. Os lotes vêm na linha de baixo, recuados. */
+const LinhaItem = ({ item, estado, onChange }: { item: ItemCatalogo; estado: Estado; onChange: () => void }) => (
+    <LinhaBase nivel={1} estado={estado} rotulo={item.nome} onChange={onChange}>
         {item.tipo === "produto" && <img src={item.imagem} alt="" className="size-8 shrink-0 rounded-md bg-primary object-cover ring-1 ring-border-primary" />}
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <span className="truncate text-sm font-medium text-secondary">{item.nome}</span>
-            {item.tipo !== "produto" && <BadgeTipo>{item.categoria}</BadgeTipo>}
+            {/* Tipo do item: ingressos são sempre "Ingresso"; combos mostram o que vem no pacote */}
+            {item.tipo !== "produto" && <BadgeTipo>{item.tipo === "ingresso" ? "Ingresso" : item.categoria}</BadgeTipo>}
             {item.tipo === "produto" && <span className="text-sm text-tertiary">{item.descricao}</span>}
         </span>
-        {item.tipo === "ingresso" && <span className="shrink-0 text-sm font-medium text-secondary">{item.lote}</span>}
+        {/* Com um lote só não há escolha: o nome do lote fica na própria linha */}
+        {item.tipo === "ingresso" && item.lotes.length === 1 && <span className="shrink-0 text-sm text-tertiary">{item.lotes[0].nome}</span>}
         {item.tipo === "combo" && (
             <span className="shrink-0 text-sm text-tertiary">{item.componentes.map((c) => `${c.quantidade}x ${c.nome}`).join(" + ")}</span>
         )}
-    </div>
+    </LinhaBase>
 );
 
 /* --------------------------- Selecionar todos --------------------------- */
 
 /** Fica antes das sessões; marca ou desmarca tudo o que está visível (aba + busca). */
-const SelecionarTodos = ({
-    marcado,
-    parcial,
-    total,
-    rotulo,
-    onChange,
-}: {
-    marcado: boolean;
-    parcial: boolean;
-    total: number;
-    rotulo: string;
-    onChange: () => void;
-}) => (
+const SelecionarTodos = ({ estado, total, rotulo, onChange }: { estado: Estado; total: number; rotulo: string; onChange: () => void }) => (
     <div
         role="checkbox"
-        aria-checked={parcial ? "mixed" : marcado}
+        aria-checked={estado === "parcial" ? "mixed" : estado === "todos"}
         aria-label="Selecionar todos"
         tabIndex={0}
         onClick={onChange}
-        onKeyDown={(e) => {
-            if (e.key !== " " && e.key !== "Enter") return;
-            e.preventDefault();
-            onChange();
-        }}
+        onKeyDown={teclaMarca(onChange)}
         className="flex cursor-pointer items-center gap-2 rounded-xl bg-primary_alt px-4 py-3 ring-1 ring-border-secondary outline-none transition duration-100 ease-linear select-none ring-inset hover:bg-secondary focus-visible:bg-secondary"
     >
-        <CheckboxBase isSelected={marcado} isIndeterminate={parcial} />
+        <CheckboxBase isSelected={estado === "todos"} isIndeterminate={estado === "parcial"} />
         <span className="flex-1 text-sm font-semibold text-secondary">Selecionar todos</span>
         <span className="shrink-0 text-sm text-tertiary">
             {total} {rotulo}
@@ -243,9 +324,12 @@ const Resumo = ({ selecionados, onRemover, onLimpar }: { selecionados: string[];
                             {ingressos.map((i) => (
                                 <CartaoResumo key={i.id} onRemover={() => onRemover(i.id)} nome={i.nome}>
                                     <span className="text-sm font-medium text-secondary">
-                                        {i.grupo} - {i.categoria}
+                                        {i.grupo}
                                     </span>
-                                    <span className="text-sm text-tertiary">{SESSAO_POR_ID[i.sessaoId]?.curto}</span>
+                                    <span className="text-sm text-tertiary">
+                                        {i.lote ? `${i.lote} • ` : ""}
+                                        {SESSAO_POR_ID[i.sessaoId]?.curto}
+                                    </span>
                                 </CartaoResumo>
                             ))}
                         </BlocoResumo>

@@ -52,10 +52,10 @@ export type DadosGrupo = Pick<GrupoCotas, "nome" | "atuacao" | "grupoMembrosId" 
 export const ATUACOES: Array<{ id: Atuacao; label: string }> = [
     { id: "pdv", label: "PDV" },
     { id: "cortesia", label: "Cortesia" },
-    { id: "bilheteria", label: "Bilheteria" },
+    { id: "bilheteria", label: "Bilheteria Online" },
 ];
 
-/** "PDV", "Cortesia" ou "Bilheteria". */
+/** "PDV", "Cortesia" ou "Bilheteria Online". */
 export const ROTULO_ATUACAO = Object.fromEntries(ATUACOES.map((a) => [a.id, a.label])) as Record<Atuacao, string>;
 
 export const ROTULO_COTA: Record<TipoCota, string> = {

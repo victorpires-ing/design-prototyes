@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check } from "@untitledui/icons";
@@ -6,14 +6,13 @@ import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { SeletorGrupoMembros } from "../components/seletor-grupo-membros";
-import { RevisaoProvisoria } from "../components/revisao-provisoria";
 import { SelecaoIngressos } from "../components/SelecaoIngressos";
 import { BadgeTipo, CabecalhoCotas, CardSessao, RadioBolinha, TemaCotas, TituloSecao } from "../components/ui-cotas";
 import { agruparPorSessao, ITEM_POR_ID, type ItemCatalogo } from "../data/catalogo-evento";
 import { ATUACOES, useEquipeV3, type Atuacao, type DadosGrupo, type TipoCota } from "../data/equipe-v3-store";
 import { GRUPO_MEMBROS_POR_ID } from "../data/membros";
 
-const ETAPAS = ["Grupo", "Itens", "Cotas", "Revisão"] as const;
+const ETAPAS = ["Grupo", "Itens", "Cotas"] as const;
 const BASE = "/backstage/equipe-de-operacao/v3";
 
 const soNumero = (v: string) => {
@@ -28,6 +27,11 @@ export function CriarGrupoV3() {
     const { grupos, criarGrupo, atualizarGrupo, getGrupo } = useEquipeV3();
     const grupo = grupoId ? getGrupo(grupoId) : undefined;
     const emEdicao = Boolean(grupo);
+
+    // Abrir o fluxo (ou "Editar itens" vindo do detalhe rolado) sempre começa do topo.
+    useEffect(() => {
+        window.scrollTo({ top: 0 });
+    }, []);
 
     // "Editar itens" no detalhe abre só a seleção de itens, sem o wizard, e salva direto.
     const soItens = Boolean(grupo) && params.get("etapa") === "itens";
@@ -50,7 +54,7 @@ export function CriarGrupoV3() {
     const etapaItensOk = itens.length > 0;
     const etapaCotasOk =
         tipoCota === "sem-limite" || (tipoCota === "compartilhada" && total > 0) || (tipoCota === "por-item" && itens.every((id) => (porItem[id] ?? 0) > 0));
-    const etapaOk = [etapaGrupoOk, etapaItensOk, etapaCotasOk, etapaGrupoOk && etapaItensOk && etapaCotasOk][etapa];
+    const etapaOk = [etapaGrupoOk, etapaItensOk, etapaCotasOk][etapa];
 
     /* ------------------------------- ações ------------------------------- */
     const voltar = () => {
@@ -75,7 +79,8 @@ export function CriarGrupoV3() {
 
         if (grupo) {
             atualizarGrupo(grupo.id, dados);
-            return navigate(`${BASE}/${grupo.id}`);
+            // O detalhe usa `atualizado` para mostrar que a lista foi recarregada (halo + cascata).
+            return navigate(`${BASE}/${grupo.id}`, { state: { atualizado: true } });
         }
         const novo = criarGrupo(dados);
         // A listagem usa `destaque` para animar a chegada do grupo e marcá-lo por alguns segundos.
@@ -93,7 +98,7 @@ export function CriarGrupoV3() {
         concluir();
     };
 
-    const rotuloAcao = soItens ? "Salvar alterações" : etapa < ETAPAS.length - 1 ? "Continuar" : emEdicao ? "Salvar alterações" : "Criar grupo";
+    const rotuloAcao = soItens ? "Salvar alterações" : etapa < ETAPAS.length - 1 ? "Continuar" : emEdicao ? "Salvar alterações" : "Salvar configurações";
 
     return (
         <BackstageLayout activeSection="gerenciamento-cotas" railVariant="gestao-operacao">
@@ -192,19 +197,6 @@ export function CriarGrupoV3() {
                         </div>
                     )}
 
-                    {etapa === 3 && (
-                        <RevisaoProvisoria
-                            atuacao={atuacao}
-                            grupoMembrosId={grupoMembrosId}
-                            totalOperadores={operadores.length}
-                            itens={itens}
-                            cota={{ tipo: tipoCota, total, porItem }}
-                            onEditar={(i) => {
-                                setEtapa(i);
-                                window.scrollTo({ top: 0 });
-                            }}
-                        />
-                    )}
                 </main>
             </TemaCotas>
         </BackstageLayout>
@@ -224,9 +216,9 @@ const Bloco = ({ titulo, children, gap = "gap-4" }: { titulo: string; children: 
 
 /** Passos com círculo de 24px ligados por linha pontilhada, como no Figma. */
 const Stepper = ({ atual, onIr }: { atual: number; onIr: (i: number) => void }) => (
-    <ol className="relative grid w-full max-w-[764px] grid-cols-4">
+    <ol className="relative grid w-full max-w-[764px] grid-cols-3">
         {/* Linha atrás dos círculos, do centro do primeiro ao centro do último. */}
-        <span aria-hidden="true" className="absolute top-3.5 right-[12.5%] left-[12.5%] border-t-2 border-dotted border-primary" />
+        <span aria-hidden="true" className="absolute top-3.5 right-[16.667%] left-[16.667%] border-t-2 border-dotted border-primary" />
         {ETAPAS.map((titulo, i) => {
             const status = i < atual ? "completo" : i === atual ? "atual" : "pendente";
             return (
@@ -356,7 +348,8 @@ const CotasPorItem = ({ itens, valores, onValor }: { itens: string[]; valores: R
                                     <div key={item.id} className="flex items-center justify-between gap-2 px-2 py-3">
                                         <span className="flex min-w-0 items-center gap-2">
                                             <span className="truncate text-sm font-medium text-secondary">{item.nome}</span>
-                                            <BadgeTipo>{item.tipo === "produto" ? "Produto" : item.categoria}</BadgeTipo>
+                                            <BadgeTipo>{item.tipo === "produto" ? "Produto" : item.tipo === "ingresso" ? "Ingresso" : item.categoria}</BadgeTipo>
+                                            {item.tipo === "ingresso" && item.lote && <span className="text-sm text-tertiary">{item.lote}</span>}
                                         </span>
                                         <div className="w-[78px] shrink-0">
                                             <Input

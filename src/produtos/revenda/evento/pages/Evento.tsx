@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { RevendaHeader } from "../../components/RevendaHeader";
 import { faqDoEvento, getEvento } from "../../data/eventos";
+import { useForceLightTheme } from "../../utils/use-force-light-theme";
 import { FaqEvento } from "../components/FaqEvento";
 import { LoteCard } from "../components/LoteCard";
 import { ModalTaxas } from "../components/ModalTaxas";
@@ -20,6 +21,8 @@ export function Evento() {
     const navigate = useNavigate();
     const evento = getEvento(slug);
     const [modalTaxas, setModalTaxas] = useState(false);
+    // O canal é um site público: sempre em light, mesmo com o app em dark (senão text-white vira preto).
+    useForceLightTheme();
 
     // Cada evento é uma página nova: sempre começar do topo
     useEffect(() => {

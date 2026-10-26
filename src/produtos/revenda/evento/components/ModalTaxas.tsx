@@ -5,18 +5,22 @@ import { SOMBRA_BOTAO } from "../../components/RevendaHeader";
 const TAXAS = [
     {
         titulo: "Taxa de serviço",
-        texto: "Relacionada à operação e intermediação da revenda, incluindo segurança e manutenção da plataforma.",
+        texto: "Referente a viabilização da operação da plataforma, incluindo tecnologia, atendimento e segurança da compra.",
     },
     {
         titulo: "Taxa de processamento",
-        texto: "Relacionada ao processamento do pagamento. O valor pode variar conforme a forma de pagamento escolhida.",
+        texto: "Referente ao processamento do pagamento na forma escolhida pelo consumidor e às integrações necessárias para concluir a transação com segurança.",
+    },
+    {
+        titulo: "Juros de parcelamento",
+        texto: "Referente aos encargos financeiros incidentes sobre o valor da compra, aplicáveis quando o consumidor optar pelo pagamento parcelado, conforme as condições disponibilizadas pela plataforma.",
     },
 ];
 
 /**
  * "Entenda as taxas" — modal aberto pelo ícone de informação na linha de oferta.
  * Desktop: diálogo centrado de 560px. Mobile: bottom sheet de 64px acima da base.
- * Medidas, sombra em 3 camadas e overlay com blur conforme o Figma (16501:48292).
+ * Medidas, sombra em 3 camadas e overlay com blur conforme o Figma (16501:48292); texto de 16800:62582.
  */
 export function ModalTaxas({ aberto, aoFechar }: { aberto: boolean; aoFechar: () => void }) {
     const dialogo = useRef<HTMLDivElement>(null);
@@ -67,14 +71,16 @@ export function ModalTaxas({ aberto, aoFechar }: { aberto: boolean; aoFechar: ()
                 <div className="flex flex-col gap-4 px-4 pt-5 sm:px-6 sm:pt-6">
                     <div className="flex flex-col gap-0.5">
                         <h2 id="titulo-taxas" className="pr-10 text-base leading-6 font-semibold text-[#171717]">
-                            Entenda as taxas
+                            Entenda como calculamos os valores
                         </h2>
 
                         {/* O Figma usa um nó único com paragraphSpacing 14 — daí o gap, e não <br/> */}
                         <div className="flex flex-col gap-[14px] text-sm leading-5 text-[#525252]">
                             {TAXAS.map((t) => (
                                 <p key={t.titulo}>
-                                    <strong className="font-semibold">{t.titulo}</strong> {t.texto}
+                                    {/* No Figma o título de cada taxa fica numa linha e a explicação embaixo */}
+                                    <strong className="block font-semibold">{t.titulo}</strong>
+                                    {t.texto}
                                 </p>
                             ))}
                         </div>

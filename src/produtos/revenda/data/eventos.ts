@@ -8,13 +8,18 @@ export interface OfertaRevenda {
     /** Taxa de serviço + taxa de processamento (decreto do Procon). */
     taxa: number;
     disponiveis: number;
+    /** Preço original deste ingresso, quando veio de outro lote do mesmo tipo. */
+    precoOriginal?: number;
 }
 
-/** Um lote/setor do evento, com as ofertas de revenda disponíveis nele. */
+/**
+ * Um tipo/modalidade do evento (pista, camarote, meia-entrada…), com as ofertas de revenda.
+ * A listagem não separa mais por lote: ofertas de lotes diferentes do mesmo tipo ficam juntas.
+ */
 export interface LoteRevenda {
     id: string;
     nome: string;
-    /** Valor de face — quanto custou na venda oficial. */
+    /** Preço original (mercado primário, sem taxas) — vale para as ofertas sem `precoOriginal` próprio. */
     valorOriginal: number;
     ofertas: OfertaRevenda[];
 }
@@ -55,11 +60,14 @@ export const valor = (v: number) => v.toLocaleString("pt-BR", { minimumFractionD
 
 export const totalOferta = (o: OfertaRevenda) => o.ingresso + o.taxa;
 
-/** Como a oferta se posiciona em relação ao valor de face do lote. */
+/** Preço pago no mercado primário por este ingresso, sem taxas. */
+export const precoOriginal = (o: OfertaRevenda, l: LoteRevenda) => o.precoOriginal ?? l.valorOriginal;
+
+/** Como o preço na revenda (sem taxas) se posiciona frente ao preço original. */
 export type ComparacaoValor = "abaixo" | "igual" | "acima";
 
-export const compararComOriginal = (o: OfertaRevenda, valorOriginal: number): ComparacaoValor =>
-    o.ingresso > valorOriginal ? "acima" : o.ingresso < valorOriginal ? "abaixo" : "igual";
+export const compararComOriginal = (o: OfertaRevenda, original: number): ComparacaoValor =>
+    o.ingresso > original ? "acima" : o.ingresso < original ? "abaixo" : "igual";
 
 export const ofertasDoLote = (l: LoteRevenda) => l.ofertas.reduce((t, o) => t + o.disponiveis, 0);
 
@@ -108,27 +116,28 @@ export const EVENTOS: EventoRevenda[] = [
         lotes: [
             {
                 id: "pista-1",
-                nome: "PISTA 1º LOTE - Inteira",
+                nome: "PISTA - Inteira",
                 valorOriginal: 240,
                 ofertas: [
                     { id: "a", ingresso: 220, taxa: 26.5, disponiveis: 2 },
                     { id: "b", ingresso: 240, taxa: 29, disponiveis: 1 },
-                    { id: "c", ingresso: 290, taxa: 35, disponiveis: 1 },
+                    // Veio do 2º lote: o preço original é outro, mas o tipo é o mesmo.
+                    { id: "c", ingresso: 290, taxa: 35, disponiveis: 1, precoOriginal: 280 },
                 ],
             },
             {
                 id: "front-2",
-                nome: "FRONT STAGE 2º LOTE - Inteira",
+                nome: "FRONT STAGE - Inteira",
                 valorOriginal: 480,
                 ofertas: [
-                    { id: "a", ingresso: 520, taxa: 62.5, disponiveis: 1 },
+                    { id: "a", ingresso: 520, taxa: 62.5, disponiveis: 1, precoOriginal: 560 },
                     { id: "b", ingresso: 620, taxa: 74.5, disponiveis: 3 },
                     { id: "c", ingresso: 720, taxa: 86.5, disponiveis: 1 },
                 ],
             },
             {
                 id: "pista-meia",
-                nome: "PISTA 1º LOTE - Meia Solidária",
+                nome: "PISTA - Meia Solidária",
                 valorOriginal: 120,
                 ofertas: [{ id: "a", ingresso: 140, taxa: 17, disponiveis: 1 }],
             },
@@ -162,7 +171,7 @@ export const EVENTOS: EventoRevenda[] = [
         lotes: [
             {
                 id: "lista-2",
-                nome: "LISTA 2º LOTE - Inteira",
+                nome: "LISTA - Inteira",
                 valorOriginal: 250,
                 ofertas: [
                     { id: "a", ingresso: 270, taxa: 32.5, disponiveis: 3 },
@@ -171,7 +180,7 @@ export const EVENTOS: EventoRevenda[] = [
             },
             {
                 id: "open-bar",
-                nome: "OPEN BAR 1º LOTE - Inteira",
+                nome: "OPEN BAR - Inteira",
                 valorOriginal: 650,
                 ofertas: [{ id: "a", ingresso: 720, taxa: 86.5, disponiveis: 2 }],
             },
@@ -240,7 +249,7 @@ export const EVENTOS: EventoRevenda[] = [
         lotes: [
             {
                 id: "pista-3",
-                nome: "PISTA 3º LOTE - Inteira",
+                nome: "PISTA - Inteira",
                 valorOriginal: 220,
                 ofertas: [
                     { id: "a", ingresso: 200, taxa: 24, disponiveis: 2 },
@@ -249,13 +258,13 @@ export const EVENTOS: EventoRevenda[] = [
             },
             {
                 id: "premium",
-                nome: "PISTA PREMIUM 2º LOTE - Inteira",
+                nome: "PISTA PREMIUM - Inteira",
                 valorOriginal: 490,
                 ofertas: [{ id: "a", ingresso: 560, taxa: 67.5, disponiveis: 1 }],
             },
             {
                 id: "pista-meia",
-                nome: "PISTA 3º LOTE - Meia Solidária",
+                nome: "PISTA - Meia Solidária",
                 valorOriginal: 110,
                 ofertas: [{ id: "a", ingresso: 125, taxa: 15, disponiveis: 2 }],
             },
@@ -341,7 +350,7 @@ export const EVENTOS: EventoRevenda[] = [
         lotes: [
             {
                 id: "lounge-3",
-                nome: "LOUNGE 3º LOTE - Inteira",
+                nome: "LOUNGE - Inteira",
                 valorOriginal: 140,
                 ofertas: [
                     { id: "a", ingresso: 140, taxa: 17, disponiveis: 4 },
@@ -384,7 +393,7 @@ export const EVENTOS: EventoRevenda[] = [
         lotes: [
             {
                 id: "pista-4",
-                nome: "PISTA 4º LOTE - Inteira",
+                nome: "PISTA - Inteira",
                 valorOriginal: 80,
                 ofertas: [
                     { id: "a", ingresso: 90, taxa: 11, disponiveis: 3 },
@@ -427,7 +436,7 @@ export const EVENTOS: EventoRevenda[] = [
         lotes: [
             {
                 id: "pista-2",
-                nome: "PISTA 2º LOTE - Inteira",
+                nome: "PISTA - Inteira",
                 valorOriginal: 110,
                 ofertas: [
                     { id: "a", ingresso: 100, taxa: 12, disponiveis: 2 },
@@ -436,13 +445,13 @@ export const EVENTOS: EventoRevenda[] = [
             },
             {
                 id: "premium",
-                nome: "ÁREA PREMIUM 2º LOTE - Inteira",
+                nome: "ÁREA PREMIUM - Inteira",
                 valorOriginal: 300,
                 ofertas: [{ id: "a", ingresso: 340, taxa: 41, disponiveis: 1 }],
             },
             {
                 id: "pista-meia",
-                nome: "PISTA 2º LOTE - Meia Solidária",
+                nome: "PISTA - Meia Solidária",
                 valorOriginal: 55,
                 ofertas: [{ id: "a", ingresso: 65, taxa: 8, disponiveis: 1 }],
             },
@@ -477,7 +486,7 @@ export const EVENTOS: EventoRevenda[] = [
         lotes: [
             {
                 id: "pista-comum",
-                nome: "PISTA COMUM 2º LOTE - Inteira",
+                nome: "PISTA COMUM - Inteira",
                 valorOriginal: 190,
                 ofertas: [
                     { id: "a", ingresso: 210, taxa: 25.5, disponiveis: 3 },
@@ -486,7 +495,7 @@ export const EVENTOS: EventoRevenda[] = [
             },
             {
                 id: "pista-premium",
-                nome: "PISTA PREMIUM 1º LOTE - Inteira",
+                nome: "PISTA PREMIUM - Inteira",
                 valorOriginal: 480,
                 ofertas: [{ id: "a", ingresso: 540, taxa: 65, disponiveis: 2 }],
             },
@@ -527,7 +536,7 @@ export const EVENTOS: EventoRevenda[] = [
         lotes: [
             {
                 id: "deck-2",
-                nome: "DECK 2º LOTE - Inteira",
+                nome: "DECK - Inteira",
                 valorOriginal: 165,
                 ofertas: [
                     { id: "a", ingresso: 180, taxa: 21.5, disponiveis: 2 },

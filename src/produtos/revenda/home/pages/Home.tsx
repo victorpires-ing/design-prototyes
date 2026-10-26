@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { CheckCircle, ShieldTick, SwitchHorizontal01, Ticket01 } from "@untitledui/icons";
-import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
 import logoWhite from "../../../../assets/Company logo_white.svg";
 import { RevendaHeader, SOMBRA_BOTAO } from "../../components/RevendaHeader";
@@ -10,17 +9,7 @@ import { CardIngresso } from "../components/CardIngresso";
 import { CarrosselMaisBuscados } from "../components/CarrosselMaisBuscados";
 import { Faq } from "../components/Faq";
 import { EVENTOS, MAIS_BUSCADOS, type EventoRevenda } from "../../data/eventos";
-
-/** Força o tema light enquanto o canal (consumer) está montado. */
-function useForceLightTheme() {
-    const { theme, setTheme } = useTheme();
-    useEffect(() => {
-        const previous = theme;
-        setTheme("light");
-        return () => setTheme(previous);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-}
+import { useForceLightTheme } from "../../utils/use-force-light-theme";
 
 /**
  * Textura do hero — aproximação do shader de partículas do Figma

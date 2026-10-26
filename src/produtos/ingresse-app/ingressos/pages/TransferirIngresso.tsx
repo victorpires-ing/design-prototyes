@@ -10,6 +10,8 @@ import { StatusBar } from "../../components/StatusBar";
 import { BankCardSendAnimation } from "../components/BankCardSendAnimation";
 import { Zigzag } from "../../components/Zigzag";
 import { getCombo, getEvento, getItem } from "../data/eventos";
+import { CampoFormulario, formatarResposta, respostaVazia, valorPadrao } from "../components/CampoFormulario";
+import { getFormulario } from "../data/formulario-store";
 import alertAmareloIcon from "../../assets/alert-amarelo.png";
 
 const DESTINATARIO = "Mariana Costa Lima";
@@ -40,10 +42,14 @@ export function TransferirIngresso() {
 
     // Questionário (apenas eventos que pedem formulário, ex.: São Silvestre)
     const [formOpen, setFormOpen] = useState(false);
-    const [respostas, setRespostas] = useState<Record<string, string>>({});
-    const perguntas = combo?.questionario ?? [];
+    // O estoque aqui é só leitura: a transferência não consome vaga, quem consome é a edição do formulário.
+    const perguntas = getFormulario(combo?.id, combo?.questionario ?? []);
+    const [respostas, setRespostas] = useState<Record<string, string>>(() =>
+        Object.fromEntries(perguntas.map((q) => [q.pergunta, valorPadrao(q)])),
+    );
     const temFormulario = perguntas.length > 0;
-    const formOk = perguntas.every((q) => (respostas[q.pergunta] ?? "").trim() !== "");
+    const faltando = perguntas.filter((q) => respostaVazia(q, respostas[q.pergunta] ?? ""));
+    const formOk = faltando.length === 0;
 
     // Ao buscar, rola suavemente até o resultado (feedback de que algo aconteceu).
     const resultRef = useRef<HTMLDivElement>(null);
@@ -90,18 +96,23 @@ export function TransferirIngresso() {
                             </div>
                         </div>
 
-                        <div className="mt-5 flex flex-col gap-4">
+                        <div className="mt-5 flex flex-col gap-5">
                             {perguntas.map((q) => (
-                                <Input
+                                <CampoFormulario
                                     key={q.pergunta}
-                                    isRequired
-                                    label={q.pergunta}
-                                    placeholder="Sua resposta"
-                                    value={respostas[q.pergunta] ?? ""}
+                                    pergunta={q}
+                                    valor={respostas[q.pergunta] ?? ""}
+                                    isInvalid={faltando.includes(q)}
                                     onChange={(v) => setRespostas((r) => ({ ...r, [q.pergunta]: v }))}
                                 />
                             ))}
                         </div>
+
+                        {faltando.length > 0 && (
+                            <p className="mt-5 text-sm text-error-primary">
+                                {faltando.length === 1 ? "Falta responder 1 pergunta obrigatória." : `Falta responder ${faltando.length} perguntas obrigatórias.`}
+                            </p>
+                        )}
 
                         <Button
                             size="lg"
@@ -310,8 +321,10 @@ export function TransferirIngresso() {
                     <div className="mt-4 divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
                         {perguntas.map((q) => (
                             <div key={q.pergunta} className="p-3">
-                                <p className="text-xs text-tertiary">{q.pergunta}</p>
-                                <p className="mt-0.5 text-sm font-semibold text-primary">{respostas[q.pergunta]}</p>
+                                <p className="text-sm text-tertiary">{q.pergunta}</p>
+                                <p className="mt-0.5 text-sm font-semibold text-primary">
+                                    {formatarResposta(q, respostas[q.pergunta] ?? "") || "Não respondido"}
+                                </p>
                             </div>
                         ))}
                     </div>

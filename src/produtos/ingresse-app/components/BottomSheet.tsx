@@ -20,7 +20,7 @@ export function BottomSheet({ isOpen, onClose, children }: { isOpen: boolean; on
             <AriaModal
                 className={({ isEntering, isExiting }) =>
                     cx(
-                        "w-full max-w-[420px] rounded-t-3xl bg-primary p-5 pb-8 shadow-xl outline-hidden",
+                        "max-h-[88dvh] w-full max-w-[420px] overflow-y-auto rounded-t-3xl bg-primary p-5 pb-8 shadow-xl outline-hidden",
                         isEntering && "duration-300 ease-out animate-in slide-in-from-bottom",
                         isExiting && "duration-200 ease-in animate-out slide-out-to-bottom",
                     )

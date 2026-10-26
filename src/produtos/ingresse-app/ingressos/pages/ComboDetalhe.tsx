@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, ClipboardCheck, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
+import { ArrowLeft, ClipboardCheck, Edit03, InfoCircle, Send01, Tag01, UserRight01, Wallet02 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
@@ -12,7 +12,9 @@ import { GradientFill } from "../../components/GradientFill";
 import { Zigzag } from "../../components/Zigzag";
 import { getEvento, type ComboStatus } from "../data/eventos";
 import { isTransferido } from "../data/transfer-store";
+import { getFormulario } from "../data/formulario-store";
 import { InfoIngressoSheet } from "../components/InfoIngressoSheet";
+import { formatarResposta } from "../components/CampoFormulario";
 
 const STATUS: Record<ComboStatus, { label: string; color: "gray" | "brand" | "blue" }> = {
     finalizado: { label: "Finalizado", color: "gray" },
@@ -43,12 +45,22 @@ export function ComboDetalhe() {
         );
     }
 
+    const respostas = getFormulario(combo.id, combo.questionario ?? []);
+
     const termo = evento.id === "sao-silvestre" ? "inscrição" : "ingresso";
     const acoes: FabAction[] = [
         { icon: Send01, label: `Transferir ${termo}`, short: "Transferir", onClick: () => navigate(`/ingresse-app/ingressos/transferir/${evento.id}/${combo.id}`) },
         { icon: Tag01, label: `Revender ${termo}`, short: "Revender" },
         { icon: Wallet02, label: "Adicionar à Carteira", short: "Carteira", dark: true },
     ];
+    if (respostas.length > 0) {
+        acoes.splice(2, 0, {
+            icon: Edit03,
+            label: "Editar formulário",
+            short: "Formulário",
+            onClick: () => navigate(`/ingresse-app/ingressos/formulario/${evento.id}/${combo.id}`),
+        });
+    }
 
     return (
         <AppShell showTabBar={false} bottomBar={transferido ? undefined : <ActionFab actions={acoes} />}>
@@ -256,10 +268,10 @@ export function ComboDetalhe() {
                                         <h2 className="text-md font-bold text-primary">Respostas do formulário</h2>
                                     </div>
                                     <div className="divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
-                                        {combo.questionario.map((q) => (
+                                        {respostas.map((q) => (
                                             <div key={q.pergunta} className="p-4">
                                                 <p className="text-sm font-semibold text-primary">{q.pergunta}</p>
-                                                <p className="mt-0.5 text-sm text-tertiary">{q.resposta}</p>
+                                                <p className="mt-0.5 text-sm text-tertiary">{formatarResposta(q, q.resposta) || "Não respondido"}</p>
                                             </div>
                                         ))}
                                     </div>

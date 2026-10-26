@@ -8,6 +8,9 @@ import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { GradientFill } from "../components/GradientFill";
 import { DesktopDetalhe, MobileComboView } from "../components/IngressosModal";
+import { EditarFormularioModal } from "../components/EditarFormularioModal";
+import { EditarFormularioMobile } from "../components/EditarFormularioMobile";
+import { WebToast } from "../components/WebToast";
 import { SAO_SILVESTRE } from "../data/sao-silvestre";
 import { isTransferido } from "../data/transfer-store";
 
@@ -391,7 +394,9 @@ export function Carteira() {
     const [desktopDetalhe, setDesktopDetalhe] = useState(false);
     const [desktopForm, setDesktopForm] = useState(false);
     // Mobile espelha o app: lista de eventos → listagem de ingressos → ingresso (detalhe) → formulário (reenvio)
-    const [mobileScreen, setMobileScreen] = useState<"lista" | "ingressos" | "detalhe" | "formulario">("lista");
+    const [mobileScreen, setMobileScreen] = useState<"lista" | "ingressos" | "detalhe" | "formulario" | "editar-formulario">("lista");
+    // Edição do formulário: modal no desktop, tela cheia no frame do celular.
+    const [editandoFormulario, setEditandoFormulario] = useState<string | null>(null);
     // Cenário de erro: formulário não enviado corretamente
     const [erroFormulario, setErroFormulario] = useState(false);
 
@@ -459,6 +464,7 @@ export function Carteira() {
                                 onTransfer={(combo) => navigate("/carteira-web/transferir", { state: { viewport, comboId: combo.id } })}
                                 erro={erroFormulario}
                                 onResponderFormulario={() => setDesktopForm(true)}
+                                onEditarFormulario={(combo) => setEditandoFormulario(combo.id)}
                             />
                         ) : (
                             <CarteiraContent onCardClick={() => setDesktopDetalhe(true)} erro={erroFormulario} />
@@ -467,6 +473,8 @@ export function Carteira() {
                         <MobileEventList onEventClick={() => setMobileScreen("ingressos")} />
                     ) : mobileScreen === "ingressos" ? (
                         <MobileIngressos card={PROXIMOS[0]} erro={erroFormulario} onBack={() => setMobileScreen("lista")} onOpen={() => setMobileScreen("detalhe")} />
+                    ) : mobileScreen === "editar-formulario" ? (
+                        <EditarFormularioMobile comboId={SAO_SILVESTRE.combos[0].id} onBack={() => setMobileScreen("detalhe")} />
                     ) : mobileScreen === "formulario" ? (
                         <FormularioInscricao
                             onBack={() => setMobileScreen("detalhe")}
@@ -485,10 +493,18 @@ export function Carteira() {
                             onTransfer={(combo) => navigate("/carteira-web/transferir", { state: { viewport, comboId: combo.id } })}
                             erro={erroFormulario}
                             onResponderFormulario={() => setMobileScreen("formulario")}
+                            onEditarFormulario={() => setMobileScreen("editar-formulario")}
                         />
                     )}
+                    <WebToast ancora={viewport === "mobile" ? "frame" : "janela"} />
                 </div>
             </div>
+
+            <EditarFormularioModal
+                isOpen={editandoFormulario !== null}
+                comboId={editandoFormulario ?? SAO_SILVESTRE.combos[0].id}
+                onClose={() => setEditandoFormulario(null)}
+            />
         </div>
     );
 }

@@ -87,6 +87,7 @@ import { TrocarPagamentoPix as IngresseAppTrocarPagamentoPix } from '../produtos
 import { TrocarPagamentoCartao as IngresseAppTrocarPagamentoCartao } from '../produtos/ingresse-app/ingressos/pages/TrocarPagamentoCartao';
 import { TrocaSucesso as IngresseAppTrocaSucesso } from '../produtos/ingresse-app/ingressos/pages/TrocaSucesso';
 import { ComboDetalhe as IngresseAppComboDetalhe } from '../produtos/ingresse-app/ingressos/pages/ComboDetalhe';
+import { EditarFormulario as IngresseAppEditarFormulario } from '../produtos/ingresse-app/ingressos/pages/EditarFormulario';
 import { ProdutoDetalhe as IngresseAppProdutoDetalhe } from '../produtos/ingresse-app/ingressos/pages/ProdutoDetalhe';
 import { TransferirIngresso as IngresseAppTransferir } from '../produtos/ingresse-app/ingressos/pages/TransferirIngresso';
 import { TransferirDependente as IngresseAppTransferirDependente } from '../produtos/ingresse-app/ingressos/pages/TransferirDependente';
@@ -353,6 +354,7 @@ export default function App() {
         <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/pagamento/cartao" element={<IngresseAppTrocarPagamentoCartao />} />
         <Route path="/ingresse-app/ingressos/trocar/:eventId/:itemId/sucesso" element={<IngresseAppTrocaSucesso />} />
         <Route path="/ingresse-app/ingressos/combo/:eventId/:comboId" element={<IngresseAppComboDetalhe />} />
+        <Route path="/ingresse-app/ingressos/formulario/:eventId/:comboId" element={<IngresseAppEditarFormulario />} />
         <Route path="/ingresse-app/ingressos/produto/:eventId/:itemId" element={<IngresseAppProdutoDetalhe />} />
         <Route path="/ingresse-app/ingressos/transferir/:eventId/:id" element={<IngresseAppTransferir />} />
         <Route path="/ingresse-app/ingressos/transferir-dependente/:eventId/:id" element={<IngresseAppTransferirDependente />} />

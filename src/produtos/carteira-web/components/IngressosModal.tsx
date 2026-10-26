@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { FC } from "react";
-import { AlertCircle, ArrowLeft, ChevronDown, ClipboardCheck, InfoCircle, Plus, Send01, Tag01, UserRight01, Wallet02, XClose } from "@untitledui/icons";
+import { AlertCircle, ArrowLeft, ChevronDown, ClipboardCheck, Edit03, InfoCircle, Plus, Send01, Tag01, UserRight01, Wallet02, XClose } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
+import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import googleWalletBtn from "../assets/view-in-google-wallet-svg/pt-BR_view_in_wallet_wallet-button.svg";
@@ -10,6 +11,8 @@ import { GradientFill } from "./GradientFill";
 import { Zigzag } from "./Zigzag";
 import { SAO_SILVESTRE, type Combo, type ComboItem, type EventoSS, type Resposta } from "../data/sao-silvestre";
 import { getTransferencia } from "../data/transfer-store";
+import { getFormulario } from "../data/formulario-store";
+import { formatarResposta } from "./CampoFormulario";
 
 const STATUS: Record<string, { label: string; color: "brand" | "blue" | "gray" }> = {
     hoje: { label: "Evento de hoje", color: "brand" },
@@ -56,6 +59,7 @@ export function MobileComboView({
     onTransfer,
     erro = false,
     onResponderFormulario,
+    onEditarFormulario,
 }: {
     ev: EventoSS;
     combo: Combo;
@@ -66,9 +70,11 @@ export function MobileComboView({
     /** Erro no formulário: embaça o QR e exibe overlay para responder novamente. */
     erro?: boolean;
     onResponderFormulario?: () => void;
+    onEditarFormulario?: () => void;
 }) {
     const transferencia = getTransferencia(combo.id);
     const [actionsOpen, setActionsOpen] = useState(false);
+    const respostasAtuais = getFormulario(combo.id, ev.questionario);
 
     return (
         <>
@@ -217,17 +223,17 @@ export function MobileComboView({
                         </div>
 
                         {/* Respostas do formulário (preenchido na compra) — escondidas no cenário de erro */}
-                        {!erro && ev.questionario.length > 0 && (
+                        {!erro && respostasAtuais.length > 0 && (
                             <div>
                                 <div className="flex items-center gap-2 pb-3">
                                     <ClipboardCheck className="size-5 text-brand-secondary" />
                                     <h2 className="text-md font-bold text-primary">Respostas do formulário</h2>
                                 </div>
                                 <div className="divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
-                                    {ev.questionario.map((q) => (
+                                    {respostasAtuais.map((q) => (
                                         <div key={q.pergunta} className="p-4">
                                             <p className="text-sm font-semibold text-primary">{q.pergunta}</p>
-                                            <p className="mt-0.5 text-sm text-tertiary">{q.resposta}</p>
+                                            <p className="mt-0.5 text-sm text-tertiary">{formatarResposta(q, q.resposta) || "Não respondido"}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -249,12 +255,25 @@ export function MobileComboView({
                         {/* Ações extras reveladas pelo "Mais" (pílulas) */}
                         {actionsOpen && (
                             <div className="flex flex-col items-end gap-2.5 duration-150 animate-in fade-in slide-in-from-bottom-2">
+                                {!erro && respostasAtuais.length > 0 && onEditarFormulario && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setActionsOpen(false);
+                                            onEditarFormulario();
+                                        }}
+                                        className="flex items-center gap-2.5 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary shadow-lg ring-1 ring-border-secondary transition duration-100 ease-linear active:scale-95"
+                                    >
+                                        <Edit03 className="size-5 text-fg-quaternary" />
+                                        <span>Editar formulário</span>
+                                    </button>
+                                )}
                                 <button
                                     type="button"
                                     onClick={() => setActionsOpen(false)}
-                                    className="flex items-center gap-2.5 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-lg ring-1 ring-black/10 transition duration-100 ease-linear active:scale-95"
+                                    className="flex items-center gap-2.5 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-primary_on-brand shadow-lg ring-1 ring-white/15 transition duration-100 ease-linear active:scale-95"
                                 >
-                                    <Wallet02 className="size-5 text-white" />
+                                    <Wallet02 className="size-5 text-primary_on-brand" />
                                     <span>Adicionar à Carteira</span>
                                 </button>
                             </div>
@@ -431,11 +450,13 @@ export function DesktopDetalhe({
     onTransfer,
     erro = false,
     onResponderFormulario,
+    onEditarFormulario,
 }: {
     onBack: () => void;
     onTransfer?: (combo: Combo) => void;
     erro?: boolean;
     onResponderFormulario?: () => void;
+    onEditarFormulario?: (combo: Combo) => void;
 }) {
     const ev = SAO_SILVESTRE;
     return (
@@ -475,6 +496,7 @@ export function DesktopDetalhe({
                         onTransfer={() => onTransfer?.(c)}
                         erro={erro}
                         onResponderFormulario={onResponderFormulario}
+                        onEditarFormulario={onEditarFormulario ? () => onEditarFormulario(c) : undefined}
                     />
                 ))}
             </div>
@@ -491,6 +513,7 @@ function ComboCard({
     onTransfer,
     erro = false,
     onResponderFormulario,
+    onEditarFormulario,
 }: {
     combo: Combo;
     titular: string;
@@ -500,9 +523,11 @@ function ComboCard({
     onTransfer?: () => void;
     erro?: boolean;
     onResponderFormulario?: () => void;
+    onEditarFormulario?: () => void;
 }) {
     const [open, setOpen] = useState(true);
     const transferencia = getTransferencia(combo.id);
+    const respostasAtuais = getFormulario(combo.id, questionario);
 
     return (
         <div className="overflow-hidden rounded-xl ring-1 ring-border-secondary">
@@ -662,10 +687,10 @@ function ComboCard({
                                 <h4 className="text-sm font-bold text-primary">Respostas do formulário</h4>
                             </div>
                             <div className="mt-2 divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-                                {questionario.map((q) => (
+                                {respostasAtuais.map((q) => (
                                     <div key={q.pergunta} className="p-4">
                                         <p className="text-sm font-semibold text-primary">{q.pergunta}</p>
-                                        <p className="mt-0.5 text-sm text-tertiary">{q.resposta}</p>
+                                        <p className="mt-0.5 text-sm text-tertiary">{formatarResposta(q, q.resposta) || "Não respondido"}</p>
                                     </div>
                                 ))}
                             </div>
@@ -675,10 +700,15 @@ function ComboCard({
                     {/* Ações desktop (lado a lado, centralizadas). No mobile, ver rodapé fixo. */}
                     {!compact && (
                         <div className="flex flex-wrap items-center justify-center gap-3">
+                            {!erro && respostasAtuais.length > 0 && onEditarFormulario && (
+                                <Button size="md" color="primary" iconLeading={Edit03} onClick={onEditarFormulario}>
+                                    Editar formulário
+                                </Button>
+                            )}
                             <button
                                 type="button"
                                 onClick={onTransfer}
-                                className="flex items-center justify-center gap-2 rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-semibold text-white transition duration-100 ease-linear hover:brightness-95"
+                                className="flex items-center justify-center gap-2 rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-semibold text-primary_on-brand transition duration-100 ease-linear hover:brightness-95"
                             >
                                 <Send01 className="size-5 shrink-0" />
                                 Transferir inscrição

@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Home02, SearchLg, Ticket02, User01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
+import { AppToast } from "./AppToast";
+import { ThemeToggle } from "./ThemeToggle";
 
 export type AppTab = "inicio" | "buscar" | "ingressos" | "perfil";
 
@@ -27,11 +29,19 @@ export function AppShell({ activeTab, showTabBar = true, bottomBar, scrollClassN
     const navigate = useNavigate();
 
     return (
-        <div className="flex min-h-screen justify-center bg-secondary md:py-8">
+        <div className="relative flex min-h-screen justify-center bg-secondary md:py-8">
+            {/* Fora do celular: alterna claro/escuro (só aparece quando sobra área ao redor do frame) */}
+            <div className="fixed top-6 right-6 z-50 hidden md:block">
+                <ThemeToggle />
+            </div>
+
             <div className="relative flex h-dvh w-full max-w-[420px] flex-col overflow-hidden bg-primary md:h-[calc(100dvh-4rem)] md:max-h-[860px] md:min-h-0 md:rounded-[2.5rem] md:shadow-2xl md:ring-1 md:ring-border-secondary">
                 <div className={cx("scrollbar-hide min-h-0 flex-1 overflow-y-auto", showTabBar && "pb-24", bottomBar && "bg-secondary pb-36", scrollClassName)}>{children}</div>
 
                 {bottomBar && <div className="pointer-events-none absolute inset-0 z-20">{bottomBar}</div>}
+
+                {/* Notificações do app, dentro da moldura do celular */}
+                <AppToast ancora={bottomBar ? "barra-de-acoes" : showTabBar ? "tab-bar" : "rodape"} />
 
                 {showTabBar && (
                     <nav className="absolute inset-x-0 bottom-0 flex items-center justify-around border-t border-secondary bg-primary px-2 pt-2 pb-4">

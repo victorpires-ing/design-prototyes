@@ -16,7 +16,7 @@ export interface FabAction {
 
 const CircleAction = ({ icon: Icon, label, onClick }: { icon: FC<{ className?: string }>; label: string; onClick?: () => void }) => (
     <button type="button" onClick={onClick} className="pointer-events-auto flex w-16 flex-col items-center gap-1.5">
-        <span className="flex size-14 items-center justify-center rounded-full bg-brand-solid text-primary_on-brand shadow-lg transition duration-100 ease-linear active:scale-95">
+        <span className="flex size-14 items-center justify-center rounded-full bg-brand-solid text-white shadow-lg transition duration-100 ease-linear active:scale-95">
             <Icon className="size-6" />
         </span>
         <span className="text-center text-sm leading-tight font-medium text-secondary">{label}</span>

@@ -708,7 +708,7 @@ function ComboCard({
                             <button
                                 type="button"
                                 onClick={onTransfer}
-                                className="flex items-center justify-center gap-2 rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-semibold text-primary_on-brand transition duration-100 ease-linear hover:brightness-95"
+                                className="flex items-center justify-center gap-2 rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-semibold text-white transition duration-100 ease-linear hover:brightness-95"
                             >
                                 <Send01 className="size-5 shrink-0" />
                                 Transferir inscrição

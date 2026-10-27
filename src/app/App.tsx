@@ -190,6 +190,7 @@ import { AnaliseResultados as PayInAnaliseResultados } from '../produtos/payin/c
 import { Pagamento as CheckoutPagamento } from '../produtos/checkout/melhorias-de-compra/pages/pagamento';
 import { Cartao as CheckoutCartao } from '../produtos/checkout/melhorias-de-compra/pages/cartao';
 import { NaoAutorizado as CheckoutNaoAutorizado } from '../produtos/checkout/melhorias-de-compra/pages/nao-autorizado';
+import { Selecao as ProtecaoDeCompra } from '../produtos/checkout/protecao-de-compra/pages/selecao';
 import { Eventos as CashoutEventos } from '../produtos/payout/contrato-quick-win-finance/pages/eventos';
 import { Produtoras as CashoutProdutoras } from '../produtos/payout/contrato-quick-win-finance/pages/produtoras';
 
@@ -420,6 +421,9 @@ export default function App() {
         <Route path="/checkout/melhorias-de-compra" element={<CheckoutPagamento />} />
         <Route path="/checkout/melhorias-de-compra/cartao" element={<CheckoutCartao />} />
         <Route path="/checkout/melhorias-de-compra/nao-autorizado" element={<CheckoutNaoAutorizado />} />
+        <Route path="/checkout/protecao-de-compra" element={<ProtecaoDeCompra />} />
+        <Route path="/checkout/protecao-de-compra/v2" element={<ProtecaoDeCompra variante="v2" />} />
+        <Route path="/checkout/protecao-de-compra/v3" element={<ProtecaoDeCompra variante="v3" />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </EquipeV3Provider>

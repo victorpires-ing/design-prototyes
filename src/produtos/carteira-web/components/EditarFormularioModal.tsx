@@ -38,10 +38,10 @@ export function EditarFormularioModal({ isOpen, onClose, comboId }: EditarFormul
             const primeiro = conflitos[0];
             const motivo =
                 conflitos.length === 1
-                    ? `Alguém levou a última unidade em "${primeiro.pergunta}". Escolha outra opção.`
-                    : "Outras pessoas levaram as últimas unidades. Escolha outras opções.";
+                    ? `A opção esgotou em "${primeiro.pergunta}" enquanto você preenchia. Escolha outra.`
+                    : "As opções esgotaram enquanto você preenchia. Escolha outras.";
             mostrarToast(
-                conflitos.length === 1 ? `"${primeiro.valor}" acabou de esgotar` : `${conflitos.length} opções acabaram de esgotar`,
+                conflitos.length === 1 ? `"${primeiro.valor}" esgotou` : `${conflitos.length} opções esgotaram`,
                 salvas.length > 0 ? `${motivo} As outras alterações foram salvas.` : motivo,
                 "aviso",
             );

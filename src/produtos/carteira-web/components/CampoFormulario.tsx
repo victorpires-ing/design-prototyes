@@ -10,14 +10,11 @@ import { cx } from "@/utils/cx";
 import type { OpcaoResposta, Resposta } from "../data/sao-silvestre";
 import { juntarValores, valoresDe } from "../data/formulario-store";
 
-/** Texto de apoio do estoque da opção. */
-export const textoEstoque = (opcao: OpcaoResposta): string | undefined => {
-    if (typeof opcao.estoque !== "number") return undefined;
-    if (opcao.estoque <= 0) return "Esgotado";
-    if (opcao.estoque === 1) return "Última unidade";
-    if (opcao.estoque <= 3) return `Últimas ${opcao.estoque} unidades`;
-    return `${opcao.estoque} disponíveis`;
-};
+/** Texto de apoio do estoque da opção.
+ *  Só marca o que não dá mais para escolher: a contagem é ruído para quem responde,
+ *  muda sozinha enquanto a tela está aberta e vira promessa que o sistema não faz. */
+export const textoEstoque = (opcao: OpcaoResposta): string | undefined =>
+    typeof opcao.estoque === "number" && opcao.estoque <= 0 ? "Esgotado" : undefined;
 
 /** Esgotada e não é o que a pessoa já tinha escolhido: não dá para selecionar. */
 const indisponivel = (opcao: OpcaoResposta, originais: string[]) =>

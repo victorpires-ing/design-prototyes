@@ -81,7 +81,7 @@ export function TransferirIngresso() {
                         >
                             <ArrowLeft className="size-5" />
                         </button>
-                        <h1 className="pt-4 text-xl font-bold text-primary">Formulário do participante</h1>
+                        <h1 className="pt-4 text-xl font-bold text-primary">{evento.tipo === "sports" ? "Formulário do atleta" : "Formulário do participante"}</h1>
                     </div>
 
                     <div className="flex flex-1 flex-col px-5 pt-4 pb-8">

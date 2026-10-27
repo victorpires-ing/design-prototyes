@@ -3,7 +3,7 @@ import { ArrowLeft } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { CampoFormulario, respostaVazia } from "./CampoFormulario";
 import { mostrarToast } from "./WebToast";
-import { SAO_SILVESTRE } from "../data/sao-silvestre";
+import { SAO_SILVESTRE, tituloFormulario } from "../data/sao-silvestre";
 import { getFormulario, mesmaResposta, salvarFormulario } from "../data/formulario-store";
 
 /** Edição do formulário no viewport mobile: tela cheia dentro do frame, como no app. */
@@ -57,7 +57,7 @@ export function EditarFormularioMobile({ comboId, onBack }: { comboId: string; o
                 >
                     <ArrowLeft className="size-5" />
                 </button>
-                <h1 className="pt-4 text-xl font-bold text-primary">Editar formulário</h1>
+                <h1 className="pt-4 text-xl font-bold text-primary">Editar {tituloFormulario(SAO_SILVESTRE.tipo)}</h1>
                 <p className="pt-1 text-sm text-tertiary">Altere as respostas que você enviou na inscrição.</p>
             </div>
 

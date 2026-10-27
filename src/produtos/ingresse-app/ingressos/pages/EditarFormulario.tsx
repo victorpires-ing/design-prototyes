@@ -6,7 +6,7 @@ import { AppShell } from "../../components/AppShell";
 import { StatusBar } from "../../components/StatusBar";
 import { fecharToast, mostrarToast } from "../../components/AppToast";
 import { CampoFormulario, respostaVazia } from "../components/CampoFormulario";
-import { getCombo, getEvento } from "../data/eventos";
+import { getCombo, getEvento, tituloFormulario } from "../data/eventos";
 import { getFormulario, mesmaResposta, salvarFormulario } from "../data/formulario-store";
 
 export function EditarFormulario() {
@@ -83,7 +83,7 @@ export function EditarFormulario() {
                     >
                         <ArrowLeft className="size-5" />
                     </button>
-                    <h1 className="pt-4 text-xl font-bold text-primary">Editar formulário</h1>
+                    <h1 className="pt-4 text-xl font-bold text-primary">Editar {tituloFormulario(evento.tipo)}</h1>
                 </div>
 
                 <div className="flex flex-1 flex-col px-5 pt-4 pb-8">

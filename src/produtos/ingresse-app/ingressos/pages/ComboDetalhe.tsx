@@ -10,7 +10,7 @@ import { StatusBar } from "../../components/StatusBar";
 import { FakeQR } from "../../components/FakeQR";
 import { GradientFill } from "../../components/GradientFill";
 import { Zigzag } from "../../components/Zigzag";
-import { getEvento, type ComboStatus } from "../data/eventos";
+import { getEvento, tituloRespostas, type ComboStatus } from "../data/eventos";
 import { isTransferido } from "../data/transfer-store";
 import { getFormulario } from "../data/formulario-store";
 import { InfoIngressoSheet } from "../components/InfoIngressoSheet";
@@ -265,7 +265,7 @@ export function ComboDetalhe() {
                                 <div>
                                     <div className="flex items-center gap-2 pb-3">
                                         <ClipboardCheck className="size-5 text-brand-secondary" />
-                                        <h2 className="text-md font-bold text-primary">Respostas do formulário</h2>
+                                        <h2 className="text-md font-bold text-primary">{tituloRespostas(evento.tipo)}</h2>
                                     </div>
                                     <div className="divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
                                         {respostas.map((q) => (

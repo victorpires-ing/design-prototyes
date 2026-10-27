@@ -30,6 +30,15 @@ export interface OpcaoResposta {
     disputada?: boolean;
 }
 
+/** O vocabulário muda com o tipo de evento, como na compra: atleta em sports, participante nos demais. */
+export type TipoEvento = "sports" | "futebol" | "entretenimento";
+
+/** Título da seção de respostas. */
+export const tituloRespostas = (tipo?: TipoEvento) => (tipo === "sports" ? "Respostas do formulário do atleta" : "Respostas do formulário");
+
+/** Título do formulário em si (edição, transferência). */
+export const tituloFormulario = (tipo?: TipoEvento) => (tipo === "sports" ? "formulário do atleta" : "formulário");
+
 export type TipoPergunta = "texto" | "texto-longo" | "numero" | "telefone" | "data" | "selecao" | "multipla" | "sim-nao" | "anexo";
 
 export interface Resposta {
@@ -52,6 +61,8 @@ export interface Resposta {
 
 export interface EventoSS {
     title: string;
+    /** Default "entretenimento". */
+    tipo?: TipoEvento;
     local: string;
     diaSemana: string;
     dia: string;
@@ -139,6 +150,7 @@ export const QUESTIONARIO_SAO_SILVESTRE: Resposta[] = [
 
 export const SAO_SILVESTRE: EventoSS = {
     title: "São Silvestre 2026",
+    tipo: "sports",
     local: "Av. Paulista, São Paulo - SP",
     diaSemana: "Qui",
     dia: "31",

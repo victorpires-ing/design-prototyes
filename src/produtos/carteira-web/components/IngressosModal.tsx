@@ -1,15 +1,16 @@
 import { useState } from "react";
 import type { FC } from "react";
-import { AlertCircle, ArrowLeft, ChevronDown, ClipboardCheck, Edit03, InfoCircle, Plus, Send01, Tag01, UserRight01, Wallet02, XClose } from "@untitledui/icons";
+import { AlertCircle, ArrowLeft, ChevronDown, ClipboardCheck, Edit03, InfoCircle, Plus, QrCode01, Send01, Tag01, UserRight01, Wallet02, XClose } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
 import googleWalletBtn from "../assets/view-in-google-wallet-svg/pt-BR_view_in_wallet_wallet-button.svg";
 import { FakeQR } from "./FakeQR";
 import { GradientFill } from "./GradientFill";
 import { Zigzag } from "./Zigzag";
-import { SAO_SILVESTRE, type Combo, type ComboItem, type EventoSS, type Resposta } from "../data/sao-silvestre";
+import { SAO_SILVESTRE, tituloRespostas, type Combo, type ComboItem, type EventoSS, type Resposta } from "../data/sao-silvestre";
 import { getTransferencia } from "../data/transfer-store";
 import { getFormulario } from "../data/formulario-store";
 import { formatarResposta } from "./CampoFormulario";
@@ -147,7 +148,7 @@ export function MobileComboView({
                         <div>
                             <div className="flex items-center gap-2 pb-3">
                                 <ClipboardCheck className="size-5 text-brand-secondary" />
-                                <h2 className="text-md font-bold text-primary">Respostas do formulário</h2>
+                                <h2 className="text-md font-bold text-primary">{tituloRespostas(ev.tipo)}</h2>
                             </div>
                             <div className="divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
                                 {transferencia.respostas.map((q) => (
@@ -227,7 +228,7 @@ export function MobileComboView({
                             <div>
                                 <div className="flex items-center gap-2 pb-3">
                                     <ClipboardCheck className="size-5 text-brand-secondary" />
-                                    <h2 className="text-md font-bold text-primary">Respostas do formulário</h2>
+                                    <h2 className="text-md font-bold text-primary">{tituloRespostas(ev.tipo)}</h2>
                                 </div>
                                 <div className="divide-y divide-border-secondary overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
                                     {respostasAtuais.map((q) => (
@@ -679,46 +680,73 @@ function ComboCard({
                         </div>
                     </div>
 
-                    {/* Respostas do formulário (preenchido na compra) — escondidas no cenário de erro */}
-                    {!erro && (
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <ClipboardCheck className="size-5 text-brand-secondary" />
-                                <h4 className="text-sm font-bold text-primary">Respostas do formulário</h4>
-                            </div>
-                            <div className="mt-2 divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-                                {respostasAtuais.map((q) => (
-                                    <div key={q.pergunta} className="p-4">
-                                        <p className="text-sm font-semibold text-primary">{q.pergunta}</p>
-                                        <p className="mt-0.5 text-sm text-tertiary">{formatarResposta(q, q.resposta) || "Não respondido"}</p>
-                                    </div>
-                                ))}
-                            </div>
+                    {/* As respostas não são impressas na página: com 10 perguntas cabe, com 100 a
+                        página não termina mais. Elas moram no formulário, atrás do botão de editar. */}
+                    {!erro && respostasAtuais.length > 0 && (
+                        <div className="flex items-center gap-2 rounded-xl bg-secondary/50 p-4 ring-1 ring-border-secondary">
+                            <ClipboardCheck className="size-5 shrink-0 text-brand-secondary" />
+                            <p className="text-sm text-secondary">
+                                <span className="font-semibold text-primary">{tituloRespostas(SAO_SILVESTRE.tipo)}: </span>
+                                {respostasAtuais.length} respostas enviadas na inscrição.
+                            </p>
                         </div>
                     )}
 
-                    {/* Ações desktop (lado a lado, centralizadas). No mobile, ver rodapé fixo. */}
-                    {!compact && (
-                        <div className="flex flex-wrap items-center justify-center gap-3">
-                            {!erro && respostasAtuais.length > 0 && onEditarFormulario && (
-                                <Button size="md" color="primary" iconLeading={Edit03} onClick={onEditarFormulario}>
-                                    Editar formulário
-                                </Button>
-                            )}
-                            <button
-                                type="button"
-                                onClick={onTransfer}
-                                className="flex items-center justify-center gap-2 rounded-lg bg-brand-solid px-4 py-2.5 text-sm font-semibold text-white transition duration-100 ease-linear hover:brightness-95"
-                            >
-                                <Send01 className="size-5 shrink-0" />
-                                Transferir inscrição
-                            </button>
-                            {/* Selo oficial "Adicionar à Google Wallet" (PT-BR) */}
-                            <button type="button" aria-label="Adicionar à Google Wallet" className="transition duration-100 ease-linear hover:opacity-90">
-                                <img src={googleWalletBtn} alt="Adicionar à Google Wallet" className="h-10 w-auto" />
-                            </button>
-                        </div>
-                    )}
+                    {/* Ações desktop (lado a lado, centralizadas). No mobile, ver rodapé fixo.
+
+                        O ingresso vai ganhar função com o tempo (associar, transferir, revender,
+                        carteira, formulário) e a faixa não pode crescer sem fim. A regra é a mesma
+                        do "Mais" do celular: as duas primeiras ficam à vista, a Carteira mantém o
+                        selo próprio e o resto desce para "Mais ações". */}
+                    {!compact &&
+                        (() => {
+                            const acoes = [
+                                ...(!erro && respostasAtuais.length > 0 && onEditarFormulario
+                                    ? [{ id: "editar", label: "Editar formulário", icon: Edit03, onClick: onEditarFormulario }]
+                                    : []),
+                                { id: "transferir", label: "Transferir inscrição", icon: Send01, onClick: onTransfer },
+                                { id: "associar", label: "Associar", icon: QrCode01, onClick: undefined },
+                                { id: "revender", label: "Revender", icon: Tag01, onClick: undefined },
+                            ];
+                            const visiveis = acoes.slice(0, 2);
+                            const extras = acoes.slice(2);
+
+                            return (
+                                <div className="flex flex-wrap items-center justify-center gap-3">
+                                    {visiveis.map((acao, i) => (
+                                        <Button
+                                            key={acao.id}
+                                            size="md"
+                                            color={i === 0 ? "primary" : "secondary"}
+                                            iconLeading={acao.icon}
+                                            onClick={acao.onClick}
+                                        >
+                                            {acao.label}
+                                        </Button>
+                                    ))}
+
+                                    {extras.length > 0 && (
+                                        <Dropdown.Root>
+                                            <Button size="md" color="secondary" iconTrailing={ChevronDown}>
+                                                Mais ações
+                                            </Button>
+                                            <Dropdown.Popover placement="bottom end" className="w-56">
+                                                <Dropdown.Menu>
+                                                    {extras.map((acao) => (
+                                                        <Dropdown.Item key={acao.id} label={acao.label} icon={acao.icon} onAction={acao.onClick} />
+                                                    ))}
+                                                </Dropdown.Menu>
+                                            </Dropdown.Popover>
+                                        </Dropdown.Root>
+                                    )}
+
+                                    {/* Selo oficial "Adicionar à Google Wallet" (PT-BR) */}
+                                    <button type="button" aria-label="Adicionar à Google Wallet" className="transition duration-100 ease-linear hover:opacity-90">
+                                        <img src={googleWalletBtn} alt="Adicionar à Google Wallet" className="h-10 w-auto" />
+                                    </button>
+                                </div>
+                            );
+                        })()}
                 </div>
             )}
         </div>

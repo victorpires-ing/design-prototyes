@@ -5,7 +5,7 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { CampoFormulario, respostaVazia } from "./CampoFormulario";
 import { mostrarToast } from "./WebToast";
-import { SAO_SILVESTRE } from "../data/sao-silvestre";
+import { SAO_SILVESTRE, tituloFormulario } from "../data/sao-silvestre";
 import { getFormulario, mesmaResposta, salvarFormulario } from "../data/formulario-store";
 
 interface EditarFormularioModalProps {
@@ -64,7 +64,7 @@ export function EditarFormularioModal({ isOpen, onClose, comboId }: EditarFormul
                     <div className="flex max-h-[85vh] w-full max-w-xl flex-col rounded-xl bg-primary shadow-xl ring-1 ring-border-secondary">
                         <div className="flex items-start gap-4 border-b border-secondary p-6">
                             <div className="flex-1">
-                                <h2 className="text-lg font-semibold text-primary">Editar formulário</h2>
+                                <h2 className="text-lg font-semibold text-primary">Editar {tituloFormulario(SAO_SILVESTRE.tipo)}</h2>
                                 <p className="mt-1 text-sm text-tertiary">
                                     Altere as respostas que você enviou na inscrição da {SAO_SILVESTRE.title}.
                                 </p>

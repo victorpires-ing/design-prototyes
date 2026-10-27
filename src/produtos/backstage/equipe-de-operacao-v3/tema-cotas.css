@@ -29,10 +29,10 @@
     --ring-color-brand-solid_hover: var(--cotas-brand-hover);
     --outline-color-brand-solid: var(--cotas-brand);
 
-    --color-border-brand: var(--cotas-brand-claro);
-    --ring-color-brand: var(--cotas-brand-claro);
-    --outline-color-brand: var(--cotas-brand-claro);
-    --border-color-brand: var(--cotas-brand-claro);
+    /*
+     * border-brand (foco de inputs, card selecionado) fica fora: o AfterDS trocou o destaque
+     * de campo para neutro (neutral-500 no dark), que é o valor do tema global.
+     */
 
     --color-fg-brand-primary: var(--cotas-brand-claro);
     --background-color-fg-brand-primary: var(--cotas-brand-claro);

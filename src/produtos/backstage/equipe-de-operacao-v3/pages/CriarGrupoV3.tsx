@@ -234,7 +234,7 @@ const Stepper = ({ atual, onIr }: { atual: number; onIr: (i: number) => void }) 
                             className={cx(
                                 "flex size-7 items-center justify-center rounded-full text-xs font-medium tabular-nums",
                                 status === "completo" && "bg-[var(--color-fg-quaternary)]",
-                                status === "atual" && "bg-primary text-secondary ring-2 ring-brand ring-inset",
+                                status === "atual" && "bg-primary text-secondary ring-2 ring-fg-brand-primary ring-inset",
                                 status === "pendente" && "bg-primary text-tertiary ring-1 ring-border-secondary ring-inset",
                             )}
                         >

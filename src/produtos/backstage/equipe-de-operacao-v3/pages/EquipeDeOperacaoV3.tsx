@@ -250,13 +250,13 @@ const LinhaGrupo = ({ grupo, destaque = false, onToggle, onAbrir }: { grupo: Gru
                 )}
             />
 
-            {/* Grupo recém-criado: contorno vermelho de marca com brilho que acende, segura e some. */}
+            {/* Grupo recém-criado: contorno neutro (border-brand, o mesmo dos campos em foco) com brilho que acende, segura e some. */}
             {destaque && (
                 <motion.span
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 rounded-xl"
                     // Contorno de 2px + halo + brilho numa só sombra (um ring do Tailwind seria sobrescrito aqui).
-                    style={{ boxShadow: "inset 0 0 0 2px var(--cotas-brand-claro), 0 0 0 4px rgb(255 74 64 / 0.16), 0 0 28px rgb(255 74 64 / 0.28)" }}
+                    style={{ boxShadow: "inset 0 0 0 2px var(--color-border-brand), 0 0 0 4px rgb(115 115 115 / 0.2), 0 0 28px rgb(115 115 115 / 0.32)" }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: [0, 1, 1, 0] }}
                     transition={{ duration: 2.8, times: [0, 0.12, 0.75, 1], delay: 0.35, ease: "easeInOut" }}

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type FC, type KeyboardEvent, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Edit01, HelpCircle, HomeLine, XClose } from "@untitledui/icons";
+import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Edit01, HelpCircle, HomeLine, User01, Users01, XClose } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
@@ -10,8 +10,10 @@ import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ModalDesativar } from "../components/modal-desativar";
+import { ModalEditarOperadores } from "../components/modal-editar-operadores";
 import { BadgeInativo, BarraUso, TemaCotas } from "../components/ui-cotas";
 import { apoioDoItem, estoqueDoItem, ITEM_POR_ID, SESSAO_POR_ID } from "../data/catalogo-evento";
+import { GRUPO_MEMBROS_POR_ID } from "../data/membros";
 import { itensValidos, limiteDoGrupo, plural, ROTULO_ATUACAO, ROTULO_COTA, useEquipeV3, usadasDoGrupo, type GrupoCotas } from "../data/equipe-v3-store";
 
 const BASE = "/backstage/equipe-de-operacao/v3";
@@ -19,9 +21,11 @@ const BASE = "/backstage/equipe-de-operacao/v3";
 export function DetalheGrupoV3() {
     const navigate = useNavigate();
     const { grupoId = "" } = useParams();
-    const { getGrupo, toggleOperador, operadorAtivo } = useEquipeV3();
+    const { getGrupo, toggleOperador, operadorAtivo, toggleGrupoMembros, grupoMembrosAtivo, setOperadores } = useEquipeV3();
     const grupo = getGrupo(grupoId);
-    const [desligando, setDesligando] = useState<string | null>(null);
+    // Desligar pede confirmação: uma pessoa ou um grupo de Membros inteiro.
+    const [desligando, setDesligando] = useState<{ tipo: "operador" | "grupo"; id: string } | null>(null);
+    const [editandoOperadores, setEditandoOperadores] = useState(false);
 
     // Voltar de "Editar itens" (ou abrir o grupo) começa do topo, não onde a tela anterior estava.
     useEffect(() => {
@@ -96,70 +100,101 @@ export function DetalheGrupoV3() {
                     <CardItensECotas grupo={grupo} atualizado={atualizado} onEditar={() => navigate(`${BASE}/${grupo.id}/editar?etapa=itens`)} />
 
                     <section className="flex flex-col gap-3 rounded-2xl bg-primary px-5 py-4 ring-1 ring-border-secondary ring-inset">
-                        {/* Operadores vêm do grupo de Membros: adicionar/remover é lá; aqui só liga e desliga. */}
-                        <div className="flex min-h-8 items-center gap-1">
-                            <h2 className="text-sm font-semibold text-primary">Operadores</h2>
-                            <Tooltip
-                                // Uma frase por linha; a segunda não quebra.
-                                title={
-                                    // font-normal: o tooltip do DS usa semibold no título; aqui o texto é regular.
-                                    <span className="flex flex-col font-normal">
-                                        <span>Adicione ou remova operadores em Membros.</span>
-                                        <span className="whitespace-nowrap">As alterações serão refletidas automaticamente aqui.</span>
-                                    </span>
-                                }
-                                placement="right"
-                                arrow
-                            >
-                                <TooltipTrigger
-                                    aria-label="Como os operadores são gerenciados"
-                                    className="flex text-fg-quaternary transition duration-100 ease-linear hover:text-fg-quaternary_hover"
-                                >
-                                    <HelpCircle className="size-4" aria-hidden="true" />
-                                </TooltipTrigger>
-                            </Tooltip>
+                        {/* Operadores vêm dos grupos de Membros e de e-mails avulsos; aqui só liga e desliga. */}
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex flex-col gap-0.5">
+                                <h2 className="text-sm font-semibold text-primary">Operadores</h2>
+                                {/* Total sem repetir quem está em mais de um grupo. */}
+                                <span className="text-sm text-tertiary">{plural(grupo.operadores.length, "pessoa", "pessoas")} no total</span>
+                            </div>
+                            <Button size="sm" color="tertiary" iconLeading={Edit01} onClick={() => setEditandoOperadores(true)}>
+                                Editar operadores
+                            </Button>
                         </div>
-                        <div className="h-px bg-[var(--color-border-secondary)]" />
-                        <ul className="flex flex-col gap-4 pb-1.5">
-                            {grupo.operadores.map((email) => {
-                                const ativo = operadorAtivo(grupo, email);
-                                const emitidos = grupo.emitidosPorOperador[email] ?? 0;
-                                // Inativo: e-mail e "emitidos" a 50%, só o toggle segue a 100% — como os cards da listagem.
-                                const apagado = cx("transition-opacity duration-300 ease-out", !ativo && "opacity-50");
+                        {/* Separado como na criação: um bloco por grupo de Membros e, por último, quem entrou por e-mail. */}
+                        <div className="flex flex-col gap-3 pb-1">
+                            {grupo.gruposMembrosIds.map((m) => {
+                                const membros = GRUPO_MEMBROS_POR_ID[m];
+                                if (!membros) return null;
+                                const ligado = grupoMembrosAtivo(grupo, m);
                                 return (
-                                    <li key={email} className="flex items-center gap-4">
-                                        <span className="flex min-w-0 flex-1 items-center gap-2">
-                                            <Toggle
-                                                size="sm"
-                                                isSelected={ativo}
-                                                onChange={() => (ativo ? setDesligando(email) : toggleOperador(grupo.id, email))}
-                                                aria-label={ativo ? `Desativar ${email}` : `Ativar ${email}`}
+                                    <BlocoOperadores
+                                        key={m}
+                                        icone={Users01}
+                                        titulo={`${membros.nome} – ${plural(membros.emails.length, "membro", "membros")}`}
+                                        toggle={{
+                                            ligado,
+                                            rotulo: `${ligado ? "Desativar" : "Ativar"} o grupo ${membros.nome}`,
+                                            onChange: () => (ligado ? setDesligando({ tipo: "grupo", id: m }) : toggleGrupoMembros(grupo.id, m)),
+                                        }}
+                                    >
+                                        {membros.emails.map((email) => (
+                                            <LinhaOperador
+                                                key={email}
+                                                email={email}
+                                                emitidos={grupo.emitidosPorOperador[email] ?? 0}
+                                                ativo={ligado && operadorAtivo(grupo, email)}
+                                                // Com o grupo desligado, a pessoa fica desligada junto e só volta religando o grupo.
+                                                bloqueado={!ligado}
+                                                onChange={(ativo) => (ativo ? setDesligando({ tipo: "operador", id: email }) : toggleOperador(grupo.id, email))}
                                             />
-                                            <span className={cx("truncate text-sm text-secondary", apagado)}>{email}</span>
-                                        </span>
-                                        <span className={cx("shrink-0 text-sm font-medium text-secondary tabular-nums", apagado)}>
-                                            {plural(emitidos, "emitido", "emitidos")}
-                                        </span>
-                                    </li>
+                                        ))}
+                                    </BlocoOperadores>
                                 );
                             })}
-                        </ul>
+                            {grupo.emailsAvulsos.length > 0 && (
+                                <BlocoOperadores
+                                    icone={User01}
+                                    titulo={`Adicionadas individualmente – ${plural(grupo.emailsAvulsos.length, "pessoa", "pessoas")}`}
+                                >
+                                    {grupo.emailsAvulsos.map((email) => {
+                                        const ativo = operadorAtivo(grupo, email);
+                                        return (
+                                            <LinhaOperador
+                                                key={email}
+                                                email={email}
+                                                emitidos={grupo.emitidosPorOperador[email] ?? 0}
+                                                ativo={ativo}
+                                                onChange={() => (ativo ? setDesligando({ tipo: "operador", id: email }) : toggleOperador(grupo.id, email))}
+                                            />
+                                        );
+                                    })}
+                                </BlocoOperadores>
+                            )}
+                        </div>
                     </section>
                 </main>
 
+                <ModalEditarOperadores
+                    grupo={editandoOperadores ? grupo : null}
+                    onCancelar={() => setEditandoOperadores(false)}
+                    onSalvar={(grupos, emails) => {
+                        setOperadores(grupo.id, grupos, emails);
+                        setEditandoOperadores(false);
+                    }}
+                />
+
                 <ModalDesativar
                     aberto={Boolean(desligando)}
-                    titulo="Desativar operador?"
+                    titulo={desligando?.tipo === "grupo" ? "Desativar grupo de membros?" : "Desativar operador?"}
                     descricao={
-                        <>
-                            Ao desativar, <span className="font-medium text-secondary">{desligando}</span> deixa de ter acesso aos ingressos deste grupo. Você
-                            poderá ativá-lo novamente quando quiser.
-                        </>
+                        desligando?.tipo === "grupo" ? (
+                            <>
+                                Ao desativar, os membros de <span className="font-medium text-secondary">{GRUPO_MEMBROS_POR_ID[desligando.id]?.nome}</span>{" "}
+                                deixam de ter acesso aos ingressos deste grupo. Você poderá ativá-lo novamente quando quiser.
+                            </>
+                        ) : (
+                            <>
+                                Ao desativar, <span className="font-medium text-secondary">{desligando?.id}</span> deixa de ter acesso aos ingressos deste
+                                grupo. Você poderá ativá-lo novamente quando quiser.
+                            </>
+                        )
                     }
-                    acao="Desativar operador"
+                    acao={desligando?.tipo === "grupo" ? "Desativar grupo" : "Desativar operador"}
                     onCancelar={() => setDesligando(null)}
                     onConfirmar={() => {
-                        if (desligando) toggleOperador(grupo.id, desligando);
+                        if (desligando?.tipo === "grupo") toggleGrupoMembros(grupo.id, desligando.id);
+                        else if (desligando) toggleOperador(grupo.id, desligando.id);
                         setDesligando(null);
                     }}
                 />
@@ -167,6 +202,69 @@ export function DetalheGrupoV3() {
         </BackstageLayout>
     );
 }
+
+/* --------------------------- Operadores ---------------------------- */
+
+const BlocoOperadores = ({
+    icone: Icone,
+    titulo,
+    toggle,
+    children,
+}: {
+    icone: FC<{ className?: string }>;
+    titulo: string;
+    /** Só os grupos de Membros: liga/desliga todos os membros de uma vez. */
+    toggle?: { ligado: boolean; rotulo: string; onChange: () => void };
+    children: ReactNode;
+}) => (
+    <section className="flex flex-col gap-3 rounded-lg bg-primary_alt px-4 pt-3 pb-4 ring-1 ring-border-secondary ring-inset">
+        <div className="flex min-h-6 items-center gap-2">
+            {toggle && <Toggle size="sm" isSelected={toggle.ligado} onChange={toggle.onChange} aria-label={toggle.rotulo} />}
+            <Icone
+                className={cx("size-4 shrink-0 text-fg-quaternary transition-opacity duration-300", toggle && !toggle.ligado && "opacity-50")}
+                aria-hidden="true"
+            />
+            <h3 className={cx("truncate text-sm font-medium text-secondary transition-opacity duration-300", toggle && !toggle.ligado && "opacity-50")}>
+                {titulo}
+            </h3>
+        </div>
+        {/* Com o toggle do grupo, as pessoas recuam até o ícone (36px do toggle + 8px de gap): ficam "dentro" do grupo. */}
+        <ul className={cx("flex flex-col gap-4", toggle && "pl-11")}>{children}</ul>
+    </section>
+);
+
+const LinhaOperador = ({
+    email,
+    emitidos,
+    ativo,
+    bloqueado = false,
+    onChange,
+}: {
+    email: string;
+    emitidos: number;
+    ativo: boolean;
+    /** Grupo desligado: o toggle da pessoa fica travado. */
+    bloqueado?: boolean;
+    onChange: (ativo: boolean) => void;
+}) => {
+    // Inativo: e-mail e "emitidos" a 50%, só o toggle segue a 100% — como os cards da listagem.
+    const apagado = cx("transition-opacity duration-300 ease-out", !ativo && "opacity-50");
+    return (
+        <li className="flex items-center gap-4">
+            <span className="flex min-w-0 flex-1 items-center gap-2">
+                <Toggle
+                    size="sm"
+                    isSelected={ativo}
+                    isDisabled={bloqueado}
+                    onChange={() => onChange(ativo)}
+                    aria-label={ativo ? `Desativar ${email}` : `Ativar ${email}`}
+                />
+                <span className={cx("truncate text-sm text-secondary", apagado)}>{email}</span>
+            </span>
+            <span className={cx("shrink-0 text-sm font-medium text-secondary tabular-nums", apagado)}>{plural(emitidos, "emitido", "emitidos")}</span>
+        </li>
+    );
+};
 
 /* ------------------------- Itens e cotas -------------------------- */
 
@@ -200,7 +298,11 @@ const CardItensECotas = ({ grupo, atualizado, onEditar }: { grupo: GrupoCotas; a
                         </h2>
                         {/* Sem cota, o número de referência de cada item é o estoque: o tooltip explica isso */}
                         {tipo === "sem-limite" && (
-                            <Tooltip title={<span className="font-normal whitespace-nowrap">Sem cota definida: o limite de cada item é o estoque disponível.</span>} placement="right" arrow>
+                            <Tooltip
+                                title={<span className="font-normal whitespace-nowrap">Sem cota definida: o limite de cada item é o estoque disponível.</span>}
+                                placement="right"
+                                arrow
+                            >
                                 <TooltipTrigger
                                     aria-label="Como o limite é calculado"
                                     className="flex text-fg-quaternary transition duration-100 ease-linear hover:text-fg-quaternary_hover"

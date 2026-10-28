@@ -5,15 +5,16 @@ import { Check } from "@untitledui/icons";
 import { Input } from "@/components/base/input/input";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
-import { SeletorGrupoMembros } from "../components/seletor-grupo-membros";
+import { operadoresDe, SeletorOperadores } from "../components/seletor-operadores";
+import { ResumoGrupo } from "../components/resumo-grupo";
 import { SelecaoIngressos } from "../components/SelecaoIngressos";
 import { BadgeTipo, CabecalhoCotas, CardSessao, RadioBolinha, TemaCotas, TituloSecao } from "../components/ui-cotas";
 import { agruparPorSessao, ITEM_POR_ID, type ItemCatalogo } from "../data/catalogo-evento";
 import { ATUACOES, useEquipeV3, type Atuacao, type DadosGrupo, type TipoCota } from "../data/equipe-v3-store";
-import { GRUPO_MEMBROS_POR_ID } from "../data/membros";
 
-const ETAPAS = ["Grupo", "Itens", "Cotas"] as const;
+const ETAPAS = ["Grupo", "Itens", "Cotas", "Revisão"] as const;
 const BASE = "/backstage/equipe-de-operacao/v3";
+const NOME_MAX = 40;
 
 const soNumero = (v: string) => {
     const n = Number(v.replace(/\D/g, "").slice(0, 6));
@@ -36,28 +37,36 @@ export function CriarGrupoV3() {
     // "Editar itens" no detalhe abre só a seleção de itens, sem o wizard, e salva direto.
     const soItens = Boolean(grupo) && params.get("etapa") === "itens";
     const [etapa, setEtapa] = useState(() => (soItens ? 1 : 0));
+    // "Editar" no Resumo: a etapa abre para ajuste e o CTA vira "Salvar alterações", voltando ao Resumo.
+    const [doResumo, setDoResumo] = useState(false);
     const [atuacao, setAtuacao] = useState<Atuacao | undefined>(grupo?.atuacao);
-    const [grupoMembrosId, setGrupoMembrosId] = useState<string | undefined>(grupo?.grupoMembrosId);
+    const [nome, setNome] = useState(grupo?.nome ?? "");
+    const [gruposMembros, setGruposMembros] = useState<string[]>(grupo?.gruposMembrosIds ?? []);
+    const [emailsAvulsos, setEmailsAvulsos] = useState<string[]>(grupo?.emailsAvulsos ?? []);
     const [itens, setItens] = useState<string[]>(grupo?.itens.filter((id) => ITEM_POR_ID[id]) ?? []);
     const [tipoCota, setTipoCota] = useState<TipoCota>(grupo?.cota.tipo ?? "sem-limite");
     const [total, setTotal] = useState(grupo?.cota.total ?? 0);
     const [porItem, setPorItem] = useState<Record<string, number>>(grupo?.cota.porItem ?? {});
 
     /* ----------------------------- validação ----------------------------- */
-    // O grupo herda o nome e os membros do grupo de Membros vinculado.
-    const grupoMembros = grupoMembrosId ? GRUPO_MEMBROS_POR_ID[grupoMembrosId] : undefined;
-    const nome = grupoMembros?.nome ?? "";
-    const operadores = grupoMembros?.emails ?? [];
-    // Cada grupo de Membros vincula um grupo só (senão a listagem teria dois com o mesmo nome).
-    const jaVinculados = grupos.filter((g) => g.id !== grupo?.id).map((g) => g.grupoMembrosId);
-    const etapaGrupoOk = Boolean(atuacao) && operadores.length > 0 && !jaVinculados.includes(grupoMembrosId!);
+    // Operadores = membros dos grupos escolhidos + pessoas incluídas por e-mail, sem repetição.
+    const operadores = operadoresDe(gruposMembros, emailsAvulsos);
+    // Com vários grupos e e-mails avulsos não há um nome "herdado": quem cria dá o nome, e ele não pode repetir.
+    const nomeLimpo = nome.trim();
+    const nomeRepetido = grupos.some((g) => g.id !== grupo?.id && g.nome.toLowerCase() === nomeLimpo.toLowerCase());
+    const nomeLongo = nomeLimpo.length > NOME_MAX;
+    const etapaGrupoOk = nomeLimpo.length > 0 && !nomeRepetido && !nomeLongo && Boolean(atuacao) && operadores.length > 0;
     const etapaItensOk = itens.length > 0;
     const etapaCotasOk =
         tipoCota === "sem-limite" || (tipoCota === "compartilhada" && total > 0) || (tipoCota === "por-item" && itens.every((id) => (porItem[id] ?? 0) > 0));
-    const etapaOk = [etapaGrupoOk, etapaItensOk, etapaCotasOk][etapa];
+    const etapaOk = [etapaGrupoOk, etapaItensOk, etapaCotasOk, etapaGrupoOk && etapaItensOk && etapaCotasOk][etapa];
 
     /* ------------------------------- ações ------------------------------- */
     const voltar = () => {
+        if (doResumo && etapaGrupoOk && etapaItensOk && etapaCotasOk) {
+            setDoResumo(false);
+            return irPara(ETAPAS.length - 1);
+        }
         if (soItens) return navigate(`${BASE}/${grupo!.id}`);
         if (etapa > 0) return setEtapa((e) => e - 1);
         navigate(grupo ? `${BASE}/${grupo.id}` : BASE);
@@ -67,7 +76,8 @@ export function CriarGrupoV3() {
         const dados: DadosGrupo = {
             nome,
             atuacao: atuacao!,
-            grupoMembrosId: grupoMembrosId!,
+            gruposMembrosIds: gruposMembros,
+            emailsAvulsos,
             operadores,
             itens,
             cota: {
@@ -87,9 +97,20 @@ export function CriarGrupoV3() {
         navigate(BASE, { state: { destaque: novo.id } });
     };
 
+    const irPara = (i: number) => {
+        setEtapa(i);
+        window.scrollTo({ top: 0 });
+    };
+
     const avancar = () => {
         if (!etapaOk) return;
         if (soItens) return concluir();
+        if (doResumo && etapa < ETAPAS.length - 1) {
+            // Mudar os itens pode deixar uma cota por item em branco: nesse caso para na etapa que ficou pendente.
+            const pendente = [etapaGrupoOk, etapaItensOk, etapaCotasOk].findIndex((ok) => !ok);
+            if (pendente === -1) setDoResumo(false);
+            return irPara(pendente === -1 ? ETAPAS.length - 1 : pendente);
+        }
         if (etapa < ETAPAS.length - 1) {
             setEtapa((e) => e + 1);
             window.scrollTo({ top: 0 });
@@ -98,7 +119,14 @@ export function CriarGrupoV3() {
         concluir();
     };
 
-    const rotuloAcao = soItens ? "Salvar alterações" : etapa < ETAPAS.length - 1 ? "Continuar" : emEdicao ? "Salvar alterações" : "Salvar configurações";
+    const rotuloAcao =
+        soItens || (doResumo && etapa < ETAPAS.length - 1)
+            ? "Salvar alterações"
+            : etapa < ETAPAS.length - 1
+              ? "Continuar"
+              : emEdicao
+                ? "Salvar alterações"
+                : "Salvar configurações";
 
     return (
         <BackstageLayout activeSection="gerenciamento-cotas" railVariant="gestao-operacao">
@@ -110,11 +138,11 @@ export function CriarGrupoV3() {
 
                     {etapa === 0 && (
                         <div className="flex w-full max-w-[800px] flex-col gap-6">
-                            <Bloco titulo="Onde este grupo poderá atuar?">
+                            <Bloco titulo="Escolha onde o grupo poderá operar">
                                 {/* Um canal por grupo: escolher outro troca a seleção. */}
                                 <div
                                     role="radiogroup"
-                                    aria-label="Onde este grupo poderá atuar"
+                                    aria-label="Onde o grupo poderá operar"
                                     className="grid grid-cols-1 gap-4 rounded-xl bg-primary p-4 ring-1 ring-border-secondary ring-inset sm:grid-cols-3"
                                 >
                                     {ATUACOES.map((a) => {
@@ -140,22 +168,35 @@ export function CriarGrupoV3() {
                                 </div>
                             </Bloco>
 
-                            <Bloco titulo="Qual grupo será vinculado?">
-                                <SeletorGrupoMembros valor={grupoMembrosId} onChange={setGrupoMembrosId} indisponiveis={jaVinculados} />
+                            <Bloco titulo="Dê um nome ao grupo">
+                                <div className="rounded-xl bg-primary p-6 ring-1 ring-border-secondary ring-inset">
+                                    <Input
+                                        label="Nome do grupo"
+                                        placeholder="Ex.: Equipe de portaria"
+                                        value={nome}
+                                        onChange={setNome}
+                                        isInvalid={nomeRepetido || nomeLongo}
+                                        hint={nomeRepetido ? "Já existe um grupo com esse nome." : nomeLongo ? `Use até ${NOME_MAX} caracteres.` : undefined}
+                                    />
+                                </div>
+                            </Bloco>
+
+                            <Bloco titulo="Adicione operadores">
+                                <SeletorOperadores grupos={gruposMembros} onGrupos={setGruposMembros} emails={emailsAvulsos} onEmails={setEmailsAvulsos} />
                             </Bloco>
                         </div>
                     )}
 
                     {etapa === 1 && (
                         <div className="flex w-full max-w-[1024px] flex-col gap-4">
-                            <TituloSecao>Selecione os itens que o grupo poderá operar</TituloSecao>
+                            <TituloSecao>Escolha os itens que o grupo poderá operar</TituloSecao>
                             <SelecaoIngressos selecionados={itens} onChange={setItens} />
                         </div>
                     )}
 
                     {etapa === 2 && (
                         <div className="flex w-full max-w-[800px] flex-col gap-6">
-                            <TituloSecao apoio="Escolha se o grupo terá um limite de uso dos itens selecionados.">Defina como as cotas serão controladas</TituloSecao>
+                            <TituloSecao>Defina como as cotas serão controladas</TituloSecao>
 
                             <div role="radiogroup" aria-label="Tipo de cota" className="flex flex-col gap-4">
                                 <OpcaoCota
@@ -167,7 +208,7 @@ export function CriarGrupoV3() {
 
                                 <OpcaoCota
                                     titulo="Cota compartilhada"
-                                    descricao="Defina uma quantidade total para o grupo, compartilhada entre todos os itens selecionados."
+                                    descricao="Defina um limite total compartilhado entre todos os itens selecionados."
                                     selecionado={tipoCota === "compartilhada"}
                                     onSelect={() => setTipoCota("compartilhada")}
                                 >
@@ -187,7 +228,7 @@ export function CriarGrupoV3() {
 
                                 <OpcaoCota
                                     titulo="Cota por item"
-                                    descricao="Defina uma quantidade máxima para cada item selecionado."
+                                    descricao="Defina um limite para cada item selecionado."
                                     selecionado={tipoCota === "por-item"}
                                     onSelect={() => setTipoCota("por-item")}
                                 >
@@ -196,7 +237,20 @@ export function CriarGrupoV3() {
                             </div>
                         </div>
                     )}
-
+                    {etapa === 3 && (
+                        <ResumoGrupo
+                            nome={nome}
+                            atuacao={atuacao}
+                            gruposMembros={gruposMembros}
+                            emailsAvulsos={emailsAvulsos}
+                            itens={itens}
+                            cota={{ tipo: tipoCota, total, porItem }}
+                            onEditar={(i) => {
+                                setDoResumo(true);
+                                irPara(i);
+                            }}
+                        />
+                    )}
                 </main>
             </TemaCotas>
         </BackstageLayout>
@@ -216,9 +270,9 @@ const Bloco = ({ titulo, children, gap = "gap-4" }: { titulo: string; children: 
 
 /** Passos com círculo de 24px ligados por linha pontilhada, como no Figma. */
 const Stepper = ({ atual, onIr }: { atual: number; onIr: (i: number) => void }) => (
-    <ol className="relative grid w-full max-w-[764px] grid-cols-3">
+    <ol className="relative grid w-full max-w-[764px] grid-cols-4">
         {/* Linha atrás dos círculos, do centro do primeiro ao centro do último. */}
-        <span aria-hidden="true" className="absolute top-3.5 right-[16.667%] left-[16.667%] border-t-2 border-dotted border-primary" />
+        <span aria-hidden="true" className="absolute top-3.5 right-[12.5%] left-[12.5%] border-t-2 border-dotted border-primary" />
         {ETAPAS.map((titulo, i) => {
             const status = i < atual ? "completo" : i === atual ? "atual" : "pendente";
             return (
@@ -348,7 +402,9 @@ const CotasPorItem = ({ itens, valores, onValor }: { itens: string[]; valores: R
                                     <div key={item.id} className="flex items-center justify-between gap-2 px-2 py-3">
                                         <span className="flex min-w-0 items-center gap-2">
                                             <span className="truncate text-sm font-medium text-secondary">{item.nome}</span>
-                                            <BadgeTipo>{item.tipo === "produto" ? "Produto" : item.tipo === "ingresso" ? "Ingresso" : item.categoria}</BadgeTipo>
+                                            <BadgeTipo>
+                                                {item.tipo === "produto" ? "Produto" : item.tipo === "ingresso" ? "Ingresso" : item.categoria}
+                                            </BadgeTipo>
                                             {item.tipo === "ingresso" && item.lote && <span className="text-sm text-tertiary">{item.lote}</span>}
                                         </span>
                                         <div className="w-[78px] shrink-0">

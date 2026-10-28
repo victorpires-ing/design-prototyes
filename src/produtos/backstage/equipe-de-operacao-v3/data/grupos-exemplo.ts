@@ -16,6 +16,8 @@ interface Exemplo {
     ativo?: boolean;
     atuacao: Atuacao;
     grupoMembrosId: string;
+    /** Pessoas incluídas por e-mail, fora do grupo de Membros. */
+    avulsos?: string[];
     operadoresInativos?: string[];
     /** Item → quanto já foi operado dele. */
     uso: Record<string, number>;
@@ -39,6 +41,7 @@ const EXEMPLOS: Exemplo[] = [
         nome: "Promoters",
         atuacao: "cortesia",
         grupoMembrosId: "m-promoters",
+        avulsos: ["dj.convidado@gmail.com", "rp.parceira@gmail.com"],
         operadoresInativos: ["nando.promo@gmail.com"],
         uso: { "s1-pista-int": 96, "s1-front-int": 52, "s2-pista-int": 36 },
         cota: { tipo: "compartilhada", total: 300, porItem: {} },
@@ -95,18 +98,20 @@ function repartir(total: number, emails: string[]): Record<string, number> {
 export function gruposDeExemplo(): GrupoCotas[] {
     const agora = Date.now();
     return EXEMPLOS.map((ex) => {
-        const operadores = GRUPO_MEMBROS_POR_ID[ex.grupoMembrosId]?.emails ?? [];
+        const avulsos = ex.avulsos ?? [];
+        const operadores = [...new Set([...(GRUPO_MEMBROS_POR_ID[ex.grupoMembrosId]?.emails ?? []), ...avulsos])];
         const usado = Object.values(ex.uso).reduce((a, b) => a + b, 0);
         return {
             id: ex.id,
-            // O nome vem do grupo de Membros vinculado, como nos grupos criados no fluxo.
-            nome: GRUPO_MEMBROS_POR_ID[ex.grupoMembrosId]?.nome ?? ex.nome,
+            nome: ex.nome,
             ativo: ex.ativo ?? true,
             criadoEm: new Date(agora - ex.diasAtras * 86_400_000).toISOString(),
             atuacao: ex.atuacao,
-            grupoMembrosId: ex.grupoMembrosId,
+            gruposMembrosIds: [ex.grupoMembrosId],
+            emailsAvulsos: avulsos,
             operadores,
             operadoresInativos: ex.operadoresInativos ?? [],
+            gruposInativos: [],
             itens: Object.keys(ex.uso),
             cota: ex.cota,
             usoPorItem: ex.uso,

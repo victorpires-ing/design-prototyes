@@ -3,7 +3,8 @@
 /*                                                                      */
 /*  Um grupo guarda tudo o que foi configurado no fluxo de criação:     */
 /*  nome, onde atua (PDV, Cortesia ou Bilheteria — um canal por grupo), */
-/*  o grupo de Membros vinculado (de onde vêm os operadores), os itens  */
+/*  os grupos de Membros e os e-mails avulsos (de onde vêm os           */
+/*  operadores), os itens                                               */
 /*  que pode operar e como a cota é controlada. Listagem e detalhe      */
 /*  leem só daqui — o que aparece adiante é exatamente o que foi        */
 /*  configurado.                                                        */
@@ -13,6 +14,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useLocation, useNavigate } from "react-router";
 import { ITEM_POR_ID } from "./catalogo-evento";
 import { gruposDeExemplo } from "./grupos-exemplo";
+import { GRUPO_MEMBROS_POR_ID } from "./membros";
 
 export type Atuacao = "pdv" | "cortesia" | "bilheteria";
 
@@ -33,12 +35,16 @@ export interface GrupoCotas {
     criadoEm: string;
     /** Canal em que o grupo atua: um só por grupo. */
     atuacao: Atuacao;
-    /** Grupo de Membros vinculado: os membros dele viram os operadores. */
-    grupoMembrosId: string;
-    /** Membros do grupo vinculado (adicionar/remover é feito no grupo de Membros). */
+    /** Grupos de Membros vinculados: os membros deles viram operadores. */
+    gruposMembrosIds: string[];
+    /** Pessoas incluídas uma a uma, por e-mail, além dos grupos. */
+    emailsAvulsos: string[];
+    /** Todos os operadores: membros dos grupos vinculados + e-mails avulsos, sem repetição. */
     operadores: string[];
     /** E-mails desligados individualmente no detalhe. */
     operadoresInativos: string[];
+    /** Grupos de Membros desligados por inteiro no detalhe (os membros deles ficam sem acesso). */
+    gruposInativos: string[];
     itens: string[];
     cota: CotaGrupo;
     /** Quanto já foi operado de cada item. Grupo novo nasce zerado. */
@@ -47,7 +53,7 @@ export interface GrupoCotas {
     emitidosPorOperador: Record<string, number>;
 }
 
-export type DadosGrupo = Pick<GrupoCotas, "nome" | "atuacao" | "grupoMembrosId" | "operadores" | "itens" | "cota">;
+export type DadosGrupo = Pick<GrupoCotas, "nome" | "atuacao" | "gruposMembrosIds" | "emailsAvulsos" | "operadores" | "itens" | "cota">;
 
 export const ATUACOES: Array<{ id: Atuacao; label: string }> = [
     { id: "pdv", label: "PDV" },
@@ -102,6 +108,11 @@ interface EquipeV3ContextValue {
     setCotaTotal: (id: string, total: number) => void;
     /** Liga/desliga um operador dentro do grupo, sem removê-lo. */
     toggleOperador: (id: string, email: string) => void;
+    /** "Editar operadores" no detalhe: troca os grupos de Membros e os e-mails avulsos. */
+    setOperadores: (id: string, gruposMembrosIds: string[], emailsAvulsos: string[]) => void;
+    /** Liga/desliga um grupo de Membros inteiro dentro do grupo de cotas. */
+    toggleGrupoMembros: (id: string, grupoMembrosId: string) => void;
+    grupoMembrosAtivo: (grupo: GrupoCotas, grupoMembrosId: string) => boolean;
     operadorAtivo: (grupo: GrupoCotas, email: string) => boolean;
 }
 
@@ -136,13 +147,15 @@ export function EquipeV3Provider({ children }: { children: ReactNode }) {
             ativo: true,
             criadoEm: new Date().toISOString(),
             operadoresInativos: [],
+            gruposInativos: [],
             usoPorItem: {},
             emitidosPorOperador: {},
         };
         // O primeiro grupo do participante chega acompanhado dos exemplos: a listagem
         // passa a mostrar as combinações de atuação e cota, com o dele no topo.
-        // Um exemplo vinculado ao mesmo grupo de Membros fica de fora, para não duplicar.
-        const exemplos = () => gruposDeExemplo().filter((g) => g.grupoMembrosId !== novo.grupoMembrosId);
+        // Um exemplo com o mesmo nome fica de fora, para a listagem não ter dois iguais.
+        const mesmoNome = (g: GrupoCotas) => g.nome.toLowerCase() === novo.nome.toLowerCase();
+        const exemplos = () => gruposDeExemplo().filter((g) => !mesmoNome(g));
         setGrupos((prev) => (prev.length === 0 ? [novo, ...exemplos()] : [novo, ...prev]));
         return novo;
     }, []);
@@ -156,6 +169,7 @@ export function EquipeV3Provider({ children }: { children: ReactNode }) {
                           ...dados,
                           nome: dados.nome.trim(),
                           operadoresInativos: g.operadoresInativos.filter((e) => dados.operadores.includes(e)),
+                          gruposInativos: g.gruposInativos.filter((m) => dados.gruposMembrosIds.includes(m)),
                       }
                     : g,
             ),
@@ -187,7 +201,46 @@ export function EquipeV3Provider({ children }: { children: ReactNode }) {
         );
     }, []);
 
-    const operadorAtivo = useCallback((grupo: GrupoCotas, email: string) => !grupo.operadoresInativos.includes(email), []);
+    const setOperadores = useCallback((id: string, gruposMembrosIds: string[], emailsAvulsos: string[]) => {
+        const operadores = [...new Set([...gruposMembrosIds.flatMap((m) => GRUPO_MEMBROS_POR_ID[m]?.emails ?? []), ...emailsAvulsos])];
+        setGrupos((prev) =>
+            prev.map((g) =>
+                g.id === id
+                    ? {
+                          ...g,
+                          gruposMembrosIds,
+                          emailsAvulsos,
+                          operadores,
+                          // Quem saiu leva junto o "desligado"; quem continua mantém o estado.
+                          operadoresInativos: g.operadoresInativos.filter((e) => operadores.includes(e)),
+                          gruposInativos: g.gruposInativos.filter((m) => gruposMembrosIds.includes(m)),
+                      }
+                    : g,
+            ),
+        );
+    }, []);
+
+    const toggleGrupoMembros = useCallback((id: string, grupoMembrosId: string) => {
+        setGrupos((prev) =>
+            prev.map((g) => {
+                if (g.id !== id) return g;
+                const inativos = g.gruposInativos;
+                return {
+                    ...g,
+                    gruposInativos: inativos.includes(grupoMembrosId) ? inativos.filter((m) => m !== grupoMembrosId) : [...inativos, grupoMembrosId],
+                };
+            }),
+        );
+    }, []);
+
+    const grupoMembrosAtivo = useCallback((grupo: GrupoCotas, grupoMembrosId: string) => !grupo.gruposInativos.includes(grupoMembrosId), []);
+
+    // Ativo = não foi desligado sozinho e entra por algum caminho ligado: e-mail avulso ou um grupo de Membros ativo.
+    const operadorAtivo = useCallback((grupo: GrupoCotas, email: string) => {
+        if (grupo.operadoresInativos.includes(email)) return false;
+        if (grupo.emailsAvulsos.includes(email)) return true;
+        return grupo.gruposMembrosIds.some((m) => !grupo.gruposInativos.includes(m) && GRUPO_MEMBROS_POR_ID[m]?.emails.includes(email));
+    }, []);
 
     const value = useMemo<EquipeV3ContextValue>(
         () => ({
@@ -199,9 +252,25 @@ export function EquipeV3Provider({ children }: { children: ReactNode }) {
             setCotaItem,
             setCotaTotal,
             toggleOperador,
+            setOperadores,
+            toggleGrupoMembros,
+            grupoMembrosAtivo,
             operadorAtivo,
         }),
-        [grupos, getGrupo, criarGrupo, atualizarGrupo, setAtivo, setCotaItem, setCotaTotal, toggleOperador, operadorAtivo],
+        [
+            grupos,
+            getGrupo,
+            criarGrupo,
+            atualizarGrupo,
+            setAtivo,
+            setCotaItem,
+            setCotaTotal,
+            toggleOperador,
+            setOperadores,
+            toggleGrupoMembros,
+            grupoMembrosAtivo,
+            operadorAtivo,
+        ],
     );
 
     return <EquipeV3Context.Provider value={value}>{children}</EquipeV3Context.Provider>;

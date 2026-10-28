@@ -82,7 +82,7 @@ export function SeletorOperadores({ grupos, onGrupos, emails, onEmails, semMoldu
                                 <span className="text-sm font-semibold text-primary">Operadores</span>
                                 <span className="flex items-center gap-1.5 text-sm text-tertiary">
                                     <Users01 className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                                    {operadores.length} {operadores.length === 1 ? "pessoa" : "pessoas"} no total
+                                    {operadores.length} {operadores.length === 1 ? "pessoa" : "pessoas"}
                                 </span>
                             </div>
 

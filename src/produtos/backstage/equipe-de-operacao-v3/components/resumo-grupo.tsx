@@ -43,7 +43,7 @@ export function ResumoGrupo({ nome, atuacao, gruposMembros, emailsAvulsos, itens
                 <div className="-mx-5 mt-1 flex flex-col gap-3 border-t border-secondary px-5 pt-4">
                     <div className="flex flex-col gap-0.5">
                         <h4 className="text-sm font-semibold text-primary">Operadores</h4>
-                        <p className="text-sm text-tertiary">{plural(total, "pessoa", "pessoas")} no total</p>
+                        <p className="text-sm text-tertiary">{plural(total, "pessoa", "pessoas")}</p>
                     </div>
                     {/* Os mesmos cards da seleção, só para leitura. */}
                     {gruposMembros.map((id) => {

@@ -105,7 +105,7 @@ export function DetalheGrupoV3() {
                             <div className="flex flex-col gap-0.5">
                                 <h2 className="text-sm font-semibold text-primary">Operadores</h2>
                                 {/* Total sem repetir quem está em mais de um grupo. */}
-                                <span className="text-sm text-tertiary">{plural(grupo.operadores.length, "pessoa", "pessoas")} no total</span>
+                                <span className="text-sm text-tertiary">{plural(grupo.operadores.length, "pessoa", "pessoas")}</span>
                             </div>
                             <Button size="sm" color="tertiary" iconLeading={Edit01} onClick={() => setEditandoOperadores(true)}>
                                 Editar operadores

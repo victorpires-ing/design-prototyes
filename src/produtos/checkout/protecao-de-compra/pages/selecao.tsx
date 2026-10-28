@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ClipboardCheck } from "@untitledui/icons";
 import { BotaoContorno, Topo } from "../components/topo";
 import { ICONE_INGRESSO, ICONE_PROTECAO, type LinhaResumo, Resumo } from "../components/resumo";
+import { ModalCoberturas } from "../components/modal-coberturas";
 import { SetorCard } from "../components/setor-card";
 import { EVENTO, INGRESSO_POR_ID, PROTECAO_PERCENTUAL, SETORES } from "../data/evento";
 import { useForceLightTheme } from "../utils/use-force-light-theme";
@@ -12,18 +13,19 @@ import { useForceLightTheme } from "../utils/use-force-light-theme";
  * a proteção entra no resumo como mais um item (com Remover) e o CTA vira "Continuar com proteção".
  * V2 (/checkout/protecao-de-compra/v2): a proteção aparece no resumo como card com radio, desligada,
  * e o rodapé volta ao original (total + "Continuar").
- * V3 (/checkout/protecao-de-compra/v3): a proteção fica na lista como os outros itens, com um radio no início, desligada;
- * rodapé com "Continuar com proteção" de ponta a ponta e "Prefiro correr o risco" embaixo.
+ * V3 (/checkout/protecao-de-compra/v3): a proteção fica na lista como os outros itens (sem radio), desligada;
+ * rodapé com "Continuar com proteção" de ponta a ponta e "Prefiro correr o risco" embaixo; no experimento os dois não fazem nada (a jornada para aqui).
  */
 export function Selecao({ variante = "v1" }: { variante?: "v1" | "v2" | "v3" }) {
     useForceLightTheme();
-    // V1: proteção já incluída (opt-out). V2 e V3: começa desligada e a pessoa ativa pelo radio (opt-in).
+    // V1: proteção já incluída (opt-out). V2 e V3: começa desligada (opt-in); na V2 liga pelo radio, na V3 pelo CTA.
     const optIn = variante !== "v1";
     const cardV2 = variante === "v2";
     const [quantidades, setQuantidades] = useState<Record<string, number>>({});
     const [abertos, setAbertos] = useState<Set<string>>(new Set([SETORES[0].id]));
     // A proteção vem incluída; se a pessoa remover, fica de fora até ela esvaziar o carrinho.
     const [semProtecao, setSemProtecao] = useState(optIn);
+    const [coberturasAbertas, setCoberturasAbertas] = useState(false);
 
     const selecionados = Object.entries(quantidades).filter(([, q]) => q > 0);
     const subtotal = selecionados.reduce((s, [id, q]) => s + INGRESSO_POR_ID[id].preco * q, 0);
@@ -112,7 +114,8 @@ export function Selecao({ variante = "v1" }: { variante?: "v1" | "v2" | "v3" }) 
                             protecaoOpcional={
                                 cardV2 ? { ativa: comProtecao, qtdIngressos, valor: valorProtecao, onAtivar: () => setSemProtecao(false) } : undefined
                             }
-                            protecaoRadio={variante === "v3" ? { ativa: comProtecao, onAtivar: () => setSemProtecao(false) } : undefined}
+                            protecaoRadio={variante === "v3" ? {} : undefined}
+                            onVerCoberturas={() => setCoberturasAbertas(true)}
                             onRemoverTudo={() => {
                                 setQuantidades({});
                                 setSemProtecao(optIn);
@@ -121,6 +124,8 @@ export function Selecao({ variante = "v1" }: { variante?: "v1" | "v2" | "v3" }) 
                     </div>
                 </div>
             </main>
+
+            <ModalCoberturas aberto={coberturasAbertas} onFechar={() => setCoberturasAbertas(false)} />
         </div>
     );
 }

@@ -1,4 +1,4 @@
-import { type FC, useEffect, useRef, useState } from "react";
+import { type FC, createContext, useContext, useEffect, useRef, useState } from "react";
 import { ChevronDown, ShieldTick, Ticket01 } from "@untitledui/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { cx } from "@/utils/cx";
@@ -35,23 +35,26 @@ interface PropsResumo {
     onContinuarSemProtecao?: () => void;
     /** Presente só na V2: troca a linha de proteção pelo card com radio e volta ao rodapé original. */
     protecaoOpcional?: ProtecaoOpcional;
-    /** Presente só na V3: a proteção fica na lista como os outros itens, com um radio no início, e o rodapé vira "Continuar com proteção" / "Prefiro correr o risco". */
+    /** Presente só na V3: a proteção fica na lista como os outros itens (sem radio), e o rodapé vira "Continuar com proteção" / "Prefiro correr o risco". */
     protecaoRadio?: ProtecaoRadio;
+    /** Abre o modal de coberturas ("Ver coberturas" na linha ou no card da proteção). */
+    onVerCoberturas?: () => void;
 }
 
-/** V3: a proteção começa desligada; o radio (ou o "Continuar com proteção") liga e não dá para desligar. */
+const VerCoberturas = createContext<(() => void) | undefined>(undefined);
+
+/** V3: sem radio, a escolha acontece no CTA — "Continuar com proteção" ou "Prefiro correr o risco". No experimento os botões não fazem nada. */
 export interface ProtecaoRadio {
-    ativa: boolean;
-    onAtivar: () => void;
+    onContinuar?: (comProtecao: boolean) => void;
 }
 
 /** "Resumo da compra": no desktop, card lateral; no celular, barra fixa no rodapé que abre como gaveta (igual produção). */
 export function Resumo(props: PropsResumo) {
     return (
-        <>
+        <VerCoberturas.Provider value={props.onVerCoberturas}>
             <ResumoDesktop {...props} />
             <ResumoMobile {...props} />
-        </>
+        </VerCoberturas.Provider>
     );
 }
 
@@ -255,23 +258,10 @@ function ListaItens({ linhas, onRemover, onRemoverTudo, protecaoRadio }: Pick<Pr
 function LinhaItem({ linha, onRemover, protecaoRadio }: { linha: LinhaResumo; onRemover: (id: string) => void; protecaoRadio?: ProtecaoRadio }) {
     const { id, quantidade, titulo, subtitulo, valor, icone: Icone, link } = linha;
     const radio = id === "protecao" ? protecaoRadio : undefined;
+    const verCoberturas = useContext(VerCoberturas);
     return (
         <li className="relative flex items-start gap-3">
-            {radio && (
-                <>
-                    {/* A linha inteira é o alvo do radio (botão esticado por cima); uma vez ativa, fica travada */}
-                    <button
-                        type="button"
-                        role="radio"
-                        aria-checked={radio.ativa}
-                        aria-label="Adicionar proteção de compra"
-                        onClick={radio.onAtivar}
-                        disabled={radio.ativa}
-                        className="absolute -inset-1.5 cursor-pointer rounded-lg disabled:cursor-default"
-                    />
-                    <Radio ativa={radio.ativa} className="mt-1" />
-                </>
-            )}
+            {/* V3 sem radio: a linha só informa; quem liga a proteção é o "Continuar com proteção" */}
             <span className="flex shrink-0 items-center gap-0.5 rounded-md bg-[#f2f2f2] px-1.5 py-0.5 text-sm font-semibold text-[#1a1a1a] tabular-nums">
                 {quantidade}
                 <Icone className="size-3.5" aria-hidden="true" />
@@ -291,6 +281,7 @@ function LinhaItem({ linha, onRemover, protecaoRadio }: { linha: LinhaResumo; on
                 {link && (
                     <button
                         type="button"
+                        onClick={verCoberturas}
                         className={cx(
                             "relative self-start text-xs font-semibold underline underline-offset-2 transition duration-100 ease-linear",
                             radio ? "text-[#1a1a1a] hover:text-[#525252]" : "text-[#ff4f1f] hover:text-[#e8410f]",
@@ -382,23 +373,22 @@ function TotalComBotao({ total, qtdItens, desabilitado }: { total: number; qtdIt
 }
 
 /** Rodapé da V3: "Continuar com proteção" de ponta a ponta (já liga a proteção) e "Prefiro correr o risco" embaixo, sem borda; ligada, fica só "Continuar". */
-function RodapeV3({ total, qtdItens, ativa, onAtivar, desabilitado }: { total: number; qtdItens: number; desabilitado?: boolean } & ProtecaoRadio) {
+function RodapeV3({ total, qtdItens, onContinuar, desabilitado }: { total: number; qtdItens: number; desabilitado?: boolean } & ProtecaoRadio) {
+    // Os dois botões são as duas saídas da tela: "Continuar com proteção" é o único jeito de seguir protegido
     return (
         <div className="flex flex-col gap-3">
             <LinhaTotal total={total} qtdItens={qtdItens} />
-            <BotaoContinuar largo desabilitado={desabilitado} onClick={onAtivar}>
-                {/* Com a proteção já ligada, o convite perde sentido: vira só "Continuar" */}
-                {ativa ? "Continuar" : "Continuar com proteção"}
+            <BotaoContinuar largo desabilitado={desabilitado} onClick={() => onContinuar?.(true)}>
+                Continuar com proteção
             </BotaoContinuar>
-            {!ativa && (
-                <button
-                    type="button"
-                    disabled={desabilitado}
-                    className="h-11 w-full rounded-xl text-sm font-semibold text-[#525252] transition duration-100 ease-linear hover:bg-[#f2f2f2] hover:text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    Prefiro correr o risco
-                </button>
-            )}
+            <button
+                type="button"
+                disabled={desabilitado}
+                onClick={() => onContinuar?.(false)}
+                className="h-11 w-full rounded-xl text-sm font-semibold text-[#525252] transition duration-100 ease-linear hover:bg-[#f2f2f2] hover:text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+                Prefiro correr o risco
+            </button>
         </div>
     );
 }
@@ -440,6 +430,7 @@ export const ICONE_INGRESSO = Ticket01;
 export const ICONE_PROTECAO = ShieldTick;
 
 function CardProtecao({ ativa, qtdIngressos, valor, onAtivar }: ProtecaoOpcional) {
+    const verCoberturas = useContext(VerCoberturas);
     return (
         <div
             className={cx(
@@ -484,6 +475,7 @@ function CardProtecao({ ativa, qtdIngressos, valor, onAtivar }: ProtecaoOpcional
                 </span>
                 <button
                     type="button"
+                    onClick={verCoberturas}
                     className="relative self-start text-xs font-semibold text-[#525252] underline underline-offset-2 transition duration-100 ease-linear hover:text-[#1a1a1a]"
                 >
                     Ver coberturas

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FC, type KeyboardEvent, type ReactNod
 import { AnimatePresence, motion } from "motion/react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Edit01, HelpCircle, HomeLine, User01, Users01, XClose } from "@untitledui/icons";
+import { Tab, TabList, TabPanel, Tabs } from "@/components/application/tabs/tabs";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
@@ -12,7 +13,7 @@ import { BackstageLayout } from "../../components/Backstage";
 import { ModalDesativar } from "../components/modal-desativar";
 import { ModalEditarOperadores } from "../components/modal-editar-operadores";
 import { BadgeInativo, BarraUso, TemaCotas } from "../components/ui-cotas";
-import { apoioDoItem, estoqueDoItem, ITEM_POR_ID, SESSAO_POR_ID } from "../data/catalogo-evento";
+import { apoioDoItem, estoqueDoItem, ITEM_POR_ID, sessaoDoItem } from "../data/catalogo-evento";
 import { GRUPO_MEMBROS_POR_ID } from "../data/membros";
 import { itensValidos, limiteDoGrupo, plural, ROTULO_ATUACAO, ROTULO_COTA, useEquipeV3, usadasDoGrupo, type GrupoCotas } from "../data/equipe-v3-store";
 
@@ -26,6 +27,7 @@ export function DetalheGrupoV3() {
     // Desligar pede confirmação: uma pessoa ou um grupo de Membros inteiro.
     const [desligando, setDesligando] = useState<{ tipo: "operador" | "grupo"; id: string } | null>(null);
     const [editandoOperadores, setEditandoOperadores] = useState(false);
+    const [aba, setAba] = useState<"itens" | "operadores">("itens");
 
     // Voltar de "Editar itens" (ou abrir o grupo) começa do topo, não onde a tela anterior estava.
     useEffect(() => {
@@ -97,72 +99,87 @@ export function DetalheGrupoV3() {
                         </div>
                     </div>
 
-                    <CardItensECotas grupo={grupo} atualizado={atualizado} onEditar={() => navigate(`${BASE}/${grupo.id}/editar?etapa=itens`)} />
-
-                    <section className="flex flex-col gap-3 rounded-2xl bg-primary px-5 py-4 ring-1 ring-border-secondary ring-inset">
-                        {/* Operadores vêm dos grupos de Membros e de e-mails avulsos; aqui só liga e desliga. */}
-                        <div className="flex items-start justify-between gap-4">
-                            <div className="flex flex-col gap-0.5">
-                                <h2 className="text-sm font-semibold text-primary">Operadores</h2>
-                                {/* Total sem repetir quem está em mais de um grupo. */}
-                                <span className="text-sm text-tertiary">{plural(grupo.operadores.length, "pessoa", "pessoas")}</span>
-                            </div>
-                            <Button size="sm" color="tertiary" iconLeading={Edit01} onClick={() => setEditandoOperadores(true)}>
-                                Editar operadores
-                            </Button>
-                        </div>
-                        {/* Separado como na criação: um bloco por grupo de Membros e, por último, quem entrou por e-mail. */}
-                        <div className="flex flex-col gap-3 pb-1">
-                            {grupo.gruposMembrosIds.map((m) => {
-                                const membros = GRUPO_MEMBROS_POR_ID[m];
-                                if (!membros) return null;
-                                const ligado = grupoMembrosAtivo(grupo, m);
-                                return (
-                                    <BlocoOperadores
-                                        key={m}
-                                        icone={Users01}
-                                        titulo={`${membros.nome} – ${plural(membros.emails.length, "membro", "membros")}`}
-                                        toggle={{
-                                            ligado,
-                                            rotulo: `${ligado ? "Desativar" : "Ativar"} o grupo ${membros.nome}`,
-                                            onChange: () => (ligado ? setDesligando({ tipo: "grupo", id: m }) : toggleGrupoMembros(grupo.id, m)),
-                                        }}
-                                    >
-                                        {membros.emails.map((email) => (
-                                            <LinhaOperador
-                                                key={email}
-                                                email={email}
-                                                emitidos={grupo.emitidosPorOperador[email] ?? 0}
-                                                ativo={ligado && operadorAtivo(grupo, email)}
-                                                // Com o grupo desligado, a pessoa fica desligada junto e só volta religando o grupo.
-                                                bloqueado={!ligado}
-                                                onChange={(ativo) => (ativo ? setDesligando({ tipo: "operador", id: email }) : toggleOperador(grupo.id, email))}
-                                            />
-                                        ))}
-                                    </BlocoOperadores>
-                                );
-                            })}
-                            {grupo.emailsAvulsos.length > 0 && (
-                                <BlocoOperadores
-                                    icone={User01}
-                                    titulo={`Adicionadas individualmente – ${plural(grupo.emailsAvulsos.length, "pessoa", "pessoas")}`}
-                                >
-                                    {grupo.emailsAvulsos.map((email) => {
-                                        const ativo = operadorAtivo(grupo, email);
+                    {/* Itens e operadores em abas: com muitos itens, os operadores não ficam lá embaixo. */}
+                    <Tabs selectedKey={aba} onSelectionChange={(k) => setAba(k as "itens" | "operadores")} className="gap-5">
+                        <TabList type="underline" size="sm">
+                            <Tab id="itens" badge={itensValidos(grupo).length}>
+                                Itens
+                            </Tab>
+                            <Tab id="operadores" badge={grupo.operadores.length}>
+                                Operadores
+                            </Tab>
+                        </TabList>
+                        <TabPanel id="itens">
+                            <CardItensECotas grupo={grupo} atualizado={atualizado} onEditar={() => navigate(`${BASE}/${grupo.id}/editar?etapa=itens`)} />
+                        </TabPanel>
+                        <TabPanel id="operadores">
+                            <section className="flex flex-col gap-3 rounded-2xl bg-primary px-5 py-4 ring-1 ring-border-secondary ring-inset">
+                                {/* Operadores vêm dos grupos de Membros e de e-mails avulsos; aqui só liga e desliga. */}
+                                {/* O total fica na aba; aqui só o título. */}
+                                <div className="flex items-center justify-between gap-4">
+                                    <h2 className="text-sm font-semibold text-primary">Operadores</h2>
+                                    <Button size="sm" color="tertiary" iconLeading={Edit01} onClick={() => setEditandoOperadores(true)}>
+                                        Editar operadores
+                                    </Button>
+                                </div>
+                                {/* Separado como na criação: um bloco por grupo de Membros e, por último, quem entrou por e-mail. */}
+                                <div className="flex flex-col gap-3 pb-1">
+                                    {grupo.gruposMembrosIds.map((m) => {
+                                        const membros = GRUPO_MEMBROS_POR_ID[m];
+                                        if (!membros) return null;
+                                        const ligado = grupoMembrosAtivo(grupo, m);
                                         return (
-                                            <LinhaOperador
-                                                key={email}
-                                                email={email}
-                                                emitidos={grupo.emitidosPorOperador[email] ?? 0}
-                                                ativo={ativo}
-                                                onChange={() => (ativo ? setDesligando({ tipo: "operador", id: email }) : toggleOperador(grupo.id, email))}
-                                            />
+                                            <BlocoOperadores
+                                                key={m}
+                                                icone={Users01}
+                                                titulo={`${membros.nome} – ${plural(membros.emails.length, "membro", "membros")}`}
+                                                toggle={{
+                                                    ligado,
+                                                    rotulo: `${ligado ? "Desativar" : "Ativar"} o grupo ${membros.nome}`,
+                                                    onChange: () => (ligado ? setDesligando({ tipo: "grupo", id: m }) : toggleGrupoMembros(grupo.id, m)),
+                                                }}
+                                            >
+                                                {membros.emails.map((email) => (
+                                                    <LinhaOperador
+                                                        key={email}
+                                                        email={email}
+                                                        emitidos={grupo.emitidosPorOperador[email] ?? 0}
+                                                        ativo={ligado && operadorAtivo(grupo, email)}
+                                                        // Com o grupo desligado, a pessoa fica desligada junto e só volta religando o grupo.
+                                                        bloqueado={!ligado}
+                                                        onChange={(ativo) =>
+                                                            ativo ? setDesligando({ tipo: "operador", id: email }) : toggleOperador(grupo.id, email)
+                                                        }
+                                                    />
+                                                ))}
+                                            </BlocoOperadores>
                                         );
                                     })}
-                                </BlocoOperadores>
-                            )}
-                        </div>
-                    </section>
+                                    {grupo.emailsAvulsos.length > 0 && (
+                                        <BlocoOperadores
+                                            icone={User01}
+                                            titulo={`Adicionadas individualmente – ${plural(grupo.emailsAvulsos.length, "pessoa", "pessoas")}`}
+                                        >
+                                            {grupo.emailsAvulsos.map((email) => {
+                                                const ativo = operadorAtivo(grupo, email);
+                                                return (
+                                                    <LinhaOperador
+                                                        key={email}
+                                                        email={email}
+                                                        emitidos={grupo.emitidosPorOperador[email] ?? 0}
+                                                        ativo={ativo}
+                                                        onChange={() =>
+                                                            ativo ? setDesligando({ tipo: "operador", id: email }) : toggleOperador(grupo.id, email)
+                                                        }
+                                                    />
+                                                );
+                                            })}
+                                        </BlocoOperadores>
+                                    )}
+                                </div>
+                            </section>
+                        </TabPanel>
+                    </Tabs>
                 </main>
 
                 <ModalEditarOperadores
@@ -354,7 +371,7 @@ const CardItensECotas = ({ grupo, atualizado, onEditar }: { grupo: GrupoCotas; a
                             <span className="flex min-w-0 flex-1 flex-col">
                                 <span className="text-sm font-medium text-primary">{item.nome}</span>
                                 <span className="text-xs text-tertiary">{apoioDoItem(item)}</span>
-                                <span className="text-xs text-tertiary">{SESSAO_POR_ID[item.sessaoId]?.curto}</span>
+                                {sessaoDoItem(item) && <span className="text-xs text-tertiary">{sessaoDoItem(item)?.curto}</span>}
                             </span>
                             {tipo === "por-item" ? (
                                 <CotaDoItem

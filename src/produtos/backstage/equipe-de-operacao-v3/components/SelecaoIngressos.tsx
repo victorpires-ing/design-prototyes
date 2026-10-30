@@ -12,6 +12,8 @@ import {
     ITEM_POR_ID,
     PRODUTOS,
     SESSAO_POR_ID,
+    SEM_SESSAO,
+    sessaoDoItem,
     type Combo,
     type Ingresso,
     type ItemCatalogo,
@@ -31,7 +33,7 @@ const SINGULAR: Record<TipoItem, string> = { ingresso: "ingresso", produto: "pro
 const CATALOGO: Record<TipoItem, ItemCatalogo[]> = { ingresso: INGRESSOS, produto: PRODUTOS, combo: COMBOS };
 
 const textoBusca = (i: ItemCatalogo) =>
-    [i.nome, i.tipo === "produto" ? i.descricao : i.grupo, i.tipo === "produto" ? "" : i.categoria, SESSAO_POR_ID[i.sessaoId]?.rotulo].join(" ").toLowerCase();
+    [i.nome, i.tipo === "produto" ? i.descricao : i.grupo, i.tipo === "produto" ? "" : i.categoria, sessaoDoItem(i)?.rotulo].join(" ").toLowerCase();
 
 interface Props {
     /** Ids dos itens que o grupo poderá operar, na ordem em que foram escolhidos. */
@@ -141,39 +143,50 @@ export function SelecaoIngressos({ selecionados, onChange }: Props) {
                             rotulo={visiveis.length === 1 ? SINGULAR[aba] : ABAS.find((a) => a.id === aba)!.label.toLowerCase()}
                             onChange={() => alternarLista(visiveis)}
                         />
-                        {sessoes.map(({ sessao, grupos }) => (
-                            <CardSessao key={sessao.id} rotulo={sessao.rotulo}>
-                                {grupos.map((grupo) => (
-                                    <div key={grupo.nome} className="flex flex-col">
-                                        {/* O grupo também se marca: vale para todos os itens dele */}
-                                        <LinhaCheck
-                                            nivel={0}
-                                            destaque
-                                            estado={estadoLista(grupo.itens)}
-                                            rotulo={grupo.nome}
-                                            onChange={() => alternarLista(grupo.itens)}
-                                        />
-                                        {grupo.itens.map((item) => (
-                                            <div key={item.id} className="flex flex-col">
-                                                <LinhaItem item={item} estado={estado(item)} onChange={() => alternarItem(item)} />
-                                                {/* Lotes logo abaixo do ingresso, um nível para dentro */}
-                                                {item.tipo === "ingresso" &&
-                                                    item.lotes.length > 1 &&
-                                                    item.lotes.map((l) => (
-                                                        <LinhaCheck
-                                                            key={l.id}
-                                                            nivel={2}
-                                                            estado={set.has(item.id) || set.has(l.id) ? "todos" : "nenhum"}
-                                                            rotulo={l.nome}
-                                                            onChange={() => alternarLote(item, l.id)}
-                                                        />
-                                                    ))}
-                                            </div>
+                        {sessoes.map(({ sessao, grupos }) =>
+                            // Produto não tem sessão: lista simples, sem cabeçalho de data nem linha de grupo (o "Selecionar todos" já cobre).
+                            sessao.id === SEM_SESSAO.id ? (
+                                <CardSessao key={sessao.id}>
+                                    {grupos
+                                        .flatMap((g) => g.itens)
+                                        .map((item) => (
+                                            <LinhaItem key={item.id} nivel={0} item={item} estado={estado(item)} onChange={() => alternarItem(item)} />
                                         ))}
-                                    </div>
-                                ))}
-                            </CardSessao>
-                        ))}
+                                </CardSessao>
+                            ) : (
+                                <CardSessao key={sessao.id} rotulo={sessao.rotulo}>
+                                    {grupos.map((grupo) => (
+                                        <div key={grupo.nome} className="flex flex-col">
+                                            {/* O grupo também se marca: vale para todos os itens dele */}
+                                            <LinhaCheck
+                                                nivel={0}
+                                                destaque
+                                                estado={estadoLista(grupo.itens)}
+                                                rotulo={grupo.nome}
+                                                onChange={() => alternarLista(grupo.itens)}
+                                            />
+                                            {grupo.itens.map((item) => (
+                                                <div key={item.id} className="flex flex-col">
+                                                    <LinhaItem item={item} estado={estado(item)} onChange={() => alternarItem(item)} />
+                                                    {/* Lotes logo abaixo do ingresso, um nível para dentro */}
+                                                    {item.tipo === "ingresso" &&
+                                                        item.lotes.length > 1 &&
+                                                        item.lotes.map((l) => (
+                                                            <LinhaCheck
+                                                                key={l.id}
+                                                                nivel={2}
+                                                                estado={set.has(item.id) || set.has(l.id) ? "todos" : "nenhum"}
+                                                                rotulo={l.nome}
+                                                                onChange={() => alternarLote(item, l.id)}
+                                                            />
+                                                        ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </CardSessao>
+                            ),
+                        )}
                     </>
                 )}
             </section>
@@ -248,8 +261,8 @@ const LinhaCheck = ({
 );
 
 /** Ingresso, produto ou combo, um nível abaixo do grupo. Os lotes vêm na linha de baixo, recuados. */
-const LinhaItem = ({ item, estado, onChange }: { item: ItemCatalogo; estado: Estado; onChange: () => void }) => (
-    <LinhaBase nivel={1} estado={estado} rotulo={item.nome} onChange={onChange}>
+const LinhaItem = ({ item, estado, onChange, nivel = 1 }: { item: ItemCatalogo; estado: Estado; onChange: () => void; nivel?: 0 | 1 }) => (
+    <LinhaBase nivel={nivel} estado={estado} rotulo={item.nome} onChange={onChange}>
         {item.tipo === "produto" && <img src={item.imagem} alt="" className="size-8 shrink-0 rounded-md bg-primary object-cover ring-1 ring-border-primary" />}
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <span className="truncate text-sm font-medium text-secondary">{item.nome}</span>
@@ -323,9 +336,7 @@ const Resumo = ({ selecionados, onRemover, onLimpar }: { selecionados: string[];
                         <BlocoResumo titulo="Ingressos">
                             {ingressos.map((i) => (
                                 <CartaoResumo key={i.id} onRemover={() => onRemover(i.id)} nome={i.nome}>
-                                    <span className="text-sm font-medium text-secondary">
-                                        {i.grupo}
-                                    </span>
+                                    <span className="text-sm font-medium text-secondary">{i.grupo}</span>
                                     <span className="text-sm text-tertiary">
                                         {i.lote ? `${i.lote} • ` : ""}
                                         {SESSAO_POR_ID[i.sessaoId]?.curto}
@@ -350,7 +361,6 @@ const Resumo = ({ selecionados, onRemover, onLimpar }: { selecionados: string[];
                                     <span className="text-sm font-medium text-secondary">
                                         {c.grupo} - {c.categoria}
                                     </span>
-                                    <span className="text-sm text-tertiary">{SESSAO_POR_ID[c.sessaoId]?.curto}</span>
                                     <div className="mt-1.5 flex flex-col gap-1.5 border-l border-secondary pl-2">
                                         {c.componentes.map((comp) => (
                                             <div key={comp.nome} className="flex gap-2">
@@ -359,7 +369,10 @@ const Resumo = ({ selecionados, onRemover, onLimpar }: { selecionados: string[];
                                                     <span className="text-sm font-medium text-primary">
                                                         {comp.nome} • {comp.categoria}
                                                     </span>
-                                                    <span className="text-sm text-tertiary">{SESSAO_POR_ID[c.sessaoId]?.curto}</span>
+                                                    {/* A sessão do combo vem dos ingressos dele; produto não tem sessão. */}
+                                                    {comp.categoria !== "Produto" && (
+                                                        <span className="text-sm text-tertiary">{SESSAO_POR_ID[c.sessaoId]?.curto}</span>
+                                                    )}
                                                 </span>
                                             </div>
                                         ))}

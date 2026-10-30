@@ -1,11 +1,11 @@
 import { useMemo, type ReactNode } from "react";
 import { Calendar, Edit01, Package, ShoppingBag01, Ticket01, User01, Users01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
-import { agruparPorSessao, ITEM_POR_ID, SESSAO_POR_ID, type ItemCatalogo } from "../data/catalogo-evento";
+import { agruparPorSessao, ITEM_POR_ID, SEM_SESSAO, sessaoDoItem, type ItemCatalogo } from "../data/catalogo-evento";
 import { plural, ROTULO_ATUACAO, ROTULO_COTA, type Atuacao, type CotaGrupo } from "../data/equipe-v3-store";
 import { GRUPO_MEMBROS_POR_ID } from "../data/membros";
 import { LinhaOperador, operadoresDe, SecaoOperadores } from "./seletor-operadores";
-import { BadgeTipo, TituloSecao } from "./ui-cotas";
+import { TituloSecao } from "./ui-cotas";
 
 interface Props {
     nome: string;
@@ -26,6 +26,7 @@ export function ResumoGrupo({ nome, atuacao, gruposMembros, emailsAvulsos, itens
     const total = operadoresDe(gruposMembros, emailsAvulsos).length;
     const lista = useMemo(() => itens.map((id) => ITEM_POR_ID[id]).filter((i): i is ItemCatalogo => Boolean(i)), [itens]);
     const sessoes = useMemo(() => agruparPorSessao(lista), [lista]);
+    const ordenados = sessoes.flatMap(({ grupos }) => grupos.flatMap((g) => g.itens));
     const somaPorItem = lista.reduce((soma, item) => soma + (cota.porItem[item.id] ?? 0), 0);
 
     return (
@@ -69,17 +70,28 @@ export function ResumoGrupo({ nome, atuacao, gruposMembros, emailsAvulsos, itens
 
             <CardResumo
                 titulo="Itens"
-                apoio={`${plural(lista.length, "item selecionado", "itens selecionados")} · ${plural(sessoes.length, "sessão", "sessões")}`}
+                apoio={`${plural(lista.length, "item selecionado", "itens selecionados")} · ${plural(sessoes.filter((s) => s.sessao.id !== SEM_SESSAO.id).length, "sessão", "sessões")}`}
                 onEditar={() => onEditar(1)}
             >
-                {/* Um card por item, sem níveis aninhados: o que é, de qual grupo/lote e em qual sessão. */}
-                <ul className="grid gap-3 sm:grid-cols-2">
-                    {sessoes
-                        .flatMap(({ grupos }) => grupos.flatMap((g) => g.itens))
-                        .map((item) => (
-                            <CardItem key={item.id} item={item} />
-                        ))}
-                </ul>
+                {/* Separados por tipo, na ordem da seleção: ingressos, produtos e combos. */}
+                <div className="flex flex-col gap-4">
+                    {TIPOS.map(({ tipo, titulo }) => {
+                        const doTipo = ordenados.filter((i) => i.tipo === tipo);
+                        if (doTipo.length === 0) return null;
+                        return (
+                            <section key={tipo} className="-mx-5 flex flex-col gap-3 border-t border-secondary px-5 pt-4 first:border-t-0 first:pt-0">
+                                <h4 className="text-sm font-semibold text-primary">
+                                    {titulo} <span className="font-normal text-tertiary">· {doTipo.length}</span>
+                                </h4>
+                                <ul className="grid gap-3 sm:grid-cols-2">
+                                    {doTipo.map((item) => (
+                                        <CardItem key={item.id} item={item} />
+                                    ))}
+                                </ul>
+                            </section>
+                        );
+                    })}
+                </div>
             </CardResumo>
 
             <CardResumo titulo="Cotas" onEditar={() => onEditar(2)}>
@@ -134,6 +146,12 @@ const Campo = ({ rotulo, children }: { rotulo: string; children: ReactNode }) =>
     </div>
 );
 
+const TIPOS = [
+    { tipo: "ingresso", titulo: "Ingressos" },
+    { tipo: "produto", titulo: "Produtos" },
+    { tipo: "combo", titulo: "Combos" },
+] as const;
+
 const ICONE_ITEM = { ingresso: Ticket01, produto: ShoppingBag01, combo: Package } as const;
 
 const CardItem = ({ item }: { item: ItemCatalogo }) => {
@@ -147,19 +165,49 @@ const CardItem = ({ item }: { item: ItemCatalogo }) => {
               : `${item.grupo} · ${item.categoria}`;
     return (
         <li className="flex gap-3 rounded-lg bg-primary_alt p-4 ring-1 ring-border-secondary ring-inset">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary ring-1 ring-border-primary ring-inset">
-                <Icone className="size-5 text-fg-secondary" aria-hidden="true" />
-            </span>
+            {/* Produto mostra a foto (como na seleção); ingresso e combo, o ícone do tipo. */}
+            {item.tipo === "produto" ? (
+                <img src={item.imagem} alt="" className="size-10 shrink-0 rounded-lg bg-primary object-cover ring-1 ring-border-primary" />
+            ) : (
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary ring-1 ring-border-primary ring-inset">
+                    <Icone className="size-5 text-fg-secondary" aria-hidden="true" />
+                </span>
+            )}
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold text-primary">{item.nome}</span>
-                    <BadgeTipo>{item.tipo === "produto" ? "Produto" : item.tipo === "ingresso" ? "Ingresso" : "Combo"}</BadgeTipo>
-                </span>
+                <span className="text-sm font-semibold text-primary">{item.nome}</span>
                 <span className="truncate text-sm text-tertiary">{apoio}</span>
-                <span className="flex items-center gap-1.5 pt-1.5 text-xs text-tertiary">
-                    <Calendar className="size-3.5 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                    {SESSAO_POR_ID[item.sessaoId]?.curto}
-                </span>
+                {/* Combo: o que vem dentro, ingressos e produtos, com a quantidade. */}
+                {item.tipo === "combo" && (
+                    <ul className="mt-2 flex flex-col gap-2 border-l border-secondary pl-3">
+                        {item.componentes.map((c) => {
+                            const ehProduto = c.categoria === "Produto";
+                            const IconeComp = ehProduto ? ShoppingBag01 : Ticket01;
+                            return (
+                                <li key={`${c.nome}-${c.categoria}`} className="flex flex-col gap-0.5">
+                                    <span className="flex items-center gap-1.5 text-sm text-secondary">
+                                        <IconeComp className="size-3.5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                        <span className="shrink-0 font-medium text-primary tabular-nums">{c.quantidade}x</span>
+                                        <span className="min-w-0 truncate">{ehProduto ? c.nome : `${c.nome} - ${c.categoria}`}</span>
+                                    </span>
+                                    {/* A sessão do combo é a dos ingressos dele; produto não tem sessão. */}
+                                    {!ehProduto && (
+                                        <span className="flex items-center gap-1.5 pl-5 text-xs text-tertiary">
+                                            <Calendar className="size-3.5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                            {sessaoDoItem(item)?.curto}
+                                        </span>
+                                    )}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+                {/* Ingresso mostra a sessão aqui; no combo ela fica em cada ingresso, e produto não tem. */}
+                {item.tipo === "ingresso" && (
+                    <span className="flex items-center gap-1.5 pt-1.5 text-xs text-tertiary">
+                        <Calendar className="size-3.5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                        {sessaoDoItem(item)?.curto}
+                    </span>
+                )}
             </span>
         </li>
     );

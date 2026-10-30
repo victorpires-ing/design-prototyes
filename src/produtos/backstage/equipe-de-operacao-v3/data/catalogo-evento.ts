@@ -35,7 +35,7 @@ export interface Produto {
     nome: string;
     descricao: string;
     imagem: string;
-    sessaoId: string;
+    /** Produto não tem sessão: é comprado à parte, como um adicional do evento (ou dentro de um combo). */
 }
 
 export interface ComponenteCombo {
@@ -116,7 +116,9 @@ const CATEGORIAS: { id: string; nome: string }[] = [
 function gerarIngressos(): Ingresso[] {
     const sessoes = ["s3", "s4", "s5", "s6", "s7", "s8"];
     return sessoes.flatMap((sessaoId) =>
-        SETORES.flatMap((setor) => CATEGORIAS.map((cat) => ingresso(`${sessaoId}-${setor.id}-${cat.id}`, sessaoId, setor.grupo, setor.nome, cat.nome, setor.lotes))),
+        SETORES.flatMap((setor) =>
+            CATEGORIAS.map((cat) => ingresso(`${sessaoId}-${setor.id}-${cat.id}`, sessaoId, setor.grupo, setor.nome, cat.nome, setor.lotes)),
+        ),
     );
 }
 
@@ -140,7 +142,6 @@ export const PRODUTOS: Produto[] = [
     {
         id: "p-camiseta",
         tipo: "produto",
-        sessaoId: "s1",
         nome: "Camiseta oficial",
         descricao: "Algodão • tamanhos P ao GG",
         imagem: "https://picsum.photos/seed/camiseta-milagres/96",
@@ -148,7 +149,6 @@ export const PRODUTOS: Produto[] = [
     {
         id: "p-copo",
         tipo: "produto",
-        sessaoId: "s1",
         nome: "Copo colecionável",
         descricao: "500 ml",
         imagem: "https://picsum.photos/seed/copo-milagres/96",
@@ -156,7 +156,6 @@ export const PRODUTOS: Produto[] = [
     {
         id: "p-estacionamento",
         tipo: "produto",
-        sessaoId: "s2",
         nome: "Estacionamento",
         descricao: "Vaga para carro",
         imagem: "https://picsum.photos/seed/estacionamento-milagres/96",
@@ -195,9 +194,7 @@ export const COMBOS: Combo[] = [
         nome: "Combo Casal",
         grupo: "Arena Sunset",
         categoria: "2 ingressos",
-        componentes: [
-            { quantidade: 2, nome: "Pista Sunset", categoria: "Inteira" },
-        ],
+        componentes: [{ quantidade: 2, nome: "Pista Sunset", categoria: "Inteira" }],
     },
     {
         id: "c-galera",
@@ -230,9 +227,7 @@ export const COMBOS: Combo[] = [
         nome: "Combo Premium",
         grupo: "Premium Beira-Mar",
         categoria: "3 ingressos",
-        componentes: [
-            { quantidade: 3, nome: "Pista Premium Beira-Mar", categoria: "Inteira" },
-        ],
+        componentes: [{ quantidade: 3, nome: "Pista Premium Beira-Mar", categoria: "Inteira" }],
     },
     {
         id: "c-lounge",
@@ -241,9 +236,7 @@ export const COMBOS: Combo[] = [
         nome: "Combo Lounge",
         grupo: "Beach Club",
         categoria: "4 ingressos",
-        componentes: [
-            { quantidade: 4, nome: "Lounge Beach Club", categoria: "Inteira" },
-        ],
+        componentes: [{ quantidade: 4, nome: "Lounge Beach Club", categoria: "Inteira" }],
     },
     {
         id: "c-front-fa",
@@ -288,9 +281,7 @@ export const COMBOS: Combo[] = [
         nome: "Combo Camarote Trio",
         grupo: "Camarotes Milagres",
         categoria: "3 ingressos",
-        componentes: [
-            { quantidade: 3, nome: "Camarote Open Bar Milagres", categoria: "Inteira" },
-        ],
+        componentes: [{ quantidade: 3, nome: "Camarote Open Bar Milagres", categoria: "Inteira" }],
     },
     {
         id: "c-fim-de-semana",
@@ -321,17 +312,25 @@ export const ITEM_POR_ID: Record<string, ItemCatalogo> = Object.fromEntries([...
 
 export const SESSAO_POR_ID: Record<string, Sessao> = Object.fromEntries(SESSOES.map((s) => [s.id, s]));
 
-/** Agrupa itens por sessão e, dentro dela, pelo grupo de ingresso — a estrutura dos cards. */
+/** Produtos não têm sessão: na seleção e nas cotas ficam num card próprio, depois das sessões. */
+export const SEM_SESSAO: Sessao = { id: "evento", rotulo: "Todo o evento", curto: "Todo o evento" };
+
+/** Sessão do item; produto não tem. */
+export const sessaoDoItem = (item: ItemCatalogo): Sessao | undefined => (item.tipo === "produto" ? undefined : SESSAO_POR_ID[item.sessaoId]);
+
+/** Agrupa itens por sessão e, dentro dela, pelo grupo de ingresso — a estrutura dos cards. Produtos vão para o fim, sem sessão. */
 export function agruparPorSessao<T extends ItemCatalogo>(itens: T[]) {
-    return SESSOES.map((sessao) => {
-        const daSessao = itens.filter((i) => i.sessaoId === sessao.id);
+    const porSessao = SESSOES.map((sessao) => {
+        const daSessao = itens.filter((i) => i.tipo !== "produto" && i.sessaoId === sessao.id);
         const grupos = new Map<string, T[]>();
         for (const item of daSessao) {
-            const nome = item.tipo === "produto" ? "Produtos" : item.tipo === "combo" ? "Combos" : item.grupo;
+            const nome = item.tipo === "combo" ? "Combos" : item.tipo === "ingresso" ? item.grupo : "";
             grupos.set(nome, [...(grupos.get(nome) ?? []), item]);
         }
         return { sessao, grupos: [...grupos.entries()].map(([nome, lista]) => ({ nome, itens: lista })) };
-    }).filter((s) => s.grupos.length > 0);
+    });
+    const produtos = itens.filter((i) => i.tipo === "produto");
+    return [...porSessao, { sessao: SEM_SESSAO, grupos: produtos.length ? [{ nome: "Produtos", itens: produtos }] : [] }].filter((s) => s.grupos.length > 0);
 }
 
 /**

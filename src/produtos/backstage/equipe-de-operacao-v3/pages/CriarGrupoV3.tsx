@@ -9,7 +9,7 @@ import { operadoresDe, SeletorOperadores } from "../components/seletor-operadore
 import { ResumoGrupo } from "../components/resumo-grupo";
 import { SelecaoIngressos } from "../components/SelecaoIngressos";
 import { BadgeTipo, CabecalhoCotas, CardSessao, RadioBolinha, TemaCotas, TituloSecao } from "../components/ui-cotas";
-import { agruparPorSessao, ITEM_POR_ID, type ItemCatalogo } from "../data/catalogo-evento";
+import { agruparPorSessao, ITEM_POR_ID, SEM_SESSAO, type ItemCatalogo } from "../data/catalogo-evento";
 import { ATUACOES, useEquipeV3, type Atuacao, type DadosGrupo, type TipoCota } from "../data/equipe-v3-store";
 
 const ETAPAS = ["Grupo", "Itens", "Cotas", "Revisão"] as const;
@@ -394,7 +394,7 @@ const CotasPorItem = ({ itens, valores, onValor }: { itens: string[]; valores: R
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.35, ease: EASE_ABRIR, delay: 0.12 + i * 0.07 }}
                 >
-                    <CardSessao rotulo={sessao.rotulo} fundo="medio">
+                    <CardSessao rotulo={sessao.id === SEM_SESSAO.id ? undefined : sessao.rotulo} fundo="medio">
                         {grupos.map((grupo) => (
                             <div key={grupo.nome} className="flex flex-col">
                                 <p className="flex h-8 items-center text-sm font-semibold text-primary">{grupo.nome}</p>

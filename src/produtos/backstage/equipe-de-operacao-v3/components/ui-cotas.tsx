@@ -137,20 +137,22 @@ export const TituloSecao = ({ children, apoio }: { children: ReactNode; apoio?: 
     </div>
 );
 
-/** Card de sessão (data do evento) que agrupa itens por grupo de ingresso. */
-export const CardSessao = ({ rotulo, children, fundo = "escuro" }: { rotulo: string; children: ReactNode; fundo?: "escuro" | "medio" }) => (
+/** Card de sessão (data do evento) que agrupa itens por grupo de ingresso. Sem rótulo (produtos, que não têm sessão) fica sem cabeçalho. */
+export const CardSessao = ({ rotulo, children, fundo = "escuro" }: { rotulo?: string; children: ReactNode; fundo?: "escuro" | "medio" }) => (
     <section className={cx("overflow-hidden rounded-xl ring-1 ring-border-secondary ring-inset", fundo === "escuro" ? "bg-primary_alt" : "bg-primary")}>
-        <header className="flex items-center gap-3 border-b border-secondary py-3 pr-5 pl-3">
-            <span
-                className={cx(
-                    "flex size-8 shrink-0 items-center justify-center rounded-md ring-1 ring-border-primary ring-inset",
-                    fundo === "escuro" ? "bg-primary_alt" : "bg-primary",
-                )}
-            >
-                <Calendar className="size-4 text-secondary" aria-hidden="true" />
-            </span>
-            <h3 className="text-md font-semibold text-secondary">{rotulo}</h3>
-        </header>
+        {rotulo && (
+            <header className="flex items-center gap-3 border-b border-secondary py-3 pr-5 pl-3">
+                <span
+                    className={cx(
+                        "flex size-8 shrink-0 items-center justify-center rounded-md ring-1 ring-border-primary ring-inset",
+                        fundo === "escuro" ? "bg-primary_alt" : "bg-primary",
+                    )}
+                >
+                    <Calendar className="size-4 text-secondary" aria-hidden="true" />
+                </span>
+                <h3 className="text-md font-semibold text-secondary">{rotulo}</h3>
+            </header>
+        )}
         <div className="flex flex-col gap-1 p-4">{children}</div>
     </section>
 );

@@ -8,7 +8,7 @@ import { BackstageLayout } from "../../components/Backstage";
 import { operadoresDe, SeletorOperadores } from "../components/seletor-operadores";
 import { ResumoGrupo } from "../components/resumo-grupo";
 import { SelecaoIngressos } from "../components/SelecaoIngressos";
-import { BadgeTipo, CabecalhoCotas, CardSessao, RadioBolinha, TemaCotas, TituloSecao } from "../components/ui-cotas";
+import { CabecalhoCotas, CardSessao, RadioBolinha, TemaCotas, TituloSecao } from "../components/ui-cotas";
 import { agruparPorSessao, ITEM_POR_ID, SEM_SESSAO, separarPorTipo, legendaDeSessao, type ItemCatalogo } from "../data/catalogo-evento";
 import { ATUACOES, useEquipeV3, type Atuacao, type DadosGrupo, type TipoCota } from "../data/equipe-v3-store";
 
@@ -411,7 +411,6 @@ const CotasPorItem = ({ itens, valores, onValor }: { itens: string[]; valores: R
                                                 <span className="flex min-w-0 flex-col gap-0.5">
                                                     <span className="flex min-w-0 items-center gap-2">
                                                         <span className="truncate text-sm font-medium text-secondary">{item.nome}</span>
-                                                        {item.tipo === "combo" && <BadgeTipo>{item.categoria}</BadgeTipo>}
                                                     </span>
                                                     {/* Combo fora dos cards de sessão: a sessão vem como legenda */}
                                                     {item.tipo === "combo" && <span className="text-xs text-tertiary">{legendaDeSessao(item, "curto")}</span>}

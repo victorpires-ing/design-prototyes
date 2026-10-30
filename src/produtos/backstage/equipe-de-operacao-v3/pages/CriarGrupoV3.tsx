@@ -9,7 +9,7 @@ import { operadoresDe, SeletorOperadores } from "../components/seletor-operadore
 import { ResumoGrupo } from "../components/resumo-grupo";
 import { SelecaoIngressos } from "../components/SelecaoIngressos";
 import { BadgeTipo, CabecalhoCotas, CardSessao, RadioBolinha, TemaCotas, TituloSecao } from "../components/ui-cotas";
-import { agruparPorSessao, ITEM_POR_ID, SEM_SESSAO, separarPorTipo, type ItemCatalogo } from "../data/catalogo-evento";
+import { agruparPorSessao, ITEM_POR_ID, SEM_SESSAO, separarPorTipo, legendaDeSessao, type ItemCatalogo } from "../data/catalogo-evento";
 import { ATUACOES, useEquipeV3, type Atuacao, type DadosGrupo, type TipoCota } from "../data/equipe-v3-store";
 
 const ETAPAS = ["Grupo", "Itens", "Cotas", "Revisão"] as const;
@@ -408,10 +408,13 @@ const CotasPorItem = ({ itens, valores, onValor }: { itens: string[]; valores: R
                                         {tipo === "ingresso" && <p className="flex h-8 items-center text-sm font-semibold text-primary">{grupo.nome}</p>}
                                         {grupo.itens.map((item) => (
                                             <div key={item.id} className="flex items-center justify-between gap-2 px-2 py-3">
-                                                <span className="flex min-w-0 items-center gap-2">
-                                                    <span className="truncate text-sm font-medium text-secondary">{item.nome}</span>
-                                                    {item.tipo === "combo" && <BadgeTipo>{item.categoria}</BadgeTipo>}
-                                                    {item.tipo === "ingresso" && item.lote && <span className="text-sm text-tertiary">{item.lote}</span>}
+                                                <span className="flex min-w-0 flex-col gap-0.5">
+                                                    <span className="flex min-w-0 items-center gap-2">
+                                                        <span className="truncate text-sm font-medium text-secondary">{item.nome}</span>
+                                                        {item.tipo === "combo" && <BadgeTipo>{item.categoria}</BadgeTipo>}
+                                                    </span>
+                                                    {/* Combo fora dos cards de sessão: a sessão vem como legenda */}
+                                                    {item.tipo === "combo" && <span className="text-xs text-tertiary">{legendaDeSessao(item, "curto")}</span>}
                                                 </span>
                                                 <div className="w-[78px] shrink-0">
                                                     <Input

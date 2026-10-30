@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 import { Calendar, Edit01, Package, ShoppingBag01, Ticket01, User01, Users01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
-import { agruparPorSessao, ITEM_POR_ID, SEM_SESSAO, sessaoDoItem, separarPorTipo, type ItemCatalogo } from "../data/catalogo-evento";
+import { agruparPorSessao, contarSessoes, ITEM_POR_ID, sessaoDoComponente, sessaoDoItem, separarPorTipo, type ItemCatalogo } from "../data/catalogo-evento";
 import { plural, ROTULO_ATUACAO, ROTULO_COTA, type Atuacao, type CotaGrupo } from "../data/equipe-v3-store";
 import { GRUPO_MEMBROS_POR_ID } from "../data/membros";
 import { LinhaOperador, operadoresDe, SecaoOperadores } from "./seletor-operadores";
@@ -70,7 +70,7 @@ export function ResumoGrupo({ nome, atuacao, gruposMembros, emailsAvulsos, itens
 
             <CardResumo
                 titulo="Itens"
-                apoio={`${plural(lista.length, "item selecionado", "itens selecionados")} · ${plural(sessoes.filter((s) => s.sessao.id !== SEM_SESSAO.id).length, "sessão", "sessões")}`}
+                apoio={`${plural(lista.length, "item selecionado", "itens selecionados")} · ${plural(contarSessoes(lista), "sessão", "sessões")}`}
                 onEditar={() => onEditar(1)}
             >
                 {/* Separados por tipo, na ordem da seleção: ingressos, produtos e combos. */}
@@ -113,7 +113,6 @@ export function ResumoGrupo({ nome, atuacao, gruposMembros, emailsAvulsos, itens
                                     {doTipo.map((item) => (
                                         <li key={item.id} className="flex min-h-11 items-center gap-2 border-t border-secondary py-2 text-sm first:border-t-0">
                                             <span className="min-w-0 truncate font-medium text-secondary">{item.nome}</span>
-                                            {item.tipo === "ingresso" && item.lote && <span className="shrink-0 text-tertiary">{item.lote}</span>}
                                             <span className="ml-auto shrink-0 font-medium text-primary tabular-nums">{cota.porItem[item.id] ?? 0}</span>
                                         </li>
                                     ))}
@@ -166,13 +165,8 @@ const ICONE_ITEM = { ingresso: Ticket01, produto: ShoppingBag01, combo: Package 
 
 const CardItem = ({ item }: { item: ItemCatalogo }) => {
     const Icone = ICONE_ITEM[item.tipo];
-    // Ingresso: grupo e lote; combo: grupo e categoria; produto: a descrição.
-    const apoio =
-        item.tipo === "produto"
-            ? item.descricao
-            : item.tipo === "ingresso"
-              ? [item.grupo, item.lote].filter(Boolean).join(" · ")
-              : `${item.grupo} · ${item.categoria}`;
+    // Ingresso: o grupo; combo: grupo e categoria; produto: a descrição.
+    const apoio = item.tipo === "produto" ? item.descricao : item.tipo === "ingresso" ? item.grupo : `${item.grupo} · ${item.categoria}`;
     return (
         <li className="flex gap-3 rounded-lg bg-primary_alt p-4 ring-1 ring-border-secondary ring-inset">
             {/* Produto mostra a foto (como na seleção); ingresso e combo, o ícone do tipo. */}
@@ -193,7 +187,7 @@ const CardItem = ({ item }: { item: ItemCatalogo }) => {
                             const ehProduto = c.categoria === "Produto";
                             const IconeComp = ehProduto ? ShoppingBag01 : Ticket01;
                             return (
-                                <li key={`${c.nome}-${c.categoria}`} className="flex flex-col gap-0.5">
+                                <li key={`${c.nome}-${c.categoria}-${c.sessaoId ?? ""}`} className="flex flex-col gap-0.5">
                                     <span className="flex items-center gap-1.5 text-sm text-secondary">
                                         <IconeComp className="size-3.5 shrink-0 text-fg-quaternary" aria-hidden="true" />
                                         <span className="shrink-0 font-medium text-primary tabular-nums">{c.quantidade}x</span>
@@ -203,7 +197,7 @@ const CardItem = ({ item }: { item: ItemCatalogo }) => {
                                     {!ehProduto && (
                                         <span className="flex items-center gap-1.5 pl-5 text-xs text-tertiary">
                                             <Calendar className="size-3.5 shrink-0 text-fg-quaternary" aria-hidden="true" />
-                                            {sessaoDoItem(item)?.curto}
+                                            {sessaoDoComponente(item, c)?.curto}
                                         </span>
                                     )}
                                 </li>

@@ -13,7 +13,7 @@ import { BackstageLayout } from "../../components/Backstage";
 import { ModalDesativar } from "../components/modal-desativar";
 import { ModalEditarOperadores } from "../components/modal-editar-operadores";
 import { BadgeInativo, BarraUso, TemaCotas } from "../components/ui-cotas";
-import { apoioDoItem, estoqueDoItem, ITEM_POR_ID, sessaoDoItem, separarPorTipo } from "../data/catalogo-evento";
+import { apoioDoItem, estoqueDoItem, ITEM_POR_ID, legendaDeSessao, separarPorTipo } from "../data/catalogo-evento";
 import { GRUPO_MEMBROS_POR_ID } from "../data/membros";
 import { itensValidos, limiteDoGrupo, plural, ROTULO_ATUACAO, ROTULO_COTA, useEquipeV3, usadasDoGrupo, type GrupoCotas } from "../data/equipe-v3-store";
 
@@ -380,7 +380,7 @@ const CardItensECotas = ({ grupo, atualizado, onEditar }: { grupo: GrupoCotas; a
                                     <span className="flex min-w-0 flex-1 flex-col">
                                         <span className="text-sm font-medium text-primary">{item.nome}</span>
                                         <span className="text-xs text-tertiary">{apoioDoItem(item)}</span>
-                                        {sessaoDoItem(item) && <span className="text-xs text-tertiary">{sessaoDoItem(item)?.curto}</span>}
+                                        {legendaDeSessao(item, "curto") && <span className="text-xs text-tertiary">{legendaDeSessao(item, "curto")}</span>}
                                     </span>
                                     {tipo === "por-item" ? (
                                         <CotaDoItem

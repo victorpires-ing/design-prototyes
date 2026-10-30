@@ -15,18 +15,6 @@ export interface Ingresso {
     categoria: string;
     grupo: string;
     sessaoId: string;
-    /** Lotes do ingresso. Com um só ("Lote único") não há escolha de lote. */
-    lotes: Lote[];
-    /** Preenchido quando o item é um lote específico (selecionado sem os outros lotes do ingresso). */
-    loteDe?: string;
-    /** Nome do lote, quando o item é um lote específico. */
-    lote?: string;
-}
-
-export interface Lote {
-    /** `${idDoIngresso}-l1`, `-l2`… */
-    id: string;
-    nome: string;
 }
 
 export interface Produto {
@@ -42,6 +30,8 @@ export interface ComponenteCombo {
     quantidade: number;
     nome: string;
     categoria: string;
+    /** Sessão do ingresso dentro do combo (padrão: a do combo). Produto não tem sessão. */
+    sessaoId?: string;
 }
 
 export interface Combo {
@@ -77,34 +67,29 @@ export const SESSOES: Sessao[] = [
 
 /**
  * `nome` é o setor ("Pista Sunset"); o ingresso leva a modalidade no nome ("Pista Sunset - Meia-entrada").
- * `qtdLotes` 1 = "Lote único"; mais de 1 = "1º lote", "2º lote"…
  */
-const ingresso = (id: string, sessaoId: string, grupo: string, nome: string, categoria: string, qtdLotes: number): Ingresso => ({
+const ingresso = (id: string, sessaoId: string, grupo: string, nome: string, categoria: string): Ingresso => ({
     id,
     tipo: "ingresso",
     sessaoId,
     grupo,
     nome: `${nome} - ${categoria}`,
     categoria,
-    lotes:
-        qtdLotes <= 1
-            ? [{ id: `${id}-l1`, nome: "Lote único" }]
-            : Array.from({ length: qtdLotes }, (_, i) => ({ id: `${id}-l${i + 1}`, nome: `${i + 1}º lote` })),
 });
 
 /*
  * Sessões s3–s8: catálogo maior para testar a seleção com muitos itens (~200 ingressos).
  * Cada sessão tem os mesmos setores; ids no formato `s3-vip-mei` (estáveis entre recargas).
  */
-const SETORES: { id: string; grupo: string; nome: string; lotes: number }[] = [
-    { id: "pista", grupo: "Arena Sunset", nome: "Pista Sunset", lotes: 3 },
-    { id: "premium", grupo: "Premium Beira-Mar", nome: "Pista Premium Beira-Mar", lotes: 2 },
-    { id: "front", grupo: "Palco Principal", nome: "Frontstage Colado no Palco", lotes: 1 },
-    { id: "cam", grupo: "Camarotes Milagres", nome: "Camarote Open Bar Milagres", lotes: 3 },
-    { id: "vip", grupo: "Experiência VIP", nome: "Área VIP Pé na Areia", lotes: 2 },
-    { id: "lounge", grupo: "Beach Club", nome: "Lounge Beach Club", lotes: 2 },
-    { id: "arq", grupo: "Mirante", nome: "Arquibancada Mirante", lotes: 1 },
-    { id: "mesa", grupo: "Mesas & Bistrô", nome: "Mesa Bistrô para 4", lotes: 1 },
+const SETORES: { id: string; grupo: string; nome: string }[] = [
+    { id: "pista", grupo: "Arena Sunset", nome: "Pista Sunset" },
+    { id: "premium", grupo: "Premium Beira-Mar", nome: "Pista Premium Beira-Mar" },
+    { id: "front", grupo: "Palco Principal", nome: "Frontstage Colado no Palco" },
+    { id: "cam", grupo: "Camarotes Milagres", nome: "Camarote Open Bar Milagres" },
+    { id: "vip", grupo: "Experiência VIP", nome: "Área VIP Pé na Areia" },
+    { id: "lounge", grupo: "Beach Club", nome: "Lounge Beach Club" },
+    { id: "arq", grupo: "Mirante", nome: "Arquibancada Mirante" },
+    { id: "mesa", grupo: "Mesas & Bistrô", nome: "Mesa Bistrô para 4" },
 ];
 const CATEGORIAS: { id: string; nome: string }[] = [
     { id: "int", nome: "Inteira" },
@@ -116,9 +101,7 @@ const CATEGORIAS: { id: string; nome: string }[] = [
 function gerarIngressos(): Ingresso[] {
     const sessoes = ["s3", "s4", "s5", "s6", "s7", "s8"];
     return sessoes.flatMap((sessaoId) =>
-        SETORES.flatMap((setor) =>
-            CATEGORIAS.map((cat) => ingresso(`${sessaoId}-${setor.id}-${cat.id}`, sessaoId, setor.grupo, setor.nome, cat.nome, setor.lotes)),
-        ),
+        SETORES.flatMap((setor) => CATEGORIAS.map((cat) => ingresso(`${sessaoId}-${setor.id}-${cat.id}`, sessaoId, setor.grupo, setor.nome, cat.nome))),
     );
 }
 
@@ -286,12 +269,14 @@ export const COMBOS: Combo[] = [
     {
         id: "c-fim-de-semana",
         tipo: "combo",
-        sessaoId: "s8",
+        sessaoId: "s7",
         nome: "Combo Fim de Semana",
         grupo: "Arena Sunset",
-        categoria: "Ingresso + copo + estacionamento",
+        categoria: "2 ingressos + copo + estacionamento",
+        // O mesmo combo em duas sessões: o vínculo é dos ingressos, e cada um tem a sua.
         componentes: [
-            { quantidade: 1, nome: "Pista Sunset", categoria: "Inteira" },
+            { quantidade: 1, nome: "Pista Sunset", categoria: "Inteira", sessaoId: "s7" },
+            { quantidade: 1, nome: "Pista Sunset", categoria: "Inteira", sessaoId: "s8" },
             { quantidade: 1, nome: "Copo colecionável", categoria: "Produto" },
             { quantidade: 1, nome: "Estacionamento", categoria: "Produto" },
         ],
@@ -300,15 +285,7 @@ export const COMBOS: Combo[] = [
 
 export const ITENS: ItemCatalogo[] = [...INGRESSOS, ...PRODUTOS, ...COMBOS];
 
-/**
- * Um lote escolhido sozinho vira um item próprio (para cotas, resumo e detalhe), com o nome do
- * lote. Selecionar o ingresso inteiro guarda só o id do ingresso; lotes avulsos guardam o id do lote.
- */
-const ITENS_DE_LOTE: Ingresso[] = INGRESSOS.filter((i) => i.lotes.length > 1).flatMap((i) =>
-    i.lotes.map((l) => ({ ...i, id: l.id, lotes: [l], loteDe: i.id, lote: l.nome })),
-);
-
-export const ITEM_POR_ID: Record<string, ItemCatalogo> = Object.fromEntries([...ITENS, ...ITENS_DE_LOTE].map((i) => [i.id, i]));
+export const ITEM_POR_ID: Record<string, ItemCatalogo> = Object.fromEntries(ITENS.map((i) => [i.id, i]));
 
 export const SESSAO_POR_ID: Record<string, Sessao> = Object.fromEntries(SESSOES.map((s) => [s.id, s]));
 
@@ -320,18 +297,48 @@ export const sessaoDoItem = (item: ItemCatalogo): Sessao | undefined => (item.ti
 
 /** Agrupa itens por sessão e, dentro dela, pelo grupo de ingresso — a estrutura dos cards. Produtos vão para o fim, sem sessão. */
 export function agruparPorSessao<T extends ItemCatalogo>(itens: T[]) {
+    // Só ingressos ficam em cards de sessão. Produtos e combos são selecionados numa lista simples:
+    // o combo leva a sessão como legenda abaixo do nome (os ingressos dele é que têm sessão).
     const porSessao = SESSOES.map((sessao) => {
-        const daSessao = itens.filter((i) => i.tipo !== "produto" && i.sessaoId === sessao.id);
+        const daSessao = itens.filter((i) => i.tipo === "ingresso" && i.sessaoId === sessao.id);
         const grupos = new Map<string, T[]>();
         for (const item of daSessao) {
-            const nome = item.tipo === "combo" ? "Combos" : item.tipo === "ingresso" ? item.grupo : "";
+            const nome = item.tipo === "ingresso" ? item.grupo : "";
             grupos.set(nome, [...(grupos.get(nome) ?? []), item]);
         }
         return { sessao, grupos: [...grupos.entries()].map(([nome, lista]) => ({ nome, itens: lista })) };
     });
+    const ordemSessao = (i: ItemCatalogo) => SESSOES.findIndex((s) => s.id === sessaoDoItem(i)?.id);
     const produtos = itens.filter((i) => i.tipo === "produto");
-    return [...porSessao, { sessao: SEM_SESSAO, grupos: produtos.length ? [{ nome: "Produtos", itens: produtos }] : [] }].filter((s) => s.grupos.length > 0);
+    const combos = itens.filter((i) => i.tipo === "combo").sort((a, b) => ordemSessao(a) - ordemSessao(b));
+    const semSessao = [...(produtos.length ? [{ nome: "Produtos", itens: produtos }] : []), ...(combos.length ? [{ nome: "Combos", itens: combos }] : [])];
+    return [...porSessao, { sessao: SEM_SESSAO, grupos: semSessao }].filter((s) => s.grupos.length > 0);
 }
+
+/** É produto (dentro de um combo)? Produto não tem sessão. */
+export const componenteEhProduto = (c: ComponenteCombo) => c.categoria === "Produto";
+
+/** Sessão de um componente do combo: a dele, ou a do combo; produto não tem. */
+export const sessaoDoComponente = (combo: Combo, c: ComponenteCombo) => (componenteEhProduto(c) ? undefined : SESSAO_POR_ID[c.sessaoId ?? combo.sessaoId]);
+
+/** Sessões de um item, em ordem: ingresso tem uma; combo, as dos ingressos dele; produto, nenhuma. */
+export const sessoesDoItem = (item: ItemCatalogo): Sessao[] => {
+    if (item.tipo === "produto") return [];
+    if (item.tipo === "ingresso") return [SESSAO_POR_ID[item.sessaoId]].filter(Boolean);
+    const ids = new Set(item.componentes.map((c) => sessaoDoComponente(item, c)?.id).filter(Boolean));
+    if (ids.size === 0) ids.add(item.sessaoId);
+    return SESSOES.filter((s) => ids.has(s.id));
+};
+
+/** Legenda de sessão do combo, como no Backstage: a primeira sessão e "+N" quando há mais ("29 de agosto às 11:30 +1"). */
+export const legendaDeSessao = (item: ItemCatalogo, formato: "rotulo" | "curto" = "rotulo") => {
+    const s = sessoesDoItem(item);
+    if (s.length === 0) return undefined;
+    return s[0][formato] + (s.length > 1 ? ` +${s.length - 1}` : "");
+};
+
+/** Quantas sessões diferentes os itens cobrem (ingressos e combos; produto não tem sessão). */
+export const contarSessoes = (itens: ItemCatalogo[]) => new Set(itens.flatMap((i) => sessoesDoItem(i).map((s) => s.id))).size;
 
 /** Ordem e rótulo dos tipos: em toda listagem de itens eles aparecem separados, nesta ordem. */
 export const TIPOS_ITEM = [
@@ -348,7 +355,7 @@ export function separarPorTipo<T extends ItemCatalogo>(itens: T[]) {
 
 /**
  * Estoque do item (mock): referência de limite quando o grupo não tem cota definida.
- * Determinístico pelo id, para não mudar entre recargas. Lote avulso = estoque daquele lote.
+ * Determinístico pelo id, para não mudar entre recargas.
  */
 export function estoqueDoItem(item: ItemCatalogo) {
     let h = 0;
@@ -357,10 +364,10 @@ export function estoqueDoItem(item: ItemCatalogo) {
     return base + (h % 17) * 50;
 }
 
-/** Linha de apoio do item no detalhe do grupo: o grupo e, se for um lote avulso, o lote ("Pista · 1º lote"). */
+/** Linha de apoio do item no detalhe do grupo: o grupo do ingresso, o grupo e a categoria do combo ou a descrição do produto. */
 export function apoioDoItem(item: ItemCatalogo) {
     if (item.tipo === "ingresso") {
-        return item.lote ? `${item.grupo} · ${item.lote}` : item.grupo;
+        return item.grupo;
     }
     if (item.tipo === "combo") return `${item.grupo} · ${item.categoria}`;
     return item.descricao;

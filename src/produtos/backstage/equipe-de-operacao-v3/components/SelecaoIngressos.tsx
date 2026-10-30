@@ -14,6 +14,9 @@ import {
     SESSAO_POR_ID,
     SEM_SESSAO,
     sessaoDoItem,
+    sessaoDoComponente,
+    componenteEhProduto,
+    legendaDeSessao,
     type Combo,
     type Ingresso,
     type ItemCatalogo,
@@ -52,29 +55,8 @@ export function SelecaoIngressos({ selecionados, onChange }: Props) {
         onChange(marcar ? [...selecionados, id] : selecionados.filter((i) => i !== id));
     };
 
-    /*
-     * Ingresso com lotes: marcar o ingresso guarda só o id dele (vale para todos os lotes);
-     * marcar lotes avulsos guarda os ids dos lotes. Quando todos os lotes ficam marcados,
-     * eles voltam a ser o ingresso inteiro.
-     */
-    const estado = (item: ItemCatalogo): Estado => {
-        if (set.has(item.id)) return "todos";
-        if (item.tipo !== "ingresso" || item.lotes.length < 2) return "nenhum";
-        return item.lotes.some((l) => set.has(l.id)) ? "parcial" : "nenhum";
-    };
-    const semIngresso = (lista: string[], item: ItemCatalogo) => {
-        const ids = new Set([item.id, ...(item.tipo === "ingresso" ? item.lotes.map((l) => l.id) : [])]);
-        return lista.filter((id) => !ids.has(id));
-    };
-    // Parcial + clique completa a seleção (todos os lotes); marcado + clique desmarca tudo.
-    const alternarItem = (item: ItemCatalogo) =>
-        onChange(estado(item) === "todos" ? semIngresso(selecionados, item) : [...semIngresso(selecionados, item), item.id]);
-    const alternarLote = (item: Ingresso, loteId: string) => {
-        if (set.has(item.id)) return onChange([...semIngresso(selecionados, item), ...item.lotes.filter((l) => l.id !== loteId).map((l) => l.id)]);
-        const proxima = set.has(loteId) ? selecionados.filter((id) => id !== loteId) : [...selecionados, loteId];
-        const todos = item.lotes.every((l) => proxima.includes(l.id));
-        onChange(todos ? [...semIngresso(proxima, item), item.id] : proxima);
-    };
+    const estado = (item: ItemCatalogo): Estado => (set.has(item.id) ? "todos" : "nenhum");
+    const alternarItem = (item: ItemCatalogo) => alternar(item.id, !set.has(item.id));
 
     // Grupo e sessão: marcados quando todos os itens estão; parcial quando só alguns.
     const estadoLista = (itens: ItemCatalogo[]): Estado => {
@@ -83,7 +65,8 @@ export function SelecaoIngressos({ selecionados, onChange }: Props) {
         return e.some((x) => x !== "nenhum") ? "parcial" : "nenhum";
     };
     const alternarLista = (itens: ItemCatalogo[]) => {
-        const limpa = itens.reduce((lista, item) => semIngresso(lista, item), selecionados);
+        const ids = new Set(itens.map((i) => i.id));
+        const limpa = selecionados.filter((id) => !ids.has(id));
         onChange(estadoLista(itens) === "todos" ? limpa : [...limpa, ...itens.map((i) => i.id)]);
     };
 
@@ -166,21 +149,7 @@ export function SelecaoIngressos({ selecionados, onChange }: Props) {
                                                 onChange={() => alternarLista(grupo.itens)}
                                             />
                                             {grupo.itens.map((item) => (
-                                                <div key={item.id} className="flex flex-col">
-                                                    <LinhaItem item={item} estado={estado(item)} onChange={() => alternarItem(item)} />
-                                                    {/* Lotes logo abaixo do ingresso, um nível para dentro */}
-                                                    {item.tipo === "ingresso" &&
-                                                        item.lotes.length > 1 &&
-                                                        item.lotes.map((l) => (
-                                                            <LinhaCheck
-                                                                key={l.id}
-                                                                nivel={2}
-                                                                estado={set.has(item.id) || set.has(l.id) ? "todos" : "nenhum"}
-                                                                rotulo={l.nome}
-                                                                onChange={() => alternarLote(item, l.id)}
-                                                            />
-                                                        ))}
-                                                </div>
+                                                <LinhaItem key={item.id} item={item} estado={estado(item)} onChange={() => alternarItem(item)} />
                                             ))}
                                         </div>
                                     ))}
@@ -207,7 +176,7 @@ const teclaMarca = (fn: () => void) => (e: React.KeyboardEvent) => {
     fn();
 };
 
-/** Recuo de cada nível: grupo, item e lote. */
+/** Recuo de cada nível: grupo e item. */
 const RECUO = ["pl-4", "pl-11", "pl-[72px]"] as const;
 
 /** Linha inteira clicável com checkbox de 3 estados. Base de todas as linhas da lista. */
@@ -217,12 +186,15 @@ const LinhaBase = ({
     rotulo,
     onChange,
     children,
+    topo,
 }: {
     nivel: 0 | 1 | 2;
     estado: Estado;
     rotulo: string;
     onChange: () => void;
     children: React.ReactNode;
+    /** Conteúdo alto (combo com a lista do que vem nele): o checkbox fica no topo. */
+    topo?: boolean;
 }) => (
     <div
         role="checkbox"
@@ -232,7 +204,8 @@ const LinhaBase = ({
         onClick={onChange}
         onKeyDown={teclaMarca(onChange)}
         className={cx(
-            "flex min-h-[50px] cursor-pointer items-center gap-2 rounded-xl py-3 pr-4 outline-none transition duration-100 ease-linear select-none hover:bg-secondary focus-visible:bg-secondary",
+            "flex min-h-[50px] cursor-pointer gap-2 rounded-xl py-3 pr-4 outline-none transition duration-100 ease-linear select-none hover:bg-secondary focus-visible:bg-secondary",
+            topo ? "items-start" : "items-center",
             RECUO[nivel],
         )}
     >
@@ -241,7 +214,7 @@ const LinhaBase = ({
     </div>
 );
 
-/** Linha só com texto: grupo e lote. */
+/** Linha só com texto: o grupo. */
 const LinhaCheck = ({
     nivel,
     destaque,
@@ -260,22 +233,48 @@ const LinhaCheck = ({
     </LinhaBase>
 );
 
-/** Ingresso, produto ou combo, um nível abaixo do grupo. Os lotes vêm na linha de baixo, recuados. */
-const LinhaItem = ({ item, estado, onChange, nivel = 1 }: { item: ItemCatalogo; estado: Estado; onChange: () => void; nivel?: 0 | 1 }) => (
-    <LinhaBase nivel={nivel} estado={estado} rotulo={item.nome} onChange={onChange}>
-        {item.tipo === "produto" && <img src={item.imagem} alt="" className="size-8 shrink-0 rounded-md bg-primary object-cover ring-1 ring-border-primary" />}
-        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <span className="truncate text-sm font-medium text-secondary">{item.nome}</span>
-            {/* Tipo do item: ingressos são sempre "Ingresso"; combos mostram o que vem no pacote */}
-            {item.tipo !== "produto" && <BadgeTipo>{item.tipo === "ingresso" ? "Ingresso" : item.categoria}</BadgeTipo>}
-            {item.tipo === "produto" && <span className="text-sm text-tertiary">{item.descricao}</span>}
-        </span>
-        {/* Com um lote só não há escolha: o nome do lote fica na própria linha */}
-        {item.tipo === "ingresso" && item.lotes.length === 1 && <span className="shrink-0 text-sm text-tertiary">{item.lotes[0].nome}</span>}
-        {item.tipo === "combo" && (
-            <span className="shrink-0 text-sm text-tertiary">{item.componentes.map((c) => `${c.quantidade}x ${c.nome}`).join(" + ")}</span>
-        )}
-    </LinhaBase>
+/** Ingresso, produto ou combo, um nível abaixo do grupo. */
+const LinhaItem = ({ item, estado, onChange, nivel = 1 }: { item: ItemCatalogo; estado: Estado; onChange: () => void; nivel?: 0 | 1 }) =>
+    item.tipo === "combo" ? (
+        // Como no Backstage: o combo, a sessão (+N quando são várias) e, embaixo, o que vem nele com a quantidade na frente.
+        <LinhaBase nivel={nivel} estado={estado} rotulo={item.nome} onChange={onChange} topo>
+            <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-sm font-medium text-secondary">{item.nome}</span>
+                <span className="text-sm text-tertiary">{legendaDeSessao(item)}</span>
+                <ComposicaoCombo combo={item} />
+            </span>
+        </LinhaBase>
+    ) : (
+        <LinhaBase nivel={nivel} estado={estado} rotulo={item.nome} onChange={onChange}>
+            {item.tipo === "produto" && (
+                <img src={item.imagem} alt="" className="size-8 shrink-0 rounded-md bg-primary object-cover ring-1 ring-border-primary" />
+            )}
+            <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                <span className="truncate text-sm font-medium text-secondary">{item.nome}</span>
+                {item.tipo === "ingresso" && <BadgeTipo>Ingresso</BadgeTipo>}
+                {item.tipo === "produto" && <span className="text-sm text-tertiary">{item.descricao}</span>}
+            </span>
+        </LinhaBase>
+    );
+
+/** O que vem no combo: quantidade num círculo, o nome e, se for ingresso, a sessão dele. */
+const ComposicaoCombo = ({ combo }: { combo: Combo }) => (
+    <ul className="mt-3 flex flex-col gap-3">
+        {combo.componentes.map((c, i) => {
+            const sessao = sessaoDoComponente(combo, c);
+            return (
+                <li key={i} className="flex items-start gap-2.5">
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-tertiary text-xs font-semibold text-secondary tabular-nums">
+                        {c.quantidade}
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                        <span className="text-sm font-medium text-secondary">{componenteEhProduto(c) ? c.nome : `${c.nome} - ${c.categoria}`}</span>
+                        {sessao && <span className="text-sm text-tertiary">{sessao.rotulo}</span>}
+                    </span>
+                </li>
+            );
+        })}
+    </ul>
 );
 
 /* --------------------------- Selecionar todos --------------------------- */
@@ -337,10 +336,7 @@ const Resumo = ({ selecionados, onRemover, onLimpar }: { selecionados: string[];
                             {ingressos.map((i) => (
                                 <CartaoResumo key={i.id} onRemover={() => onRemover(i.id)} nome={i.nome}>
                                     <span className="text-sm font-medium text-secondary">{i.grupo}</span>
-                                    <span className="text-sm text-tertiary">
-                                        {i.lote ? `${i.lote} • ` : ""}
-                                        {SESSAO_POR_ID[i.sessaoId]?.curto}
-                                    </span>
+                                    <span className="text-sm text-tertiary">{SESSAO_POR_ID[i.sessaoId]?.curto}</span>
                                 </CartaoResumo>
                             ))}
                         </BlocoResumo>
@@ -363,15 +359,15 @@ const Resumo = ({ selecionados, onRemover, onLimpar }: { selecionados: string[];
                                     </span>
                                     <div className="mt-1.5 flex flex-col gap-1.5 border-l border-secondary pl-2">
                                         {c.componentes.map((comp) => (
-                                            <div key={comp.nome} className="flex gap-2">
+                                            <div key={`${comp.nome}-${comp.sessaoId ?? ""}`} className="flex gap-2">
                                                 <span className="text-xs font-medium text-primary">{comp.quantidade}x</span>
                                                 <span className="flex flex-col gap-1">
                                                     <span className="text-sm font-medium text-primary">
                                                         {comp.nome} • {comp.categoria}
                                                     </span>
                                                     {/* A sessão do combo vem dos ingressos dele; produto não tem sessão. */}
-                                                    {comp.categoria !== "Produto" && (
-                                                        <span className="text-sm text-tertiary">{SESSAO_POR_ID[c.sessaoId]?.curto}</span>
+                                                    {sessaoDoComponente(c, comp) && (
+                                                        <span className="text-sm text-tertiary">{sessaoDoComponente(c, comp)?.curto}</span>
                                                     )}
                                                 </span>
                                             </div>

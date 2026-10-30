@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FC, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type FC, type KeyboardEvent, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Edit01, HelpCircle, HomeLine, User01, Users01, XClose } from "@untitledui/icons";
@@ -13,7 +13,7 @@ import { BackstageLayout } from "../../components/Backstage";
 import { ModalDesativar } from "../components/modal-desativar";
 import { ModalEditarOperadores } from "../components/modal-editar-operadores";
 import { BadgeInativo, BarraUso, TemaCotas } from "../components/ui-cotas";
-import { apoioDoItem, estoqueDoItem, ITEM_POR_ID, sessaoDoItem } from "../data/catalogo-evento";
+import { apoioDoItem, estoqueDoItem, ITEM_POR_ID, sessaoDoItem, separarPorTipo } from "../data/catalogo-evento";
 import { GRUPO_MEMBROS_POR_ID } from "../data/membros";
 import { itensValidos, limiteDoGrupo, plural, ROTULO_ATUACAO, ROTULO_COTA, useEquipeV3, usadasDoGrupo, type GrupoCotas } from "../data/equipe-v3-store";
 
@@ -293,6 +293,8 @@ const CardItensECotas = ({ grupo, atualizado, onEditar }: { grupo: GrupoCotas; a
     const { setCotaItem, setCotaTotal } = useEquipeV3();
     // Uma cota editando por vez (um item, ou "total" na compartilhada).
     const [editando, setEditando] = useState<string | null>(null);
+    // Ordem global das linhas, para a cascata de entrada ao voltar da edição.
+    let ordem = 0;
 
     return (
         <section className="relative flex flex-col gap-3 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary ring-inset">
@@ -351,57 +353,66 @@ const CardItensECotas = ({ grupo, atualizado, onEditar }: { grupo: GrupoCotas; a
                 </Button>
             </div>
 
-            <div className="h-px bg-[var(--color-border-secondary)]" />
+            <div className="-mx-5 h-px bg-[var(--color-border-secondary)]" />
 
             {/* Grade com subgrid: a coluna de uso tem a largura do maior texto, e todas as barras acompanham. */}
             <ul className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-4">
-                {itens.map((id, idx) => {
-                    const item = ITEM_POR_ID[id];
-                    const uso = grupo.usoPorItem[id] ?? 0;
-                    const cotaItem = grupo.cota.porItem[id] ?? 0;
-                    return (
-                        <motion.li
-                            key={id}
-                            // Ao voltar da edição as linhas reaparecem em cascata, de cima para baixo.
-                            initial={atualizado ? { opacity: 0, y: 8 } : false}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: 0.15 + idx * 0.05 }}
-                            className="col-span-2 grid grid-cols-subgrid items-center"
-                        >
-                            <span className="flex min-w-0 flex-1 flex-col">
-                                <span className="text-sm font-medium text-primary">{item.nome}</span>
-                                <span className="text-xs text-tertiary">{apoioDoItem(item)}</span>
-                                {sessaoDoItem(item) && <span className="text-xs text-tertiary">{sessaoDoItem(item)?.curto}</span>}
-                            </span>
-                            {tipo === "por-item" ? (
-                                <CotaDoItem
-                                    nome={item.nome}
-                                    uso={uso}
-                                    cota={cotaItem}
-                                    editando={editando === id}
-                                    onEditar={() => setEditando(id)}
-                                    onCancelar={() => setEditando(null)}
-                                    onSalvar={(n) => {
-                                        setCotaItem(grupo.id, id, n);
-                                        setEditando(null);
-                                    }}
-                                />
-                            ) : tipo === "sem-limite" ? (
-                                // Sem cota: a referência é o estoque do item, só para leitura (sem lápis).
-                                <span className="flex min-w-[131px] flex-col gap-2">
-                                    <span className="text-sm font-medium whitespace-nowrap text-secondary tabular-nums">
-                                        {uso} de {Math.max(estoqueDoItem(item), uso)} emissões
+                {separarPorTipo(itens.map((id) => ITEM_POR_ID[id])).map(({ tipo: tipoItem, titulo, itens: doTipo }, t) => (
+                    <Fragment key={tipoItem}>
+                        {/* Ingressos, produtos e combos sempre separados, cada um com seu título */}
+                        <li className={cx("col-span-2 text-sm font-semibold text-primary", t > 0 && "-mx-5 border-t border-secondary px-5 pt-4")}>
+                            {titulo} <span className="font-normal text-tertiary">· {doTipo.length}</span>
+                        </li>
+                        {doTipo.map((item) => {
+                            const id = item.id;
+                            const idx = ordem++;
+                            const uso = grupo.usoPorItem[id] ?? 0;
+                            const cotaItem = grupo.cota.porItem[id] ?? 0;
+                            return (
+                                <motion.li
+                                    key={id}
+                                    // Ao voltar da edição as linhas reaparecem em cascata, de cima para baixo.
+                                    initial={atualizado ? { opacity: 0, y: 8 } : false}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: 0.15 + idx * 0.05 }}
+                                    className="col-span-2 grid grid-cols-subgrid items-center"
+                                >
+                                    <span className="flex min-w-0 flex-1 flex-col">
+                                        <span className="text-sm font-medium text-primary">{item.nome}</span>
+                                        <span className="text-xs text-tertiary">{apoioDoItem(item)}</span>
+                                        {sessaoDoItem(item) && <span className="text-xs text-tertiary">{sessaoDoItem(item)?.curto}</span>}
                                     </span>
-                                    <BarraUso usadas={uso} total={Math.max(estoqueDoItem(item), uso)} />
-                                </span>
-                            ) : (
-                                <span className="justify-self-end text-sm font-medium whitespace-nowrap text-secondary tabular-nums">
-                                    {plural(uso, "emissão", "emissões")}
-                                </span>
-                            )}
-                        </motion.li>
-                    );
-                })}
+                                    {tipo === "por-item" ? (
+                                        <CotaDoItem
+                                            nome={item.nome}
+                                            uso={uso}
+                                            cota={cotaItem}
+                                            editando={editando === id}
+                                            onEditar={() => setEditando(id)}
+                                            onCancelar={() => setEditando(null)}
+                                            onSalvar={(n) => {
+                                                setCotaItem(grupo.id, id, n);
+                                                setEditando(null);
+                                            }}
+                                        />
+                                    ) : tipo === "sem-limite" ? (
+                                        // Sem cota: a referência é o estoque do item, só para leitura (sem lápis).
+                                        <span className="flex min-w-[131px] flex-col gap-2">
+                                            <span className="text-sm font-medium whitespace-nowrap text-secondary tabular-nums">
+                                                {uso} de {Math.max(estoqueDoItem(item), uso)} emissões
+                                            </span>
+                                            <BarraUso usadas={uso} total={Math.max(estoqueDoItem(item), uso)} />
+                                        </span>
+                                    ) : (
+                                        <span className="justify-self-end text-sm font-medium whitespace-nowrap text-secondary tabular-nums">
+                                            {plural(uso, "emissão", "emissões")}
+                                        </span>
+                                    )}
+                                </motion.li>
+                            );
+                        })}
+                    </Fragment>
+                ))}
             </ul>
         </section>
     );

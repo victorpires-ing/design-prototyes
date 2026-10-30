@@ -52,8 +52,8 @@ const EXEMPLOS: Exemplo[] = [
         nome: "Camarote VIP",
         atuacao: "pdv",
         grupoMembrosId: "m-camarote",
-        uso: { "s1-cam-int": 62, "s1-cam-mei": 30, "c-camarote": 12 },
-        cota: { tipo: "por-item", total: 0, porItem: { "s1-cam-int": 100, "s1-cam-mei": 50, "c-camarote": 20 } },
+        uso: { "s1-cam-int": 62, "s1-cam-mei": 30, "p-copo": 15, "c-camarote": 12 },
+        cota: { tipo: "por-item", total: 0, porItem: { "s1-cam-int": 100, "s1-cam-mei": 50, "p-copo": 40, "c-camarote": 20 } },
         diasAtras: 6,
     },
     {

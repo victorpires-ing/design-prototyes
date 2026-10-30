@@ -333,6 +333,19 @@ export function agruparPorSessao<T extends ItemCatalogo>(itens: T[]) {
     return [...porSessao, { sessao: SEM_SESSAO, grupos: produtos.length ? [{ nome: "Produtos", itens: produtos }] : [] }].filter((s) => s.grupos.length > 0);
 }
 
+/** Ordem e rótulo dos tipos: em toda listagem de itens eles aparecem separados, nesta ordem. */
+export const TIPOS_ITEM = [
+    { tipo: "ingresso", titulo: "Ingressos" },
+    { tipo: "produto", titulo: "Produtos" },
+    { tipo: "combo", titulo: "Combos" },
+] as const;
+
+/** Separa os itens por tipo (só os tipos presentes), mantendo dentro de cada um a ordem por sessão e grupo. */
+export function separarPorTipo<T extends ItemCatalogo>(itens: T[]) {
+    const ordenados = agruparPorSessao(itens).flatMap(({ grupos }) => grupos.flatMap((g) => g.itens));
+    return TIPOS_ITEM.map(({ tipo, titulo }) => ({ tipo, titulo, itens: ordenados.filter((i) => i.tipo === tipo) })).filter((t) => t.itens.length > 0);
+}
+
 /**
  * Estoque do item (mock): referência de limite quando o grupo não tem cota definida.
  * Determinístico pelo id, para não mudar entre recargas. Lote avulso = estoque daquele lote.

@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 import { Calendar, Edit01, Package, ShoppingBag01, Ticket01, User01, Users01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
-import { agruparPorSessao, ITEM_POR_ID, SEM_SESSAO, sessaoDoItem, type ItemCatalogo } from "../data/catalogo-evento";
+import { agruparPorSessao, ITEM_POR_ID, SEM_SESSAO, sessaoDoItem, separarPorTipo, type ItemCatalogo } from "../data/catalogo-evento";
 import { plural, ROTULO_ATUACAO, ROTULO_COTA, type Atuacao, type CotaGrupo } from "../data/equipe-v3-store";
 import { GRUPO_MEMBROS_POR_ID } from "../data/membros";
 import { LinhaOperador, operadoresDe, SecaoOperadores } from "./seletor-operadores";
@@ -102,15 +102,25 @@ export function ResumoGrupo({ nome, atuacao, gruposMembros, emailsAvulsos, itens
                     {cota.tipo === "por-item" && <Campo rotulo="Total das cotas">{plural(somaPorItem, "emissão", "emissões")}</Campo>}
                 </Destaques>
                 {cota.tipo === "por-item" && (
-                    <ul className="mt-1 flex flex-col rounded-lg bg-primary_alt px-4 py-1 ring-1 ring-border-secondary ring-inset">
-                        {lista.map((item) => (
-                            <li key={item.id} className="flex min-h-11 items-center gap-2 border-t border-secondary py-2 text-sm first:border-t-0">
-                                <span className="min-w-0 truncate font-medium text-secondary">{item.nome}</span>
-                                {item.tipo === "ingresso" && item.lote && <span className="shrink-0 text-tertiary">{item.lote}</span>}
-                                <span className="ml-auto shrink-0 font-medium text-primary tabular-nums">{cota.porItem[item.id] ?? 0}</span>
-                            </li>
+                    // Cota de cada item, também separada por tipo: uma lista para ingressos, outra para produtos, outra para combos.
+                    <div className="mt-1 flex flex-col gap-4">
+                        {separarPorTipo(lista).map(({ tipo, titulo, itens: doTipo }) => (
+                            <div key={tipo} className="flex flex-col gap-2">
+                                <h4 className="text-sm font-semibold text-primary">
+                                    {titulo} <span className="font-normal text-tertiary">· {doTipo.length}</span>
+                                </h4>
+                                <ul className="flex flex-col rounded-lg bg-primary_alt px-4 py-1 ring-1 ring-border-secondary ring-inset">
+                                    {doTipo.map((item) => (
+                                        <li key={item.id} className="flex min-h-11 items-center gap-2 border-t border-secondary py-2 text-sm first:border-t-0">
+                                            <span className="min-w-0 truncate font-medium text-secondary">{item.nome}</span>
+                                            {item.tipo === "ingresso" && item.lote && <span className="shrink-0 text-tertiary">{item.lote}</span>}
+                                            <span className="ml-auto shrink-0 font-medium text-primary tabular-nums">{cota.porItem[item.id] ?? 0}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         ))}
-                    </ul>
+                    </div>
                 )}
             </CardResumo>
         </div>

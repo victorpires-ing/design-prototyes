@@ -9,7 +9,7 @@ import { operadoresDe, SeletorOperadores } from "../components/seletor-operadore
 import { ResumoGrupo } from "../components/resumo-grupo";
 import { SelecaoIngressos } from "../components/SelecaoIngressos";
 import { BadgeTipo, CabecalhoCotas, CardSessao, RadioBolinha, TemaCotas, TituloSecao } from "../components/ui-cotas";
-import { agruparPorSessao, ITEM_POR_ID, SEM_SESSAO, type ItemCatalogo } from "../data/catalogo-evento";
+import { agruparPorSessao, ITEM_POR_ID, SEM_SESSAO, separarPorTipo, type ItemCatalogo } from "../data/catalogo-evento";
 import { ATUACOES, useEquipeV3, type Atuacao, type DadosGrupo, type TipoCota } from "../data/equipe-v3-store";
 
 const ETAPAS = ["Grupo", "Itens", "Cotas", "Revisão"] as const;
@@ -378,52 +378,60 @@ const EASE_FECHAR = [0.4, 0, 1, 1] as const;
 /* ---------------------------- Cota por item ---------------------------- */
 
 const CotasPorItem = ({ itens, valores, onValor }: { itens: string[]; valores: Record<string, number>; onValor: (id: string, n: number) => void }) => {
-    const sessoes = useMemo(() => agruparPorSessao(itens.map((id) => ITEM_POR_ID[id]).filter((i): i is ItemCatalogo => Boolean(i))), [itens]);
+    // Separados por tipo (ingressos, produtos, combos) e, dentro de cada um, por sessão. Produto não tem sessão.
+    const tipos = useMemo(() => separarPorTipo(itens.map((id) => ITEM_POR_ID[id]).filter((i): i is ItemCatalogo => Boolean(i))), [itens]);
 
     const reduzir = useReducedMotion();
 
-    if (sessoes.length === 0) return <p className="text-sm text-tertiary">Selecione itens na etapa anterior para definir as cotas.</p>;
+    if (tipos.length === 0) return <p className="text-sm text-tertiary">Selecione itens na etapa anterior para definir as cotas.</p>;
 
+    let ordem = 0;
     return (
-        <div className="flex flex-col gap-3">
-            {sessoes.map(({ sessao, grupos }, i) => (
-                // Os cards de sessão entram em cascata, logo depois do painel abrir.
-                <motion.div
-                    key={sessao.id}
-                    initial={reduzir ? false : { opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, ease: EASE_ABRIR, delay: 0.12 + i * 0.07 }}
-                >
-                    <CardSessao rotulo={sessao.id === SEM_SESSAO.id ? undefined : sessao.rotulo} fundo="medio">
-                        {grupos.map((grupo) => (
-                            <div key={grupo.nome} className="flex flex-col">
-                                <p className="flex h-8 items-center text-sm font-semibold text-primary">{grupo.nome}</p>
-                                {grupo.itens.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between gap-2 px-2 py-3">
-                                        <span className="flex min-w-0 items-center gap-2">
-                                            <span className="truncate text-sm font-medium text-secondary">{item.nome}</span>
-                                            <BadgeTipo>
-                                                {item.tipo === "produto" ? "Produto" : item.tipo === "ingresso" ? "Ingresso" : item.categoria}
-                                            </BadgeTipo>
-                                            {item.tipo === "ingresso" && item.lote && <span className="text-sm text-tertiary">{item.lote}</span>}
-                                        </span>
-                                        <div className="w-[78px] shrink-0">
-                                            <Input
-                                                size="sm"
-                                                inputMode="numeric"
-                                                placeholder="0"
-                                                aria-label={`Cota de ${item.nome}`}
-                                                value={valores[item.id] ? String(valores[item.id]) : ""}
-                                                onChange={(v) => onValor(item.id, soNumero(v))}
-                                                wrapperClassName="bg-primary_alt"
-                                            />
-                                        </div>
+        <div className="flex flex-col gap-5">
+            {tipos.map(({ tipo, titulo, itens: doTipo }) => (
+                <section key={tipo} className="flex flex-col gap-3">
+                    <h4 className="text-sm font-semibold text-primary">
+                        {titulo} <span className="font-normal text-tertiary">· {doTipo.length}</span>
+                    </h4>
+                    {agruparPorSessao(doTipo).map(({ sessao, grupos }) => (
+                        // Os cards entram em cascata, logo depois do painel abrir.
+                        <motion.div
+                            key={sessao.id}
+                            initial={reduzir ? false : { opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.35, ease: EASE_ABRIR, delay: 0.12 + ordem++ * 0.07 }}
+                        >
+                            <CardSessao rotulo={sessao.id === SEM_SESSAO.id ? undefined : sessao.rotulo} fundo="medio">
+                                {grupos.map((grupo) => (
+                                    <div key={grupo.nome} className="flex flex-col">
+                                        {/* Só ingressos têm o grupo do ingresso; em produtos e combos o título da seção já diz o que são. */}
+                                        {tipo === "ingresso" && <p className="flex h-8 items-center text-sm font-semibold text-primary">{grupo.nome}</p>}
+                                        {grupo.itens.map((item) => (
+                                            <div key={item.id} className="flex items-center justify-between gap-2 px-2 py-3">
+                                                <span className="flex min-w-0 items-center gap-2">
+                                                    <span className="truncate text-sm font-medium text-secondary">{item.nome}</span>
+                                                    {item.tipo === "combo" && <BadgeTipo>{item.categoria}</BadgeTipo>}
+                                                    {item.tipo === "ingresso" && item.lote && <span className="text-sm text-tertiary">{item.lote}</span>}
+                                                </span>
+                                                <div className="w-[78px] shrink-0">
+                                                    <Input
+                                                        size="sm"
+                                                        inputMode="numeric"
+                                                        placeholder="0"
+                                                        aria-label={`Cota de ${item.nome}`}
+                                                        value={valores[item.id] ? String(valores[item.id]) : ""}
+                                                        onChange={(v) => onValor(item.id, soNumero(v))}
+                                                        wrapperClassName="bg-primary_alt"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 ))}
-                            </div>
-                        ))}
-                    </CardSessao>
-                </motion.div>
+                            </CardSessao>
+                        </motion.div>
+                    ))}
+                </section>
             ))}
         </div>
     );

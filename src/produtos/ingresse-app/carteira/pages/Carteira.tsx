@@ -7,6 +7,7 @@ import { AppShell } from "../../components/AppShell";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { TrocaOnboarding } from "../../ingressos/components/TrocaOnboarding";
+import { usePerfilAtivo } from "../../components/perfil-ativo";
 
 const ONBOARDING_KEY = "ing-onboarding-troca";
 
@@ -104,17 +105,32 @@ const PASSADOS: GrupoMes[] = [
 export function Carteira() {
     const navigate = useNavigate();
     const [tab, setTab] = useState<"vem-ai" | "passados">("vem-ai");
-    const grupos = tab === "vem-ai" ? VEM_AI : PASSADOS;
+    // No perfil de um dependente: só os eventos com ingressos dele que essa conta pode acessar.
+    const perfil = usePerfilAtivo();
+    const doPerfil = (lista: GrupoMes[]) =>
+        !perfil
+            ? lista
+            : lista
+                  .map((g) => ({
+                      ...g,
+                      eventos: g.eventos.flatMap((e) => {
+                          const itens = perfil.carteira.find((c) => c.eventId === e.id)?.itens ?? [];
+                          return itens.length ? [{ ...e, qtd: itens.length }] : [];
+                      }),
+                  }))
+                  .filter((g) => g.eventos.length > 0);
+    const grupos = doPerfil(tab === "vem-ai" ? VEM_AI : PASSADOS);
 
     // Onboarding da troca de ingresso — abre ao entrar na Carteira (1ª vez, ou via ?onboarding=1).
     const [onboardingOpen, setOnboardingOpen] = useState(false);
     useEffect(() => {
         const forcar = new URLSearchParams(window.location.search).get("onboarding") === "1";
+        if (perfil) return;
         if (forcar || !localStorage.getItem(ONBOARDING_KEY)) {
             const t = setTimeout(() => setOnboardingOpen(true), 600);
             return () => clearTimeout(t);
         }
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
     const fecharOnboarding = () => {
         localStorage.setItem(ONBOARDING_KEY, "1");
         setOnboardingOpen(false);
@@ -126,7 +142,10 @@ export function Carteira() {
             <div className="min-h-full bg-secondary">
                 <StatusBar tone="dark" />
 
-                <h1 className="px-5 pt-4 pb-5 text-xl font-bold text-primary">Carteira</h1>
+                <div className="px-5 pt-4 pb-5">
+                    <h1 className="text-xl font-bold text-primary">Carteira</h1>
+                    {perfil && <p className="mt-0.5 text-sm text-tertiary">Ingressos de {perfil.nome}</p>}
+                </div>
 
                 {/* Tabs */}
                 <div className="flex px-5">
@@ -137,6 +156,15 @@ export function Carteira() {
 
                 {/* Eventos agrupados por mês */}
                 <div className="flex flex-col gap-2 px-5 pt-5 pb-6">
+                    {grupos.length === 0 && (
+                        <div className="flex flex-col items-center pt-12 text-center">
+                            <span className="flex size-14 items-center justify-center rounded-2xl bg-primary text-fg-quaternary ring-1 ring-border-secondary">
+                                <Ticket01 className="size-6" />
+                            </span>
+                            <p className="mt-4 text-md font-semibold text-primary">Nenhum ingresso por aqui</p>
+                            <p className="mt-1 text-sm text-tertiary">Os ingressos de {perfil?.nome.split(" ")[0]} aparecem aqui.</p>
+                        </div>
+                    )}
                     {grupos.map((grupo) => (
                         <section key={grupo.mes} className="pt-2">
                             <h2 className="pb-3 text-md font-bold text-primary">{grupo.mes}</h2>

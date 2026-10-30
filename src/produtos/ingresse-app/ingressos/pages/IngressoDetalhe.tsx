@@ -12,6 +12,7 @@ import { ActionFab, type FabAction } from "../../components/ActionFab";
 import { StatusBar } from "../../components/StatusBar";
 import { Zigzag } from "../../components/Zigzag";
 import { getEvento, getItem } from "../data/eventos";
+import { usePerfilAtivo } from "../../components/perfil-ativo";
 import { getDependenteAtribuido, isTransferido } from "../data/transfer-store";
 import { InfoIngressoSheet } from "../components/InfoIngressoSheet";
 
@@ -48,8 +49,10 @@ export function IngressoDetalhe() {
     const title = item?.title ?? "Ingresso";
     const tipo = item?.tipo;
     const sessao = item?.data ?? eventoObj.sessao;
-    const portador = item?.portador ?? "Priscilão Alcantara Raro";
-    const cpf = item?.cpf ?? "948.943.130-44";
+    // No perfil de um dependente, o titular exibido é ele.
+    const perfil = usePerfilAtivo();
+    const portador = perfil?.nome ?? item?.portador ?? "Priscilão Alcantara Raro";
+    const cpf = perfil?.cpf ?? item?.cpf ?? "948.943.130-44";
     const facial = item?.acesso === "facial";
     const qrModo = item?.qrModo;
 

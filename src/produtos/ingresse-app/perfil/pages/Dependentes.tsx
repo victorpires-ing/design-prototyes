@@ -1,74 +1,103 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, ArrowLeft, Trash01, UserPlus01, Users01, XClose } from "@untitledui/icons";
+import type { FC } from "react";
+import { AlertTriangle, ArrowLeft, DotsVertical, Phone01, ShieldTick, Ticket01, UserPlus01, Users01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { AppShell } from "../../components/AppShell";
+import { mostrarToast } from "../../components/AppToast";
 import { StatusBar } from "../../components/StatusBar";
-import { consumirUltimoAdicionado, getDependentes, removeDependente, type Dependente } from "../data/dependentes";
+import { entrarNoPerfil } from "../../components/perfil-ativo";
+import { SheetAcoesDependente } from "../components/sheet-acoes-dependente";
+import { SheetConfirmacao } from "../components/sheet-confirmacao";
+import {
+    consumirUltimoAdicionado,
+    iniciarHabilitacao,
+    primeiroNome,
+    removeDependente,
+    simularContaCriada,
+    simularFalhaNaProxima,
+    useDependentes,
+    type Dependente,
+} from "../data/dependentes";
 
 type Status = "carregando" | "erro" | "ok";
 
+/* Cenários de teste pela URL (só na 1ª carga):
+   ?estado=erro          → falha ao carregar a lista
+   ?cenario=falha        → a próxima habilitação de acesso não conclui
+   ?cenario=conta-criada → Mariana criou a própria conta e os acessos foram encerrados */
+const params = () => new URLSearchParams(window.location.search);
+
+/**
+ * Lista de dependentes como sempre foi (nome + dados do cadastro). No lugar da lixeira, "mais opções" abre
+ * um bottom sheet com as ações do dependente: entrar, gerenciar acessos, habilitar e remover.
+ */
 export function Dependentes() {
     const navigate = useNavigate();
+    const lista = useDependentes();
     const [status, setStatus] = useState<Status>("carregando");
-    const [lista, setLista] = useState<Dependente[]>([]);
-    const [aExcluir, setAExcluir] = useState<Dependente | null>(null);
-    const [removendo, setRemovendo] = useState(false);
-    const [pressionado, setPressionado] = useState<string | null>(null);
     // Id do dependente recém-cadastrado, para animar a entrada + destaque temporário.
     const [novoId] = useState<string | null>(() => consumirUltimoAdicionado());
     const [destacado, setDestacado] = useState<string | null>(null);
-    // Permite pré-visualizar o estado de erro via ?estado=erro (apenas na 1ª carga).
     const jaTentou = useRef(false);
+    // "Mais opções" de um dependente e as confirmações que saem dele.
+    const [opcoes, setOpcoes] = useState<Dependente | null>(null);
+    const [aHabilitar, setAHabilitar] = useState<Dependente | null>(null);
+    const [aRemover, setARemover] = useState<Dependente | null>(null);
+    const [removendo, setRemovendo] = useState(false);
+
+    // Fecha o sheet de opções e, logo depois, faz a ação (a confirmação sobe sem disputar com o sheet que desce).
+    const depoisDeFechar = (fn: () => void) => {
+        setOpcoes(null);
+        window.setTimeout(fn, 250);
+    };
+
+    const entrarComo = (d: Dependente) => {
+        entrarNoPerfil({ id: d.id, nome: d.nome, iniciais: d.iniciais, cpf: d.cpf, carteira: d.carteira });
+        navigate("/ingresse-app/ingressos");
+    };
+
+    const confirmarRemocao = () => {
+        if (!aRemover) return;
+        const d = aRemover;
+        setRemovendo(true);
+        window.setTimeout(() => {
+            removeDependente(d.id);
+            setRemovendo(false);
+            setARemover(null);
+            mostrarToast("Dependente removido", d.nome);
+        }, 900);
+    };
 
     // Carregamento dos dependentes: mostra skeleton e então resolve (ok/erro).
     const carregar = () => {
         setStatus("carregando");
         window.setTimeout(() => {
-            const forcarErro = new URLSearchParams(window.location.search).get("estado") === "erro";
-            if (forcarErro && !jaTentou.current) {
+            if (params().get("estado") === "erro" && !jaTentou.current) {
                 jaTentou.current = true;
                 setStatus("erro");
                 return;
             }
-            setLista([...getDependentes()]);
             setStatus("ok");
             setDestacado(novoId);
         }, 1600);
     };
-    useEffect(carregar, []); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        const cenario = params().get("cenario");
+        if (cenario === "falha") simularFalhaNaProxima();
+        if (cenario === "conta-criada") simularContaCriada("d1");
+        carregar();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (!destacado) return;
         const t = window.setTimeout(() => setDestacado(null), 1600);
         return () => window.clearTimeout(t);
     }, [destacado]);
-
-    // Ao tocar na lixeira: ícone fica vermelho (transição) e então abre a confirmação.
-    const pedirExclusao = (d: Dependente) => {
-        setPressionado(d.id);
-        window.setTimeout(() => {
-            setPressionado(null);
-            setAExcluir(d);
-        }, 180);
-    };
-
-    const confirmarExclusao = () => {
-        if (!aExcluir) return;
-        const id = aExcluir.id;
-        setRemovendo(true);
-        window.setTimeout(() => {
-            removeDependente(id);
-            setRemovendo(false);
-            setAExcluir(null);
-            // Sucesso: recarrega a lista usando o skeleton.
-            carregar();
-        }, 900);
-    };
 
     // Barra inferior muda conforme o estado (some no carregamento, vira "Tentar novamente" no erro).
     const bottomBar =
@@ -102,7 +131,7 @@ export function Dependentes() {
                     <button
                         type="button"
                         aria-label="Voltar"
-                        onClick={() => navigate(-1)}
+                        onClick={() => navigate("/ingresse-app/perfil")}
                         className="flex size-10 items-center justify-center rounded-lg bg-primary text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear active:bg-secondary"
                     >
                         <ArrowLeft className="size-5" />
@@ -133,95 +162,135 @@ export function Dependentes() {
                     ) : (
                         <div className="flex flex-col gap-3 px-5 pt-5 pb-8">
                             <AnimatePresence mode="popLayout" initial={false}>
-                            {lista.map((d) => (
-                                <motion.div
-                                    key={d.id}
-                                    layout
-                                    initial={d.id === novoId ? { opacity: 0, y: -16, scale: 0.97 } : false}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9, x: 40 }}
-                                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                                    className={cx(
-                                        "rounded-2xl bg-primary p-4 ring-1 transition-shadow duration-700 ease-out",
-                                        destacado === d.id ? "ring-2 ring-brand" : "ring-border-secondary",
-                                    )}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <Avatar size="md" initials={d.iniciais} alt={d.nome} />
-                                        <p className="min-w-0 flex-1 truncate text-md font-bold text-primary">{d.nome}</p>
-                                        <button
-                                            type="button"
-                                            aria-label={`Excluir ${d.nome}`}
-                                            onClick={() => pedirExclusao(d)}
-                                            className={cx(
-                                                "flex size-9 shrink-0 items-center justify-center rounded-lg transition-all duration-150 ease-out active:scale-90",
-                                                pressionado === d.id ? "bg-secondary text-fg-error-primary" : "text-fg-quaternary",
-                                            )}
-                                        >
-                                            <Trash01 className="size-5" />
-                                        </button>
-                                    </div>
+                                {lista.map((d) => (
+                                    <motion.div
+                                        key={d.id}
+                                        layout
+                                        initial={d.id === novoId ? { opacity: 0, y: -16, scale: 0.97 } : false}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.9, x: 40 }}
+                                        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                                        className={cx(
+                                            "relative overflow-hidden rounded-2xl bg-primary p-4 ring-1 transition-shadow duration-700 ease-out",
+                                            etiquetaDe(d) && "pt-10",
+                                            destacado === d.id ? "ring-2 ring-brand" : "ring-border-secondary",
+                                        )}
+                                    >
+                                        <EtiquetaDoCanto d={d} />
+                                        <div className="flex items-center gap-3">
+                                            <Avatar size="md" initials={d.iniciais} alt={d.nome} />
+                                            <p className="min-w-0 flex-1 truncate text-md font-bold text-primary">{d.nome}</p>
+                                            {/* No lugar da lixeira: "mais opções" abre as ações do dependente */}
+                                            <button
+                                                type="button"
+                                                aria-label={`Mais opções de ${d.nome}`}
+                                                onClick={() => setOpcoes(d)}
+                                                className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear active:scale-90 active:bg-secondary"
+                                            >
+                                                <DotsVertical className="size-5" />
+                                            </button>
+                                        </div>
 
-                                    <dl className="mt-3 flex flex-col gap-2 border-t border-tertiary pt-3">
-                                        <Linha label="Data de nascimento" valor={d.nascimento} />
-                                        <Linha label="CPF" valor={d.cpf} />
-                                        <Linha label="Parentesco" valor={d.parentesco} />
-                                    </dl>
-                                </motion.div>
-                            ))}
+                                        <dl className="-mx-4 mt-3 flex flex-col gap-2 border-t border-tertiary px-4 pt-3">
+                                            <Linha label="Data de nascimento" valor={d.nascimento} />
+                                            <Linha label="CPF" valor={d.cpf} />
+                                            <Linha label="Parentesco" valor={d.parentesco} />
+                                        </dl>
+                                    </motion.div>
+                                ))}
                             </AnimatePresence>
                         </div>
                     ))}
             </div>
 
-            {/* Confirmação de exclusão — bottom sheet */}
-            <AnimatePresence>
-            {aExcluir && (
-                <motion.div
-                    key="sheet-overlay"
-                    className="fixed inset-0 z-50 flex items-end justify-center bg-overlay/60"
-                    role="dialog"
-                    aria-modal="true"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                >
-                    <motion.div
-                        className="w-full max-w-md rounded-t-2xl bg-primary px-6 pt-6 pb-8 shadow-xl ring-1 ring-border-secondary"
-                        initial={{ y: "100%" }}
-                        animate={{ y: 0 }}
-                        exit={{ y: "100%" }}
-                        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                        <div className="flex items-start justify-between gap-3">
-                            <h2 className="text-lg font-bold text-primary">Remover {aExcluir.nome}?</h2>
-                            <button
-                                type="button"
-                                aria-label="Fechar"
-                                disabled={removendo}
-                                onClick={() => setAExcluir(null)}
-                                className="-mr-1 flex size-6 shrink-0 items-center justify-center text-fg-quaternary transition duration-100 ease-linear active:text-fg-secondary disabled:opacity-50"
-                            >
-                                <XClose className="size-5" />
-                            </button>
-                        </div>
-                        <p className="mt-1 text-sm leading-relaxed text-tertiary">Você não poderá desfazer essa ação.</p>
-                        <div className="mt-6 flex flex-col gap-3">
-                            <Button size="lg" color="primary-destructive" className="w-full" isLoading={removendo} onClick={confirmarExclusao}>
-                                Remover dependente
-                            </Button>
-                            <Button size="lg" color="secondary" className="w-full" isDisabled={removendo} onClick={() => setAExcluir(null)}>
-                                Cancelar
-                            </Button>
-                        </div>
-                    </motion.div>
-                </motion.div>
-            )}
-            </AnimatePresence>
+            <SheetAcoesDependente
+                dependente={opcoes}
+                onFechar={() => setOpcoes(null)}
+                onEntrar={() => opcoes && entrarComo(opcoes)}
+                onGerenciar={() => opcoes && navigate(`/ingresse-app/perfil/dependentes/${opcoes.id}/acessos`)}
+                onHabilitar={() => {
+                    const d = opcoes;
+                    depoisDeFechar(() => setAHabilitar(d));
+                }}
+                onTentarDeNovo={() => {
+                    const d = opcoes;
+                    setOpcoes(null);
+                    if (d) iniciarHabilitacao(d.id);
+                }}
+                onRemover={() => {
+                    const d = opcoes;
+                    depoisDeFechar(() => setARemover(d));
+                }}
+            />
+
+            <SheetConfirmacao
+                aberto={Boolean(aRemover)}
+                titulo={`Remover ${aRemover?.nome ?? ""}?`}
+                descricao="Você não poderá desfazer essa ação."
+                confirmar="Remover dependente"
+                destrutivo
+                carregando={removendo}
+                onConfirmar={confirmarRemocao}
+                onCancelar={() => setARemover(null)}
+            />
+
+            {/* Habilitar acesso: o que a permissão significa, antes do código */}
+            <SheetConfirmacao
+                aberto={Boolean(aHabilitar)}
+                titulo={`Habilitar acesso ao perfil de ${aHabilitar ? primeiroNome(aHabilitar) : ""}?`}
+                descricao={aHabilitar ? `Você poderá entrar no perfil de ${primeiroNome(aHabilitar)} pela sua conta.` : undefined}
+                confirmar="Continuar"
+                onConfirmar={() => {
+                    const id = aHabilitar!.id;
+                    setAHabilitar(null);
+                    navigate(`/ingresse-app/perfil/dependentes/${id}/habilitar`);
+                }}
+                onCancelar={() => setAHabilitar(null)}
+            >
+                {aHabilitar && (
+                    <ul className="mt-5 flex flex-col gap-4">
+                        <ItemExplicacao icon={Ticket01} texto={`Acesse os ingressos de ${primeiroNome(aHabilitar)} e use as funções disponíveis no perfil.`} />
+                        <ItemExplicacao icon={Phone01} texto={`${primeiroNome(aHabilitar)} não precisa ter e-mail ou telefone próprios.`} />
+                        <ItemExplicacao icon={ShieldTick} texto="Para sua segurança, vamos confirmar que é você com um código." />
+                    </ul>
+                )}
+            </SheetConfirmacao>
         </AppShell>
     );
 }
+
+/** Etiqueta do canto do card: sua relação com o perfil do dependente (ou a conta própria dele). */
+const etiquetaDe = (d: Dependente) => {
+    if (d.acesso === "pronto") return d.pessoas.find((p) => p.voce)?.papel === "administrador" ? "Você é administrador" : "Você tem acesso";
+    if (d.acesso === "conta-propria") return "Tem conta própria";
+    return null;
+};
+
+/** Colada no canto superior esquerdo, com as cores da badge índigo do DS (conta própria em cinza, por não ser sobre o seu acesso). */
+const EtiquetaDoCanto = ({ d }: { d: Dependente }) => {
+    const texto = etiquetaDe(d);
+    if (!texto) return null;
+    const contaPropria = d.acesso === "conta-propria";
+    return (
+        <span
+            className={cx(
+                "absolute top-0 left-0 rounded-br-xl px-3 py-1 text-xs font-medium",
+                contaPropria ? "bg-utility-neutral-100 text-utility-neutral-700" : "bg-utility-indigo-50 text-utility-indigo-700",
+            )}
+        >
+            {texto}
+        </span>
+    );
+};
+
+const ItemExplicacao = ({ icon: Icon, texto }: { icon: FC<{ className?: string }>; texto: string }) => (
+    <li className="flex items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
+            <Icon className="size-5 text-fg-brand-primary" />
+        </span>
+        <p className="pt-2 text-sm text-secondary">{texto}</p>
+    </li>
+);
 
 /* Skeleton da lista enquanto os dependentes carregam. */
 const SkeletonLista = () => (

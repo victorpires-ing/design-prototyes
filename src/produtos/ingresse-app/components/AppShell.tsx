@@ -1,9 +1,13 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useNavigate } from "react-router";
-import { Home02, SearchLg, Ticket02, User01 } from "@untitledui/icons";
+import { Home02, LogOut01, SearchLg, Ticket02, User01 } from "@untitledui/icons";
+import { Avatar } from "@/components/base/avatar/avatar";
+import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import { AppToast } from "./AppToast";
 import { ThemeToggle } from "./ThemeToggle";
+import "./marca-ingresse.css";
+import { sairDoPerfil, usePerfilAtivo } from "./perfil-ativo";
 
 export type AppTab = "inicio" | "buscar" | "ingressos" | "perfil";
 
@@ -27,6 +31,13 @@ interface AppShellProps {
 /** Shell mobile (frame de celular + tab bar inferior) reaproveitável entre as telas do app. */
 export function AppShell({ activeTab, showTabBar = true, bottomBar, scrollClassName, children }: AppShellProps) {
     const navigate = useNavigate();
+    const perfil = usePerfilAtivo();
+
+    // Interações no vermelho da marca só no app: a classe vai no <html> para alcançar também os sheets em portal.
+    useEffect(() => {
+        document.documentElement.classList.add("marca-ingresse");
+        return () => document.documentElement.classList.remove("marca-ingresse");
+    }, []);
 
     return (
         <div className="relative flex min-h-screen justify-center bg-secondary md:py-8">
@@ -36,7 +47,41 @@ export function AppShell({ activeTab, showTabBar = true, bottomBar, scrollClassN
             </div>
 
             <div className="relative flex h-dvh w-full max-w-[420px] flex-col overflow-hidden bg-primary md:h-[calc(100dvh-4rem)] md:max-h-[860px] md:min-h-0 md:rounded-[2.5rem] md:shadow-2xl md:ring-1 md:ring-border-secondary">
-                <div className={cx("scrollbar-hide min-h-0 flex-1 overflow-y-auto", showTabBar && "pb-24", bottomBar && "bg-secondary pb-36", scrollClassName)}>{children}</div>
+                <div
+                    className={cx(
+                        "scrollbar-hide min-h-0 flex-1 overflow-y-auto",
+                        showTabBar && (perfil ? "pb-44" : "pb-24"),
+                        bottomBar && "bg-secondary pb-36",
+                        scrollClassName,
+                    )}
+                >
+                    {children}
+                </div>
+
+                {/* Simulação de "Entrar como [dependente]": deixa claro qual perfil está em uso e como sair.
+                    Não é a troca de perfis definitiva — por isso só aparece nas telas com a tab bar. */}
+                {perfil && showTabBar && (
+                    <div className="absolute inset-x-0 bottom-[84px] z-30 px-4 pb-2">
+                        <div className="flex items-center gap-3 rounded-2xl bg-primary p-3 shadow-lg ring-1 ring-border-secondary">
+                            <Avatar size="sm" initials={perfil.iniciais} alt={perfil.nome} />
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs text-tertiary">Você está no perfil de</p>
+                                <p className="truncate text-sm font-semibold text-primary">{perfil.nome}</p>
+                            </div>
+                            <Button
+                                size="sm"
+                                color="secondary"
+                                iconLeading={LogOut01}
+                                onClick={() => {
+                                    sairDoPerfil();
+                                    navigate("/ingresse-app/perfil/dependentes");
+                                }}
+                            >
+                                Voltar ao meu perfil
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
                 {bottomBar && <div className="pointer-events-none absolute inset-0 z-20">{bottomBar}</div>}
 

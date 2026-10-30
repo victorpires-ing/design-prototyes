@@ -11,6 +11,7 @@ import { BottomSheet } from "../../components/BottomSheet";
 import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { getEvento, type Combo, type EventoDetalhe, type ItemIngresso } from "../data/eventos";
+import { getPerfilAtivo, itensDoPerfil, usePerfilAtivo } from "../../components/perfil-ativo";
 import { getDependenteAtribuido, isEmTransferencia, isTransferido, subscribeTicketStore } from "../data/transfer-store";
 import googleMapsLogo from "../assets/google-maps.png";
 import appleMapsLogo from "../assets/apple-maps.png";
@@ -19,7 +20,9 @@ import wazeLogo from "../assets/waze.png";
 export function Ingressos() {
     const navigate = useNavigate();
     const { eventId } = useParams();
-    const evento = getEvento(eventId);
+    // No perfil de um dependente: só os ingressos dele que esta conta pode acessar, com ele como titular.
+    usePerfilAtivo();
+    const evento = paraOPerfil(getEvento(eventId));
 
     // Re-renderiza quando o estado dos ingressos muda (ex.: troca concluída em background).
     const [, forcar] = useReducer((n: number) => n + 1, 0);
@@ -520,3 +523,15 @@ const IconButton = ({ icon: Icon, label, onClick, small }: { icon: typeof ArrowL
         <Icon className="size-5" />
     </button>
 );
+
+/** Recorte do evento para o perfil ativo (simulação de "Entrar como"). No perfil próprio, nada muda. */
+function paraOPerfil(evento: EventoDetalhe): EventoDetalhe {
+    const perfil = getPerfilAtivo();
+    const itens = itensDoPerfil(evento.id);
+    if (!perfil || !itens) return evento;
+    return {
+        ...evento,
+        combos: undefined,
+        ingressos: (evento.ingressos ?? []).filter((i) => itens.includes(i.id)).map((i) => ({ ...i, portador: perfil.nome, cpf: perfil.cpf })),
+    };
+}

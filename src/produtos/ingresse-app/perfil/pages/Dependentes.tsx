@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "motion/react";
 import type { FC } from "react";
 import { AlertTriangle, ArrowLeft, DotsVertical, Phone01, ShieldTick, Ticket01, UserPlus01, Users01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
-import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { AppShell } from "../../components/AppShell";
@@ -171,15 +170,16 @@ export function Dependentes() {
                                         exit={{ opacity: 0, scale: 0.9, x: 40 }}
                                         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                                         className={cx(
-                                            "relative overflow-hidden rounded-2xl bg-primary p-4 ring-1 transition-shadow duration-700 ease-out",
-                                            etiquetaDe(d) && "pt-10",
+                                            "rounded-2xl bg-primary p-4 ring-1 transition-shadow duration-700 ease-out",
                                             destacado === d.id ? "ring-2 ring-brand" : "ring-border-secondary",
                                         )}
                                     >
-                                        <EtiquetaDoCanto d={d} />
                                         <div className="flex items-center gap-3">
-                                            <Avatar size="md" initials={d.iniciais} alt={d.nome} />
-                                            <p className="min-w-0 flex-1 truncate text-md font-bold text-primary">{d.nome}</p>
+                                            {/* Nome em cima e, embaixo, uma frase curta sobre o acesso (sem badge) */}
+                                            <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+                                                <p className="w-full truncate text-md font-bold text-primary">{d.nome}</p>
+                                                <p className="text-sm text-utility-blue-700">{fraseDoAcesso(d)}</p>
+                                            </div>
                                             {/* No lugar da lixeira: "mais opções" abre as ações do dependente */}
                                             <button
                                                 type="button"
@@ -259,28 +259,13 @@ export function Dependentes() {
     );
 }
 
-/** Etiqueta do canto do card: sua relação com o perfil do dependente (ou a conta própria dele). */
-const etiquetaDe = (d: Dependente) => {
-    if (d.acesso === "pronto") return d.pessoas.find((p) => p.voce)?.papel === "administrador" ? "Você é administrador" : "Você tem acesso";
+/** Sua relação com o perfil do dependente (ou a conta própria dele). Sempre aparece, em azul, abaixo do nome. */
+const fraseDoAcesso = (d: Dependente) => {
+    if (d.acesso === "pronto")
+        return d.pessoas.find((p) => p.voce)?.papel === "administrador" ? "Você é o administrador do perfil" : "Você tem acesso ao perfil";
     if (d.acesso === "conta-propria") return "Tem conta própria";
-    return null;
-};
-
-/** Colada no canto superior esquerdo, com as cores da badge índigo do DS (conta própria em cinza, por não ser sobre o seu acesso). */
-const EtiquetaDoCanto = ({ d }: { d: Dependente }) => {
-    const texto = etiquetaDe(d);
-    if (!texto) return null;
-    const contaPropria = d.acesso === "conta-propria";
-    return (
-        <span
-            className={cx(
-                "absolute top-0 left-0 rounded-br-xl px-3 py-1 text-xs font-medium",
-                contaPropria ? "bg-utility-neutral-100 text-utility-neutral-700" : "bg-utility-indigo-50 text-utility-indigo-700",
-            )}
-        >
-            {texto}
-        </span>
-    );
+    if (d.acesso === "preparando") return "Preparando acesso";
+    return "Acesso não habilitado";
 };
 
 const ItemExplicacao = ({ icon: Icon, texto }: { icon: FC<{ className?: string }>; texto: string }) => (
@@ -298,7 +283,6 @@ const SkeletonLista = () => (
         {[0, 1, 2].map((i) => (
             <div key={i} className="rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
                 <div className="flex items-center gap-3">
-                    <div className="size-10 shrink-0 rounded-full bg-tertiary" />
                     <div className="h-4 flex-1 rounded-full bg-tertiary" />
                     <div className="size-9 shrink-0 rounded-lg bg-tertiary" />
                 </div>

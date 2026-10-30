@@ -354,9 +354,7 @@ const Resumo = ({ selecionados, onRemover, onLimpar }: { selecionados: string[];
                         <BlocoResumo titulo="Combos">
                             {combos.map((c) => (
                                 <CartaoResumo key={c.id} onRemover={() => onRemover(c.id)} nome={c.nome}>
-                                    <span className="text-sm font-medium text-secondary">
-                                        {c.grupo} - {c.categoria}
-                                    </span>
+                                    <span className="text-sm font-medium text-secondary">{c.grupo}</span>
                                     <div className="mt-1.5 flex flex-col gap-1.5 border-l border-secondary pl-2">
                                         {c.componentes.map((comp) => (
                                             <div key={`${comp.nome}-${comp.sessaoId ?? ""}`} className="flex gap-2">

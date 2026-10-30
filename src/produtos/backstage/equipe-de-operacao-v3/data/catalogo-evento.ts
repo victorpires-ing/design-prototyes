@@ -364,11 +364,11 @@ export function estoqueDoItem(item: ItemCatalogo) {
     return base + (h % 17) * 50;
 }
 
-/** Linha de apoio do item no detalhe do grupo: o grupo do ingresso, o grupo e a categoria do combo ou a descrição do produto. */
+/** Linha de apoio do item no detalhe do grupo: o grupo (ingresso e combo) ou a descrição do produto. Combo não leva categoria. */
 export function apoioDoItem(item: ItemCatalogo) {
     if (item.tipo === "ingresso") {
         return item.grupo;
     }
-    if (item.tipo === "combo") return `${item.grupo} · ${item.categoria}`;
+    if (item.tipo === "combo") return item.grupo;
     return item.descricao;
 }

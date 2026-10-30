@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from "react";
-import { Calendar, Edit01, Package, ShoppingBag01, Ticket01, User01, Users01 } from "@untitledui/icons";
+import { Edit01, Package, ShoppingBag01, Ticket01, User01, Users01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { agruparPorSessao, contarSessoes, ITEM_POR_ID, sessaoDoComponente, sessaoDoItem, separarPorTipo, type ItemCatalogo } from "../data/catalogo-evento";
 import { plural, ROTULO_ATUACAO, ROTULO_COTA, type Atuacao, type CotaGrupo } from "../data/equipe-v3-store";
@@ -165,8 +165,8 @@ const ICONE_ITEM = { ingresso: Ticket01, produto: ShoppingBag01, combo: Package 
 
 const CardItem = ({ item }: { item: ItemCatalogo }) => {
     const Icone = ICONE_ITEM[item.tipo];
-    // Ingresso: o grupo; combo: grupo e categoria; produto: a descrição.
-    const apoio = item.tipo === "produto" ? item.descricao : item.tipo === "ingresso" ? item.grupo : `${item.grupo} · ${item.categoria}`;
+    // Ingresso e combo: o grupo; produto: a descrição. Combo não leva categoria: a composição já diz o que vem nele.
+    const apoio = item.tipo === "produto" ? item.descricao : item.grupo;
     return (
         <li className="flex gap-3 rounded-lg bg-primary_alt p-4 ring-1 ring-border-secondary ring-inset">
             {/* Produto mostra a foto (como na seleção); ingresso e combo, o ícone do tipo. */}
@@ -195,8 +195,7 @@ const CardItem = ({ item }: { item: ItemCatalogo }) => {
                                     </span>
                                     {/* A sessão do combo é a dos ingressos dele; produto não tem sessão. */}
                                     {!ehProduto && (
-                                        <span className="flex items-center gap-1.5 pl-5 text-xs text-tertiary">
-                                            <Calendar className="size-3.5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                                        <span className="pl-5 text-xs text-tertiary">
                                             {sessaoDoComponente(item, c)?.curto}
                                         </span>
                                     )}
@@ -207,8 +206,7 @@ const CardItem = ({ item }: { item: ItemCatalogo }) => {
                 )}
                 {/* Ingresso mostra a sessão aqui; no combo ela fica em cada ingresso, e produto não tem. */}
                 {item.tipo === "ingresso" && (
-                    <span className="flex items-center gap-1.5 pt-1.5 text-xs text-tertiary">
-                        <Calendar className="size-3.5 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                    <span className="pt-1 text-xs text-tertiary">
                         {sessaoDoItem(item)?.curto}
                     </span>
                 )}

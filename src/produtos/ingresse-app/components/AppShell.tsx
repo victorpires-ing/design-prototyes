@@ -1,13 +1,11 @@
 import { useEffect, type ReactNode } from "react";
 import { useNavigate } from "react-router";
-import { Home02, LogOut01, SearchLg, Ticket02, User01 } from "@untitledui/icons";
-import { Avatar } from "@/components/base/avatar/avatar";
-import { Button } from "@/components/base/buttons/button";
+import { Home02, SearchLg, Ticket02, User01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import { AppToast } from "./AppToast";
 import { ThemeToggle } from "./ThemeToggle";
 import "./marca-ingresse.css";
-import { sairDoPerfil, usePerfilAtivo } from "./perfil-ativo";
+import { FOTO_MINHA_CONTA, usePerfilAtivo } from "./perfil-ativo";
 
 export type AppTab = "inicio" | "buscar" | "ingressos" | "perfil";
 
@@ -50,38 +48,13 @@ export function AppShell({ activeTab, showTabBar = true, bottomBar, scrollClassN
                 <div
                     className={cx(
                         "scrollbar-hide min-h-0 flex-1 overflow-y-auto",
-                        showTabBar && (perfil ? "pb-44" : "pb-24"),
+                        showTabBar && "pb-24",
                         bottomBar && "bg-secondary pb-36",
                         scrollClassName,
                     )}
                 >
                     {children}
                 </div>
-
-                {/* Simulação de "Entrar como [dependente]": deixa claro qual perfil está em uso e como sair.
-                    Não é a troca de perfis definitiva — por isso só aparece nas telas com a tab bar. */}
-                {perfil && showTabBar && (
-                    <div className="absolute inset-x-0 bottom-[84px] z-30 px-4 pb-2">
-                        <div className="flex items-center gap-3 rounded-2xl bg-primary p-3 shadow-lg ring-1 ring-border-secondary">
-                            <Avatar size="sm" initials={perfil.iniciais} alt={perfil.nome} />
-                            <div className="min-w-0 flex-1">
-                                <p className="text-xs text-tertiary">Você está no perfil de</p>
-                                <p className="truncate text-sm font-semibold text-primary">{perfil.nome}</p>
-                            </div>
-                            <Button
-                                size="sm"
-                                color="secondary"
-                                iconLeading={LogOut01}
-                                onClick={() => {
-                                    sairDoPerfil();
-                                    navigate("/ingresse-app/perfil/dependentes");
-                                }}
-                            >
-                                Voltar ao meu perfil
-                            </Button>
-                        </div>
-                    </div>
-                )}
 
                 {bottomBar && <div className="pointer-events-none absolute inset-0 z-20">{bottomBar}</div>}
 
@@ -100,7 +73,20 @@ export function AppShell({ activeTab, showTabBar = true, bottomBar, scrollClassN
                                     onClick={() => tab.to && navigate(tab.to)}
                                     className="flex flex-1 flex-col items-center gap-1 rounded-lg py-1 transition duration-100 ease-linear"
                                 >
-                                    <Icon className={cx("size-6", active ? "text-fg-brand-primary" : "text-fg-quaternary")} />
+                                    {/* A aba Perfil mostra a bolinha do perfil em uso: a sua foto ou, num dependente, as iniciais dele */}
+                                    {tab.id === "perfil" ? (
+                                        <span
+                                            className={cx(
+                                                "flex size-6 items-center justify-center overflow-hidden rounded-full bg-tertiary text-[10px] font-semibold text-secondary ring-offset-1 ring-offset-bg-primary",
+                                                active ? "ring-2 ring-fg-brand-primary" : "ring-1 ring-border-primary",
+                                            )}
+                                            aria-label={perfil ? `Perfil de ${perfil.nome}` : "Seu perfil"}
+                                        >
+                                            {perfil ? perfil.iniciais : <img src={FOTO_MINHA_CONTA} alt="" className="size-full object-cover" />}
+                                        </span>
+                                    ) : (
+                                        <Icon className={cx("size-6", active ? "text-fg-brand-primary" : "text-fg-quaternary")} />
+                                    )}
                                     <span className={cx("text-xs", active ? "font-semibold text-brand-secondary" : "text-tertiary")}>{tab.label}</span>
                                 </button>
                             );

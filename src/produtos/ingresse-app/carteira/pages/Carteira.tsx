@@ -144,7 +144,6 @@ export function Carteira() {
 
                 <div className="px-5 pt-4 pb-5">
                     <h1 className="text-xl font-bold text-primary">Carteira</h1>
-                    {perfil && <p className="mt-0.5 text-sm text-tertiary">Ingressos de {perfil.nome}</p>}
                 </div>
 
                 {/* Tabs */}

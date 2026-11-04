@@ -3,13 +3,17 @@
    e encerrado com "Voltar ao meu perfil". */
 
 import { useSyncExternalStore } from "react";
+import fotoMinhaConta from "../assets/foto-perfil.jpg";
+
+/** Foto da conta logada (simulada). Dependentes não têm foto: aparecem com as iniciais. */
+export const FOTO_MINHA_CONTA = fotoMinhaConta;
 
 export type PerfilAtivo = {
     id: string;
     nome: string;
     iniciais: string;
     cpf: string;
-    /** Ingressos visíveis nesse perfil: os atribuídos por quem entrou e os do próprio dependente. */
+    /** Ingressos visíveis nesse perfil: só os que quem entrou comprou ou atribuiu ao dependente. */
     carteira: { eventId: string; itens: string[] }[];
 };
 

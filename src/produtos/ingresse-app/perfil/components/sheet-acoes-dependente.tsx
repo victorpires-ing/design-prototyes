@@ -1,8 +1,7 @@
 import type { FC } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertCircle, InfoCircle, LogIn04, RefreshCw01, Settings01, ShieldTick, Trash01, XClose } from "@untitledui/icons";
+import { AlertCircle, InfoCircle, LogIn04, RefreshCw01, ShieldTick, Trash01, UserX01, XClose } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
-import { Avatar } from "@/components/base/avatar/avatar";
 import { primeiroNome, type Dependente } from "../data/dependentes";
 
 type Acao = { id: string; icon: FC<{ className?: string }>; label: string; destrutiva?: boolean; onClick: () => void };
@@ -15,7 +14,7 @@ export function SheetAcoesDependente({
     dependente: d,
     onFechar,
     onEntrar,
-    onGerenciar,
+    onRemoverAcesso,
     onHabilitar,
     onTentarDeNovo,
     onRemover,
@@ -23,7 +22,7 @@ export function SheetAcoesDependente({
     dependente: Dependente | null;
     onFechar: () => void;
     onEntrar: () => void;
-    onGerenciar: () => void;
+    onRemoverAcesso: () => void;
     onHabilitar: () => void;
     onTentarDeNovo: () => void;
     onRemover: () => void;
@@ -34,7 +33,7 @@ export function SheetAcoesDependente({
               ...(d.acesso === "pronto"
                   ? [
                         { id: "entrar", icon: LogIn04, label: `Entrar como ${primeiroNome(d)}`, onClick: onEntrar },
-                        { id: "gerenciar", icon: Settings01, label: "Gerenciar acessos", onClick: onGerenciar },
+                        { id: "remover-acesso", icon: UserX01, label: "Remover meu acesso", destrutiva: true, onClick: onRemoverAcesso },
                     ]
                   : []),
               ...(d.acesso === "nao-configurado" ? [{ id: "habilitar", icon: ShieldTick, label: "Habilitar acesso", onClick: onHabilitar }] : []),
@@ -66,7 +65,6 @@ export function SheetAcoesDependente({
                     >
                         {/* De quem são as opções */}
                         <div className="flex items-center gap-3">
-                            <Avatar size="md" initials={d.iniciais} alt={d.nome} />
                             <div className="min-w-0 flex-1">
                                 <h2 className="truncate text-lg font-bold text-primary">{d.nome}</h2>
                                 <p className="text-sm text-tertiary">{d.parentesco}</p>
@@ -91,9 +89,9 @@ export function SheetAcoesDependente({
                                         onClick={a.onClick}
                                         className="flex w-full items-center gap-3.5 p-4 text-left transition duration-100 ease-linear active:bg-secondary"
                                     >
-                                        {/* Fundo cinza como no Perfil; ícone neutro, só o de remover fica vermelho */}
+                                        {/* Fundo cinza como no Perfil; ícone neutro, só as ações críticas (remover acesso e dependente) ficam no vermelho da marca */}
                                         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary">
-                                            <a.icon className={cx("size-5", a.destrutiva ? "text-fg-error-primary" : "text-fg-secondary")} />
+                                            <a.icon className={cx("size-5", a.destrutiva ? "text-fg-brand-primary" : "text-fg-secondary")} />
                                         </span>
                                         <span className="text-md font-semibold text-primary">{a.label}</span>
                                     </button>

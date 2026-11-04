@@ -105,7 +105,7 @@ import { Perfil as IngresseAppPerfil } from '../produtos/ingresse-app/perfil/pag
 import { Dependentes as IngresseAppDependentes } from '../produtos/ingresse-app/perfil/pages/Dependentes';
 import { CadastrarDependente as PerfilCadastrarDependente } from '../produtos/ingresse-app/perfil/pages/CadastrarDependente';
 import { HabilitarAcesso as PerfilHabilitarAcesso } from '../produtos/ingresse-app/perfil/pages/habilitar-acesso';
-import { PessoasComAcesso as PerfilPessoasComAcesso } from '../produtos/ingresse-app/perfil/pages/pessoas-com-acesso';
+import { SelecionarPerfil as PerfilSelecionarPerfil } from '../produtos/ingresse-app/perfil/pages/selecionar-perfil';
 import { TelaBloqueadaIphone as IngresseAppTelaBloqueadaIphone } from '../produtos/ingresse-app/tela-bloqueada/pages/TelaBloqueadaIphone';
 import { MeusIngressos } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressos';
 import { MeusIngressosWeb } from '../produtos/carteira-app/meus-ingressos/pages/MeusIngressosWeb';
@@ -381,7 +381,7 @@ export default function App() {
         <Route path="/ingresse-app/perfil/dependentes" element={<IngresseAppDependentes />} />
         <Route path="/ingresse-app/perfil/dependentes/cadastrar" element={<PerfilCadastrarDependente />} />
         <Route path="/ingresse-app/perfil/dependentes/:id/habilitar" element={<PerfilHabilitarAcesso />} />
-        <Route path="/ingresse-app/perfil/dependentes/:id/acessos" element={<PerfilPessoasComAcesso />} />
+        <Route path="/ingresse-app/perfil/selecionar" element={<PerfilSelecionarPerfil />} />
         <Route path="/ingresse-app/tela-bloqueada/iphone" element={<IngresseAppTelaBloqueadaIphone />} />
         <Route path="/testes" element={<UsabilidadeGate><TestesPainel /></UsabilidadeGate>} />
         <Route path="/testes/novo" element={<UsabilidadeGate><EditorTeste /></UsabilidadeGate>} />

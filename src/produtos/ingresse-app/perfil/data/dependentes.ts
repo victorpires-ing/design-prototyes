@@ -1,5 +1,6 @@
 /* Store dos dependentes vinculados à conta (mock em memória por sessão).
-   Compartilhado entre a lista (perfil), o cadastro, a habilitação de acesso e "Pessoas com acesso".
+   Compartilhado entre a lista (perfil), o cadastro e a habilitação de acesso.
+   Não há administração do perfil: cada pessoa só tem (ou não) o próprio acesso e vê o que ela mesma atribuiu.
    Reativo: as telas assinam com `useDependentes` e re-renderizam quando algo muda. */
 
 import { useSyncExternalStore } from "react";
@@ -9,20 +10,7 @@ import { getPerfilAtivo, sairDoPerfil } from "../../components/perfil-ativo";
 /** Condição do acesso ao perfil do dependente, do ponto de vista de quem está logado. */
 export type Acesso = "nao-configurado" | "preparando" | "falhou" | "pronto" | "conta-propria";
 
-export type Papel = "administrador" | "acesso";
-
-export type PessoaComAcesso = {
-    id: string;
-    nome: string;
-    iniciais: string;
-    papel: Papel;
-    /** Data em que habilitou o acesso: define quem herda a administração. */
-    desde: string;
-    /** A pessoa logada (Janaina). */
-    voce?: boolean;
-};
-
-/** Ingressos do dependente que quem está logado pode acessar (atribuídos por ela ou do próprio dependente). */
+/** Ingressos do dependente que quem está logado vê: só os que ela comprou ou atribuiu a ele (o que outras pessoas atribuíram fica no acesso delas). */
 export type IngressoDoDependente = { eventId: string; itens: string[] };
 
 export type Dependente = {
@@ -35,11 +23,11 @@ export type Dependente = {
     acesso: Acesso;
     /** Conta própria criada depois que o perfil já era gerenciado (os acessos foram encerrados). */
     contaCriadaDepois?: boolean;
-    pessoas: PessoaComAcesso[];
     carteira: IngressoDoDependente[];
 };
 
-export const EU = { id: "eu", nome: "Janaina Nascimento de Souza", iniciais: "JS" };
+/** Conta logada (dados fictícios). */
+export const EU = { id: "eu", nome: "Camila Ferreira Rocha", iniciais: "CR", email: "camila.rocha@email.com", telefone: "(21) 98452-3318" };
 
 const dependentes: Dependente[] = [
     {
@@ -50,11 +38,6 @@ const dependentes: Dependente[] = [
         parentesco: "Filha",
         iniciais: "ML",
         acesso: "pronto",
-        pessoas: [
-            { id: "eu", nome: EU.nome, iniciais: EU.iniciais, papel: "administrador", desde: "02/02/2026", voce: true },
-            { id: "p-carlos", nome: "Carlos Lima", iniciais: "CL", papel: "acesso", desde: "15/03/2026" },
-            { id: "p-helena", nome: "Helena Costa", iniciais: "HC", papel: "acesso", desde: "08/05/2026" },
-        ],
         carteira: [
             { eventId: "arena", itens: ["1"] },
             { eventId: "samba-independente", itens: ["samba-04jul"] },
@@ -68,12 +51,7 @@ const dependentes: Dependente[] = [
         parentesco: "Filho",
         iniciais: "ES",
         acesso: "pronto",
-        // Aqui a Janaina não é a administradora: só pode remover o próprio acesso.
-        pessoas: [
-            { id: "p-paulo", nome: "Paulo Souza", iniciais: "PS", papel: "administrador", desde: "10/01/2026" },
-            { id: "eu", nome: EU.nome, iniciais: EU.iniciais, papel: "acesso", desde: "20/04/2026", voce: true },
-        ],
-        // Só os ingressos que a Janaina atribuiu; os que o Paulo atribuiu não aparecem para ela.
+        // Só os ingressos que a Camila atribuiu; o que outras pessoas atribuíram não aparece para ela.
         carteira: [{ eventId: "samba-independente", itens: ["samba-18jul"] }],
     },
     {
@@ -84,7 +62,6 @@ const dependentes: Dependente[] = [
         parentesco: "Sobrinho",
         iniciais: "LN",
         acesso: "nao-configurado",
-        pessoas: [],
         carteira: [{ eventId: "arena", itens: ["uniforme-oficial"] }],
     },
     {
@@ -95,7 +72,6 @@ const dependentes: Dependente[] = [
         parentesco: "Mãe",
         iniciais: "RS",
         acesso: "conta-propria",
-        pessoas: [],
         carteira: [],
     },
 ];
@@ -130,7 +106,7 @@ let ultimoAdicionado: string | null = null;
 
 /** Cadastro de sempre: o dependente entra na lista com o acesso ainda não configurado. */
 export const addDependente = (d: Pick<Dependente, "nome" | "nascimento" | "cpf" | "parentesco" | "iniciais">) => {
-    const dep: Dependente = { ...d, id: `dep-novo-${(seq += 1)}`, acesso: "nao-configurado", pessoas: [], carteira: [] };
+    const dep: Dependente = { ...d, id: `dep-novo-${(seq += 1)}`, acesso: "nao-configurado", carteira: [] };
     dependentes.unshift(dep);
     ultimoAdicionado = dep.id;
     notify();
@@ -154,15 +130,13 @@ export const removeDependente = (id: string) => {
 /* ------------------------- Habilitação do acesso ------------------------- */
 
 /** Tempo (simulado) para preparar o perfil depois da confirmação por código. */
-export const PREPARO_MS = 5000;
+export const PREPARO_MS = 20000; // TEMPORÁRIO (20 s) para ver a tela seguinte; o normal é 5000
 
 /** Cenário de teste: a próxima habilitação falha (?cenario=falha na lista de dependentes). */
 let proximaFalha = false;
 export const simularFalhaNaProxima = () => {
     proximaFalha = true;
 };
-
-const hoje = () => new Date().toLocaleDateString("pt-BR");
 
 /** Depois do código: o perfil passa a "preparando" e conclui (ou falha) sozinho, mesmo fora da tela. */
 export const iniciarHabilitacao = (id: string) => {
@@ -179,9 +153,6 @@ export const iniciarHabilitacao = (id: string) => {
             atual.acesso = "falhou";
         } else {
             atual.acesso = "pronto";
-            // Quem habilita primeiro vira administrador do perfil.
-            const papel: Papel = atual.pessoas.some((p) => p.papel === "administrador") ? "acesso" : "administrador";
-            atual.pessoas = [...atual.pessoas.filter((p) => !p.voce), { ...EU, papel, desde: hoje(), voce: true }];
         }
         notify();
         // Fora da tela de habilitação, avisa quando terminar.
@@ -194,31 +165,12 @@ export const iniciarHabilitacao = (id: string) => {
 
 /* --------------------------- Remoção de acesso --------------------------- */
 
-/** Quem herda a administração: a pessoa com acesso há mais tempo (fora quem está saindo). */
-const maisAntigo = (pessoas: PessoaComAcesso[]) =>
-    [...pessoas].sort((a, b) => a.desde.split("/").reverse().join("").localeCompare(b.desde.split("/").reverse().join("")))[0];
-
-/** O que acontece se `pessoaId` sair: quem vira administrador, ou se o perfil gerenciado é desativado. */
-export const consequenciaDaSaida = (d: Dependente, pessoaId: string) => {
-    const saindo = d.pessoas.find((p) => p.id === pessoaId);
-    const restantes = d.pessoas.filter((p) => p.id !== pessoaId);
-    if (restantes.length === 0) return { tipo: "desativa" as const };
-    if (saindo?.papel === "administrador") return { tipo: "transfere" as const, para: maisAntigo(restantes) };
-    return { tipo: "nada" as const };
-};
-
-export const removerAcesso = (id: string, pessoaId: string) => {
+/** Remove o meu acesso ao perfil: o dependente continua cadastrado, só volta a "não habilitado". */
+export const removerAcesso = (id: string) => {
     const d = getDependente(id);
     if (!d) return;
-    const c = consequenciaDaSaida(d, pessoaId);
-    const restantes = d.pessoas.filter((p) => p.id !== pessoaId);
-    if (c.tipo === "transfere") restantes.forEach((p) => p.id === c.para.id && (p.papel = "administrador"));
-    d.pessoas = restantes;
-    // Saí eu: o perfil deixa de estar disponível para mim (o dependente continua cadastrado).
-    if (pessoaId === "eu") {
-        d.acesso = "nao-configurado";
-        if (getPerfilAtivo()?.id === id) sairDoPerfil();
-    }
+    d.acesso = "nao-configurado";
+    if (getPerfilAtivo()?.id === id) sairDoPerfil();
     notify();
 };
 
@@ -228,7 +180,6 @@ export const simularContaCriada = (id: string) => {
     if (!d || d.acesso === "conta-propria") return;
     d.acesso = "conta-propria";
     d.contaCriadaDepois = true;
-    d.pessoas = [];
     if (getPerfilAtivo()?.id === id) sairDoPerfil();
     notify();
 };

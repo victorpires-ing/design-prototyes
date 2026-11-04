@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
-import type { FC } from "react";
-import { AlertTriangle, ArrowLeft, DotsVertical, Phone01, ShieldTick, Ticket01, UserPlus01, Users01 } from "@untitledui/icons";
+import { AlertTriangle, ArrowLeft, DotsVertical, Trash01, UserPlus01, Users01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -12,16 +11,7 @@ import { StatusBar } from "../../components/StatusBar";
 import { entrarNoPerfil } from "../../components/perfil-ativo";
 import { SheetAcoesDependente } from "../components/sheet-acoes-dependente";
 import { SheetConfirmacao } from "../components/sheet-confirmacao";
-import {
-    consumirUltimoAdicionado,
-    iniciarHabilitacao,
-    primeiroNome,
-    removeDependente,
-    simularContaCriada,
-    simularFalhaNaProxima,
-    useDependentes,
-    type Dependente,
-} from "../data/dependentes";
+import { consumirUltimoAdicionado, type Dependente, iniciarHabilitacao, primeiroNome, removeDependente, removerAcesso, simularContaCriada, simularFalhaNaProxima, useDependentes } from "../data/dependentes";
 
 type Status = "carregando" | "erro" | "ok";
 
@@ -33,7 +23,7 @@ const params = () => new URLSearchParams(window.location.search);
 
 /**
  * Lista de dependentes como sempre foi (nome + dados do cadastro). No lugar da lixeira, "mais opções" abre
- * um bottom sheet com as ações do dependente: entrar, gerenciar acessos, habilitar e remover.
+ * um bottom sheet com as ações do dependente: entrar, remover meu acesso, habilitar e remover o dependente.
  */
 export function Dependentes() {
     const navigate = useNavigate();
@@ -48,6 +38,7 @@ export function Dependentes() {
     const [aHabilitar, setAHabilitar] = useState<Dependente | null>(null);
     const [aRemover, setARemover] = useState<Dependente | null>(null);
     const [removendo, setRemovendo] = useState(false);
+    const [aRemoverAcesso, setARemoverAcesso] = useState<Dependente | null>(null);
 
     // Fecha o sheet de opções e, logo depois, faz a ação (a confirmação sobe sem disputar com o sheet que desce).
     const depoisDeFechar = (fn: () => void) => {
@@ -69,6 +60,18 @@ export function Dependentes() {
             setRemovendo(false);
             setARemover(null);
             mostrarToast("Dependente removido", d.nome);
+        }, 900);
+    };
+
+    const confirmarRemocaoDeAcesso = () => {
+        if (!aRemoverAcesso) return;
+        const d = aRemoverAcesso;
+        setRemovendo(true);
+        window.setTimeout(() => {
+            removerAcesso(d.id);
+            setRemovendo(false);
+            setARemoverAcesso(null);
+            mostrarToast("Seu acesso foi removido", `${primeiroNome(d)} continua nos seus dependentes.`);
         }, 900);
     };
 
@@ -178,17 +181,43 @@ export function Dependentes() {
                                             {/* Nome em cima e, embaixo, uma frase curta sobre o acesso (sem badge) */}
                                             <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
                                                 <p className="w-full truncate text-md font-bold text-primary">{d.nome}</p>
-                                                <p className="text-sm text-utility-blue-700">{fraseDoAcesso(d)}</p>
+                                                <p
+                                                    className={cx(
+                                                        "flex items-center gap-1.5 text-sm",
+                                                        d.acesso === "preparando" || d.acesso === "conta-propria" ? "text-secondary" : "text-utility-blue-700",
+                                                    )}
+                                                >
+                                                    {/* Habilitação em andamento: um loading pequeno junto da frase */}
+                                                    {d.acesso === "preparando" && (
+                                                        <span
+                                                            className="size-3.5 shrink-0 animate-spin rounded-full border-2 border-tertiary border-t-fg-brand-primary"
+                                                            aria-hidden="true"
+                                                        />
+                                                    )}
+                                                    {fraseDoAcesso(d)}
+                                                </p>
                                             </div>
-                                            {/* No lugar da lixeira: "mais opções" abre as ações do dependente */}
-                                            <button
-                                                type="button"
-                                                aria-label={`Mais opções de ${d.nome}`}
-                                                onClick={() => setOpcoes(d)}
-                                                className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear active:scale-90 active:bg-secondary"
-                                            >
-                                                <DotsVertical className="size-5" />
-                                            </button>
+                                            {/* Conta própria: remover é a única ação, então volta a lixeira direto no card */}
+                                            {d.acesso === "conta-propria" ? (
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Remover ${d.nome}`}
+                                                    onClick={() => setARemover(d)}
+                                                    className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear active:scale-90 active:bg-secondary active:text-fg-error-primary"
+                                                >
+                                                    <Trash01 className="size-5" />
+                                                </button>
+                                            ) : (
+                                                /* No lugar da lixeira: "mais opções" abre as ações do dependente */
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Mais opções de ${d.nome}`}
+                                                    onClick={() => setOpcoes(d)}
+                                                    className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 ease-linear active:scale-90 active:bg-secondary"
+                                                >
+                                                    <DotsVertical className="size-5" />
+                                                </button>
+                                            )}
                                         </div>
 
                                         <dl className="-mx-4 mt-3 flex flex-col gap-2 border-t border-tertiary px-4 pt-3">
@@ -207,7 +236,10 @@ export function Dependentes() {
                 dependente={opcoes}
                 onFechar={() => setOpcoes(null)}
                 onEntrar={() => opcoes && entrarComo(opcoes)}
-                onGerenciar={() => opcoes && navigate(`/ingresse-app/perfil/dependentes/${opcoes.id}/acessos`)}
+                onRemoverAcesso={() => {
+                    const d = opcoes;
+                    depoisDeFechar(() => setARemoverAcesso(d));
+                }}
                 onHabilitar={() => {
                     const d = opcoes;
                     depoisDeFechar(() => setAHabilitar(d));
@@ -234,48 +266,54 @@ export function Dependentes() {
                 onCancelar={() => setARemover(null)}
             />
 
+            <SheetConfirmacao
+                aberto={Boolean(aRemoverAcesso)}
+                titulo={`Remover seu acesso ao perfil de ${aRemoverAcesso ? primeiroNome(aRemoverAcesso) : ""}?`}
+                descricao={
+                    aRemoverAcesso &&
+                    `Você não poderá mais acessar esse perfil pela sua conta. ${primeiroNome(aRemoverAcesso)} continuará na sua lista de dependentes, sem alterações no cadastro ou nos ingressos.`
+                }
+                confirmar="Remover meu acesso"
+                destrutivo
+                carregando={removendo}
+                onConfirmar={confirmarRemocaoDeAcesso}
+                onCancelar={() => setARemoverAcesso(null)}
+            />
+
             {/* Habilitar acesso: o que a permissão significa, antes do código */}
             <SheetConfirmacao
                 aberto={Boolean(aHabilitar)}
                 titulo={`Habilitar acesso ao perfil de ${aHabilitar ? primeiroNome(aHabilitar) : ""}?`}
-                descricao={aHabilitar ? `Você poderá entrar no perfil de ${primeiroNome(aHabilitar)} pela sua conta.` : undefined}
-                confirmar="Continuar"
+                descricao={
+                    aHabilitar && (
+                        <>
+                            <span className="block">
+                                Você poderá usar esse perfil pela sua conta, sem precisar de outro login, e acessar apenas os ingressos que você comprou ou
+                                atribuiu a ele.
+                            </span>
+                            <span className="mt-2 block">Na próxima etapa, vamos confirmar sua identidade com um código.</span>
+                        </>
+                    )
+                }
+                confirmar="Confirmar identidade"
                 onConfirmar={() => {
                     const id = aHabilitar!.id;
                     setAHabilitar(null);
                     navigate(`/ingresse-app/perfil/dependentes/${id}/habilitar`);
                 }}
                 onCancelar={() => setAHabilitar(null)}
-            >
-                {aHabilitar && (
-                    <ul className="mt-5 flex flex-col gap-4">
-                        <ItemExplicacao icon={Ticket01} texto={`Acesse os ingressos de ${primeiroNome(aHabilitar)} e use as funções disponíveis no perfil.`} />
-                        <ItemExplicacao icon={Phone01} texto={`${primeiroNome(aHabilitar)} não precisa ter e-mail ou telefone próprios.`} />
-                        <ItemExplicacao icon={ShieldTick} texto="Para sua segurança, vamos confirmar que é você com um código." />
-                    </ul>
-                )}
-            </SheetConfirmacao>
+            />
         </AppShell>
     );
 }
 
 /** Sua relação com o perfil do dependente (ou a conta própria dele). Sempre aparece, em azul, abaixo do nome. */
 const fraseDoAcesso = (d: Dependente) => {
-    if (d.acesso === "pronto")
-        return d.pessoas.find((p) => p.voce)?.papel === "administrador" ? "Você é o administrador do perfil" : "Você tem acesso ao perfil";
-    if (d.acesso === "conta-propria") return "Tem conta própria";
-    if (d.acesso === "preparando") return "Preparando acesso";
+    if (d.acesso === "pronto") return "Você tem acesso a este perfil";
+    if (d.acesso === "conta-propria") return "Possui conta própria";
+    if (d.acesso === "preparando") return "Preparando acesso ao perfil";
     return "Acesso não habilitado";
 };
-
-const ItemExplicacao = ({ icon: Icon, texto }: { icon: FC<{ className?: string }>; texto: string }) => (
-    <li className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
-            <Icon className="size-5 text-fg-brand-primary" />
-        </span>
-        <p className="pt-2 text-sm text-secondary">{texto}</p>
-    </li>
-);
 
 /* Skeleton da lista enquanto os dependentes carregam. */
 const SkeletonLista = () => (
@@ -286,7 +324,7 @@ const SkeletonLista = () => (
                     <div className="h-4 flex-1 rounded-full bg-tertiary" />
                     <div className="size-9 shrink-0 rounded-lg bg-tertiary" />
                 </div>
-                <div className="mt-3 flex flex-col gap-2.5 border-t border-tertiary pt-3">
+                <div className="mt-3 flex flex-col gap-2.5 pt-3">
                     {[0, 1, 2].map((j) => (
                         <div key={j} className="flex items-center justify-between gap-3">
                             <div className="h-3 w-28 rounded-full bg-tertiary" />

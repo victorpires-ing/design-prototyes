@@ -58,6 +58,8 @@ export function HabilitarAcesso() {
 
     const validar = (valor: string) => {
         if (valor.length < 6 || validando) return;
+        // Sai do foco ao completar: o contorno do campo ativo some de uma vez e as bordas não mudam durante a validação
+        (document.activeElement as HTMLElement | null)?.blur();
         setValidando(true);
         setErro(null);
         window.setTimeout(() => {
@@ -182,7 +184,8 @@ export function HabilitarAcesso() {
                             </>
                         ) : (
                             <>
-                                <LoadingIndicator type="dot-circle" size="lg" />
+                                {/* Como no Figma ("Preparando o perfil"): arco da marca sobre o círculo cinza, 48px */}
+                                <LoadingIndicator type="line-simple" size="md" />
                                 <h1 className="mt-5 text-xl font-bold text-primary">Preparando o perfil de {nome}</h1>
                                 <p className="mt-2 text-sm leading-relaxed text-tertiary">Isso pode levar alguns instantes</p>
                             </>
@@ -242,13 +245,16 @@ export function HabilitarAcesso() {
 
                 <div className="px-5 pt-6 pb-40">
                     <div ref={campoRef} className="flex flex-col items-center gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
-                        <PinInput size="xs" disabled={validando} invalid={Boolean(erro)}>
+                        {/* Sem "disabled" na validação (desabilitar troca as bordas e os campos parecem encolher; só ignoramos a digitação).
+                            items-center: a mensagem de erro, mais larga que os campos, não empurra os campos para a esquerda */}
+                        <PinInput size="xs" invalid={Boolean(erro)} className="items-center">
                             <PinInput.Group
                                 maxLength={6}
                                 value={codigo}
                                 inputMode="numeric"
                                 autoFocus
                                 onChange={(v) => {
+                                    if (validando) return;
                                     setCodigo(v.replace(/\D/g, ""));
                                     if (erro === "incorreto") setErro(null);
                                 }}
@@ -268,11 +274,10 @@ export function HabilitarAcesso() {
                                     />
                                 ))}
                             </PinInput.Group>
-                            {dica && (
-                                <PinInput.Description isInvalid className="text-center">
-                                    {dica}
-                                </PinInput.Description>
-                            )}
+                            {/* Linha da mensagem sempre reservada: no erro o cartão não cresce, só aparece o texto (e as bordas mudam de cor) */}
+                            <PinInput.Description isInvalid className={cx("min-h-5 text-center", !dica && "invisible")} aria-hidden={!dica}>
+                                {dica ?? "\u00A0"}
+                            </PinInput.Description>
                         </PinInput>
 
                         {espera > 0 && erro !== "expirado" ? (

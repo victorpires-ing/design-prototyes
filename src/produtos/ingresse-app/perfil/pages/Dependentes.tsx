@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, ArrowLeft, DotsVertical, Trash01, UserPlus01, Users01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
+import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { AppShell } from "../../components/AppShell";
@@ -178,13 +179,15 @@ export function Dependentes() {
                                         )}
                                     >
                                         <div className="flex items-center gap-3">
+                                            {/* Bolinha com as iniciais, no lugar da foto */}
+                                            <Avatar size="md" initials={d.iniciais} alt={d.nome} />
                                             {/* Nome em cima e, embaixo, uma frase curta sobre o acesso (sem badge) */}
                                             <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
                                                 <p className="w-full truncate text-md font-bold text-primary">{d.nome}</p>
                                                 <p
                                                     className={cx(
                                                         "flex items-center gap-1.5 text-sm",
-                                                        d.acesso === "preparando" || d.acesso === "conta-propria" ? "text-secondary" : "text-utility-blue-700",
+                                                        d.acesso === "pronto" ? "text-utility-blue-700" : "text-secondary",
                                                     )}
                                                 >
                                                     {/* Habilitação em andamento: um loading pequeno junto da frase */}
@@ -307,7 +310,7 @@ export function Dependentes() {
     );
 }
 
-/** Sua relação com o perfil do dependente (ou a conta própria dele). Sempre aparece, em azul, abaixo do nome. */
+/** Sua relação com o perfil do dependente (ou a conta própria dele). Sempre aparece abaixo do nome: em azul só quando você tem acesso; nos demais casos, em cinza. */
 const fraseDoAcesso = (d: Dependente) => {
     if (d.acesso === "pronto") return "Você tem acesso a este perfil";
     if (d.acesso === "conta-propria") return "Possui conta própria";
@@ -321,6 +324,7 @@ const SkeletonLista = () => (
         {[0, 1, 2].map((i) => (
             <div key={i} className="rounded-2xl bg-primary p-4 ring-1 ring-border-secondary">
                 <div className="flex items-center gap-3">
+                    <div className="size-10 shrink-0 rounded-full bg-tertiary" />
                     <div className="h-4 flex-1 rounded-full bg-tertiary" />
                     <div className="size-9 shrink-0 rounded-lg bg-tertiary" />
                 </div>

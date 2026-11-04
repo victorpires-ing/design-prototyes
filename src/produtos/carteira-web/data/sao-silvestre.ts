@@ -144,7 +144,7 @@ export const SAO_SILVESTRE: EventoSS = {
     dia: "31",
     mes: "Dez",
     gradient: "linear-gradient(135deg,#FF4D00 0%,#1d4ed8 100%)",
-    titular: "Duny Alves da Silva",
+    titular: "Camila Ferreira Rocha",
     cpf: "832.840.732-12",
     combos: [
         {

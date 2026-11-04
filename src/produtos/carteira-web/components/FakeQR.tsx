@@ -1,12 +1,12 @@
-/* QR Code fake (placeholder), sem molduras coloridas. */
-export const FakeQR = ({ px = 200 }: { px?: number }) => {
+/* QR Code fake (placeholder), sem molduras coloridas. O `seed` varia o padrão (QR dinâmico). */
+export const FakeQR = ({ px = 200, seed = 0 }: { px?: number; seed?: number }) => {
     const N = 25;
     const isFinder = (r: number, c: number) => (r < 7 && c < 7) || (r < 7 && c >= N - 7) || (r >= N - 7 && c < 7);
     const cells: { x: number; y: number }[] = [];
     for (let r = 0; r < N; r++) {
         for (let c = 0; c < N; c++) {
             if (isFinder(r, c)) continue;
-            if ((r * 3 + c * 7 + ((r * c) % 5)) % 3 === 0) cells.push({ x: c, y: r });
+            if ((r * 3 + c * 7 + ((r * c) % 5) + seed) % 3 === 0) cells.push({ x: c, y: r });
         }
     }
     const Finder = ({ x, y }: { x: number; y: number }) => (

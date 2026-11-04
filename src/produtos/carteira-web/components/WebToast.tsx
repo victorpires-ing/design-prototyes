@@ -48,7 +48,7 @@ export const mostrarToast = (titulo: string, descricao?: string, tom: TomToast =
 export type AncoraToast = "janela" | "frame";
 
 const ANCORA: Record<AncoraToast, string> = {
-    janela: "fixed right-6 bottom-6 justify-end",
+    janela: "fixed right-6 bottom-24 justify-end", // acima dos controles flutuantes do protótipo
     frame: "absolute inset-x-0 bottom-6 justify-center",
 };
 

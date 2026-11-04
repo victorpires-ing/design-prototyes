@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import type { FC } from "react";
 import { Calendar, ChevronDown, ClockRewind, MarkerPin01, SearchLg, Ticket01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
-import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
 import logoBlack from "../../../assets/Company logo_black.svg";
 import { TrocaOnboardingDesktop } from "../components/TrocaOnboardingDesktop";
+import { useForceLightTheme } from "../components/use-force-light-theme";
+import { useMarcaIngresse } from "../components/use-marca-ingresse";
 
 type Tab = "vem-ai" | "ja-passou";
 
@@ -28,19 +29,9 @@ const EVENTO_BASE: Omit<EventoCard, "id"> = {
 
 const VEM_AI: EventoCard[] = Array.from({ length: 6 }, (_, i) => ({ id: `doce-${i}`, ...EVENTO_BASE }));
 
-/** Força tema light enquanto a tela está montada (carteira web do consumidor é sempre light). */
-function useForceLightTheme() {
-    const { theme, setTheme } = useTheme();
-    useEffect(() => {
-        const previous = theme;
-        setTheme("light");
-        return () => setTheme(previous);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-}
-
 export function TrocaOnboardingWeb() {
     useForceLightTheme();
+    useMarcaIngresse();
     const [tab, setTab] = useState<Tab>("vem-ai");
     const cards = tab === "vem-ai" ? VEM_AI : [];
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FC } from "react";
-import { AlertCircle, ArrowLeft, ChevronDown, ClipboardCheck, Edit03, InfoCircle, Plus, Send01, Tag01, UserRight01, Wallet02, XClose } from "@untitledui/icons";
+import { AlertCircle, ArrowLeft, ChevronDown, ClipboardCheck, Edit03, File02, InfoCircle, Plus, Send01, Tag01, UserRight01, Wallet02, XClose } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -460,7 +460,7 @@ export function DesktopDetalhe({
 }) {
     const ev = SAO_SILVESTRE;
     return (
-        <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
+        <div className="mx-auto w-full max-w-3xl px-4 pt-8 pb-28 sm:px-6">
             <button
                 type="button"
                 onClick={onBack}
@@ -682,9 +682,17 @@ function ComboCard({
                     {/* Respostas do formulário (preenchido na compra) — escondidas no cenário de erro */}
                     {!erro && (
                         <div>
-                            <div className="flex items-center gap-2">
-                                <ClipboardCheck className="size-5 text-brand-secondary" />
-                                <h4 className="text-sm font-bold text-primary">Respostas do formulário</h4>
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                    <ClipboardCheck className="size-5 text-brand-secondary" />
+                                    <h4 className="text-sm font-bold text-primary">Respostas do formulário</h4>
+                                </div>
+                                {/* Editar fica no cabeçalho das respostas (secundário), não junto dos CTAs */}
+                                {!compact && respostasAtuais.length > 0 && onEditarFormulario && (
+                                    <Button size="sm" color="secondary" iconLeading={File02} onClick={onEditarFormulario}>
+                                        Editar formulário
+                                    </Button>
+                                )}
                             </div>
                             <div className="mt-2 divide-y divide-border-secondary overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
                                 {respostasAtuais.map((q) => (
@@ -700,11 +708,6 @@ function ComboCard({
                     {/* Ações desktop (lado a lado, centralizadas). No mobile, ver rodapé fixo. */}
                     {!compact && (
                         <div className="flex flex-wrap items-center justify-center gap-3">
-                            {!erro && respostasAtuais.length > 0 && onEditarFormulario && (
-                                <Button size="md" color="primary" iconLeading={Edit03} onClick={onEditarFormulario}>
-                                    Editar formulário
-                                </Button>
-                            )}
                             <button
                                 type="button"
                                 onClick={onTransfer}

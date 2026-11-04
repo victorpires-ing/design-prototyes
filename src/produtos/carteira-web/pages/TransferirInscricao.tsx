@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { AlertCircle, ArrowDown, ArrowLeft, CheckCircle, ChevronRight, Monitor01, Phone01, Send01 } from "@untitledui/icons";
+import { AlertCircle, ArrowDown, ArrowLeft, CheckCircle, ChevronRight, Send01 } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
@@ -8,8 +8,12 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { cx } from "@/utils/cx";
 import { SAO_SILVESTRE } from "../data/sao-silvestre";
 import { marcarTransferido } from "../data/transfer-store";
+import { ControlesPrototipo } from "../components/controles-prototipo";
+import { useViewport } from "../data/viewport";
+import { SiteHeader } from "../components/site-header";
+import { useForceLightTheme } from "../components/use-force-light-theme";
+import { useMarcaIngresse } from "../components/use-marca-ingresse";
 
-type Viewport = "desktop" | "mobile";
 
 /** Destinatário fictício retornado pela busca por e-mail. */
 const DESTINATARIO = "Mariana Costa Lima";
@@ -27,10 +31,12 @@ const agoraFormatado = () => {
 };
 
 export function TransferirInscricao() {
+    useForceLightTheme();
+    useMarcaIngresse();
     const navigate = useNavigate();
     const location = useLocation();
-    const st = (location.state as { viewport?: Viewport; comboId?: string } | null) ?? {};
-    const [viewport, setViewport] = useState<Viewport>(st.viewport ?? "desktop");
+    const st = (location.state as { comboId?: string } | null) ?? {};
+    const [viewport] = useViewport();
 
     const ev = SAO_SILVESTRE;
     const combo = ev.combos.find((c) => c.id === st.comboId) ?? ev.combos[0];
@@ -48,7 +54,6 @@ export function TransferirInscricao() {
     }, [searched]);
 
     const voltar = () => navigate("/carteira-web");
-    const seg = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear";
 
     const resumo = (
         <div className="rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
@@ -71,39 +76,20 @@ export function TransferirInscricao() {
 
     return (
         <div className={cx("min-h-screen", viewport === "mobile" ? "bg-secondary" : "bg-primary")}>
-            {/* Barra de controle do protótipo */}
-            <div className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 border-b border-secondary bg-primary/90 px-4 py-2.5 backdrop-blur">
-                <button
-                    type="button"
-                    onClick={voltar}
-                    className="flex items-center gap-1.5 text-sm font-medium text-tertiary transition hover:text-secondary"
-                >
-                    <ArrowLeft className="size-4" />
-                    Carteira
-                </button>
-
-                <div className="flex items-center gap-1 rounded-lg bg-secondary p-1 ring-1 ring-border-secondary">
-                    <button type="button" onClick={() => setViewport("desktop")} className={cx(seg, viewport === "desktop" ? "bg-primary text-primary shadow-sm" : "text-tertiary")}>
-                        <Monitor01 className="size-4" /> Desktop
-                    </button>
-                    <button type="button" onClick={() => setViewport("mobile")} className={cx(seg, viewport === "mobile" ? "bg-primary text-primary shadow-sm" : "text-tertiary")}>
-                        <Phone01 className="size-4" /> Mobile
-                    </button>
-                </div>
-
-                <span className="hidden w-[120px] text-right text-xs text-tertiary sm:inline">{viewport === "mobile" ? "390px" : "Full width"}</span>
-            </div>
+            <ControlesPrototipo voltar={{ label: "Carteira", onClick: voltar }} />
+            {viewport === "desktop" && <SiteHeader />}
 
             {/* Área de preview */}
-            <div className={cx(viewport === "mobile" ? "pt-16 pb-10 sm:px-4" : "pt-14")}>
+            <div className={cx(viewport === "mobile" && "py-10 sm:px-4")}>
                 <div
                     className={cx(
                         "mx-auto bg-secondary",
                         viewport === "mobile"
-                            ? "min-h-[calc(100vh-6.5rem)] w-full sm:w-[390px] sm:max-w-full sm:overflow-hidden sm:rounded-3xl sm:shadow-xl sm:ring-1 sm:ring-border-secondary"
-                            : "min-h-[calc(100vh-3.5rem)] w-full",
+                            ? "min-h-[calc(100vh-5rem)] w-full sm:w-[390px] sm:max-w-full sm:overflow-hidden sm:rounded-3xl sm:shadow-xl sm:ring-1 sm:ring-border-secondary"
+                            : "min-h-[calc(100vh-5rem)] w-full",
                     )}
                 >
+                    {viewport === "mobile" && <SiteHeader compact />}
                     {/* Cabeçalho da tela */}
                     <div className="flex items-center gap-2 border-b border-secondary bg-primary px-5 py-3.5">
                         {step !== "concluido" && (

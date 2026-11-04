@@ -16,37 +16,19 @@ export interface LinhaResumo {
     link?: string;
 }
 
-/** V2: a proteção aparece abaixo dos itens como opção desligada; a pessoa ativa pelo radio. */
-export interface ProtecaoOpcional {
-    ativa: boolean;
-    qtdIngressos: number;
-    valor: number;
-    /** Só ativa: depois de escolhida, a proteção não pode ser desmarcada. */
-    onAtivar: () => void;
-}
-
 interface PropsResumo {
     linhas: LinhaResumo[];
     total: number;
     qtdItens: number;
-    comProtecao: boolean;
     onRemover: (id: string) => void;
     onRemoverTudo: () => void;
-    onContinuarSemProtecao?: () => void;
-    /** Presente só na V2: troca a linha de proteção pelo card com radio e volta ao rodapé original. */
-    protecaoOpcional?: ProtecaoOpcional;
-    /** Presente só na V3: a proteção fica na lista como os outros itens (sem radio), e o rodapé vira "Continuar com proteção" / "Prefiro correr o risco". */
-    protecaoRadio?: ProtecaoRadio;
-    /** Abre o modal de coberturas ("Ver coberturas" na linha ou no card da proteção). */
+    /** "Continuar com proteção" (true) ou "Prefiro correr o risco" (false). No experimento os botões não fazem nada. */
+    onContinuar?: (comProtecao: boolean) => void;
+    /** Abre o modal de coberturas ("Ver coberturas" na linha da proteção). */
     onVerCoberturas?: () => void;
 }
 
 const VerCoberturas = createContext<(() => void) | undefined>(undefined);
-
-/** V3: sem radio, a escolha acontece no CTA — "Continuar com proteção" ou "Prefiro correr o risco". No experimento os botões não fazem nada. */
-export interface ProtecaoRadio {
-    onContinuar?: (comProtecao: boolean) => void;
-}
 
 /** "Resumo da compra": no desktop, card lateral; no celular, barra fixa no rodapé que abre como gaveta (igual produção). */
 export function Resumo(props: PropsResumo) {
@@ -58,20 +40,10 @@ export function Resumo(props: PropsResumo) {
     );
 }
 
-function ResumoDesktop({
-    linhas,
-    total,
-    qtdItens,
-    comProtecao,
-    onRemover,
-    onRemoverTudo,
-    onContinuarSemProtecao,
-    protecaoOpcional,
-    protecaoRadio,
-}: PropsResumo) {
+function ResumoDesktop({ linhas, total, qtdItens, onRemover, onRemoverTudo, onContinuar }: PropsResumo) {
     const vazio = linhas.length === 0;
-    // V3: a proteção sai da lista de itens e vai para o rodapé, logo acima do total (mesmo lugar do celular)
-    const linhaProtecao = protecaoRadio ? linhas.find((l) => l.id === "protecao") : undefined;
+    // A proteção sai da lista de itens e vai para o rodapé, logo acima do total (mesmo lugar do celular)
+    const linhaProtecao = linhas.find((l) => l.id === "protecao");
     const linhasLista = linhaProtecao ? linhas.filter((l) => l !== linhaProtecao) : linhas;
 
     return (
@@ -82,50 +54,28 @@ function ResumoDesktop({
                 {vazio ? (
                     <p className="py-8 text-center text-sm text-[#7a7a7a]">Selecione um ingresso para continuar.</p>
                 ) : (
-                    <>
-                        <ListaItens linhas={linhasLista} onRemover={onRemover} onRemoverTudo={onRemoverTudo} />
-                        {protecaoOpcional && <CardProtecao {...protecaoOpcional} />}
-                    </>
+                    <ListaItens linhas={linhasLista} onRemover={onRemover} onRemoverTudo={onRemoverTudo} />
                 )}
             </div>
 
             <footer className="border-t border-[#ececec] px-4 py-4">
-                {protecaoOpcional ? (
-                    <TotalComBotao total={total} qtdItens={qtdItens} desabilitado={vazio} />
-                ) : protecaoRadio ? (
-                    <div className="flex flex-col gap-3">
-                        {linhaProtecao && (
-                            <ul className="mb-2">
-                                <LinhaItem linha={linhaProtecao} onRemover={onRemover} protecaoRadio={protecaoRadio} />
+                <div className="flex flex-col gap-3">
+                    {linhaProtecao && (
+                        <>
+                            <ul>
+                                <LinhaItem linha={linhaProtecao} onRemover={onRemover} />
                             </ul>
-                        )}
-                        <RodapeV3 total={total} qtdItens={qtdItens} desabilitado={vazio} {...protecaoRadio} />
-                    </div>
-                ) : (
-                    <RodapeV1
-                        total={total}
-                        qtdItens={qtdItens}
-                        comProtecao={comProtecao}
-                        desabilitado={vazio}
-                        onContinuarSemProtecao={onContinuarSemProtecao}
-                    />
-                )}
+                            <Divisor />
+                        </>
+                    )}
+                    <Rodape total={total} qtdItens={qtdItens} desabilitado={vazio} onContinuar={onContinuar} />
+                </div>
             </footer>
         </aside>
     );
 }
 
-function ResumoMobile({
-    linhas,
-    total,
-    qtdItens,
-    comProtecao,
-    onRemover,
-    onRemoverTudo,
-    onContinuarSemProtecao,
-    protecaoOpcional,
-    protecaoRadio,
-}: PropsResumo) {
+function ResumoMobile({ linhas, total, qtdItens, onRemover, onRemoverTudo, onContinuar }: PropsResumo) {
     const [aberto, setAberto] = useState(false);
     const barraRef = useRef<HTMLDivElement>(null);
     const [altura, setAltura] = useState(0);
@@ -146,29 +96,21 @@ function ResumoMobile({
         if (!temItens) setAberto(false);
     }, [temItens]);
 
-    // V2: o card da proteção fica sempre à vista na barra, mesmo com o resumo fechado; total embaixo e "Continuar" de ponta a ponta
-    // V1 e V3: a linha da proteção sai da gaveta e fica sempre à vista na barra, logo acima do total
-    const linhaProtecao = protecaoOpcional ? undefined : linhas.find((l) => l.id === "protecao");
+    // A linha da proteção sai da gaveta e fica sempre à vista na barra, logo acima do total
+    const linhaProtecao = linhas.find((l) => l.id === "protecao");
     const linhasGaveta = linhaProtecao ? linhas.filter((l) => l !== linhaProtecao) : linhas;
 
-    const rodape = protecaoOpcional ? (
-        <div className="flex flex-col gap-3">
-            <CardProtecao {...protecaoOpcional} />
-            <LinhaTotal total={total} qtdItens={qtdItens} />
-            <BotaoContinuar largo>Continuar</BotaoContinuar>
-        </div>
-    ) : (
+    const rodape = (
         <div className="flex flex-col gap-3">
             {linhaProtecao && (
-                <ul className={cx(protecaoRadio && "mb-2")}>
-                    <LinhaItem linha={linhaProtecao} onRemover={onRemover} protecaoRadio={protecaoRadio} />
-                </ul>
+                <>
+                    <ul>
+                        <LinhaItem linha={linhaProtecao} onRemover={onRemover} />
+                    </ul>
+                    <Divisor />
+                </>
             )}
-            {protecaoRadio ? (
-                <RodapeV3 total={total} qtdItens={qtdItens} {...protecaoRadio} />
-            ) : (
-                <RodapeV1 total={total} qtdItens={qtdItens} comProtecao={comProtecao} onContinuarSemProtecao={onContinuarSemProtecao} />
-            )}
+            <Rodape total={total} qtdItens={qtdItens} onContinuar={onContinuar} />
         </div>
     );
 
@@ -235,7 +177,7 @@ function ResumoMobile({
     );
 }
 
-function ListaItens({ linhas, onRemover, onRemoverTudo, protecaoRadio }: Pick<PropsResumo, "linhas" | "onRemover" | "onRemoverTudo" | "protecaoRadio">) {
+function ListaItens({ linhas, onRemover, onRemoverTudo }: Pick<PropsResumo, "linhas" | "onRemover" | "onRemoverTudo">) {
     return (
         <>
             <div className="flex items-center gap-2">
@@ -248,30 +190,30 @@ function ListaItens({ linhas, onRemover, onRemoverTudo, protecaoRadio }: Pick<Pr
 
             <ul className="flex flex-col gap-4">
                 {linhas.map((l) => (
-                    <LinhaItem key={l.id} linha={l} onRemover={onRemover} protecaoRadio={protecaoRadio} />
+                    <LinhaItem key={l.id} linha={l} onRemover={onRemover} />
                 ))}
             </ul>
         </>
     );
 }
 
-function LinhaItem({ linha, onRemover, protecaoRadio }: { linha: LinhaResumo; onRemover: (id: string) => void; protecaoRadio?: ProtecaoRadio }) {
+function LinhaItem({ linha, onRemover }: { linha: LinhaResumo; onRemover: (id: string) => void }) {
     const { id, quantidade, titulo, subtitulo, valor, icone: Icone, link } = linha;
-    const radio = id === "protecao" ? protecaoRadio : undefined;
+    // Proteção: a linha só informa (o valor vai na legenda); quem liga a proteção é o "Continuar com proteção"
+    const protecao = id === "protecao";
     const verCoberturas = useContext(VerCoberturas);
     return (
         <li className="relative flex items-start gap-3">
-            {/* V3 sem radio: a linha só informa; quem liga a proteção é o "Continuar com proteção" */}
             <span className="flex shrink-0 items-center gap-0.5 rounded-md bg-[#f2f2f2] px-1.5 py-0.5 text-sm font-semibold text-[#1a1a1a] tabular-nums">
                 {quantidade}
                 <Icone className="size-3.5" aria-hidden="true" />
             </span>
             <span className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="text-sm font-bold text-[#1a1a1a]">{titulo}</span>
-                {/* V3: o valor vai na legenda, em peso regular ("Cobre 2 ingressos por R$ 24,00"), e o link fica preto */}
+                {/* Proteção: o valor vai na legenda, em peso regular ("Cobre 2 ingressos por R$ 24,00"), e o link fica preto */}
                 <span className="text-sm text-[#1a1a1a]">
                     {subtitulo}
-                    {radio && (
+                    {protecao && (
                         <>
                             {" "}
                             por <span className="tabular-nums">{brl(valor)}</span>
@@ -284,22 +226,19 @@ function LinhaItem({ linha, onRemover, protecaoRadio }: { linha: LinhaResumo; on
                         onClick={verCoberturas}
                         className={cx(
                             "relative self-start text-xs font-semibold underline underline-offset-2 transition duration-100 ease-linear",
-                            radio ? "text-[#1a1a1a] hover:text-[#525252]" : "text-[#ff4f1f] hover:text-[#e8410f]",
+                            protecao ? "text-[#1a1a1a] hover:text-[#525252]" : "text-[#ff4f1f] hover:text-[#e8410f]",
                         )}
                     >
                         {link}
                     </button>
                 )}
             </span>
-            {!radio && (
+            {!protecao && (
                 <span className="flex shrink-0 flex-col items-end gap-1">
                     <span className="text-sm font-bold text-[#1a1a1a] tabular-nums">{brl(valor)}</span>
-                    {/* A proteção sai pelo "Continuar sem proteção"; não precisa de Remover próprio */}
-                    {id !== "protecao" && (
-                        <button type="button" onClick={() => onRemover(id)} className="text-xs text-[#1a1a1a] underline underline-offset-2">
-                            Remover
-                        </button>
-                    )}
+                    <button type="button" onClick={() => onRemover(id)} className="text-xs text-[#1a1a1a] underline underline-offset-2">
+                        Remover
+                    </button>
                 </span>
             )}
         </li>
@@ -332,20 +271,8 @@ function BotaoContinuar({
     );
 }
 
-/** Total com "+ taxas" em cima e a contagem de itens embaixo (coluna). */
-function Total({ total, qtdItens }: { total: number; qtdItens: number }) {
-    return (
-        <span className="flex min-w-0 flex-col">
-            <span className="flex flex-wrap items-baseline gap-x-1">
-                <span className="text-base font-semibold whitespace-nowrap text-[#1a1a1a] tabular-nums">{brl(total)}</span>
-                <span className="text-sm whitespace-nowrap text-[#7a7a7a]">+ taxas</span>
-            </span>
-            <span className="text-sm text-[#7a7a7a]">
-                {qtdItens} {qtdItens === 1 ? "item" : "itens"}
-            </span>
-        </span>
-    );
-}
+/** Divider entre a proteção e o valor final, de ponta a ponta (sai do respiro lateral de 16px do rodapé; mesmo cinza das outras divisões). */
+const Divisor = () => <hr className="-mx-4 border-t border-[#ececec]" />;
 
 /** Total à esquerda e a contagem à direita, numa linha só (quando o botão vai embaixo, de ponta a ponta). */
 function LinhaTotal({ total, qtdItens }: { total: number; qtdItens: number }) {
@@ -362,18 +289,13 @@ function LinhaTotal({ total, qtdItens }: { total: number; qtdItens: number }) {
     );
 }
 
-/** Rodapé de produção: total à esquerda, "Continuar" à direita. */
-function TotalComBotao({ total, qtdItens, desabilitado }: { total: number; qtdItens: number; desabilitado?: boolean }) {
-    return (
-        <div className="flex items-center justify-between gap-3">
-            <Total total={total} qtdItens={qtdItens} />
-            <BotaoContinuar desabilitado={desabilitado}>Continuar</BotaoContinuar>
-        </div>
-    );
-}
-
-/** Rodapé da V3: "Continuar com proteção" de ponta a ponta (já liga a proteção) e "Prefiro correr o risco" embaixo, sem borda; ligada, fica só "Continuar". */
-function RodapeV3({ total, qtdItens, onContinuar, desabilitado }: { total: number; qtdItens: number; desabilitado?: boolean } & ProtecaoRadio) {
+/** Rodapé: "Continuar com proteção" de ponta a ponta (já liga a proteção) e "Prefiro correr o risco" embaixo, sem borda. */
+function Rodape({
+    total,
+    qtdItens,
+    onContinuar,
+    desabilitado,
+}: { total: number; qtdItens: number; desabilitado?: boolean } & Pick<PropsResumo, "onContinuar">) {
     // Os dois botões são as duas saídas da tela: "Continuar com proteção" é o único jeito de seguir protegido
     return (
         <div className="flex flex-col gap-3">
@@ -393,120 +315,5 @@ function RodapeV3({ total, qtdItens, onContinuar, desabilitado }: { total: numbe
     );
 }
 
-/** Rodapé da V1: total, "Continuar com proteção" de ponta a ponta e "Continuar sem proteção" embaixo. */
-function RodapeV1({
-    total,
-    qtdItens,
-    comProtecao,
-    desabilitado,
-    onContinuarSemProtecao,
-}: {
-    total: number;
-    qtdItens: number;
-    comProtecao: boolean;
-    desabilitado?: boolean;
-    onContinuarSemProtecao?: () => void;
-}) {
-    return (
-        <div className="flex flex-col gap-3">
-            <LinhaTotal total={total} qtdItens={qtdItens} />
-            <BotaoContinuar largo desabilitado={desabilitado}>
-                {comProtecao ? "Continuar com proteção" : "Continuar"}
-            </BotaoContinuar>
-            {comProtecao && (
-                <button
-                    type="button"
-                    onClick={onContinuarSemProtecao}
-                    className="self-center text-sm font-medium text-[#7a7a7a] transition duration-100 ease-linear hover:text-[#1a1a1a]"
-                >
-                    Continuar sem proteção
-                </button>
-            )}
-        </div>
-    );
-}
-
 export const ICONE_INGRESSO = Ticket01;
 export const ICONE_PROTECAO = ShieldTick;
-
-function CardProtecao({ ativa, qtdIngressos, valor, onAtivar }: ProtecaoOpcional) {
-    const verCoberturas = useContext(VerCoberturas);
-    return (
-        <div
-            className={cx(
-                "relative flex items-start gap-2.5 rounded-xl border p-3 transition duration-100 ease-linear",
-                // Desligada parece um alerta a resolver antes de continuar (borda amarela); ativa, fica verde
-                ativa ? "border-[#17b26a] bg-[#ecfdf3]" : "border-[#f79009] bg-[#fffaeb] hover:border-[#dc6803]",
-            )}
-        >
-            {/* O card inteiro é o alvo do radio (botão esticado por cima); uma vez ativa, fica travada */}
-            <button
-                type="button"
-                role="radio"
-                aria-checked={ativa}
-                aria-label="Adicionar proteção de compra"
-                onClick={onAtivar}
-                disabled={ativa}
-                className="absolute inset-0 cursor-pointer rounded-xl disabled:cursor-default"
-            />
-            <Radio ativa={ativa} className="mt-0.5" corDesligado="border-[#dc6803]" />
-            <span className="flex min-w-0 flex-1 flex-col gap-1">
-                {/* Ao ativar, o convite vira confirmação: o título antigo sobe e some, o novo entra de baixo */}
-                <span className="relative overflow-hidden" aria-live="polite">
-                    <AnimatePresence mode="popLayout" initial={false}>
-                        <motion.span
-                            key={ativa ? "protegido" : "convite"}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.22, ease: "easeOut" }}
-                            className="block text-sm font-bold text-[#1a1a1a]"
-                        >
-                            {ativa ? (
-                                <>{qtdIngressos === 1 ? "Ingresso protegido" : "Ingressos protegidos"}</>
-                            ) : (
-                                <>{qtdIngressos === 1 ? "Proteja seu ingresso de imprevistos" : "Proteja seus ingressos de imprevistos"}</>
-                            )}
-                        </motion.span>
-                    </AnimatePresence>
-                </span>
-                <span className="text-sm text-[#1a1a1a]">
-                    {qtdIngressos === 1 ? "Cobre 1 ingresso" : `Cobre ${qtdIngressos} ingressos`} por <span className="tabular-nums">{brl(valor)}</span>
-                </span>
-                <button
-                    type="button"
-                    onClick={verCoberturas}
-                    className="relative self-start text-xs font-semibold text-[#525252] underline underline-offset-2 transition duration-100 ease-linear hover:text-[#1a1a1a]"
-                >
-                    Ver coberturas
-                </button>
-            </span>
-        </div>
-    );
-}
-
-/** Círculo do radio (só visual; o clique fica no botão esticado de quem usa). Ligado: verde, com o miolo branco surgindo com mola. */
-function Radio({ ativa, className, corDesligado = "border-[#a3a3a3]" }: { ativa: boolean; className?: string; corDesligado?: string }) {
-    return (
-        <span
-            aria-hidden="true"
-            className={cx(
-                "flex size-4 shrink-0 items-center justify-center rounded-full border transition duration-100 ease-linear",
-                ativa ? "border-[#17b26a] bg-[#17b26a]" : cx(corDesligado, "bg-white"),
-                className,
-            )}
-        >
-            <AnimatePresence>
-                {ativa && (
-                    <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                        transition={{ type: "spring", stiffness: 600, damping: 22 }}
-                        className="size-1.5 rounded-full bg-white"
-                    />
-                )}
-            </AnimatePresence>
-        </span>
-    );
-}

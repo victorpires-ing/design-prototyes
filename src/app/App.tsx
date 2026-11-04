@@ -431,8 +431,6 @@ export default function App() {
         <Route path="/checkout/melhorias-de-compra/cartao" element={<CheckoutCartao />} />
         <Route path="/checkout/melhorias-de-compra/nao-autorizado" element={<CheckoutNaoAutorizado />} />
         <Route path="/checkout/protecao-de-compra" element={<ProtecaoDeCompra />} />
-        <Route path="/checkout/protecao-de-compra/v2" element={<ProtecaoDeCompra variante="v2" />} />
-        <Route path="/checkout/protecao-de-compra/v3" element={<ProtecaoDeCompra variante="v3" />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
       </EquipeV3Provider>

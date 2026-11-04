@@ -9,28 +9,19 @@ import { useForceLightTheme } from "../utils/use-force-light-theme";
 
 /**
  * Experimento de proteção de compra — /checkout/protecao-de-compra.
- * Reproduz a seleção de ingressos do carrinho em produção; ao escolher um ingresso,
- * a proteção entra no resumo como mais um item (com Remover) e o CTA vira "Continuar com proteção".
- * V2 (/checkout/protecao-de-compra/v2): a proteção aparece no resumo como card com radio, desligada,
- * e o rodapé volta ao original (total + "Continuar").
- * V3 (/checkout/protecao-de-compra/v3): a proteção fica na lista como os outros itens (sem radio), desligada;
- * rodapé com "Continuar com proteção" de ponta a ponta e "Prefiro correr o risco" embaixo; no experimento os dois não fazem nada (a jornada para aqui).
+ * Reproduz a seleção de ingressos do carrinho em produção; ao escolher um ingresso, a proteção aparece no resumo
+ * (fora da lista, logo acima do total), ainda não contratada. A escolha acontece no rodapé:
+ * "Continuar com proteção" de ponta a ponta e "Prefiro correr o risco" embaixo; no experimento os dois não fazem nada (a jornada para aqui).
  */
-export function Selecao({ variante = "v1" }: { variante?: "v1" | "v2" | "v3" }) {
+export function Selecao() {
     useForceLightTheme();
-    // V1: proteção já incluída (opt-out). V2 e V3: começa desligada (opt-in); na V2 liga pelo radio, na V3 pelo CTA.
-    const optIn = variante !== "v1";
-    const cardV2 = variante === "v2";
     const [quantidades, setQuantidades] = useState<Record<string, number>>({});
     const [abertos, setAbertos] = useState<Set<string>>(new Set([SETORES[0].id]));
-    // A proteção vem incluída; se a pessoa remover, fica de fora até ela esvaziar o carrinho.
-    const [semProtecao, setSemProtecao] = useState(optIn);
     const [coberturasAbertas, setCoberturasAbertas] = useState(false);
 
     const selecionados = Object.entries(quantidades).filter(([, q]) => q > 0);
     const subtotal = selecionados.reduce((s, [id, q]) => s + INGRESSO_POR_ID[id].preco * q, 0);
     const qtdIngressos = selecionados.reduce((s, [, q]) => s + q, 0);
-    const comProtecao = qtdIngressos > 0 && !semProtecao;
     const valorProtecao = Math.round(subtotal * PROTECAO_PERCENTUAL * 100) / 100;
 
     const linhas = useMemo<LinhaResumo[]>(() => {
@@ -38,14 +29,13 @@ export function Selecao({ variante = "v1" }: { variante?: "v1" | "v2" | "v3" }) 
             const ing = INGRESSO_POR_ID[id];
             return { id, quantidade: q, titulo: ing.setor, subtitulo: ing.nome, valor: ing.preco * q, icone: ICONE_INGRESSO };
         });
-        // V1 só lista a proteção quando incluída; V3 lista sempre (com o radio); V2 usa o card à parte
-        if (cardV2 || (!comProtecao && variante === "v1") || qtdIngressos === 0) return ingressos;
+        if (qtdIngressos === 0) return ingressos;
         return [
             ...ingressos,
             {
                 id: "protecao",
                 quantidade: qtdIngressos,
-                titulo: variante === "v3" ? "Seus planos podem mudar. Proteja sua compra." : "Proteção de compra",
+                titulo: "Seus planos podem mudar. Proteja sua compra.",
                 subtitulo: qtdIngressos === 1 ? "Cobre 1 ingresso" : `Cobre ${qtdIngressos} ingressos`,
                 valor: valorProtecao,
                 icone: ICONE_PROTECAO,
@@ -53,17 +43,11 @@ export function Selecao({ variante = "v1" }: { variante?: "v1" | "v2" | "v3" }) 
             },
         ];
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [quantidades, comProtecao, valorProtecao, variante]);
+    }, [quantidades, valorProtecao]);
 
     const mudarQuantidade = (id: string, qtd: number) => {
         const proximas = { ...quantidades, [id]: Math.max(0, qtd) };
         setQuantidades(proximas);
-        if (Object.values(proximas).every((q) => q === 0)) setSemProtecao(optIn);
-    };
-
-    const remover = (id: string) => {
-        if (id === "protecao") return setSemProtecao(true);
-        mudarQuantidade(id, 0);
     };
 
     const alternarSetor = (id: string) =>
@@ -106,20 +90,12 @@ export function Selecao({ variante = "v1" }: { variante?: "v1" | "v2" | "v3" }) 
                     <div className="lg:sticky lg:top-4">
                         <Resumo
                             linhas={linhas}
-                            total={subtotal + (comProtecao ? valorProtecao : 0)}
+                            // A proteção ainda não foi contratada: o total é só dos ingressos
+                            total={subtotal}
                             qtdItens={qtdIngressos}
-                            comProtecao={comProtecao}
-                            onRemover={remover}
-                            onContinuarSemProtecao={() => setSemProtecao(true)}
-                            protecaoOpcional={
-                                cardV2 ? { ativa: comProtecao, qtdIngressos, valor: valorProtecao, onAtivar: () => setSemProtecao(false) } : undefined
-                            }
-                            protecaoRadio={variante === "v3" ? {} : undefined}
+                            onRemover={(id) => mudarQuantidade(id, 0)}
                             onVerCoberturas={() => setCoberturasAbertas(true)}
-                            onRemoverTudo={() => {
-                                setQuantidades({});
-                                setSemProtecao(optIn);
-                            }}
+                            onRemoverTudo={() => setQuantidades({})}
                         />
                     </div>
                 </div>

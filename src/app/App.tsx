@@ -403,6 +403,7 @@ export default function App() {
         <Route path="/carteira-web" element={<CarteiraWeb />} />
         <Route path="/carteira-web/transferir" element={<CarteiraWebTransferir />} />
         <Route path="/carteira-web/troca-onboarding" element={<CarteiraWebTrocaOnboarding />} />
+        <Route path="/carteira-web/dependentes/onboarding" element={<CarteiraWeb />} />
         <Route path="/carteira-web/dependentes" element={<CarteiraWebDependentes />} />
         <Route path="/carteira-web/selecionar" element={<CarteiraWebSelecionarPerfil />} />
         <Route path="/revenda" element={<RevendaHome />} />

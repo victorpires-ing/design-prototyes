@@ -1,6 +1,6 @@
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { AlertTriangle, ArrowLeft, Calendar, ChevronRight, ClockRewind, FilterLines, MarkerPin01, Package, Ticket01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -17,6 +17,11 @@ import { SiteHeader } from "../components/site-header";
 import { DetalheEvento, EventoIngressos, type Alvo } from "../components/evento-ingressos";
 import { getEvento, paraOPerfil } from "../data/eventos";
 import { usePerfilAtivo, type PerfilAtivo } from "../data/perfil-ativo";
+import { useDependentes } from "../data/dependentes";
+import { PerfisOnboarding } from "../components/perfis-onboarding";
+
+/** Onboarding dos perfis dos dependentes já visto (mostra uma vez; o link dedicado abre sempre). */
+const ONBOARDING_PERFIS = "cw-onboarding-perfis";
 import { useForceLightTheme } from "../components/use-force-light-theme";
 import { useMarcaIngresse } from "../components/use-marca-ingresse";
 import { SAO_SILVESTRE } from "../data/sao-silvestre";
@@ -496,6 +501,30 @@ export function Carteira() {
     // Demais eventos (fora a São Silvestre): lista de ingressos do evento → detalhe. Vale para desktop e mobile.
     const [outro, setOutro] = useState<{ eventId: string; alvo?: Alvo } | null>(null);
     const perfilAtivo = usePerfilAtivo();
+    // Onboarding dos perfis: para quem tem dependentes, na 1ª vez; pelo link /carteira-web/dependentes/onboarding, sempre
+    const location = useLocation();
+    const temDependentes = useDependentes().length > 0;
+    const [onboardingPerfis, setOnboardingPerfis] = useState(false);
+    useEffect(() => {
+        const peloLink = location.pathname.endsWith("/dependentes/onboarding");
+        let visto = false;
+        try {
+            visto = localStorage.getItem(ONBOARDING_PERFIS) === "1";
+        } catch {
+            /* sem storage: trata como não visto */
+        }
+        if (!peloLink && (visto || !temDependentes || perfilAtivo)) return;
+        const t = setTimeout(() => setOnboardingPerfis(true), 600);
+        return () => clearTimeout(t);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const fecharOnboardingPerfis = () => {
+        try {
+            localStorage.setItem(ONBOARDING_PERFIS, "1");
+        } catch {
+            /* ignora */
+        }
+        setOnboardingPerfis(false);
+    };
     const eventoBase = getEvento(outro?.eventId);
     const eventoOutro = eventoBase && paraOPerfil(eventoBase, perfilAtivo);
     useEffect(() => {
@@ -611,6 +640,15 @@ export function Carteira() {
                         />
                     )}
                     <WebToast ancora={viewport === "mobile" ? "frame" : "janela"} />
+                    <PerfisOnboarding
+                        aberto={onboardingPerfis}
+                        compact={viewport === "mobile"}
+                        onFechar={fecharOnboardingPerfis}
+                        onAcessar={() => {
+                            fecharOnboardingPerfis();
+                            navigate("/carteira-web/dependentes");
+                        }}
+                    />
                 </div>
             </div>
 

@@ -12,7 +12,8 @@ export function ControlesPrototipo({ voltar, extra }: { voltar: { label: string;
     const [viewport, onViewport] = useViewport();
     const seg = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition duration-100 ease-linear";
     return (
-        <div className="fixed right-6 bottom-6 z-50">
+        // z-[60]: acima dos modais e sheets, para dar para alternar Desktop/Mobile com um deles aberto
+        <div className="fixed right-6 bottom-6 z-[60]">
             <div className="flex items-center gap-1 rounded-xl bg-primary p-1 shadow-lg ring-1 ring-border-secondary">
                 <button
                     type="button"

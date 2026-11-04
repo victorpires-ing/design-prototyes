@@ -13,6 +13,7 @@ export function Dialogo({
     compact,
     label,
     bloqueado,
+    largura = "max-w-[440px]",
     onFechar,
     children,
 }: {
@@ -21,6 +22,8 @@ export function Dialogo({
     label: string;
     /** Impede fechar pelo fundo (ex.: enquanto confirma). */
     bloqueado?: boolean;
+    /** Largura máxima do modal no desktop (padrão 440px). */
+    largura?: string;
     onFechar: () => void;
     children: ReactNode;
 }) {
@@ -42,7 +45,7 @@ export function Dialogo({
                     <motion.div
                         className={cx(
                             "w-full bg-primary shadow-xl ring-1 ring-border-secondary",
-                            compact ? "rounded-t-2xl px-6 pt-6 pb-8" : "max-w-[440px] rounded-2xl p-6",
+                            compact ? "rounded-t-2xl px-6 pt-6 pb-8" : cx(largura, "rounded-2xl p-6"),
                         )}
                         initial={compact ? { y: "100%" } : { opacity: 0, scale: 0.96, y: 8 }}
                         animate={compact ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}

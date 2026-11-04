@@ -21,13 +21,13 @@ export function SetorCard({
     return (
         <section className="overflow-hidden rounded-2xl border border-[#dcdcdc] bg-white">
             <button type="button" onClick={onAlternar} aria-expanded={aberto} className="flex w-full items-center gap-2 px-4 py-3.5 text-left">
-                <Ticket01 className="size-5 text-[#ff4f1f]" aria-hidden="true" />
+                <Ticket01 className="size-5 text-[#ff271a]" aria-hidden="true" />
                 <span className="text-base font-bold text-[#1a1a1a]">{setor.nome}</span>
                 {total > 0 && (
-                    <span className="flex size-5 items-center justify-center rounded-full bg-[#ff4f1f] text-xs font-semibold text-white tabular-nums">{total}</span>
+                    <span className="flex size-5 items-center justify-center rounded-full bg-[#ff271a] text-xs font-semibold text-white tabular-nums">{total}</span>
                 )}
                 <ChevronDown
-                    className={cx("ml-auto size-5 text-[#ff4f1f] transition-transform duration-150 ease-out", aberto && "rotate-180")}
+                    className={cx("ml-auto size-5 text-[#ff271a] transition-transform duration-150 ease-out", aberto && "rotate-180")}
                     aria-hidden="true"
                 />
             </button>
@@ -69,7 +69,7 @@ function BotaoQtd({ rotulo, desabilitado, onClick, children }: { rotulo: string;
             aria-label={rotulo}
             disabled={desabilitado}
             onClick={onClick}
-            className="flex size-8 items-center justify-center rounded-lg bg-[#ff4f1f] text-white transition duration-100 ease-linear hover:bg-[#e8410f] disabled:cursor-not-allowed disabled:bg-[#ffd3c4]"
+            className="flex size-8 items-center justify-center rounded-lg bg-[#ff271a] text-white transition duration-100 ease-linear hover:bg-[#c81f14] disabled:cursor-not-allowed disabled:bg-[#ffc4c0]"
         >
             {children}
         </button>

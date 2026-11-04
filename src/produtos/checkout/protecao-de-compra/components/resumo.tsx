@@ -226,7 +226,7 @@ function LinhaItem({ linha, onRemover }: { linha: LinhaResumo; onRemover: (id: s
                         onClick={verCoberturas}
                         className={cx(
                             "relative self-start text-xs font-semibold underline underline-offset-2 transition duration-100 ease-linear",
-                            protecao ? "text-[#1a1a1a] hover:text-[#525252]" : "text-[#ff4f1f] hover:text-[#e8410f]",
+                            protecao ? "text-[#1a1a1a] hover:text-[#525252]" : "text-[#ff271a] hover:text-[#c81f14]",
                         )}
                     >
                         {link}
@@ -262,7 +262,7 @@ function BotaoContinuar({
             disabled={desabilitado}
             onClick={onClick}
             className={cx(
-                "h-11 rounded-xl bg-[#ff4f1f] text-sm font-semibold text-white transition duration-100 ease-linear hover:bg-[#e8410f] disabled:cursor-not-allowed disabled:bg-[#ffd3c4]",
+                "h-11 rounded-xl bg-[#ff271a] text-sm font-semibold text-white transition duration-100 ease-linear hover:bg-[#c81f14] disabled:cursor-not-allowed disabled:bg-[#ffc4c0]",
                 largo ? "w-full px-3" : "shrink-0 px-6",
             )}
         >

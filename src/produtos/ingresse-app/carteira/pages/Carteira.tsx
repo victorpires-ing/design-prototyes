@@ -8,8 +8,11 @@ import { GradientFill } from "../../components/GradientFill";
 import { StatusBar } from "../../components/StatusBar";
 import { TrocaOnboarding } from "../../ingressos/components/TrocaOnboarding";
 import { usePerfilAtivo } from "../../components/perfil-ativo";
+import { PerfisOnboarding } from "../../perfil/components/perfis-onboarding";
+import { useDependentes } from "../../perfil/data/dependentes";
 
 const ONBOARDING_KEY = "ing-onboarding-troca";
+const ONBOARDING_PERFIS_KEY = "ing-onboarding-perfis";
 
 interface Evento {
     id: string;
@@ -121,24 +124,43 @@ export function Carteira() {
                   .filter((g) => g.eventos.length > 0);
     const grupos = doPerfil(tab === "vem-ai" ? VEM_AI : PASSADOS);
 
-    // Onboarding da troca de ingresso — abre ao entrar na Carteira (1ª vez, ou via ?onboarding=1).
+    // Onboardings ao entrar na Carteira (um por vez):
+    // - troca de ingresso: 1ª vez, ou via ?onboarding=1
+    // - perfis dos dependentes: para quem tem dependentes, depois do da troca; ou via ?onboarding=perfis
+    const temDependentes = useDependentes().length > 0;
     const [onboardingOpen, setOnboardingOpen] = useState(false);
+    const [perfisOpen, setPerfisOpen] = useState(false);
     useEffect(() => {
-        const forcar = new URLSearchParams(window.location.search).get("onboarding") === "1";
+        const param = new URLSearchParams(window.location.search).get("onboarding");
         if (perfil) return;
-        if (forcar || !localStorage.getItem(ONBOARDING_KEY)) {
-            const t = setTimeout(() => setOnboardingOpen(true), 600);
+        const abrir = (fn: (v: boolean) => void) => {
+            const t = setTimeout(() => fn(true), 600);
             return () => clearTimeout(t);
-        }
+        };
+        if (param === "perfis") return abrir(setPerfisOpen);
+        if (param === "1" || !localStorage.getItem(ONBOARDING_KEY)) return abrir(setOnboardingOpen);
+        if (temDependentes && !localStorage.getItem(ONBOARDING_PERFIS_KEY)) return abrir(setPerfisOpen);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
     const fecharOnboarding = () => {
         localStorage.setItem(ONBOARDING_KEY, "1");
         setOnboardingOpen(false);
     };
+    const fecharPerfis = () => {
+        localStorage.setItem(ONBOARDING_PERFIS_KEY, "1");
+        setPerfisOpen(false);
+    };
 
     return (
         <AppShell activeTab="ingressos" scrollClassName="bg-secondary">
             <TrocaOnboarding isOpen={onboardingOpen} onClose={fecharOnboarding} />
+            <PerfisOnboarding
+                isOpen={perfisOpen}
+                onClose={fecharPerfis}
+                onAcessar={() => {
+                    fecharPerfis();
+                    navigate("/ingresse-app/perfil/dependentes");
+                }}
+            />
             <div className="min-h-full bg-secondary">
                 <StatusBar tone="dark" />
 

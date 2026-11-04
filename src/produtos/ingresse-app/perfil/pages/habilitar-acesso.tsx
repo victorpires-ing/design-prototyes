@@ -126,7 +126,10 @@ export function HabilitarAcesso() {
                 }
             >
                 <div className="relative flex min-h-full flex-col overflow-hidden bg-secondary">
-                    <img src={textura} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 size-full object-cover opacity-60" />
+                    {/* Acesso habilitado fica sem textura, como no Figma */}
+                    {!pronto && (
+                        <img src={textura} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 size-full object-cover opacity-60" />
+                    )}
                     <div className="relative z-10">
                         <StatusBar tone="dark" />
                         {/* Na falha dá para sair pelo topo, como nas outras telas de erro */}

@@ -1,15 +1,15 @@
 import { useRef } from "react";
 import Lottie, { type LottieRefCurrentProps } from "lottie-react";
-import users from "../assets/users.json";
+import user from "../assets/user.json";
 
-/** Ícone animado de pessoas (acesso habilitado): toca N vezes e congela no último frame. */
+/** Ícone animado de pessoa (acesso habilitado): toca N vezes e congela no último frame. */
 export function UsersAnimation({ plays = 1, onDone }: { plays?: number; onDone?: () => void }) {
     const lottieRef = useRef<LottieRefCurrentProps>(null);
     const count = useRef(1);
     return (
         <Lottie
             lottieRef={lottieRef}
-            animationData={users}
+            animationData={user}
             loop={false}
             autoplay
             onComplete={() => {

@@ -25,7 +25,8 @@ import { useTheme } from "@/providers/theme-provider";
 import { AppShell } from "../../components/AppShell";
 import { FOTO_MINHA_CONTA, entrarNoPerfil, sairDoPerfil, usePerfilAtivo } from "../../components/perfil-ativo";
 import { StatusBar } from "../../components/StatusBar";
-import { EU, useDependentes } from "../data/dependentes";
+import { SheetConfirmacao } from "../components/sheet-confirmacao";
+import { EU, pronomeDe, primeiroNome, useDependentes } from "../data/dependentes";
 
 /** Tempo do loading na linha escolhida antes de o card se refazer com o novo perfil. */
 const TROCA_MS = 700;
@@ -71,6 +72,9 @@ export function Perfil() {
             if (nova) animate(nova, { opacity: [0, 1] }, ENTRADA);
         }, TROCA_MS);
     };
+    // Trocar para o perfil de um dependente pede confirmação; voltar para a própria conta é direto
+    const [aConfirmar, setAConfirmar] = useState<(typeof outros)[number] | null>(null);
+    const escolher = (o: (typeof outros)[number]) => (o.id === EU.id ? trocar(o.id, o.trocar) : setAConfirmar(o));
     const posicao = (id: string) => (ordemOutros.includes(id) ? ordemOutros.indexOf(id) : Number.MAX_SAFE_INTEGER);
     const principal = dependenteAtivo
         ? { id: dependenteAtivo.id, foto: undefined, iniciais: dependenteAtivo.iniciais, nome: dependenteAtivo.nome, linhas: [dependenteAtivo.parentesco, `CPF ${dependenteAtivo.cpf}`] }
@@ -127,7 +131,7 @@ export function Perfil() {
                                         <button
                                             type="button"
                                             disabled={Boolean(trocandoPara)}
-                                            onClick={() => trocar(o.id, o.trocar)}
+                                            onClick={() => escolher(o)}
                                             className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-2.5 text-left transition duration-100 ease-linear enabled:active:bg-secondary"
                                         >
                                             <Avatar size="sm" src={o.foto} initials={o.iniciais} alt={o.nome} />
@@ -206,6 +210,20 @@ export function Perfil() {
                     </div>
                 </div>
             </div>
+
+            <SheetConfirmacao
+                aberto={Boolean(aConfirmar)}
+                titulo={`Trocar para o perfil de ${aConfirmar ? primeiroNome(aConfirmar) : ""}?`}
+                descricao={aConfirmar && `Você poderá navegar pela Ingresse e realizar ações no perfil ${pronomeDe({ parentesco: aConfirmar.legenda })}.`}
+                confirmar="Trocar perfil"
+                onConfirmar={() => {
+                    if (!aConfirmar) return;
+                    const o = aConfirmar;
+                    setAConfirmar(null);
+                    trocar(o.id, o.trocar);
+                }}
+                onCancelar={() => setAConfirmar(null)}
+            />
         </AppShell>
     );
 }

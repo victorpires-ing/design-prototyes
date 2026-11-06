@@ -99,6 +99,9 @@ export const getDependentes = () => dependentes;
 export const getDependente = (id?: string) => dependentes.find((d) => d.id === id);
 export const primeiroNome = (d: Pick<Dependente, "nome">) => d.nome.split(" ")[0];
 
+/** "dele" ou "dela" a partir do parentesco (Filha, Mãe, Avó… são femininos). */
+export const pronomeDe = (d: Pick<Dependente, "parentesco">) => (/(a|ã|ó)$/i.test(d.parentesco) ? "dela" : "dele");
+
 /* ------------------------------- Cadastro ------------------------------- */
 
 let seq = 0;

@@ -56,6 +56,8 @@ const StatusSection = ({ evento }: { evento: Evento }) => {
                 <p className="text-sm text-tertiary">{EVENTO_STATUS_DESCRICAO[evento.status]}</p>
             </div>
 
+            {/* Encerrado não aparece aqui: o sistema aplica esse status sozinho (ex.: quando
+                a data do evento passa), então não existe ação manual para chegar lá. */}
             {encerrado ? (
                 <p className="text-sm text-tertiary">Evento encerrado. O status não pode mais ser alterado.</p>
             ) : (

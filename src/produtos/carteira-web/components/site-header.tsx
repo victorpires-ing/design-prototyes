@@ -6,7 +6,8 @@ import { cx } from "@/utils/cx";
 import logoBlack from "../../../assets/Company logo_black.svg";
 import bandeiraBrasil from "../../../assets/Brazil flag.svg";
 import fotoPerfil from "../assets/foto-perfil.jpg";
-import { EU, useDependentes } from "../data/dependentes";
+import { EU, pronomeDe, primeiroNome, useDependentes } from "../data/dependentes";
+import { Confirmacao } from "./dialogo";
 import { entrarNoPerfil, sairDoPerfil, usePerfilAtivo } from "../data/perfil-ativo";
 
 /** Conta logada (mesma pessoa do app). */
@@ -43,7 +44,7 @@ const FotoPerfil = ({ p, size }: { p: { nome: string; iniciais: string; foto?: s
 );
 
 /** Menu da conta (aberto pelo avatar): perfil em uso, troca de perfil e os atalhos do site. */
-function MenuConta({ className, onFechar }: { className?: string; onFechar: () => void }) {
+function MenuConta({ className, onFechar, onConfirmarTroca }: { className?: string; onFechar: () => void; onConfirmarTroca: (p: PerfilOpcao) => void }) {
     const navigate = useNavigate();
     const { atual, outros } = usePerfis();
     const [trocandoPara, setTrocandoPara] = useState<string | null>(null);
@@ -53,6 +54,12 @@ function MenuConta({ className, onFechar }: { className?: string; onFechar: () =
         navigate(rota);
     };
     const trocar = (p: PerfilOpcao) => {
+        // Entrar no perfil de um dependente pede confirmação; voltar para a própria conta é direto
+        if (p.id !== EU.id) {
+            onFechar();
+            onConfirmarTroca(p);
+            return;
+        }
         setTrocandoPara(p.id);
         window.setTimeout(() => {
             p.entrar();
@@ -175,6 +182,31 @@ export function SiteHeader({ compact = false, semConta = false }: { compact?: bo
     const navigate = useNavigate();
     const { aberto, setAberto, ref } = useMenu();
     const { atual } = usePerfis();
+    const [aConfirmar, setAConfirmar] = useState<PerfilOpcao | null>(null);
+    const [confirmando, setConfirmando] = useState(false);
+    const confirmarTroca = () => {
+        if (!aConfirmar) return;
+        setConfirmando(true);
+        // Mesmo loading curto da troca, agora no botão da confirmação
+        window.setTimeout(() => {
+            aConfirmar.entrar();
+            setConfirmando(false);
+            setAConfirmar(null);
+            navigate("/carteira-web");
+        }, TROCA_MS);
+    };
+    const confirmacao = (
+        <Confirmacao
+            aberto={Boolean(aConfirmar)}
+            compact={compact}
+            titulo={`Trocar para o perfil de ${aConfirmar ? primeiroNome(aConfirmar) : ""}?`}
+            descricao={aConfirmar && `Você poderá navegar pela Ingresse e realizar ações no perfil ${pronomeDe({ parentesco: aConfirmar.legenda })}.`}
+            confirmar="Trocar perfil"
+            carregando={confirmando}
+            onConfirmar={confirmarTroca}
+            onCancelar={() => setAConfirmar(null)}
+        />
+    );
 
     const avatar = (
         <button
@@ -212,57 +244,64 @@ export function SiteHeader({ compact = false, semConta = false }: { compact?: bo
 
     if (compact) {
         return (
-            <header ref={ref} className="relative z-30 shrink-0 border-b border-secondary bg-primary">
-                <div className="flex h-16 items-center justify-between px-5">
-                    {logo}
-                    <div className="flex items-center gap-4">
-                        <button type="button" aria-label="Buscar" className="text-fg-brand-primary transition duration-100 ease-linear hover:opacity-80">
-                            <SearchLg className="size-5" />
-                        </button>
-                        {avatar}
+            <>
+                <header ref={ref} className="relative z-30 shrink-0 border-b border-secondary bg-primary">
+                    <div className="flex h-16 items-center justify-between px-5">
+                        {logo}
+                        <div className="flex items-center gap-4">
+                            <button type="button" aria-label="Buscar" className="text-fg-brand-primary transition duration-100 ease-linear hover:opacity-80">
+                                <SearchLg className="size-5" />
+                            </button>
+                            {avatar}
+                        </div>
                     </div>
-                </div>
-                {aberto && <MenuConta className="absolute inset-x-3 top-full mt-2" onFechar={() => setAberto(false)} />}
-            </header>
+                    {aberto && <MenuConta className="absolute inset-x-3 top-full mt-2" onFechar={() => setAberto(false)} onConfirmarTroca={setAConfirmar} />}
+                </header>
+                {/* Fora do header: no celular a confirmação vira o bottom sheet preso ao frame */}
+                {confirmacao}
+            </>
         );
     }
 
     return (
-        <header className="sticky top-0 z-30 border-b border-secondary bg-primary">
-            <div className="mx-auto flex h-20 max-w-[1440px] items-center justify-between gap-6 px-14">
-                {logo}
+        <>
+            <header className="sticky top-0 z-30 border-b border-secondary bg-primary">
+                <div className="mx-auto flex h-20 max-w-[1440px] items-center justify-between gap-6 px-14">
+                    {logo}
 
-                <div className="flex h-12 items-stretch gap-6">
-                    <div className="flex items-center gap-6">
-                        <button type="button" aria-label="Buscar" className="text-fg-brand-primary transition duration-100 ease-linear hover:opacity-80">
-                            <SearchLg className="size-5" />
-                        </button>
-                        <button type="button" className={cx(linkTopo, "flex items-center gap-1.5")}>
-                            <MarkerPin01 className="size-5" />
-                            <span>Rio de Janeiro</span>
-                            <ChevronDown className="size-4" />
+                    <div className="flex h-12 items-stretch gap-6">
+                        <div className="flex items-center gap-6">
+                            <button type="button" aria-label="Buscar" className="text-fg-brand-primary transition duration-100 ease-linear hover:opacity-80">
+                                <SearchLg className="size-5" />
+                            </button>
+                            <button type="button" className={cx(linkTopo, "flex items-center gap-1.5")}>
+                                <MarkerPin01 className="size-5" />
+                                <span>Rio de Janeiro</span>
+                                <ChevronDown className="size-4" />
+                            </button>
+                        </div>
+                        <Divisoria />
+                        <nav className="flex items-center gap-8">
+                            <button type="button" className={linkTopo}>
+                                Revenda
+                            </button>
+                            <button type="button" onClick={() => navigate("/carteira-web")} className={linkTopo}>
+                                Meus ingressos
+                            </button>
+                            <div ref={ref} className="relative">
+                                {avatar}
+                                {aberto && <MenuConta className="absolute top-full right-[-40px] mt-4 w-[300px]" onFechar={() => setAberto(false)} onConfirmarTroca={setAConfirmar} />}
+                            </div>
+                        </nav>
+                        <Divisoria />
+                        <button type="button" className="flex items-center gap-2 text-sm font-medium text-primary">
+                            <img src={bandeiraBrasil} alt="" className="size-4" />
+                            <span>PT-BR</span>
                         </button>
                     </div>
-                    <Divisoria />
-                    <nav className="flex items-center gap-8">
-                        <button type="button" className={linkTopo}>
-                            Revenda
-                        </button>
-                        <button type="button" onClick={() => navigate("/carteira-web")} className={linkTopo}>
-                            Meus ingressos
-                        </button>
-                        <div ref={ref} className="relative">
-                            {avatar}
-                            {aberto && <MenuConta className="absolute top-full right-[-40px] mt-4 w-[300px]" onFechar={() => setAberto(false)} />}
-                        </div>
-                    </nav>
-                    <Divisoria />
-                    <button type="button" className="flex items-center gap-2 text-sm font-medium text-primary">
-                        <img src={bandeiraBrasil} alt="" className="size-4" />
-                        <span>PT-BR</span>
-                    </button>
                 </div>
-            </div>
-        </header>
+            </header>
+            {confirmacao}
+        </>
     );
 }

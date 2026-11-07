@@ -165,7 +165,10 @@ export const EVENTOS: Record<string, EventoDetalhe> = {
     },
 };
 
-export const getEvento = (id?: string) => (id ? EVENTOS[id] : undefined);
+/** Eventos montados a partir do banco unificado (ver data/plataforma.ts); preenchido pela carteira. */
+export const EVENTOS_DO_BANCO: Record<string, EventoDetalhe> = {};
+
+export const getEvento = (id?: string) => (id ? (EVENTOS[id] ?? EVENTOS_DO_BANCO[id]) : undefined);
 
 /** Busca um ingresso/produto pelo evento + id, na lista e dentro de combos. */
 export const getItem = (ev: EventoDetalhe, itemId: string): ItemIngresso | undefined =>

@@ -10,11 +10,13 @@ import { Label } from "@/components/base/input/label";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx } from "@/utils/cx";
+import { pagarPedido } from "@/plataforma";
 import { CheckoutShell, totalPedido } from "../components/checkout-shell";
+import { usePedidoCheckout } from "../data/pedido-banco";
 import { BANDEIRAS } from "../components/icones";
 import { TopoVoltar } from "../components/topo";
 import { useCheckout } from "../data/checkout-store";
-import { PARCELAS_VISIVEIS, PARCELA_POPULAR, brl, calcularParcelas } from "../data/pedido";
+import { PARCELAS_VISIVEIS, PARCELA_POPULAR, PRECO_PROTECAO, brl, calcularParcelas } from "../data/pedido";
 import { type CamposCartao, detectarBandeira, mascararNumero, mascararValidade, soDigitos, validarCartao } from "../utils/cartao";
 import { useIsMobile, useTemaClaro } from "../utils/hooks";
 
@@ -60,6 +62,7 @@ export function Cartao() {
     const [params] = useSearchParams();
     const debito = params.get("tipo") === "debito";
     const { protecao, cartoesSalvos, salvarCartao, excluirCartao } = useCheckout();
+    const doBanco = usePedidoCheckout();
 
     const [selecionado, setSelecionado] = useState<string>(NOVO);
     const [campos, setCampos] = useState<CamposCartao>({ numero: "", nome: "", validade: "", cvv: "" });
@@ -100,6 +103,18 @@ export function Cartao() {
         setEnviando(true);
         window.setTimeout(() => {
             if (usandoNovo && salvar && bandeira) salvarCartao({ bandeira, final: soDigitos(campos.numero).slice(-4) });
+            // Pedido do banco unificado: o cartão aprova, para o fluxo chegar até a carteira.
+            // Sem pedido (protótipo original), todo cartão cai em "não autorizado".
+            if (doBanco && doBanco.pedido.status === "aguardando-pagamento") {
+                void pagarPedido(doBanco.pedido.id, debito ? "debito" : "credito", {
+                    parcelas: debito ? undefined : parcelas,
+                    protecao: protecao === "com" ? PRECO_PROTECAO : 0,
+                    juros,
+                }).then(() =>
+                    navigate(`${BASE}/confirmado?pedido=${doBanco.pedido.id}`),
+                );
+                return;
+            }
             navigate(`${BASE}/nao-autorizado${debito ? "?tipo=debito" : ""}`);
         }, 1400);
     };

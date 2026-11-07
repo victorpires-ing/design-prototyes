@@ -5,7 +5,8 @@ import { cx } from "@/utils/cx";
 import { getFamily, gradientCss } from "../../components/gradient-families";
 import { BgTexture } from "./BgTexture";
 import { EventCard } from "./EventCard";
-import { EVENTOS, type EventoMock } from "../data/events";
+import { type EventoMock } from "../data/events";
+import { useEventosSite } from "../data/plataforma";
 import { useCidade } from "../data/cidade-store";
 import { closeSearch, takeIntent, useSearchOpen } from "../data/search-store";
 
@@ -57,6 +58,7 @@ const PRECOS: Opt[] = [
 ];
 
 export function SearchOverlay() {
+    const EVENTOS = useEventosSite();
     const open = useSearchOpen();
     const reduce = useReducedMotion();
     const cidade = useCidade();

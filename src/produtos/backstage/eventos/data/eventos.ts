@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 import eventCover from "@/assets/event-cover.png";
+import { alterarStatusEvento, montarEvento, type Evento as EventoBanco } from "@/plataforma";
+import { assinarBanco, lerBanco, salvar } from "@/plataforma/db";
 
 /**
  * Eventos da organização.
@@ -70,7 +72,8 @@ export function comData<T extends { data: string }>(base: T) {
     };
 }
 
-export const eventos: Evento[] = [
+export const eventos: Evento[] = (
+    [
     {
         id: "6704",
         nome: "MOCHAKK CALLING 2026",
@@ -116,41 +119,60 @@ export const eventos: Evento[] = [
         data: "2026-10-16T23:00:00",
         local: "D-EDGE Rio • Rio de Janeiro, RJ",
     },
-].map(comData);
+] satisfies Omit<Evento, "weekday" | "day" | "month" | "dataLabel">[]
+).map(comData);
 
 /* ------------------------------------------------------------------ */
-/*  Evento em contexto                                                 */
+/*  Espelho do banco unificado (src/plataforma)                        */
+/*                                                                     */
+/*  `eventos` continua sendo um array mutável, porque várias telas o   */
+/*  leem direto. O conteúdo inicial é o mock acima (primeiro render);  */
+/*  quando o banco carrega, o array passa a refletir os eventos do     */
+/*  banco, e criar evento ou trocar status grava nele.                 */
 /* ------------------------------------------------------------------ */
 
 const STORAGE_KEY = "backstage-evento-atual";
-const STATUS_STORAGE_PREFIX = "backstage-evento-status:";
 
-/** Aplica por cima do mock qualquer status salvo de uma sessão anterior — sem isso,
- *  um F5 reverte silenciosamente qualquer troca de status feita pelo seletor. */
-function aplicarStatusPersistido() {
-    if (typeof window === "undefined") return;
-    for (const evento of eventos) {
-        try {
-            const salvo = window.localStorage.getItem(`${STATUS_STORAGE_PREFIX}${evento.id}`);
-            if (salvo === "rascunho" || salvo === "privado" || salvo === "publicado" || salvo === "encerrado") {
-                evento.status = salvo;
-            }
-        } catch {
-            /* storage indisponível — mantém o status do mock */
-        }
-    }
-}
-aplicarStatusPersistido();
+const doBanco = (e: EventoBanco): Evento =>
+    comData({
+        id: e.id,
+        nome: e.nome,
+        produtor: e.produtora,
+        cover: e.capa || eventCover,
+        status: e.status,
+        data: e.data,
+        local: e.cidade ? `${e.local} • ${e.cidade}` : e.local,
+    });
 
 let currentId: string | null = null;
-/** Incrementada a cada mutação (troca de evento ou de status) para forçar o
- *  useSyncExternalStore a reconsultar `eventos`, já que os objetos são mutados
- *  no lugar em vez de substituídos. */
+/** Incrementada a cada mutação para forçar o useSyncExternalStore a reconsultar `eventos`. */
 let version = 0;
 const listeners = new Set<() => void>();
+const avisar = () => {
+    version++;
+    listeners.forEach((listener) => listener());
+};
+
+let espelhado: unknown = null;
+function espelhar() {
+    const { modo, tabelas } = lerBanco();
+    if (modo === "carregando" || tabelas.eventos === espelhado) return;
+    espelhado = tabelas.eventos;
+    // Mais recentes primeiro: o evento recém-criado aparece no topo.
+    const lista = Object.values(tabelas.eventos)
+        .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm) || a.data.localeCompare(b.data))
+        .map(doBanco);
+    if (lista.length === 0) return;
+    eventos.splice(0, eventos.length, ...lista);
+    avisar();
+}
+if (typeof window !== "undefined") {
+    assinarBanco(espelhar);
+    espelhar();
+}
 
 function readId(): string {
-    if (currentId) return currentId;
+    if (currentId && eventos.some((evento) => evento.id === currentId)) return currentId;
     if (typeof window !== "undefined") {
         try {
             const saved = window.localStorage.getItem(STORAGE_KEY);
@@ -180,6 +202,9 @@ export function useEventoAtual(): Evento {
     return eventos.find((evento) => evento.id === id) ?? eventos[0];
 }
 
+/** Id do evento em contexto, sem assinar mudanças (para ações). */
+export const eventoAtualId = () => readId();
+
 export function setEventoAtual(id: string) {
     currentId = id;
     try {
@@ -187,23 +212,17 @@ export function setEventoAtual(id: string) {
     } catch {
         /* storage indisponível — mantém apenas em memória */
     }
-    version++;
-    listeners.forEach((listener) => listener());
+    avisar();
 }
 
-/** Muda o status de um evento (usado pelo seletor de status no card do evento).
- *  Encerrado é terminal: uma vez lá, nenhuma chamada consegue tirar o evento desse status. */
+/** Muda o status de um evento no banco. Encerrado é terminal. Publicado aparece no site;
+ *  privado vende só pelo link de compra. */
 export function setEventoStatus(id: string, status: EventoStatus) {
     const evento = eventos.find((evento) => evento.id === id);
     if (!evento || evento.status === "encerrado") return;
     evento.status = status;
-    try {
-        window.localStorage.setItem(`${STATUS_STORAGE_PREFIX}${id}`, status);
-    } catch {
-        /* storage indisponível — mantém apenas em memória */
-    }
-    version++;
-    listeners.forEach((listener) => listener());
+    avisar();
+    void alterarStatusEvento(id, status);
 }
 
 /** Sobe a cada mutação (troca de evento ou de status) — quem lista eventos assina isso
@@ -219,23 +238,20 @@ export interface NovoEventoInput {
     produtor: string;
 }
 
-/** Cria um evento de verdade (em rascunho) e o deixa como evento em contexto —
- *  ao contrário de setEventoAtual, que só troca qual evento já existente está ativo. */
+/** Cria o evento no banco (em rascunho) e o deixa como evento em contexto. */
 export function criarEvento(input: NovoEventoInput): Evento {
-    const evento: Evento = comData({
-        id: novoEventoId(),
-        produtor: input.produtor,
-        cover: eventCover,
-        status: "rascunho",
-        nome: input.nome,
-        data: input.data,
-        local: input.local,
-    });
-    eventos.push(evento);
-    setEventoAtual(evento.id);
-    return evento;
+    const [local, cidade] = input.local.split(/\s*[·•]\s*/);
+    const novo = montarEvento({ nome: input.nome, produtora: input.produtor, local: local || input.local, cidade, data: toLocalIso(input.data) });
+    void salvar("eventos", novo);
+    espelhar();
+    setEventoAtual(novo.id);
+    return eventos.find((e) => e.id === novo.id) ?? doBanco(novo);
 }
 
-function novoEventoId(): string {
-    return Math.random().toString(36).slice(2, 8);
+/** ISO com fuso → ISO local sem fuso (o banco guarda horário local do evento). */
+function toLocalIso(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso.slice(0, 16);
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }

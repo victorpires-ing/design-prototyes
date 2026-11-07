@@ -31,7 +31,8 @@ import { MatchupCover } from "../components/MatchupCover";
 import { FutebolEvento } from "../components/FutebolEvento";
 import { GradientTexture, NOISE_URI } from "../components/GradientTexture";
 import { useImagePalette } from "../utils/image-palette";
-import { getEvento, type Confronto, type EventoMock, type EventStatus as MockStatus } from "../data/events";
+import { type Confronto, type EventoMock, type EventStatus as MockStatus } from "../data/events";
+import { urlCompra, useEventoSite } from "../data/plataforma";
 import meshGradient from "../assets/mesh-gradient.png";
 import sideTexture from "../assets/side-bg-texture.png";
 import { Footer, HeaderNav } from "../components/SiteChrome";
@@ -113,9 +114,8 @@ const FAQ = [
 /*  Página                                                            */
 /* ------------------------------------------------------------------ */
 
-/** Mapeia um evento do mock (via ?ev=) para a config da página. */
-function configFromParam(ev: string | null): EventConfig {
-    const e = ev ? getEvento(ev) : null;
+/** Mapeia o evento (do banco, via ?ev=) para a config da página. */
+function configFromEvento(e: EventoMock | undefined): EventConfig {
     if (!e) return defaultEventConfig;
     const statusMap: Record<MockStatus, EventStatus> = {
         venda: "venda-ativa",
@@ -140,11 +140,18 @@ function configFromParam(ev: string | null): EventConfig {
 
 export function EventDetails() {
     const [params] = useSearchParams();
-    const [config, setConfig] = useState<EventConfig>(() => configFromParam(params.get("ev")));
+    // Evento vem do banco unificado; a config da página acompanha quando ele chega ou muda.
+    const evento = useEventoSite(params.get("ev"));
+    const [config, setConfig] = useState<EventConfig>(() => configFromEvento(evento));
     const [isConfigOpen, setIsConfigOpen] = useState(false);
+    const chaveEvento = evento ? `${evento.id}:${evento.titulo}:${evento.preco}:${evento.status}` : "";
+    useEffect(() => {
+        if (evento) setConfig(configFromEvento(evento));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chaveEvento]);
+    const compraHref = evento ? urlCompra(evento.id) : undefined;
 
     // Jogo principal de futebol: confronto vira o "pôster" e as cores vêm dos times.
-    const evento = useMemo(() => getEvento(params.get("ev") ?? ""), [params]);
     const confronto = evento?.futebol ?? null;
 
     // Pôster: URL configurável (vazio = padrão).
@@ -231,7 +238,7 @@ export function EventDetails() {
                                 </span>
                             </div>
                             <MiniAge value={config.classificacao} />
-                            <Button size="sm" color="primary" className="max-sm:hidden">
+                            <Button size="sm" color="primary" className="max-sm:hidden" href={compraHref ?? "#"}>
                                 Garantir ingresso
                             </Button>
                         </div>
@@ -291,7 +298,7 @@ export function EventDetails() {
                 />
                 <div className="border-t border-secondary bg-primary/85 backdrop-blur-lg">
                     <div className="mx-auto max-w-5xl px-5 pt-3 pb-7 lg:px-8">
-                        <SaleStatus status={config.status} preco={config.preco} />
+                        <SaleStatus compraHref={compraHref} status={config.status} preco={config.preco} />
                     </div>
                 </div>
             </div>
@@ -774,7 +781,7 @@ function AgeMark({ value = "16" }: { value?: string }) {
 /*  Status de venda                                                   */
 /* ------------------------------------------------------------------ */
 
-function SaleStatus({ status, preco }: { status: EventStatus; preco: string }) {
+function SaleStatus({ status, preco, compraHref }: { status: EventStatus; preco: string; compraHref?: string }) {
     if (status === "soldout-sem-lista") {
         return (
             <div className="flex items-center gap-3">
@@ -827,7 +834,7 @@ function SaleStatus({ status, preco }: { status: EventStatus; preco: string }) {
                     {preco} <span className="text-sm font-normal text-tertiary">+ taxa</span>
                 </span>
             </div>
-            <Button size="lg" color="primary">
+            <Button size="lg" color="primary" href={compraHref ?? "#"}>
                 Garantir ingresso
             </Button>
         </div>

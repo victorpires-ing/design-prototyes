@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router";
 import { Calendar, ChevronDown, ChevronRight, Copy01, Edit01, InfoCircle, Key01, Plus, QrCode01, Trash01, XClose, Zap } from "@untitledui/icons";
@@ -10,8 +10,13 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
+import { EmptyState } from "@/components/application/empty-state/empty-state";
+import { salvarCatalogo, useColecao, useDoc, vendidosPorLote } from "@/plataforma";
 import { BackstageLayout } from "../../components/Backstage";
-import { SESSOES, type Grupo, type Ingresso, type Sessao } from "../data/ingressos";
+import { useEventoAtual } from "../../eventos/data/eventos";
+import { CriarIngressoModal } from "../components/CriarIngressoModal";
+import { adicionarIngresso, paraBanco, paraView } from "../data/catalogo-banco";
+import { type Grupo, type Ingresso, type Sessao } from "../data/ingressos";
 
 /** Handle de arraste com 2 colunas de pontos (padrão Jira/Gmail). */
 function GripVertical({ className }: { className?: string }) {
@@ -78,12 +83,20 @@ const clone = (ss: Sessao[]): Sessao[] => ss.map((s) => ({ ...s, grupos: s.grupo
 
 export function Ingressos() {
     const navigate = useNavigate();
-    const [sessoes, setSessoes] = useState<Sessao[]>(SESSOES);
-    const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set([SESSOES[0].grupos[0].id]));
-    const [expanded, setExpanded] = useState<Set<string>>(() => new Set([SESSOES[0].grupos[0].ingressos[0].id]));
-    const [active, setActive] = useState<Set<string>>(
-        () => new Set(SESSOES.flatMap((s) => s.grupos.flatMap((g) => g.ingressos.filter((i) => i.active).map((i) => i.id)))),
-    );
+    // Catálogo do evento em contexto, vindo do banco unificado (src/plataforma).
+    const eventoCtx = useEventoAtual();
+    const evento = useDoc("eventos", eventoCtx.id);
+    const emitidos = useColecao("ingressos");
+    const vendidos = useMemo(() => vendidosPorLote(emitidos.filter((i) => i.eventoId === eventoCtx.id)), [emitidos, eventoCtx.id]);
+    const view = useMemo(() => (evento ? paraView(evento, vendidos) : []), [evento, vendidos]);
+    const ativosDe = (ss: Sessao[]) => new Set(ss.flatMap((s) => s.grupos.flatMap((g) => g.ingressos.filter((i) => i.active).map((i) => i.id))));
+
+    const [sessoes, setSessoes] = useState<Sessao[]>(view);
+    const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(view[0]?.grupos[0] ? [view[0].grupos[0].id] : []));
+    const [expanded, setExpanded] = useState<Set<string>>(() => new Set(view[0]?.grupos[0]?.ingressos[0] ? [view[0].grupos[0].ingressos[0].id] : []));
+    const [active, setActive] = useState<Set<string>>(() => ativosDe(view));
+    const [criarOpen, setCriarOpen] = useState(false);
+    const [criarPreset, setCriarPreset] = useState<{ sessaoId: string; grupo: string } | null>(null);
     const [pending, setPending] = useState<Pending | null>(null);
     const [draggingId, setDraggingId] = useState<string | null>(null);
     // Badge temporária "cópia de ingresso" nos ingressos recém-copiados.
@@ -91,6 +104,22 @@ export function Ingressos() {
     // "Copiar para outros grupos": referência ao ingresso de origem + grupos alvo selecionados.
     const [copiaGrupos, setCopiaGrupos] = useState<{ sessaoId: string; grupoId: string; ingressoId: string } | null>(null);
     const [alvos, setAlvos] = useState<Set<string>>(new Set());
+
+    // O banco mudou (outra aba, outro aparelho ou a própria gravação): reflete na tela,
+    // exceto no meio de um arraste ou de uma confirmação pendente.
+    const emEdicao = !!draggingId || !!pending;
+    useEffect(() => {
+        if (emEdicao) return;
+        setSessoes(view);
+        setActive(ativosDe(view));
+        setOpenGroups((prev) => (prev.size === 0 && view[0]?.grupos[0] ? new Set([view[0].grupos[0].id]) : prev));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [view]);
+
+    /** Grava ordem, ativação e cópias no catálogo do evento. */
+    const persistir = (ss: Sessao[], ativos: Set<string>) => {
+        if (evento) void salvarCatalogo(evento.id, paraBanco(evento, ss, ativos));
+    };
 
     const sessoesRef = useRef(sessoes);
     sessoesRef.current = sessoes;
@@ -100,7 +129,11 @@ export function Ingressos() {
 
     const toggleGroup = (id: string) => setOpenGroups((p) => toggleSet(p, id));
     const toggleExpand = (id: string) => setExpanded((p) => toggleSet(p, id));
-    const toggleActive = (id: string) => setActive((p) => toggleSet(p, id));
+    const toggleActive = (id: string) => {
+        const next = toggleSet(active, id);
+        setActive(next);
+        persistir(sessoesRef.current, next);
+    };
 
     const reorderGrupos = (sessaoId: string, next: Grupo[]) =>
         setSessoes((prev) => prev.map((s) => (s.id === sessaoId ? { ...s, grupos: next } : s)));
@@ -176,12 +209,13 @@ export function Ingressos() {
                 adicoes[g.id] = { ...fonte.ingresso, id: novoId, origem, lotes: fonte.ingresso.lotes.map((l) => ({ ...l, id: l.id + sfx })) };
             }),
         );
-        setSessoes((prev) =>
-            prev.map((s) => ({ ...s, grupos: s.grupos.map((g) => (adicoes[g.id] ? { ...g, ingressos: [...g.ingressos, adicoes[g.id]] } : g)) })),
-        );
+        const proximas = sessoes.map((s) => ({ ...s, grupos: s.grupos.map((g) => (adicoes[g.id] ? { ...g, ingressos: [...g.ingressos, adicoes[g.id]] } : g)) }));
+        setSessoes(proximas);
         setOpenGroups((prev) => new Set([...prev, ...Object.keys(adicoes)]));
         // Cópias herdam o estado (ativo/inativo) do ingresso de origem.
-        if (active.has(fonte.ingresso.id)) setActive((prev) => new Set([...prev, ...novosIds]));
+        const proxAtivos = active.has(fonte.ingresso.id) ? new Set([...active, ...novosIds]) : active;
+        setActive(proxAtivos);
+        persistir(proximas, proxAtivos);
         flashCopia(novosIds);
         setCopiaGrupos(null);
         // Rola até a primeira cópia (após os grupos-alvo abrirem) para mostrar onde foi incluída.
@@ -212,6 +246,7 @@ export function Ingressos() {
         }
     };
     const confirmar = () => {
+        persistir(sessoesRef.current, active);
         snapshotRef.current = null;
         dragCtxRef.current = null;
         setPending(null);
@@ -236,11 +271,33 @@ export function Ingressos() {
                         <Button size="md" color="secondary">
                             Ajustar abertura de vendas
                         </Button>
-                        <Button size="md" color="primary" onClick={() => navigate("/backstage/catalogo/ingressos/editar-grupos")}>
+                        <Button size="md" color="secondary" onClick={() => navigate("/backstage/catalogo/ingressos/editar-grupos")}>
                             Editar grupos
+                        </Button>
+                        <Button size="md" color="primary" iconLeading={Plus} onClick={() => setCriarOpen(true)} isDisabled={!evento}>
+                            Criar ingresso
                         </Button>
                     </div>
                 </header>
+
+                {evento && sessoes.every((s) => s.grupos.length === 0) && (
+                    <div className="mt-6 rounded-2xl bg-primary py-12 ring-1 ring-border-secondary">
+                        <EmptyState size="md">
+                            <EmptyState.Header>
+                                <EmptyState.FeaturedIcon icon={Plus} color="gray" />
+                            </EmptyState.Header>
+                            <EmptyState.Content>
+                                <EmptyState.Title>Crie o primeiro ingresso</EmptyState.Title>
+                                <EmptyState.Description>Sem ingresso, o evento não aparece para venda no site nem no link de compra.</EmptyState.Description>
+                            </EmptyState.Content>
+                            <EmptyState.Footer>
+                                <Button size="md" color="primary" iconLeading={Plus} onClick={() => setCriarOpen(true)}>
+                                    Criar ingresso
+                                </Button>
+                            </EmptyState.Footer>
+                        </EmptyState>
+                    </div>
+                )}
 
                 {/* Sessões (cada sessão é um card; os grupos ficam alinhados dentro dela) */}
                 <div className="mt-6 flex flex-col gap-6">
@@ -269,6 +326,10 @@ export function Ingressos() {
                                         onDragEnd={handleDragEnd}
                                         draggingId={draggingId}
                                         dropLine={dropLineFor(sessao.grupos, idx, draggingId)}
+                                        onNovoIngresso={() => {
+                                            setCriarPreset({ sessaoId: sessao.id, grupo: grupo.name });
+                                            setCriarOpen(true);
+                                        }}
                                     />
                                 ))}
                             </Reorder.Group>
@@ -432,6 +493,20 @@ export function Ingressos() {
                     )}
                 </div>
             )}
+            <CriarIngressoModal
+                isOpen={criarOpen}
+                onClose={() => {
+                    setCriarOpen(false);
+                    setCriarPreset(null);
+                }}
+                preset={criarPreset}
+                sessoes={sessoes.map((s) => ({ id: s.id, label: `${s.label} (${s.diaSemana})` }))}
+                gruposExistentes={[...new Set(sessoes.flatMap((s) => s.grupos.map((g) => g.name)))]}
+                onCriar={(n) => {
+                    if (!evento) return;
+                    void salvarCatalogo(evento.id, adicionarIngresso(evento, n));
+                }}
+            />
         </BackstageLayout>
     );
 }
@@ -452,9 +527,10 @@ interface GrupoCardProps {
     onDragEnd: () => void;
     draggingId: string | null;
     dropLine: DropSide;
+    onNovoIngresso?: () => void;
 }
 
-function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggleExpand, active, onToggleActive, onReorderIngressos, onCopiarIngresso, copiaIds, onDragStart, onDragEnd, draggingId, dropLine }: GrupoCardProps) {
+function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggleExpand, active, onToggleActive, onReorderIngressos, onCopiarIngresso, copiaIds, onDragStart, onDragEnd, draggingId, dropLine, onNovoIngresso }: GrupoCardProps) {
     const controls = useDragControls();
     // overflow-hidden só durante a animação de abrir/fechar; quando aberto, "visible"
     // para não cortar o handle de arraste (que fica meio pra fora) nem a linha em drag.
@@ -555,6 +631,7 @@ function GrupoCard({ grupo, sessaoLabel, isOpen, onToggleOpen, expanded, onToggl
             {/* Footer do grupo (sempre visível) */}
             <button
                 type="button"
+                onClick={onNovoIngresso}
                 className="group/novo flex items-center gap-2 rounded-b-xl border-t border-secondary px-4 py-3.5 text-left text-sm font-semibold text-brand-secondary transition duration-100 ease-linear hover:bg-tertiary hover:text-brand-secondary_hover"
             >
                 <Plus className="size-4" />

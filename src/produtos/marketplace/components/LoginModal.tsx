@@ -8,7 +8,7 @@ interface LoginModalProps {
     /** Logo do evento configurada no marketplace (exibida ao lado da Ingresse). */
     logoEvento?: string;
     /** Cadastro concluído — recebe o nome informado. */
-    onSucesso: (nome: string) => void;
+    onSucesso: (nome: string, dados?: { email?: string }) => void;
 }
 
 type Etapa = "telefone" | "email" | "cadastro";
@@ -218,7 +218,7 @@ export function LoginModal({ isOpen, onClose, logoEvento, onSucesso }: LoginModa
                                     className="h-11 w-full rounded-lg bg-primary px-3.5 text-sm text-primary outline-none ring-1 ring-border-primary transition placeholder:text-placeholder focus:ring-2 focus:ring-brand"
                                 />
                             </label>
-                            <Button size="lg" color="primary" className="w-full" isDisabled={!cadastroOk} onClick={() => onSucesso(nome.trim())}>
+                            <Button size="lg" color="primary" className="w-full" isDisabled={!cadastroOk} onClick={() => onSucesso(nome.trim(), { email: email.trim() })}>
                                 Continuar
                             </Button>
                         </div>

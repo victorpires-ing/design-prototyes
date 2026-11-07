@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { cx } from "@/utils/cx";
-import { ARTISTAS, getEvento, type EventoMock } from "../data/events";
+import { ARTISTAS, type EventoMock } from "../data/events";
+import { useEventosSite } from "../data/plataforma";
 
 const EVENT_HREF = "/novo-site/home/event-details";
 
@@ -33,6 +34,8 @@ const ADJETIVOS = [
  * ficam só com o nome.
  */
 export function ArtistasDestaque() {
+    const todosEventos = useEventosSite();
+    const getEvento = (id: string) => todosEventos.find((e) => e.id === id);
     const reduce = useReducedMotion();
     const N = ARTISTAS.length;
     const wrapRef = useRef<HTMLDivElement>(null);

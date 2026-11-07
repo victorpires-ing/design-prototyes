@@ -10,6 +10,7 @@ import { TrocaOnboarding } from "../../ingressos/components/TrocaOnboarding";
 import { usePerfilAtivo } from "../../components/perfil-ativo";
 import { PerfisOnboarding } from "../../perfil/components/perfis-onboarding";
 import { useDependentes } from "../../perfil/data/dependentes";
+import { juntarGrupos, useCarteiraAppDoBanco } from "../../ingressos/data/plataforma";
 
 const ONBOARDING_KEY = "ing-onboarding-troca";
 const ONBOARDING_PERFIS_KEY = "ing-onboarding-perfis";
@@ -122,7 +123,8 @@ export function Carteira() {
                       }),
                   }))
                   .filter((g) => g.eventos.length > 0);
-    const grupos = doPerfil(tab === "vem-ai" ? VEM_AI : PASSADOS);
+    const doBanco = useCarteiraAppDoBanco();
+    const grupos = doPerfil(tab === "vem-ai" ? juntarGrupos(doBanco.vemAi, VEM_AI) : juntarGrupos(doBanco.passados, PASSADOS));
 
     // Onboardings ao entrar na Carteira (um por vez):
     // - troca de ingresso: 1ª vez, ou via ?onboarding=1

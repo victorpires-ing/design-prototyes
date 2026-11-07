@@ -36,7 +36,8 @@ Quando um projeto novo entrar no Backstage (ex: `relatorios/`), ele será uma pa
 
 ## Regras importantes
 
-- **Não importe** de outro produto (`src/produtos/outro-produto/...`). Cada produto é auto-contido — se dois produtos precisam do mesmo componente, **duplique** e converse com o time antes de promover para o design system.
+- **Dados de evento, ingresso, pedido e carteira vêm de `@/plataforma`** (banco unificado, ver `src/plataforma/README.md`). Não crie mock novo de evento ou de pedido: leia da plataforma por um adaptador em `data/plataforma.ts` do projeto.
+- **Não importe** de outro produto (`src/produtos/outro-produto/...`). O que for comum a vários produtos sobe para `src/plataforma/` (dados e regras) ou para o design system (componentes), combinado com o time.
 - **Não importe** de outro projeto do mesmo produto, exceto através de `<produto>/components/` (que existe justamente para isso).
 - **Não altere** `src/components/` — essa pasta é o design system, compartilhada por todos.
 - **Pode importar livremente** de:
@@ -45,6 +46,7 @@ Quando um projeto novo entrar no Backstage (ex: `relatorios/`), ele será uma pa
   - `@/components/foundations/*` — ícones e elementos visuais base
   - `@/utils/cx` — utilitário de classes
   - `@/providers/theme-provider` — tema (light/dark)
+  - `@/plataforma` — banco unificado: eventos, catálogo, pedidos, ingressos e sessão do comprador
   - bibliotecas externas (`react-aria-components`, `@untitledui/icons`, `motion/react`, `sonner`, etc.)
 
 ## Convenções

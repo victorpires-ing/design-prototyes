@@ -5,7 +5,8 @@ import { cx } from "@/utils/cx";
 import { getFamily, gradientCss } from "../../components/gradient-families";
 import { BgTexture } from "../components/BgTexture";
 import { EventCard } from "../components/EventCard";
-import { CATEGORIAS, EVENTOS, type EventoMock } from "../data/events";
+import { CATEGORIAS, type EventoMock } from "../data/events";
+import { useEventosSite } from "../data/plataforma";
 import { CIDADES, useCidade } from "../data/cidade-store";
 
 const HERO_VIBE = getFamily("high-tempo");
@@ -22,6 +23,7 @@ function matches(e: EventoMock, q: string): boolean {
 }
 
 export function Busca() {
+    const EVENTOS = useEventosSite();
     const reduce = useReducedMotion();
     const cidade = useCidade();
     const [query, setQuery] = useState("");
@@ -43,7 +45,7 @@ export function Busca() {
         if (soNaCidade) list = list.filter((e) => e.cidade === cidade);
         if (query.trim()) list = list.filter((e) => matches(e, query));
         return [...list].sort((a, b) => Number(b.patrocinado) - Number(a.patrocinado) || b.popularidade - a.popularidade);
-    }, [query, soNaCidade, cidade]);
+    }, [EVENTOS, query, soNaCidade, cidade]);
 
     const buscando = query.trim().length > 0;
 

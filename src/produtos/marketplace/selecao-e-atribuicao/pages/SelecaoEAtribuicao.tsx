@@ -23,6 +23,8 @@ import { TermosModal } from "../components/TermosModal";
 import { precoExtraDoItem, TAXA_PRODUTO_PADRAO } from "../data/combos";
 import type { Beneficio, ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento, Item, PerguntaEvento, Produto, Quantitativo, TaxaProduto, TaxaServico } from "../data/combos";
 import { DEFAULT_CONFIG, STORAGE_KEY, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
+import { eventoParaConfig } from "../data/plataforma";
+import { criarPedido, entrar, lerSessao, slugificar, useColecao, useSessao, vendidosPorLote, type Atribuicao, type Evento as EventoBanco, type ItemPedido } from "@/plataforma";
 import {
     brl,
     escalar,
@@ -97,9 +99,20 @@ interface CartGroup {
     sublines?: CartSubline[];
 }
 
-export function SelecaoEAtribuicao() {
+/**
+ * Sem `evento`: protótipo do marketplace, configurado por ?cfg=, link curto ou localStorage.
+ * Com `evento`: link de compra de um evento do banco unificado (src/plataforma); finalizar
+ * grava o pedido e segue para o checkout.
+ */
+export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
     const navigate = useNavigate();
     const [params] = useSearchParams();
+    const sessao = useSessao();
+    const emitidos = useColecao("ingressos");
+    const configDoBanco = useMemo(
+        () => (evento ? eventoParaConfig(evento, vendidosPorLote(emitidos.filter((i) => i.eventoId === evento.id))) : null),
+        [evento, emitidos],
+    );
 
     // Config inicial síncrona: ?cfg= (link longo) → localStorage → DEFAULT.
     const configInicial = useMemo(() => {
@@ -120,11 +133,12 @@ export function SelecaoEAtribuicao() {
         return DEFAULT_CONFIG;
     }, [params]);
 
-    const [config, setConfig] = useState<EventConfig>(configInicial);
+    const [configLocal, setConfig] = useState<EventConfig>(configInicial);
+    const config = configDoBanco ?? configLocal;
     // Link curto (?e=<id>): resolve o cfg no Redis de forma assíncrona.
-    const [carregandoLink, setCarregandoLink] = useState(() => !!params.get("e"));
+    const [carregandoLink, setCarregandoLink] = useState(() => !evento && !!params.get("e"));
     useEffect(() => {
-        const e = params.get("e");
+        const e = evento ? null : params.get("e");
         if (!e) {
             setConfig(configInicial);
             return;
@@ -299,7 +313,7 @@ export function SelecaoEAtribuicao() {
     const [perguntaModalUnidade, setPerguntaModalUnidade] = useState<string | null>(null);
     const [variacaoProduto, setVariacaoProduto] = useState<Produto | null>(null);
     // Sessão começa sempre deslogada.
-    const [usuario, setUsuario] = useState<string | null>(null);
+    const [usuario, setUsuario] = useState<string | null>(() => (evento ? (sessao?.nome ?? null) : null));
     const [loginOpen, setLoginOpen] = useState(false);
     const [loginPendente, setLoginPendente] = useState(false);
 
@@ -586,8 +600,10 @@ export function SelecaoEAtribuicao() {
     };
 
     // Cadastro concluído (aceita qualquer código): grava o usuário e segue o fluxo pendente.
-    const aoLogar = (nome: string) => {
+    const aoLogar = (nome: string, dados?: { email?: string }) => {
         setUsuario(nome || "Victor Pires da Costa");
+        // O e-mail é a chave da carteira: o pedido e os ingressos ficam com ele.
+        if (dados?.email) entrar({ nome: nome || "Victor Pires da Costa", email: dados.email });
         setLoginOpen(false);
         if (loginPendente) {
             setLoginPendente(false);
@@ -603,7 +619,51 @@ export function SelecaoEAtribuicao() {
             irProximo();
         }
     };
+    const [gravandoPedido, setGravandoPedido] = useState(false);
+    /** Link de compra do banco: o carrinho vira pedido e segue para o pagamento. */
+    const finalizarNoBanco = async (ev: EventoBanco) => {
+        const comprador =
+            lerSessao() ?? entrar({ nome: usuario ?? "Comprador", email: `${slugificar(usuario ?? "comprador")}@exemplo.com` });
+        const itens: ItemPedido[] = [];
+        const indicePorChave = new Map<string, number>();
+        for (const [key, g] of grupos) {
+            const [tipo, sessaoId, ingressoId] = key.split(":");
+            if (tipo === "data") {
+                const s = ev.sessoes.find((x) => x.id === sessaoId);
+                const grupo = s?.grupos.find((gr) => gr.ingressos.some((t) => t.id === ingressoId));
+                const t = grupo?.ingressos.find((x) => x.id === ingressoId);
+                const vend = vendidosPorLote(emitidos.filter((i) => i.eventoId === ev.id));
+                const lote = t?.lotes.find((l) => (vend.get(l.id) ?? 0) < l.quantidade) ?? t?.lotes[t.lotes.length - 1];
+                if (!s || !grupo || !t || !lote) continue;
+                indicePorChave.set(key, itens.length);
+                itens.push({ tipo: "ingresso", nome: t.nome, detalhe: lote.nome, sessaoId: s.id, grupoId: grupo.id, ingressoId: t.id, loteId: lote.id, quantidade: g.qtd, face: g.preco.face, taxa: g.preco.taxa });
+            } else if (tipo === "prod") {
+                indicePorChave.set(key, itens.length);
+                itens.push({ tipo: "produto", nome: g.nome, detalhe: g.sub, quantidade: g.qtd, face: g.preco.face, taxa: g.preco.taxa });
+            }
+        }
+        const atribuicoes: Atribuicao[] = unidades.flatMap((u) => {
+            const item = indicePorChave.get(u.key);
+            const a = atrib[u.id];
+            if (item === undefined || u.isProduto || !a) return [];
+            return a.tipo === "outro" && a.email
+                ? [{ item, nome: a.email.split("@")[0], email: a.email }]
+                : [{ item, nome: comprador.nome, email: comprador.email }];
+        });
+        setGravandoPedido(true);
+        try {
+            const pedido = await criarPedido({ eventoId: ev.id, comprador, canal: "link", itens, atribuicoes });
+            navigate(`/checkout/melhorias-de-compra?pedido=${pedido.id}`);
+        } finally {
+            setGravandoPedido(false);
+        }
+    };
+
     const finalizarPedido = () => {
+        if (evento) {
+            if (!gravandoPedido) void finalizarNoBanco(evento);
+            return;
+        }
         const sp = new URLSearchParams(params);
         if (usuario) sp.set("u", usuario);
         // Art. 7º caput: o valor também tem de existir na última fase da compra.
@@ -633,7 +693,8 @@ export function SelecaoEAtribuicao() {
         } else if (etapa === "produtos") {
             setEtapa("selecao");
             window.scrollTo({ top: 0 });
-        } else navigate("/marketplace");
+        } else if (evento) navigate(-1);
+        else navigate("/marketplace");
     };
 
     /* ---- blocos reutilizados pelos dois layouts ---- */

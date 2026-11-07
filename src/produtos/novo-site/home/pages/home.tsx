@@ -9,7 +9,8 @@ import { EventCard } from "../components/EventCard";
 import { FeaturedStage } from "../components/FeaturedStage";
 import { Reveal } from "../components/Reveal";
 import { Footer, HeaderNav } from "../components/SiteChrome";
-import { CATEGORIAS, DESTAQUES, EVENTOS, VIBE_IMAGES } from "../data/events";
+import { CATEGORIAS, VIBE_IMAGES } from "../data/events";
+import { useDestaques, useEventosSite } from "../data/plataforma";
 import { openSearch } from "../data/search-store";
 
 // Atalhos de experiência (abrem a conversa já nessa vibe).
@@ -25,10 +26,12 @@ const OPCOES = [
 ];
 
 export function Home() {
+    const EVENTOS = useEventosSite();
+    const DESTAQUES = useDestaques();
     const reduce = useReducedMotion();
     const emAlta = useMemo(
         () => [...EVENTOS].sort((a, b) => Number(b.patrocinado) - Number(a.patrocinado) || b.popularidade - a.popularidade).slice(0, 8),
-        [],
+        [EVENTOS],
     );
 
 

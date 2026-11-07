@@ -6,7 +6,8 @@ import { getFamily, gradientCss } from "../../components/gradient-families";
 import { BgTexture } from "../components/BgTexture";
 import { EventCard } from "../components/EventCard";
 import { Footer, HeaderNav } from "../components/SiteChrome";
-import { CATEGORIAS, EVENTOS, categoriaCover, getCategoria, type CategoriaId } from "../data/events";
+import { CATEGORIAS, categoriaCover, getCategoria, type CategoriaId } from "../data/events";
+import { useEventosSite } from "../data/plataforma";
 import { CIDADES, useCidade } from "../data/cidade-store";
 
 type Ordenacao = "popular" | "data" | "preco";
@@ -17,6 +18,7 @@ const ORDENS: { id: Ordenacao; label: string }[] = [
 ];
 
 export function Categorias() {
+    const EVENTOS = useEventosSite();
     const cidadeAtual = useCidade();
     const reduce = useReducedMotion();
     const [categoria, setCategoria] = useState<CategoriaId | "todas">("todas");
@@ -31,7 +33,7 @@ export function Categorias() {
     const tagsDisponiveis = useMemo(() => {
         const base = categoria === "todas" ? EVENTOS : EVENTOS.filter((e) => e.categoria === categoria);
         return [...new Set(base.flatMap((e) => e.tags))].sort();
-    }, [categoria]);
+    }, [EVENTOS, categoria]);
 
     const eventos = useMemo(() => {
         let list = EVENTOS;
@@ -43,7 +45,7 @@ export function Categorias() {
         if (ordem === "data") sorted.sort((a, b) => +new Date(a.data) - +new Date(b.data));
         if (ordem === "preco") sorted.sort((a, b) => a.preco - b.preco);
         return sorted;
-    }, [categoria, tags, soNaCidade, cidadeAtual, ordem]);
+    }, [EVENTOS, categoria, tags, soNaCidade, cidadeAtual, ordem]);
 
     const toggleTag = (t: string) => setTags((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
 

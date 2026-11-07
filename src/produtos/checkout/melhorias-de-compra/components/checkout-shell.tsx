@@ -5,6 +5,7 @@ import { cx } from "@/utils/cx";
 import capaEvento from "../assets/vai-safadao.png";
 import { useCheckout } from "../data/checkout-store";
 import { EVENTO, PRECO_ITENS, PRECO_PROTECAO, TAXA_PROCESSAMENTO, TAXA_SERVICO, brl } from "../data/pedido";
+import { totalBaseDoPedidoAtual, usePedidoCheckout } from "../data/pedido-banco";
 import { LogoIngresse } from "./icones";
 
 interface CheckoutShellProps {
@@ -23,10 +24,12 @@ const Linha = ({ label, valor }: { label: string; valor: string }) => (
     </div>
 );
 
-const Capa = ({ className }: { className: string }) => <img src={capaEvento} alt="" className={cx("shrink-0 rounded-lg object-cover", className)} />;
+const Capa = ({ className, src }: { className: string; src?: string }) => <img src={src || capaEvento} alt="" className={cx("shrink-0 rounded-lg object-cover", className)} />;
 
+/** Total a pagar. Com pedido do banco, parte do total dele; sem, do mock. */
 export function totalPedido(protecao: "com" | "sem", juros = 0) {
-    return PRECO_ITENS + (protecao === "com" ? PRECO_PROTECAO : 0) + TAXA_SERVICO + TAXA_PROCESSAMENTO + juros;
+    const base = totalBaseDoPedidoAtual() ?? PRECO_ITENS + TAXA_SERVICO + TAXA_PROCESSAMENTO;
+    return base + (protecao === "com" ? PRECO_PROTECAO : 0) + juros;
 }
 
 /** Topo da Ingresse + evento + resumo do pedido, compartilhado por todas as telas do pagamento. */
@@ -35,21 +38,46 @@ export function CheckoutShell({ isMobile, topo, juros = 0, children }: CheckoutS
     const [taxasAbertas, setTaxasAbertas] = useState(true);
     const [resumoAberto, setResumoAberto] = useState(false);
 
-    const taxas = TAXA_SERVICO + TAXA_PROCESSAMENTO + juros;
+    const doBanco = usePedidoCheckout();
+    const pedido = doBanco?.pedido;
+    const ev = {
+        nome: doBanco?.evento?.nome ?? EVENTO.nome,
+        local: doBanco?.evento ? [doBanco.evento.local, doBanco.evento.cidade].filter(Boolean).join(" - ") : EVENTO.local,
+        sessao: doBanco?.sessao ?? EVENTO.sessao,
+        capa: doBanco?.evento?.capa,
+    };
+    const taxaServico = pedido ? pedido.taxas : TAXA_SERVICO;
+    const taxaProcessamento = pedido ? 0 : TAXA_PROCESSAMENTO;
+    const taxas = taxaServico + taxaProcessamento + juros;
     const total = totalPedido(protecao, juros);
+    const qtdItens = pedido ? pedido.itens.reduce((a, i) => a + i.quantidade, 0) : 1;
 
     const detalhe = (
         <div className="flex flex-col divide-y divide-border-secondary">
             <div className="py-4">
                 <p className="text-lg font-semibold text-primary">Itens</p>
-                <div className="mt-2 flex items-start justify-between gap-3 text-md text-secondary">
-                    <p>
-                        <span className="font-semibold text-primary">1</span> Inteira
-                        <br />
-                        {EVENTO.sessao}
-                    </p>
-                    <span className="tabular-nums">{brl(PRECO_ITENS)}</span>
-                </div>
+                {pedido ? (
+                    pedido.itens.map((item, i) => (
+                        <div key={i} className="mt-2 flex items-start justify-between gap-3 text-md text-secondary">
+                            <p>
+                                <span className="font-semibold text-primary">{item.quantidade}</span> {item.nome}
+                                {item.detalhe ? ` · ${item.detalhe}` : ""}
+                                <br />
+                                {ev.sessao}
+                            </p>
+                            <span className="tabular-nums">{brl(item.face * item.quantidade)}</span>
+                        </div>
+                    ))
+                ) : (
+                    <div className="mt-2 flex items-start justify-between gap-3 text-md text-secondary">
+                        <p>
+                            <span className="font-semibold text-primary">1</span> Inteira
+                            <br />
+                            {EVENTO.sessao}
+                        </p>
+                        <span className="tabular-nums">{brl(PRECO_ITENS)}</span>
+                    </div>
+                )}
             </div>
 
             {protecao === "com" && (
@@ -84,8 +112,8 @@ export function CheckoutShell({ isMobile, topo, juros = 0, children }: CheckoutS
                 </button>
                 {taxasAbertas && (
                     <div className="mt-3 flex flex-col gap-1 border-l border-secondary pl-3">
-                        <Linha label="Taxa de serviço" valor={brl(TAXA_SERVICO)} />
-                        <Linha label="Taxa de processamento" valor={brl(TAXA_PROCESSAMENTO)} />
+                        <Linha label="Taxa de serviço" valor={brl(taxaServico)} />
+                        {taxaProcessamento > 0 && <Linha label="Taxa de processamento" valor={brl(taxaProcessamento)} />}
                         {juros > 0 && <Linha label="Juros de parcelamento" valor={brl(juros)} />}
                     </div>
                 )}
@@ -127,12 +155,12 @@ export function CheckoutShell({ isMobile, topo, juros = 0, children }: CheckoutS
 
                     {!isMobile && (
                         <div className="mt-4 flex items-center gap-4">
-                            <Capa className="size-20" />
+                            <Capa className="size-20" src={ev.capa} />
                             <div className="flex flex-col gap-1.5">
-                                <p className="text-lg font-semibold text-primary">{EVENTO.nome}</p>
+                                <p className="text-lg font-semibold text-primary">{ev.nome}</p>
                                 <p className="flex items-center gap-1.5 text-md text-secondary">
                                     <MarkerPin01 className="size-4" />
-                                    {EVENTO.local}
+                                    {ev.local}
                                 </p>
                                 <p className="flex items-center gap-4 text-sm font-medium text-brand-secondary">
                                     <span>Ver página do evento</span>
@@ -149,15 +177,15 @@ export function CheckoutShell({ isMobile, topo, juros = 0, children }: CheckoutS
                 {isMobile && (
                     <div className="mb-6 rounded-2xl bg-primary p-4 shadow-xs">
                         <div className="flex items-center gap-4 border-b border-secondary pb-4">
-                            <Capa className="size-20" />
-                            <p className="text-lg font-semibold text-primary">{EVENTO.nome}</p>
+                            <Capa className="size-20" src={ev.capa} />
+                            <p className="text-lg font-semibold text-primary">{ev.nome}</p>
                         </div>
                         {resumoAberto ? (
                             detalhe
                         ) : (
                             <div className="flex flex-col gap-1 border-b border-secondary py-4 text-md text-secondary">
                                 <p>
-                                    <span className="font-semibold text-primary">1</span> Item • {protecao === "com" ? "Proteção de compra" : "Sem proteção"}
+                                    <span className="font-semibold text-primary">{qtdItens}</span> {qtdItens === 1 ? "Item" : "Itens"} • {protecao === "com" ? "Proteção de compra" : "Sem proteção"}
                                 </p>
                                 <p>Taxas • Cupom de desconto</p>
                             </div>
@@ -186,8 +214,8 @@ export function CheckoutShell({ isMobile, topo, juros = 0, children }: CheckoutS
                     {!isMobile && (
                         <aside aria-label="Resumo do pedido" className="sticky top-6 rounded-2xl bg-primary px-4 pt-5 pb-5 shadow-xs">
                             <div className="flex items-center gap-4 border-b border-secondary pb-4">
-                                <Capa className="size-20" />
-                                <p className="text-lg font-semibold text-primary">{EVENTO.nome}</p>
+                                <Capa className="size-20" src={ev.capa} />
+                                <p className="text-lg font-semibold text-primary">{ev.nome}</p>
                             </div>
                             <div className="border-b border-secondary">{detalhe}</div>
                             <div className="flex items-baseline justify-between gap-3 pt-5">

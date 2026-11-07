@@ -16,6 +16,7 @@ import { useViewport } from "../data/viewport";
 import { SiteHeader } from "../components/site-header";
 import { DetalheEvento, EventoIngressos, type Alvo } from "../components/evento-ingressos";
 import { getEvento, paraOPerfil } from "../data/eventos";
+import { useCarteiraDoBanco } from "../data/plataforma";
 import { usePerfilAtivo, type PerfilAtivo } from "../data/perfil-ativo";
 import { useDependentes } from "../data/dependentes";
 import { PerfisOnboarding } from "../components/perfis-onboarding";
@@ -159,7 +160,8 @@ const contagem = (e: EventoCard) =>
 function CarteiraContent({ onCardClick, erro = false }: { onCardClick: (card: EventoCard) => void; erro?: boolean }) {
     const [tab, setTab] = useState<Tab>("proximos");
     const perfil = usePerfilAtivo();
-    const cards = doPerfil(tab === "proximos" ? PROXIMOS : ANTERIORES, perfil);
+    const doBanco = useCarteiraDoBanco();
+    const cards = doPerfil(tab === "proximos" ? [...doBanco.proximos, ...PROXIMOS] : [...doBanco.anteriores, ...ANTERIORES], perfil);
 
     return (
         <div className="bg-primary text-primary">
@@ -291,7 +293,8 @@ const MobileTab = ({ icon: Icon, label, active, onClick }: { icon: FC<{ classNam
 function MobileEventList({ onEventClick }: { onEventClick: (card: EventoCard) => void }) {
     const [tab, setTab] = useState<Tab>("proximos");
     const perfil = usePerfilAtivo();
-    const eventos = doPerfil(tab === "proximos" ? PROXIMOS : ANTERIORES, perfil);
+    const doBanco = useCarteiraDoBanco();
+    const eventos = doPerfil(tab === "proximos" ? [...doBanco.proximos, ...PROXIMOS] : [...doBanco.anteriores, ...ANTERIORES], perfil);
     const grupos = [...new Set(eventos.map((e) => e.mesAno))].map((mes) => ({ mes, eventos: eventos.filter((e) => e.mesAno === mes) }));
 
     return (

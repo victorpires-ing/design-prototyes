@@ -83,8 +83,8 @@ export function Eventos() {
                     isOpen={criarAberto}
                     onClose={() => setCriarAberto(false)}
                     onCriado={() => {
-                        toast.success("Evento criado como rascunho.");
-                        navigate("/backstage/informacoes-evento");
+                        toast.success("Evento criado como rascunho. Agora crie os ingressos.");
+                        navigate("/backstage/catalogo/ingressos");
                     }}
                 />
 

@@ -3,6 +3,7 @@ import { XCircle } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { CheckoutShell } from "../components/checkout-shell";
 import { PixCard } from "../components/pix-card";
+import { SimularPix } from "../components/simular-pix";
 import { TopoVoltar } from "../components/topo";
 import { useIsMobile, useTemaClaro } from "../utils/hooks";
 
@@ -25,6 +26,9 @@ export function NaoAutorizado() {
 
             <div className="mt-4">
                 <PixCard isMobile={isMobile} variante="fallback" />
+            </div>
+            <div className="mt-4">
+                <SimularPix />
             </div>
 
             <Button size="xl" color="secondary" className="mt-4 w-full" onClick={() => navigate(`${BASE}/cartao${tipo}`)}>

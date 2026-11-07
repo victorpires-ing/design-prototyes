@@ -8,6 +8,7 @@ import { cx } from "@/utils/cx";
 import { CheckoutShell } from "../components/checkout-shell";
 import { ClickToPayIcon, CreditCardIcon, GoogleIcon } from "../components/icones";
 import { PixCard } from "../components/pix-card";
+import { SimularPix } from "../components/simular-pix";
 import { TopoFinalizar } from "../components/topo";
 import { useCheckout } from "../data/checkout-store";
 import { PRECO_PROTECAO, brl } from "../data/pedido";
@@ -104,6 +105,7 @@ export function Pagamento() {
                 </h2>
                 <div className="mt-4 flex flex-col gap-4">
                     <PixCard isMobile={isMobile} />
+                    <SimularPix />
                     <Metodo icon={<CreditCardIcon className="size-4" />} label="Crédito" onPress={() => navigate(`${BASE}/cartao`)} />
                     <Metodo icon={<CreditCardIcon className="size-4" />} label="Débito" onPress={() => navigate(`${BASE}/cartao?tipo=debito`)} />
                     <Metodo icon={<GoogleIcon className="size-4" />} label="Google Pay" onPress={() => foraDoEscopo("Google Pay")} />

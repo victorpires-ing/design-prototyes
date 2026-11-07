@@ -1,4 +1,6 @@
-import { ChevronDown } from "@untitledui/icons";
+import { ChevronDown, Copy01, LinkExternal01 } from "@untitledui/icons";
+import { toast } from "sonner";
+import { useDoc, vendeNoLink } from "@/plataforma";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { BackstageLayout, useAbrirModalDeStatus } from "../../components/Backstage";
@@ -31,6 +33,7 @@ export function InformacoesEvento() {
                 </section>
 
                 <StatusSection evento={evento} />
+                <LinkDeCompra eventoId={evento.id} />
             </div>
         </BackstageLayout>
     );
@@ -63,6 +66,49 @@ const StatusSection = ({ evento }: { evento: Evento }) => {
                     Alterar status
                 </Button>
             )}
+        </section>
+    );
+};
+
+/** Link de compra do evento: vende em publicado (também no site) e privado (só por este link). */
+const LinkDeCompra = ({ eventoId }: { eventoId: string }) => {
+    const doc = useDoc("eventos", eventoId);
+    if (!doc) return null;
+    const url = `${window.location.origin}/e/${doc.slug}`;
+    const vende = vendeNoLink(doc.status);
+    const semIngresso = doc.sessoes.every((s) => s.grupos.every((g) => g.ingressos.length === 0));
+
+    return (
+        <section className="flex flex-col gap-4 rounded-xl bg-primary p-5 ring-1 ring-border-secondary">
+            <div className="flex flex-col gap-0.5">
+                <h2 className="text-md font-semibold text-primary">Link de compra</h2>
+                <p className="text-sm text-tertiary">
+                    {semIngresso
+                        ? "Crie um ingresso para o link vender alguma coisa."
+                        : vende
+                          ? doc.status === "publicado"
+                              ? "Vendendo pelo link e no site da Ingresse."
+                              : "Vendendo só por este link. O evento não aparece no site."
+                          : "Publique ou deixe o evento privado para o link começar a vender."}
+                </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+                <code className="rounded-md bg-secondary px-2.5 py-1.5 text-sm text-secondary ring-1 ring-border-secondary">{url}</code>
+                <Button
+                    size="sm"
+                    color="secondary"
+                    iconLeading={Copy01}
+                    onClick={() => {
+                        void navigator.clipboard?.writeText(url);
+                        toast.success("Link copiado.");
+                    }}
+                >
+                    Copiar
+                </Button>
+                <Button size="sm" color="link-color" iconTrailing={LinkExternal01} href={`/e/${doc.slug}`} target="_blank">
+                    Abrir
+                </Button>
+            </div>
         </section>
     );
 };

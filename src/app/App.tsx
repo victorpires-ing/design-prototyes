@@ -194,6 +194,8 @@ import { AnaliseResultados as PayInAnaliseResultados } from '../produtos/payin/c
 import { Pagamento as CheckoutPagamento } from '../produtos/checkout/melhorias-de-compra/pages/pagamento';
 import { Cartao as CheckoutCartao } from '../produtos/checkout/melhorias-de-compra/pages/cartao';
 import { NaoAutorizado as CheckoutNaoAutorizado } from '../produtos/checkout/melhorias-de-compra/pages/nao-autorizado';
+import { Confirmado as CheckoutConfirmado } from '../produtos/checkout/melhorias-de-compra/pages/confirmado';
+import { CompraDoEvento } from '../produtos/marketplace/selecao-e-atribuicao/pages/CompraDoEvento';
 import { Selecao as ProtecaoDeCompra } from '../produtos/checkout/protecao-de-compra/pages/selecao';
 import { Eventos as CashoutEventos } from '../produtos/payout/contrato-quick-win-finance/pages/eventos';
 import { Produtoras as CashoutProdutoras } from '../produtos/payout/contrato-quick-win-finance/pages/produtoras';
@@ -430,6 +432,10 @@ export default function App() {
         <Route path="/checkout/melhorias-de-compra" element={<CheckoutPagamento />} />
         <Route path="/checkout/melhorias-de-compra/cartao" element={<CheckoutCartao />} />
         <Route path="/checkout/melhorias-de-compra/nao-autorizado" element={<CheckoutNaoAutorizado />} />
+        <Route path="/checkout/melhorias-de-compra/confirmado" element={<CheckoutConfirmado />} />
+        {/* Plataforma unificada: link de compra de um evento do banco (src/plataforma) */}
+        <Route path="/comprar/:eventoId" element={<CompraDoEvento />} />
+        <Route path="/e/:slug" element={<CompraDoEvento />} />
         <Route path="/checkout/protecao-de-compra" element={<ProtecaoDeCompra />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />

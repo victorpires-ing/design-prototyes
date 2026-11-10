@@ -51,61 +51,11 @@ export function TransferirIngresso() {
     const faltando = perguntas.filter((q) => respostaVazia(q, respostas[q.pergunta] ?? ""));
     const formOk = faltando.length === 0;
 
-    // Ao buscar, o teclado fecha e a tela desce até a conta encontrada (dá para subir e corrigir o e-mail).
+    // Ao buscar, rola suavemente até o resultado (feedback de que algo aconteceu).
     const resultRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
-        if (!searched) return;
-        // Espera o teclado recolher para calcular a rolagem com a altura final da tela
-        const t = window.setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 300);
-        return () => window.clearTimeout(t);
+        if (searched) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, [searched]);
-
-    // Teclado aberto: campo + botão "Encontrar conta" sempre visíveis logo acima dele, em qualquer altura de tela.
-    // O visualViewport diz quanto da tela sobrou; se o bloco do e-mail ficar por baixo do teclado, rolamos o
-    // conteúdo até a borda dele encostar no topo do teclado. O espaçador no fim garante folga para rolar.
-    const buscaRef = useRef<HTMLDivElement>(null);
-    const [focado, setFocado] = useState(false);
-    const [teclado, setTeclado] = useState(0);
-    useEffect(() => {
-        const vv = window.visualViewport;
-        if (!focado || !vv) {
-            setTeclado(0);
-            return;
-        }
-        let frame = 0;
-        const ajustar = () => {
-            cancelAnimationFrame(frame);
-            frame = requestAnimationFrame(() => {
-                const bloco = buscaRef.current;
-                if (!bloco) return;
-                const visivelTopo = vv.offsetTop;
-                const visivelBase = vv.offsetTop + vv.height;
-                setTeclado(Math.max(0, window.innerHeight - vv.height));
-                const scroller = bloco.closest<HTMLElement>(".overflow-y-auto");
-                const r = bloco.getBoundingClientRect();
-                const folga = 12;
-                let delta = 0;
-                if (r.bottom + folga > visivelBase) delta = r.bottom + folga - visivelBase;
-                // Tela muito baixa: prioriza o topo do campo, sem esconder o título do bloco
-                if (r.top - delta < visivelTopo + folga) delta = r.top - visivelTopo - folga;
-                if (Math.abs(delta) > 1 && scroller) scroller.scrollBy({ top: delta, behavior: "smooth" });
-            });
-        };
-        ajustar();
-        vv.addEventListener("resize", ajustar);
-        vv.addEventListener("scroll", ajustar);
-        return () => {
-            cancelAnimationFrame(frame);
-            vv.removeEventListener("resize", ajustar);
-            vv.removeEventListener("scroll", ajustar);
-        };
-    }, [focado]);
-
-    const buscar = () => {
-        if (email.trim() === "") return;
-        (document.activeElement as HTMLElement | null)?.blur();
-        setSearched(true);
-    };
 
     const destino = isCombo ? `/ingresse-app/ingressos/combo/${evento.id}/${id}` : `/ingresse-app/ingressos/detalhe/${evento.id}/${id}`;
     const voltar = () => navigate(destino);
@@ -245,22 +195,14 @@ export function TransferirIngresso() {
                     </div>
 
                     {/* Busca por e-mail */}
-                    <div ref={buscaRef} className="scroll-mt-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
+                    <div className="rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
                         <p className="text-md font-bold text-primary">E-mail de quem vai receber</p>
                         <div className="mt-3">
                             <Input
                                 type="email"
-                                inputMode="email"
-                                enterKeyHint="search"
-                                autoComplete="email"
                                 placeholder="Este e-mail precisa estar cadastrado"
                                 value={email}
-                                onFocus={() => setFocado(true)}
-                                // Solta a folga com um respiro: o botão não "foge" do dedo enquanto o teclado fecha
-                                onBlur={() => window.setTimeout(() => setFocado(false), 250)}
-                                onKeyDown={(e) => e.key === "Enter" && buscar()}
                                 onChange={(v) => {
-                                    // Mexeu no e-mail: a conta encontrada sai e o botão volta
                                     setEmail(v);
                                     setSearched(false);
                                 }}
@@ -273,18 +215,15 @@ export function TransferirIngresso() {
                             </div>
                         )}
 
-                        {/* Depois da busca o botão sai: o próximo passo é a conta encontrada logo abaixo */}
-                        {!searched && (
-                            <Button
-                                size="lg"
-                                color="primary"
-                                className="mt-4 w-full rounded-full"
-                                isDisabled={email.trim() === ""}
-                                onClick={buscar}
-                            >
-                                Encontrar conta
-                            </Button>
-                        )}
+                        <Button
+                            size="lg"
+                            color="primary"
+                            className="mt-4 w-full rounded-full"
+                            isDisabled={email.trim() === ""}
+                            onClick={() => setSearched(true)}
+                        >
+                            Encontrar conta
+                        </Button>
                     </div>
 
                     {/* Resultados da busca */}
@@ -312,9 +251,6 @@ export function TransferirIngresso() {
                             </button>
                         </div>
                     )}
-
-                    {/* Folga do tamanho do teclado: deixa rolar o bloco do e-mail até acima dele */}
-                    {focado && teclado > 0 && <div aria-hidden="true" style={{ height: teclado }} />}
                 </div>
             </div>
             )}

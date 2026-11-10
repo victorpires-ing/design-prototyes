@@ -7,6 +7,7 @@ import { cx } from "@/utils/cx";
 import { EVENT, dateFormatter } from "../data/event";
 import { RelatorioFilterSlideout, RelatorioPeriodoButton } from "./RelatorioFilterSlideout";
 import { useRelatorioFilters } from "./relatorio-filters";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 /* ------------------------------------------------------------------ */
 /*  Export menu (Excel / CSV / PDF) — usado no slot de ações.          */
@@ -160,9 +161,9 @@ interface RelatorioPageHeaderProps {
 export const RelatorioPageHeader = ({ title, actions, withFilters = true, filter = "full", showEventMeta = true, toolbar, splitControls = false }: RelatorioPageHeaderProps) => {
     const FilterControl = filter === "period" ? RelatorioPeriodoButton : RelatorioFilterSlideout;
     return (
-        <div className={cx("sticky top-[var(--bs-header-offset,0px)] z-40 -mt-6 flex flex-col gap-3 border-x-8 border-[var(--color-bg-secondary)] bg-secondary pb-3 pt-6 shadow-[-8px_0_0_0_var(--color-bg-secondary),8px_0_0_0_var(--color-bg-secondary)] dark:border-[#0a0a0a] dark:bg-[#0a0a0a] dark:shadow-[-8px_0_0_0_#0a0a0a,8px_0_0_0_#0a0a0a]")}>
+        <div className={cx("sticky top-[var(--bs-header-offset,0px)] z-40 -mx-2 -mt-6 flex flex-col gap-3 border-x-8 border-[var(--color-bg-secondary)] bg-secondary pb-3 pt-6 shadow-[-8px_0_0_0_var(--color-bg-secondary),8px_0_0_0_var(--color-bg-secondary)] dark:border-[#0a0a0a] dark:bg-[#0a0a0a] dark:shadow-[-8px_0_0_0_#0a0a0a,8px_0_0_0_#0a0a0a]")}>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <p className="text-display-sm font-semibold text-primary">{title}</p>
+                <h1 className={TITULO_PAGINA}>{title}</h1>
                 {(actions || withFilters) && (
                     <div className="flex flex-wrap items-center gap-3">
                         {splitControls ? (

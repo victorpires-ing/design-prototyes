@@ -13,6 +13,8 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { RelatorioFiltersProvider, matchRow, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
+import { DetalhesDaLinha, linhaQueAbre, useLinhaAberta } from "../components/TabelaLista";
+import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, numberFormatter } from "../data/event";
@@ -194,7 +196,7 @@ export function Acesso() {
         <BackstageLayout activeSection="relatorios" activeItem="acesso">
             <RelatorioFiltersProvider fields={FILTER_FIELDS} initialDateRange={PERIODO_PADRAO}>
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                    <main className="flex flex-1 flex-col gap-6">
                         <RelatorioPageHeader
                             title="Acesso"
                             splitControls
@@ -342,6 +344,9 @@ const EntradasPorFaixaCard = ({ faixas }: { faixas: { hora: string; checkins: nu
 /* ------------------------------------------------------------------ */
 
 const ValidacaoPorSetorCard = ({ setores: setoresView }: { setores: AcessoNode[] }) => {
+    // Celular: Vendidos e Validados somem; a linha final abre os números (UI-MOB-005).
+    const celular = !useBreakpoint("md");
+    const linha = useLinhaAberta<{ titulo: string; apoio?: string; vendidos: number; validados: number }>();
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const indent = (depth: number) => 16 + depth * 24;
 
@@ -384,21 +389,11 @@ const ValidacaoPorSetorCard = ({ setores: setoresView }: { setores: AcessoNode[]
             out.push(
                 <Fragment key={node.id}>
                     <tr
-                        role={hasChildren ? "button" : undefined}
-                        tabIndex={hasChildren ? 0 : undefined}
+                        {...(hasChildren
+                            ? linhaQueAbre(true, () => toggleExpanded(node.id))
+                            : linhaQueAbre(celular, () => linha.abrir({ titulo: node.nome, apoio: parent?.nome, vendidos, validados })))}
                         aria-expanded={hasChildren ? isExpanded : undefined}
-                        onClick={hasChildren ? () => toggleExpanded(node.id) : undefined}
-                        onKeyDown={
-                            hasChildren
-                                ? (e) => {
-                                      if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          toggleExpanded(node.id);
-                                      }
-                                  }
-                                : undefined
-                        }
-                        className={cx("border-b border-secondary transition duration-100 ease-linear", depth === 0 ? "bg-primary" : "bg-secondary/60", hasChildren && "cursor-pointer hover:bg-primary_hover")}
+                        className={cx("border-b border-secondary transition duration-100 ease-linear", depth === 0 ? "bg-primary" : "bg-secondary/60", (hasChildren || celular) && "cursor-pointer hover:bg-primary_hover")}
                     >
                         <td className="py-3.5 pr-4 text-sm" style={{ paddingLeft: indent(depth) }}>
                             <span className="flex items-center gap-2">
@@ -446,6 +441,22 @@ const ValidacaoPorSetorCard = ({ setores: setoresView }: { setores: AcessoNode[]
                     </tbody>
                 </table>
             </div>
+            {linha.aberta && (
+                <DetalhesDaLinha
+                    titulo={linha.aberta.titulo}
+                    subtitulo={linha.aberta.apoio}
+                    grupos={[
+                        {
+                            campos: [
+                                { rotulo: "Vendidos", valor: numberFormatter.format(linha.aberta.vendidos) },
+                                { rotulo: "Validados", valor: numberFormatter.format(linha.aberta.validados) },
+                                { rotulo: "Taxa de validação", valor: `${linha.aberta.vendidos ? Math.round((linha.aberta.validados / linha.aberta.vendidos) * 100) : 0}%` },
+                            ],
+                        },
+                    ]}
+                    onFechar={linha.fechar}
+                />
+            )}
         </Card>
     );
 };
@@ -563,7 +574,7 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                             <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary xl:table-cell"><SortableHeader label="Tipo" sortKey="tipoIngresso" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary xl:table-cell"><SortableHeader label="Canal" sortKey="canal" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary sm:table-cell"><SortableHeader label="Horário de entrada" sortKey="horario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="px-4 py-3 text-sm font-semibold text-tertiary"><SortableHeader label="Status" sortKey="status" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="hidden px-4 py-3 text-sm font-semibold text-tertiary sm:table-cell"><SortableHeader label="Status" sortKey="status" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="px-4 py-3" aria-hidden="true" />
                         </tr>
                     </thead>
@@ -596,6 +607,7 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                                             <div className="flex min-w-0 flex-col">
                                                 <span className="truncate text-sm font-medium text-primary">{p.portador}</span>
                                                 <span className="truncate text-sm text-tertiary tabular-nums">{formatCPF(p.cpf)}</span>
+                                                <span className="truncate text-sm text-tertiary sm:hidden">{statusMeta.label}</span>
                                             </div>
                                         </div>
                                     </td>
@@ -608,7 +620,7 @@ const ControleDeAcessoCard = ({ rows }: { rows: PortadorAcesso[] }) => {
                                     <td className="hidden px-4 py-3 text-sm text-tertiary xl:table-cell">{p.tipoIngresso}</td>
                                     <td className="hidden px-4 py-3 text-sm text-tertiary xl:table-cell">{p.canal}</td>
                                     <td className="hidden px-4 py-3 text-sm text-secondary tabular-nums sm:table-cell">{p.horario ?? "—"}</td>
-                                    <td className="px-4 py-3">
+                                    <td className="hidden px-4 py-3 sm:table-cell">
                                         <BadgeWithDot size="sm" color={statusMeta.color} type="pill-color">
                                             {statusMeta.label}
                                         </BadgeWithDot>

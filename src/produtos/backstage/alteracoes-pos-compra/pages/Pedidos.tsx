@@ -8,7 +8,9 @@ import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { cx } from "@/utils/cx";
+import { lerDoc } from "@/plataforma";
 import { BackstageLayout } from "../../components/Backstage";
+import { eventos as eventosDaOrganizacao, useEventosVersao } from "../../eventos/data/eventos";
 import { FaixaAtencaoPedidos } from "../components/FaixaAtencaoPedidos";
 import { FOCO, FOCO_ESCOPO } from "../components/pos-compra-ui";
 import {
@@ -20,6 +22,7 @@ import {
     uuidCurto,
     type Pedido,
 } from "../data/pos-compra-store";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const totalPago = (pedido: Pedido) => pedido.itens.reduce((soma, linha) => soma + linha.valorPago, 0);
 
@@ -27,7 +30,15 @@ const TODOS = "todos";
 
 export function Pedidos() {
     const navigate = useNavigate();
-    const pedidos = usePedidos();
+    const todosPedidos = usePedidos();
+    const versaoEventos = useEventosVersao();
+    /* PED-92: só pedidos de eventos da organização em contexto. Eventos de demonstração (fora do
+       banco) aparecem em qualquer organização. */
+    const daOrganizacao = useMemo(() => {
+        const ids = new Set(eventosDaOrganizacao.map((e) => e.id));
+        return (eventoId: string) => ids.has(eventoId) || !lerDoc("eventos", eventoId);
+    }, [versaoEventos]);
+    const pedidos = useMemo(() => todosPedidos.filter((p) => daOrganizacao(p.eventoId)), [todosPedidos, daOrganizacao]);
     const location = useLocation();
     /* Busca, filtros e página moram na URL: abrir um pedido e voltar devolve a lista como estava,
        e o endereço pode ser colado para um colega ver o mesmo recorte. */
@@ -67,7 +78,7 @@ export function Pedidos() {
         [pedidos, termo, eventoId],
     );
 
-    const eventosFiltro = [{ id: TODOS, label: "Todos os eventos" }, ...EVENTOS.map((e) => ({ id: e.id, label: e.nome }))];
+    const eventosFiltro = [{ id: TODOS, label: "Todos os eventos" }, ...EVENTOS.filter((e) => daOrganizacao(e.id)).map((e) => ({ id: e.id, label: e.nome }))];
 
     /* Qualquer mudança de filtro recomeça a leitura: manter a página 7 depois de filtrar confunde. */
     const totalPaginas = Math.max(1, Math.ceil(filtrados.length / porPagina));
@@ -80,13 +91,13 @@ export function Pedidos() {
     return (
         <BackstageLayout showEventContext={false} activeProducer="pedidos">
             <motion.div
-                className={cx("flex min-w-0 flex-1 flex-col gap-5 p-4 md:p-6", FOCO_ESCOPO)}
+                className={cx("flex min-w-0 flex-1 flex-col gap-5", FOCO_ESCOPO)}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.28, ease: "easeOut" }}
             >
                 <header className="flex flex-col gap-1">
-                    <h1 className="text-xl font-semibold text-primary md:text-2xl">Pedidos</h1>
+                    <h1 className={TITULO_PAGINA}>Pedidos</h1>
                     <p className="text-sm text-tertiary">
 Troca de item, troca de titularidade e edição de respostas do formulário.
                     </p>

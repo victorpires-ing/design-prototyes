@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { assinarBanco, lerColecao, loteAtual, saldoDoLote, transferirIngresso, vendidosPorLote, type Pedido as PedidoBanco } from "@/plataforma";
 import FOTO_CAMISETA from "../../../../assets/products/camisa_oficial/1.webp";
 import FOTO_KIT from "../../../../assets/products/kit_oficial/1.png";
 import FOTO_COPO from "../../../../assets/products/copo_oficial/1.png";
@@ -395,32 +396,15 @@ export const SESSOES: Sessao[] = [
 ];
 
 /*
-  Os mesmos eventos da listagem do Backstage (eventos/data/eventos.ts), com nome e pôster
-  iguais: trocar de tela durante um atendimento tem que parecer o mesmo produto, e o produtor
-  reconhece o evento pela arte que já vê na própria lista.
-
-  Os ids internos seguem como estavam porque as sessões, o catálogo e os pedidos semente
-  apontam para eles; só o que aparece na tela mudou.
+  Eventos de demonstração das alterações pós-compra (corridas, com formulário e segmentação).
+  Os eventos reais do Backstage chegam do banco unificado, com os pedidos pagos de verdade
+  (ver "Pedidos do banco" no fim deste arquivo). Os ids internos seguem como estavam porque as
+  sessões, o catálogo e os pedidos semente apontam para eles.
 */
 export const EVENTOS: EventoOrg[] = [
-    {
-        id: "ev-maratona",
-        nome: "Laroc apresenta: RAVE THE WORLD by Alok",
-        data: SESSOES[2].dataLabel,
-        capa: "https://kraken.ingresse.com/event/posters/104600/large/1786025742.4637246.jpg",
-    },
-    {
-        id: "ev-trail",
-        nome: "MOCHAKK CALLING 2026",
-        data: SESSOES[4].dataLabel,
-        capa: "https://kraken.ingresse.com/event/posters/103691/large/1787000382.8580675.jpg",
-    },
-    {
-        id: "ev-triathlon",
-        nome: "D-EDGE RIO apresenta IN DA CLUB W/ JUICCE",
-        data: SESSOES[6].dataLabel,
-        capa: "https://kraken.ingresse.com/event/posters/108467/large/1790120499.9730182.jpg",
-    },
+    { id: "ev-maratona", nome: "Maratona Internacional de Natal (demonstração)", data: SESSOES[2].dataLabel, tipo: "esporte" },
+    { id: "ev-trail", nome: "Trail das Dunas (demonstração)", data: SESSOES[4].dataLabel, tipo: "esporte" },
+    { id: "ev-triathlon", nome: "Triathlon Ponta Negra (demonstração)", data: SESSOES[6].dataLabel, tipo: "esporte" },
     /* Os dois de esporte, com os pôsteres do TicketSports. */
     {
         id: "ev-running-music",
@@ -2149,6 +2133,7 @@ export const ultimoEnvio = (pedido: Pedido, solicitacaoId: string) =>
 
 /** Aplica o que a solicitação prometeu e tira ela da lista de operações abertas. */
 const aplicarSolicitacao = (p: Pedido, solicitacao: Solicitacao): Pedido => {
+    gravarTransferencias(p, solicitacao);
     const { aplicar, tipo, resumo, total, detalhes, mudancas } = solicitacao;
     const trocasPorLinha = new Map((aplicar.trocas ?? []).map((t) => [t.pedidoItemId, t.novoItemId]));
     const quando = agoraLabel();
@@ -2354,3 +2339,163 @@ export const cancelarSolicitacao = (pedidoId: string, solicitacaoId: string) =>
 /** Volta o pedido de falha ou expirado para o estado operável. */
 export const retomarPedido = (pedidoId: string) =>
     atualizarPedido(pedidoId, (p) => comStatus({ ...p, baseStatus: statusBase(p) }));
+
+
+/* ------------------------------------------------------------------ */
+/*  Pedidos do banco unificado (src/plataforma)                        */
+/*                                                                     */
+/*  Todo pedido pago no site, no link, na bilheteria ou em cortesia    */
+/*  entra aqui com o evento, as sessões, o catálogo e as contas reais. */
+/*  Pedido que já está na tela não é sobrescrito: alterações abertas   */
+/*  vivem em memória. Transferência de titularidade aplicada grava no  */
+/*  banco (a carteira muda); troca de item e respostas ainda não.      */
+/* ------------------------------------------------------------------ */
+
+const doBanco = { eventos: new Set<string>(), sessoes: new Set<string>(), contas: new Set<string>(), itens: new Set<string>() };
+
+const CANAL_DO_BANCO: Record<PedidoBanco["canal"], Pedido["canal"]> = { site: "Online", link: "Online", app: "Online", bilheteria: "Bilheteria", cortesia: "Cortesia" };
+const METODO_DO_BANCO: Record<NonNullable<PedidoBanco["pagamento"]>["metodo"], string> = {
+    pix: "Pix",
+    credito: "Cartão de crédito",
+    debito: "Cartão de débito",
+    dinheiro: "Dinheiro",
+    saldo: "Saldo do produtor",
+    cortesia: "Cortesia",
+};
+
+const contaId = (email: string) => `u_${email.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+const contaDoBanco = (nome: string, email: string): Conta => ({ id: contaId(email), nome, email, cpf: "", nascimento: "", celular: "", genero: "outro", socio: false });
+
+/** Pedido do banco: ids no formato `ped_…`. Só eles gravam alteração de volta. */
+export const ehPedidoDoBanco = (id: string) => id.startsWith("ped_");
+
+function espelharBanco() {
+    const pagos = lerColecao("pedidos").filter((p) => p.status !== "aguardando-pagamento");
+    if (pagos.length === 0 && doBanco.eventos.size === 0) return;
+    const ingressos = lerColecao("ingressos");
+    const vendidos = vendidosPorLote(ingressos, lerColecao("historico"));
+    const comPedido = new Set(pagos.map((p) => p.eventoId));
+    const eventos = lerColecao("eventos").filter((e) => comPedido.has(e.id));
+
+    const tirar = <T extends { id: string }>(lista: T[], ids: Set<string>) => {
+        for (let i = lista.length - 1; i >= 0; i--) if (ids.has(lista[i].id)) lista.splice(i, 1);
+        ids.clear();
+    };
+    tirar(EVENTOS, doBanco.eventos);
+    tirar(SESSOES, doBanco.sessoes);
+    tirar(CONTAS_EXTRA, doBanco.contas);
+
+    const catalogo: CatalogoItem[] = [];
+    for (const ev of eventos) {
+        const primeira = ev.sessoes.map((s) => s.inicio).sort()[0] ?? ev.data;
+        EVENTOS.push({ id: ev.id, nome: ev.nome, data: new Date(primeira).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" }).replace(".", ""), capa: ev.capa });
+        doBanco.eventos.add(ev.id);
+        for (const s of ev.sessoes) {
+            const inicio = new Date(s.inicio);
+            SESSOES.push({
+                id: s.id,
+                eventoId: ev.id,
+                inicio: inicio.getTime(),
+                dataLabel: inicio.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" }).replace(".", ""),
+                horaLabel: inicio.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+            });
+            doBanco.sessoes.add(s.id);
+            for (const g of s.grupos)
+                for (const t of g.ingressos) {
+                    const lote = loteAtual(t, vendidos) ?? t.lotes[t.lotes.length - 1];
+                    catalogo.push({
+                        id: t.id,
+                        tipo: "ingresso",
+                        eventoId: ev.id,
+                        nome: t.nome,
+                        modalidade: g.nome,
+                        precoIntegral: lote?.preco ?? 0,
+                        taxaServicoPercent: ev.taxaServico,
+                        estoque: t.ativo ? t.lotes.reduce((total, l) => total + saldoDoLote(l, vendidos), 0) : 0,
+                        sessaoId: s.id,
+                        grupo: g.nome,
+                        lote: lote?.nome,
+                        descricao: t.descricao,
+                    });
+                }
+        }
+    }
+
+    const novasContas = new Map<string, Conta>();
+    for (const p of pagos) novasContas.set(contaId(p.comprador.email), contaDoBanco(p.comprador.nome, p.comprador.email));
+    for (const i of ingressos) if (comPedido.has(i.eventoId)) novasContas.set(contaId(i.titular.email), contaDoBanco(i.titular.nome, i.titular.email));
+    for (const u of lerColecao("usuarios")) novasContas.set(contaId(u.email), contaDoBanco(u.nome, u.email));
+    for (const c of novasContas.values()) {
+        if (CONTAS.some((x) => x.id === c.id)) continue;
+        CONTAS_EXTRA.push(c);
+        doBanco.contas.add(c.id);
+    }
+
+    setEstado((atual) => {
+        const existentes = new Set(atual.pedidos.map((p) => p.id));
+        const novos: Pedido[] = pagos
+            .filter((p) => !existentes.has(p.id))
+            .map((p) => {
+                const pagoEm = new Date(p.pagamento?.pagoEm ?? p.criadoEm);
+                const linhas: PedidoItem[] = ingressos
+                    .filter((i) => i.pedidoId === p.id && i.status !== "transferido")
+                    .map((i) => {
+                        const item = p.itens.find((x) => x.loteId === i.loteId);
+                        const titular = contaId(i.titular.email);
+                        return {
+                            id: i.id,
+                            itemId: i.ingressoId,
+                            titularId: titular === contaId(p.comprador.email) ? undefined : titular,
+                            valorPago: item?.face ?? 0,
+                            taxaServicoPaga: item?.taxa ?? 0,
+                            respostas: {},
+                        };
+                    });
+                const status: StatusPedido = "ativo";
+                return {
+                    id: p.id,
+                    eventoId: p.eventoId,
+                    compradorId: contaId(p.comprador.email),
+                    itens: linhas,
+                    dataCompraLabel: dataLabel(pagoEm),
+                    canal: CANAL_DO_BANCO[p.canal],
+                    meioPagamento: p.pagamento ? METODO_DO_BANCO[p.pagamento.metodo] : "—",
+                    protecao: p.adicionais?.protecao || undefined,
+                    criadoEmLabel: dataLabel(new Date(p.criadoEm)),
+                    atualizadoEmLabel: dataLabel(new Date(p.atualizadoEm)),
+                    status,
+                    baseStatus: status,
+                    solicitacoes: [],
+                    historico: [
+                        {
+                            id: `h-${p.id}`,
+                            dataLabel: dataLabel(pagoEm),
+                            responsavel: p.comprador.nome,
+                            titulo: "Compra realizada",
+                            descricao: `${linhas.length} ${linhas.length === 1 ? "ingresso emitido" : "ingressos emitidos"} · ${CANAL_DO_BANCO[p.canal]}`,
+                            valor: p.total,
+                            estado: "concluido" as const,
+                            marco: "compra" as const,
+                        },
+                    ],
+                };
+            });
+        const outros = atual.catalogo.filter((i) => !doBanco.itens.has(i.id));
+        doBanco.itens = new Set(catalogo.map((i) => i.id));
+        return { ...atual, pedidos: [...novos, ...atual.pedidos], catalogo: [...catalogo, ...outros] };
+    });
+}
+
+/** Transferência aplicada num pedido do banco: muda o titular do ingresso de verdade. */
+function gravarTransferencias(pedido: Pedido, solicitacao: Solicitacao) {
+    if (!ehPedidoDoBanco(pedido.id)) return;
+    for (const [linhaId, idDaConta] of Object.entries(solicitacao.aplicar.titularPorLinha ?? {})) {
+        const conta = getConta(idDaConta);
+        if (conta) void transferirIngresso(linhaId, { nome: conta.nome, email: conta.email });
+    }
+}
+
+if (typeof window !== "undefined") {
+    assinarBanco(espelharBanco);
+    espelharBanco();
+}

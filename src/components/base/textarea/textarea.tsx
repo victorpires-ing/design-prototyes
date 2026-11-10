@@ -4,6 +4,7 @@ import type { TextAreaProps as AriaTextAreaProps, TextFieldProps as AriaTextFiel
 import { TextArea as AriaTextArea, TextField as AriaTextField } from "react-aria-components";
 import { HintText } from "@/components/base/input/hint-text";
 import { Label } from "@/components/base/input/label";
+import { Surgir } from "@/components/foundations/transicao";
 import { cx } from "@/utils/cx";
 
 // Creates a data URL for an SVG resize handle with a given color.
@@ -106,11 +107,11 @@ export const TextArea = ({
 
                     <TextAreaBase placeholder={placeholder} className={textAreaClassName} ref={textAreaRef} rows={rows} cols={cols} size={size} />
 
-                    {hint && (
+                    <Surgir visivel={!!hint} gap={6} className="w-full">
                         <HintText isInvalid={isInvalid} size={size}>
                             {hint}
                         </HintText>
-                    )}
+                    </Surgir>
                 </>
             )}
         </AriaTextField>

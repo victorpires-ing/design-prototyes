@@ -11,12 +11,13 @@ import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { cx } from "@/utils/cx";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
-import { salvarCatalogo, useColecao, useDoc, vendidosPorLote } from "@/plataforma";
+import { salvarCatalogo, useDoc, useVendidos } from "@/plataforma";
 import { BackstageLayout } from "../../components/Backstage";
 import { useEventoAtual } from "../../eventos/data/eventos";
 import { CriarIngressoModal } from "../components/CriarIngressoModal";
 import { adicionarIngresso, paraBanco, paraView } from "../data/catalogo-banco";
 import { type Grupo, type Ingresso, type Sessao } from "../data/ingressos";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 /** Handle de arraste com 2 colunas de pontos (padrão Jira/Gmail). */
 function GripVertical({ className }: { className?: string }) {
@@ -86,8 +87,7 @@ export function Ingressos() {
     // Catálogo do evento em contexto, vindo do banco unificado (src/plataforma).
     const eventoCtx = useEventoAtual();
     const evento = useDoc("eventos", eventoCtx.id);
-    const emitidos = useColecao("ingressos");
-    const vendidos = useMemo(() => vendidosPorLote(emitidos.filter((i) => i.eventoId === eventoCtx.id)), [emitidos, eventoCtx.id]);
+    const vendidos = useVendidos();
     const view = useMemo(() => (evento ? paraView(evento, vendidos) : []), [evento, vendidos]);
     const ativosDe = (ss: Sessao[]) => new Set(ss.flatMap((s) => s.grupos.flatMap((g) => g.ingressos.filter((i) => i.active).map((i) => i.id))));
 
@@ -260,10 +260,10 @@ export function Ingressos() {
 
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-ingressos">
-            <div className="flex min-w-0 flex-1 flex-col px-4 py-6 md:px-6">
+            <div className="flex min-w-0 flex-1 flex-col">
                 {/* Header da página */}
                 <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <h1 className="text-display-xs font-bold text-primary">Ingressos</h1>
+                    <h1 className={TITULO_PAGINA}>Ingressos</h1>
                     <div className="flex flex-wrap items-center gap-3">
                         <Button size="md" color="secondary" iconLeading={Calendar}>
                             Filtrar por data

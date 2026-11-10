@@ -30,6 +30,7 @@ import {
     type Grupo,
     type Membro,
 } from "../../components/membros-store";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 type TabKey = "membros" | "grupos" | "cargos";
 
@@ -93,9 +94,9 @@ export function Membros() {
 
     return (
         <BackstageLayout showEventContext={false} activeProducer="equipe">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <header className="flex min-h-11 flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
-                    <h1 className="text-display-xs font-bold text-primary">Membros</h1>
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <header className="flex min-h-11 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <h1 className={TITULO_PAGINA}>Membros</h1>
                     <div className="flex min-h-11 items-center">
                         {tab === "membros" && (
                             <Button size="md" color="primary" iconLeading={Plus} onClick={() => setMembroModalOpen(true)}>
@@ -115,7 +116,7 @@ export function Membros() {
                     </div>
                 </header>
 
-                <main className="flex flex-1 flex-col gap-5 px-6 pb-10">
+                <main className="flex flex-1 flex-col gap-5">
                     <div className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
                         {/* Barra: tabs (esquerda) + [Remover · busca] (direita) */}
                         <div className="flex flex-col gap-3 border-b border-secondary p-4 md:flex-row md:items-center md:justify-between md:px-6">

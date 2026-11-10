@@ -67,12 +67,17 @@ const catalogIndex = (): Record<string, CartLine> => {
     return index;
 };
 
-const INDEX = catalogIndex();
+// Recalculado quando as sessões mudam (o catálogo vem do banco e muda com o evento em contexto).
+let indice: { de: typeof sessions; itens: Record<string, CartLine> } | null = null;
+const item = (id: string): CartLine | undefined => {
+    if (!indice || indice.de !== sessions) indice = { de: sessions, itens: catalogIndex() };
+    return indice.itens[id];
+};
 
 export function cartLines(cart: Cart): CartLine[] {
     return Object.entries(cart)
         .filter(([, quantity]) => quantity > 0)
-        .map(([id, quantity]) => ({ ...INDEX[id], quantity }))
+        .map(([id, quantity]) => ({ ...item(id)!, quantity }))
         .filter((line) => Boolean(line.id));
 }
 
@@ -85,7 +90,7 @@ export const cartTotal = (cart: Cart) => cartLines(cart).reduce((total, line) =>
 export const cartCount = (cart: Cart) => cartLines(cart).reduce((total, line) => total + line.quantity, 0);
 
 /** `true` quando o id é de ingresso; produto e combo não contam para o limite. */
-export const isTicket = (id: string) => INDEX[id]?.kind === "ingresso";
+export const isTicket = (id: string) => item(id)?.kind === "ingresso";
 
 /**
  * Só os ingressos. O limite do evento é por ingresso: produto e combo entram no

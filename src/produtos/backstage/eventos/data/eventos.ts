@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from "react";
 import eventCover from "@/assets/event-cover.png";
-import { alterarStatusEvento, montarEvento, type Evento as EventoBanco } from "@/plataforma";
+import { alterarStatusEvento, montarEvento, organizacaoDoEvento, type Evento as EventoBanco, type NovoEvento } from "@/plataforma";
 import { assinarBanco, lerBanco, salvar } from "@/plataforma/db";
+import { assinarOrganizacao, definirPadrao, organizacaoAtualId } from "../../organizacoes/data/organizacao-atual";
 
 /**
  * Eventos da organização.
@@ -68,7 +69,8 @@ export function comData<T extends { data: string }>(base: T) {
         weekday: capitalizar(fmt({ weekday: "short" })),
         day: fmt({ day: "2-digit" }),
         month: capitalizar(fmt({ month: "short" })),
-        dataLabel: `${fmt({ day: "2-digit", month: "long", year: "numeric" })} • ${fmt({ hour: "2-digit", minute: "2-digit" })}`,
+        // Data e hora numa frase do idioma ("20 de novembro de 2026 às 19:30"), sem símbolo separador (UI-TXT-010).
+        dataLabel: fmt({ dateStyle: "long", timeStyle: "short" }),
     };
 }
 
@@ -81,7 +83,7 @@ export const eventos: Evento[] = (
         cover: "https://kraken.ingresse.com/event/posters/103691/large/1787000382.8580675.jpg",
         status: "publicado",
         data: "2026-10-03T22:00:00",
-        local: "Mercado Pago Hall • São Paulo, SP",
+        local: "Mercado Pago Hall, São Paulo, SP",
     },
     {
         id: "2871",
@@ -90,7 +92,7 @@ export const eventos: Evento[] = (
         cover: "https://kraken.ingresse.com/event/posters/104600/large/1786025742.4637246.jpg",
         status: "publicado",
         data: "2026-10-17T22:00:00",
-        local: "Laroc Club • Valinhos, SP",
+        local: "Laroc Club, Valinhos, SP",
     },
     {
         id: "3390",
@@ -99,7 +101,7 @@ export const eventos: Evento[] = (
         cover: "https://kraken.ingresse.com/event/posters/108467/large/1790120499.9730182.jpg",
         status: "publicado",
         data: "2026-10-02T23:00:00",
-        local: "D-EDGE Rio • Rio de Janeiro, RJ",
+        local: "D-EDGE Rio, Rio de Janeiro, RJ",
     },
     {
         id: "5518",
@@ -108,7 +110,7 @@ export const eventos: Evento[] = (
         cover: "https://kraken.ingresse.com/event/posters/108847/large/1790802263.758427.jpg",
         status: "publicado",
         data: "2026-10-02T23:00:00",
-        local: "D-EDGE • Barra Funda, São Paulo, SP",
+        local: "D-EDGE, Barra Funda, São Paulo, SP",
     },
     {
         id: "4102",
@@ -117,7 +119,7 @@ export const eventos: Evento[] = (
         cover: "https://kraken.ingresse.com/event/posters/108445/large/1790030930.3048496.jpg",
         status: "rascunho",
         data: "2026-10-16T23:00:00",
-        local: "D-EDGE Rio • Rio de Janeiro, RJ",
+        local: "D-EDGE Rio, Rio de Janeiro, RJ",
     },
 ] satisfies Omit<Evento, "weekday" | "day" | "month" | "dataLabel">[]
 ).map(comData);
@@ -141,7 +143,8 @@ const doBanco = (e: EventoBanco): Evento =>
         cover: e.capa || eventCover,
         status: e.status,
         data: e.data,
-        local: e.cidade ? `${e.local} • ${e.cidade}` : e.local,
+        // Local e cidade separados por vírgula, como numa frase (UI-TXT-010).
+        local: e.cidade ? `${e.local}, ${e.cidade}` : e.local,
     });
 
 let currentId: string | null = null;
@@ -159,15 +162,36 @@ function espelhar() {
     if (modo === "carregando" || tabelas.eventos === espelhado) return;
     espelhado = tabelas.eventos;
     // Mais recentes primeiro: o evento recém-criado aparece no topo.
-    const lista = Object.values(tabelas.eventos)
-        .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm) || a.data.localeCompare(b.data))
-        .map(doBanco);
+    const todos = Object.values(tabelas.eventos).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm) || a.data.localeCompare(b.data));
+    if (todos.length === 0) return;
+    // Só os eventos da organização em contexto. Sem escolha (link direto no primeiro acesso), vale a
+    // organização do evento salvo ou do mais recente.
+    let orgId = organizacaoAtualId();
+    if (!orgId) {
+        const salvo = ler(STORAGE_KEY);
+        orgId = organizacaoDoEvento(todos.find((e) => e.id === salvo) ?? todos[0]);
+        definirPadrao(orgId);
+    }
+    const lista = todos.filter((e) => organizacaoDoEvento(e) === orgId).map(doBanco);
     if (lista.length === 0) return;
     eventos.splice(0, eventos.length, ...lista);
     avisar();
 }
+const ler = (chave: string) => {
+    try {
+        return window.localStorage.getItem(chave);
+    } catch {
+        return null;
+    }
+};
+
 if (typeof window !== "undefined") {
     assinarBanco(espelhar);
+    // Trocar de organização refaz a lista mesmo sem o banco mudar.
+    assinarOrganizacao(() => {
+        espelhado = null;
+        espelhar();
+    });
     espelhar();
 }
 
@@ -236,12 +260,31 @@ export interface NovoEventoInput {
     data: string;
     local: string;
     produtor: string;
+    /** Cidade em campo próprio. Sem ela, sai do Local pelo primeiro "·" ou "•" (EVT-12). */
+    cidade?: string;
+    /** Início de cada sessão (ISO). */
+    sessoes?: string[];
+    descricao?: string;
+    capa?: string;
+    extras?: NovoEvento["extras"];
 }
 
 /** Cria o evento no banco (em rascunho) e o deixa como evento em contexto. */
 export function criarEvento(input: NovoEventoInput): Evento {
-    const [local, cidade] = input.local.split(/\s*[·•]\s*/);
-    const novo = montarEvento({ nome: input.nome, produtora: input.produtor, local: local || input.local, cidade, data: toLocalIso(input.data) });
+    const [local, cidadeDoLocal] = input.cidade ? [input.local] : input.local.split(/\s*[·•]\s*/);
+    const cidade = input.cidade ?? cidadeDoLocal;
+    const novo = montarEvento({
+        nome: input.nome,
+        produtora: input.produtor,
+        organizacaoId: organizacaoAtualId() ?? undefined,
+        local: local || input.local,
+        cidade,
+        data: toLocalIso(input.data),
+        sessoes: input.sessoes?.map(toLocalIso),
+        descricao: input.descricao,
+        capa: input.capa,
+        extras: input.extras,
+    });
     void salvar("eventos", novo);
     espelhar();
     setEventoAtual(novo.id);

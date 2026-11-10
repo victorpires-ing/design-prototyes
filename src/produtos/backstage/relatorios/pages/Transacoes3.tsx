@@ -701,7 +701,7 @@ export function Transacoes3() {
         return (
             <BackstageLayout activeSection="relatorios" activeItem="transacoes">
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <main className="flex flex-1 flex-col gap-6 py-6 md:px-6">
+                    <main className="flex flex-1 flex-col gap-6">
                         <EditarPedidoPage
                             pedido={pedidoEmEdicao.pedido}
                             itens={pedidoEmEdicao.itens}
@@ -718,7 +718,7 @@ export function Transacoes3() {
         <BackstageLayout activeSection="relatorios" activeItem="transacoes">
             <RelatorioFiltersProvider fields={FILTER_FIELDS} initialDateRange={PERIODO_PADRAO}>
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <main className="flex flex-1 flex-col gap-6 py-6 md:px-6">
+                    <main className="flex flex-1 flex-col gap-6">
                         <RelatorioPageHeader title="Transações" />
                         <TransacoesBody
                             onAbrirEdicaoWizard={(pedido, itens) => setPedidoEmEdicao({ pedido, itens })}

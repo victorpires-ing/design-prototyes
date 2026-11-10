@@ -36,7 +36,11 @@ export interface ComboEntry {
 
 export const MAX_SELECTIONS = 10;
 
-export const SESSIONS: SessionSection[] = [
+/**
+ * Sessões disponíveis para cortesia. Começa com o exemplo e é trocada pelo catálogo do evento em
+ * contexto, vindo do banco (ver data/plataforma.ts). `let` exportado: quem importa vê a troca.
+ */
+export let SESSIONS: SessionSection[] = [
     {
         id: "session-1",
         datetime: "16 de agosto às 16:00",
@@ -122,6 +126,12 @@ export const SESSIONS: SessionSection[] = [
         ],
     },
 ];
+
+export function definirSessoes(novas: SessionSection[]) {
+    if (novas === SESSIONS) return;
+    SESSIONS = novas;
+    registry = null;
+}
 
 export const PRODUCTS: ProductEntry[] = [];
 

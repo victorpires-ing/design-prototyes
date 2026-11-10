@@ -23,6 +23,13 @@ Backstage, novo site, link de compra, checkout e carteiras usam **um banco só**
 
 Na Vercel o banco é compartilhado (Upstash Redis); no `npm run dev` ele fica no navegador.
 
+## Regras de cada feature
+
+Cada feature tem um `rules.md` na própria pasta: rotas, de onde vêm os dados, regras com ID,
+estados, o que afeta em outros produtos e o que está em aberto. Comece por
+[`src/produtos/backstage/rules.md`](src/produtos/backstage/rules.md), que vale para todo o
+Backstage e lista as features. Mudou a regra, muda o arquivo no mesmo commit.
+
 ## Rodando
 
 ```bash

@@ -9,6 +9,7 @@ import {
     Group as AriaGroup,
     type DateValue,
 } from "react-aria-components";
+import { Surgir } from "@/components/foundations/transicao";
 import { cx, sortCx } from "@/utils/cx";
 import { Tooltip, TooltipTrigger } from "../tooltip/tooltip";
 import { HintText } from "./hint-text";
@@ -251,11 +252,11 @@ export const InputDate = ({
                         }}
                     />
 
-                    {hint && (
+                    <Surgir visivel={!!hint} gap={6} className="w-full">
                         <HintText isInvalid={isInvalid} className={cx(size === "sm" && "text-xs")}>
                             {hint}
                         </HintText>
-                    )}
+                    </Surgir>
                 </>
             )}
         </AriaDateField>

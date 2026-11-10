@@ -17,20 +17,23 @@ import { ResumoPanel } from "../components/ResumoPanel";
 import { SkipIdentificationModal } from "../components/SkipIdentificationModal";
 import { cartCount, cartTicketCount, cartTotal, isTicket, type Cart } from "../data/carrinho";
 import { addPedido, createPedido } from "../data/pedidos-store";
+import { gravarVenda, linkDePagamento, useCatalogoDoBanco } from "../data/plataforma";
 import { gerarIngressosCsv, gerarIngressosPdf } from "../utils/gerar-ingressos";
 import type { Pedido } from "../data/pedidos";
 import { EVENTO, findBuyers, formatBRL, isEmail, isValidEmail, type Buyer } from "../data/catalogo";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 type Phase = "flow" | "processing" | "success";
 
 /** E-mail do operador logado — no protótipo é fixo. */
 const EMISSOR = "operacao@exemplo.com";
-const PAYMENT_LINK = "cart.ingresse.com/971c14dc-89ba-41dd-a469-cad4a1fde120";
 
 const STEP_TITLES = ["Comprador", "Itens", "Meio de pagamento"];
 
 export function VenderIngressos() {
     const navigate = useNavigate();
+    // Ingressos à venda vêm do catálogo do evento em contexto (banco unificado).
+    const { evento, sessoes } = useCatalogoDoBanco();
     const [phase, setPhase] = useState<Phase>("flow");
     const [step, setStep] = useState(0);
 
@@ -163,21 +166,30 @@ export function VenderIngressos() {
         (selectedMethod: PaymentMethod) => {
             setMethod(selectedMethod);
             setPhase("processing");
-            window.setTimeout(() => {
-                const novoPedido = createPedido({
-                    cart,
-                    buyer,
-                    fallbackEmail,
-                    tipo: selectedMethod,
-                    emissor: EMISSOR,
-                    paymentLink: PAYMENT_LINK,
+            const espera = new Promise((resolve) => window.setTimeout(resolve, 2200));
+            const eventoId = evento?.id ?? "";
+            Promise.all([gravarVenda({ eventoId, cart, buyer, fallbackEmail, tipo: selectedMethod }), espera])
+                .then(([noBanco]) => {
+                    const novoPedido = createPedido({
+                        id: noBanco.id,
+                        eventoId,
+                        cart,
+                        buyer,
+                        fallbackEmail,
+                        tipo: selectedMethod,
+                        emissor: EMISSOR,
+                        paymentLink: linkDePagamento(noBanco.id),
+                    });
+                    addPedido(novoPedido);
+                    setPedido(novoPedido);
+                    setPhase("success");
+                })
+                .catch(() => {
+                    toast.error("Não foi possível registrar a venda. Tente de novo.");
+                    setPhase("flow");
                 });
-                addPedido(novoPedido);
-                setPedido(novoPedido);
-                setPhase("success");
-            }, 2200);
         },
-        [cart, buyer, fallbackEmail],
+        [cart, buyer, fallbackEmail, evento?.id],
     );
 
     // Só o passo 1 volta para a lista; a tela de pedido emitido não tem "voltar".
@@ -199,17 +211,17 @@ export function VenderIngressos() {
 
     return (
         <BackstageLayout activeSection="bilheteria" activeItem="bilheteria-online">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <header className="relative flex items-center justify-between gap-3 px-4 py-6 max-md:justify-start md:px-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <header className="relative flex items-center justify-between gap-3 max-md:justify-start">
                     {phase === "flow" && (
                         <ButtonUtility size="sm" color="tertiary" icon={ArrowLeft} tooltip="Voltar" onClick={handleBack} />
                     )}
-                    <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary max-md:static max-md:translate-x-0">
+                    <h1 className={cx(TITULO_PAGINA, "pointer-events-none absolute left-1/2 -translate-x-1/2 md:whitespace-nowrap max-md:static max-md:translate-x-0")}>
                         Vender ingressos
                     </h1>
                 </header>
 
-                <main className="flex flex-1 flex-col items-center gap-6 px-4 pb-6 md:px-6">
+                <main className="flex flex-1 flex-col items-center gap-6">
                     {phase === "processing" && (
                         <div className="flex flex-1 flex-col items-center justify-center gap-4 py-24">
                             <LoadingIndicator type="dot-circle" size="md" />
@@ -226,7 +238,7 @@ export function VenderIngressos() {
                             channel={method === "link" ? "link" : "saldo"}
                             buyer={buyer}
                             fallbackEmail={fallbackEmail}
-                            paymentLink={PAYMENT_LINK}
+                            paymentLink={pedido?.paymentLink ?? ""}
                             onNewSale={() => {
                                 resetFlow();
                                 setPhase("flow");
@@ -282,7 +294,17 @@ export function VenderIngressos() {
                             )}
 
                             {/* gap-9: mesma distância que separa o event rail do conteúdo da página (gap-3 do shell + px-6 do main). */}
-                            {step === 1 && (
+                            {step === 1 && sessoes.length === 0 && (
+                                <div className="flex w-full max-w-[680px] flex-col items-center gap-2 py-16 text-center">
+                                    <p className="text-lg font-semibold text-primary">Nenhum ingresso à venda neste evento</p>
+                                    <p className="text-sm text-tertiary">Crie ingressos em Itens › Ingressos e deixe pelo menos um ativo.</p>
+                                    <Button size="md" color="secondary" className="mt-2" onClick={() => navigate("/backstage/catalogo/ingressos")}>
+                                        Ir para Ingressos
+                                    </Button>
+                                </div>
+                            )}
+
+                            {step === 1 && sessoes.length > 0 && (
                                 <div className="flex w-full max-w-[1024px] gap-9 max-md:pb-28">
                                     <ItemsStep
                                         cart={cart}

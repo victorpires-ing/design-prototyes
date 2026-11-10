@@ -29,6 +29,7 @@ import {
     type GrupoV2,
     type MembroV2,
 } from "../data/membros-v2-store";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 type TabKey = "membros" | "grupos";
 
@@ -54,15 +55,15 @@ export function MembrosV2() {
     return (
         <BackstageLayout showEventContext={false} activeProducer="membros-v2">
             <motion.div
-                className="flex min-w-0 flex-1 flex-col"
+                className="flex min-w-0 flex-1 flex-col gap-6"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.28, ease: "easeOut" }}
             >
-                <header className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-start sm:justify-between">
+                <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
-                            <h1 className="text-display-xs font-bold text-primary">Membros</h1>
+                            <h1 className={TITULO_PAGINA}>Membros</h1>
                             <Badge size="md" type="pill-color" color="brand">
                                 v2 · acesso por grupo
                             </Badge>
@@ -77,7 +78,7 @@ export function MembrosV2() {
                     </Button>
                 </header>
 
-                <main className="flex flex-1 flex-col gap-5 px-6 pb-10">
+                <main className="flex flex-1 flex-col gap-5">
                     <div className="overflow-hidden rounded-2xl bg-primary ring-1 ring-border-secondary">
                         <div className="flex flex-col gap-3 border-b border-secondary p-4 md:flex-row md:items-center md:justify-between md:px-6">
                             <Tabs selectedKey={tab} onSelectionChange={(key: Key) => { setTab(key as TabKey); setBusca(""); }} className="w-fit!">

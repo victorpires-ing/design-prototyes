@@ -47,6 +47,7 @@ import {
     type TipoOperacao,
     type Verbo,
 } from "../data/pos-compra-store";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const plural = (n: number, singular: string, varios: string) => `${n} ${n === 1 ? singular : varios}`;
 const tituloDaSessao = (sessao: Sessao) => `${sessao.dataLabel}, ${sessao.horaLabel.replace(":", "h")}`;
@@ -107,7 +108,7 @@ export function DetalhePedido() {
     if (!pedido) {
         return (
             <BackstageLayout showEventContext={false} activeProducer="pedidos">
-                <div className="flex min-w-0 flex-1 flex-col gap-4 p-6">
+                <div className="flex min-w-0 flex-1 flex-col gap-4">
                     <p className="text-sm text-tertiary">Pedido não encontrado.</p>
                     <div>
                         <Button size="md" color="secondary" iconLeading={ArrowLeft} onClick={() => navigate(voltarPara)}>
@@ -168,7 +169,7 @@ export function DetalhePedido() {
                                 caminho de volta e a tela inteira já dizem. Mostra a forma curta,
                                 que é por onde o pedido é chamado, e copia a completa, que é a que
                                 se cola em outro sistema. */}
-                            <h1 className="text-display-xs font-bold text-primary">{uuidCurto(pedido.id)}</h1>
+                            <h1 className={TITULO_PAGINA}>{uuidCurto(pedido.id)}</h1>
                             <CopiarIdDoPedido id={pedido.id} />
                         </div>
                         <AcoesDoPedido pedido={pedido} onAbrir={abrir} />

@@ -3,5 +3,6 @@ export * from "./modelo";
 export * from "./regras";
 export * from "./acoes";
 export * from "./sessao";
-export { lerBanco, lerColecao, lerDoc, remover, resetarBanco, salvar, useBanco, useColecao, useDoc, type ModoBanco } from "./db";
+export { assinarBanco, lerBanco, lerColecao, lerDoc, remover, resetarBanco, salvar, useBanco, useColecao, useDoc, type ModoBanco } from "./db";
 export * from "./carteira";
+export * from "./vendidos";

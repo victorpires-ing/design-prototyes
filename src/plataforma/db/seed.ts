@@ -1,6 +1,6 @@
 import { EVENTOS as EVENTOS_SITE } from "@/produtos/novo-site/home/data/events";
-import type { Evento, EventoStatus, Grupo, Sessao, Usuario } from "../modelo";
-import { slugificar } from "../regras";
+import type { Evento, EventoStatus, Grupo, HistoricoVendas, Organizacao, Sessao, Usuario } from "../modelo";
+import { idDaOrganizacao, siglaDe, slugificar } from "../regras";
 
 /* ------------------------------------------------------------------ */
 /*  Mundo inicial do banco                                             */
@@ -11,7 +11,7 @@ import { slugificar } from "../regras";
 /*  existem, então nada criado por alguém é sobrescrito.               */
 /* ------------------------------------------------------------------ */
 
-export const SEED_VERSAO = "2026-11-07.1";
+export const SEED_VERSAO = "2026-11-07.3";
 
 const CRIADO = "2026-11-07T12:00:00.000Z";
 
@@ -88,6 +88,7 @@ const evento = (e: Omit<Evento, "slug" | "criadoEm" | "atualizadoEm" | "taxaServ
     taxaServico: 0.1,
     ...e,
     slug: slugificar(e.nome),
+    organizacaoId: idDaOrganizacao(e.produtora),
     criadoEm: CRIADO,
     atualizadoEm: CRIADO,
 });
@@ -133,11 +134,121 @@ const eventosSite: Evento[] = EVENTOS_SITE.map((s) => {
     });
 });
 
+/* ------------------------------------------------------------------ */
+/*  Vendas anteriores ao gêmeo (coleção historico)                     */
+/*                                                                     */
+/*  Só os eventos publicados do Backstage têm passado, para o painel   */
+/*  da organização contar uma história. Determinístico: mesma seed,    */
+/*  mesmos números em qualquer aparelho.                               */
+/* ------------------------------------------------------------------ */
+
+function aleatorio(seed: number) {
+    return () => {
+        seed |= 0;
+        seed = (seed + 0x6d2b79f5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+interface PerfilVendas {
+    /** Fração do estoque já vendida. */
+    ocupacao: number;
+    /** Dias de venda até ontem. */
+    janela: number;
+    /** Ritmo da última semana contra a anterior (abaixo de 1 = desacelerando). */
+    ritmo: number;
+    /** Meta de faturamento como fração do faturamento máximo possível. */
+    meta: number;
+    bilheteria: number;
+    cortesias: number;
+    seed: number;
+}
+
+const PERFIS: Record<string, PerfilVendas> = {
+    "6704": { ocupacao: 0.63, janela: 120, ritmo: 1.18, meta: 0.85, bilheteria: 0.1, cortesias: 24, seed: 41 },
+    "2871": { ocupacao: 0.71, janela: 60, ritmo: 1.5, meta: 0.8, bilheteria: 0.05, cortesias: 18, seed: 7 },
+    "3390": { ocupacao: 0.34, janela: 45, ritmo: 0.6, meta: 0.75, bilheteria: 0.12, cortesias: 10, seed: 13 },
+    "5518": { ocupacao: 0.52, janela: 40, ritmo: 0.95, meta: 0.9, bilheteria: 0.08, cortesias: 12, seed: 29 },
+};
+
+function historicoDe(ev: Evento, p: PerfilVendas): HistoricoVendas {
+    const rand = aleatorio(p.seed);
+    const porLote: Record<string, number> = {};
+    let total = 0;
+    let face = 0;
+    let faceMaxima = 0;
+    for (const sessao of ev.sessoes)
+        for (const grupo of sessao.grupos)
+            for (const tipo of grupo.ingressos) {
+                const capacidade = tipo.lotes.reduce((t, l) => t + l.quantidade, 0);
+                let resta = Math.round(capacidade * p.ocupacao * (0.8 + rand() * 0.4));
+                for (const lote of tipo.lotes) {
+                    faceMaxima += lote.quantidade * lote.preco;
+                    const qtd = Math.min(lote.quantidade, resta);
+                    if (qtd > 0) porLote[lote.id] = qtd;
+                    resta -= qtd;
+                    total += qtd;
+                    face += qtd * lote.preco;
+                }
+            }
+
+    const cortesia = Math.min(p.cortesias, Math.round(total * 0.05));
+    const bilheteria = Math.round((total - cortesia) * p.bilheteria);
+    const pagos = total - cortesia;
+    const ticket = total ? face / total : 0;
+
+    // Curva de vendas: abre forte, cai no meio e acelera perto do evento; a última semana
+    // segue o ritmo do perfil contra a anterior.
+    const pesos = Array.from({ length: p.janela }, (_, d) => {
+        const x = d / Math.max(1, p.janela - 1);
+        const curva = 0.6 * Math.exp(-x * 6) + 0.25 + 0.9 * x * x;
+        const semana = d >= p.janela - 7 ? p.ritmo : 1;
+        return curva * semana * (0.75 + rand() * 0.5);
+    });
+    const soma = pesos.reduce((t, v) => t + v, 0);
+    let distribuidos = 0;
+    const serie = pesos.map((w, d): [number, number, number] => {
+        const ingressos = d === p.janela - 1 ? total - distribuidos : Math.round((total * w) / soma);
+        distribuidos += ingressos;
+        const pagosDia = Math.round(ingressos * (pagos / Math.max(1, total)));
+        return [ingressos, Math.round(ingressos * 0.07 * rand() * 2), Math.round(pagosDia * ticket)];
+    });
+
+    const pedidos = Math.round(pagos * 0.62);
+    return {
+        id: ev.id,
+        eventoId: ev.id,
+        meta: Math.round((faceMaxima * p.meta) / 1000) * 1000,
+        porLote,
+        porCanal: { online: pagos - bilheteria, bilheteria, cortesia },
+        pagamentos: [
+            { tipo: "Cartão de crédito", qtd: Math.round(pedidos * 0.64) },
+            { tipo: "Pix", qtd: Math.round(pedidos * 0.27) },
+            { tipo: "Dinheiro", qtd: Math.round(pedidos * 0.04) },
+            { tipo: "Cartão de débito", qtd: Math.round(pedidos * 0.05) },
+        ],
+        serie,
+    };
+}
+
+const historico: HistoricoVendas[] = eventosBackstage.filter((e) => PERFIS[e.id]).map((e) => historicoDe(e, PERFIS[e.id]));
+
 const usuarios: Usuario[] = [{ id: "u_demo", nome: "Victor Pires da Costa", email: "victor.demo@exemplo.com" }];
 
+/** Uma organização por produtora dos eventos da seed (o primeiro nome visto vence). */
+const organizacoes: Organizacao[] = [
+    ...new Map(
+        [...eventosBackstage, ...eventosSite].map((e) => [e.organizacaoId!, { id: e.organizacaoId!, nome: e.produtora, sigla: siglaDe(e.produtora), criadoEm: CRIADO }] as const).reverse(),
+    ).values(),
+];
+
 export const SEED = {
+    organizacoes,
     eventos: [...eventosBackstage, ...eventosSite],
     pedidos: [],
     ingressos: [],
     usuarios,
+    historico,
 };

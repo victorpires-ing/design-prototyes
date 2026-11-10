@@ -393,7 +393,7 @@ export function Transferencias() {
         <BackstageLayout activeSection="relatorios" activeItem="transferencias">
             <RelatorioFiltersProvider fields={FILTER_FIELDS}>
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                    <main className="flex flex-1 flex-col gap-6">
                         <TransferenciasBody />
                     </main>
                 </div>
@@ -533,7 +533,8 @@ const TransferCountBadge = ({ count }: { count: number }) => (
 /** Bloco "De"/"Para" em linha (avatar + label + nome). */
 const HolderInline = ({ label, name, emphasis = false }: { label: string; name: string; emphasis?: boolean }) => (
     <div className="flex min-w-0 flex-1 items-center gap-2.5">
-        <Avatar size="sm" initials={getInitials(name)} />
+        {/* Celular: sem avatar, o nome ganha o espaço. */}
+        <Avatar size="sm" initials={getInitials(name)} className="hidden sm:flex" />
         <div className="flex min-w-0 flex-col">
             <span className="text-sm text-tertiary">{label}</span>
             <span className={cx("truncate text-sm", emphasis ? "font-semibold text-primary" : "font-medium text-secondary")}>{name}</span>
@@ -562,17 +563,20 @@ const TransferenciaCard = ({
                 isSelected ? "bg-primary_hover ring-2 ring-brand" : "bg-primary ring-1 ring-border-secondary",
             )}
         >
-            {/* Código + selo de quantas vezes foi transferido */}
-            <div className="flex w-32 shrink-0 flex-col gap-1.5 sm:w-44">
-                <span className="truncate font-mono text-sm font-medium text-tertiary">{row.code}</span>
-                <TransferCountBadge count={count} />
-            </div>
+            {/* Celular: código e selo numa linha, o fluxo embaixo; sem espremer os nomes (UI-MOB-005). */}
+            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+                {/* Código + selo de quantas vezes foi transferido */}
+                <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 sm:w-44 sm:flex-col sm:items-start">
+                    <span className="truncate font-mono text-sm font-medium text-tertiary">{row.code}</span>
+                    <TransferCountBadge count={count} />
+                </div>
 
-            {/* Fluxo De → Para, na horizontal */}
-            <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
-                <HolderInline label="Comprador" name={row.portadorAnteriorNome} />
-                <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
-                <HolderInline label="Portador" name={row.portadorAtualNome} emphasis />
+                {/* Fluxo De → Para, na horizontal */}
+                <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+                    <HolderInline label="Comprador" name={row.portadorAnteriorNome} />
+                    <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-fg-quaternary" />
+                    <HolderInline label="Portador" name={row.portadorAtualNome} emphasis />
+                </div>
             </div>
 
             <ChevronRight

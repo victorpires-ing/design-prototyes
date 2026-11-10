@@ -11,6 +11,7 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
 import "../tema-cotas.css";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 /** Aplica o vermelho de marca do AfterDS (ver tema-cotas.css) a tudo o que estiver dentro. */
 export const TemaCotas = ({ children, className }: { children: ReactNode; className?: string }) => {
@@ -44,7 +45,7 @@ interface CabecalhoProps {
     alinhamento?: "centro" | "esquerda";
 }
 
-/** Altura do cabeçalho fixo (p-6 + botão de 44px + 1px de borda) — o que mais grudar no topo começa abaixo dele. */
+/** Altura do cabeçalho fixo (py-6 + botão de 44px + 1px de borda) — o que mais grudar no topo começa abaixo dele. */
 export const ALTURA_CABECALHO = 93;
 
 /**
@@ -64,14 +65,14 @@ export function CabecalhoCotas({ titulo, onVoltar, acao, alinhamento = "centro" 
     return (
         <header
             className={cx(
-                "sticky top-0 z-30 flex items-center gap-3 border-b bg-[var(--cotas-fundo-pagina)] p-6 transition-colors duration-200 ease-out",
+                "sticky top-0 z-30 -mx-4 -mt-6 flex items-center gap-3 border-b bg-[var(--cotas-fundo-pagina)] px-4 py-6 transition-colors duration-200 ease-out md:-mx-6 md:px-6",
                 rolou ? "border-secondary" : "border-transparent",
             )}
         >
             <ButtonUtility size="sm" color="secondary" icon={ChevronLeft} tooltip="Voltar" onClick={onVoltar} />
             <h1
                 className={cx(
-                    "text-display-xs font-bold text-primary",
+                    TITULO_PAGINA,
                     alinhamento === "centro" ? "pointer-events-none absolute inset-x-0 text-center" : "flex-1",
                 )}
             >

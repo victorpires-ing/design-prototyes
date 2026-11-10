@@ -63,7 +63,7 @@ export const Calendar = ({ highlightedDates, className, children, ...props }: Ca
                                         state.setFocusedDate(today(getLocalTimeZone()));
                                     }}
                                 >
-                                    Today
+                                    Hoje
                                 </Button>
                             </div>
                         )}

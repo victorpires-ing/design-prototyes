@@ -144,10 +144,10 @@ export function responder(pergunta: string, escopo: Escopo): Resposta {
         const sessoes = resumo.vendas.sessoes;
         const pior = [...sessoes].sort(
             (a, b) =>
-                (a.vendas.ingresse + a.vendas.parceiro + a.vendas.cortesia) / a.capacidade -
-                (b.vendas.ingresse + b.vendas.parceiro + b.vendas.cortesia) / b.capacidade,
+                (a.vendas.ingresse + a.vendas.bilheteria + a.vendas.cortesia) / a.capacidade -
+                (b.vendas.ingresse + b.vendas.bilheteria + b.vendas.cortesia) / b.capacidade,
         )[0];
-        const piorPct = (pior.vendas.ingresse + pior.vendas.parceiro + pior.vendas.cortesia) / pior.capacidade;
+        const piorPct = (pior.vendas.ingresse + pior.vendas.bilheteria + pior.vendas.cortesia) / pior.capacidade;
 
         return {
             titulo: "Ocupação por sessão",
@@ -155,7 +155,7 @@ export function responder(pergunta: string, escopo: Escopo): Resposta {
                 tipo: "rosca",
                 dados: sessoes.map((s, i) => ({
                     nome: s.nome,
-                    valor: (s.vendas.ingresse + s.vendas.parceiro + s.vendas.cortesia) / s.capacidade,
+                    valor: (s.vendas.ingresse + s.vendas.bilheteria + s.vendas.cortesia) / s.capacidade,
                     cor: CORES_ROSCA[i % CORES_ROSCA.length],
                 })),
             },
@@ -164,7 +164,7 @@ export function responder(pergunta: string, escopo: Escopo): Resposta {
         };
     }
 
-    if (resumo?.vendas && inclui(p, "canal", "parceiro", "cortesia")) {
+    if (resumo?.vendas && inclui(p, "canal", "bilheteria", "parceiro", "cortesia")) {
         const { porCanal } = resumo;
         return {
             titulo: "Ingressos por canal de venda",
@@ -173,11 +173,11 @@ export function responder(pergunta: string, escopo: Escopo): Resposta {
                 formato: "numero",
                 dados: [
                     { nome: "Ingresse", valor: porCanal.ingresse, ...GRADIENTES[1] },
-                    { nome: "Parceiro", valor: porCanal.parceiro, ...GRADIENTES[0] },
+                    { nome: "Bilheteria", valor: porCanal.bilheteria, ...GRADIENTES[0] },
                     { nome: "Cortesias", valor: porCanal.cortesia, ...GRADIENTES[2] },
                 ],
             },
-            insight: `De ${numero(resumo.vendidos)} ingressos, ${pctFmt(porCanal.ingresse / resumo.vendidos)} saíram pela Ingresse. Parceiros responderam por ${numero(porCanal.parceiro)} e ${numero(porCanal.cortesia)} foram cortesias.`,
+            insight: `De ${numero(resumo.vendidos)} ingressos, ${pctFmt(porCanal.ingresse / resumo.vendidos)} saíram pela Ingresse. A bilheteria vendeu ${numero(porCanal.bilheteria)} e ${numero(porCanal.cortesia)} foram cortesias.`,
         };
     }
 
@@ -243,7 +243,7 @@ export function responder(pergunta: string, escopo: Escopo): Resposta {
                 tipo: "lista",
                 itens: criticos.map((r) => ({
                     label: r.evento.nome,
-                    sub: `${r.evento.dataLabel} · ${r.variacaoRitmo <= -0.25 ? "ritmo em queda" : "meta em risco"}`,
+                    sub: `${r.evento.dataLabel}. ${r.variacaoRitmo <= -0.25 ? "Ritmo em queda." : "Meta em risco."}`,
                     valor: `${Math.round((r.projecao / r.meta) * 100)}%`,
                     cover: r.evento.cover,
                     eventoId: r.evento.id,
@@ -294,7 +294,7 @@ export function responder(pergunta: string, escopo: Escopo): Resposta {
                 tipo: "registros",
                 itens: Array.from({ length: 5 }, (_, i) => ({
                     titulo: "Itaú • Conta: **** 4821",
-                    sub: `Ag. 1234 · ${23 - i}/07/2026 às 14:32`,
+                    sub: `Agência 1234, ${23 - i}/07/2026 às 14:32`,
                     valor: "- R$ 2.644,00",
                     negativo: true,
                 })),

@@ -45,10 +45,19 @@ interface ChladniOptions {
     patterns: [number, number][];
     /** Dot size in CSS px. */
     dot: number;
+    /**
+     * `loop` (padrão): a figura muda sem parar, para carregamento.
+     * `forma`: a figura do primeiro par se forma a partir do ruído e para — textura de marca
+     * (marca.md, UI-VIS-012). Muda `chave` para formar de novo.
+     */
+    modo?: "loop" | "forma";
+    /** Quadros até a figura parar no modo `forma` (~60 por segundo). */
+    quadros?: number;
+    chave?: string | number;
 }
 
 /** Runs the Chladni simulation on a canvas for the lifetime of the mounted element. */
-function useChladni(canvasRef: RefObject<HTMLCanvasElement | null>, { count, patterns, dot }: ChladniOptions) {
+function useChladni(canvasRef: RefObject<HTMLCanvasElement | null>, { count, patterns, dot, modo = "loop", quadros = 80, chave }: ChladniOptions) {
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -91,7 +100,7 @@ function useChladni(canvasRef: RefObject<HTMLCanvasElement | null>, { count, pat
             return patterns[0];
         };
 
-        let [mT, nT] = pick(0, 0);
+        let [mT, nT] = modo === "forma" ? patterns[0] : pick(0, 0);
         let m = mT;
         let n = nT;
 
@@ -129,6 +138,20 @@ function useChladni(canvasRef: RefObject<HTMLCanvasElement | null>, { count, pat
             return;
         }
 
+        // Modo forma: o par fica fixo; a figura nasce do ruído e para quando assenta.
+        if (modo === "forma") {
+            let quadro = 0;
+            let raf = 0;
+            const formar = () => {
+                // Vários passos por quadro: a figura assenta em ~1 s, como no modo reduzido (600 passos).
+                for (let k = 0; k < 7; k++) stepParticles();
+                draw();
+                if (++quadro < quadros) raf = requestAnimationFrame(formar);
+            };
+            raf = requestAnimationFrame(formar);
+            return () => cancelAnimationFrame(raf);
+        }
+
         let dwell = 0;
         const DWELL = 12; // frames to hold a formed figure before morphing to the next
         let raf = 0;
@@ -158,7 +181,7 @@ function useChladni(canvasRef: RefObject<HTMLCanvasElement | null>, { count, pat
             cancelAnimationFrame(raf);
             ro.disconnect();
         };
-    }, [canvasRef, count, patterns, dot]);
+    }, [canvasRef, count, patterns, dot, modo, quadros, chave]);
 }
 
 const SIZES = {
@@ -190,7 +213,7 @@ export const CymaticsLoader = ({ size = "md", label, className }: CymaticsLoader
     );
 };
 
-interface CymaticsFillProps {
+interface CymaticsFillProps extends Pick<ChladniOptions, "modo" | "quadros" | "chave"> {
     /** Particle count — raise for larger surfaces. @default 7000 */
     count?: number;
     /** Dot size in CSS px. @default 1.25 */
@@ -204,9 +227,9 @@ interface CymaticsFillProps {
  * Cymatics that fills its parent box (any aspect ratio). Give the parent a defined size
  * (e.g. `relative` + a min-height) and drop this in as `absolute inset-0`.
  */
-export const CymaticsFill = ({ count = 7000, dot = 1.25, patterns = PATTERNS_RICH, className }: CymaticsFillProps) => {
+export const CymaticsFill = ({ count = 7000, dot = 1.25, patterns = PATTERNS_RICH, modo, quadros, chave, className }: CymaticsFillProps) => {
     const ref = useRef<HTMLCanvasElement>(null);
-    useChladni(ref, { count, dot, patterns });
+    useChladni(ref, { count, dot, patterns, modo, quadros, chave });
     return <canvas ref={ref} aria-hidden="true" className={cx("size-full text-fg-brand-primary", className)} />;
 };
 

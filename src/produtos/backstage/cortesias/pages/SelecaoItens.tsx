@@ -30,6 +30,7 @@ import {
     type SessionSection,
 } from "../data/cortesia-items";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const steps: ProgressFeaturedIconType[] = [
     {
@@ -144,13 +145,13 @@ export function SelecaoItens() {
 
     return (
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 <PageHeader
                     canAdvance={canAdvance}
                     onAdvance={handleAdvance}
                     onBack={() => navigate("/")}
                 />
-                <main className="flex flex-1 flex-col gap-8 px-6 py-6">
+                <main className="flex flex-1 flex-col gap-8">
                     <Progress.IconsWithText
                         items={steps}
                         size="sm"
@@ -263,9 +264,9 @@ interface PageHeaderProps {
 }
 
 const PageHeader = ({ canAdvance, onAdvance, onBack }: PageHeaderProps) => (
-    <header className="relative flex items-center justify-between gap-3 px-6 py-6">
+    <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
         <ButtonUtility size="sm" color="secondary" icon={ChevronLeft} tooltip="Voltar" onClick={onBack} />
-        <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary">
+        <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>
             Enviar cortesias
         </h1>
         <Button size="md" color="primary" isDisabled={!canAdvance} onClick={onAdvance}>

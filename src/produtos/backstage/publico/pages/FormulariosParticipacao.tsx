@@ -10,6 +10,7 @@ import { FormularioParticipacaoModal, type LimiteSolicitacoes } from "../compone
 import { adicionarFormulario, FORMULARIOS, type FormularioParticipacao } from "../data/formularios";
 import { SOLICITACOES } from "../data/solicitacoes";
 import thumbPadrao from "../components/assets/formulario-thumb.png";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 type StatusFormulario = "inativo" | "disponivel" | "pausado";
 
@@ -72,7 +73,7 @@ export function FormulariosParticipacao() {
 
     return (
         <BackstageLayout showEventContext={false} showLayoutSwitcher={false} activeProducer="publico">
-            <div className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <button
@@ -83,7 +84,7 @@ export function FormulariosParticipacao() {
                         >
                             <ChevronLeft className="size-5" aria-hidden="true" />
                         </button>
-                        <h1 className="text-display-xs font-bold text-primary">Formulário de participação</h1>
+                        <h1 className={TITULO_PAGINA}>Formulário de participação</h1>
                     </div>
                     <Button size="md" color="primary" iconLeading={Plus} onClick={() => setIsSelecionarEventoOpen(true)}>
                         Novo formulário

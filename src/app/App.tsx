@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Route, Routes } from 'react-router';
+import { Navigate, Route, Routes } from 'react-router';
 import { Toaster } from 'sonner';
 import { useTheme } from '../providers/theme-provider';
 import { ScenarioControls } from '../app/components/ui/ScenarioControls';
@@ -7,6 +7,7 @@ import { TicketPurchaseScreen } from '../app/components/TicketPurchaseScreen';
 import { ProductSelection } from '../app/components/ProductSelection';
 import { CymaticsShowcase } from '../app/components/CymaticsShowcase';
 import { CortesiasProvider } from '../produtos/backstage/cortesias/data/cortesias-store';
+import { SelecaoOrganizacao } from '../produtos/backstage/organizacoes/pages/SelecaoOrganizacao';
 import { RemixProvider } from '../produtos/backstage/components/remix/remix-context';
 import { EmissaoCortesias } from '../produtos/backstage/cortesias/pages/EmissaoCortesias';
 import { PermissaoEnvio } from '../produtos/backstage/permissao-envio/pages/PermissaoEnvio';
@@ -26,8 +27,8 @@ import { Transferencias } from '../produtos/backstage/relatorios/pages/Transfere
 import { VendasPorGrupo } from '../produtos/backstage/relatorios/pages/VendasPorGrupo';
 import { Questionarios } from '../produtos/backstage/relatorios/pages/Questionarios';
 import { RelatorioPersonalizado } from '../produtos/backstage/relatorios/pages/RelatorioPersonalizado';
-import { Home as BackstageHome } from '../produtos/backstage/home/pages/Home';
 import { Eventos as BackstageEventos } from '../produtos/backstage/eventos/pages/Eventos';
+import { CriarEvento as BackstageCriarEvento } from '../produtos/backstage/eventos/pages/CriarEvento';
 import { VisaoGeralEvento } from '../produtos/backstage/eventos/pages/VisaoGeralEvento';
 import { InformacoesEvento } from '../produtos/backstage/eventos/pages/InformacoesEvento';
 import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';
@@ -67,6 +68,16 @@ import { Ingressos as CatalogoIngressos } from '../produtos/backstage/ingressos/
 import { Formulario as IngressosFormulario } from '../produtos/backstage/ingressos/pages/Formulario';
 import { EditarGrupos } from '../produtos/backstage/ingressos/pages/EditarGrupos';
 import { AberturasDeVendas } from '../produtos/backstage/aberturas-de-vendas/pages/AberturasDeVendas';
+import { Questionario } from '../produtos/backstage/questionario/pages/Questionario';
+import { PerguntaDetalhe } from '../produtos/backstage/questionario/pages/PerguntaDetalhe';
+import { Ingressos as ItensIngressos } from '../produtos/backstage/itens/pages/Ingressos';
+import { IngressoDetalhe as ItensIngressoDetalhe } from '../produtos/backstage/itens/pages/IngressoDetalhe';
+import { Produtos as ItensProdutos } from '../produtos/backstage/itens/pages/Produtos';
+import { ProdutoDetalhe as ItensProdutoDetalhe } from '../produtos/backstage/itens/pages/ProdutoDetalhe';
+import { ProdutosDaOrganizacao } from '../produtos/backstage/produtos-organizacao/pages/ProdutosDaOrganizacao';
+import { ProdutoDaOrganizacaoDetalhe } from '../produtos/backstage/produtos-organizacao/pages/ProdutoDaOrganizacaoDetalhe';
+import { Combos as ItensCombos } from '../produtos/backstage/itens/pages/Combos';
+import { ComboDetalhe as ItensComboDetalhe } from '../produtos/backstage/itens/pages/ComboDetalhe';
 import { PerguntasProvider } from '../produtos/backstage/perguntas/data/perguntas-store';
 import { Perguntas } from '../produtos/backstage/perguntas/pages/Perguntas';
 import { PerguntaForm } from '../produtos/backstage/perguntas/pages/PerguntaForm';
@@ -233,8 +244,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<ProductSelection />} />
         <Route path="/loading" element={<CymaticsShowcase />} />
-        <Route path="/backstage" element={<BackstageHome />} />
+        <Route path="/backstage" element={<SelecaoOrganizacao />} />
         <Route path="/backstage/eventos" element={<BackstageEventos />} />
+        <Route path="/backstage/eventos/novo" element={<BackstageCriarEvento />} />
         <Route path="/backstage/evento/visao-geral" element={<VisaoGeralEvento />} />
         <Route path="/backstage/informacoes-evento" element={<InformacoesEvento />} />
         <Route path="/backstage/pedidos" element={<PedidosPosCompra />} />
@@ -288,11 +300,25 @@ export default function App() {
         <Route path="/backstage/marketing/chave-de-acesso" element={<ChaveDeAcesso />} />
         <Route path="/backstage/marketing/chave-de-acesso/vincular-itens" element={<VincularItens />} />
         <Route path="/backstage/marketing/chave-de-acesso/lista" element={<ListaChaves />} />
-        <Route path="/backstage/catalogo/itens" element={<CatalogoItens />} />
-        <Route path="/backstage/catalogo/ingressos" element={<CatalogoIngressos />} />
-        <Route path="/backstage/catalogo/ingressos/formulario" element={<IngressosFormulario />} />
-        <Route path="/backstage/catalogo/ingressos/editar-grupos" element={<EditarGrupos />} />
+        {/* Menu Itens novo (itens/): o item é o centro. As telas anteriores ficam em /backstage/catalogo-anterior/*. */}
+        <Route path="/backstage/catalogo/ingressos" element={<ItensIngressos />} />
+        <Route path="/backstage/catalogo/ingressos/:id" element={<ItensIngressoDetalhe />} />
+        <Route path="/backstage/catalogo/produtos" element={<ItensProdutos />} />
+        <Route path="/backstage/catalogo/produtos/:id" element={<ItensProdutoDetalhe />} />
+        <Route path="/backstage/catalogo/combos" element={<ItensCombos />} />
+        <Route path="/backstage/catalogo/combos/:id" element={<ItensComboDetalhe />} />
+        <Route path="/backstage/catalogo/agenda" element={<Navigate to="/backstage/catalogo/aberturas-de-vendas" replace />} />
+        <Route path="/backstage/catalogo/ingressos/editar-grupos" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
+        <Route path="/backstage/catalogo/ingressos/formulario" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
         <Route path="/backstage/catalogo/aberturas-de-vendas" element={<AberturasDeVendas />} />
+        <Route path="/backstage/catalogo/questionario" element={<Questionario />} />
+        <Route path="/backstage/catalogo/questionario/:id" element={<PerguntaDetalhe />} />
+        <Route path="/backstage/catalogo/itens" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
+        <Route path="/backstage/catalogo-anterior/ingressos" element={<CatalogoIngressos />} />
+        <Route path="/backstage/catalogo-anterior/editar-grupos" element={<EditarGrupos />} />
+        <Route path="/backstage/catalogo-anterior/formulario" element={<IngressosFormulario />} />
+        <Route path="/backstage/catalogo-anterior/aberturas-de-vendas" element={<Navigate to="/backstage/catalogo/aberturas-de-vendas" replace />} />
+        <Route path="/backstage/catalogo-anterior/itens" element={<CatalogoItens />} />
         <Route path="/backstage/perguntas" element={<Perguntas />} />
         <Route path="/backstage/perguntas/nova" element={<PerguntaForm />} />
         <Route path="/backstage/perguntas/:id/editar" element={<PerguntaForm />} />
@@ -412,6 +438,8 @@ export default function App() {
         <Route path="/revenda/:slug" element={<RevendaEvento />} />
         <Route path="/aprovacoes/solicitacoes" element={<SolicitacoesInbox />} />
         <Route path="/backstage/publico" element={<Publico />} />
+        <Route path="/backstage/produtos" element={<ProdutosDaOrganizacao />} />
+        <Route path="/backstage/produtos/:id" element={<ProdutoDaOrganizacaoDetalhe />} />
         <Route path="/backstage/publico/formularios" element={<FormulariosParticipacao />} />
         <Route path="/backstage/publico/solicitacoes" element={<SolicitacoesParticipacao />} />
         <Route path="/backstage/marketing/pre-venda" element={<PreVenda />} />

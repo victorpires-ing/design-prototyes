@@ -9,7 +9,7 @@ export function SocioDemografico() {
         <BackstageLayout activeSection="relatorios" activeItem="socio-demografico">
             <RelatorioFiltersProvider sessoes={EVENT.sessoes}>
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                    <main className="flex flex-1 flex-col gap-6">
                         <RelatorioPageHeader title="Sócio-demográfico" withFilters={false} actions={<ExportMenu />} />
                         <DemografiaMetrics />
                         <GeografiaSecoes />

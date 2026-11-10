@@ -9,6 +9,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { BackstageLayout } from "../../components/Backstage";
 import { TIPO_RESPOSTA, type TipoResposta } from "../data/perguntas";
 import { usePerguntas } from "../data/perguntas-store";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const TIPO_ITEMS = (Object.keys(TIPO_RESPOSTA) as TipoResposta[]).map((id) => ({
     id,
@@ -48,8 +49,8 @@ export function PerguntaForm() {
 
     return (
         <BackstageLayout activeProducer="perguntas" showEventContext={false}>
-        <div className="flex min-w-0 flex-1 flex-col">
-            <header className="flex items-center gap-3 py-2 md:px-6 md:py-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-6">
+            <header className="flex items-center gap-3">
                 <button
                     type="button"
                     onClick={() => navigate("/backstage/perguntas")}
@@ -58,7 +59,7 @@ export function PerguntaForm() {
                 >
                     <ChevronLeft className="size-5" />
                 </button>
-                <h1 className="text-xl font-semibold text-primary">
+                <h1 className={TITULO_PAGINA}>
                     {isEditing ? "Editar pergunta" : "Nova pergunta"}
                 </h1>
 
@@ -73,7 +74,7 @@ export function PerguntaForm() {
                 </Button>
             </header>
 
-            <main className="flex flex-1 flex-col items-center gap-6 py-4 pb-10 md:px-6">
+            <main className="flex flex-1 flex-col items-center gap-6">
                 {emUso && (
                     <div className="flex w-full max-w-2xl items-center gap-3.5 rounded-2xl bg-secondary p-4 ring-1 ring-border-secondary">
                         <FeaturedIcon icon={InfoCircle} color="warning" theme="light" size="md" />

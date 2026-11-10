@@ -9,11 +9,13 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { RelatorioFiltersProvider, dateRangeFraction, inDateRange, useRelatorioFilters } from "../components/relatorio-filters";
+import { DetalhesDaLinha, ListaDaTabela, linhaQueAbre, useLinhaAberta } from "../components/TabelaLista";
+import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { SortableHeader } from "../components/SortableHeader";
 import { TransacionadoChartCard, type ChartPoint } from "../components/TransacionadoChart";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
-import { consultarPeriodo, GRUPOS, PERIODO_PADRAO } from "@/reports/event-dataset";
+import { useDatasetDoEvento } from "../data/vendas-banco";
 
 /* ------------------------------------------------------------------ */
 /*  Tipos                                                             */
@@ -468,11 +470,12 @@ const scaleTree = (nodes: TreeNode[], f: number): TreeNode[] =>
 /* ------------------------------------------------------------------ */
 
 export function VendasPorGrupo() {
+    const { periodoPadrao } = useDatasetDoEvento();
     return (
         <BackstageLayout activeSection="relatorios" activeItem="vendas-por-grupo">
-            <RelatorioFiltersProvider initialDateRange={PERIODO_PADRAO}>
+            <RelatorioFiltersProvider initialDateRange={periodoPadrao}>
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <main className="flex flex-1 flex-col gap-6 py-6 md:px-6 pb-10">
+                    <main className="flex flex-1 flex-col gap-6">
                         <RelatorioPageHeader title="Vendas" filter="period" />
                         <VendasBody />
                     </main>
@@ -484,10 +487,12 @@ export function VendasPorGrupo() {
 
 const VendasBody = () => {
     const { dateRange } = useRelatorioFilters();
+    // Vendas do evento em contexto, do banco unificado (histórico + pedidos pagos).
+    const { consultar, grupos: GRUPOS } = useDatasetDoEvento();
 
     const view = useMemo(() => {
-        // Fonte única: dataset do evento (src/reports) agregado pelo período.
-        const ds = consultarPeriodo(dateRange);
+        // Fonte única: dataset do evento em contexto (banco unificado) agregado pelo período.
+        const ds = consultar(dateRange);
         const f = ds.evento.fracaoPeriodoSelecionado || 0;
         const slug = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
         const capOf = (nome: string) => GRUPOS.find((g) => g.nome === nome)?.capacidade ?? 0;
@@ -564,7 +569,7 @@ const VendasBody = () => {
             totalItens: ds.totais.itensVendidos,
             chartData,
         };
-    }, [dateRange]);
+    }, [dateRange, consultar, GRUPOS]);
 
     return (
         <>
@@ -1024,6 +1029,8 @@ interface OcuGrupo {
 
 const OcupacaoPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[] }) => {
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    const celular = !useBreakpoint("md");
+    const linha = useLinhaAberta<{ titulo: string; apoio: string; estoque: number; ingressos: number }>();
 
     const grupos = useMemo<OcuGrupo[]>(() => {
         const gMap = new Map<string, { grupo: string; itens: Map<string, OcuLote[]> }>();
@@ -1142,7 +1149,11 @@ const OcupacaoPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[] }) => {
                                                     </tr>
                                                     {iExp &&
                                                         item.lotes.map((lote) => (
-                                                            <tr key={lote.id} className="border-b border-secondary bg-secondary/60">
+                                                            <tr
+                                                                key={lote.id}
+                                                                {...linhaQueAbre(celular, () => linha.abrir({ titulo: lote.lote, apoio: `${grupo.grupo} · ${item.item}`, estoque: lote.estoque, ingressos: lote.ingressos }))}
+                                                                className={cx("border-b border-secondary bg-secondary/60", celular && "hover:bg-primary_hover")}
+                                                            >
                                                                 <td className="py-3 pr-4 text-sm text-tertiary" style={{ paddingLeft: 64 }}>
                                                                     <span className="line-clamp-2">{lote.lote}</span>
                                                                 </td>
@@ -1162,6 +1173,22 @@ const OcupacaoPorSetorCard = ({ rows }: { rows: IngressoPorSetorRow[] }) => {
                     </tbody>
                 </table>
             </div>
+            {linha.aberta && (
+                <DetalhesDaLinha
+                    titulo={linha.aberta.titulo}
+                    subtitulo={linha.aberta.apoio}
+                    grupos={[
+                        {
+                            campos: [
+                                { rotulo: "Estoque", valor: numberFormatter.format(linha.aberta.estoque) },
+                                { rotulo: "Ingressos", valor: numberFormatter.format(linha.aberta.ingressos) },
+                                { rotulo: "Ocupação", valor: `${linha.aberta.estoque ? Math.round((linha.aberta.ingressos / linha.aberta.estoque) * 100) : 0}%` },
+                            ],
+                        },
+                    ]}
+                    onFechar={linha.fechar}
+                />
+            )}
         </Card>
     );
 };
@@ -1234,6 +1261,8 @@ interface TAGrupo {
 
 const TicketsAvulsoCard = ({ rows }: { rows: IngressoPorSetorRow[] }) => {
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    const celular = !useBreakpoint("md");
+    const linha = useLinhaAberta<{ titulo: string; apoio: string; r: TALote }>();
 
     const grupos = useMemo<TAGrupo[]>(() => {
         const gMap = new Map<string, { grupo: string; itens: Map<string, TALote[]> }>();
@@ -1372,7 +1401,11 @@ const TicketsAvulsoCard = ({ rows }: { rows: IngressoPorSetorRow[] }) => {
                                                     </tr>
                                                     {iExp &&
                                                         item.lotes.map((lote) => (
-                                                            <tr key={lote.id} className="border-b border-secondary bg-secondary/60">
+                                                            <tr
+                                                                key={lote.id}
+                                                                {...linhaQueAbre(celular, () => linha.abrir({ titulo: lote.lote, apoio: `${grupo.grupo} · ${item.item}`, r: lote }))}
+                                                                className={cx("border-b border-secondary bg-secondary/60", celular && "hover:bg-primary_hover")}
+                                                            >
                                                                 <td className="py-3 pr-4 text-sm text-tertiary" style={{ paddingLeft: 64 }}>
                                                                     <span className="line-clamp-2">{lote.lote}</span>
                                                                 </td>
@@ -1400,6 +1433,7 @@ const TicketsAvulsoCard = ({ rows }: { rows: IngressoPorSetorRow[] }) => {
                     </tbody>
                 </table>
             </div>
+            {linha.aberta && <DetalhesDaLinha titulo={linha.aberta.titulo} subtitulo={linha.aberta.apoio} grupos={[{ campos: camposDeValor(linha.aberta.r) }]} onFechar={linha.fechar} />}
         </Card>
     );
 };
@@ -1408,8 +1442,20 @@ const TicketsAvulsoCard = ({ rows }: { rows: IngressoPorSetorRow[] }) => {
 /*  Combo                                                             */
 /* ------------------------------------------------------------------ */
 
+/** Campos de valor comuns a combo, lote de combo e produto, para os detalhes no celular. */
+const camposDeValor = (r: { quantidade: number; valorUnitario: number; gmv: number; gmvComDesconto: number }) => [
+    { rotulo: "Quantidade", valor: numberFormatter.format(r.quantidade) },
+    { rotulo: "Valor unitário médio", valor: currencyFormatter.format(r.valorUnitario) },
+    { rotulo: "Valor total bruto", valor: currencyFormatter.format(r.gmv) },
+    { rotulo: "Desconto", valor: currencyFormatter.format(r.gmv - r.gmvComDesconto) },
+    { rotulo: "Valor total c/ desconto", valor: currencyFormatter.format(r.gmvComDesconto) },
+];
+
 const ComboCard = ({ rows }: { rows: ComboRow[] }) => {
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    // Celular: o grupo abre pela linha; a linha do lote abre os detalhes com as colunas escondidas (UI-MOB-005).
+    const celular = !useBreakpoint("md");
+    const linha = useLinhaAberta<{ titulo: string; apoio: string; r: ComboLoteRow }>();
     const accessors = useMemo(() => ({ desconto: (r: ComboRow) => r.gmv - r.gmvComDesconto }), []);
     const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(
         rows as unknown as Record<string, unknown>[],
@@ -1445,7 +1491,7 @@ const ComboCard = ({ rows }: { rows: ComboRow[] }) => {
                             <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell"><SortableHeader label="Valor unitário médio" align="right" sortKey="valorUnitario" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell"><SortableHeader label="Valor total bruto" align="right" sortKey="gmv" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                             <th className="hidden whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary md:table-cell"><SortableHeader label="Desconto" align="right" sortKey="desconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
-                            <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-tertiary"><SortableHeader label="Valor total c/ desconto" align="right" sortKey="gmvComDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
+                            <th className="px-4 py-3 text-right text-sm font-semibold text-tertiary md:whitespace-nowrap"><SortableHeader label="Valor total c/ desconto" align="right" sortKey="gmvComDesconto" activeKey={sortKey} dir={sortDir} onSort={toggleSort} /></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1470,7 +1516,10 @@ const ComboCard = ({ rows }: { rows: ComboRow[] }) => {
                                         <td className="py-3.5 pr-4 text-sm" style={{ paddingLeft: 16 }}>
                                             <span className="flex items-center gap-2">
                                                 <ChevronDown aria-hidden="true" className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", isExpanded && "rotate-180")} />
-                                                <span className="line-clamp-2 font-bold text-primary">{row.nome}</span>
+                                                <span className="flex min-w-0 flex-col">
+                                                    <span className="line-clamp-2 font-bold text-primary">{row.nome}</span>
+                                                    <span className="text-sm text-tertiary tabular-nums md:hidden">{numberFormatter.format(row.quantidade)} vendidos</span>
+                                                </span>
                                             </span>
                                         </td>
                                         <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-semibold text-primary md:table-cell">{numberFormatter.format(row.quantidade)}</td>
@@ -1481,7 +1530,11 @@ const ComboCard = ({ rows }: { rows: ComboRow[] }) => {
                                     </tr>
                                     {isExpanded &&
                                         lotes.map((lote) => (
-                                            <tr key={lote.id} className="border-b border-secondary bg-secondary/60">
+                                            <tr
+                                                key={lote.id}
+                                                {...linhaQueAbre(celular, () => linha.abrir({ titulo: lote.lote, apoio: row.nome, r: lote }))}
+                                                className={cx("border-b border-secondary bg-secondary/60", celular && "hover:bg-primary_hover")}
+                                            >
                                                 <td className="py-3 pr-4 text-sm text-tertiary" style={{ paddingLeft: 40 }}>
                                                     <span className="line-clamp-2">{lote.lote}</span>
                                                 </td>
@@ -1498,6 +1551,7 @@ const ComboCard = ({ rows }: { rows: ComboRow[] }) => {
                     </tbody>
                 </table>
             </div>
+            {linha.aberta && <DetalhesDaLinha titulo={linha.aberta.titulo} subtitulo={linha.aberta.apoio} grupos={[{ campos: camposDeValor(linha.aberta.r) }]} onFechar={linha.fechar} />}
         </Card>
     );
 };
@@ -1514,9 +1568,21 @@ const ProdutosCard = ({ rows }: { rows: ProdutoRow[] }) => {
         { key: "gmv", dir: "desc" },
     );
     const sortedRows = sorted as unknown as ProdutoRow[];
+    const linha = useLinhaAberta<ProdutoRow>();
     return (
         <Card title="Produtos">
-            <div className="overflow-x-auto overflow-y-clip">
+            {/* Celular: tabela-lista; o toque abre todas as colunas (UI-MOB-005). */}
+            <ListaDaTabela
+                rotulo="Produtos"
+                itens={sortedRows}
+                chave={(r) => r.id}
+                titulo={(r) => r.nome}
+                apoio={(r) => `${numberFormatter.format(r.quantidade)} vendidos`}
+                destaque={(r) => <span className="font-medium">{currencyFormatter.format(r.gmvComDesconto)}</span>}
+                onAbrir={linha.abrir}
+            />
+            {linha.aberta && <DetalhesDaLinha titulo={linha.aberta.nome} grupos={[{ campos: camposDeValor(linha.aberta) }]} onFechar={linha.fechar} />}
+            <div className="hidden overflow-x-auto overflow-y-clip md:block">
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">
@@ -1557,10 +1623,36 @@ const IngressosComCupomCard = ({ cupons: cuponsView }: { cupons: CupomRow[] }) =
     );
     const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(cuponsView as unknown as Record<string, unknown>[], accessors as Partial<Record<string, (r: Record<string, unknown>) => string | number>>, { key: "quantidade", dir: "desc" });
     const sortedCupons = sorted as unknown as CupomRow[];
+    const linha = useLinhaAberta<CupomRow>();
 
     return (
         <Card title="Quantidade de ingressos com cupom">
-            <div className="overflow-x-auto overflow-y-clip">
+            <ListaDaTabela
+                rotulo="Ingressos com cupom"
+                itens={sortedCupons}
+                chave={(r) => r.id}
+                titulo={(r) => r.cupom}
+                apoio={(r) => `${numberFormatter.format(r.quantidade)} ingressos`}
+                destaque={(r) => <span className="font-medium">{currencyFormatter.format(r.valorTotal)}</span>}
+                onAbrir={linha.abrir}
+            />
+            {linha.aberta && (
+                <DetalhesDaLinha
+                    titulo={linha.aberta.cupom}
+                    grupos={[
+                        {
+                            campos: [
+                                { rotulo: "Quantidade", valor: numberFormatter.format(linha.aberta.quantidade) },
+                                { rotulo: "Valor", valor: currencyFormatter.format(linha.aberta.valor) },
+                                { rotulo: "Valor do desconto", valor: currencyFormatter.format(linha.aberta.valorDesconto) },
+                                { rotulo: "Valor total", valor: currencyFormatter.format(linha.aberta.valorTotal) },
+                            ],
+                        },
+                    ]}
+                    onFechar={linha.fechar}
+                />
+            )}
+            <div className="hidden overflow-x-auto overflow-y-clip md:block">
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">

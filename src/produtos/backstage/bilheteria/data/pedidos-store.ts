@@ -1,16 +1,21 @@
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
+import { useColecao } from "@/plataforma";
+import { useEventoAtual } from "../../eventos/data/eventos";
 import { cartLines, cartTotal, type Cart } from "./carrinho";
 import type { Buyer } from "./catalogo";
-import { pedidos as PEDIDOS_EXEMPLO, type Pedido, type PedidoItem, type PedidoTipo } from "./pedidos";
+import type { Pedido, PedidoItem, PedidoTipo } from "./pedidos";
+import { cancelarNoBanco, statusDoBanco } from "./plataforma";
 
 /**
- * Persistência local dos pedidos da bilheteria.
+ * Pedidos da bilheteria.
  *
- * O protótipo guarda as vendas em `localStorage` para que o fluxo completo
- * (empty state → venda → lista → cancelar/reenviar) possa ser testado sem backend.
+ * A venda é gravada no banco unificado (pedido no canal bilheteria, ver data/plataforma.ts).
+ * Aqui fica só o que é da tela de gestão e o banco não guarda: tipo de cobrança, quem emitiu,
+ * link, reenvios. O status vem do banco: pagar pelo link aprova, cancelar devolve o estoque.
+ * "Expirado" ainda é só local (o banco não expira link).
  */
 
-const STORAGE_KEY = "bilheteria-pedidos";
+const STORAGE_KEY = "bilheteria-pedidos:v2";
 const EMPTY: Pedido[] = [];
 
 let cache: Pedido[] | null = null;
@@ -21,14 +26,9 @@ function read(): Pedido[] {
     if (typeof window === "undefined") return EMPTY;
     try {
         const raw = window.localStorage.getItem(STORAGE_KEY);
-        /*
-          Sem nada salvo, a gestão nasce com o histórico de exemplo: é onde os
-          estados que a venda não produz sozinha — expirado, cancelado — podem
-          ser vistos. Para cair no estado vazio, limpe a chave `bilheteria-pedidos`.
-        */
-        cache = raw ? (JSON.parse(raw) as Pedido[]) : PEDIDOS_EXEMPLO;
+        cache = raw ? (JSON.parse(raw) as Pedido[]) : EMPTY;
     } catch {
-        cache = PEDIDOS_EXEMPLO;
+        cache = EMPTY;
     }
     return cache;
 }
@@ -50,9 +50,22 @@ function subscribe(listener: () => void) {
     };
 }
 
-/** Lista reativa dos pedidos salvos, do mais recente para o mais antigo. */
+/** Pedidos do evento em contexto, do mais recente para o mais antigo, com o status do banco. */
 export function usePedidos(): Pedido[] {
-    return useSyncExternalStore(subscribe, read, () => EMPTY);
+    const locais = useSyncExternalStore(subscribe, read, () => EMPTY);
+    const evento = useEventoAtual();
+    const doBanco = useColecao("pedidos");
+    return useMemo(() => {
+        const porId = new Map(doBanco.map((p) => [p.id, p]));
+        return locais
+            .filter((p) => p.eventoId === evento.id)
+            .map((p) => {
+                const banco = porId.get(p.id);
+                const status = statusDoBanco(banco);
+                // Expirado só existe aqui; o banco manda nos demais.
+                return status && p.status !== "expirado" ? { ...p, status, valor: banco!.total } : p;
+            });
+    }, [locais, evento.id, doBanco]);
 }
 
 export function addPedido(pedido: Pedido) {
@@ -60,6 +73,7 @@ export function addPedido(pedido: Pedido) {
 }
 
 export function cancelPedidos(ids: string[]) {
+    void cancelarNoBanco(ids);
     const target = new Set(ids);
     write(read().map((pedido) => (target.has(pedido.id) ? { ...pedido, status: "cancelado" } : pedido)));
 }
@@ -94,12 +108,10 @@ const isoDate = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1
 /** Taxa de serviço aplicada sobre o subtotal — espelha a do passo 3. */
 const SERVICE_FEE_RATE = 0.1;
 
-const randomId = () => {
-    if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-    return `pedido-${Math.random().toString(16).slice(2)}`;
-};
-
 interface CreatePedidoInput {
+    /** Id do pedido já gravado no banco. */
+    id: string;
+    eventoId: string;
     cart: Cart;
     buyer: Buyer | null;
     /** E-mail informado quando a conta não foi encontrada. */
@@ -116,7 +128,7 @@ interface CreatePedidoInput {
  */
 export const EMAIL_TESTE_EXPIRADO = "expirado@mail.com";
 
-export function createPedido({ cart, buyer, fallbackEmail, tipo, emissor, paymentLink }: CreatePedidoInput): Pedido {
+export function createPedido({ id, eventoId, cart, buyer, fallbackEmail, tipo, emissor, paymentLink }: CreatePedidoInput): Pedido {
     const lines = cartLines(cart);
     const subtotal = cartTotal(cart);
     const now = new Date();
@@ -137,7 +149,8 @@ export function createPedido({ cart, buyer, fallbackEmail, tipo, emissor, paymen
     const testeExpirado = destinatario.trim().toLowerCase() === EMAIL_TESTE_EXPIRADO;
 
     return {
-        id: randomId(),
+        id,
+        eventoId,
         // Link de pagamento nasce pendente; sem cobrança do comprador já é aprovado.
         status: testeExpirado ? "expirado" : tipo === "link" ? "pendente" : "aprovado",
         tipo,
@@ -148,7 +161,7 @@ export function createPedido({ cart, buyer, fallbackEmail, tipo, emissor, paymen
         destinatario,
         dataVenda: isoDate(now),
         dataVendaLabel: formatDate(now),
-        valor: subtotal * (1 + SERVICE_FEE_RATE),
+        valor: tipo === "saldo" ? 0 : subtotal * (1 + SERVICE_FEE_RATE),
         paymentLink,
         itens,
         // Sem conta, o ingresso só chega na carteira depois do cadastro.

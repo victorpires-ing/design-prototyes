@@ -7,6 +7,7 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 interface GrupoRow {
     id: string;
@@ -152,7 +153,7 @@ export function EditarGrupos() {
 
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-ingressos">
-            <div className="flex min-w-0 flex-1 flex-col px-4 py-6 md:px-6">
+            <div className="flex min-w-0 flex-1 flex-col">
                 {/* Header */}
                 <header className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -164,7 +165,7 @@ export function EditarGrupos() {
                         >
                             <ChevronLeft className="size-5" />
                         </button>
-                        <h1 className="text-display-xs font-bold text-primary">Editar grupos</h1>
+                        <h1 className={TITULO_PAGINA}>Editar grupos</h1>
                     </div>
                     <Button size="md" color="primary">
                         Salvar alterações

@@ -143,7 +143,7 @@ export function CriarGrupoV2() {
 
     return (
         <BackstageLayout activeSection="equipe-de-operacao" activeItem="grupos-operacao">
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 <WizardHeader
                     title={emEdicao ? "Editar grupo" : "Criar grupo"}
                     onBack={voltar}
@@ -159,7 +159,7 @@ export function CriarGrupoV2() {
                     onAction={!emWizard || step === 0 ? undefined : avancar}
                 />
 
-                <main className="flex flex-1 flex-col items-center gap-8 px-6 pb-10">
+                <main className="flex flex-1 flex-col items-center gap-8">
                     {!emWizard ? (
                         <section className="w-full max-w-3xl">
                             <PermissoesSelector

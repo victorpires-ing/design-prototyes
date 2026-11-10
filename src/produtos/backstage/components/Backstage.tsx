@@ -1,14 +1,14 @@
-import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type ReactNode } from "react";
-import { useNavigate } from "react-router";
-import { MenuItem as AriaMenuItem, type Key } from "react-aria-components";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type FC, type ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router";
+import { Button as AriaButton, MenuItem as AriaMenuItem, type Key } from "react-aria-components";
 import {
     Announcement01,
-    Bank,
-    Calendar,
     ChevronDown,
+    ChevronRight,
+    ChevronSelectorVertical,
+    DotsGrid,
     ClipboardCheck,
     CoinsHand,
-    Eye,
     File03,
     Globe01,
     InfoCircle,
@@ -16,18 +16,17 @@ import {
     LayoutTop,
     LogOut01,
     Menu02,
-    Package,
-    Settings01,
+    Moon01,
     Settings03,
     ShoppingCart01,
+    Sun,
     Ticket01,
-    Users01,
     UsersPlus,
     XClose,
 } from "@untitledui/icons";
+import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { NavButton } from "@/components/application/app-navigation/base-components/nav-button";
 import { TreeView } from "@/components/application/tree-view/tree-view";
@@ -47,7 +46,7 @@ const BrandLogo = ({ className }: { className?: string }) => {
     return (
         <button
             type="button"
-            onClick={() => navigate("/backstage")}
+            onClick={() => navigate("/backstage/eventos")}
             aria-label="Ir para a home do Backstage"
             className="-mx-1 -my-1.5 flex shrink-0 items-center rounded-md px-1 py-3 transition-opacity duration-100 ease-linear hover:opacity-80"
         >
@@ -56,6 +55,10 @@ const BrandLogo = ({ className }: { className?: string }) => {
         </button>
     );
 };
+import { ICONES_ORGANIZACAO } from "./icones-organizacao";
+import { abrirSeletorDeOrganizacao, SeletorOrganizacaoModal } from "../organizacoes/components/SeletorOrganizacaoModal";
+import { useOrganizacaoAtual } from "../organizacoes/data/organizacao-atual";
+import { useTheme } from "@/providers/theme-provider";
 import { ThemeToggle } from "./ThemeToggle";
 import { RemixDock } from "./remix/RemixShell";
 
@@ -83,6 +86,7 @@ export type BackstageItem =
     | "catalogo-combos"
     | "catalogo-produtos"
     | "catalogo-aberturas"
+    | "catalogo-questionario"
     | "emissao-cortesias"
     | "bilheteria-online"
     | "grupos-operacao"
@@ -99,7 +103,7 @@ export type BackstageItem =
     | "chave-de-acesso"
     | "formularios-compra";
 
-const DISABLED_KEYS: Key[] = ["catalogo-combos", "catalogo-produtos"];
+const DISABLED_KEYS: Key[] = [];
 
 /** Uma única instância do modal de status vive no BackstageLayout — qualquer
  *  gatilho dentro do contexto do evento (card desktop, topo mobile, drawer
@@ -172,6 +176,12 @@ function useSwitcherVisivel() {
     );
 }
 
+/**
+ * Respiro padrão entre o conteúdo da tela e a moldura do template (rails, topo, Remix), o mesmo da
+ * tela de Eventos. Fica só aqui: as telas não definem padding externo próprio.
+ */
+const RESPIRO_DO_CONTEUDO = "px-4 pb-6 md:px-6";
+
 export function BackstageLayout({
     activeSection,
     activeItem,
@@ -181,7 +191,10 @@ export function BackstageLayout({
     railVariant,
     children,
 }: BackstageLayoutProps) {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [menuMobile, setMenuMobile] = useState<MenuMobile>(null);
+    const { pathname } = useLocation();
+    // Navegar fecha o menu do celular (o menu do evento navega pelos links da árvore).
+    useEffect(() => setMenuMobile(null), [pathname]);
     const [variant, setVariant] = useLayoutVariant();
     const mostrarSwitcher = useSwitcherVisivel();
     const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -194,31 +207,35 @@ export function BackstageLayout({
     }, []);
 
     useEffect(() => {
-        if (!isMobileMenuOpen) return;
+        if (!menuMobile) return;
         const prev = document.body.style.overflow;
         document.body.style.overflow = "hidden";
         const onKey = (e: KeyboardEvent) => {
-            if (e.key === "Escape") setIsMobileMenuOpen(false);
+            if (e.key === "Escape") setMenuMobile(null);
         };
         window.addEventListener("keydown", onKey);
         return () => {
             document.body.style.overflow = prev;
             window.removeEventListener("keydown", onKey);
         };
-    }, [isMobileMenuOpen]);
+    }, [menuMobile]);
 
     const mobileChrome = (
         <>
-            <MobileTopBar onOpenMenu={() => setIsMobileMenuOpen(true)} showEventContext={showEventContext} />
-            <MobileDrawer
-                isOpen={isMobileMenuOpen}
-                onClose={() => setIsMobileMenuOpen(false)}
-                showEventContext={showEventContext}
-                activeProducer={activeProducer}
-                activeSection={activeSection}
-                activeItem={activeItem}
-                railVariant={railVariant}
-            />
+            <MobileTopBar menu={menuMobile} onMenu={setMenuMobile} showEventContext={showEventContext} />
+            {menuMobile === "org" && (
+                <PainelMobile topo="56px" rotulo="Menu da organização" onFechar={() => setMenuMobile(null)}>
+                    <PainelDaOrganizacao activeProducer={activeProducer} onFechar={() => setMenuMobile(null)} />
+                </PainelMobile>
+            )}
+            {menuMobile === "evento" && showEventContext && (
+                <PainelMobile topo="113px" rotulo="Menu do evento" onFechar={() => setMenuMobile(null)}>
+                    <div className="flex-1 px-2 py-3">
+                        <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} railVariant={railVariant} />
+                    </div>
+                    <StatusNoMenuMobile />
+                </PainelMobile>
+            )}
         </>
     );
 
@@ -244,12 +261,13 @@ export function BackstageLayout({
                     <div className="flex flex-col gap-3 px-2 py-3 md:flex-row md:gap-6 md:px-6 md:py-6">
                         {showEventContext && <EventRailTop activeSection={activeSection} activeItem={activeItem} railVariant={railVariant} />}
                         <main className="flex min-w-0 flex-1 flex-col">
-                            <div className="mx-auto flex w-full max-w-[1088px] flex-1 flex-col">{children}</div>
+                            <div className={cx("mx-auto flex w-full max-w-[1088px] flex-1 flex-col", RESPIRO_DO_CONTEUDO)}>{children}</div>
                         </main>
                         <RemixDock />
                     </div>
                     {showLayoutSwitcher && mostrarSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
                     {statusModal}
+                    <SeletorOrganizacaoModal />
                 </div>
             </EventStatusModalContext.Provider>
         );
@@ -262,11 +280,12 @@ export function BackstageLayout({
                 <div className="flex min-h-screen flex-col gap-3 px-2 py-3 md:flex-row md:px-3 md:py-6">
                     <ProducerRail activeProducer={activeProducer} />
                     {showEventContext && <EventRail activeSection={activeSection} activeItem={activeItem} railVariant={railVariant} />}
-                    {children}
+                    <main className={cx("flex min-w-0 flex-1 flex-col", RESPIRO_DO_CONTEUDO)}>{children}</main>
                     <RemixDock />
                 </div>
                 {showLayoutSwitcher && mostrarSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
                 {statusModal}
+                <SeletorOrganizacaoModal />
             </div>
         </EventStatusModalContext.Provider>
     );
@@ -308,74 +327,148 @@ const LayoutSwitcher = ({ variant, onChange }: { variant: LayoutVariant; onChang
 /*  Mobile top bar + drawer                                           */
 /* ------------------------------------------------------------------ */
 
-const MobileTopBar = ({ onOpenMenu, showEventContext }: { onOpenMenu: () => void; showEventContext?: boolean }) => {
+type MenuMobile = "org" | "evento" | null;
+
+/** Botão de menu da barra (☰, grade ou ×), como o "_Nav menu button" do Figma. */
+const BotaoDoMenu = ({ aberto, icone: Icone, rotulo, onClick }: { aberto: boolean; icone: FC<{ className?: string }>; rotulo: string; onClick: () => void }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        aria-expanded={aberto}
+        aria-label={aberto ? `Fechar ${rotulo}` : `Abrir ${rotulo}`}
+        className="flex shrink-0 items-center justify-center rounded-md p-2 text-fg-secondary outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2"
+    >
+        {aberto ? <XClose className="size-5" aria-hidden="true" /> : <Icone className="size-5" aria-hidden="true" />}
+    </button>
+);
+
+/**
+ * Celular (Figma AFTER DS, "_mobile_org menu" e "navbar-event-mobile"): duas barras empilhadas.
+ * A da organização (logo e grade) abre os módulos da organização; a do evento (☰, capa, nome e
+ * status) abre o menu do evento. Cada uma abre o próprio painel logo abaixo dela.
+ */
+const MobileTopBar = ({ menu, onMenu, showEventContext }: { menu: MenuMobile; onMenu: (m: MenuMobile) => void; showEventContext?: boolean }) => {
     const evento = useEventoAtual();
-    const abrirModalDeStatus = useAbrirModalDeStatus();
+    const alternar = (m: Exclude<MenuMobile, null>) => onMenu(menu === m ? null : m);
     return (
-        <header className="sticky top-0 z-30 md:hidden">
-            <div className="flex items-center justify-between gap-3 border-b border-secondary bg-primary px-4 py-3">
+        <header className="sticky top-0 z-40 md:hidden">
+            <div className="flex h-14 items-center justify-between border-b border-secondary bg-primary py-3 pr-3 pl-4">
                 <BrandLogo className="h-5" />
-                <button
-                    type="button"
-                    onClick={onOpenMenu}
-                    aria-label="Abrir menu"
-                    className="flex size-9 shrink-0 items-center justify-center rounded-md text-fg-secondary transition duration-100 ease-linear hover:bg-secondary"
-                >
-                    <Menu02 className="size-5" />
-                </button>
+                <BotaoDoMenu aberto={menu === "org"} icone={DotsGrid} rotulo="menu da organização" onClick={() => alternar("org")} />
             </div>
-            {showEventContext && (
-                <div className="flex items-center gap-2.5 border-b border-secondary bg-primary px-4 py-2">
-                    <img src={evento.cover} alt="" className="size-9 shrink-0 rounded-md object-cover" />
-                    <div className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-sm leading-tight font-semibold text-primary">{evento.nome}</span>
-                        <span className="text-sm text-tertiary">ID: {evento.id}</span>
-                    </div>
-                    <Badge size="sm" type="pill-color" color={EVENTO_STATUS_BADGE_COLOR[evento.status]}>
+            {/* Com o menu da organização aberto, só a barra dela fica (como no Figma). */}
+            {showEventContext && menu !== "org" && (
+                <div className="flex items-center gap-3 border-b border-secondary bg-primary px-4 py-2">
+                    <BotaoDoMenu aberto={menu === "evento"} icone={Menu02} rotulo="menu do evento" onClick={() => alternar("evento")} />
+                    <img src={evento.cover} alt="" className="h-10 w-[30px] shrink-0 rounded-xxs object-cover" />
+                    <p className="line-clamp-2 min-w-0 flex-1 text-sm font-medium text-primary" title={evento.nome}>
+                        {evento.nome}
+                    </p>
+                    <Badge size="sm" type="pill-color" color={EVENTO_STATUS_BADGE_COLOR[evento.status]} className="shrink-0">
                         {EVENTO_STATUS_LABEL[evento.status]}
                     </Badge>
-                    {evento.status !== "encerrado" && (
-                        <ButtonUtility
-                            className="size-11"
-                            color="tertiary"
-                            icon={ChevronDown}
-                            tooltip="Alterar status do evento"
-                            onClick={() => abrirModalDeStatus()}
-                        />
-                    )}
                 </div>
             )}
         </header>
     );
 };
 
-const MobileEventCard = () => {
-    const evento = useEventoAtual();
-    const abrirModalDeStatus = useAbrirModalDeStatus();
-    return (
-        <div className="flex items-start gap-3 rounded-xl bg-secondary p-3">
-            <img src={evento.cover} alt={evento.nome} className="size-16 shrink-0 rounded-lg object-cover" />
-            <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm text-tertiary">ID: {evento.id}</span>
-                    <div className="flex items-center gap-1">
-                        <Badge size="sm" type="pill-color" color={EVENTO_STATUS_BADGE_COLOR[evento.status]}>
-                            {EVENTO_STATUS_LABEL[evento.status]}
-                        </Badge>
-                        {evento.status !== "encerrado" && (
-                            <ButtonUtility
-                                className="size-11"
-                                color="tertiary"
-                                icon={ChevronDown}
-                                tooltip="Alterar status do evento"
-                                onClick={() => abrirModalDeStatus()}
-                            />
-                        )}
-                    </div>
-                </div>
-                <p className="text-sm font-semibold leading-snug text-primary line-clamp-2">{evento.nome}</p>
-            </div>
+/** Painel aberto pela barra: fundo escurecido com desfoque e conteúdo à esquerda, 64 px antes da borda. */
+const PainelMobile = ({ topo, rotulo, onFechar, children }: { topo: string; rotulo: string; onFechar: () => void; children: ReactNode }) => (
+    <div className="fixed inset-x-0 bottom-0 z-30 flex md:hidden" style={{ top: topo }} role="dialog" aria-modal="true" aria-label={rotulo}>
+        <button
+            type="button"
+            aria-label="Fechar menu"
+            tabIndex={-1}
+            onClick={onFechar}
+            className="absolute inset-0 bg-overlay/70 backdrop-blur-[8px] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
+        />
+        <div className="relative flex h-full w-[calc(100%-64px)] flex-col overflow-y-auto bg-primary shadow-xl motion-safe:animate-in motion-safe:slide-in-from-left motion-safe:duration-200">
+            {children}
         </div>
+    </div>
+);
+
+/** Ordem dos módulos na grade do celular, como no Figma. */
+const ORDEM_ORG_MOBILE = ["eventos", "equipe", "financas", "produtos", "publico", "pedidos", "ajustes"];
+
+/** Usuário fictício do protótipo (o mesmo do Figma). */
+const USUARIO = { nome: "Olivia Rhye", email: "olivia@untitledui.com", iniciais: "OR" };
+
+/** Menu da organização no celular: troca de organização, módulos em grade e conta no rodapé. */
+const PainelDaOrganizacao = ({ activeProducer, onFechar }: { activeProducer?: string; onFechar: () => void }) => {
+    const navigate = useNavigate();
+    const org = useOrganizacaoAtual();
+    const { theme, setTheme } = useTheme();
+    const escuro = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    return (
+        <>
+            <div className="flex flex-1 flex-col gap-5 p-4">
+                <button
+                    type="button"
+                    onClick={() => {
+                        onFechar();
+                        abrirSeletorDeOrganizacao();
+                    }}
+                    aria-label={org ? `Organização: ${org.nome}. Trocar organização` : "Trocar organização"}
+                    className="relative flex w-full items-center gap-2 rounded-xl border border-secondary bg-primary_alt p-3 text-left outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover focus-visible:outline-2"
+                >
+                    <Avatar size="md" rounded={false} initials={org?.sigla ?? "?"} alt="" />
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-primary">{org?.nome ?? "Organização"}</span>
+                    <ChevronSelectorVertical className="absolute top-[13px] right-[13px] size-4 text-fg-quaternary" aria-hidden="true" />
+                </button>
+                <nav aria-label="Módulos da organização" className="grid grid-cols-3 gap-x-4 gap-y-6">
+                    {ORDEM_ORG_MOBILE.map((id) => ORG_NAV.find((i) => i.id === id)!).map((item) => {
+                        const atual = activeProducer === item.id || (item.id === "eventos" && !activeProducer);
+                        return (
+                            <button
+                                key={item.id}
+                                type="button"
+                                disabled={!item.href}
+                                aria-current={atual ? "page" : undefined}
+                                onClick={() => {
+                                    if (!item.href) return;
+                                    navigate(item.href);
+                                    onFechar();
+                                }}
+                                className="group flex flex-col items-center gap-1 rounded-md outline-focus-ring focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <span className={cx("flex items-center justify-center rounded-md p-3 text-fg-quaternary transition duration-100 ease-linear group-enabled:group-hover:bg-primary_hover", atual && "bg-primary_hover text-fg-secondary")}>
+                                    <item.icon className="size-5" />
+                                </span>
+                                <span className="text-center text-xs font-medium text-secondary">{item.label}</span>
+                            </button>
+                        );
+                    })}
+                </nav>
+            </div>
+            <div className="px-4 pb-4">
+                <Dropdown.Root>
+                    <AriaButton className="flex w-full items-center gap-2 border-t border-secondary pt-4 text-left outline-focus-ring focus-visible:outline-2">
+                        <Avatar size="md" initials={USUARIO.iniciais} status="online" alt="" />
+                        <span className="flex min-w-0 flex-1 flex-col text-sm">
+                            <span className="truncate font-semibold text-primary">{USUARIO.nome}</span>
+                            <span className="truncate text-tertiary">{USUARIO.email}</span>
+                        </span>
+                        <ChevronRight className="size-4 shrink-0 text-fg-quaternary" aria-hidden="true" />
+                    </AriaButton>
+                    <Dropdown.Popover className="w-64" placement="top end">
+                        <Dropdown.Menu>
+                            <Dropdown.Item id="idioma" icon={Globe01} label="Alterar idioma" />
+                            <Dropdown.Item
+                                id="cores"
+                                icon={escuro ? Moon01 : Sun}
+                                label="Alterar cores"
+                                addon={escuro ? "Escuro" : "Claro"}
+                                onAction={() => setTheme(escuro ? "light" : "dark")}
+                            />
+                            <Dropdown.Separator />
+                            <Dropdown.Item id="sair" icon={LogOut01} label="Sair" />
+                        </Dropdown.Menu>
+                    </Dropdown.Popover>
+                </Dropdown.Root>
+            </div>
+        </>
     );
 };
 
@@ -397,6 +490,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     "catalogo-combos": "Combos",
     "catalogo-produtos": "Produtos",
     "catalogo-aberturas": "Aberturas de vendas",
+    "catalogo-questionario": "Questionário",
     "emissao-cortesias": "Cortesia",
     "bilheteria-online": "Bilheteria online",
     "grupos-operacao": "Grupos de operação",
@@ -407,7 +501,7 @@ const ITEM_LABELS: Record<BackstageItem, string> = {
     transferencias: "Transferências",
     comparativos: "Comparativos",
     "relatorio-personalizado": "Relatório personalizado",
-    "relatorio-questionarios": "Questionários",
+    "relatorio-questionarios": "Respostas do questionário",
     "chave-de-acesso": "Chave de acesso",
     "formularios-compra": "Perguntas por ingresso",
 };
@@ -461,44 +555,6 @@ const MobileSectionSelector = ({
     );
 };
 
-interface MobileDrawerProps {
-    isOpen: boolean;
-    onClose: () => void;
-    showEventContext?: boolean;
-    activeSection?: BackstageSection;
-    activeItem?: BackstageItem;
-    activeProducer?: string;
-    railVariant?: RailVariant;
-}
-
-const PRODUCER_NAV: Array<{
-    id: string;
-    icon: ComponentType<{ className?: string }>;
-    label: string;
-    href?: string;
-    children?: Array<{ id: string; label: string }>;
-}> = [
-    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/eventos" },
-    { id: "pedidos", icon: ShoppingCart01, label: "Pedidos", href: "/backstage/pedidos" },
-    { id: "permissao", icon: UsersPlus, label: "Permissão", href: "/backstage/permissao-envio" },
-    { id: "produtos", icon: Package, label: "Produtos" },
-    {
-        id: "publico",
-        icon: Users01,
-        label: "Público",
-        children: [{ id: "segmentos", label: "Segmentos" }],
-    },
-    {
-        id: "ajustes",
-        icon: Settings01,
-        label: "Ajustes",
-        children: [
-            { id: "termos", label: "Termos de uso" },
-            { id: "organizacao", label: "Organização" },
-        ],
-    },
-];
-
 /* ------------------------------------------------------------------ */
 /*  Menu de funcionalidades — versão MOBILE (accordion touch).         */
 /* ------------------------------------------------------------------ */
@@ -513,11 +569,25 @@ interface EventNavItem {
 interface EventNavSection {
     id: BackstageSection;
     label: string;
-    icon: ComponentType<{ className?: string }>;
+    icon: FC<{ className?: string }>;
     novo?: boolean;
+    /** Seção que é ela mesma o destino, sem itens (ex.: Gerenciamento de cotas). */
+    href?: string;
+    /** Mantém o grupo mesmo com um destino só (o nome do destino diz mais que o da seção). */
+    grupo?: boolean;
     /** Vazio = seção sem destino (apenas rótulo, desabilitada). */
     items: EventNavItem[];
 }
+
+/**
+ * Seção que vira um destino só (a linha leva direto à página). Vale para o desktop e o celular, que
+ * leem a mesma lista: um menu, um desenho (UI-DS-003).
+ */
+const ehDestinoUnico = (sec: EventNavSection) => !!sec.href || (sec.items.length === 1 && !sec.grupo);
+/** Página da seção que é destino único. */
+const destinoDaSecao = (sec: EventNavSection) => sec.href ?? sec.items[0]?.href;
+/** Destino que ainda não existe ("#") ou seção sem destino: aparece desativado. */
+const ehDesativado = (href?: string) => !href || href === "#";
 
 const EVENT_NAV: EventNavSection[] = [
     {
@@ -529,14 +599,17 @@ const EVENT_NAV: EventNavSection[] = [
     {
         id: "itens", label: "Itens", icon: ShoppingCart01, items: [
             { id: "catalogo-ingressos", label: "Ingressos", href: "/backstage/catalogo/ingressos" },
-            { id: "catalogo-combos", label: "Combos", href: "/backstage/catalogo/ingressos" },
-            { id: "catalogo-produtos", label: "Produtos", href: "/backstage/catalogo/ingressos", novo: true },
+            { id: "catalogo-produtos", label: "Produtos", href: "/backstage/catalogo/produtos", novo: true },
+            { id: "catalogo-combos", label: "Combos", href: "/backstage/catalogo/combos", novo: true },
+            { id: "catalogo-questionario", label: "Questionário", href: "/backstage/catalogo/questionario", novo: true },
+            { id: "catalogo-aberturas", label: "Aberturas de vendas", href: "/backstage/catalogo/aberturas-de-vendas" },
         ],
     },
     {
-        id: "cortesias", label: "Emissão de ingressos", icon: Ticket01, novo: true, items: [
-            { id: "emissao-cortesias", label: "Cortesia", href: "/backstage/cortesias" },
-            { id: "bilheteria-online", label: "Bilheteria online", href: "/backstage/bilheteria" },
+        // "Novo" nos itens, não no grupo: no rail de 280 px o selo cortava o nome da seção.
+        id: "cortesias", label: "Emissão de ingressos", icon: Ticket01, items: [
+            { id: "emissao-cortesias", label: "Cortesia", href: "/backstage/cortesias", novo: true },
+            { id: "bilheteria-online", label: "Bilheteria online", href: "/backstage/bilheteria", novo: true },
         ],
     },
     {
@@ -547,11 +620,11 @@ const EVENT_NAV: EventNavSection[] = [
             { id: "bordero", label: "Borderô", href: "/backstage/relatorios/bordero" },
             { id: "transferencias", label: "Transferências", href: "/backstage/relatorios/transferencias" },
             { id: "comparativos", label: "Comparativos", href: "/backstage/relatorios/comparativos", novo: true },
-            { id: "relatorio-questionarios", label: "Questionários", href: "/backstage/relatorios/questionarios" },
+            { id: "relatorio-questionarios", label: "Respostas do questionário", href: "/backstage/relatorios/questionarios" },
             { id: "relatorio-personalizado", label: "Relatório personalizado", href: "/backstage/relatorios/relatorio-personalizado", ia: true },
         ],
     },
-    { id: "marketing", label: "Marketing", icon: Announcement01, items: [{ id: "chave-de-acesso", label: "Chave de acesso", href: "/backstage/marketing/chave-de-acesso" }] },
+    { id: "marketing", label: "Marketing", icon: Announcement01, grupo: true, items: [{ id: "chave-de-acesso", label: "Chave de acesso", href: "/backstage/marketing/chave-de-acesso" }] },
 ];
 
 // Menu do contexto da Equipe de operação v3 (variante "gestao-operacao").
@@ -560,8 +633,10 @@ const EVENT_NAV_GESTAO_OPERACAO: EventNavSection[] = [
     {
         id: "itens", label: "Itens", icon: ShoppingCart01, items: [
             { id: "catalogo-ingressos", label: "Ingressos", href: "/backstage/catalogo/ingressos" },
-            { id: "catalogo-combos", label: "Combos", href: "/backstage/catalogo/ingressos" },
-            { id: "catalogo-produtos", label: "Produtos", href: "/backstage/catalogo/ingressos", novo: true },
+            { id: "catalogo-produtos", label: "Produtos", href: "/backstage/catalogo/produtos", novo: true },
+            { id: "catalogo-combos", label: "Combos", href: "/backstage/catalogo/combos", novo: true },
+            { id: "catalogo-questionario", label: "Questionário", href: "/backstage/catalogo/questionario", novo: true },
+            { id: "catalogo-aberturas", label: "Aberturas de vendas", href: "/backstage/catalogo/aberturas-de-vendas" },
         ],
     },
     {
@@ -577,7 +652,7 @@ const EVENT_NAV_GESTAO_OPERACAO: EventNavSection[] = [
         ],
     },
     // Primeiro nível, logo abaixo de Cortesias e sem submenu — como no Figma.
-    { id: "gerenciamento-cotas", label: "Gerenciamento de cotas", icon: Settings03, items: [] },
+    { id: "gerenciamento-cotas", label: "Gerenciamento de cotas", icon: Settings03, href: "/backstage/equipe-de-operacao/v3", items: [] },
     {
         id: "relatorios", label: "Relatórios", icon: File03, items: [
             { id: "vendas-por-grupo", label: "Vendas", href: "/backstage/relatorios/vendas-por-grupo" },
@@ -586,231 +661,21 @@ const EVENT_NAV_GESTAO_OPERACAO: EventNavSection[] = [
             { id: "bordero", label: "Borderô", href: "/backstage/relatorios/bordero" },
             { id: "transferencias", label: "Transferências", href: "/backstage/relatorios/transferencias" },
             { id: "comparativos", label: "Comparativos", href: "/backstage/relatorios/comparativos" },
-            { id: "relatorio-questionarios", label: "Questionários", href: "/backstage/relatorios/questionarios" },
+            { id: "relatorio-questionarios", label: "Respostas do questionário", href: "/backstage/relatorios/questionarios" },
             { id: "relatorio-personalizado", label: "Relatório personalizado", href: "/backstage/relatorios/relatorio-personalizado", ia: true },
         ],
     },
-    { id: "marketing", label: "Marketing", icon: Announcement01, items: [{ id: "chave-de-acesso", label: "Chave de acesso", href: "/backstage/marketing/chave-de-acesso" }] },
+    { id: "marketing", label: "Marketing", icon: Announcement01, grupo: true, items: [{ id: "chave-de-acesso", label: "Chave de acesso", href: "/backstage/marketing/chave-de-acesso" }] },
     { id: "coleta-dados", label: "Coleta de dados", icon: ClipboardCheck, items: [] },
 ];
 
 const ItemBadges = ({ item }: { item: EventNavItem }) => (
     <>
-        {item.novo && <Badge size="sm" type="pill-color" color="error">Novo</Badge>}
+        {item.novo && <Badge size="sm" type="pill-color" color="brand">Novo</Badge>}
         {item.ia && <Badge size="sm" type="pill-color" color="brand">IA</Badge>}
     </>
 );
 
-const MobileEventNav = ({ activeSection, activeItem, railVariant, onNavigate }: { activeSection?: BackstageSection; activeItem?: BackstageItem; railVariant?: RailVariant; onNavigate: (href: string) => void }) => {
-    const [open, setOpen] = useState<Set<string>>(() => new Set(activeSection ? [activeSection] : []));
-    const toggle = (id: string) => setOpen((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-
-    const rowBase = "flex items-center gap-3 rounded-lg px-3 py-3 text-left transition duration-100 ease-linear";
-    const nav = railVariant === "gestao-operacao" ? EVENT_NAV_GESTAO_OPERACAO : EVENT_NAV;
-
-    return (
-        <div className="flex flex-col gap-0.5">
-            {nav.map((sec) => {
-                const active = activeSection === sec.id;
-                const rowCls = cx(rowBase, active ? "bg-tertiary text-primary" : "text-secondary hover:bg-tertiary");
-                const badge = sec.novo && <Badge size="sm" type="pill-color" color="error">Novo</Badge>;
-
-                // Sem destino → apenas rótulo (desabilitado).
-                if (sec.items.length === 0) {
-                    return (
-                        <div key={sec.id} className={cx(rowBase, "cursor-not-allowed text-tertiary opacity-60")}>
-                            <sec.icon className="size-5 shrink-0 text-fg-quaternary" />
-                            <span className="flex-1 text-sm font-medium">{sec.label}</span>
-                        </div>
-                    );
-                }
-
-                // Um único destino → a própria seção vira link.
-                if (sec.items.length === 1) {
-                    return (
-                        <button key={sec.id} type="button" onClick={() => onNavigate(sec.items[0].href)} className={rowCls}>
-                            <sec.icon className="size-5 shrink-0 text-fg-secondary" />
-                            <span className="flex-1 text-sm font-medium">{sec.label}</span>
-                            {badge}
-                        </button>
-                    );
-                }
-
-                // Vários destinos → accordion.
-                const isOpen = open.has(sec.id);
-                return (
-                    <div key={sec.id} className="flex flex-col">
-                        <button type="button" onClick={() => toggle(sec.id)} aria-expanded={isOpen} className={rowCls}>
-                            <sec.icon className="size-5 shrink-0 text-fg-secondary" />
-                            <span className="flex-1 text-sm font-medium">{sec.label}</span>
-                            {badge}
-                            <ChevronDown className={cx("size-4 shrink-0 text-fg-quaternary transition-transform duration-150", isOpen && "rotate-180")} />
-                        </button>
-                        {isOpen && (
-                            <div className="flex flex-col gap-0.5 py-1 pl-11">
-                                {sec.items.map((it) => (
-                                    <button
-                                        key={it.id}
-                                        type="button"
-                                        onClick={() => onNavigate(it.href)}
-                                        className={cx("flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm transition duration-100 ease-linear", activeItem === it.id ? "bg-tertiary font-medium text-primary" : "text-secondary hover:bg-tertiary")}
-                                    >
-                                        <span className="flex-1">{it.label}</span>
-                                        <ItemBadges item={it} />
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                );
-            })}
-        </div>
-    );
-};
-
-const MobileDrawer = ({ isOpen, onClose, showEventContext, activeSection, activeItem, activeProducer, railVariant }: MobileDrawerProps) => {
-    const navigate = useNavigate();
-    const [expanded, setExpanded] = useState<Set<string>>(new Set());
-    if (!isOpen) return null;
-    const toggle = (id: string) =>
-        setExpanded((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-
-    return (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-            <aside className="relative flex h-full w-[85%] max-w-[340px] flex-col gap-1 overflow-y-auto bg-secondary p-3 shadow-xl">
-                <div className="flex items-center justify-between gap-2 pb-2">
-                    <BrandLogo className="h-5" />
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        aria-label="Fechar menu"
-                        className="flex size-9 items-center justify-center rounded-md text-fg-secondary transition duration-100 ease-linear hover:bg-tertiary"
-                    >
-                        <XClose className="size-5" />
-                    </button>
-                </div>
-
-                {showEventContext && (
-                    <div className="mb-1 flex flex-col gap-3 border-b border-secondary pb-3">
-                        <MobileEventCard />
-                        <div className="flex flex-col gap-1">
-                            <span className="px-1 text-xs font-semibold tracking-wide text-quaternary uppercase">Funcionalidades do evento</span>
-                            <MobileEventNav
-                                activeSection={activeSection}
-                                activeItem={activeItem}
-                                railVariant={railVariant}
-                                onNavigate={(href) => { navigate(href); onClose(); }}
-                            />
-                        </div>
-                    </div>
-                )}
-
-                <nav className="flex flex-col gap-0.5">
-                    {PRODUCER_NAV.map((entry) => {
-                        const isActive = entry.id === (activeProducer ?? "eventos");
-                        const isExpanded = expanded.has(entry.id);
-                        const hasChildren = !!entry.children?.length;
-                        return (
-                            <div key={entry.id} className="flex flex-col">
-                                <button
-                                    type="button"
-                                    onClick={
-                                        hasChildren
-                                            ? () => toggle(entry.id)
-                                            : entry.href
-                                              ? () => {
-                                                    navigate(entry.href!);
-                                                    onClose();
-                                                }
-                                              : undefined
-                                    }
-                                    className={cx(
-                                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition duration-100 ease-linear",
-                                        isActive
-                                            ? "bg-tertiary text-primary"
-                                            : "text-secondary hover:bg-tertiary",
-                                    )}
-                                >
-                                    <entry.icon className="size-5 shrink-0 text-fg-secondary" />
-                                    <span className="flex-1 text-sm font-medium">
-                                        {entry.label}
-                                    </span>
-                                    {hasChildren && (
-                                        <ChevronDown
-                                            className={cx(
-                                                "size-4 shrink-0 text-fg-quaternary transition-transform duration-150",
-                                                isExpanded && "rotate-180",
-                                            )}
-                                        />
-                                    )}
-                                </button>
-                                {hasChildren && isExpanded && (
-                                    <div className="flex flex-col gap-0.5 pl-11">
-                                        {entry.children?.map((child) => (
-                                            <button
-                                                key={child.id}
-                                                type="button"
-                                                className="rounded-md px-3 py-2 text-left text-sm text-secondary transition duration-100 ease-linear hover:bg-tertiary"
-                                            >
-                                                {child.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </nav>
-
-                <div className="mt-auto flex flex-col gap-2 pt-4">
-                    <button
-                        type="button"
-                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-secondary transition duration-100 ease-linear hover:bg-tertiary"
-                    >
-                        <Globe01 className="size-5 shrink-0 text-fg-secondary" />
-                        <span className="text-sm font-medium">Alterar idioma</span>
-                    </button>
-                    <button
-                        type="button"
-                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-secondary transition duration-100 ease-linear hover:bg-tertiary"
-                    >
-                        <LogOut01 className="size-5 shrink-0 text-fg-secondary" />
-                        <span className="text-sm font-medium">Sair</span>
-                    </button>
-                    <button
-                        type="button"
-                        className="flex items-center justify-between gap-3 rounded-full bg-tertiary px-3 py-2 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-primary_hover"
-                    >
-                        <span className="flex items-center gap-2">
-                            <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-secondary-solid text-[10px] font-bold text-base-white">
-                                OR
-                            </span>
-                            <span className="text-sm font-medium text-primary">
-                                {"{org_name}"}
-                            </span>
-                        </span>
-                        <ChevronDown className="size-4 text-fg-quaternary" />
-                    </button>
-                </div>
-
-                <div className="pt-2">
-                    <ThemeToggle />
-                </div>
-            </aside>
-            <button
-                type="button"
-                aria-label="Fechar menu"
-                onClick={onClose}
-                className="flex-1 bg-overlay"
-            />
-        </div>
-    );
-};
 
 interface ProducerRailItemProps {
     icon: ComponentType<{ className?: string }>;
@@ -843,33 +708,60 @@ const ProducerRailItem = ({ icon: Icon, label, isActive, href }: ProducerRailIte
     );
 };
 
+/** Organização em contexto no rail clássico: avatar com a sigla; abre a troca (ORG-20). */
+const OrganizacaoRail = () => {
+    const org = useOrganizacaoAtual();
+    return (
+        <button
+            type="button"
+            onClick={abrirSeletorDeOrganizacao}
+            aria-label={org ? `Organização: ${org.nome}. Trocar organização` : "Trocar organização"}
+            title={org?.nome}
+            className="relative rounded-full outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+            <Avatar size="md" initials={org?.sigla ?? "?"} alt="" />
+            <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-primary ring-1 ring-secondary">
+                <ChevronDown className="size-3 text-fg-quaternary" />
+            </span>
+        </button>
+    );
+};
+
+/** Chip da organização em contexto: barra do topo e gaveta mobile. Abre a troca (ORG-20). */
+const OrganizacaoChip = ({ className, largo }: { className?: string; largo?: boolean }) => {
+    const org = useOrganizacaoAtual();
+    return (
+        <button
+            type="button"
+            onClick={abrirSeletorDeOrganizacao}
+            aria-label={org ? `Organização: ${org.nome}. Trocar organização` : "Trocar organização"}
+            className={cx(
+                "flex min-w-0 shrink-0 items-center gap-2 rounded-full bg-secondary py-1.5 pr-2.5 pl-1.5 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary_hover",
+                largo && "w-full rounded-lg py-2",
+                className,
+            )}
+        >
+            <Avatar size="xs" initials={org?.sigla ?? "?"} alt="" />
+            <span className={cx("truncate text-sm font-semibold text-primary", largo ? "flex-1 text-left" : "max-w-48")}>{org?.nome ?? "Organização"}</span>
+            <ChevronDown className="size-4 shrink-0 text-fg-quaternary" />
+        </button>
+    );
+};
+
 const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => (
     <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[72px] shrink-0 flex-col items-center justify-between rounded-2xl bg-primary py-4 lg:flex">
         <div className="flex flex-col items-center gap-4">
-            <div className="relative">
-                <span className="flex size-10 items-center justify-center overflow-hidden rounded-lg bg-secondary-solid text-xs font-bold text-base-white">
-                    eng
-                </span>
-                <button
-                    type="button"
-                    className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-primary ring-1 ring-secondary"
-                    aria-label="Trocar produtor"
-                >
-                    <ChevronDown className="size-3 text-fg-quaternary" />
-                </button>
-            </div>
+            <OrganizacaoRail />
             <nav className="flex flex-col items-center gap-1">
-                <ProducerRailItem icon={Calendar} label="Eventos" href="/backstage/eventos" isActive={activeProducer === "eventos" || !activeProducer} />
-                <ProducerRailItem icon={UsersPlus} label="Membros" href="/backstage/membros" isActive={activeProducer === "equipe"} />
-                <ProducerRailItem icon={Bank} label="Finanças" />
-                <ProducerRailItem
-                    icon={ShoppingCart01}
-                    label="Pedidos"
-                    href="/backstage/pedidos"
-                    isActive={activeProducer === "pedidos"}
-                />
-                <ProducerRailItem icon={Users01} label="Público" href="/backstage/publico" isActive={activeProducer === "publico"} />
-                <ProducerRailItem icon={Settings01} label="Ajustes" />
+                {ORG_NAV.map((item) => (
+                    <ProducerRailItem
+                        key={item.id}
+                        icon={item.icon}
+                        label={item.label}
+                        href={item.href}
+                        isActive={activeProducer === item.id || (item.id === "eventos" && !activeProducer)}
+                    />
+                ))}
             </nav>
         </div>
         <ThemeToggle />
@@ -887,24 +779,49 @@ interface EventRailProps {
 const SOFT_SCROLLBAR =
     "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--color-border-secondary)] hover:[&::-webkit-scrollbar-thumb]:bg-[var(--color-border-primary)]";
 
-const EventRail = ({ activeSection, activeItem, railVariant }: EventRailProps) => (
-    <aside className={cx("sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex", SOFT_SCROLLBAR)}>
-        <EventDetailsCard />
-        <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} railVariant={railVariant} />
-    </aside>
-);
+/**
+ * Rail do evento: cartão compacto e menu. Ao abrir a página, rola até o item ativo e o marca como a
+ * página atual (UI-NAV-004), para ele nunca ficar abaixo da dobra.
+ */
+const RailDoEvento = ({ activeSection, activeItem, railVariant, className }: EventRailProps & { className: string }) => {
+    const ref = useRef<HTMLElement>(null);
+    useEffect(() => {
+        // Espera o grupo do item abrir (o menu expande num efeito) antes de medir.
+        const id = window.setTimeout(() => {
+            const rail = ref.current;
+            if (!rail) return;
+            rail.querySelectorAll('[aria-current="page"]').forEach((el) => el.removeAttribute("aria-current"));
+            const linha = rail.querySelector(".item-ativo")?.closest('[role="row"]');
+            if (!linha) return;
+            linha.setAttribute("aria-current", "page");
+            const r = rail.getBoundingClientRect();
+            const l = linha.getBoundingClientRect();
+            if (l.bottom > r.bottom - 12 || l.top < r.top) rail.scrollTop += l.top - r.top - r.height / 3;
+        }, 60);
+        return () => window.clearTimeout(id);
+    }, [activeSection, activeItem]);
+    return (
+        <aside ref={ref} className={cx("hidden w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex", SOFT_SCROLLBAR, className)}>
+            <EventDetailsCard />
+            <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} railVariant={railVariant} />
+        </aside>
+    );
+};
+
+const EventRail = (props: EventRailProps) => <RailDoEvento {...props} className="sticky top-6 h-[calc(100vh-3rem)]" />;
 
 /* ------------------------------------------------------------------ */
 /*  Nova shell — barra horizontal da organização no topo.              */
 /* ------------------------------------------------------------------ */
 
 const ORG_NAV: Array<{ id: string; icon: ComponentType<{ className?: string }>; label: string; href?: string }> = [
-    { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/eventos" },
-    { id: "equipe", icon: UsersPlus, label: "Membros", href: "/backstage/membros" },
-    { id: "financas", icon: Bank, label: "Finanças" },
-    { id: "pedidos", icon: ShoppingCart01, label: "Pedidos", href: "/backstage/pedidos" },
-    { id: "publico", icon: Users01, label: "Público" },
-    { id: "ajustes", icon: Settings01, label: "Ajustes" },
+    { id: "eventos", icon: ICONES_ORGANIZACAO.eventos, label: "Eventos", href: "/backstage/eventos" },
+    { id: "equipe", icon: ICONES_ORGANIZACAO.membros, label: "Membros", href: "/backstage/membros" },
+    { id: "financas", icon: ICONES_ORGANIZACAO.financas, label: "Finanças" },
+    { id: "pedidos", icon: ICONES_ORGANIZACAO.pedidos, label: "Pedidos", href: "/backstage/pedidos" },
+    { id: "produtos", icon: ICONES_ORGANIZACAO.produtos, label: "Produtos", href: "/backstage/produtos" },
+    { id: "publico", icon: ICONES_ORGANIZACAO.publico, label: "Público", href: "/backstage/publico" },
+    { id: "ajustes", icon: ICONES_ORGANIZACAO.ajustes, label: "Ajustes" },
 ];
 
 const OrgTopBar = ({ activeProducer }: { activeProducer?: string }) => {
@@ -938,16 +855,7 @@ const OrgTopBar = ({ activeProducer }: { activeProducer?: string }) => {
                 <div className="ml-auto flex items-center gap-3">
                     <ThemeToggle />
                     <span className="h-6 w-px shrink-0 bg-border-secondary" aria-hidden="true" />
-                    <button
-                        type="button"
-                        className="flex shrink-0 items-center gap-2 rounded-full bg-secondary py-1.5 pr-2.5 pl-1.5 ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary_hover"
-                    >
-                        <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-secondary-solid text-[10px] font-bold text-base-white">
-                            eng
-                        </span>
-                        <span className="text-sm font-semibold text-primary">Ingresse</span>
-                        <ChevronDown className="size-4 text-fg-quaternary" />
-                    </button>
+                    <OrganizacaoChip />
                 </div>
             </div>
         </header>
@@ -955,12 +863,7 @@ const OrgTopBar = ({ activeProducer }: { activeProducer?: string }) => {
 };
 
 /** Menu do evento à esquerda na nova shell (offset abaixo da barra do topo). */
-const EventRailTop = ({ activeSection, activeItem, railVariant }: EventRailProps) => (
-    <aside className={cx("sticky top-22 hidden h-[calc(100vh-7rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex", SOFT_SCROLLBAR)}>
-        <EventDetailsCard />
-        <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} railVariant={railVariant} />
-    </aside>
-);
+const EventRailTop = (props: EventRailProps) => <RailDoEvento {...props} className="sticky top-22 h-[calc(100vh-7rem)]" />;
 
 /* Mesma paleta que BadgeWithDot usa por trás do badge de status (ver
    colors.styles[cor].addon em badges.tsx) — o ponto ao lado do nome do status
@@ -982,98 +885,97 @@ const STATUS_DESCRICAO_CURTA: Record<EventoStatus, string> = {
     encerrado: "Vendas encerradas",
 };
 
+/**
+ * Cartão do evento no rail (desktop) e no menu do celular. Compacto (UI-NAV-005): capa pequena ao
+ * lado do nome, para o menu começar logo abaixo. O status aparece num lugar só, no seletor.
+ */
 const EventDetailsCard = () => {
     const evento = useEventoAtual();
-    const abrirModalDeStatus = useAbrirModalDeStatus();
     const encerrado = evento.status === "encerrado";
 
     return (
-        <div className="flex flex-col gap-4 rounded-2xl bg-secondary p-3">
-            <div className="relative aspect-[256/292] w-full overflow-hidden rounded-2xl bg-secondary">
-                <img src={evento.cover} alt={evento.nome} className="size-full object-cover" />
-                <Badge size="sm" type="pill-color" color={EVENTO_STATUS_BADGE_COLOR[evento.status]} className="absolute top-3 left-3">
-                    {EVENTO_STATUS_LABEL[evento.status]}
-                </Badge>
-                <div className="absolute bottom-3 right-3 flex w-12 flex-col items-center rounded-xl bg-white/50 px-2 py-3 text-primary backdrop-blur-md">
-                    <span className="text-[10px] font-medium tracking-wide uppercase">{evento.weekday}</span>
-                    <span className="text-base font-bold leading-tight">{evento.day}</span>
-                    <span className="text-[10px] font-medium tracking-wide uppercase">{evento.month}</span>
+        <div className="flex flex-col gap-3 rounded-2xl bg-secondary p-3">
+            <div className="flex items-start gap-3">
+                <img src={evento.cover} alt="" className="size-16 shrink-0 rounded-lg object-cover" />
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="text-sm text-tertiary">ID: {evento.id}</span>
+                    <h3 className="line-clamp-2 text-sm font-bold text-primary" title={evento.nome}>
+                        {evento.nome}
+                    </h3>
+                    <p className="truncate text-sm text-tertiary">{evento.produtor}</p>
                 </div>
             </div>
-            <div className="flex flex-col gap-0.5 px-1">
-                <span className="text-sm text-tertiary">ID: {evento.id}</span>
-                <h3 className="text-md font-bold text-primary">{evento.nome}</h3>
-                <p className="text-sm text-tertiary">{evento.produtor}</p>
-            </div>
+            <p className="px-1 text-sm text-secondary">{evento.dataLabel}</p>
             <div className="flex flex-col gap-1.5 px-1">
                 <span className="text-sm text-quaternary">Status do evento</span>
-                <div className="flex items-center gap-2">
-                    {/* Teste: dropdown real em vez do botão que só abria o modal direto — a
-                        seta agora tem uma função de verdade (abre a lista aqui do lado) e o
-                        ponto de cor dá o mesmo sinal do badge sem precisar ler o texto. Cada
-                        opção já pré-seleciona a escolha no modal em vez de aplicar na hora:
-                        a lista fica rápida para escolher, mas quem confirma — com o texto de
-                        apoio de cada status e o aviso de "não pode ser desfeito" — continua
-                        sendo só o modal, não dois lugares reimplementando a mesma coisa. */}
-                    <Dropdown.Root>
-                        <Button size="sm" color="secondary" className="flex-1 justify-between" iconTrailing={encerrado ? undefined : ChevronDown} isDisabled={encerrado}>
-                            <span className="flex min-w-0 items-center gap-1.5">
-                                <Dot size="sm" className={STATUS_DOT_COR[evento.status]} aria-hidden="true" />
-                                <span className="truncate">{EVENTO_STATUS_LABEL[evento.status]}</span>
-                            </span>
-                        </Button>
-                        <Dropdown.Popover className="w-64" placement="bottom start">
-                            <Dropdown.Menu>
-                                {/* Dropdown.Item só tem uma linha de texto (label) — o rótulo
-                                    curto sozinho não deixa espaço pra legenda de apoio, então
-                                    o item aqui é montado na mão com o MenuItem do React Aria
-                                    por baixo do Dropdown, reaproveitando as mesmas classes de
-                                    hover/foco do item padrão, só com duas linhas em vez de uma. */}
-                                {ORDEM_STATUS.map((status) => {
-                                    const isAtual = status === evento.status;
-                                    return (
-                                        <AriaMenuItem
-                                            key={status}
-                                            id={status}
-                                            isDisabled={isAtual}
-                                            textValue={EVENTO_STATUS_LABEL[status]}
-                                            onAction={() => abrirModalDeStatus(status)}
-                                            className={(state) => cx("group block cursor-pointer px-1.5 py-px outline-hidden", state.isDisabled && "cursor-not-allowed opacity-50")}
-                                        >
-                                            {(state) => (
-                                                <div
-                                                    className={cx(
-                                                        "relative flex items-start gap-2 rounded-md px-2.5 py-2 outline-focus-ring transition duration-100 ease-linear",
-                                                        !state.isDisabled && "group-hover:bg-primary_hover",
-                                                        state.isFocused && "bg-primary_hover",
-                                                        state.isFocusVisible && "outline-2 -outline-offset-2",
-                                                    )}
-                                                >
-                                                    <Dot size="sm" className={cx("mt-1 shrink-0 size-2", STATUS_DOT_COR[status])} aria-hidden="true" />
-                                                    <span className="flex min-w-0 flex-col">
-                                                        <span className="truncate text-sm font-semibold text-secondary">{EVENTO_STATUS_LABEL[status]}</span>
-                                                        <span className="truncate text-sm text-tertiary">{isAtual ? "Status atual" : STATUS_DESCRICAO_CURTA[status]}</span>
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </AriaMenuItem>
-                                    );
-                                })}
-                            </Dropdown.Menu>
-                        </Dropdown.Popover>
-                    </Dropdown.Root>
-                    <button
-                        type="button"
-                        disabled
-                        aria-label="Pré-visualizar evento (em breve)"
-                        className="flex size-9 shrink-0 cursor-not-allowed items-center justify-center rounded-md bg-primary text-fg-secondary opacity-50 ring-1 ring-border-primary shadow-xs"
-                    >
-                        <Eye className="size-4" />
-                    </button>
-                </div>
-                {encerrado && <p className="px-1 text-sm text-tertiary">Evento encerrado. O status não pode mais ser alterado.</p>}
+                <SeletorDeStatus />
+                {encerrado && <p className="text-sm text-tertiary">Evento encerrado. O status não pode mais ser alterado.</p>}
             </div>
         </div>
+    );
+};
+
+/** Troca de status no fim do menu do evento no celular, fixa no rodapé do painel (a barra só mostra o selo). */
+const StatusNoMenuMobile = () => {
+    const evento = useEventoAtual();
+    return (
+        <div className="sticky bottom-0 flex flex-col gap-1.5 border-t border-secondary bg-primary px-4 pt-4 pb-6">
+            <span className="text-sm text-quaternary">Status do evento</span>
+            <SeletorDeStatus />
+            {evento.status === "encerrado" && <p className="text-sm text-tertiary">Evento encerrado. O status não pode mais ser alterado.</p>}
+        </div>
+    );
+};
+
+/** Lista de status do evento: escolher abre o modal, que confirma. O mesmo no desktop e no celular. */
+const SeletorDeStatus = () => {
+    const evento = useEventoAtual();
+    const abrirModalDeStatus = useAbrirModalDeStatus();
+    const encerrado = evento.status === "encerrado";
+    return (
+        <Dropdown.Root>
+            <Button size="sm" color="secondary" className="w-full justify-between" iconTrailing={encerrado ? undefined : ChevronDown} isDisabled={encerrado}>
+                <span className="flex min-w-0 items-center gap-1.5">
+                    <Dot size="sm" className={STATUS_DOT_COR[evento.status]} aria-hidden="true" />
+                    <span className="truncate">{EVENTO_STATUS_LABEL[evento.status]}</span>
+                </span>
+            </Button>
+            <Dropdown.Popover className="w-64" placement="bottom start">
+                <Dropdown.Menu>
+                    {/* Dropdown.Item tem uma linha só; aqui são duas (nome e legenda), com as mesmas classes do item padrão. */}
+                    {ORDEM_STATUS.map((status) => {
+                        const isAtual = status === evento.status;
+                        return (
+                            <AriaMenuItem
+                                key={status}
+                                id={status}
+                                isDisabled={isAtual}
+                                textValue={EVENTO_STATUS_LABEL[status]}
+                                onAction={() => abrirModalDeStatus(status)}
+                                className={(state) => cx("group block cursor-pointer px-1.5 py-px outline-hidden", state.isDisabled && "cursor-not-allowed opacity-50")}
+                            >
+                                {(state) => (
+                                    <div
+                                        className={cx(
+                                            "relative flex items-start gap-2 rounded-md px-2.5 py-2 outline-focus-ring transition duration-100 ease-linear",
+                                            !state.isDisabled && "group-hover:bg-primary_hover",
+                                            state.isFocused && "bg-primary_hover",
+                                            state.isFocusVisible && "outline-2 -outline-offset-2",
+                                        )}
+                                    >
+                                        <Dot size="sm" className={cx("mt-1 size-2 shrink-0", STATUS_DOT_COR[status])} aria-hidden="true" />
+                                        <span className="flex min-w-0 flex-col">
+                                            <span className="truncate text-sm font-semibold text-secondary">{EVENTO_STATUS_LABEL[status]}</span>
+                                            <span className="truncate text-sm text-tertiary">{isAtual ? "Status atual" : STATUS_DESCRICAO_CURTA[status]}</span>
+                                        </span>
+                                    </div>
+                                )}
+                            </AriaMenuItem>
+                        );
+                    })}
+                </Dropdown.Menu>
+            </Dropdown.Popover>
+        </Dropdown.Root>
     );
 };
 
@@ -1083,7 +985,8 @@ interface EventFunctionalitiesListProps {
     railVariant?: RailVariant;
 }
 
-const ACTIVE_CLASS = "bg-tertiary hover:bg-tertiary";
+/** Item da página atual. "item-ativo" marca a linha para o rail rolar até ela e anunciar a página (UI-NAV-004). */
+const ACTIVE_CLASS = "item-ativo bg-tertiary hover:bg-tertiary";
 
 const EventFunctionalitiesList = ({ activeSection, activeItem, railVariant }: EventFunctionalitiesListProps) => {
     const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(
@@ -1096,212 +999,63 @@ const EventFunctionalitiesList = ({ activeSection, activeItem, railVariant }: Ev
         }
     }, [activeSection]);
 
-    const itemClass = (id: BackstageItem) => (activeItem === id ? ACTIVE_CLASS : undefined);
-
-    // Variante "gestao-operacao" — menu usado no contexto da Equipe de operação v3.
-    if (railVariant === "gestao-operacao") {
-        return (
-            <TreeView
-                aria-label="Funcionalidades do evento"
-                size="sm"
-                selectionMode="none"
-                disabledKeys={[...DISABLED_KEYS, "lotes-sincronizados", "compras-em-grupo", "coleta-dados"]}
-                expandedKeys={expandedKeys}
-                onExpandedChange={(keys: Set<Key>) => setExpandedKeys(new Set(keys))}
-            >
-                <TreeView.Item id="informacoes-evento" textValue="Informações do evento" href="/backstage/informacoes-evento">
-                    <TreeView.ItemContent icon={InfoCircle} className={activeSection === "informacoes-evento" ? ACTIVE_CLASS : undefined}>
-                        Informações do evento
-                    </TreeView.ItemContent>
-                </TreeView.Item>
-
-                <TreeView.Item id="itens" textValue="Itens">
-                    <TreeView.ItemContent icon={ShoppingCart01}>Itens</TreeView.ItemContent>
-                    <TreeView.Item id="catalogo-ingressos" textValue="Ingressos" href="/backstage/catalogo/ingressos">
-                        <TreeView.ItemContent className={itemClass("catalogo-ingressos")}>Ingressos</TreeView.ItemContent>
-                    </TreeView.Item>
-                    <TreeView.Item id="catalogo-combos" textValue="Combos">
-                        <TreeView.ItemContent className={itemClass("catalogo-combos")}>Combos</TreeView.ItemContent>
-                    </TreeView.Item>
-                    <TreeView.Item id="catalogo-produtos" textValue="Produtos">
-                        <TreeView.ItemContent className={itemClass("catalogo-produtos")}>Produtos</TreeView.ItemContent>
-                    </TreeView.Item>
-                    <TreeView.Item id="catalogo-aberturas" textValue="Aberturas de vendas" href="/backstage/catalogo/aberturas-de-vendas">
-                        <TreeView.ItemContent className={itemClass("catalogo-aberturas")}>Aberturas de vendas</TreeView.ItemContent>
-                    </TreeView.Item>
-                </TreeView.Item>
-
-                <TreeView.Item id="estrategias-venda" textValue="Estratégias de venda">
-                    <TreeView.ItemContent icon={CoinsHand}>Estratégias de venda</TreeView.ItemContent>
-                    <TreeView.Item id="lotes-sincronizados" textValue="Lotes Sincronizados">
-                        <TreeView.ItemContent>Lotes Sincronizados</TreeView.ItemContent>
-                    </TreeView.Item>
-                    <TreeView.Item id="compras-em-grupo" textValue="Compras em grupo">
-                        <TreeView.ItemContent>Compras em grupo</TreeView.ItemContent>
-                    </TreeView.Item>
-                </TreeView.Item>
-
-                <TreeView.Item id="cortesias" textValue="Cortesias">
-                    <TreeView.ItemContent icon={Ticket01}>Cortesias</TreeView.ItemContent>
-                    <TreeView.Item id="emissao-cortesias" textValue="Cortesia" href="/backstage/cortesias">
-                        <TreeView.ItemContent className={itemClass("emissao-cortesias")}>Cortesia</TreeView.ItemContent>
-                    </TreeView.Item>
-                    <TreeView.Item id="bilheteria-online" textValue="Bilheteria online" href="/backstage/bilheteria">
-                        <TreeView.ItemContent className={itemClass("bilheteria-online")}>Bilheteria online</TreeView.ItemContent>
-                    </TreeView.Item>
-                </TreeView.Item>
-
-                <TreeView.Item id="gerenciamento-cotas" textValue="Gerenciamento de cotas" href="/backstage/equipe-de-operacao/v3">
-                    <TreeView.ItemContent icon={Settings03} className={activeSection === "gerenciamento-cotas" ? ACTIVE_CLASS : undefined}>
-                        Gerenciamento de cotas
-                    </TreeView.ItemContent>
-                </TreeView.Item>
-
-                <TreeView.Item id="relatorios" textValue="Relatórios">
-                    <TreeView.ItemContent icon={File03}>Relatórios</TreeView.ItemContent>
-                    <TreeView.Item id="vendas-por-grupo" textValue="Vendas" href="/backstage/relatorios/vendas-por-grupo">
-                        <TreeView.ItemContent className={itemClass("vendas-por-grupo")}>Vendas</TreeView.ItemContent>
-                    </TreeView.Item>
-                    <TreeView.Item id="transacoes" textValue="Transações" href="/backstage/relatorios/transacoes">
-                        <TreeView.ItemContent className={itemClass("transacoes")}>Transações</TreeView.ItemContent>
-                    </TreeView.Item>
-                    <TreeView.Item id="acesso" textValue="Acesso" href="/backstage/relatorios/acesso">
-                        <TreeView.ItemContent className={itemClass("acesso")}>Acesso</TreeView.ItemContent>
-                    </TreeView.Item>
-                    <TreeView.Item id="bordero" textValue="Borderô" href="/backstage/relatorios/bordero">
-                        <TreeView.ItemContent className={itemClass("bordero")}>Borderô</TreeView.ItemContent>
-                    </TreeView.Item>
-                    <TreeView.Item id="transferencias" textValue="Transferências" href="/backstage/relatorios/transferencias">
-                        <TreeView.ItemContent className={itemClass("transferencias")}>Transferências</TreeView.ItemContent>
-                    </TreeView.Item>
-                    <TreeView.Item id="comparativos" textValue="Comparativos" href="/backstage/relatorios/comparativos">
-                        <TreeView.ItemContent className={itemClass("comparativos")}>Comparativos</TreeView.ItemContent>
-                    </TreeView.Item>
-                    <TreeView.Item id="relatorio-questionarios" textValue="Questionários" href="/backstage/relatorios/questionarios">
-                        <TreeView.ItemContent className={itemClass("relatorio-questionarios")}>Questionários</TreeView.ItemContent>
-                    </TreeView.Item>
-                    <TreeView.Item id="relatorio-personalizado" textValue="Relatório personalizado" href="/backstage/relatorios/relatorio-personalizado">
-                        <TreeView.ItemContent
-                            className={itemClass("relatorio-personalizado")}
-                            action={
-                                <Badge size="sm" type="pill-color" color="brand">
-                                    IA
-                                </Badge>
-                            }
-                        >
-                            Relatório personalizado
-                        </TreeView.ItemContent>
-                    </TreeView.Item>
-                </TreeView.Item>
-
-                <TreeView.Item id="marketing" textValue="Marketing">
-                    <TreeView.ItemContent icon={Announcement01}>Marketing</TreeView.ItemContent>
-                    <TreeView.Item id="chave-de-acesso" textValue="Chave de acesso" href="/backstage/marketing/chave-de-acesso">
-                        <TreeView.ItemContent className={itemClass("chave-de-acesso")}>Chave de acesso</TreeView.ItemContent>
-                    </TreeView.Item>
-                </TreeView.Item>
-
-                <TreeView.Item id="coleta-dados" textValue="Coleta de dados">
-                    <TreeView.ItemContent icon={ClipboardCheck}>Coleta de dados</TreeView.ItemContent>
-                </TreeView.Item>
-            </TreeView>
-        );
-    }
+    // Mesma lista do celular (EVENT_NAV): um menu, um desenho (UI-DS-003).
+    const nav = railVariant === "gestao-operacao" ? EVENT_NAV_GESTAO_OPERACAO : EVENT_NAV;
+    const desativadas: Key[] = [
+        ...DISABLED_KEYS,
+        ...nav.filter((sec) => !ehDestinoUnico(sec) && sec.items.length === 0).map((sec) => sec.id),
+        ...nav.flatMap((sec) => sec.items.filter((it) => ehDesativado(it.href)).map((it) => it.id)),
+    ];
+    const ativo = (marcado: boolean) => (marcado ? ACTIVE_CLASS : undefined);
 
     return (
         <TreeView
             aria-label="Funcionalidades do evento"
             size="sm"
             selectionMode="none"
-            disabledKeys={DISABLED_KEYS}
+            disabledKeys={desativadas}
             expandedKeys={expandedKeys}
             onExpandedChange={(keys: Set<Key>) => setExpandedKeys(new Set(keys))}
         >
-            <TreeView.Item id="informacoes-evento" textValue="Informações do evento" href="/backstage/informacoes-evento">
-                <TreeView.ItemContent icon={InfoCircle} className={activeSection === "informacoes-evento" ? ACTIVE_CLASS : undefined}>
-                    Informações do evento
-                </TreeView.ItemContent>
-            </TreeView.Item>
-
-            <TreeView.Item id="equipe-de-operacao" textValue="Equipe de operação" href="/backstage/equipe-de-operacao">
-                <TreeView.ItemContent
-                    icon={UsersPlus}
-                    className={activeSection === "equipe-de-operacao" ? ACTIVE_CLASS : undefined}
-                >
-                    Equipe de operação
-                </TreeView.ItemContent>
-            </TreeView.Item>
-
-            <TreeView.Item id="itens" textValue="Itens">
-                <TreeView.ItemContent icon={ShoppingCart01}>Itens</TreeView.ItemContent>
-                <TreeView.Item id="catalogo-ingressos" textValue="Ingressos" href="/backstage/catalogo/ingressos">
-                    <TreeView.ItemContent className={itemClass("catalogo-ingressos")}>Ingressos</TreeView.ItemContent>
-                </TreeView.Item>
-                <TreeView.Item id="catalogo-combos" textValue="Combos">
-                    <TreeView.ItemContent className={itemClass("catalogo-combos")}>Combos</TreeView.ItemContent>
-                </TreeView.Item>
-                <TreeView.Item id="catalogo-produtos" textValue="Produtos">
-                    <TreeView.ItemContent className={itemClass("catalogo-produtos")}>Produtos</TreeView.ItemContent>
-                </TreeView.Item>
-                <TreeView.Item id="catalogo-aberturas" textValue="Aberturas de vendas" href="/backstage/catalogo/aberturas-de-vendas">
-                    <TreeView.ItemContent className={itemClass("catalogo-aberturas")}>Aberturas de vendas</TreeView.ItemContent>
-                </TreeView.Item>
-            </TreeView.Item>
-
-            <TreeView.Item id="cortesias" textValue="Emissão de ingressos">
-                <TreeView.ItemContent icon={Ticket01}>Emissão de ingressos</TreeView.ItemContent>
-                <TreeView.Item id="emissao-cortesias" textValue="Cortesia" href="/backstage/cortesias">
-                    <TreeView.ItemContent className={itemClass("emissao-cortesias")}>Cortesia</TreeView.ItemContent>
-                </TreeView.Item>
-                <TreeView.Item id="bilheteria-online" textValue="Bilheteria online" href="/backstage/bilheteria">
-                    <TreeView.ItemContent className={itemClass("bilheteria-online")}>Bilheteria online</TreeView.ItemContent>
-                </TreeView.Item>
-            </TreeView.Item>
-
-            <TreeView.Item id="relatorios" textValue="Relatórios">
-                <TreeView.ItemContent icon={File03}>Relatórios</TreeView.ItemContent>
-                <TreeView.Item id="vendas-por-grupo" textValue="Vendas" href="/backstage/relatorios/vendas-por-grupo">
-                    <TreeView.ItemContent className={itemClass("vendas-por-grupo")}>Vendas</TreeView.ItemContent>
-                </TreeView.Item>
-                <TreeView.Item id="transacoes" textValue="Transações" href="/backstage/relatorios/transacoes">
-                    <TreeView.ItemContent className={itemClass("transacoes")}>Transações</TreeView.ItemContent>
-                </TreeView.Item>
-                <TreeView.Item id="acesso" textValue="Acesso" href="/backstage/relatorios/acesso">
-                    <TreeView.ItemContent className={itemClass("acesso")}>Acesso</TreeView.ItemContent>
-                </TreeView.Item>
-                <TreeView.Item id="bordero" textValue="Borderô" href="/backstage/relatorios/bordero">
-                    <TreeView.ItemContent className={itemClass("bordero")}>Borderô</TreeView.ItemContent>
-                </TreeView.Item>
-                <TreeView.Item id="transferencias" textValue="Transferências" href="/backstage/relatorios/transferencias">
-                    <TreeView.ItemContent className={itemClass("transferencias")}>Transferências</TreeView.ItemContent>
-                </TreeView.Item>
-                <TreeView.Item id="comparativos" textValue="Comparativos" href="/backstage/relatorios/comparativos">
-                    <TreeView.ItemContent className={itemClass("comparativos")}>Comparativos</TreeView.ItemContent>
-                </TreeView.Item>
-                <TreeView.Item id="relatorio-questionarios" textValue="Questionários" href="/backstage/relatorios/questionarios">
-                    <TreeView.ItemContent className={itemClass("relatorio-questionarios")}>Questionários</TreeView.ItemContent>
-                </TreeView.Item>
-                <TreeView.Item id="relatorio-personalizado" textValue="Relatório personalizado" href="/backstage/relatorios/relatorio-personalizado">
-                    <TreeView.ItemContent
-                        className={itemClass("relatorio-personalizado")}
-                        action={
-                            <Badge size="sm" type="pill-color" color="brand">
-                                IA
-                            </Badge>
-                        }
-                    >
-                        Relatório personalizado
-                    </TreeView.ItemContent>
-                </TreeView.Item>
-            </TreeView.Item>
-
-            <TreeView.Item id="marketing" textValue="Marketing">
-                <TreeView.ItemContent icon={Announcement01}>Marketing</TreeView.ItemContent>
-                <TreeView.Item id="chave-de-acesso" textValue="Chave de acesso" href="/backstage/marketing/chave-de-acesso">
-                    <TreeView.ItemContent className={itemClass("chave-de-acesso")}>Chave de acesso</TreeView.ItemContent>
-                </TreeView.Item>
-            </TreeView.Item>
-
+            {nav.map((sec) => {
+                const novo = sec.novo && (
+                    <Badge size="sm" type="pill-color" color="brand">
+                        Novo
+                    </Badge>
+                );
+                if (ehDestinoUnico(sec) || sec.items.length === 0) {
+                    const href = destinoDaSecao(sec);
+                    return (
+                        <TreeView.Item key={sec.id} id={sec.id} textValue={sec.label} href={ehDesativado(href) ? undefined : href}>
+                            <TreeView.ItemContent icon={sec.icon} action={novo} className={ativo(activeSection === sec.id)}>
+                                {sec.label}
+                            </TreeView.ItemContent>
+                        </TreeView.Item>
+                    );
+                }
+                return (
+                    <TreeView.Item key={sec.id} id={sec.id} textValue={sec.label}>
+                        <TreeView.ItemContent icon={sec.icon} action={novo}>
+                            {sec.label}
+                        </TreeView.ItemContent>
+                        {sec.items.map((it) => (
+                            <TreeView.Item
+                                key={it.id}
+                                id={it.id}
+                                textValue={it.label}
+                                href={ehDesativado(it.href) ? undefined : it.href}
+                                // Entra deslizando ao abrir o grupo (UI-VIS-008); some sem movimento com redução de movimento.
+                                className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
+                            >
+                                <TreeView.ItemContent className={ativo(activeItem === it.id)} action={<ItemBadges item={it} />}>
+                                    {it.label}
+                                </TreeView.ItemContent>
+                            </TreeView.Item>
+                        ))}
+                    </TreeView.Item>
+                );
+            })}
         </TreeView>
     );
 };
+

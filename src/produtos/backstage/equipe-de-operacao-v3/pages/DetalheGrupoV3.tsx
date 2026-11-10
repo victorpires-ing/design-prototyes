@@ -59,8 +59,8 @@ export function DetalheGrupoV3() {
 
     return (
         <BackstageLayout activeSection="gerenciamento-cotas" railVariant="gestao-operacao">
-            <TemaCotas>
-                <header className="p-6">
+            <TemaCotas className="gap-6">
+                <header>
                     <nav aria-label="Breadcrumb" className="flex items-center gap-1">
                         <button
                             type="button"
@@ -85,7 +85,7 @@ export function DetalheGrupoV3() {
                     </nav>
                 </header>
 
-                <main className="flex flex-1 flex-col gap-6 px-6 pb-6">
+                <main className="flex flex-1 flex-col gap-6">
                     <div className="flex items-center gap-4 pb-3">
                         <ButtonUtility size="sm" color="secondary" icon={ChevronLeft} tooltip="Voltar" onClick={voltar} />
                         <div className="flex min-w-0 flex-col">

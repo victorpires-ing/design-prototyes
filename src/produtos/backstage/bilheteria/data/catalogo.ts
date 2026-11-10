@@ -120,7 +120,11 @@ const SEXTA_14 = { day: "14", weekday: "Sexta", longDate: "14 de agosto", month:
 const SABADO_15 = { day: "15", weekday: "Sábado", longDate: "15 de agosto", month: "Ago", year: "2026" };
 const DOMINGO_16 = { day: "16", weekday: "Domingo", longDate: "16 de agosto", month: "Ago", year: "2026" };
 
-export const sessions: TicketSession[] = [
+/**
+ * Sessões à venda. Começa com o exemplo e é trocada pelo catálogo do evento em contexto, vindo do
+ * banco (ver data/plataforma.ts). `let` exportado: quem importa enxerga a troca.
+ */
+export let sessions: TicketSession[] = [
     makeSession({ ...SEXTA_07, time: "14:00" }, [
         ticket("07-pista-inteira", "Pista · Inteira", "Pista", "Inteira", "1º lote", "qrcode", 389.9),
         ticket("07-pista-meia", "Pista · Meia-entrada", "Pista", "Meia-entrada", "1º lote", "facial", 194.95),
@@ -173,6 +177,10 @@ export const sessions: TicketSession[] = [
         ticket("16-camarote-inteira", "Encerramento · Camarote", "Camarote", "Inteira", "3º lote", "facial", 860.0),
     ]),
 ];
+
+export function definirSessoes(novas: TicketSession[]) {
+    sessions = novas;
+}
 
 export const products: ProductItem[] = [
     {

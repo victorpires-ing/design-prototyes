@@ -76,7 +76,7 @@ export function AlterarStatusModal({ isOpen, onClose, statusAtual, onConfirm, st
     const items = ORDEM_STATUS.map((status) => ({
         value: status,
         title: EVENTO_STATUS_LABEL[status],
-        secondaryTitle: status === statusAtual ? "· status atual" : "",
+        secondaryTitle: status === statusAtual ? "Status atual" : "",
         description: EVENTO_STATUS_DESCRICAO[status],
         icon: STATUS_ICON[status],
     }));

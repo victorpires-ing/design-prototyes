@@ -1,604 +1,484 @@
-import type { FC } from "react";
-import { useRef, useState } from "react";
-import { useNavigate } from "react-router";
-import { Calendar, ChevronDown, ChevronLeft, ChevronRight, ChevronSelectorVertical, Copy01, Edit01, HomeLine, Plus, Trash01, XClose } from "@untitledui/icons";
-import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
-import type { DateValue } from "react-aria-components";
-import { CalendarDate } from "@internationalized/date";
-import { AnimatePresence, motion } from "motion/react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { CalendarPlus01, Copy01, Edit01, Plus, SearchLg, Trash01 } from "@untitledui/icons";
+import { parseDateTime } from "@internationalized/date";
+import { DateTimePicker } from "@/components/application/date-picker/date-time-picker";
+import { EmptyState } from "@/components/application/empty-state/empty-state";
+import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { Calendar as DSCalendar } from "@/components/application/date-picker/calendar";
-import { cx } from "@/utils/cx";
+import { Input, InputBase } from "@/components/base/input/input";
+import { Surgir } from "@/components/foundations/transicao";
+import type { AberturaDeVendas, Evento, ItemDaAbertura, ProdutoDaOrganizacao } from "@/plataforma";
+import { itensDaAbertura } from "@/plataforma";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 import { BackstageLayout } from "../../components/Backstage";
+import { EscolhaEmLista, ListaDeEscolhas } from "../../itens/components/comuns";
+import { BotaoMostrarMais, LIMIAR_FERRAMENTAS, paraBusca, useMostrarMais } from "../../itens/components/escala";
+import { SeletorDeLista, type OpcaoDeLista } from "../../itens/components/SeletorDeLista";
+import { SeletorDeIngressos, useResumoDeIngressos } from "../components/SeletorDeIngressos";
+import { novoId, produtosDo, salvarAberturas, useCatalogo } from "../../itens/data/catalogo";
+import { formatar, useTextosItens } from "../../itens/data/textos-itens";
 
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+/* ------------------------------------------------------------------ */
+/*  Aberturas de vendas (ABV)                                          */
+/*                                                                     */
+/*  Quando os itens do evento vendem. Cada abertura tem nome, início,  */
+/*  fim e os ingressos, produtos e combos incluídos. Lê e grava no     */
+/*  evento (`Evento.aberturas`); cada mudança é uma ação confirmada    */
+/*  (modal ou seletor) e grava na hora.                                */
+/* ------------------------------------------------------------------ */
 
-/** Máscara de data: só dígitos, formato dd/mm/aaaa. */
-function maskDate(v: string) {
-    const d = v.replace(/\D/g, "").slice(0, 8);
-    let out = d.slice(0, 2);
-    if (d.length > 2) out += "/" + d.slice(2, 4);
-    if (d.length > 4) out += "/" + d.slice(4, 8);
-    return out;
-}
+type TipoDeItem = "ingresso" | "produto" | "combo";
+const TIPOS: TipoDeItem[] = ["ingresso", "produto", "combo"];
 
-/** Máscara de hora: só dígitos, formato hh:mm, com horas 00–23 e minutos 00–59. */
-function maskTime(v: string) {
-    const d = v.replace(/\D/g, "").slice(0, 4);
-    let h = d.slice(0, 2);
-    let m = d.slice(2, 4);
-    if (h.length === 2 && +h > 23) h = "23";
-    if (m.length === 2 && +m > 59) m = "59";
-    return d.length > 2 ? `${h}:${m}` : h;
-}
+const T = {
+    titulo: "Aberturas de vendas",
+    subtitulo: "Quando cada ingresso, produto e combo vende.",
+    nova: "Nova abertura",
+    buscar: "Buscar abertura",
+    contagem: "{visiveis} de {total}",
+    nada: "Nenhuma abertura com esse nome.",
+    vazio: "Nenhuma abertura programada",
+    vazioDica: "Crie a primeira abertura para os ingressos, produtos e combos começarem a vender.",
+    carregando: "Carregando aberturas",
+    estados: { aberta: "Aberta agora", agendada: "Agendada", encerrada: "Encerrada" },
+    periodo: "De {inicio} até {fim}",
+    duplicar: "Duplicar {nome}",
+    editar: "Editar {nome}",
+    excluir: "Excluir {nome}",
+    duplicada: "{nome} duplicada.",
+    copia: "Cópia de {nome}",
+    salvo: "Alterações salvas.",
+    erro: "Tente de novo: não foi possível salvar.",
+    semItens: "Escolha os itens: sem eles, esta abertura não vende nada.",
+    grupos: {
+        ingresso: { rotulo: "Ingressos", vazio: "Nenhum ingresso", botao: "Escolher ingressos", seletor: "Ingressos de {nome}", seletorVazio: "" },
+        produto: { rotulo: "Produtos", vazio: "Nenhum produto", botao: "Escolher produtos", seletor: "Produtos de {nome}", seletorVazio: "O evento ainda não vende produtos." },
+        combo: { rotulo: "Combos", vazio: "Nenhum combo", botao: "Escolher combos", seletor: "Combos de {nome}", seletorVazio: "O evento ainda não tem combos." },
+    } satisfies Record<TipoDeItem, { rotulo: string; vazio: string; botao: string; seletor: string; seletorVazio: string }>,
+    ingressoApoio: "{setor}, sessão de {sessao}",
+    ingressoApoioUnico: "{setor}",
+    modal: {
+        nova: "Nova abertura de vendas",
+        editar: "Editar abertura",
+        nome: "Nome",
+        nomePlaceholder: "Ex.: Venda antecipada",
+        nomeDica: "Aparece para o comprador.",
+        nomeErro: "Dê um nome à abertura.",
+        inicio: "Começa em",
+        fim: "Termina em",
+        dataErro: "Escolha data e hora.",
+        fimErro: "Escolha um fim depois do começo.",
+        evento: "O evento começa em {data}.",
+        cancelar: "Cancelar",
+        criar: "Criar abertura",
+        salvar: "Salvar",
+        criada: "{nome} criada.",
+    },
+    confirmar: {
+        titulo: "Excluir {nome}?",
+        dica: "Os itens dela deixam de vender neste período. Esta ação não pode ser desfeita.",
+        cancelar: "Cancelar",
+        excluir: "Excluir",
+        excluida: "{nome} excluída.",
+    },
+};
 
-/** "dd/mm/aaaa" -> CalendarDate (ou null se incompleto/ inválido). */
-function parseDate(str: string): CalendarDate | null {
-    const m = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (!m) return null;
-    const day = +m[1];
-    const month = +m[2];
-    const year = +m[3];
-    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+type Estado = keyof typeof T.estados;
+const COR: Record<Estado, "success" | "blue" | "gray"> = { aberta: "success", agendada: "blue", encerrada: "gray" };
+
+const estadoDa = (a: AberturaDeVendas, agora = new Date()): Estado =>
+    new Date(a.inicio) > agora ? "agendada" : new Date(a.fim) < agora ? "encerrada" : "aberta";
+
+const paraData = (v?: string) => {
+    if (!v) return null;
     try {
-        return new CalendarDate(year, month, day);
+        return parseDateTime(v.slice(0, 16));
     } catch {
         return null;
     }
+};
+
+/** Itens do evento por tipo, como opções do seletor, com contexto para nomes repetidos (UI-LST-001). */
+function opcoesDeItens(evento: Evento | undefined, biblioteca: ProdutoDaOrganizacao[], dataCurta: (iso: string) => string): Record<TipoDeItem, OpcaoDeLista[]> {
+    if (!evento) return { ingresso: [], produto: [], combo: [] };
+    const variasSessoes = evento.sessoes.length > 1;
+    return {
+        ingresso: evento.sessoes.flatMap((s) =>
+            s.grupos.flatMap((g) =>
+                g.ingressos.map((t) => ({
+                    id: t.id,
+                    rotulo: t.nome,
+                    apoio: variasSessoes ? formatar(T.ingressoApoio, { setor: g.nome, sessao: dataCurta(s.inicio) }) : formatar(T.ingressoApoioUnico, { setor: g.nome }),
+                })),
+            ),
+        ),
+        produto: produtosDo(evento, biblioteca).map(({ produto }) => ({ id: produto.id, rotulo: produto.nome })),
+        combo: (evento.combos ?? []).map((c) => ({ id: c.id, rotulo: c.nome })),
+    };
 }
 
-const toStr = (dv: DateValue) => `${String(dv.day).padStart(2, "0")}/${String(dv.month).padStart(2, "0")}/${dv.year}`;
+/** Grava só o formato novo (`itens`), sem as configurações antigas. */
+const comItens = (a: AberturaDeVendas, itens: ItemDaAbertura[]): AberturaDeVendas => {
+    const { configuracoes: _antigas, ...resto } = a;
+    return { ...resto, itens };
+};
 
-/** "24/07/2026" + "12:00" -> "24 de jul. às 12:00" */
-function fmtDataHora(data: string, hora: string) {
-    const [d, m] = data.split("/");
-    const mes = MESES[Number(m) - 1];
-    if (!d || !mes) return "";
-    return `${Number(d)} de ${mes}. às ${hora || "00:00"}`;
-}
-
-interface Config {
-    id: string;
-    venderPara: string;
-    ingressos: string;
-    canais: string;
-}
-
-interface Abertura {
-    id: string;
-    nome: string;
-    periodo: string;
-    configs: Config[];
-}
+type Seletor = { aberturaId: string; tipo: TipoDeItem };
 
 export function AberturasDeVendas() {
-    const navigate = useNavigate();
-    const seq = useRef(0);
-    const nextId = (p: string) => `${p}-${(seq.current += 1)}`;
+    const { carregando, evento, biblioteca } = useCatalogo();
+    const { numero, dataCurta, dataLonga } = useTextosItens();
+    const aberturas = useMemo(() => [...(evento?.aberturas ?? [])].sort((a, b) => a.inicio.localeCompare(b.inicio)), [evento?.aberturas]);
+    const opcoes = useMemo(() => opcoesDeItens(evento, biblioteca, dataCurta), [evento, biblioteca, dataCurta]);
+    const rotuloDe = useMemo(() => {
+        const m = new Map(TIPOS.flatMap((tipo) => opcoes[tipo].map((o) => [`${tipo}:${o.id}`, o.apoio ? `${o.rotulo} (${o.apoio})` : o.rotulo] as const)));
+        return m;
+    }, [opcoes]);
+    /** Setor de cada ingresso, para o resumo "N ingressos em M setores". */
+    const setorDoIngresso = useMemo(() => new Map((evento?.sessoes ?? []).flatMap((s) => s.grupos.flatMap((g) => g.ingressos.map((t) => [t.id, g.id] as const)))), [evento?.sessoes]);
 
-    const [aberturas, setAberturas] = useState<Abertura[]>([
-        {
-            id: "ab-seed-1",
-            nome: "Primeira abertura",
-            periodo: "02 de jan. às 15:00 - 10 de jan. às 15:00",
-            configs: [{ id: "cfg-seed-1", venderPara: "", ingressos: "", canais: "Todos" }],
-        },
-        {
-            id: "ab-seed-2",
-            nome: "Venda antecipada",
-            periodo: "15 de jan. às 10:00 - 31 de jan. às 23:59",
-            configs: [{ id: "cfg-seed-2", venderPara: "", ingressos: "", canais: "Todos" }],
-        },
-    ]);
-    const [expandedId, setExpandedId] = useState<string | null>(null);
-    const [modalOpen, setModalOpen] = useState(false);
-    const [confirm, setConfirm] = useState<{ tipo: "excluir" | "duplicar"; id: string } | null>(null);
-    // Badge temporária "Abertura duplicada" na cópia recém-criada.
-    const [flashId, setFlashId] = useState<string | null>(null);
+    const [modal, setModal] = useState<{ abertura?: AberturaDeVendas } | null>(null);
+    const [excluir, setExcluir] = useState<AberturaDeVendas | null>(null);
+    const [seletor, setSeletor] = useState<Seletor | null>(null);
+    const [busca, setBusca] = useState("");
+    const termo = paraBusca(busca.trim());
+    const filtradas = useMemo(() => (termo ? aberturas.filter((a) => paraBusca(a.nome).includes(termo)) : aberturas), [aberturas, termo]);
+    const { visiveis, restantes, mostrarMais } = useMostrarMais(filtradas);
 
-    // Formulário do modal
-    const [nome, setNome] = useState("");
-    const [dataInicial, setDataInicial] = useState("");
-    const [horaInicial, setHoraInicial] = useState("");
-    const [dataFinal, setDataFinal] = useState("");
-    const [horaFinal, setHoraFinal] = useState("");
-
-    const abrirModal = () => {
-        setNome("");
-        setDataInicial("");
-        setHoraInicial("");
-        setDataFinal("");
-        setHoraFinal("");
-        setModalOpen(true);
+    const gravar = async (lista: AberturaDeVendas[], mensagem = T.salvo) => {
+        if (!evento) return false;
+        try {
+            await salvarAberturas(evento, lista);
+            toast.success(mensagem);
+            return true;
+        } catch {
+            toast.error(T.erro);
+            return false;
+        }
     };
 
-    const salvar = () => {
-        const inicio = fmtDataHora(dataInicial, horaInicial);
-        const fim = fmtDataHora(dataFinal, horaFinal);
-        const periodo = inicio && fim ? `${inicio} - ${fim}` : "Período a definir";
-        const id = nextId("ab");
-        setAberturas((prev) => [
-            ...prev,
-            { id, nome: nome.trim() || "Nova abertura", periodo, configs: [{ id: nextId("cfg"), venderPara: "", ingressos: "", canais: "Todos" }] },
-        ]);
-        setModalOpen(false);
+    const trocar = (id: string, fn: (a: AberturaDeVendas) => AberturaDeVendas, mensagem?: string) => gravar(aberturas.map((a) => (a.id === id ? fn(a) : a)), mensagem);
+
+    const duplicar = (a: AberturaDeVendas) => {
+        const copia = comItens({ ...a, id: novoId("abv"), nome: formatar(T.copia, { nome: a.nome }) }, itensDaAbertura(a));
+        void gravar([...aberturas, copia], formatar(T.duplicada, { nome: a.nome }));
     };
 
-    const remover = (id: string) => setAberturas((prev) => prev.filter((a) => a.id !== id));
-    const toggleExpand = (id: string) => setExpandedId((prev) => (prev === id ? null : id));
-
-    const duplicar = (id: string) => {
-        const orig = aberturas.find((a) => a.id === id);
-        if (!orig) return;
-        const copiaId = nextId("ab");
-        const copia: Abertura = {
-            ...orig,
-            id: copiaId,
-            configs: orig.configs.map((c) => ({ ...c, id: nextId("cfg") })),
-        };
-        setAberturas((prev) => {
-            const idx = prev.findIndex((a) => a.id === id);
-            if (idx === -1) return prev;
-            const next = [...prev];
-            next.splice(idx + 1, 0, copia);
-            return next;
-        });
-        // Badge some (com fade) depois de 30s.
-        setFlashId(copiaId);
-        window.setTimeout(() => setFlashId((cur) => (cur === copiaId ? null : cur)), 30000);
-    };
-
-    const novaConfig = (aberturaId: string) =>
-        setAberturas((prev) =>
-            prev.map((a) => (a.id === aberturaId ? { ...a, configs: [...a.configs, { id: nextId("cfg"), venderPara: "", ingressos: "", canais: "Todos" }] } : a)),
-        );
-    const removerConfig = (aberturaId: string, cfgId: string) =>
-        setAberturas((prev) => prev.map((a) => (a.id === aberturaId ? { ...a, configs: a.configs.filter((c) => c.id !== cfgId) } : a)));
-
-    const confirmarAcao = () => {
-        if (!confirm) return;
-        if (confirm.tipo === "excluir") remover(confirm.id);
-        else duplicar(confirm.id);
-        setConfirm(null);
-    };
+    const aberturaDoSeletor = seletor && aberturas.find((a) => a.id === seletor.aberturaId);
 
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-aberturas">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <main className="flex flex-1 flex-col px-4 py-6 md:px-6">
-                    {/* Breadcrumb + ação principal */}
-                    <div className="flex items-center justify-between gap-3">
-                        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-tertiary">
-                            <button
-                                type="button"
-                                aria-label="Início"
-                                onClick={() => navigate("/backstage/")}
-                                className="flex size-7 items-center justify-center rounded-md text-fg-quaternary transition duration-100 ease-linear hover:bg-secondary hover:text-fg-secondary"
-                            >
-                                <HomeLine className="size-4" />
-                            </button>
-                            <ChevronRight className="size-4 text-fg-quaternary" />
-                            <span>Itens</span>
-                            <ChevronRight className="size-4 text-fg-quaternary" />
-                            <span className="rounded-md bg-secondary px-2 py-0.5 font-medium text-secondary">Aberturas de vendas</span>
-                        </nav>
-
-                        <div className="flex items-center gap-3">
-                            {aberturas.length > 0 && <span className="hidden text-sm text-tertiary sm:inline">Alterações salvas</span>}
-                            <Button size="lg" color="secondary" iconLeading={Plus} onClick={abrirModal}>
-                                Nova abertura
-                            </Button>
-                        </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <header className="flex flex-wrap items-end justify-between gap-4">
+                    <div className="flex min-w-0 flex-col gap-1">
+                        <h1 className={TITULO_PAGINA}>{T.titulo}</h1>
+                        <p className="text-md text-tertiary">{T.subtitulo}</p>
                     </div>
-
-                    {/* Header: voltar + título */}
-                    <header className="mt-5 flex items-center gap-3">
-                        <button
-                            type="button"
-                            aria-label="Voltar"
-                            onClick={() => navigate("/backstage/catalogo/ingressos")}
-                            className="flex size-9 items-center justify-center rounded-lg text-fg-secondary ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
-                        >
-                            <ChevronLeft className="size-5" />
-                        </button>
-                        <h1 className="text-display-xs font-bold text-primary">Aberturas de vendas</h1>
-                    </header>
-
-                    {aberturas.length === 0 ? (
-                        <EmptyState onNova={abrirModal} />
-                    ) : (
-                        <div className="mt-8 flex flex-col gap-6">
-                            {/* Filtros */}
-                            <div className="grid gap-4 md:grid-cols-3">
-                                <SelectField label="Público alvo" placeholder="Filtrar por público-alvo" />
-                                <SelectField label="Grupos de ingressos" placeholder="Filtrar por grupo" />
-                                <SelectField label="Ingressos" placeholder="Filtrar por ingresso" />
-                            </div>
-
-                            {/* Lista de aberturas */}
-                            <div className="flex flex-col gap-4">
-                                <AnimatePresence initial={false}>
-                                    {aberturas.map((ab) => (
-                                        <motion.div
-                                            key={ab.id}
-                                            className="overflow-hidden"
-                                            initial={{ opacity: 0, height: 0 }}
-                                            animate={{ opacity: 1, height: "auto" }}
-                                            exit={{ opacity: 0, height: 0 }}
-                                            transition={{
-                                                height: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
-                                                opacity: { duration: 0.45, ease: "easeOut" },
-                                            }}
-                                        >
-                                            <AberturaCard
-                                                abertura={ab}
-                                                expanded={expandedId === ab.id}
-                                                onToggle={() => toggleExpand(ab.id)}
-                                                onRemover={() => setConfirm({ tipo: "excluir", id: ab.id })}
-                                                onDuplicar={() => setConfirm({ tipo: "duplicar", id: ab.id })}
-                                                onNovaConfig={() => novaConfig(ab.id)}
-                                                onRemoverConfig={(cfgId) => removerConfig(ab.id, cfgId)}
-                                                flash={flashId === ab.id}
-                                            />
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
-                            </div>
-                        </div>
+                    {aberturas.length > 0 && (
+                        <Button color="primary" size="md" iconLeading={Plus} onClick={() => setModal({})}>
+                            {T.nova}
+                        </Button>
                     )}
-                </main>
+                </header>
+
+                {carregando ? (
+                    <div role="status" aria-label={T.carregando} className="flex flex-col gap-3">
+                        {[0, 1].map((i) => (
+                            <span key={i} aria-hidden="true" className="h-20 w-full animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
+                        ))}
+                    </div>
+                ) : aberturas.length === 0 ? (
+                    <div className="flex items-center justify-center py-16">
+                        <EmptyState size="sm">
+                            <EmptyState.Header>
+                                <EmptyState.FeaturedIcon icon={CalendarPlus01} color="gray" theme="modern" />
+                            </EmptyState.Header>
+                            <EmptyState.Content>
+                                <EmptyState.Title>{T.vazio}</EmptyState.Title>
+                                <EmptyState.Description>{T.vazioDica}</EmptyState.Description>
+                            </EmptyState.Content>
+                            <EmptyState.Footer>
+                                <Button color="primary" size="md" iconLeading={Plus} onClick={() => setModal({})}>
+                                    {T.nova}
+                                </Button>
+                            </EmptyState.Footer>
+                        </EmptyState>
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-4">
+                        {aberturas.length > LIMIAR_FERRAMENTAS && (
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <InputBase
+                                    size="sm"
+                                    icon={SearchLg}
+                                    aria-label={T.buscar}
+                                    placeholder={T.buscar}
+                                    value={busca}
+                                    onChange={(v: unknown) => setBusca(typeof v === "string" ? v : ((v as { target?: { value?: string } })?.target?.value ?? ""))}
+                                    wrapperClassName="w-full sm:max-w-80"
+                                />
+                                <span role="status" className="text-sm text-tertiary tabular-nums">
+                                    {formatar(T.contagem, { visiveis: numero(filtradas.length), total: numero(aberturas.length) })}
+                                </span>
+                            </div>
+                        )}
+                        <ul className="flex flex-col gap-3">
+                            {visiveis.map((a) => (
+                                <li key={a.id}>
+                                    <CartaoDaAbertura
+                                        abertura={a}
+                                        rotuloDe={rotuloDe}
+                                        setorDoIngresso={setorDoIngresso}
+                                        onEditar={() => setModal({ abertura: a })}
+                                        onDuplicar={() => duplicar(a)}
+                                        onExcluir={() => setExcluir(a)}
+                                        onEscolher={(tipo) => setSeletor({ aberturaId: a.id, tipo })}
+                                    />
+                                </li>
+                            ))}
+                        </ul>
+                        <Surgir visivel={filtradas.length === 0}>
+                            <p className="text-sm text-tertiary">{T.nada}</p>
+                        </Surgir>
+                        <BotaoMostrarMais restantes={restantes} onClick={mostrarMais} />
+                    </div>
+                )}
             </div>
 
-            {/* Modal: nova abertura de vendas */}
-            {modalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/60 p-4" role="dialog" aria-modal="true">
-                    <div className="w-full max-w-md rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
-                        <div className="flex items-start justify-between gap-3">
-                            <h2 className="text-lg font-bold text-primary">Nova abertura de vendas</h2>
-                            <button
-                                type="button"
-                                aria-label="Fechar"
-                                onClick={() => setModalOpen(false)}
-                                className="shrink-0 text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary"
-                            >
-                                <XClose className="size-5" />
-                            </button>
-                        </div>
-
-                        {/* Período programado do evento */}
-                        <div className="mt-4 flex items-center gap-3 rounded-xl bg-secondary px-4 py-3">
-                            <Calendar className="size-5 shrink-0 text-fg-quaternary" />
-                            <div className="min-w-0">
-                                <p className="text-xs text-tertiary">Evento programado para</p>
-                                <p className="text-sm font-semibold text-primary">10/08/2026 00:00 - 30/09/2026 00:00</p>
-                            </div>
-                        </div>
-
-                        {/* Nome */}
-                        <Field
-                            className="mt-5"
-                            label="Nome"
-                            placeholder="Ex.: Primeira abertura, venda antecipada… etc."
-                            hint="Este nome será exibido para o comprador."
-                            value={nome}
-                            onChange={setNome}
-                            autoFocus
-                        />
-
-                        {/* Datas / horas */}
-                        <div className="mt-5 grid grid-cols-2 gap-4">
-                            <DateField label="Data inicial" value={dataInicial} onChange={setDataInicial} />
-                            <Field label="Hora inicial" placeholder="hh:mm" value={horaInicial} onChange={(v) => setHoraInicial(maskTime(v))} />
-                            <DateField label="Data final" value={dataFinal} onChange={setDataFinal} />
-                            <Field label="Hora final" placeholder="hh:mm" value={horaFinal} onChange={(v) => setHoraFinal(maskTime(v))} />
-                        </div>
-
-                        <div className="mt-6 flex items-center justify-end gap-2">
-                            <Button size="lg" color="link-gray" onClick={() => setModalOpen(false)}>
-                                Voltar
-                            </Button>
-                            <Button size="lg" color="secondary" onClick={salvar}>
-                                Salvar
-                            </Button>
-                        </div>
-                    </div>
-                </div>
+            {modal && (
+                <ModalDaAbertura
+                    abertura={modal.abertura}
+                    dataDoEvento={evento?.data ? dataLonga(evento.data) : undefined}
+                    onFechar={() => setModal(null)}
+                    onSalvar={async (dados) => {
+                        const ok = modal.abertura
+                            ? await trocar(modal.abertura.id, (a) => comItens({ ...a, ...dados }, itensDaAbertura(a)))
+                            : await gravar([...aberturas, { id: novoId("abv"), ...dados, itens: [] }], formatar(T.modal.criada, { nome: dados.nome }));
+                        if (ok) setModal(null);
+                    }}
+                />
             )}
 
-            {/* Modal de confirmação: excluir / duplicar */}
-            {confirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/60 p-4" role="dialog" aria-modal="true">
-                    <div className="w-full max-w-md rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
-                        <div className="flex items-start justify-between gap-3">
-                            <h2 className="text-lg font-bold text-primary">
-                                {confirm.tipo === "excluir" ? "Confirmar exclusão" : "Duplicar abertura de venda?"}
-                            </h2>
-                            <button
-                                type="button"
-                                aria-label="Fechar"
-                                onClick={() => setConfirm(null)}
-                                className="shrink-0 text-fg-quaternary transition duration-100 ease-linear hover:text-fg-secondary"
-                            >
-                                <XClose className="size-5" />
-                            </button>
+            <ModalOverlay isOpen={!!excluir} onOpenChange={(v) => !v && setExcluir(null)} isDismissable>
+                <Modal className="sm:max-w-[400px]">
+                    <Dialog aria-label={excluir ? formatar(T.confirmar.titulo, { nome: excluir.nome }) : undefined}>
+                        <div className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                            <div className="flex flex-col gap-1">
+                                <h2 className="text-lg font-semibold text-primary">{excluir && formatar(T.confirmar.titulo, { nome: excluir.nome })}</h2>
+                                <p className="text-sm text-tertiary">{T.confirmar.dica}</p>
+                            </div>
+                            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                <Button color="secondary" size="md" onClick={() => setExcluir(null)}>
+                                    {T.confirmar.cancelar}
+                                </Button>
+                                <Button
+                                    color="primary-destructive"
+                                    size="md"
+                                    onClick={async () => {
+                                        if (!excluir) return;
+                                        if (await gravar(aberturas.filter((a) => a.id !== excluir.id), formatar(T.confirmar.excluida, { nome: excluir.nome }))) setExcluir(null);
+                                    }}
+                                >
+                                    {T.confirmar.excluir}
+                                </Button>
+                            </div>
                         </div>
-                        <p className="mt-2 text-sm leading-relaxed text-tertiary">
-                            {confirm.tipo === "excluir"
-                                ? "Tem certeza que deseja excluir esta abertura de vendas? Esta ação não pode ser desfeita."
-                                : "Será criada uma nova abertura com as mesmas configurações desta. Depois, você poderá revisar e ajustar as informações necessárias."}
-                        </p>
-                        <div className="mt-6 flex items-center justify-end gap-2">
-                            <Button size="lg" color="link-gray" onClick={() => setConfirm(null)}>
-                                Cancelar
-                            </Button>
-                            <Button
-                                size="lg"
-                                color={confirm.tipo === "excluir" ? "primary-destructive" : "primary"}
-                                onClick={confirmarAcao}
-                            >
-                                {confirm.tipo === "excluir" ? "Excluir" : "Duplicar abertura"}
-                            </Button>
-                        </div>
-                    </div>
-                </div>
+                    </Dialog>
+                </Modal>
+            </ModalOverlay>
+
+            {seletor && aberturaDoSeletor && evento && seletor.tipo === "ingresso" && (
+                <SeletorDeIngressos
+                    titulo={formatar(T.grupos.ingresso.seletor, { nome: aberturaDoSeletor.nome })}
+                    evento={evento}
+                    itens={itensDaAbertura(aberturaDoSeletor).filter((i) => i.tipo === "ingresso")}
+                    onFechar={() => setSeletor(null)}
+                    onConfirmar={(escolhidos) => {
+                        const outros = itensDaAbertura(aberturaDoSeletor).filter((i) => i.tipo !== "ingresso");
+                        void trocar(aberturaDoSeletor.id, (a) => comItens(a, [...outros, ...escolhidos]));
+                        setSeletor(null);
+                    }}
+                />
+            )}
+            {seletor && aberturaDoSeletor && seletor.tipo !== "ingresso" && (
+                <SeletorDeLista
+                    titulo={formatar(T.grupos[seletor.tipo].seletor, { nome: aberturaDoSeletor.nome })}
+                    opcoes={opcoes[seletor.tipo]}
+                    selecionados={itensDaAbertura(aberturaDoSeletor)
+                        .filter((i) => i.tipo === seletor.tipo)
+                        .map((i) => i.id)}
+                    vazio={T.grupos[seletor.tipo].seletorVazio}
+                    onFechar={() => setSeletor(null)}
+                    onConfirmar={(ids) => {
+                        const outros = itensDaAbertura(aberturaDoSeletor).filter((i) => i.tipo !== seletor.tipo);
+                        void trocar(aberturaDoSeletor.id, (a) => comItens(a, [...outros, ...ids.map((id) => ({ tipo: seletor.tipo, id }))]));
+                        setSeletor(null);
+                    }}
+                />
             )}
         </BackstageLayout>
     );
 }
 
-/* ------------------------------------------------------------------ */
-
-function EmptyState({ onNova }: { onNova: () => void }) {
-    return (
-        <div className="relative flex flex-1 flex-col items-center overflow-hidden pt-16 md:pt-24">
-            <div className="z-10 flex flex-col items-center text-center">
-                <p className="text-display-sm font-light text-quaternary italic md:text-display-md">Aberturas</p>
-                <h2 className="-mt-1 text-display-md font-bold text-primary md:text-display-lg">não programadas</h2>
-                <p className="mt-4 max-w-sm text-md text-tertiary">Clique no botão abaixo para criar sua primeira abertura</p>
-                <Button size="lg" color="primary" className="mt-6" onClick={onNova}>
-                    Nova abertura
-                </Button>
-            </div>
-
-            {/* Esqueleto decorativo (prévia do conteúdo que virá) */}
-            <div aria-hidden="true" className="pointer-events-none mt-16 w-full max-w-3xl [mask-image:linear-gradient(to_bottom,black,transparent)]">
-                <div className="flex flex-col gap-4 opacity-40">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="rounded-2xl bg-primary p-5 ring-1 ring-border-secondary">
-                            <div className="flex items-center justify-between">
-                                <div className="h-3 w-40 rounded-full bg-secondary" />
-                                <div className="h-6 w-16 rounded-full bg-secondary" />
-                            </div>
-                            <div className="mt-4 h-2.5 w-24 rounded-full bg-secondary" />
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-/* Card de uma abertura, com editor de configurações expansível. */
-function AberturaCard({
+function CartaoDaAbertura({
     abertura,
-    expanded,
-    onToggle,
-    onRemover,
+    rotuloDe,
+    setorDoIngresso,
+    onEditar,
     onDuplicar,
-    onNovaConfig,
-    onRemoverConfig,
-    flash,
+    onExcluir,
+    onEscolher,
 }: {
-    abertura: Abertura;
-    expanded: boolean;
-    onToggle: () => void;
-    onRemover: () => void;
+    abertura: AberturaDeVendas;
+    rotuloDe: Map<string, string>;
+    setorDoIngresso: Map<string, string>;
+    onEditar: () => void;
     onDuplicar: () => void;
-    onNovaConfig: () => void;
-    onRemoverConfig: (cfgId: string) => void;
-    flash: boolean;
+    onExcluir: () => void;
+    onEscolher: (tipo: TipoDeItem) => void;
 }) {
-    const CFG_COLS = "grid-cols-[2rem_minmax(0,1fr)_minmax(0,1fr)_12rem_2.25rem]";
+    const { quando } = useTextosItens();
+    const resumirIngressos = useResumoDeIngressos();
+    const estado = estadoDa(abertura);
+    const itens = itensDaAbertura(abertura);
+    const ingressos = itens.filter((i) => i.tipo === "ingresso");
+    /** Até 5 nomes; acima disso, contagem ("60 ingressos em 7 setores"), que escala para milhares (UI-LST-002). */
+    const escolhidos = (tipo: TipoDeItem): string[] => {
+        if (tipo === "ingresso" && ingressos.length > 5)
+            return [resumirIngressos(ingressos.length, new Set(ingressos.map((i) => setorDoIngresso.get(i.id) ?? i.id)).size)];
+        return itens.filter((i) => i.tipo === tipo).map((i) => rotuloDe.get(`${tipo}:${i.id}`) ?? i.id);
+    };
+    const nome = abertura.nome;
+
     return (
-        <div className="rounded-2xl bg-primary ring-1 ring-border-secondary">
-            {/* Cabeçalho da abertura */}
-            <div className="flex items-center justify-between gap-3 px-5 py-4">
-                <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-bold tracking-wide text-primary uppercase">{abertura.nome}</p>
-                        <AnimatePresence>
-                            {flash && (
-                                <motion.span
-                                    initial={{ opacity: 0, scale: 0.8, y: -4 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.6, ease: "easeInOut" } }}
-                                    transition={{ type: "spring", stiffness: 420, damping: 22 }}
-                                >
-                                    <Badge size="sm" color="blue" type="pill-color">
-                                        cópia de abertura
-                                    </Badge>
-                                </motion.span>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                    <p className="mt-0.5 text-sm text-tertiary">{abertura.periodo}</p>
+        <article className="flex flex-col rounded-2xl bg-primary ring-1 ring-secondary">
+            <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-4 md:px-6">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <h2 className="flex flex-wrap items-center gap-2">
+                        <span className="text-md font-semibold text-primary">{nome}</span>
+                        <Badge size="sm" type="pill-color" color={COR[estado]}>
+                            {T.estados[estado]}
+                        </Badge>
+                    </h2>
+                    <p className="text-sm text-tertiary">{formatar(T.periodo, { inicio: quando(abertura.inicio), fim: quando(abertura.fim) })}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                    <ButtonUtility size="sm" color="tertiary" icon={Copy01} tooltip="Duplicar abertura" tooltipPlacement="bottom" onClick={onDuplicar} />
-                    <ButtonUtility size="sm" color="tertiary" icon={Edit01} tooltip="Editar abertura" tooltipPlacement="bottom" />
-                    <ButtonUtility size="sm" color="tertiary" icon={Trash01} tooltip="Excluir abertura" tooltipPlacement="bottom" onClick={onRemover} />
-                    <ButtonUtility
-                        size="sm"
-                        color="tertiary"
-                        tooltip={expanded ? "Recolher" : "Expandir"}
-                        tooltipPlacement="bottom"
-                        onClick={onToggle}
-                        icon={<ChevronDown className={cx("size-5 transition-transform duration-200", expanded && "rotate-180")} />}
-                    />
+                    <ButtonUtility size="sm" color="tertiary" icon={Copy01} tooltip={formatar(T.duplicar, { nome })} onClick={onDuplicar} />
+                    <ButtonUtility size="sm" color="tertiary" icon={Edit01} tooltip={formatar(T.editar, { nome })} onClick={onEditar} />
+                    <ButtonUtility size="sm" color="tertiary" icon={Trash01} tooltip={formatar(T.excluir, { nome })} onClick={onExcluir} />
                 </div>
             </div>
-
-            {/* Configurações */}
-            {expanded && (
-                <div className="border-t border-secondary px-5 py-5">
-                    <div className="overflow-x-auto">
-                        <div className="min-w-[720px]">
-                            {/* Cabeçalho das colunas */}
-                            <div className={cx("grid items-center gap-3 rounded-lg bg-secondary/50 px-2 py-2.5", CFG_COLS)}>
-                                <span />
-                                <span className="px-1.5 text-xs font-semibold text-tertiary">Vender para</span>
-                                <span className="px-1.5 text-xs font-semibold text-tertiary">Itens</span>
-                                <span className="px-1.5 text-xs font-semibold text-tertiary">Canal de venda</span>
-                                <span />
-                            </div>
-
-                            {/* Linhas de configuração */}
-                            <div className="flex flex-col">
-                                {abertura.configs.map((cfg) => (
-                                    <div key={cfg.id} className={cx("grid items-center gap-3 py-2.5", CFG_COLS)}>
-                                        <span className="flex size-8 cursor-grab items-center justify-center text-fg-quaternary" aria-hidden="true">
-                                            <ChevronSelectorVertical className="size-5" />
-                                        </span>
-                                        <SelectTrigger placeholder="Clique para selecionar" />
-                                        <SelectTrigger placeholder="Clique para selecionar" />
-                                        <SelectTrigger value={cfg.canais} />
-                                        <button
-                                            type="button"
-                                            aria-label="Remover configuração"
-                                            onClick={() => onRemoverConfig(cfg.id)}
-                                            className="flex size-9 items-center justify-center rounded-lg text-fg-error-secondary transition duration-100 ease-linear hover:bg-error-primary"
-                                        >
-                                            <Trash01 className="size-5" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={onNovaConfig}
-                        className="mt-3 flex items-center gap-2 text-sm font-semibold text-tertiary transition duration-100 ease-linear hover:text-secondary"
-                    >
-                        <Plus className="size-4" />
-                        Nova configuração
-                    </button>
-                </div>
-            )}
-        </div>
-    );
-}
-
-/* Gatilho de dropdown (sem label) usado nas linhas de configuração. */
-function SelectTrigger({ placeholder, value }: { placeholder?: string; value?: string }) {
-    return (
-        <button
-            type="button"
-            className="flex w-full items-center justify-between gap-2 rounded-lg bg-secondary px-3.5 py-2.5 text-sm ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-tertiary"
-        >
-            <span className={cx("truncate", value ? "text-primary" : "text-placeholder")}>{value ?? placeholder}</span>
-            <ChevronDown className="size-4 shrink-0 text-fg-quaternary" />
-        </button>
-    );
-}
-
-/* Dropdown visual (label em caixa alta + gatilho). */
-function SelectField({ label, placeholder, value }: { label: string; placeholder?: string; value?: string }) {
-    return (
-        <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold tracking-wide text-quaternary uppercase">{label}</span>
-            <button
-                type="button"
-                className="flex items-center justify-between gap-2 rounded-lg bg-primary px-3.5 py-2.5 text-sm ring-1 ring-border-secondary transition duration-100 ease-linear hover:bg-secondary"
-            >
-                <span className={cx("truncate", value ? "text-primary" : "text-placeholder")}>{value ?? placeholder}</span>
-                <ChevronDown className="size-4 shrink-0 text-fg-quaternary" />
-            </button>
-        </div>
-    );
-}
-
-/* Campo de data: input com máscara dd/mm/aaaa + calendário (date picker) no ícone. */
-function DateField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-    const selected = parseDate(value);
-    return (
-        <div>
-            <label className="text-sm font-semibold text-secondary">{label}</label>
-            <div className="relative mt-1.5">
-                <input
-                    value={value}
-                    onChange={(e) => onChange(maskDate(e.target.value))}
-                    placeholder="dd/mm/aaaa"
-                    inputMode="numeric"
-                    className="w-full rounded-lg bg-primary py-2.5 pr-10 pl-3.5 text-sm text-primary ring-1 ring-border-secondary outline-none placeholder:text-placeholder focus:ring-2 focus:ring-brand"
-                />
-                <AriaDialogTrigger>
-                    <AriaButton
-                        aria-label="Abrir calendário"
-                        className="absolute top-1/2 right-2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-fg-quaternary outline-none transition duration-100 ease-linear hover:bg-secondary hover:text-fg-secondary"
-                    >
-                        <Calendar className="size-5" />
-                    </AriaButton>
-                    <AriaPopover offset={8} placement="bottom right" className="z-[60] origin-top rounded-2xl duration-150 ease-out animate-in fade-in zoom-in-95">
-                        <AriaDialog aria-label="Selecionar data" className="rounded-2xl bg-primary p-4 shadow-xl ring ring-secondary_alt outline-none">
-                            {({ close }) => (
-                                <DSCalendar
-                                    value={selected}
-                                    onChange={(dv: DateValue) => {
-                                        onChange(toStr(dv));
-                                        close();
-                                    }}
-                                />
-                            )}
-                        </AriaDialog>
-                    </AriaPopover>
-                </AriaDialogTrigger>
+            {/* Itens incluídos, uma linha por tipo; a linha abre a escolha. */}
+            <div className="flex flex-col gap-4 px-5 pt-4 pb-5 md:px-6">
+                <ListaDeEscolhas>
+                    {TIPOS.map((tipo) => (
+                        <EscolhaEmLista
+                            key={tipo}
+                            rotulo={T.grupos[tipo].rotulo}
+                            escolhidos={escolhidos(tipo)}
+                            vazio={T.grupos[tipo].vazio}
+                            onEscolher={() => onEscolher(tipo)}
+                        />
+                    ))}
+                </ListaDeEscolhas>
+                <Surgir visivel={itens.length === 0}>
+                    <p className="text-sm text-warning-primary">{T.semItens}</p>
+                </Surgir>
             </div>
-        </div>
+        </article>
     );
 }
 
-/* Campo de texto (com hint e ícone opcional à direita). */
-function Field({
-    label,
-    placeholder,
-    hint,
-    value,
-    onChange,
-    icon: Icon,
-    className,
-    autoFocus,
+function ModalDaAbertura({
+    abertura,
+    dataDoEvento,
+    onFechar,
+    onSalvar,
 }: {
-    label: string;
-    placeholder?: string;
-    hint?: string;
-    value: string;
-    onChange: (v: string) => void;
-    icon?: FC<{ className?: string }>;
-    className?: string;
-    autoFocus?: boolean;
+    abertura?: AberturaDeVendas;
+    dataDoEvento?: string;
+    onFechar: () => void;
+    onSalvar: (dados: Pick<AberturaDeVendas, "nome" | "inicio" | "fim">) => Promise<void>;
 }) {
+    const [nome, setNome] = useState(abertura?.nome ?? "");
+    const [inicio, setInicio] = useState(abertura?.inicio);
+    const [fim, setFim] = useState(abertura?.fim);
+    const [tentou, setTentou] = useState(false);
+    const [salvando, setSalvando] = useState(false);
+    const erros = {
+        nome: !nome.trim() ? T.modal.nomeErro : undefined,
+        inicio: !inicio ? T.modal.dataErro : undefined,
+        fim: !fim ? T.modal.dataErro : inicio && fim <= inicio ? T.modal.fimErro : undefined,
+    };
+
+    const salvar = async () => {
+        setTentou(true);
+        if (erros.nome || erros.inicio || erros.fim || !inicio || !fim) return;
+        setSalvando(true);
+        await onSalvar({ nome: nome.trim(), inicio, fim });
+        setSalvando(false);
+    };
+
     return (
-        <div className={className}>
-            <label className="text-sm font-semibold text-secondary">{label}</label>
-            <div className="relative mt-1.5">
-                <input
-                    // eslint-disable-next-line jsx-a11y/no-autofocus
-                    autoFocus={autoFocus}
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    placeholder={placeholder}
-                    className={cx(
-                        "w-full rounded-lg bg-primary py-2.5 pl-3.5 text-sm text-primary ring-1 ring-border-secondary outline-none placeholder:text-placeholder focus:ring-2 focus:ring-brand",
-                        Icon ? "pr-10" : "pr-3.5",
-                    )}
-                />
-                {Icon && <Icon className="pointer-events-none absolute top-1/2 right-3 size-5 -translate-y-1/2 text-fg-quaternary" />}
-            </div>
-            {hint && <p className="mt-1.5 text-sm text-tertiary">{hint}</p>}
-        </div>
+        <ModalOverlay isOpen onOpenChange={(v) => !v && onFechar()} isDismissable>
+            <Modal className="sm:max-w-[480px]">
+                <Dialog aria-label={abertura ? T.modal.editar : T.modal.nova}>
+                    {/* noValidate: os erros são os da tela, não os balões do navegador. */}
+                    <form
+                        noValidate
+                        className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            void salvar();
+                        }}
+                    >
+                        <div className="flex flex-col gap-1">
+                            <h2 className="text-lg font-semibold text-primary">{abertura ? T.modal.editar : T.modal.nova}</h2>
+                            {dataDoEvento && <p className="text-sm text-tertiary">{formatar(T.modal.evento, { data: dataDoEvento })}</p>}
+                        </div>
+                        <Input
+                            label={T.modal.nome}
+                            placeholder={T.modal.nomePlaceholder}
+                            isRequired
+                            value={nome}
+                            onChange={setNome}
+                            isInvalid={tentou && !!erros.nome}
+                            hint={tentou && erros.nome ? erros.nome : T.modal.nomeDica}
+                        />
+                        <DateTimePicker
+                            label={T.modal.inicio}
+                            granularity="minute"
+                            hourCycle={24}
+                            isRequired
+                            value={paraData(inicio)}
+                            onChange={(d) => setInicio(d ? d.toString().slice(0, 16) : undefined)}
+                            isInvalid={tentou && !!erros.inicio}
+                            hint={tentou ? erros.inicio : undefined}
+                        />
+                        <DateTimePicker
+                            label={T.modal.fim}
+                            granularity="minute"
+                            hourCycle={24}
+                            isRequired
+                            value={paraData(fim)}
+                            onChange={(d) => setFim(d ? d.toString().slice(0, 16) : undefined)}
+                            isInvalid={tentou && !!erros.fim}
+                            hint={tentou ? erros.fim : undefined}
+                        />
+                        <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+                            <Button color="secondary" size="md" onClick={onFechar}>
+                                {T.modal.cancelar}
+                            </Button>
+                            <Button color="primary" size="md" type="submit" isLoading={salvando}>
+                                {abertura ? T.modal.salvar : T.modal.criar}
+                            </Button>
+                        </div>
+                    </form>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
     );
 }

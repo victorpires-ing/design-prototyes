@@ -4,11 +4,11 @@ import { CheckCircle, Phone01, Ticket02, Wallet02 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import { brl, dataHoraCurta, useColecao, useDoc, useSessao } from "@/plataforma";
+import { brl, dataHoraCurta, useColecao, useDoc } from "@/plataforma";
 import { LogoIngresse } from "../components/icones";
 import { useTemaClaro } from "../utils/hooks";
 
-const METODO = { pix: "Pix", credito: "Cartão de crédito", debito: "Cartão de débito" } as const;
+const METODO = { pix: "Pix", credito: "Cartão de crédito", debito: "Cartão de débito", dinheiro: "Dinheiro", saldo: "Saldo do produtor", cortesia: "Cortesia" } as const;
 
 /** Pedido pago: mostra os ingressos emitidos e leva para a carteira. */
 export function Confirmado() {
@@ -16,10 +16,10 @@ export function Confirmado() {
     const [params] = useSearchParams();
     const pedido = useDoc("pedidos", params.get("pedido"));
     const evento = useDoc("eventos", pedido?.eventoId);
-    const sessao = useSessao();
     const todos = useColecao("ingressos");
     const emitidos = useMemo(() => todos.filter((i) => i.pedidoId === pedido?.id && i.status === "valido"), [todos, pedido?.id]);
-    const meus = emitidos.filter((i) => i.titular.email === (sessao?.email ?? pedido?.comprador.email));
+    // "Meus" = do comprador do pedido: pelo link da bilheteria, quem paga nem sempre é quem está logado aqui.
+    const meus = emitidos.filter((i) => i.titular.email === pedido?.comprador.email);
     const inicio = evento?.sessoes.find((s) => s.id === emitidos[0]?.sessaoId)?.inicio ?? evento?.data;
 
     return (

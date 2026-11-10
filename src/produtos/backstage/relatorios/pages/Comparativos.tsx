@@ -518,7 +518,7 @@ export function Comparativos() {
   return (
     <BackstageLayout activeSection="relatorios" activeItem="comparativos">
       <div className="flex min-w-0 flex-1 flex-col">
-        <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+        <main className="flex flex-1 flex-col gap-6">
           <RelatorioPageHeader title="Comparativos" withFilters={false} />
 
           {/* Sem comparação não há o que configurar nem chip a mostrar: a

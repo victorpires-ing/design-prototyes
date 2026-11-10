@@ -36,9 +36,9 @@ export function EditarOperadores() {
 
     return (
         <BackstageLayout activeSection="equipe-de-operacao" activeItem="grupos-operacao">
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 <WizardHeader title="Editar operadores" subtitle={`Grupo: ${grupo.nome}`} onBack={voltar} actionLabel="Atualizar operadores" onAction={salvar} actionDisabled={!valido} />
-                <main className="flex flex-1 flex-col px-6 pb-10">
+                <main className="flex flex-1 flex-col">
                     <section className="mx-auto w-full max-w-[720px]">
                         <OperadoresEditor value={operadores} onChange={setOperadores} bloqueados={grupo.operadores} mostrarConta badgeConta />
                     </section>

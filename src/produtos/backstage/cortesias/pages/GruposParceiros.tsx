@@ -17,6 +17,7 @@ import { BackstageLayout } from "../../components/Backstage";
 import { addGrupo, addMembro, useGrupos, useMembros } from "../../components/membros-store";
 import { addAlocacoes, useAlocacoes, type Alocacao } from "../data/parceiros";
 import { COMBOS, PRODUCTS, SESSIONS } from "../data/cortesia-items";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 type Categoria = "ingressos" | "produtos" | "combos";
 
@@ -90,17 +91,17 @@ export function GerenciarEmissores() {
 
     return (
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <header className="relative flex items-center justify-between gap-3 px-6 py-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
                     <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={() => navigate("/backstage/cortesias")}>
                         Cortesias
                     </Button>
-                    <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary">Emissores e cotas</h1>
+                    <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>Emissores e cotas</h1>
                     <Button size="md" color="primary" iconLeading={Plus} onClick={() => navigate("/backstage/cortesias/emissores/configurar")}>
                         Configurar cotas
                     </Button>
                 </header>
-                <main className="flex flex-1 flex-col gap-4 px-6 pb-10">
+                <main className="flex flex-1 flex-col gap-4">
                     <div className="flex items-center gap-2">
                         <UsersPlus className="size-5 text-fg-quaternary" aria-hidden="true" />
                         <h2 className="text-md font-semibold text-primary">Quem pode enviar cortesias</h2>
@@ -121,7 +122,7 @@ export function ConfigurarCota() {
     return (
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
             <div className="flex min-w-0 flex-1 flex-col">
-                <main className="flex flex-1 flex-col px-6 py-6">
+                <main className="flex flex-1 flex-col">
                     <ConfigurarCotasWizard onFechar={() => navigate("/backstage/cortesias/emissores")} />
                 </main>
             </div>

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { apareceNoSite, precoMinimo, useColecao, vendidosPorLote, type Evento } from "@/plataforma";
+import { apareceNoSite, precoMinimo, useColecao, useVendidos, type Evento } from "@/plataforma";
 import { CATEGORIAS, EVENTOS as ESTATICOS, type CategoriaId, type EventoMock } from "./events";
 
 /* ------------------------------------------------------------------ */
@@ -45,24 +45,23 @@ export function paraMock(e: Evento, vendidos: Map<string, number>): EventoMock {
 /** Eventos publicados, prontos para os componentes do site. Antes do banco responder, usa o mock. */
 export function useEventosSite(): EventoMock[] {
     const eventos = useColecao("eventos");
-    const emitidos = useColecao("ingressos");
+    const vendidos = useVendidos();
     return useMemo(() => {
         if (eventos.length === 0) return ESTATICOS;
-        const vendidos = vendidosPorLote(emitidos);
         return eventos.filter((e) => apareceNoSite(e.status)).map((e) => paraMock(e, vendidos));
-    }, [eventos, emitidos]);
+    }, [eventos, vendidos]);
 }
 
 /** Um evento pelo id, mesmo privado (o detalhe abre por link). */
 export function useEventoSite(id: string | null | undefined): EventoMock | undefined {
     const eventos = useColecao("eventos");
-    const emitidos = useColecao("ingressos");
+    const vendidos = useVendidos();
     return useMemo(() => {
         if (!id) return undefined;
         const e = eventos.find((x) => x.id === id);
         if (!e) return eventos.length === 0 ? estatico.get(id) : undefined;
-        return paraMock(e, vendidosPorLote(emitidos));
-    }, [id, eventos, emitidos]);
+        return paraMock(e, vendidos);
+    }, [id, eventos, vendidos]);
 }
 
 /** Destaques da home: os criados no Backstage primeiro, depois a curadoria fixa. */

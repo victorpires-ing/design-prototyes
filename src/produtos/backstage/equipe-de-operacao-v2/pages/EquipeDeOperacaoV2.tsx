@@ -15,6 +15,7 @@ import { BackstageLayout } from "../../components/Backstage";
 import { TotemIllustration } from "../../components/TotemIllustration";
 import { cotaTotal, PERMISSAO_META, permissoesDo, useEquipeV2, usoDaCota, type GrupoOperacaoV2 } from "../data/equipe-v2-store";
 import { toastSucesso } from "../utils/toast";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const PORTAL_URL = "freepass.ingresse.com/operador";
 
@@ -48,11 +49,11 @@ export function EquipeDeOperacaoV2() {
 
     return (
         <BackstageLayout activeSection="equipe-de-operacao" activeItem="grupos-operacao">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <header className="flex items-center gap-3 px-6 py-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <header className="flex items-center gap-3">
                     <ButtonUtility size="md" color="tertiary" icon={ArrowLeft} tooltip="Voltar" onClick={() => navigate("/backstage/")} />
                     <div className="flex items-center gap-2">
-                        <h1 className="text-display-xs font-bold text-primary">Equipe de operação</h1>
+                        <h1 className={TITULO_PAGINA}>Equipe de operação</h1>
                         <span className="rounded-md bg-brand-secondary px-2 py-0.5 text-sm font-medium text-brand-secondary">v2</span>
                     </div>
                     {temItens && (
@@ -68,7 +69,7 @@ export function EquipeDeOperacaoV2() {
                     )}
                 </header>
 
-                <main className="flex flex-1 flex-col gap-5 px-6 pb-10">
+                <main className="flex flex-1 flex-col gap-5">
                     {!temItens ? (
                         <EstadoSemItens onConfigurar={() => navigate("/backstage/catalogo/ingressos")} />
                     ) : vazio ? (

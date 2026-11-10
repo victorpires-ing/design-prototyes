@@ -9,6 +9,7 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ITENS_POR_ID, rotuloItem } from "../data/equipe-data";
 import { cotaTotal, useEquipe } from "../data/equipe-store";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const iniciais = (nome: string) => nome.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "GR";
 
@@ -36,11 +37,11 @@ export function DetalheGrupo() {
 
     return (
         <BackstageLayout activeSection="equipe-de-operacao" activeItem="grupos-operacao">
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 {/* Breadcrumb */}
-                <div className="px-6 pt-6">
+                <div>
                     <nav className="flex items-center gap-1.5 text-sm text-tertiary">
-                        <button type="button" onClick={() => navigate("/backstage")} aria-label="Início" className="transition duration-100 ease-linear hover:text-secondary">
+                        <button type="button" onClick={() => navigate("/backstage/eventos")} aria-label="Início" className="transition duration-100 ease-linear hover:text-secondary">
                             <HomeLine className="size-4" aria-hidden="true" />
                         </button>
                         <ChevronRight className="size-3.5" aria-hidden="true" />
@@ -53,12 +54,12 @@ export function DetalheGrupo() {
                 </div>
 
                 {/* Header do grupo */}
-                <header className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between">
+                <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-center gap-3">
                         <ButtonUtility size="md" color="tertiary" icon={ArrowLeft} tooltip="Voltar" onClick={() => navigate("/backstage/equipe-de-operacao")} />
                         <Avatar size="lg" initials={iniciais(grupo.nome)} alt={grupo.nome} />
                         <div className="flex flex-col">
-                            <h1 className="text-display-xs font-bold text-primary">{grupo.nome}</h1>
+                            <h1 className={TITULO_PAGINA}>{grupo.nome}</h1>
                             <p className="flex items-center gap-1.5 text-sm text-tertiary">
                                 <span>{grupo.operadores.length} {grupo.operadores.length === 1 ? "operador" : "operadores"}</span>
                                 <span aria-hidden="true">•</span>
@@ -77,7 +78,7 @@ export function DetalheGrupo() {
                     </div>
                 </header>
 
-                <main className="flex flex-1 flex-col gap-5 px-6 pb-10">
+                <main className="flex flex-1 flex-col gap-5">
                     {/* Itens liberados pela cota */}
                     <section className="flex flex-col rounded-xl bg-secondary">
                         <div className="flex items-center justify-between gap-2 px-5 py-4">

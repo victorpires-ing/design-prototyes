@@ -9,6 +9,7 @@ import { Toggle } from "@/components/base/toggle/toggle";
 import { BackstageLayout } from "../../components/Backstage";
 import { ResumoPermissoes } from "../components/ResumoPermissao";
 import { PERMISSAO_META, permissoesDo, useEquipeV2 } from "../data/equipe-v2-store";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const iniciais = (nome: string) =>
     nome
@@ -48,12 +49,12 @@ export function DetalheGrupoV2() {
 
     return (
         <BackstageLayout activeSection="equipe-de-operacao" activeItem="grupos-operacao">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <div className="px-6 pt-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <div>
                     <nav className="flex items-center gap-1.5 text-sm text-tertiary">
                         <button
                             type="button"
-                            onClick={() => navigate("/backstage")}
+                            onClick={() => navigate("/backstage/eventos")}
                             aria-label="Início"
                             className="transition duration-100 ease-linear hover:text-secondary"
                         >
@@ -68,12 +69,12 @@ export function DetalheGrupoV2() {
                     </nav>
                 </div>
 
-                <header className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between">
+                <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-center gap-3">
                         <ButtonUtility size="md" color="tertiary" icon={ArrowLeft} tooltip="Voltar" onClick={voltar} />
                         <Avatar size="lg" initials={iniciais(grupo.nome)} alt={grupo.nome} />
                         <div className="flex flex-col gap-1">
-                            <h1 className="text-display-xs font-bold text-primary">{grupo.nome}</h1>
+                            <h1 className={TITULO_PAGINA}>{grupo.nome}</h1>
                             <p className="text-sm text-tertiary">
                                 {grupo.operadores.length} {grupo.operadores.length === 1 ? "operador" : "operadores"}
                             </p>
@@ -108,7 +109,7 @@ export function DetalheGrupoV2() {
                     </div>
                 </header>
 
-                <main className="flex flex-1 flex-col gap-5 px-6 pb-10">
+                <main className="flex flex-1 flex-col gap-5">
                     <ResumoPermissoes permissoes={grupo.permissoes} concedidas={concedidas} showUso />
 
                     <section className="flex flex-col gap-4 rounded-2xl bg-secondary p-5 ring-1 ring-border-secondary">

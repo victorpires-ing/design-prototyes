@@ -28,6 +28,7 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { EditarLimiteModal } from "../components/EditarLimiteModal";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 type Filter = "todas" | "ativas" | "inativas";
 
@@ -220,9 +221,9 @@ export function ListaChaves() {
 
     return (
         <BackstageLayout activeSection="marketing" activeItem="chave-de-acesso">
-            <div className="flex min-w-0 flex-1 flex-col px-4 py-6 md:px-6 md:h-[calc(100dvh-3rem)] md:overflow-hidden">
+            <div className="flex min-w-0 flex-1 flex-col md:h-[calc(100dvh-4.5rem)] md:overflow-hidden">
                 <header className="flex shrink-0 items-center justify-between gap-3">
-                    <h1 className="text-display-xs font-bold text-primary">Chave de acesso</h1>
+                    <h1 className={TITULO_PAGINA}>Chave de acesso</h1>
                     <div className="flex items-center gap-3">
                         <Button size="lg" color="secondary">
                             Exportar

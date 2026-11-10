@@ -1,5 +1,5 @@
 import type { FC } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Ticket01 } from "@untitledui/icons";
 import { cx } from "@/utils/cx";
 
@@ -9,18 +9,15 @@ import { cx } from "@/utils/cx";
 
 type IllustrationKind =
     | "backstage"
-    | "futebol"
     | "novo-site"
     | "ingresse-app"
     | "landing-pages"
     | "testes"
     | "marketplace"
-    | "carteira-web"
     | "freepass"
     | "payin"
-    | "totem"
     | "payout"
-    | "checkout"
+    | "totem"
     | "revenda";
 
 interface ProductCardData {
@@ -29,6 +26,8 @@ interface ProductCardData {
     description: string;
     to: string;
     illustration: IllustrationKind;
+    /** Produtos fundidos: cada projeto da mesma jornada vira um atalho no card. */
+    entradas?: { label: string; to: string }[];
 }
 
 const PRODUCTS: ProductCardData[] = [
@@ -40,18 +39,35 @@ const PRODUCTS: ProductCardData[] = [
         illustration: "backstage",
     },
     {
-        id: "futebol",
-        name: "Futebol",
-        description: "Landing pages de jogos e ingressos",
-        to: "/futebol/landing-pages",
-        illustration: "futebol",
+        id: "site",
+        name: "Site e conta do usuário",
+        description: "Descobrir eventos e consultar os ingressos comprados na web",
+        to: "/novo-site/home",
+        illustration: "novo-site",
+        entradas: [
+            { label: "Site", to: "/novo-site/home" },
+            { label: "Detalhe do evento", to: "/novo-site/home/event-details" },
+            { label: "Carteira web", to: "/carteira-web" },
+        ],
     },
     {
-        id: "novo-site",
-        name: "Novo Site",
-        description: "Novo site do evento — acesso restrito",
-        to: "/novo-site/home/event-details",
-        illustration: "novo-site",
+        id: "compra",
+        name: "Compra",
+        description: "Seleção, atribuição e pagamento dos ingressos, do link ao pedido confirmado",
+        to: "/marketplace",
+        illustration: "marketplace",
+        entradas: [
+            { label: "Seleção e atribuição", to: "/marketplace" },
+            { label: "Pagamento", to: "/checkout/melhorias-de-compra" },
+            { label: "Proteção de compra", to: "/checkout/protecao-de-compra" },
+        ],
+    },
+    {
+        id: "revenda",
+        name: "Revenda",
+        description: "Canal oficial de revenda: compre de quem não vai mais, mesmo após o sold out",
+        to: "/revenda",
+        illustration: "revenda",
     },
     {
         id: "ingresse-app",
@@ -61,9 +77,37 @@ const PRODUCTS: ProductCardData[] = [
         illustration: "ingresse-app",
     },
     {
+        id: "totem",
+        name: "Totem",
+        description: "Configure o evento e siga a jornada de compra do totem",
+        to: "/totem",
+        illustration: "totem",
+    },
+    {
+        id: "freepass",
+        name: "Freepass",
+        description: "Receba um pack de cortesias, reenvie ou resgate",
+        to: "/freepass/distribuicao-cortesias",
+        illustration: "freepass",
+    },
+    {
+        id: "suspensao-de-conta",
+        name: "Suspensão de conta",
+        description: "Antifraude: fila de análise e suspensão de contas suspeitas",
+        to: "/payin/suspensao-de-conta",
+        illustration: "payin",
+    },
+    {
+        id: "payout",
+        name: "PayOut",
+        description: "Cashout: associação de contratos a eventos e produtoras",
+        to: "/payout/contrato-quick-win-finance",
+        illustration: "payout",
+    },
+    {
         id: "landing-pages",
         name: "Landing Pages",
-        description: "Páginas de eventos e campanhas",
+        description: "Páginas de eventos, campanhas e clubes de futebol",
         to: "/landing-pages",
         illustration: "landing-pages",
     },
@@ -74,78 +118,19 @@ const PRODUCTS: ProductCardData[] = [
         to: "/testes",
         illustration: "testes",
     },
-    {
-        id: "marketplace",
-        name: "Marketplace",
-        description: "Configure o evento e gere o link de seleção",
-        to: "/marketplace",
-        illustration: "marketplace",
-    },
-    {
-        id: "carteira-web",
-        name: "Carteira Web",
-        description: "Carteira de ingressos na web",
-        to: "/carteira-web",
-        illustration: "carteira-web",
-    },
-    {
-        id: "freepass",
-        name: "Freepass",
-        description: "Receba um pack de cortesias, reenvie ou resgate",
-        to: "/freepass/distribuicao-cortesias",
-        illustration: "freepass",
-    },
-    {
-        id: "payin",
-        name: "PayIn",
-        description: "Antifraude, checkout e mais",
-        to: "/payin",
-        illustration: "payin",
-    },
-    {
-        id: "totem",
-        name: "Totem",
-        description: "Configure o evento e siga a jornada de compra do totem",
-        to: "/totem",
-        illustration: "totem",
-    },
-    {
-        id: "payout",
-        name: "PayOut",
-        description: "Cashout: associação de contratos a eventos e produtoras",
-        to: "/payout/contrato-quick-win-finance",
-        illustration: "payout",
-    },
-    {
-        id: "checkout",
-        name: "Checkout - Melhorias de compra",
-        description: "Pix copy-first, formulário de cartão e recuperação da compra recusada",
-        to: "/checkout/melhorias-de-compra",
-        illustration: "checkout",
-    },
-    {
-        id: "revenda",
-        name: "Revenda",
-        description: "Canal oficial de revenda: compre de quem não vai mais, mesmo após o sold out",
-        to: "/revenda",
-        illustration: "revenda",
-    },
 ];
 
 const ILLUSTRATIONS: Record<IllustrationKind, FC> = {
     backstage: BackstageIllustration,
-    futebol: FutebolIllustration,
     "novo-site": NovoSiteIllustration,
     "ingresse-app": AppIllustration,
     "landing-pages": LandingPagesIllustration,
     testes: TestesIllustration,
     marketplace: MarketplaceIllustration,
-    "carteira-web": CarteiraWebIllustration,
     freepass: FreepassIllustration,
     payin: PayInIllustration,
-    totem: TotemIllustration,
     payout: PayOutIllustration,
-    checkout: CheckoutIllustration,
+    totem: TotemIllustration,
     revenda: RevendaIllustration,
 };
 
@@ -200,22 +185,34 @@ const ProductCard = ({ product }: { product: ProductCardData }) => {
     const Illustration = ILLUSTRATIONS[product.illustration];
 
     return (
-        <button
-            type="button"
-            onClick={() => navigate(product.to)}
-            className="group flex flex-col overflow-hidden rounded-2xl bg-secondary/60 text-left ring-1 ring-border-secondary backdrop-blur-sm transition duration-150 ease-linear hover:-translate-y-1 hover:bg-secondary hover:ring-brand"
-        >
-            <div className="relative h-40 overflow-hidden">
-                <div className="size-full transition-transform duration-300 ease-out group-hover:scale-105">
-                    <Illustration />
+        <div className="group flex flex-col overflow-hidden rounded-2xl bg-secondary/60 text-left ring-1 ring-border-secondary backdrop-blur-sm transition duration-150 ease-linear hover:-translate-y-1 hover:bg-secondary hover:ring-brand">
+            <button type="button" onClick={() => navigate(product.to)} className="flex flex-col text-left outline-focus-ring focus-visible:outline-2 focus-visible:-outline-offset-2">
+                <div className="relative h-40 w-full overflow-hidden">
+                    <div className="size-full transition-transform duration-300 ease-out group-hover:scale-105">
+                        <Illustration />
+                    </div>
                 </div>
-            </div>
 
-            <div className="flex flex-col gap-1 border-t border-secondary px-4 py-4">
-                <span className="text-md font-semibold text-primary">{product.name}</span>
-                <span className="text-sm text-tertiary">{product.description}</span>
-            </div>
-        </button>
+                <div className="flex flex-col gap-1 border-t border-secondary px-4 py-4">
+                    <span className="text-md font-semibold text-primary">{product.name}</span>
+                    <span className="text-sm text-tertiary">{product.description}</span>
+                </div>
+            </button>
+
+            {product.entradas && (
+                <nav aria-label={`Projetos de ${product.name}`} className="-mt-1 flex flex-wrap gap-2 px-4 pb-4">
+                    {product.entradas.map((e) => (
+                        <Link
+                            key={e.to}
+                            to={e.to}
+                            className="rounded-full bg-primary px-2.5 py-1 text-xs font-medium text-secondary ring-1 ring-border-secondary transition duration-100 ease-linear ring-inset hover:text-brand-secondary hover:ring-brand"
+                        >
+                            {e.label}
+                        </Link>
+                    ))}
+                </nav>
+            )}
+        </div>
     );
 };
 
@@ -262,44 +259,6 @@ function PayInIllustration() {
                 <path d="M164 80 L186 80" />
                 <polyline points="180,74 186,80 180,86" />
             </g>
-        </svg>
-    );
-}
-
-function CheckoutIllustration() {
-    return (
-        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
-            <defs>
-                <linearGradient id="ck-bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="160">
-                    <stop offset="0%" stopColor={N100} />
-                    <stop offset="100%" stopColor={N200} />
-                </linearGradient>
-            </defs>
-            <rect width="320" height="160" fill="url(#ck-bg)" />
-
-            {/* Pix aberto: código + tempo + QR */}
-            <rect x="24" y="24" width="176" height="76" rx="10" fill={N50} stroke={BORDER} />
-            <rect x="36" y="36" width="70" height="8" rx="4" fill={N300} />
-            <rect x="36" y="52" width="100" height="14" rx="4" fill={N200} />
-            <rect x="36" y="78" width="100" height="5" rx="2.5" fill={N200} />
-            <rect x="36" y="78" width="78" height="5" rx="2.5" fill={BRAND} />
-            <rect x="150" y="36" width="38" height="38" rx="3" fill={N100} stroke={BORDER} />
-            <rect x="155" y="41" width="10" height="10" fill={N400} />
-            <rect x="173" y="41" width="10" height="10" fill={N400} />
-            <rect x="155" y="59" width="10" height="10" fill={N400} />
-            <rect x="173" y="59" width="10" height="10" fill={BRAND_SOFT} />
-
-            {/* Outros métodos recolhidos */}
-            <rect x="24" y="108" width="176" height="14" rx="5" fill={N50} stroke={BORDER} />
-            <rect x="24" y="128" width="176" height="14" rx="5" fill={N50} stroke={BORDER} />
-
-            {/* Resumo do pedido */}
-            <rect x="212" y="24" width="84" height="118" rx="10" fill={N50} stroke={BORDER} />
-            <rect x="222" y="34" width="22" height="22" rx="4" fill={BRAND_SOFT} />
-            <rect x="222" y="66" width="64" height="6" rx="3" fill={N200} />
-            <rect x="222" y="80" width="50" height="6" rx="3" fill={N200} />
-            <rect x="222" y="94" width="58" height="6" rx="3" fill={N200} />
-            <rect x="222" y="120" width="64" height="12" rx="4" fill={BRAND} />
         </svg>
     );
 }
@@ -441,54 +400,6 @@ function TestesIllustration() {
     );
 }
 
-function FutebolIllustration() {
-    return (
-        <svg
-            viewBox="0 0 320 160"
-            preserveAspectRatio="xMidYMid slice"
-            className="size-full"
-            aria-hidden="true"
-        >
-            <defs>
-                <linearGradient id="futebol-field" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="160">
-                    <stop offset="0%" stopColor={N100} />
-                    <stop offset="100%" stopColor={N200} />
-                </linearGradient>
-            </defs>
-
-            <rect width="320" height="160" fill="url(#futebol-field)" />
-
-            {/* mowing stripes (subtle neutral) */}
-            <g fill={N300} opacity="0.4">
-                <rect x="0" width="53" height="160" />
-                <rect x="107" width="53" height="160" />
-                <rect x="213" width="53" height="160" />
-            </g>
-
-            {/* pitch markings (neutral) */}
-            <g stroke={N400} strokeWidth="2" fill="none">
-                <line x1="160" y1="0" x2="160" y2="160" />
-                <circle cx="160" cy="80" r="30" />
-                <rect x="-2" y="46" width="40" height="68" rx="2" />
-                <rect x="282" y="46" width="40" height="68" rx="2" />
-            </g>
-
-            {/* soccer ball — small, white with red panels */}
-            <g transform="translate(160 80) scale(0.62)">
-                <circle r="20" fill="#ffffff" stroke={BORDER} strokeWidth="1.6" />
-                <polygon points="0,-9 8.5,-3 5,7 -5,7 -8.5,-3" fill={BRAND} />
-                <g stroke={BRAND} strokeWidth="2.2">
-                    <line x1="0" y1="-9" x2="0" y2="-18" />
-                    <line x1="8.5" y1="-3" x2="17" y2="-6" />
-                    <line x1="5" y1="7" x2="10" y2="16" />
-                    <line x1="-5" y1="7" x2="-10" y2="16" />
-                    <line x1="-8.5" y1="-3" x2="-17" y2="-6" />
-                </g>
-            </g>
-        </svg>
-    );
-}
-
 function NovoSiteIllustration() {
     return (
         <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
@@ -533,34 +444,6 @@ function NovoSiteIllustration() {
 
             {/* window border */}
             <rect x="70" y="32" width="180" height="104" rx="12" fill="none" stroke={BORDER} strokeWidth="1" />
-        </svg>
-    );
-}
-
-function CarteiraWebIllustration() {
-    return (
-        <svg viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
-            <rect width="320" height="160" fill={N100} />
-            {/* janela do navegador */}
-            <rect x="40" y="20" width="240" height="124" rx="10" fill={N50} stroke={BORDER} />
-            <rect x="40" y="20" width="240" height="18" rx="10" fill={N100} />
-            <circle cx="52" cy="29" r="2.5" fill={N300} />
-            <circle cx="60" cy="29" r="2.5" fill={N300} />
-            <circle cx="68" cy="29" r="2.5" fill={N300} />
-            {/* título */}
-            <rect x="54" y="50" width="70" height="7" rx="3.5" fill={N400} />
-            {/* abas */}
-            <rect x="54" y="64" width="34" height="4" rx="2" fill={BRAND} />
-            <rect x="94" y="64" width="34" height="4" rx="2" fill={N200} />
-            {/* cards de ingresso */}
-            <g>
-                <rect x="54" y="78" width="62" height="52" rx="6" fill={BRAND_SOFT} />
-                <rect x="62" y="112" width="46" height="12" rx="3" fill={BRAND} />
-                <rect x="129" y="78" width="62" height="52" rx="6" fill={N200} />
-                <rect x="137" y="112" width="46" height="12" rx="3" fill={N300} />
-                <rect x="204" y="78" width="62" height="52" rx="6" fill={N300} />
-                <rect x="212" y="112" width="46" height="12" rx="3" fill={N400} />
-            </g>
         </svg>
     );
 }

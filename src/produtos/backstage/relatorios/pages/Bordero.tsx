@@ -12,10 +12,13 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { RelatorioFiltersProvider, dateRangeFraction, useRelatorioFilters } from "../components/relatorio-filters";
+import { DetalhesDaLinha, linhaQueAbre, useLinhaAberta } from "../components/TabelaLista";
+import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { SortableHeader } from "../components/SortableHeader";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter } from "../data/event";
-import { consultarPeriodo, PERIODO_PADRAO } from "@/reports/event-dataset";
+import type { agregar } from "@/reports/event-dataset";
+import { useDatasetDoEvento } from "../data/vendas-banco";
 
 const HIDE_TREND_AND_MENU = "[&_.top-4.right-4]:hidden [&_.md\\:top-5]:hidden [&_p+div]:hidden";
 
@@ -360,7 +363,7 @@ type BorderoView = "macro" | "pdv" | "meios";
 /*  Visões geradas a partir do dataset do evento (src/reports).        */
 /* ------------------------------------------------------------------ */
 
-type DsBordero = ReturnType<typeof consultarPeriodo>;
+type DsBordero = ReturnType<typeof agregar>;
 const _u = (valor: number, qtd: number) => (qtd ? Math.round(valor / qtd) : 0);
 // Nó de grupo dividido em Inteira/Meia. `pad` alinha o tamanho do array de valores às colunas.
 const _grupoNode = (grupo: string, qtd: number, valor: number, pad: boolean): TreeNode => {
@@ -433,11 +436,12 @@ const scaleNodes = (nodes: TreeNode[], columns: ColDef[], factor: number): TreeN
 /* ------------------------------------------------------------------ */
 
 export function Bordero() {
+    const { periodoPadrao } = useDatasetDoEvento();
     return (
         <BackstageLayout activeSection="relatorios" activeItem="bordero">
-            <RelatorioFiltersProvider initialDateRange={PERIODO_PADRAO}>
+            <RelatorioFiltersProvider initialDateRange={periodoPadrao}>
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                    <main className="flex flex-1 flex-col gap-6">
                         <RelatorioPageHeader
                             title="Borderô"
                             withFilters={false}
@@ -457,7 +461,9 @@ const BorderoBody = () => {
     const [acknowledged, setAcknowledged] = useState(false);
     const [detailsOpen, setDetailsOpen] = useState(false);
 
-    const scaled = useMemo(() => gerarVisoes(consultarPeriodo(dateRange)), [dateRange]);
+    // Vendas do evento em contexto, do banco unificado (histórico + pedidos pagos).
+    const { consultar } = useDatasetDoEvento();
+    const scaled = useMemo(() => gerarVisoes(consultar(dateRange)), [consultar, dateRange]);
 
     const activeNodes = view === "macro" ? scaled.macro : view === "pdv" ? scaled.pdv : scaled.meios;
     const activeMeta = VIEWS[view];
@@ -594,6 +600,9 @@ const BorderoChangesSlideout = ({ isOpen, onClose, changes }: { isOpen: boolean;
 
 const TreeTable = ({ nodes, columns, firstCol }: { nodes: TreeNode[]; columns: ColDef[]; firstCol: string }) => {
     const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+    // Celular: só a última coluna cabe; a linha final abre os detalhes com todas (UI-MOB-005).
+    const celular = !useBreakpoint("md");
+    const linha = useLinhaAberta<{ titulo: string; apoio: string; valores: number[] }>();
     const lastCol = columns.length - 1;
     const indent = (depth: number) => 16 + depth * 24;
 
@@ -624,7 +633,7 @@ const TreeTable = ({ nodes, columns, firstCol }: { nodes: TreeNode[]; columns: C
         </td>
     );
 
-    const renderNodes = (list: TreeNode[], depth: number, prefix: string): ReactNode[] => {
+    const renderNodes = (list: TreeNode[], depth: number, prefix: string, caminho: string[] = []): ReactNode[] => {
         const out: ReactNode[] = [];
         list.forEach((node, idx) => {
             const key = `${prefix}-${idx}`;
@@ -656,13 +665,17 @@ const TreeTable = ({ nodes, columns, firstCol }: { nodes: TreeNode[]; columns: C
                             </td>
                             {sub.map((v, i) => metricCell(v, i, valueClass))}
                         </tr>
-                        {isExpanded && renderNodes(node.children!, depth + 1, key)}
+                        {isExpanded && renderNodes(node.children!, depth + 1, key, [...caminho, node.label])}
                     </Fragment>,
                 );
                 return;
             }
             out.push(
-                <tr key={key} className="border-b border-secondary bg-secondary/60">
+                <tr
+                    key={key}
+                    {...linhaQueAbre(celular, () => linha.abrir({ titulo: node.label, apoio: caminho.join(" · "), valores: node.values! }))}
+                    className={cx("border-b border-secondary bg-secondary/60", celular && "hover:bg-primary_hover")}
+                >
                     <td className="py-3 pr-4 text-sm text-tertiary" style={{ paddingLeft: indent(depth) }}>
                         <span className="line-clamp-2">{node.label}</span>
                     </td>
@@ -706,6 +719,14 @@ const TreeTable = ({ nodes, columns, firstCol }: { nodes: TreeNode[]; columns: C
                     </tr>
                 </tbody>
             </table>
+            {linha.aberta && (
+                <DetalhesDaLinha
+                    titulo={linha.aberta.titulo}
+                    subtitulo={linha.aberta.apoio}
+                    grupos={[{ campos: columns.map((col, i) => ({ rotulo: col.label, valor: fmt(linha.aberta!.valores[i] ?? 0, col.type) })) }]}
+                    onFechar={linha.fechar}
+                />
+            )}
         </div>
     );
 };

@@ -3,6 +3,7 @@ import { Eye, EyeOff, HelpCircle, InfoCircle } from "@untitledui/icons";
 import type { InputProps as AriaInputProps, TextFieldProps as AriaTextFieldProps } from "react-aria-components";
 import { Button as AriaButton, Group as AriaGroup, Input as AriaInput, TextField as AriaTextField } from "react-aria-components";
 import { HintText } from "@/components/base/input/hint-text";
+import { Surgir } from "@/components/foundations/transicao";
 import { Label } from "@/components/base/input/label";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx, sortCx } from "@/utils/cx";
@@ -294,7 +295,9 @@ export const Input = ({
                         }}
                     />
 
-                    {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
+                    <Surgir visivel={!!hint} gap={6} className="w-full">
+                        <HintText isInvalid={isInvalid}>{hint}</HintText>
+                    </Surgir>
                 </>
             )}
         </TextField>

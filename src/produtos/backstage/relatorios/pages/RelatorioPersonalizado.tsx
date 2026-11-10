@@ -108,7 +108,7 @@ function Body() {
 
     return (
         <div className="flex min-w-0 flex-1 flex-col">
-            <main className="flex flex-1 flex-col px-4 py-6 md:px-6">
+            <main className="flex flex-1 flex-col">
                 {temConteudo && (
                     <RelatorioPageHeader
                         title="Relatório personalizado"

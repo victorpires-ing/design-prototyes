@@ -1,3 +1,11 @@
+## Regras das features (rules.md)
+
+Toda pasta de feature em `src/produtos/<produto>/<feature>/` tem um `rules.md` com as regras que
+ela cumpre; o produto pode ter um `rules.md` na raiz (ex.: `src/produtos/backstage/rules.md`).
+Antes de mudar uma feature, leia os dois. Mudou uma regra no código, atualize o `rules.md` no
+mesmo commit. Divergência entre código e `rules.md` vai para "Em aberto", não se resolve em
+silêncio. Modelo: `src/produtos/_template/_projeto/rules.md`.
+
 <!-- @embed:start file="public-components/CLAUDE.md" -->
 ## Project Overview
 

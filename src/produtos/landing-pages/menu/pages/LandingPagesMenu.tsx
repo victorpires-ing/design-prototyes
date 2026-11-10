@@ -33,6 +33,13 @@ const PAGES: LandingPageItem[] = [
         gradient: "linear-gradient(135deg,#0a1e46 0%,#2f6bff 55%,#c23a2d 100%)",
     },
     {
+        id: "futebol",
+        name: "Futebol",
+        description: "Páginas de jogos dos clubes",
+        to: "/futebol/landing-pages",
+        gradient: "linear-gradient(135deg,#0d7a3e 0%,#16a34a 50%,#0a0a0a 100%)",
+    },
+    {
         id: "meia-entrada",
         name: "Meia-entrada",
         description: "Informações sobre meia-entrada",

@@ -8,6 +8,7 @@ produtos/
     ├── components/         # componentes compartilhados ENTRE projetos do produto
     │                       # (layouts, navegação, header — coisas que todo projeto reusa)
     └── <projeto>/          # ex: cortesias, ingressos, financeiro
+        ├── rules.md        # regras da feature (obrigatório, ver abaixo)
         ├── pages/          # telas/rotas do projeto
         ├── components/     # componentes exclusivos DESTE projeto
         ├── data/           # mocks, stores e tipos do projeto
@@ -33,6 +34,20 @@ Duplique a pasta `_projeto/` dentro do produto e renomeie. Reaproveite os compon
 - `cortesias/` — projeto de emissão de cortesias (pages, components, data, utils próprios)
 
 Quando um projeto novo entrar no Backstage (ex: `relatorios/`), ele será uma pasta irmã de `cortesias/` e poderá importar `../components/Backstage` para usar o mesmo layout.
+
+## rules.md: toda feature tem um
+
+Cada pasta de projeto tem um `rules.md` com as regras que a feature cumpre: rotas, de onde vêm
+os dados, comportamento, validações, estados, permissões, o que ela afeta em outros produtos e
+o que está em aberto. O modelo está em `_projeto/rules.md`. O produto também pode ter um
+`rules.md` na raiz com o que vale para todas as features (ex.: `backstage/rules.md`).
+
+- **Antes de mexer**, leia o `rules.md` da feature e o do produto.
+- **Mudou uma regra no código, mude o `rules.md` no mesmo commit.** Regra nova ganha ID novo;
+  regra removida fica riscada, e o ID não é reaproveitado.
+- **Código e `rules.md` divergem?** Registre em "Em aberto" e combine com o time antes de
+  escolher um lado.
+- **Feature nova** só entra com `rules.md`.
 
 ## Regras importantes
 

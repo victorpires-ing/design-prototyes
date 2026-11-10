@@ -23,7 +23,10 @@ export interface PedidoItem {
 }
 
 export interface Pedido {
+    /** Mesmo id do pedido no banco unificado (src/plataforma). */
     id: string;
+    /** Evento em que a venda foi feita. A gestão lista só os do evento em contexto. */
+    eventoId?: string;
     status: PedidoStatus;
     tipo: PedidoTipo;
     /** Nome do ingresso/lote que dá título ao slideout. */

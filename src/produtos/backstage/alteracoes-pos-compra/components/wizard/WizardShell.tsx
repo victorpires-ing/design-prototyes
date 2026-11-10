@@ -9,6 +9,7 @@ import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
 import { EtapaCompacta, FOCO_ESCOPO } from "../pos-compra-ui";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 /**
  * A etapa no endereço, para o voltar do navegador ser uma etapa para trás.
@@ -170,7 +171,7 @@ export function WizardShell({
                     32px no canto mais longe do polegar. */}
                 <ButtonUtility size="sm" color="tertiary" className="max-md:size-11" icon={ArrowLeft} tooltip={indiceAtual === 0 ? "Voltar para o pedido" : "Voltar uma etapa"} onClick={voltar} />
                 <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 flex-col items-center text-center max-md:static max-md:translate-x-0 max-md:items-start max-md:text-left">
-                    <h1 className="text-display-xs font-bold text-primary">{titulo}</h1>
+                    <h1 className={TITULO_PAGINA}>{titulo}</h1>
                     {subtitulo && <p className="text-sm text-tertiary">{subtitulo}</p>}
                 </div>
             </header>

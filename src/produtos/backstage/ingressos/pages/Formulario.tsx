@@ -13,6 +13,7 @@ import { BackstageLayout } from "../../components/Backstage";
 import { AdicionarPerguntaModal } from "../components/AdicionarPerguntaModal";
 import { PreviewFormularioModal } from "../components/PreviewFormularioModal";
 import { type PerguntaCadastrada } from "../data/formularios";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 interface PerguntaForm extends PerguntaCadastrada {
     /** Identificador único da instância no formulário. */
@@ -58,7 +59,7 @@ export function Formulario() {
 
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-ingressos">
-            <div className="flex min-w-0 flex-1 flex-col px-4 py-6 md:px-6">
+            <div className="flex min-w-0 flex-1 flex-col">
                 {!hasForm ? (
                     <FormularioEmptyState
                         onCreate={() => {
@@ -70,7 +71,7 @@ export function Formulario() {
                     <>
                         {/* Header */}
                         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <h1 className="text-display-xs font-bold text-primary">Criar formulário</h1>
+                            <h1 className={TITULO_PAGINA}>Criar formulário</h1>
                             <div className="flex items-center gap-3">
                                 <Button size="md" color="secondary" iconLeading={Eye} onClick={() => setIsPreviewOpen(true)}>
                                     Pré-visualizar

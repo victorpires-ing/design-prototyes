@@ -28,6 +28,7 @@ import radar5 from "../assets/radar/item-5.png";
 import radar6 from "../assets/radar/item-6.png";
 import radar7 from "../assets/radar/item-7.png";
 import radar8 from "../assets/radar/item-8.png";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -88,7 +89,7 @@ export function PreVenda() {
 
     return (
         <BackstageLayout showEventContext={false} showLayoutSwitcher={false}>
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 {transitioning ? (
                     <PageTransitionLoading />
                 ) : (
@@ -123,14 +124,14 @@ const Skeleton = ({ className }: { className?: string }) => (
 
 /** Skeleton loading exibido na transição entre etapas da pré-venda. */
 const PageTransitionLoading = () => (
-    <div className="flex flex-1 flex-col" aria-busy="true" aria-label="Carregando">
+    <div className="flex flex-1 flex-col gap-6" aria-busy="true" aria-label="Carregando">
         {/* Header */}
-        <div className="flex items-center justify-between gap-4 py-6 md:px-6">
+        <div className="flex items-center justify-between gap-4">
             <Skeleton className="h-8 w-52" />
             <Skeleton className="h-10 w-32 rounded-lg" />
         </div>
 
-        <div className="flex flex-1 flex-col gap-6 py-6 md:px-6">
+        <div className="flex flex-1 flex-col gap-6">
             {/* Bloco de configurações / alerta */}
             <div className="flex flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-border-secondary">
                 <Skeleton className="h-5 w-40" />
@@ -219,17 +220,17 @@ const CreationStep = ({ initial, onBack, onSalvar }: CreationStepProps) => {
 
     return (
         <>
-            <header className="sticky top-6 z-20 flex items-center justify-between gap-4 bg-primary py-3 shadow-[0_-24px_0_0_var(--color-bg-primary)] md:px-6">
+            <header className="sticky top-6 z-20 flex items-center justify-between gap-4 bg-primary pb-3 shadow-[0_-24px_0_0_var(--color-bg-primary)]">
                 <div className="flex items-center gap-3">
                     <ButtonUtility icon={ArrowLeft} color="tertiary" size="lg" tooltip="Voltar" onClick={onBack} />
-                    <h1 className="text-display-xs font-bold text-primary">Configuração de pré-venda</h1>
+                    <h1 className={TITULO_PAGINA}>Configuração de pré-venda</h1>
                 </div>
                 <Button size="lg" color="primary" onClick={handleSalvar}>
                     Salvar
                 </Button>
             </header>
 
-            <main className="flex flex-1 flex-col gap-6 pt-6 pb-0 md:px-6">
+            <main className="flex flex-1 flex-col gap-6">
                 {/* Configurações gerais */}
                 <section className="flex flex-col gap-4">
                     <h2 className="text-md font-semibold text-primary">Configurações gerais</h2>
@@ -812,10 +813,10 @@ const EmptyState = ({ onCriar }: { onCriar: () => void }) => {
     const [comoFuncionaOpen, setComoFuncionaOpen] = useState(false);
     return (
     <>
-        <header className="py-6 md:px-6">
-            <h1 className="text-display-xs font-bold text-primary">Pré-venda</h1>
+        <header>
+            <h1 className={TITULO_PAGINA}>Pré-venda</h1>
         </header>
-        <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-6 pb-40">
+        <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden pb-40">
             <div className="z-10 flex flex-col items-center gap-6 text-center">
                 <div className="flex flex-col items-center">
                     <p className="text-[48px] font-normal italic leading-[56px] text-quaternary">
@@ -863,10 +864,10 @@ const EmptyState = ({ onCriar }: { onCriar: () => void }) => {
 const Header = ({ emAndamento, onIniciar, onEditar }: { emAndamento: boolean; onIniciar: () => void; onEditar: () => void }) => {
     const publicado = false;
     return (
-    <header className="sticky top-6 z-20 flex flex-col gap-4 bg-primary py-6 shadow-[0_-24px_0_0_var(--color-bg-primary)] md:flex-row md:items-start md:justify-between md:px-6">
+    <header className="sticky top-6 z-20 flex flex-col gap-4 bg-primary pb-6 shadow-[0_-24px_0_0_var(--color-bg-primary)] md:flex-row md:items-start md:justify-between">
         <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-3">
-                <h1 className="text-display-xs font-bold text-primary">Pré-venda</h1>
+                <h1 className={TITULO_PAGINA}>Pré-venda</h1>
                 {!publicado ? (
                     <BadgeWithDot size="sm" type="pill-color" color="gray">
                         Rascunho
@@ -1084,7 +1085,7 @@ const ReadyScreen = ({ items, onEditar }: { items: ConfiguredItem[]; onEditar: (
     return (
         <>
             <Header emAndamento={emAndamento} onIniciar={() => setEmAndamento(true)} onEditar={onEditar} />
-            <main className="flex flex-1 flex-col gap-6 pt-6 pb-0 md:px-6">
+            <main className="flex flex-1 flex-col gap-6">
                 <PublishAlert />
                 <MetricsRow emAndamento={emAndamento} />
                 {emAndamento && <AcompanhamentoOfertasCard />}

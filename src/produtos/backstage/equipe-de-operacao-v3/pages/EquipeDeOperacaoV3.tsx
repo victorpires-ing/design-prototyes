@@ -109,7 +109,7 @@ export function EquipeDeOperacaoV3() {
                             acao={{ label: "Criar grupo", onClick: () => navigate(`${BASE}/criar`) }}
                         />
 
-                        <main className="flex flex-1 flex-col gap-6 px-6 pt-6 pb-10">
+                        <main className="flex flex-1 flex-col gap-6">
                             <div className="flex flex-wrap items-end gap-6">
                                 <div className="w-full max-w-[300px]">
                                     <Input

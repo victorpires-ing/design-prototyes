@@ -58,7 +58,7 @@ export function AlterarPedido({ verbo }: { verbo: Verbo }) {
     if (!pedido) {
         return (
             <BackstageLayout showEventContext={false} activeProducer="pedidos">
-                <div className="flex min-w-0 flex-1 flex-col gap-4 p-6">
+                <div className="flex min-w-0 flex-1 flex-col gap-4">
                     <p className="text-sm text-tertiary">Pedido não encontrado.</p>
                     <div>
                         <Button size="md" color="secondary" iconLeading={ArrowLeft} onClick={() => navigate("/backstage/pedidos")}>

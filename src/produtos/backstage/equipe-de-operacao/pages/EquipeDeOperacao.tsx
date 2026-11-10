@@ -14,6 +14,7 @@ import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { cotaTotal, useEquipe, usoDaCota, type GrupoOperacao } from "../data/equipe-store";
 import { toastSucesso } from "../utils/toast";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const PORTAL_URL = "freepass.ingresse.com/emitir-cortesia";
 
@@ -39,10 +40,10 @@ export function EquipeDeOperacao() {
 
     return (
         <BackstageLayout activeSection="equipe-de-operacao" activeItem="grupos-operacao">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <header className="flex items-center gap-3 px-6 py-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <header className="flex items-center gap-3">
                     <ButtonUtility size="md" color="tertiary" icon={ArrowLeft} tooltip="Voltar" onClick={() => navigate("/backstage/")} />
-                    <h1 className="text-display-xs font-bold text-primary">Equipe de operação</h1>
+                    <h1 className={TITULO_PAGINA}>Equipe de operação</h1>
                     {temItens && (
                         <Button size="md" color="primary" iconLeading={Plus} className="ml-auto" onClick={() => navigate("/backstage/equipe-de-operacao/criar")}>
                             Criar grupo
@@ -50,7 +51,7 @@ export function EquipeDeOperacao() {
                     )}
                 </header>
 
-                <main className="flex flex-1 flex-col gap-5 px-6 pb-10">
+                <main className="flex flex-1 flex-col gap-5">
                     {!temItens ? (
                         <EstadoSemItens onConfigurar={() => navigate("/backstage/catalogo/ingressos")} />
                     ) : vazio ? (

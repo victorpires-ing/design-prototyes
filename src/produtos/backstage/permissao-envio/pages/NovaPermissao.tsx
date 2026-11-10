@@ -13,6 +13,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { TICKETS, addPermissao, getPermissao, updatePermissao, type CotaMode, type PermTipo } from "../data/permissoes";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const brNum = (n: number) => n.toLocaleString("pt-BR");
 const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
@@ -155,12 +156,12 @@ export function NovaPermissao() {
 
     return (
         <BackstageLayout activeSection="cortesias" activeItem="permissao-envio">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <header className="relative flex items-center justify-between gap-3 px-6 py-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
                     <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={voltar}>
                         {step === 0 ? "Permissões" : "Voltar"}
                     </Button>
-                    <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary">
+                    <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>
                         {editMode ? "Editar permissão" : "Nova permissão de envio"}
                     </h1>
                     <Button size="md" color="primary" isDisabled={!podeAvancar} onClick={avancar}>
@@ -168,7 +169,7 @@ export function NovaPermissao() {
                     </Button>
                 </header>
 
-                <main className="flex flex-1 flex-col items-center gap-8 px-6 py-6">
+                <main className="flex flex-1 flex-col items-center gap-8">
                     <Progress.IconsWithText items={steps} size="sm" type="icon" orientation="horizontal" className="max-w-[860px] max-md:hidden" />
                     <Progress.IconsWithText items={steps} size="sm" type="icon" orientation="vertical" className="w-full md:hidden" />
 

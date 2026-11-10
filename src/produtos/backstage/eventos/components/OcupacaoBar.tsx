@@ -9,7 +9,7 @@ interface OcupacaoBarProps {
     withLegend?: boolean;
 }
 
-const ORDEM: Canal[] = ["ingresse", "parceiro", "cortesia"];
+const ORDEM: Canal[] = ["ingresse", "bilheteria", "cortesia"];
 
 /** Barra de ocupação segmentada por canal de venda. */
 export function OcupacaoBar({ porCanal, capacidade, className, withLegend }: OcupacaoBarProps) {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Plus, Trash01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
@@ -12,14 +12,15 @@ import { OcupacaoBar } from "../components/OcupacaoBar";
 import { Sparkline } from "../components/Sparkline";
 import { useEventoAtual } from "../data/eventos";
 import { addMarco, removeMarco, TIPO_MARCO_LABEL, useMarcos, type TipoMarco } from "../data/marcos";
-import { brl, brlCompacto, HOJE, numero, resumoDoEvento, type Sessao } from "../data/vendas";
+import { brl, brlCompacto, HOJE, numero, useResumoDoEvento, type Sessao } from "../data/vendas";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const TIPOS = (Object.keys(TIPO_MARCO_LABEL) as TipoMarco[]).map((id) => ({ id, label: TIPO_MARCO_LABEL[id] }));
 
 /** Camada 2 — o painel operacional de um evento. */
 export function VisaoGeralEvento() {
     const evento = useEventoAtual();
-    const resumo = useMemo(() => resumoDoEvento(evento), [evento]);
+    const resumo = useResumoDoEvento(evento);
     const marcos = useMarcos(evento.id);
 
     const [tipo, setTipo] = useState<TipoMarco>("lote");
@@ -37,8 +38,8 @@ export function VisaoGeralEvento() {
     if (!resumo.vendas) {
         return (
             <BackstageLayout activeSection="visao-geral" activeItem="visao-geral">
-                <div className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-6">
-                    <h1 className="text-display-xs font-bold text-primary">Visão geral</h1>
+                <div className="flex min-w-0 flex-1 flex-col gap-6">
+                    <h1 className={TITULO_PAGINA}>Visão geral</h1>
                     <p className="text-sm text-tertiary">Este evento ainda não tem vendas para acompanhar.</p>
                 </div>
             </BackstageLayout>
@@ -52,12 +53,12 @@ export function VisaoGeralEvento() {
 
     return (
         <BackstageLayout activeSection="visao-geral" activeItem="visao-geral">
-            <div className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 <header className="flex flex-wrap items-end justify-between gap-3">
                     <div className="flex flex-col gap-0.5">
-                        <h1 className="text-display-xs font-bold text-primary">Visão geral</h1>
+                        <h1 className={TITULO_PAGINA}>Visão geral</h1>
                         <p className="text-sm text-tertiary">
-                            {evento.dataLabel} · {resumo.diasParaEvento >= 0 ? `faltam ${resumo.diasParaEvento} dias` : "evento realizado"}
+                            {evento.dataLabel}. {resumo.diasParaEvento >= 0 ? `Faltam ${resumo.diasParaEvento} dias.` : "Evento realizado."}
                         </p>
                     </div>
                     <Badge
@@ -105,13 +106,13 @@ export function VisaoGeralEvento() {
                     </p>
                 </section>
 
-                {/* Capacidade por sessão */}
+                {/* Capacidade por setor */}
                 <section className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
                     <header className="flex flex-col gap-0.5 border-b border-secondary px-5 py-4">
-                        <h2 className="text-md font-semibold text-primary">Capacidade por sessão</h2>
+                        <h2 className="text-md font-semibold text-primary">Capacidade por setor</h2>
                         <p className="text-sm text-tertiary">
-                            {vendas.sessoes.length} {vendas.sessoes.length === 1 ? "sessão" : "sessões"} em{" "}
-                            {ambientes.length === 1 ? ambientes[0] : `${ambientes.length} ambientes`} · barra dividida por canal de venda
+                            {vendas.sessoes.length} {vendas.sessoes.length === 1 ? "setor" : "setores"} em{" "}
+                            {ambientes.length === 1 ? ambientes[0] : `${ambientes.length} sessões`}. A barra divide a venda por canal.
                         </p>
                     </header>
 
@@ -313,7 +314,7 @@ export function VisaoGeralEvento() {
 }
 
 const SessaoLinha = ({ sessao }: { sessao: Sessao }) => {
-    const vendidos = sessao.vendas.ingresse + sessao.vendas.parceiro + sessao.vendas.cortesia;
+    const vendidos = sessao.vendas.ingresse + sessao.vendas.bilheteria + sessao.vendas.cortesia;
     const ocupacao = vendidos / sessao.capacidade;
     const restante = sessao.capacidade - vendidos;
 

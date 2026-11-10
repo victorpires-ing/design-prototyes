@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import ticketArt from "../assets/ticket-art.webp";
+import { lerDoc } from "@/plataforma";
 import type { Pedido } from "../data/pedidos";
 
 /**
@@ -9,7 +10,8 @@ import type { Pedido } from "../data/pedidos";
  * de `pages/IngressoPdf.tsx`. CSV: uma linha por unidade, para conferência.
  */
 
-const EVENT_NAME = "América x Laguna (5 a 0)";
+/** Nome do evento do pedido, lido do banco. */
+const nomeDoEvento = (pedido: Pedido) => (pedido.eventoId && lerDoc("eventos", pedido.eventoId)?.nome) || "Evento";
 const EVENT_DATE = "21 JUN";
 const EVENT_TIME = "14:00";
 const EVENT_ADDRESS = "Arena das Dunas • Natal, RN";
@@ -107,7 +109,7 @@ function drawPage(doc: jsPDF, pedido: Pedido, ticket: TicketUnit, art: HTMLCanva
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
-    const nameLines = doc.splitTextToSize(EVENT_NAME, COL - 46) as string[];
+    const nameLines = doc.splitTextToSize(nomeDoEvento(pedido), COL - 46) as string[];
     doc.text(nameLines, X, TOP);
 
     doc.setFontSize(11);

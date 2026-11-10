@@ -10,6 +10,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { TIPO_PERGUNTA, usePesquisas, type ItemVinculavel } from "../data/pesquisas-store";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 export function VinculosPergunta() {
     const { perguntaId } = useParams();
@@ -121,7 +122,7 @@ export function VinculosPergunta() {
     return (
         <BackstageLayout activeSection="pesquisas" activeItem="formularios-compra">
             <div className="flex min-w-0 flex-1 flex-col motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-4 motion-safe:duration-300 motion-safe:ease-out">
-                <main className="flex w-full flex-1 flex-col gap-6 px-4 py-6 pb-28 md:px-6">
+                <main className="flex w-full flex-1 flex-col gap-6 pb-28">
                     {/* Header */}
                     <div className="flex flex-col gap-3">
                         <button type="button" onClick={voltar} className="flex w-fit items-center gap-1.5 text-sm text-tertiary transition hover:text-secondary">
@@ -131,7 +132,7 @@ export function VinculosPergunta() {
                         <div className="flex items-start gap-3">
                             {meta && <meta.icon className="mt-1 size-5 shrink-0 text-fg-quaternary" />}
                             <div className="flex flex-col gap-0.5">
-                                <h1 className="text-xl font-semibold text-primary">{pergunta?.titulo ?? "Pergunta"}</h1>
+                                <h1 className={TITULO_PAGINA}>{pergunta?.titulo ?? "Pergunta"}</h1>
                                 <p className="text-sm text-tertiary">Selecione os ingressos em que esta pergunta será feita ao comprador.</p>
                             </div>
                         </div>

@@ -220,14 +220,14 @@ export const FileUploadDropZone = ({
                         onChange={handleInputFileChange}
                     />
                     <label htmlFor={id} className="flex cursor-pointer">
-                        <Button color="link-color" size="md" isDisabled={isDisabled} onClick={() => inputRef.current?.click()}>
-                            Click to upload <span className="md:hidden">and attach files</span>
+                        <Button color="link-color" size="md" isDisabled={isDisabled} onClick={() => inputRef.current?.click()} className="min-h-11">
+                            Clique para enviar
                         </Button>
                     </label>
-                    <span className="text-sm max-md:hidden">or drag and drop</span>
+                    <span className="text-sm max-md:hidden">ou arraste o arquivo</span>
                 </div>
                 <p className={cx("text-xs transition duration-100 ease-linear", isInvalid && "text-error-primary")}>
-                    {hint || "SVG, PNG, JPG or GIF (max. 800x400px)"}
+                    {hint || "SVG, PNG, JPG ou GIF (máx. 800 × 400 px)"}
                 </p>
             </div>
         </div>
@@ -285,15 +285,15 @@ export const FileListItemProgressBar = ({ name, size, progress, failed, type, fi
                                 {isComplete && <p className="text-sm font-medium text-success-primary">Complete</p>}
 
                                 {!isComplete && !failed && <UploadCloud02 className="size-4 stroke-[2.5px] text-fg-quaternary" />}
-                                {!isComplete && !failed && <p className="text-sm font-medium text-quaternary">Uploading...</p>}
+                                {!isComplete && !failed && <p className="text-sm font-medium text-quaternary">Enviando…</p>}
 
                                 {failed && <XCircle className="size-4 text-fg-error-primary" />}
-                                {failed && <p className="text-sm font-medium text-error-primary">Failed</p>}
+                                {failed && <p className="text-sm font-medium text-error-primary">Falhou</p>}
                             </div>
                         </div>
                     </div>
 
-                    <ButtonUtility color="tertiary" tooltip="Delete" icon={Trash01} size="xs" className="-mt-2 -mr-2 self-start" onClick={onDelete} />
+                    <ButtonUtility color="tertiary" tooltip="Remover" icon={Trash01} size="xs" className="-mt-2 -mr-2 self-start" onClick={onDelete} />
                 </div>
 
                 {!failed && (
@@ -304,7 +304,7 @@ export const FileListItemProgressBar = ({ name, size, progress, failed, type, fi
 
                 {failed && (
                     <Button color="link-destructive" size="sm" onClick={onRetry} className="mt-1.5">
-                        Try again
+                        Tentar de novo
                     </Button>
                 )}
             </div>
@@ -342,7 +342,7 @@ export const FileListItemProgressFill = ({ name, size, progress, failed, type, f
                         <p className="truncate text-sm font-medium text-secondary">{name}</p>
 
                         <div className="mt-0.5 flex items-center gap-2">
-                            <p className="text-sm text-tertiary">{failed ? "Upload failed, please try again" : getReadableFileSize(size)}</p>
+                            <p className="text-sm text-tertiary">{failed ? "Não foi possível enviar. Tente de novo." : getReadableFileSize(size)}</p>
 
                             {!failed && (
                                 <>
@@ -360,12 +360,12 @@ export const FileListItemProgressFill = ({ name, size, progress, failed, type, f
 
                     {failed && (
                         <Button color="link-destructive" size="sm" onClick={onRetry} className="mt-1.5">
-                            Try again
+                            Tentar de novo
                         </Button>
                     )}
                 </div>
 
-                <ButtonUtility color="tertiary" tooltip="Delete" icon={Trash01} size="xs" className="-mt-2 -mr-2 self-start" onClick={onDelete} />
+                <ButtonUtility color="tertiary" tooltip="Remover" icon={Trash01} size="xs" className="-mt-2 -mr-2 self-start" onClick={onDelete} />
             </div>
         </motion.li>
     );

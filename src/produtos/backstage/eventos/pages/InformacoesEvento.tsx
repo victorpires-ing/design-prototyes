@@ -5,6 +5,7 @@ import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { BackstageLayout, useAbrirModalDeStatus } from "../../components/Backstage";
 import { EVENTO_STATUS_BADGE_COLOR, EVENTO_STATUS_DESCRICAO, EVENTO_STATUS_LABEL, useEventoAtual, type Evento } from "../data/eventos";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 /** Segundo caminho (navegável) até o status do evento — o atalho rápido continua
  *  na event rail; esta página existe para quem procura por reconhecimento, não recordação. */
@@ -13,10 +14,10 @@ export function InformacoesEvento() {
 
     return (
         <BackstageLayout activeSection="informacoes-evento" activeItem="informacoes-gerais">
-            <div className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 <header className="flex flex-wrap items-end justify-between gap-3">
                     <div className="flex flex-col gap-0.5">
-                        <h1 className="text-display-xs font-bold text-primary">Informações do evento</h1>
+                        <h1 className={TITULO_PAGINA}>Informações do evento</h1>
                         <p className="text-sm text-tertiary">Dados gerais e status de {evento.nome}</p>
                     </div>
                 </header>

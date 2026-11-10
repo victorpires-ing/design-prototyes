@@ -12,6 +12,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { COMBOS, PRODUTOS, SESSOES, comboLeafIds, produtoLeafIds, sessaoLeafIds, sessoesLeafIds } from "../data/itens-evento";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 type Filtro = "todos" | "ingressos" | "combos" | "produtos";
 
@@ -69,12 +70,12 @@ export function VincularItens() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={exiting ? { opacity: 0, y: 10 } : { opacity: 1, y: 0 }}
                 transition={{ duration: exiting ? 0.25 : 0.3, ease: "easeOut" }}
-                className="flex min-w-0 flex-1 flex-col md:h-[calc(100dvh-3rem)] md:overflow-hidden"
+                className="flex min-w-0 flex-1 flex-col gap-6 md:h-[calc(100dvh-4.5rem)] md:overflow-hidden"
             >
-                <header className="flex shrink-0 items-center justify-between gap-3 px-4 py-6 md:px-6">
+                <header className="flex shrink-0 items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <ButtonUtility size="md" color="secondary" icon={ArrowLeft} tooltip="Voltar" onClick={() => leaveTo(backTo)} />
-                        <h1 className="text-display-xs font-bold text-primary">Chave de acesso</h1>
+                        <h1 className={TITULO_PAGINA}>Chave de acesso</h1>
                     </div>
                     <div className="flex items-center gap-3">
                         <Button size="lg" color="secondary" onClick={() => leaveTo(backTo)}>
@@ -91,7 +92,7 @@ export function VincularItens() {
                     </div>
                 </header>
 
-                <main className="flex-1 px-4 pb-10 md:min-h-0 md:overflow-y-auto md:px-6">
+                <main className="flex-1 md:min-h-0 md:overflow-y-auto">
                     <div className="mx-auto w-full max-w-5xl">
                         <h2 className="text-lg font-semibold text-primary">
                             {adicionarMode ? "Adicionar vínculos" : "Marque os itens que serão liberados ao utilizar a chave de acesso"}

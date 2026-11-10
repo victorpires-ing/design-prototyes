@@ -32,7 +32,7 @@ const ENDPOINT = "/api/db";
 const LOCAL_KEY = "plataforma:db:v1";
 const POLL_MS = 8000;
 
-const vazio = (): Tabelas => ({ eventos: {}, pedidos: {}, ingressos: {}, usuarios: {} });
+const vazio = (): Tabelas => ({ eventos: {}, pedidos: {}, ingressos: {}, usuarios: {}, historico: {}, organizacoes: {} });
 
 let estado: Estado = { modo: "carregando", tabelas: vazio(), versao: 0, erro: null };
 const ouvintes = new Set<() => void>();

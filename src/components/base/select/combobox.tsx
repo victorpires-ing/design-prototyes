@@ -8,6 +8,7 @@ import { Label } from "@/components/base/input/label";
 import { Popover } from "@/components/base/select/popover";
 import { type CommonProps, SelectContext, type SelectItemType, sizes } from "@/components/base/select/select-shared";
 import { useResizeObserver } from "@/hooks/use-resize-observer";
+import { Surgir } from "@/components/foundations/transicao";
 import { cx } from "@/utils/cx";
 import { isReactComponent } from "@/utils/is-react-component";
 
@@ -18,6 +19,11 @@ interface ComboBoxProps extends Omit<AriaComboBoxProps<SelectItemType>, "childre
     shortcutClassName?: string;
     /** Leading icon component displayed before the input. */
     icon?: FC | ReactNode;
+    /**
+     * Estado da busca dentro do campo, à direita (ex.: "Buscando…", "Nenhum resultado"). Busca com
+     * resultados dinâmicos mostra o estado aqui, não no hint nem num painel vazio (UI-FRM-004).
+     */
+    status?: ReactNode;
     children: AriaListBoxProps<SelectItemType>["children"];
 }
 
@@ -29,10 +35,11 @@ interface ComboBoxValueProps extends AriaGroupProps {
     icon?: FC | ReactNode;
     onFocus?: FocusEventHandler;
     onPointerEnter?: PointerEventHandler;
-    ref?: Ref<HTMLDivElement>;
+    groupRef?: Ref<HTMLDivElement>;
+    status?: ReactNode;
 }
 
-const ComboBoxValue = ({ size, shortcut, placeholder, shortcutClassName, icon: IconProp, ref, ...otherProps }: ComboBoxValueProps) => {
+const ComboBoxValue = ({ size, shortcut, placeholder, shortcutClassName, icon: IconProp, groupRef, status, ...otherProps }: ComboBoxValueProps) => {
     const state = useContext(ComboBoxStateContext);
 
     const value = state?.selectedItem?.value || null;
@@ -43,7 +50,7 @@ const ComboBoxValue = ({ size, shortcut, placeholder, shortcutClassName, icon: I
 
     return (
         <AriaGroup
-            ref={ref}
+            ref={groupRef}
             {...otherProps}
             className={({ isFocusWithin, isDisabled }) =>
                 cx(
@@ -83,6 +90,11 @@ const ComboBoxValue = ({ size, shortcut, placeholder, shortcutClassName, icon: I
                 />
             </div>
 
+            {/* Sempre presente para o leitor de tela anunciar quando o estado muda. */}
+            <span role="status" aria-live="polite" className={cx("flex shrink-0 items-center gap-1.5 text-sm whitespace-nowrap text-tertiary", !status && "sr-only")}>
+                {status}
+            </span>
+
             {shortcut && (
                 <div
                     className={cx(
@@ -112,10 +124,11 @@ export const ComboBox = ({
     shortcutClassName,
     icon,
     hideRequiredIndicator,
+    status,
     ...otherProps
 }: ComboBoxProps) => {
     const placeholderRef = useRef<HTMLDivElement>(null);
-    const [popoverWidth, setPopoverWidth] = useState("");
+    const [, setPopoverWidth] = useState("");
 
     // Resize observer for popover width
     const onResize = useCallback(() => {
@@ -144,11 +157,13 @@ export const ComboBox = ({
                         )}
 
                         <ComboBoxValue
-                            ref={placeholderRef}
+                            // No React 18, `ref` não chega como prop de componente de função: vai como `groupRef`.
+                            groupRef={placeholderRef}
                             placeholder={placeholder}
                             shortcut={shortcut}
                             shortcutClassName={shortcutClassName}
                             icon={icon}
+                            status={status}
                             size={size}
                             // This is a workaround to correctly calculating the trigger width
                             // while using ResizeObserver wasn't 100% reliable.
@@ -156,17 +171,22 @@ export const ComboBox = ({
                             onPointerEnter={onResize}
                         />
 
-                        <Popover size={size} triggerRef={placeholderRef} style={{ width: popoverWidth }} className={otherProps.popoverClassName}>
-                            <AriaListBox items={items} className="size-full outline-hidden">
-                                {children}
-                            </AriaListBox>
-                        </Popover>
+                        {/* Sem `style`: um style em objeto substitui a posição que o React Aria calcula e a lista
+                            abria no canto da tela. A largura vem de `w-(--trigger-width)` no Popover. */}
+                        {/* Lista só com resultados: nunca um painel vazio (UI-FRM-004). */}
+                        {(!items || items.length > 0) && (
+                            <Popover size={size} triggerRef={placeholderRef} className={otherProps.popoverClassName}>
+                                <AriaListBox items={items} className="size-full outline-hidden">
+                                    {children}
+                                </AriaListBox>
+                            </Popover>
+                        )}
 
-                        {otherProps.hint && (
+                        <Surgir visivel={!!otherProps.hint} gap={6} className="w-full">
                             <HintText isInvalid={state.isInvalid} className={cx(size === "sm" && "text-xs")}>
                                 {otherProps.hint}
                             </HintText>
-                        )}
+                        </Surgir>
                     </div>
                 )}
             </AriaComboBox>

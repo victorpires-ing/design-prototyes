@@ -13,6 +13,7 @@ import { BackstageLayout } from "../../components/Backstage";
 import { CheckboxSelect } from "../../components/CheckboxSelect";
 import { AcessoEditor, Avatar, Collapse } from "../components/acesso-ui";
 import { EVENTOS, MEMBROS_V2, acessosIniciais, addGrupoV2, membroV2ById, normalizarAcesso, type FeatureAccess } from "../data/membros-v2-store";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 interface MembroDraft {
     membroId: string;
@@ -73,24 +74,24 @@ export function NovoGrupoV2() {
     return (
         <BackstageLayout showEventContext={false} activeProducer="membros-v2">
             <motion.div
-                className="flex min-w-0 flex-1 flex-col"
+                className="flex min-w-0 flex-1 flex-col gap-6"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.28, ease: "easeOut" }}
             >
-                <header className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
+                <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                         <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={voltar}>
                             Membros
                         </Button>
-                        <h1 className="text-display-xs font-bold text-primary">Novo grupo</h1>
+                        <h1 className={TITULO_PAGINA}>Novo grupo</h1>
                     </div>
                     <Button size="md" color="primary" isDisabled={!podeCriar} onClick={criar}>
                         Criar grupo
                     </Button>
                 </header>
 
-                <main className="mx-auto flex w-full max-w-[860px] flex-1 flex-col gap-6 px-6 pb-12">
+                <main className="mx-auto flex w-full max-w-[860px] flex-1 flex-col gap-6">
                     {/* Nome */}
                     <section className="flex flex-col gap-4 rounded-2xl bg-primary p-5 ring-1 ring-border-secondary md:p-6">
                         <Input label="Nome do grupo" placeholder="Ex: Camarote, Imprensa, Operação…" value={nome} onChange={setNome} isRequired autoFocus />

@@ -1,7 +1,15 @@
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
-import { getItemDetails } from "./cortesia-items";
+import { cancelarIngresso, cancelarPedido, emitirCortesias, novoId, renomearEnvio, useColecao, useDoc } from "@/plataforma";
+import { useEventoAtual } from "../../eventos/data/eventos";
 import type { CortesiaItem, ItemStatus } from "./item-types";
+import { dataDaSessao, lerIdDoItem, useCatalogoDeCortesia } from "./plataforma";
+
+/*
+ * Cortesias do evento em contexto, lidas e gravadas no banco unificado (src/plataforma).
+ * Um envio vira um pedido por destinatário, no canal cortesia, já emitido: o ingresso vai para a
+ * carteira do e-mail. "Pedido" nesta tela é o envio inteiro (todos os destinatários).
+ */
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -39,200 +47,91 @@ const CortesiasContext = createContext<CortesiasStoreValue | null>(null);
 
 const DEFAULT_EMISSOR = "Victor Pires";
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                           */
-/* ------------------------------------------------------------------ */
-
-function emailHasCadastro(email: string): boolean {
-    let h = 0;
-    for (let i = 0; i < email.length; i++) {
-        h = (h * 31 + email.charCodeAt(i)) >>> 0;
-    }
-    return h % 10 < 3;
-}
-
-// Demo: random distribution skewed toward "aceito" but with reasonable
-// representation of every state so the report screens stay interesting.
-const RANDOM_ITEM_STATUSES: ItemStatus[] = [
-    "aceito",
-    "aceito",
-    "aceito",
-    "aceito",
-    "aceito",
-    "pendente",
-    "pendente",
-    "processando",
-    "cancelado",
-    "erro",
-];
-
-function randomItemStatus(): ItemStatus {
-    return RANDOM_ITEM_STATUSES[Math.floor(Math.random() * RANDOM_ITEM_STATUSES.length)];
-}
-
-function randomPedidoStatus(): PedidoStatus {
-    // ~15% of pedidos start as cancelado for variety
-    return Math.random() < 0.15 ? "cancelado" : "emitido";
-}
-
-function hashSeed(seed: string): number {
-    let h = 0;
-    for (let i = 0; i < seed.length; i++) {
-        h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-    }
-    return h;
-}
-
-function generateId(): string {
-    const rand = () =>
-        Math.floor(Math.random() * 0xffffffff)
-            .toString(16)
-            .padStart(8, "0");
-    return `${rand()}-${rand().slice(0, 4)}-${rand().slice(0, 4)}-${rand().slice(0, 4)}-${rand()}${rand().slice(0, 4)}`;
-}
-
-function formatNow(): string {
-    const d = new Date();
-    const p = (n: number) => n.toString().padStart(2, "0");
-    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
-function generateDoc(seed: string): string {
-    const h = hashSeed(seed);
-    const base = ((h % 900_000_000) + 100_000_000).toString();
-    const dv = ((h % 90) + 10).toString();
-    return `${base.slice(0, 3)}.${base.slice(3, 6)}.${base.slice(6, 9)}-${dv}`;
-}
-
-function deriveItemNomeSubtitulo(itemId: string): { nome: string; subtitulo: string } | null {
-    const details = getItemDetails(itemId);
-    if (!details) return null;
-    if (details.kind === "ticket") {
-        return {
-            nome: details.name,
-            subtitulo: `${details.groupName} · ${details.sessionDate}`,
-        };
-    }
-    if (details.kind === "product") {
-        return { nome: details.name, subtitulo: "" };
-    }
-    return { nome: details.name, subtitulo: details.subtitle };
-}
+const p2 = (n: number) => n.toString().padStart(2, "0");
+const formatar = (iso: string) => {
+    const d = new Date(iso);
+    return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+};
 
 /* ------------------------------------------------------------------ */
 /*  Provider                                                          */
 /* ------------------------------------------------------------------ */
 
 export function CortesiasProvider({ children }: { children: ReactNode }) {
-    const [pedidos, setPedidos] = useState<Pedido[]>([]);
-    const [itens, setItens] = useState<CortesiaItem[]>([]);
+    // Mantém o catálogo de cortesia (SESSIONS) igual ao do evento em contexto.
+    useCatalogoDeCortesia();
+    const evento = useEventoAtual();
+    const pedidosBanco = useColecao("pedidos");
+    const ingressosBanco = useColecao("ingressos");
+    const usuarios = useColecao("usuarios");
+    const eventoDoc = useDoc("eventos", evento.id);
 
-    const addPedido = useCallback((input: AddPedidoInput) => {
-        const pedidoId = generateId();
-        const emissor = input.emissor ?? DEFAULT_EMISSOR;
-        const dataEnvio = formatNow();
-        const pedidoStatus = randomPedidoStatus();
+    const doEvento = useMemo(
+        () => pedidosBanco.filter((p) => p.canal === "cortesia" && p.eventoId === evento.id && p.envio).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)),
+        [pedidosBanco, evento.id],
+    );
 
-        const newPedido: Pedido = {
-            id: pedidoId,
-            nome: input.nome.trim() || "Pedido sem nome",
-            emissor,
-            status: pedidoStatus,
-            dataEnvio,
-        };
+    const pedidos = useMemo<Pedido[]>(() => {
+        const porEnvio = new Map<string, typeof doEvento>();
+        for (const p of doEvento) porEnvio.set(p.envio!.id, [...(porEnvio.get(p.envio!.id) ?? []), p]);
+        return [...porEnvio.entries()].map(([id, lista]) => ({
+            id,
+            nome: lista[0].envio!.nome,
+            emissor: lista[0].envio!.emissor,
+            status: lista.every((p) => p.status === "cancelado") ? "cancelado" : "emitido",
+            dataEnvio: formatar(lista[lista.length - 1].criadoEm),
+        }));
+    }, [doEvento]);
 
-        const newItens: CortesiaItem[] = [];
-        for (const email of input.emails) {
-            const hasCad = emailHasCadastro(email);
-            for (const itemId of input.itemIds) {
-                const details = getItemDetails(itemId);
-                if (!details) continue;
-                const labels = deriveItemNomeSubtitulo(itemId);
-                if (!labels) continue;
-                // If the pedido was randomly cancelled, all its items follow.
-                const itemStatus =
-                    pedidoStatus === "cancelado" ? "cancelado" : randomItemStatus();
-                newItens.push({
-                    id: generateId(),
-                    kind: details.kind,
-                    nome: labels.nome,
-                    subtitulo: labels.subtitulo,
-                    status: itemStatus,
-                    emissor,
-                    email,
-                    documento: hasCad ? generateDoc(email) : "—",
-                    transferido: Math.random() < 0.15,
-                    pedidoId,
-                });
-            }
-        }
+    const itens = useMemo<CortesiaItem[]>(() => {
+        const comConta = new Set(usuarios.map((u) => u.email));
+        const envioDoPedido = new Map(doEvento.map((p) => [p.id, p]));
+        return ingressosBanco
+            .filter((i) => envioDoPedido.has(i.pedidoId))
+            .map((i) => {
+                const pedido = envioDoPedido.get(i.pedidoId)!;
+                const inicio = eventoDoc?.sessoes.find((s) => s.id === i.sessaoId)?.inicio;
+                const sessao = inicio ? dataDaSessao(inicio) : "";
+                // Sem conta Ingresse o ingresso fica pendente até o cadastro com o mesmo e-mail.
+                const status: ItemStatus = i.status === "cancelado" ? "cancelado" : comConta.has(i.titular.email) ? "aceito" : "pendente";
+                return {
+                    id: i.id,
+                    kind: "ticket" as const,
+                    nome: i.rotulo.ingresso,
+                    subtitulo: [i.rotulo.grupo, sessao].filter(Boolean).join(" · "),
+                    status,
+                    emissor: pedido.envio!.emissor,
+                    email: i.titular.email,
+                    documento: "—",
+                    transferido: i.status === "transferido",
+                    pedidoId: pedido.envio!.id,
+                };
+            });
+    }, [ingressosBanco, doEvento, usuarios, eventoDoc]);
 
-        setPedidos((prev) => [newPedido, ...prev]);
-        setItens((prev) => [...newItens, ...prev]);
-        return newPedido;
-    }, []);
+    const addPedido = useCallback(
+        (input: AddPedidoInput) => {
+            const envio = { id: novoId("env"), nome: input.nome.trim() || "Pedido sem nome", emissor: input.emissor ?? DEFAULT_EMISSOR };
+            const refs = input.itemIds.map(lerIdDoItem).filter((r): r is NonNullable<typeof r> => r !== null);
+            void emitirCortesias({ eventoId: evento.id, envio, emails: input.emails, itens: refs });
+            return { id: envio.id, nome: envio.nome, emissor: envio.emissor, status: "emitido" as const, dataEnvio: formatar(new Date().toISOString()) };
+        },
+        [evento.id],
+    );
 
-    const cancelPedido = useCallback((id: string) => {
-        setPedidos((prev) =>
-            prev.map((p) => (p.id === id ? { ...p, status: "cancelado" as const } : p)),
-        );
-        setItens((prev) =>
-            prev.map((it) =>
-                it.pedidoId === id ? { ...it, status: "cancelado" as const } : it,
-            ),
-        );
-    }, []);
+    const pedidosDoEnvio = useCallback((ids: Set<string>) => doEvento.filter((p) => ids.has(p.envio!.id)), [doEvento]);
 
-    const cancelPedidos = useCallback((ids: Set<string>) => {
-        setPedidos((prev) =>
-            prev.map((p) =>
-                ids.has(p.id) ? { ...p, status: "cancelado" as const } : p,
-            ),
-        );
-        setItens((prev) =>
-            prev.map((it) =>
-                ids.has(it.pedidoId) ? { ...it, status: "cancelado" as const } : it,
-            ),
-        );
-    }, []);
-
-    const cancelItem = useCallback((id: string) => {
-        setItens((prev) =>
-            prev.map((it) =>
-                it.id === id ? { ...it, status: "cancelado" as const } : it,
-            ),
-        );
-    }, []);
-
-    const cancelItens = useCallback((ids: Set<string>) => {
-        setItens((prev) =>
-            prev.map((it) =>
-                ids.has(it.id) ? { ...it, status: "cancelado" as const } : it,
-            ),
-        );
-    }, []);
-
+    const cancelPedidos = useCallback((ids: Set<string>) => void Promise.all(pedidosDoEnvio(ids).map((p) => cancelarPedido(p.id))), [pedidosDoEnvio]);
+    const cancelPedido = useCallback((id: string) => cancelPedidos(new Set([id])), [cancelPedidos]);
+    const cancelItens = useCallback((ids: Set<string>) => void Promise.all([...ids].map((id) => cancelarIngresso(id))), []);
+    const cancelItem = useCallback((id: string) => cancelItens(new Set([id])), [cancelItens]);
     const renamePedido = useCallback((id: string, nome: string) => {
         const next = nome.trim();
-        if (!next) return;
-        setPedidos((prev) =>
-            prev.map((p) => (p.id === id ? { ...p, nome: next } : p)),
-        );
+        if (next) void renomearEnvio(id, next);
     }, []);
 
     return (
-        <CortesiasContext.Provider
-            value={{
-                pedidos,
-                itens,
-                addPedido,
-                cancelPedido,
-                cancelPedidos,
-                cancelItem,
-                cancelItens,
-                renamePedido,
-            }}
-        >
+        <CortesiasContext.Provider value={{ pedidos, itens, addPedido, cancelPedido, cancelPedidos, cancelItem, cancelItens, renamePedido }}>
             {children}
         </CortesiasContext.Provider>
     );

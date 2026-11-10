@@ -82,7 +82,7 @@ export function Questionarios() {
         <BackstageLayout activeSection="relatorios" activeItem="relatorio-questionarios">
             <RelatorioFiltersProvider>
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                    <main className="flex flex-1 flex-col gap-6">
                         <QuestionariosBody />
                     </main>
                 </div>
@@ -123,7 +123,7 @@ const QuestionariosBody = () => {
     return (
         <>
             <RelatorioPageHeader
-                title="Questionários"
+                title="Respostas do questionário"
                 withFilters={false}
                 actions={
                     <>

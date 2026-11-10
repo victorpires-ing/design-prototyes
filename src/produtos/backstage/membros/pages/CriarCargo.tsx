@@ -21,6 +21,7 @@ import {
     type RecursoPermissao,
     type SecaoPermissao,
 } from "../data/permissoes-catalogo";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const COL_ACAO_REM = 8.5;
 const gridStyle = (colunas: number) => ({
@@ -91,10 +92,10 @@ export function CriarCargo() {
     return (
         <BackstageLayout showEventContext={false} activeProducer="equipe" showLayoutSwitcher={false}>
             <div className="flex min-w-0 flex-1 flex-col">
-                <main className="flex flex-1 flex-col gap-6 px-6 pt-6 pb-10">
+                <main className="flex flex-1 flex-col gap-6 pb-10">
                     <header className="flex items-center gap-3">
                         <Button size="sm" color="tertiary" iconLeading={ArrowLeft} aria-label="Voltar" onClick={() => navigate("/backstage/membros")} />
-                        <h1 className="text-display-xs font-semibold text-primary">{editando ? "Editar cargo" : "Criar cargo"}</h1>
+                        <h1 className={TITULO_PAGINA}>{editando ? "Editar cargo" : "Criar cargo"}</h1>
                     </header>
 
                     <div className="flex w-full max-w-lg flex-col gap-5">
@@ -117,7 +118,7 @@ export function CriarCargo() {
                     </div>
                 </main>
 
-                <footer className="sticky bottom-0 z-10 flex items-center bg-primary_alt justify-between gap-3 border-t border-secondary px-6 py-4">
+                <footer className="sticky bottom-0 z-10 flex items-center bg-primary_alt justify-between gap-3 border-t border-secondary py-4">
                     <span className="text-sm text-tertiary">
                         {selecionadas.size} {selecionadas.size === 1 ? "permissão selecionada" : "permissões selecionadas"}
                     </span>

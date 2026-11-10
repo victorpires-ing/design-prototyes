@@ -133,7 +133,7 @@ export function CriarGrupoV3() {
             <TemaCotas>
                 <CabecalhoCotas titulo="Gerenciar cotas" onVoltar={voltar} acao={{ label: rotuloAcao, onClick: avancar, desabilitada: !etapaOk }} />
 
-                <main className="flex flex-1 flex-col items-center gap-12 px-6 pt-6 pb-16">
+                <main className="flex flex-1 flex-col items-center gap-12">
                     {!soItens && <Stepper atual={etapa} onIr={(i) => i < etapa && setEtapa(i)} />}
 
                     {etapa === 0 && (

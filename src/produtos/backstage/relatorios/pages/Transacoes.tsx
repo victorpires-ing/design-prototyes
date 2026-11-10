@@ -24,6 +24,7 @@ import { DEFAULT_SELECTED, ManageColumnsModal } from "../components/ManageColumn
 import { ExportMenu, RelatorioPageHeader } from "../components/RelatorioPageHeader";
 import { RelatorioFiltersProvider, matchRow, inDateRange, useRelatorioFilters, type FilterFieldDef } from "../components/relatorio-filters";
 import { SortableHeader } from "../components/SortableHeader";
+import { DetalhesDaLinha, ListaDaTabela, useLinhaAberta } from "../components/TabelaLista";
 import { TransacionadoChartCard, type ChartPoint } from "../components/TransacionadoChart";
 import { useSortableTable } from "../utils/useSortableTable";
 import { EVENT, currencyFormatter, numberFormatter, parseEventDate } from "../data/event";
@@ -510,7 +511,7 @@ export function Transacoes() {
         <BackstageLayout activeSection="relatorios" activeItem="transacoes">
             <RelatorioFiltersProvider fields={FILTER_FIELDS} initialDateRange={PERIODO_PADRAO}>
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <main className="flex flex-1 flex-col gap-6 py-6 md:px-6">
+                    <main className="flex flex-1 flex-col gap-6">
                         <RelatorioPageHeader title="Transações" />
                         <TransacoesBody />
                     </main>
@@ -672,7 +673,7 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
                     <thead>
                         <tr className="border-b border-secondary">
                             <th className="py-2 pr-4 text-left text-sm font-semibold text-tertiary" />
-                            <th className="px-4 py-2 text-right text-sm font-semibold text-tertiary">Total inscrições</th>
+                            <th className="hidden px-4 py-2 text-right text-sm font-semibold text-tertiary sm:table-cell">Total inscrições</th>
                             <th className="py-2 pl-4 text-right text-sm font-semibold text-tertiary">Total</th>
                         </tr>
                     </thead>
@@ -685,8 +686,10 @@ const IngressosValorPorStatusCard = ({ rows }: { rows: IngressoStatusRow[] }) =>
                                         <span className="shrink-0 text-sm font-semibold text-primary tabular-nums">{pctOf(row.total)}%</span>
                                         <span className="truncate text-sm text-secondary">{STATUS_META[row.status].label}</span>
                                     </div>
+                                    {/* Celular: a contagem desce para baixo do nome, sem rolagem lateral (UI-MOB-005). */}
+                                    <span className="mt-0.5 block pl-5.5 text-sm text-tertiary tabular-nums sm:hidden">{numberFormatter.format(row.totalIngressos)} inscrições</span>
                                 </td>
-                                <td className="px-4 py-3 text-right text-sm font-medium text-primary tabular-nums">{numberFormatter.format(row.totalIngressos)}</td>
+                                <td className="hidden px-4 py-3 text-right text-sm font-medium text-primary tabular-nums sm:table-cell">{numberFormatter.format(row.totalIngressos)}</td>
                                 <td className="py-3 pl-4 text-right text-sm font-semibold text-primary tabular-nums">{currencyFormatter.format(row.total)}</td>
                             </tr>
                         ))}
@@ -736,7 +739,7 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
                     <thead>
                         <tr className="border-b border-secondary">
                             <th className="py-2 pr-4 text-left text-sm font-semibold text-tertiary" />
-                            <th className="px-4 py-2 text-right text-sm font-semibold text-tertiary">Total inscrições</th>
+                            <th className="hidden px-4 py-2 text-right text-sm font-semibold text-tertiary sm:table-cell">Total inscrições</th>
                             <th className="py-2 pl-4 text-right text-sm font-semibold text-tertiary">Total</th>
                         </tr>
                     </thead>
@@ -749,8 +752,9 @@ const MeioPagamentosCard = ({ rows }: { rows: MeioPagamentoRow[] }) => {
                                         <span className="shrink-0 text-sm font-semibold text-primary tabular-nums">{pctOf(row.valor)}%</span>
                                         <span className="truncate text-sm text-secondary">{row.nome}</span>
                                     </div>
+                                    <span className="mt-0.5 block pl-5.5 text-sm text-tertiary tabular-nums sm:hidden">{numberFormatter.format(row.quantidadeIngressos)} inscrições</span>
                                 </td>
-                                <td className="px-4 py-3 text-right text-sm font-medium text-primary tabular-nums">{numberFormatter.format(row.quantidadeIngressos)}</td>
+                                <td className="hidden px-4 py-3 text-right text-sm font-medium text-primary tabular-nums sm:table-cell">{numberFormatter.format(row.quantidadeIngressos)}</td>
                                 <td className="py-3 pl-4 text-right text-sm font-semibold text-primary tabular-nums">{currencyFormatter.format(row.valor)}</td>
                             </tr>
                         ))}
@@ -891,6 +895,7 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
     const [search, setSearch] = useState("");
     const [isManageColumnsOpen, setIsManageColumnsOpen] = useState(false);
     const [selectedFields, setSelectedFields] = useState<string[]>(DEFAULT_SELECTED);
+    const linha = useLinhaAberta<Transacao>();
 
     const visibleColumns = useMemo(
         () => selectedFields.map((fieldId) => COLUMN_BY_FIELD_ID.get(fieldId)).filter((col): col is NonNullable<typeof col> => Boolean(col)),
@@ -963,7 +968,32 @@ const ListaTransacoesCard = ({ rows }: { rows: Transacao[] }) => {
                 onExport={(fields) => toast.success("Exportação concluída", { description: `${fields.length} colunas foram exportadas.` })}
             />
 
-            <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
+            {/* Celular: tabela-lista; o toque abre as colunas escolhidas em "Editar colunas" (UI-MOB-005). */}
+            <ListaDaTabela
+                rotulo="Transações"
+                itens={visibleRows}
+                chave={(t) => t.id}
+                titulo={(t) => t.atletaNome || t.comprador}
+                apoio={(t) => `${t.id} · ${t.dataCriacao}`}
+                destaque={(t) => (
+                    <>
+                        <span className="font-medium">{currencyFormatter.format(t.valorFinal)}</span>
+                        <span className="text-tertiary">{STATUS_META[t.status].label}</span>
+                    </>
+                )}
+                onAbrir={linha.abrir}
+                vazio="Nenhuma transação corresponde aos filtros aplicados."
+            />
+            {linha.aberta && (
+                <DetalhesDaLinha
+                    titulo={linha.aberta.atletaNome || linha.aberta.comprador}
+                    subtitulo={`Pedido ${linha.aberta.id}`}
+                    grupos={[{ campos: visibleColumns.map((col) => ({ rotulo: col.label, valor: renderTransacaoCell(linha.aberta!, col.key) })) }]}
+                    onFechar={linha.fechar}
+                />
+            )}
+
+            <div className="hidden max-h-[500px] overflow-x-auto overflow-y-auto md:block">
                 <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-secondary">
                         <tr className="border-b border-secondary bg-secondary text-left">

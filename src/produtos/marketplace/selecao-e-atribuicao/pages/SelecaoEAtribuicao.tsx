@@ -24,7 +24,7 @@ import { precoExtraDoItem, TAXA_PRODUTO_PADRAO } from "../data/combos";
 import type { Beneficio, ComboDinamico, ComboDinamicoView, ComboFixo, DataEvento, Item, PerguntaEvento, Produto, Quantitativo, TaxaProduto, TaxaServico } from "../data/combos";
 import { DEFAULT_CONFIG, STORAGE_KEY, decodeConfig, resolverLinkCurto, type EventConfig } from "../data/config";
 import { eventoParaConfig } from "../data/plataforma";
-import { criarPedido, entrar, lerSessao, slugificar, useColecao, useSessao, vendidosPorLote, type Atribuicao, type Evento as EventoBanco, type ItemPedido } from "@/plataforma";
+import { criarPedido, entrar, lerSessao, slugificar, useSessao, useVendidos, type Atribuicao, type Evento as EventoBanco, type ItemPedido } from "@/plataforma";
 import {
     brl,
     escalar,
@@ -108,11 +108,8 @@ export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
     const navigate = useNavigate();
     const [params] = useSearchParams();
     const sessao = useSessao();
-    const emitidos = useColecao("ingressos");
-    const configDoBanco = useMemo(
-        () => (evento ? eventoParaConfig(evento, vendidosPorLote(emitidos.filter((i) => i.eventoId === evento.id))) : null),
-        [evento, emitidos],
-    );
+    const vendidos = useVendidos();
+    const configDoBanco = useMemo(() => (evento ? eventoParaConfig(evento, vendidos) : null), [evento, vendidos]);
 
     // Config inicial síncrona: ?cfg= (link longo) → localStorage → DEFAULT.
     const configInicial = useMemo(() => {
@@ -632,8 +629,7 @@ export function SelecaoEAtribuicao({ evento }: { evento?: EventoBanco } = {}) {
                 const s = ev.sessoes.find((x) => x.id === sessaoId);
                 const grupo = s?.grupos.find((gr) => gr.ingressos.some((t) => t.id === ingressoId));
                 const t = grupo?.ingressos.find((x) => x.id === ingressoId);
-                const vend = vendidosPorLote(emitidos.filter((i) => i.eventoId === ev.id));
-                const lote = t?.lotes.find((l) => (vend.get(l.id) ?? 0) < l.quantidade) ?? t?.lotes[t.lotes.length - 1];
+                const lote = t?.lotes.find((l) => (vendidos.get(l.id) ?? 0) < l.quantidade) ?? t?.lotes[t.lotes.length - 1];
                 if (!s || !grupo || !t || !lote) continue;
                 indicePorChave.set(key, itens.length);
                 itens.push({ tipo: "ingresso", nome: t.nome, detalhe: lote.nome, sessaoId: s.id, grupoId: grupo.id, ingressoId: t.id, loteId: lote.id, quantidade: g.qtd, face: g.preco.face, taxa: g.preco.taxa });

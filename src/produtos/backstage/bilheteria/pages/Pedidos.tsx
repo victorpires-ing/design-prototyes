@@ -17,6 +17,8 @@ import { gerarIngressosCsv, gerarIngressosPdf } from "../utils/gerar-ingressos";
 import { formatBRL } from "../data/catalogo";
 import { PEDIDO_STATUS_META, PEDIDO_TIPO_LABEL, type Pedido } from "../data/pedidos";
 import { cancelPedidos, formatDateTime, registerResend, usePedidos } from "../data/pedidos-store";
+import { useCatalogoDoBanco } from "../data/plataforma";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const STATUS_OPTIONS = [
     { id: "todos", label: "Todos" },
@@ -33,7 +35,8 @@ export function PedidosBilheteria() {
 
     const [searchParams] = useSearchParams();
     /** `?sem-itens=1` demonstra o empty state de evento sem itens cadastrados. */
-    const hasCatalog = searchParams.get("sem-itens") !== "1";
+    const { sessoes } = useCatalogoDoBanco();
+    const hasCatalog = searchParams.get("sem-itens") !== "1" && sessoes.some((s) => s.tickets.length > 0);
 
     const rows = usePedidos();
     const [term, setTerm] = useState("");
@@ -102,9 +105,9 @@ export function PedidosBilheteria() {
 
     return (
         <BackstageLayout activeSection="bilheteria" activeItem="bilheteria-online">
-            <div className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 <header className="flex flex-wrap items-center justify-between gap-3">
-                    <h1 className="text-display-xs font-bold text-primary">Bilheteria online</h1>
+                    <h1 className={TITULO_PAGINA}>Bilheteria online</h1>
                     {rows.length > 0 && (
                         <Button size="md" color="primary" onClick={() => navigate("/backstage/bilheteria/vender")}>
                             Vender ingressos

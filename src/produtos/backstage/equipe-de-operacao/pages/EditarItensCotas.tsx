@@ -47,9 +47,9 @@ export function EditarItensCotas() {
 
     return (
         <BackstageLayout activeSection="equipe-de-operacao" activeItem="grupos-operacao">
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 <WizardHeader title="Editar itens e cota" subtitle={`Grupo: ${grupo.nome}`} onBack={voltar} actionLabel="Salvar configuração" onAction={salvar} actionDisabled={!valido} />
-                <main className="flex flex-1 flex-col px-6 pb-10">
+                <main className="flex flex-1 flex-col">
                     <section className="mx-auto w-full max-w-[1000px]">
                         <ItensCotasSelector modo={grupo.modo} itens={itens} onItens={setItens} cota={cota} onCota={setCota} minCota={grupo.emitidas} minPorItem={minPorItem} emitidas={grupo.emitidas} />
                     </section>

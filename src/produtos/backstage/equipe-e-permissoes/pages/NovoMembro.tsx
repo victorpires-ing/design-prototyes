@@ -27,6 +27,7 @@ import {
     type MembroTipo,
     type RegraIngresso,
 } from "../data/membros";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 const brNum = (n: number) => n.toLocaleString("pt-BR");
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -178,18 +179,18 @@ export function NovoMembro() {
     if (tipo === null) {
         return (
             <BackstageLayout activeSection="equipe-e-permissoes">
-                <div className="flex min-w-0 flex-1 flex-col">
-                    <header className="relative flex items-center justify-between gap-3 px-6 py-6">
+                <div className="flex min-w-0 flex-1 flex-col gap-6">
+                    <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
                         <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={cancelar}>
                             Cancelar
                         </Button>
-                        <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary">
+                        <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>
                             Adicionar membro à equipe
                         </h1>
                         <span className="w-[92px]" />
                     </header>
 
-                    <main className="flex flex-1 flex-col items-center gap-8 px-6 py-10">
+                    <main className="flex flex-1 flex-col items-center gap-8">
                         <p className="text-center text-md text-tertiary">Você está adicionando acesso a quem?</p>
                         <div className="grid w-full max-w-[760px] grid-cols-1 gap-4 sm:grid-cols-2">
                             <TipoCard
@@ -223,12 +224,12 @@ export function NovoMembro() {
 
     return (
         <BackstageLayout activeSection="equipe-e-permissoes">
-            <div className="flex min-w-0 flex-1 flex-col">
-                <header className="relative flex items-center justify-between gap-3 px-6 py-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
                     <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={voltar}>
                         Voltar
                     </Button>
-                    <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary">
+                    <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>
                         {editMode ? "Editar membro" : "Adicionar membro"}
                     </h1>
                     <Button size="md" color="primary" isDisabled={!podeAvancar} onClick={avancar}>
@@ -236,7 +237,7 @@ export function NovoMembro() {
                     </Button>
                 </header>
 
-                <main className="flex flex-1 flex-col items-center gap-8 px-6 py-6">
+                <main className="flex flex-1 flex-col items-center gap-8">
                     <Progress.IconsWithText items={steps} size="sm" type="number" orientation="horizontal" className="max-w-[860px] max-md:hidden" />
                     <Progress.IconsWithText items={steps} size="sm" type="number" orientation="vertical" className="w-full md:hidden" />
 

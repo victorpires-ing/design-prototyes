@@ -47,6 +47,7 @@ import {
     type PedidoStatus,
 } from "../data/cortesias-store";
 import { showSuccessToast } from "../utils/toast";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 
 /* ------------------------------------------------------------------ */
@@ -84,13 +85,13 @@ export function RelatorioPedidos() {
 
     return (
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 {isEmpty ? (
                     <EmptyState onEmitir={handleEmitir} />
                 ) : (
                     <>
                         <PageHeader onEmitir={handleEmitir} />
-                        <main className="flex flex-1 flex-col gap-6 px-6 py-6">
+                        <main className="flex flex-1 flex-col gap-6">
                             <Tabs
                                 selectedKey={activeTab}
                                 onSelectionChange={(key: Key) =>
@@ -125,7 +126,7 @@ interface EmptyStateProps {
 }
 
 const EmptyState = ({ onEmitir }: EmptyStateProps) => (
-    <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-6 py-16">
+    <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden py-16">
         <div className="z-10 flex max-w-xl flex-col items-center gap-6 text-center">
             <div className="flex flex-col items-center gap-1">
                 <p className="text-display-md font-normal italic text-tertiary">
@@ -180,8 +181,8 @@ interface PageHeaderProps {
 }
 
 const PageHeader = ({ onEmitir }: PageHeaderProps) => (
-    <header className="flex items-center justify-between gap-3 px-6 py-6">
-        <h1 className="text-display-xs font-bold text-primary">Cortesias</h1>
+    <header className="flex items-center justify-between gap-3">
+        <h1 className={TITULO_PAGINA}>Cortesias</h1>
         <Button size="md" color="primary" onClick={onEmitir}>
             Emitir cortesia
         </Button>

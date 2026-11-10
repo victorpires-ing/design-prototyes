@@ -6,6 +6,7 @@ import { Button as AriaButton, ListBox as AriaListBox, Select as AriaSelect, Sel
 import { Avatar } from "@/components/base/avatar/avatar";
 import { HintText } from "@/components/base/input/hint-text";
 import { Label } from "@/components/base/input/label";
+import { Surgir } from "@/components/foundations/transicao";
 import { cx } from "@/utils/cx";
 import { isReactComponent } from "@/utils/is-react-component";
 import { ComboBox } from "./combobox";
@@ -112,11 +113,11 @@ const Select = ({ placeholder = "Select", icon, size = "md", children, items, la
                             </AriaListBox>
                         </Popover>
 
-                        {hint && (
+                        <Surgir visivel={!!hint} gap={6} className="w-full">
                             <HintText isInvalid={state.isInvalid} className={cx(size === "sm" && "text-xs")}>
                                 {hint}
                             </HintText>
-                        )}
+                        </Surgir>
                     </>
                 )}
             </AriaSelect>

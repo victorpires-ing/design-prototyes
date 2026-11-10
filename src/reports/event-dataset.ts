@@ -116,9 +116,30 @@ export function linhasDoPeriodo(periodo: PeriodoSelecionado): FatoVenda[] {
     return VENDAS.filter((v) => v.ms >= startMs && v.ms <= endMs);
 }
 
+/** Grupos, capacidade e janela de vendas usados na agregação. */
+export interface ContextoDataset {
+    grupos: { nome: string; categoria: string; capacidade: number | null; precoMedio: number; validaPct: number }[];
+    capacidade: number;
+    itensTotal: number;
+    vendasInicio: string;
+    vendasFim: string;
+}
+
+const CONTEXTO_ESTATICO: ContextoDataset = { grupos: GRUPOS, capacidade: CAP_INGRESSOS, itensTotal: ITENS_TOTAL, vendasInicio: EVENTO.vendasInicio, vendasFim: EVENTO.vendasFim };
+
 /** Resumo agregado do período — shape consumido pelos executores de features. */
 export function consultarPeriodo(periodo: PeriodoSelecionado) {
-    const rows = linhasDoPeriodo(periodo);
+    return agregar(linhasDoPeriodo(periodo), CONTEXTO_ESTATICO);
+}
+
+/**
+ * Agrega linhas da tabela-fato (dia × grupo). Usado pelo dataset estático e pelo do banco
+ * unificado (relatorios/data/vendas-banco.ts), para os dois terem o mesmo formato.
+ */
+export function agregar(rows: FatoVenda[], ctx: ContextoDataset) {
+    const GRUPOS = ctx.grupos;
+    const CAP_INGRESSOS = ctx.capacidade;
+    const ITENS_TOTAL = ctx.itensTotal;
 
     const bruto = rows.reduce((s, r) => s + r.receitaBruta, 0);
     const liquido = rows.reduce((s, r) => s + r.receitaLiquida, 0);
@@ -165,8 +186,8 @@ export function consultarPeriodo(periodo: PeriodoSelecionado) {
 
     return {
         evento: {
-            inicioVendas: EVENTO.vendasInicio,
-            fimVendas: EVENTO.vendasFim,
+            inicioVendas: ctx.vendasInicio,
+            fimVendas: ctx.vendasFim,
             fracaoPeriodoSelecionado: Number((ITENS_TOTAL ? itens / ITENS_TOTAL : 0).toFixed(3)),
         },
         totais: {

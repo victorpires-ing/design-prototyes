@@ -13,6 +13,7 @@ import { ImportarPlanilhaModal } from "../components/ImportarPlanilhaModal";
 import msExcelIcon from "../assets/ms_excel.png";
 import alertIcon from "../assets/alert.png";
 import alertAmareloIcon from "../assets/alert-amarelo.png";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 type CreationMode = "automatica" | "manual";
 
@@ -135,10 +136,10 @@ export function ChaveDeAcesso() {
 
     return (
         <BackstageLayout activeSection="marketing" activeItem="chave-de-acesso">
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 {isCreating ? (
                     <>
-                        <header className="flex items-center justify-between gap-3 px-4 py-6 md:px-6">
+                        <header className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
                                 <ButtonUtility
                                     size="md"
@@ -147,7 +148,7 @@ export function ChaveDeAcesso() {
                                     tooltip="Voltar"
                                     onClick={() => setIsCreating(false)}
                                 />
-                                <h1 className="text-display-xs font-bold text-primary">Chave de acesso</h1>
+                                <h1 className={TITULO_PAGINA}>Chave de acesso</h1>
                             </div>
                             <Button
                                 size="lg"
@@ -159,7 +160,7 @@ export function ChaveDeAcesso() {
                             </Button>
                         </header>
 
-                        <main className="flex flex-1 flex-col items-center px-4 py-6 md:px-6">
+                        <main className="flex flex-1 flex-col items-center">
                             <div className="flex w-full max-w-3xl flex-col gap-6">
                                 <h2 className="text-center text-lg font-semibold text-primary">
                                     Escolha como quer criar suas chaves de acesso
@@ -434,8 +435,8 @@ export function ChaveDeAcesso() {
                         </main>
                     </>
                 ) : (
-                    <main className="flex flex-1 flex-col px-4 py-6 md:px-6">
-                        <h1 className="text-xl font-semibold text-primary">Chave de acesso</h1>
+                    <main className="flex flex-1 flex-col">
+                        <h1 className={TITULO_PAGINA}>Chave de acesso</h1>
 
                         <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden">
                             <div className="z-10 flex max-w-xl flex-col items-center gap-5 text-center">

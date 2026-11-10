@@ -3,7 +3,7 @@
  * Vercel Edge Function + o mesmo Upstash Redis das outras APIs, em namespace próprio.
  *
  * Cada coleção é um hash Redis: campo = id do documento, valor = JSON.
- * Coleções: eventos, pedidos, ingressos, usuarios (ver src/plataforma/modelo.ts).
+ * Coleções: eventos, pedidos, ingressos, usuarios, historico, organizacoes (ver src/plataforma/modelo.ts).
  *
  * GET  /api/db                       → { meta, colecoes: { eventos: [...], ... } }
  * GET  /api/db?col=eventos           → [...]
@@ -25,7 +25,7 @@ const redis = new Redis({
 });
 
 const NS = "design-prototyes:db:v1";
-const COLECOES = ["eventos", "pedidos", "ingressos", "usuarios"] as const;
+const COLECOES = ["eventos", "pedidos", "ingressos", "usuarios", "historico", "organizacoes"] as const;
 type Colecao = (typeof COLECOES)[number];
 const META = `${NS}:meta`;
 const chave = (col: Colecao) => `${NS}:${col}`;

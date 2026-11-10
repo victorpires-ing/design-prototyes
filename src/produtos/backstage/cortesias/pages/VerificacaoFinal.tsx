@@ -32,6 +32,8 @@ import {
     type TicketItemDetails,
 } from "../data/cortesia-items";
 import { useCortesiasStore } from "../data/cortesias-store";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { cx } from "@/utils/cx";
 
 const steps: ProgressFeaturedIconType[] = [
     {
@@ -229,9 +231,9 @@ export function VerificacaoFinal() {
 
     return (
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
                 <PageHeader onBack={handleBack} onSubmit={handleSubmit} />
-                <main className="flex flex-1 flex-col gap-8 px-6 py-6">
+                <main className="flex flex-1 flex-col gap-8">
                     <Progress.IconsWithText
                         items={steps}
                         size="sm"
@@ -353,11 +355,11 @@ interface PageHeaderProps {
 }
 
 const PageHeader = ({ onBack, onSubmit }: PageHeaderProps) => (
-    <header className="relative flex items-center justify-between gap-3 px-6 py-6">
+    <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
         <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={onBack}>
             Destinatários
         </Button>
-        <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-display-xs font-bold text-primary">
+        <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>
             Enviar cortesias
         </h1>
         <Button size="md" color="primary" onClick={onSubmit}>

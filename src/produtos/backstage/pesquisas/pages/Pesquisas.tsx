@@ -15,6 +15,7 @@ import { BackstageLayout } from "../../components/Backstage";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PerguntaEditorModal } from "../components/PerguntaEditorModal";
 import { TIPO_PERGUNTA, usePesquisas, type Pergunta } from "../data/pesquisas-store";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 export function Pesquisas() {
     const navigate = useNavigate();
@@ -41,11 +42,11 @@ export function Pesquisas() {
     return (
         <BackstageLayout activeSection="pesquisas" activeItem="formularios-compra">
             <div className="flex min-w-0 flex-1 flex-col motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-left-4 motion-safe:duration-300 motion-safe:ease-out">
-                <main className="flex flex-1 flex-col gap-6 py-6 pb-10 md:px-6">
+                <main className="flex flex-1 flex-col gap-6">
                     {/* Header */}
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="flex flex-col gap-1">
-                            <h1 className="text-xl font-semibold text-primary">Perguntas por ingresso</h1>
+                            <h1 className={TITULO_PAGINA}>Perguntas por ingresso</h1>
                             <p className="text-sm text-tertiary">
                                 Escolha quais perguntas estarão na compra de cada item.
                                 <br />O formulário do comprador seguirá exatamente a mesma ordem abaixo.

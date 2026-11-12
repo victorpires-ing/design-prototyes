@@ -317,6 +317,8 @@ function CampoImagem({ imagem, onChange }: { imagem?: string; onChange: (v: stri
             </Surgir>
             <Surgir visivel={!imagem}>
                 <FileUploadDropZone
+                    // "ou arraste o arquivo" alinhado ao meio do botão de 44 px.
+                    className="[&_label+span]:self-center"
                     accept="image/png,image/jpeg"
                     allowsMultiple={false}
                     hint={T.imagemDica}

@@ -244,6 +244,8 @@ export function CampoBannerCompacto(props: CampoBannerProps) {
                 </div>
             ) : (
                 <FileUploadDropZone
+                    // "ou arraste o arquivo" alinhado ao meio do botão de 44 px.
+                    className="[&_label+span]:self-center"
                     accept="image/png,image/jpeg"
                     allowsMultiple={false}
                     hint="PNG ou JPG, de preferência 1080 × 1350 px."

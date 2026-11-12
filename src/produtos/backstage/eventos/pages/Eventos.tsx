@@ -58,7 +58,8 @@ export function Eventos() {
         });
     }, [todos, term, ordem]);
 
-    const abrir = (evento: Evento, href = "/backstage/relatorios/vendas-por-grupo") => {
+    // Entrar no evento abre Itens › Ingressos (EVT-07).
+    const abrir = (evento: Evento, href = "/backstage/catalogo/ingressos") => {
         setEventoAtual(evento.id);
         navigate(href);
     };

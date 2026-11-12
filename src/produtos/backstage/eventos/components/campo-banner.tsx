@@ -30,8 +30,8 @@ export interface ImagemDoBanner {
 /** Recorte em % da imagem original (formato do react-image-crop, usado pelo Cropper do DS). */
 export type Recorte = PercentCrop;
 
-/** Desktop (a partir de 1280 px): o banner vai para a coluna à direita do formulário (EVT-79). */
-const CONSULTA_DESKTOP = "(min-width: 1280px)";
+/** Desktop (a partir de 1024 px): o banner ocupa a coluna da esquerda da página do evento (EVT-79). */
+const CONSULTA_DESKTOP = "(min-width: 1024px)";
 export function useBannerNaColuna(): boolean {
     return useSyncExternalStore(
         (fn) => {
@@ -153,7 +153,7 @@ export function CampoBanner(props: CampoBannerProps) {
                         type="button"
                         onClick={ajustar}
                         aria-label="Ajustar recorte do banner"
-                        className="cursor-pointer overflow-hidden rounded-2xl ring-1 ring-secondary ring-inset focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                        className="cursor-pointer overflow-hidden rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                     >
                         <ImagemRecortada imagem={imagem} recorte={recorte} />
                     </button>
@@ -177,13 +177,19 @@ export function CampoBanner(props: CampoBannerProps) {
 /** Estado vazio: o bloco inteiro é o botão de envio, sobre o campo de partículas. Aceita arrastar. */
 function AreaDeEnvio({ onClique, onSoltar }: { onClique: () => void; onSoltar: (file: File) => void }) {
     const [sobre, setSobre] = useState(false);
+    const [emFoco, setEmFoco] = useState(false);
     // 40% menos opacas que o valor anterior do banner (0,22 e 0,2), para o texto ler melhor.
-    const cor = useCorDeParticulas({ escuro: 0.132, claro: 0.12 });
+    const corPadrao = useCorDeParticulas({ escuro: 0.132, claro: 0.12 });
+    // No hover, as partículas ficam no vermelho da marca. Os tokens `brand` deste tema são neutros, então vai o
+    // valor do sólido de marca do AFTER DS (#ff271a), o mesmo que a proteção de compra usa.
+    const cor = emFoco || sobre ? "#ff271a" : corPadrao;
 
     return (
         <button
             type="button"
             onClick={onClique}
+            onPointerEnter={() => setEmFoco(true)}
+            onPointerLeave={() => setEmFoco(false)}
             onDragOver={(e) => {
                 e.preventDefault();
                 setSobre(true);
@@ -198,9 +204,9 @@ function AreaDeEnvio({ onClique, onSoltar }: { onClique: () => void; onSoltar: (
             aria-labelledby="banner-rotulo"
             aria-describedby="banner-dica"
             className={cx(
-                "group relative isolate flex aspect-[4/5] w-full cursor-pointer flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl bg-primary_alt p-6 text-center ring-1 ring-secondary transition duration-100 ease-linear ring-inset",
-                "hover:bg-primary_hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring",
-                sobre && "bg-primary_hover ring-2 ring-brand",
+                "group relative isolate flex aspect-[4/5] w-full cursor-pointer flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl bg-primary_alt p-6 text-center transition-colors duration-250 ease-out motion-reduce:transition-none",
+                "hover:bg-primary_hover/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring",
+                sobre && "bg-primary_hover/10 ring-2 ring-brand",
             )}
         >
             <CampoDeParticulas cor={cor} densidade={1.5} escala={2} className="absolute inset-0 -z-10 size-full" />

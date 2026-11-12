@@ -86,8 +86,8 @@ const PRODUCTS: ProductCardData[] = [
     {
         id: "freepass",
         name: "Freepass",
-        description: "Receba um pack de cortesias, reenvie ou resgate",
-        to: "/freepass/distribuicao-cortesias",
+        description: "O Backstage de quem vende e envia cortesias para um organizador",
+        to: "/freepass/eventos",
         illustration: "freepass",
     },
     {

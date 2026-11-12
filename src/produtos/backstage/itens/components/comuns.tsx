@@ -26,6 +26,7 @@ const COR_DO_ESTADO: Record<EstadoItem | EstadoLote, "success" | "gray" | "warni
     agendado: "blue",
     encerrado: "gray",
     "sem-estoque": "warning",
+    "sem-abertura": "warning",
     aguardando: "gray",
 };
 

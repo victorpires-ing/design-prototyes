@@ -60,7 +60,13 @@ export function useSelecao() {
 export function CaixaDeSelecao({ rotulo, marcado, onChange }: { rotulo: string; marcado: boolean; onChange: (v: boolean) => void }) {
     return (
         <div className="relative z-10 flex shrink-0 items-center">
-            <Checkbox aria-label={formatar(T.selecionarItem, { item: rotulo })} isSelected={marcado} onChange={onChange} />
+            {/* Área de toque maior que a caixa (WCAG 2.5.8), sem mudar o desenho. */}
+            <Checkbox
+                aria-label={formatar(T.selecionarItem, { item: rotulo })}
+                isSelected={marcado}
+                onChange={onChange}
+                className="relative before:absolute before:-inset-3 before:content-['']"
+            />
         </div>
     );
 }

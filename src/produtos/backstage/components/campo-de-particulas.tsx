@@ -45,6 +45,20 @@ const CICLO_MS = 16000;
 const PARADA = 0.72;
 
 const suavizar = (t: number) => t * t * (3 - 2 * t);
+
+/** Tempo da troca de cor (ex.: hover do banner): a cor vai se misturando em vez de trocar de uma vez. */
+const TROCA_DE_COR_MS = 250;
+
+/** Cor CSS qualquer em [r, g, b, a], lida pelo próprio canvas (aceita hex, rgb e rgba). */
+function lerCor(cor: string): [number, number, number, number] {
+    const c = document.createElement("canvas").getContext("2d");
+    if (!c) return [255, 255, 255, 0.15];
+    c.fillStyle = cor;
+    const n = c.fillStyle;
+    if (n.startsWith("#")) return [parseInt(n.slice(1, 3), 16), parseInt(n.slice(3, 5), 16), parseInt(n.slice(5, 7), 16), 1];
+    const m = n.match(/[\d.]+/g)?.map(Number) ?? [255, 255, 255, 0.15];
+    return [m[0], m[1], m[2], m[3] ?? 1];
+}
 const aleatorio = (semente: number) => () => {
     semente = (semente + 0x6d2b79f5) | 0;
     let t = Math.imul(semente ^ (semente >>> 15), 1 | semente);
@@ -54,6 +68,9 @@ const aleatorio = (semente: number) => () => {
 
 export function CampoDeParticulas({ className, cor = "rgba(255,255,255,0.15)", densidade = 1, escala = 1, parada = PARADA }: CampoDeParticulasProps) {
     const ref = useRef<HTMLCanvasElement | null>(null);
+    // A cor muda sem reiniciar a figura (ex.: hover do banner): o desenho lê a referência a cada quadro.
+    const corAtual = useRef(cor);
+    corAtual.current = cor;
 
     useEffect(() => {
         const canvas = ref.current;
@@ -134,9 +151,26 @@ export function CampoDeParticulas({ className, cor = "rgba(255,255,255,0.15)", d
                 ys[i] = ny < 0 ? 0 : ny > 1 ? 1 : ny;
             }
         };
-        const pintar = () => {
+        // Cor mostrada agora, que anda em direção à pedida (corAtual) a cada quadro.
+        let mostrada = lerCor(corAtual.current);
+        let pedida = corAtual.current;
+        let alvo = mostrada;
+        let origem = mostrada;
+        let inicioDaTroca = 0;
+        const corDoQuadro = (tempo: number) => {
+            if (corAtual.current !== pedida) {
+                pedida = corAtual.current;
+                origem = mostrada;
+                alvo = lerCor(pedida);
+                inicioDaTroca = tempo;
+            }
+            const k = reduzir ? 1 : suavizar(Math.min(1, (tempo - inicioDaTroca) / TROCA_DE_COR_MS));
+            mostrada = origem.map((v, i) => v + (alvo[i] - v) * k) as typeof mostrada;
+            return `rgba(${Math.round(mostrada[0])},${Math.round(mostrada[1])},${Math.round(mostrada[2])},${mostrada[3].toFixed(3)})`;
+        };
+        const pintar = (tempo = performance.now()) => {
             ctx.clearRect(0, 0, largura, altura);
-            ctx.fillStyle = cor;
+            ctx.fillStyle = corDoQuadro(tempo);
             ctx.globalCompositeOperation = "lighter";
             for (let i = 0; i < total; i++) ctx.fillRect(xs[i] * largura, ys[i] * altura, 1, 1);
             ctx.globalCompositeOperation = "source-over";
@@ -145,7 +179,7 @@ export function CampoDeParticulas({ className, cor = "rgba(255,255,255,0.15)", d
             try {
                 definirModo(tempo);
                 passo();
-                pintar();
+                pintar(tempo);
                 if (rodando) quadro = requestAnimationFrame(desenhar);
             } catch {
                 rodando = false;
@@ -182,7 +216,7 @@ export function CampoDeParticulas({ className, cor = "rgba(255,255,255,0.15)", d
             observador.disconnect();
             document.removeEventListener("visibilitychange", aoMudarVisibilidade);
         };
-    }, [cor, densidade, escala, parada]);
+    }, [densidade, escala, parada]);
 
     return <canvas ref={ref} aria-hidden="true" className={cx("pointer-events-none block", className)} />;
 }

@@ -1,26 +1,39 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FC, type ReactNode } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { parseDateTime } from "@internationalized/date";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Plus, Trash01, XClose } from "@untitledui/icons";
-import { AccordionComponent as Accordion } from "@/components/application/accordion/accordion";
+import { AlignLeft, ArrowLeft, Calendar, MarkerPin01, Plus, Shield01, Trash01, Trophy01, UserCheck01, XClose } from "@untitledui/icons";
 import { FileUploadDropZone } from "@/components/application/file-upload/file-upload-base";
 import { DateTimePicker } from "@/components/application/date-picker/date-time-picker";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Input } from "@/components/base/input/input";
 import { ComboBox } from "@/components/base/select/combobox";
 import { Select } from "@/components/base/select/select";
-import { TextArea } from "@/components/base/textarea/textarea";
+import { TextEditor } from "@/components/base/text-editor/text-editor";
+import {
+    TextEditorAlignCenter,
+    TextEditorAlignLeft,
+    TextEditorBold,
+    TextEditorBulletList,
+    TextEditorItalic,
+    TextEditorUnderline,
+} from "@/components/base/text-editor/text-editor-extensions";
+import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { Surgir, useTransicao } from "@/components/foundations/transicao";
-import type { CategoriaLimite, ConfiguracoesAvancadas, Modalidade, TipoEvento } from "@/plataforma";
+import type { ConfiguracoesAvancadas, Modalidade, TipoEvento } from "@/plataforma";
 import { cx } from "@/utils/cx";
 import { BackstageLayout, prepararGuiaDoEventoNovo } from "../../components/Backstage";
 import { useOrganizacaoAtual } from "../../organizacoes/data/organizacao-atual";
+import { AVANCADO_PADRAO } from "../data/configuracoes-avancadas";
+import { CronogramaDeSessoes, temCronograma, type SessaoExtra } from "../components/cronograma-de-sessoes";
+import { PeriodoDoEvento } from "../components/periodo-do-evento";
+import { IDADES_COM_CLASSIFICACAO } from "../components/classificacao-indicativa";
 import { criarEvento } from "../data/eventos";
 import { CampoBanner, CampoBannerCompacto, exportarRecorte, useBannerNaColuna, type ImagemDoBanner, type Recorte } from "../components/campo-banner";
 import { buscarLocais, useOpcoesEvento, type LocalEncontrado, type Opcao } from "../data/opcoes-evento";
@@ -46,39 +59,10 @@ const MODALIDADES: Opcao[] = [
     { id: "ciclismo", label: "Ciclismo" },
 ];
 
-const IDADES: Opcao[] = [
-    { id: "0", label: "Livre" },
-    { id: "10", label: "10 anos" },
-    { id: "12", label: "12 anos" },
-    { id: "14", label: "14 anos" },
-    { id: "16", label: "16 anos" },
-    { id: "18", label: "18 anos" },
-];
+/** Idade mínima com as caixas da classificação indicativa (EVT-94). */
+const IDADES: Opcao[] = IDADES_COM_CLASSIFICACAO;
 
-const CATEGORIAS: { id: CategoriaLimite; label: string; esportivo?: string }[] = [
-    { id: "inteira", label: "Inteira" },
-    { id: "meia-entrada", label: "Meia-entrada" },
-    { id: "gratuidade", label: "Gratuidade" },
-    { id: "convidado", label: "Convidado" },
-    { id: "socio-torcedor", label: "Sócio torcedor" },
-    { id: "ingresso", label: "Ingresso", esportivo: "Inscrição" },
-    { id: "combo", label: "Combo" },
-    { id: "produto", label: "Produto" },
-];
 
-const AVANCADO_PADRAO: ConfiguracoesAvancadas = {
-    comprasEntreGrupos: true,
-    estoqueDevolvido: "lote-origem",
-    trocaDeSetor: false,
-    reservaNaCompra: false,
-    limiteBilheteriaOnline: "sem-limite",
-    politicaId: "politica-padrao",
-    acessoFacialId: "nenhum",
-    qrCodeNoEmail: true,
-};
-
-/** `null` = ilimitado; `0` = limitado, quantidade ainda não informada. */
-type Limite = number | null;
 
 interface Imagem {
     nome: string;
@@ -104,11 +88,10 @@ interface Formulario {
     /** O fim foi preenchido pela sugestão (início + 4 h) e ainda segue o início. */
     fimSugerido: boolean;
     /** Sessões além da primeira (a primeira é o início). O id dá a cada linha uma chave estável para animar a saída. */
-    sessoesExtras: { id: number; valor: string }[];
+    /** Sessões criadas pela pessoa (dia, início e fim); vazio = uma sessão só, no início do evento (EVT-89). */
+    sessoesExtras: SessaoExtra[];
     moeda: string;
     idadeMinima: string;
-    limiteGeral: Limite;
-    limites: Partial<Record<CategoriaLimite, Limite>>;
     descricao: string;
     banner: ImagemDoBanner | null;
     /** Parte da imagem que vira o banner (EVT-81). */
@@ -134,8 +117,6 @@ const INICIAL: Omit<Formulario, "tipo"> = {
     sessoesExtras: [],
     moeda: "BRL",
     idadeMinima: "0",
-    limiteGeral: null,
-    limites: {},
     descricao: "",
     banner: null,
     recorteBanner: null,
@@ -156,7 +137,7 @@ const lerComoDataUrl = (file: File) =>
         r.readAsDataURL(file);
     });
 
-type Erros = Partial<Record<"mandante" | "visitante" | "modalidade" | "nome" | "local" | "inicio" | "fim" | "sessoes" | "limites" | "mapa", string>>;
+type Erros = Partial<Record<"mandante" | "visitante" | "modalidade" | "nome" | "local" | "inicio" | "fim" | "descricao" | "sessoes" | "mapa", string>>;
 
 /** Índices das sessões extras com problema (vazia ou fora do período). */
 const sessoesInvalidas = (f: Formulario) =>
@@ -172,7 +153,8 @@ function validar(f: Formulario): Erros {
     if (f.tipo === "esportivo" && !f.modalidade) e.modalidade = "Escolha a modalidade.";
     if (!f.nome.trim()) e.nome = "Dê um nome ao evento.";
     if (!f.local) e.local = "Busque e escolha o local do evento.";
-    if (!f.inicio) e.inicio = "Informe quando o evento começa.";
+    if (!paragrafosDoHtml(f.descricao).length) e.descricao = "Conte o que vai acontecer no evento.";
+    if (!f.inicio) e.inicio = "Escolha os dias do evento.";
     if (!f.fim) e.fim = "Informe quando o evento termina.";
     else if (f.inicio && f.fim <= f.inicio) e.fim = "Escolha um fim depois do início.";
     const ruins = sessoesInvalidas(f);
@@ -181,7 +163,6 @@ function validar(f: Formulario): Erros {
             ? "Preencha a data das sessões destacadas ou remova as vazias."
             : "Mova as sessões destacadas para dentro do período do evento.";
     }
-    if (f.limiteGeral === 0 || Object.values(f.limites).some((v) => v === 0)) e.limites = "Informe a quantidade máxima ou volte para Ilimitado.";
     if (f.mapaTipo === "assentos" && !f.mapaId) e.mapa = "Escolha o mapa de assentos ou envie uma imagem.";
     return e;
 }
@@ -211,17 +192,31 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
     const [f, setF] = useState<Formulario>(inicial);
     const [tentou, setTentou] = useState(false);
     const [confirmarSaida, setConfirmarSaida] = useState(false);
+    // Cronograma fechado até a pessoa pedir; com sessões já marcadas, fica aberto (EVT-89).
     const set = <K extends keyof Formulario>(k: K, v: Formulario[K]) => setF((atual) => ({ ...atual, [k]: v }));
     const setAvancado = <K extends keyof ConfiguracoesAvancadas>(k: K, v: ConfiguracoesAvancadas[K]) => setF((a) => ({ ...a, avancado: { ...a.avancado, [k]: v } }));
 
     const { t, locale } = useTextos();
     // Vocabulário por tipo (Ingresse Sports: "largada" e "participante"; ver domain-context).
     const voc = vocabularioDe(t, f.tipo);
+    const itemDoCronograma = f.tipo === "esportivo" ? "largada" : "sessão";
     const erros = useMemo(() => (tentou ? validar(f) : {}), [f, tentou]);
     const ruins = useMemo(() => (tentou ? sessoesInvalidas(f) : new Set<number>()), [f, tentou]);
     const times = opcoes.dados?.times ?? [];
     const nomeDoTime = (id: string) => times.find((t) => t.id === id)?.label;
     const preenchido = JSON.stringify(f) !== JSON.stringify(inicial);
+
+    // Próximo obrigatório que falta, na ordem em que aparece na tela (EVT-93). Calculado sempre, sem esperar o clique em Criar.
+    const pendencias = validar(f);
+    const ORDEM: (keyof Erros)[] = ["nome", "mandante", "visitante", "modalidade", "inicio", "fim", "local", "descricao", "sessoes", "mapa"];
+    const campoPendente = ORDEM.find((k) => pendencias[k]);
+    const proximaPendencia = campoPendente ? { campo: campoPendente, texto: pendencias[campoPendente]! } : null;
+    const irParaCampo = (campo: keyof Erros) => {
+        const alvo: Partial<Record<keyof Erros, string>> = { nome: "nome-do-evento", inicio: "campo-quando", fim: "campo-quando", local: "campo-local", descricao: "campo-sobre", sessoes: "campo-quando" };
+        const el = alvo[campo] ? document.getElementById(alvo[campo]!) : null;
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        (el?.matches("input, textarea, button") ? el : el?.querySelector<HTMLElement>("input, button"))?.focus({ preventScroll: true });
+    };
     const transicao = useTransicao();
 
     // EVT-54: no futebol, o nome segue "Mandante x Visitante" até a pessoa digitar outro.
@@ -261,11 +256,13 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
         const novo = criarEvento({
             nome: f.nome.trim(),
             data: new Date(f.inicio).toISOString(),
-            sessoes: [f.inicio, ...f.sessoesExtras.map((s) => s.valor)].map((s) => new Date(s).toISOString()),
+            // Com sessões criadas, elas são as sessões do evento (o fim de cada uma ainda não é gravado); sem nenhuma, uma só, no início (EVT-89).
+            sessoes: (temCronograma(f.inicio, f.fim) && f.sessoesExtras.length ? [...f.sessoesExtras].sort((a, b) => a.valor.localeCompare(b.valor)).map((s) => s.valor) : [f.inicio]).map((v) => new Date(v).toISOString()),
             local: f.local!.nome,
             cidade: f.local!.cidade,
             produtor: organizacao?.nome ?? "",
-            descricao: f.descricao.trim() || undefined,
+            // Texto puro em parágrafos para quem só lê `vitrine.descricao`; o rich text vai junto (EVT-86).
+            descricao: paragrafosDoHtml(f.descricao).join("\n\n") || undefined,
             // A capa é o recorte, não a imagem enviada (EVT-81).
             capa: f.banner && f.recorteBanner ? await exportarRecorte(f.banner, f.recorteBanner) : undefined,
             extras: {
@@ -273,7 +270,8 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                 modalidade: f.tipo === "esportivo" ? (f.modalidade as Modalidade) : undefined,
                 fim: f.fim,
                 moeda: f.moeda,
-                limites: { geral: f.limiteGeral, porCategoria: f.limites },
+                // Limites não se definem na criação: nasce ilimitado e se ajusta em Itens › Configurações de ingressos (EVT-57).
+                limites: { geral: null, porCategoria: {} },
                 idadeMinima: Number(f.idadeMinima),
                 mapa: f.mapaTipo === "assentos" ? { tipo: "assentos", mapaId: f.mapaId } : { tipo: "imagem", url: f.mapaImagem?.dataUrl },
                 partida:
@@ -281,6 +279,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                         ? { campeonatoId: f.campeonatoId || undefined, mandanteId: f.mandanteId, visitanteId: f.visitanteId, programaMembrosId: f.programaMembrosId || undefined }
                         : undefined,
                 avancado: f.avancado,
+                ...(f.descricao ? { vitrine: { descricao: paragrafosDoHtml(f.descricao), descricaoHtml: f.descricao } } : {}),
             },
         });
         // Sem toast: quem anuncia o evento criado é o holofote do guia de configuração, que só toca aqui (EVT-10, GDC-14).
@@ -293,63 +292,99 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
 
     return (
         <BackstageLayout activeProducer="eventos" showEventContext={false}>
-            <div className="flex min-w-0 flex-1 flex-col gap-6">
-                {/* Cabeçalho da página: peça padrão, fora do limite do formulário (UI-VIS-009). */}
-                <header className="flex flex-col gap-4">
-                    <div className="flex min-w-0 flex-col gap-4">
-                        <Button color="tertiary" size="md" iconLeading={ArrowLeft} onClick={sair} className="-ml-3 self-start">
-                            Eventos
-                        </Button>
-                        <div className="flex flex-col gap-3">
-                            <h1 className={TITULO_PAGINA}>{titulo}</h1>
-                            <p className="max-w-[60ch] text-md text-tertiary">
-                                {organizacao ? formatar(t.subtituloComOrganizacao, { organizacao: organizacao.nome }) : t.subtituloSemOrganizacao}
-                            </p>
-                        </div>
-                    </div>
+            <div className="flex w-full min-w-0 flex-1 flex-col gap-8">
+                {/* Voltar e, embaixo, o título da tela; sem selo nem descrição (EVT-85). */}
+                <header className="flex flex-col items-start gap-4">
+                    <Button color="tertiary" size="md" iconLeading={ArrowLeft} onClick={sair} className="-ml-3">
+                        Eventos
+                    </Button>
+                    <h1 className={TITULO_PAGINA}>{titulo}</h1>
                 </header>
-                {/* Formulário centralizado, até 732 px, com a barra de ações (UI-VIS-009). No desktop o banner fica à direita, por fora (EVT-79). */}
-                <div className={cx("mx-auto flex w-full min-w-0 flex-1", bannerNaColuna ? "max-w-[1036px] items-start gap-6" : "max-w-[732px] flex-col")}>
-                {bannerNaColuna && (
-                    <aside aria-label="Banner do evento" className="sticky top-6 order-last w-[280px] shrink-0">
-                        <CampoBanner {...propsDoBanner} />
-                    </aside>
-                )}
-                <div className="flex w-full max-w-[732px] min-w-0 flex-1 flex-col gap-6 px-1 pb-6 md:px-0">
 
-                    <Surgir visivel={opcoes.status === "erro"} gap={24}>
-                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-error-primary px-4 py-3 ring-1 ring-error_subtle">
-                            <p className="text-sm text-error-primary">Tente de novo: não foi possível carregar as listas (times, moedas, políticas).</p>
-                            <Button size="sm" color="secondary" onClick={opcoes.recarregar}>
-                                Tentar de novo
-                            </Button>
+                <Surgir visivel={opcoes.status === "erro"} gap={24}>
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-error-primary px-4 py-3 ring-1 ring-error_subtle">
+                        <p className="text-sm text-error-primary">Tente de novo: não foi possível carregar as listas (times, moedas, políticas).</p>
+                        <Button size="sm" color="secondary" onClick={opcoes.recarregar}>
+                            Tentar de novo
+                        </Button>
+                    </div>
+                </Surgir>
+
+                {/* A página do evento, editável no lugar: banner à esquerda, informações à direita, descrição abaixo (EVT-85). */}
+                <article aria-label="Página do evento" className="grid items-start gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10">
+                    {bannerNaColuna && (
+                        <div className="lg:sticky lg:top-6">
+                            <CampoBanner {...propsDoBanner} />
                         </div>
-                    </Surgir>
+                    )}
 
-                    <>
-                            {f.tipo === "futebol" && (
-                                <Secao titulo="Partida">
-                                    <Grade>
-                                        <CampoSelect
-                                            label="Time mandante"
-                                            isRequired
-                                            opcoes={times}
-                                            valor={f.mandanteId}
-                                            onChange={(v) => set("mandanteId", v)}
-                                            placeholder={listaVazia}
-                                            isDisabled={carregando}
-                                            erro={erros.mandante}
-                                        />
-                                        <CampoSelect
-                                            label="Time visitante"
-                                            isRequired
-                                            opcoes={times.filter((t) => t.id !== f.mandanteId)}
-                                            valor={f.visitanteId}
-                                            onChange={(v) => set("visitanteId", v)}
-                                            placeholder={listaVazia}
-                                            isDisabled={carregando}
-                                            erro={erros.visitante}
-                                        />
+                    <div className="flex min-w-0 flex-col gap-8">
+                        {/* Nome como título da página: escreve-se onde ele vai aparecer. */}
+                        <div className="flex flex-col gap-1.5" data-erro={erros.nome ? "" : undefined}>
+                            <label htmlFor="nome-do-evento" className="sr-only">
+                                Nome do evento
+                            </label>
+                            <textarea
+                                id="nome-do-evento"
+                                // Ao abrir a tela, o cursor já está no nome (EVT-87).
+                                autoFocus
+                                rows={1}
+                                required
+                                value={f.nome}
+                                onChange={(e) => {
+                                    const v = e.target.value.replace(/\n/g, " ");
+                                    setF((a) => ({ ...a, nome: v, nomeEditado: v.length > 0 }));
+                                }}
+                                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                                placeholder={f.tipo === "futebol" ? "Mandante x Visitante" : f.tipo === "esportivo" ? "Ex.: Corrida Noturna 10K" : "Nome do evento"}
+                                aria-invalid={!!erros.nome}
+                                aria-describedby={erros.nome || (f.tipo === "futebol" && !f.nomeEditado) ? "nome-do-evento-dica" : undefined}
+                                className={cx(
+                                    "-mx-3 field-sizing-content resize-none rounded-lg bg-transparent px-3 py-1 text-display-sm font-semibold text-primary transition duration-100 ease-linear placeholder:text-placeholder",
+                                    "hover:bg-primary_hover focus:bg-primary focus:ring-2 focus:ring-brand focus:outline-hidden",
+                                    erros.nome && "ring-2 ring-error_subtle",
+                                )}
+                            />
+                            {(erros.nome || (f.tipo === "futebol" && !f.nomeEditado)) && (
+                                <p id="nome-do-evento-dica" className={cx("text-sm", erros.nome ? "text-error-primary" : "text-tertiary")}>
+                                    {erros.nome ?? "Preenchido com os times; dá para editar."}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Futebol: a partida vem depois do nome, uma linha por campo com o ícone ao lado; mandante e visitante lado a lado. */}
+                        {f.tipo === "futebol" && (
+                            <>
+                                <div className="flex gap-4">
+                                    <FeaturedIcon icon={Shield01} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
+                                    <div className="min-w-0 flex-1">
+                                        <Grade>
+                                            <CampoSelect
+                                                label="Time mandante"
+                                                isRequired
+                                                opcoes={times}
+                                                valor={f.mandanteId}
+                                                onChange={(v) => set("mandanteId", v)}
+                                                placeholder={listaVazia}
+                                                isDisabled={carregando}
+                                                erro={erros.mandante}
+                                            />
+                                            <CampoSelect
+                                                label="Time visitante"
+                                                isRequired
+                                                opcoes={times.filter((t) => t.id !== f.mandanteId)}
+                                                valor={f.visitanteId}
+                                                onChange={(v) => set("visitanteId", v)}
+                                                placeholder={listaVazia}
+                                                isDisabled={carregando}
+                                                erro={erros.visitante}
+                                            />
+                                        </Grade>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4">
+                                    <FeaturedIcon icon={Trophy01} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
+                                    <div className="min-w-0 flex-1 sm:max-w-xs">
                                         <CampoSelect
                                             label="Campeonato"
                                             limpavel
@@ -360,6 +395,11 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                                             placeholder={listaVazia}
                                             isDisabled={carregando}
                                         />
+                                    </div>
+                                </div>
+                                <div className="flex gap-4">
+                                    <FeaturedIcon icon={UserCheck01} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
+                                    <div className="min-w-0 flex-1 sm:max-w-xs">
                                         <CampoSelect
                                             label="Programa de membros"
                                             limpavel
@@ -370,189 +410,160 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                                             placeholder={listaVazia}
                                             isDisabled={carregando}
                                         />
-                                    </Grade>
-                                </Secao>
-                            )}
-
-                            <Secao titulo="Informações">
-                                <Grade>
-                                    {f.tipo === "esportivo" && (
-                                        <CampoSelect
-                                            label="Modalidade"
-                                            isRequired
-                                            opcoes={MODALIDADES}
-                                            valor={f.modalidade}
-                                            onChange={(v) => set("modalidade", v as Modalidade)}
-                                            placeholder="Selecione"
-                                            erro={erros.modalidade}
-                                        />
-                                    )}
-                                    <div className={f.tipo === "esportivo" ? "" : "md:col-span-2"} data-erro={erros.nome ? "" : undefined}>
-                                        <Input
-                                            label="Nome do evento"
-                                            isRequired
-                                            placeholder={f.tipo === "futebol" ? "Escolha os times ou digite" : f.tipo === "esportivo" ? "Ex.: Corrida Noturna 10K" : "Ex.: Réveillon Carneiros 2027"}
-                                            value={f.nome}
-                                            onChange={(v) => setF((a) => ({ ...a, nome: v, nomeEditado: v.length > 0 }))}
-                                            isInvalid={!!erros.nome}
-                                            hint={erros.nome ?? (f.tipo === "futebol" && !f.nomeEditado ? "Preenchido com os times; dá para editar." : undefined)}
-                                        />
                                     </div>
-                                    <div className="md:col-span-2" data-erro={erros.local ? "" : undefined}>
-                                        <CampoLocal valor={f.local} onChange={(v) => set("local", v)} erro={erros.local} />
-                                    </div>
-                                </Grade>
-                                {/* Abaixo do desktop, o banner fica aqui no formato horizontal de antes (EVT-80). */}
-                                {!bannerNaColuna && <CampoBannerCompacto {...propsDoBanner} />}
-                            </Secao>
-
-                            <Secao titulo="Datas">
-                                <Grade>
-                                    <div data-erro={erros.inicio ? "" : undefined}>
-                                        <CampoDataHora
-                                            label="Data e hora inicial"
-                                            isRequired
-                                            valor={f.inicio}
-                                            onChange={(v) =>
-                                                // Fim vazio ou ainda sugerido acompanha o início (+4 h); editado, fica como a pessoa deixou.
-                                                setF((a) => (!a.fim || a.fimSugerido ? { ...a, inicio: v, fim: somarHoras(v, 4), fimSugerido: !!v } : { ...a, inicio: v }))
-                                            }
-                                            erro={erros.inicio}
-                                        />
-                                    </div>
-                                    <div data-erro={erros.fim ? "" : undefined}>
-                                        <CampoDataHora
-                                            label="Data e hora final"
-                                            isRequired
-                                            valor={f.fim}
-                                            onChange={(v) => setF((a) => ({ ...a, fim: v, fimSugerido: false }))}
-                                            erro={erros.fim}
-                                            dica={f.fimSugerido ? "Sugerida 4 h depois do início. Ajuste se precisar." : undefined}
-                                        />
-                                    </div>
-                                </Grade>
-                                <div className="flex flex-col gap-3 border-t border-secondary pt-5">
-                                    <div className="flex flex-col gap-0.5">
-                                        <h3 className="text-sm font-semibold text-primary">{voc.cronograma}</h3>
-                                        <p className="max-w-[65ch] text-sm text-tertiary">
-                                            {voc.explicacao}
-                                        </p>
-                                    </div>
-                                    {/* Sem gap: cada sessão extra traz o próprio espaço, que entra e sai junto com ela. */}
-                                    <ol className="flex flex-col [&>li+li]:mt-2">
-                                        <li className="flex items-center gap-3 rounded-lg bg-secondary px-3 py-2.5 text-sm">
-                                            <span className="w-20 shrink-0 font-medium text-secondary">{formatar(voc.itemN, { n: 1 })}</span>
-                                            <span className="text-tertiary">{f.inicio ? formatarDataHora(f.inicio, locale) : t.semDataInicial}</span>
-                                        </li>
-                                        <AnimatePresence initial={false}>
-                                            {f.sessoesExtras.map((s, i) => (
-                                                <motion.li
-                                                    key={s.id}
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    transition={transicao}
-                                                    className="overflow-hidden"
-                                                    data-erro={ruins.has(i) ? "" : undefined}
-                                                >
-                                                    <div className="flex items-start gap-3 pt-0.5">
-                                                        <CampoDataHora
-                                                            label={formatar(voc.itemN, { n: i + 2 })}
-                                                            valor={s.valor}
-                                                            onChange={(v) => set("sessoesExtras", f.sessoesExtras.map((x) => (x.id === s.id ? { ...x, valor: v } : x)))}
-                                                            erro={ruins.has(i) ? erros.sessoes : undefined}
-                                                            className="flex-1"
-                                                        />
-                                                        <ButtonUtility
-                                                            icon={Trash01}
-                                                            color="tertiary"
-                                                            tooltip={formatar(voc.removerN, { n: i + 2 })}
-                                                            onClick={() => set("sessoesExtras", f.sessoesExtras.filter((x) => x.id !== s.id))}
-                                                            className="mt-6 size-11"
-                                                        />
-                                                    </div>
-                                                </motion.li>
-                                            ))}
-                                        </AnimatePresence>
-                                    </ol>
-                                    <Button color="secondary" size="sm" iconLeading={Plus} onClick={() => set("sessoesExtras", [...f.sessoesExtras, { id: Date.now(), valor: "" }])} className="self-start">
-                                        {voc.adicionar}
-                                    </Button>
                                 </div>
-                            </Secao>
+                            </>
+                        )}
 
-                            <Secao titulo="Venda">
-                                <Grade>
+                        {/* Esportivo: modalidade logo depois do nome, como as outras linhas (ícone ao lado). */}
+                        {f.tipo === "esportivo" && (
+                            <div className="flex gap-4">
+                                <FeaturedIcon icon={Trophy01} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
+                                <div className="min-w-0 flex-1 sm:max-w-xs">
                                     <CampoSelect
-                                        label="Moeda"
+                                        label="Modalidade"
                                         isRequired
-                                        opcoes={opcoes.dados?.moedas ?? []}
-                                        valor={f.moeda}
-                                        onChange={(v) => set("moeda", v)}
-                                        placeholder={listaVazia}
-                                        isDisabled={carregando}
+                                        opcoes={MODALIDADES}
+                                        valor={f.modalidade}
+                                        onChange={(v) => set("modalidade", v as Modalidade)}
+                                        placeholder="Selecione"
+                                        erro={erros.modalidade}
                                     />
-                                    <CampoSelect label="Idade mínima" opcoes={IDADES} valor={f.idadeMinima} onChange={(v) => set("idadeMinima", v)} />
-                                </Grade>
-                                <div className="flex flex-col gap-4 border-t border-secondary pt-5" data-erro={erros.limites ? "" : undefined}>
-                                    <CampoLimite titulo={voc.limiteGeral} valor={f.limiteGeral} onChange={(v) => set("limiteGeral", v)} invalido={!!erros.limites && f.limiteGeral === 0} />
-                                    <Accordion>
-                                        <Accordion.Item value="categorias" trigger={<span className="text-sm font-semibold text-primary">Limites por categoria</span>}>
-                                            <div className="flex flex-col divide-y divide-secondary">
-                                                {CATEGORIAS.map((c) => (
-                                                    <div key={c.id} className="py-3 first:pt-0 last:pb-0">
-                                                        <CampoLimite
-                                                            titulo={f.tipo === "esportivo" && c.esportivo ? c.esportivo : c.label}
-                                                            valor={f.limites[c.id] ?? null}
-                                                            onChange={(v) => set("limites", { ...f.limites, [c.id]: v })}
-                                                            invalido={!!erros.limites && f.limites[c.id] === 0}
-                                                            compacto
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </Accordion.Item>
-                                    </Accordion>
-                                    <Surgir visivel={!!erros.limites} gap={16}>
-                                        <p className="text-sm text-error-primary">{erros.limites}</p>
-                                    </Surgir>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Quando e onde, como na página: ícone e informação. */}
+                        <dl className="flex flex-col gap-5">
+                            <LinhaDaPagina icone={Calendar} titulo="Quando">
+                                {/* Dias como passagem de ida e volta, depois os horários (EVT-88). */}
+                                <div id="campo-quando" data-erro={erros.inicio || erros.fim ? "" : undefined}>
+                                    <PeriodoDoEvento
+                                        inicio={f.inicio}
+                                        fim={f.fim}
+                                        onChange={(inicio, fim) =>
+                                            // Sessões fora do novo período saem junto.
+                                            setF((a) => ({ ...a, inicio, fim, fimSugerido: false, sessoesExtras: a.sessoesExtras.filter((x) => x.valor.slice(0, 10) >= inicio.slice(0, 10) && x.valor.slice(0, 10) <= fim.slice(0, 10)) }))
+                                        }
+                                        erroInicio={erros.inicio}
+                                        erroFim={erros.fim}
+                                    />
+                                </div>
+                            </LinhaDaPagina>
+                            <LinhaDaPagina icone={MarkerPin01} titulo="Onde">
+                                <div id="campo-local" data-erro={erros.local ? "" : undefined}>
+                                    <CampoLocal valor={f.local} onChange={(v) => set("local", v)} erro={erros.local} />
+                                </div>
+                            </LinhaDaPagina>
+                        </dl>
+
+                        {/* Abaixo do desktop, o banner fica aqui no formato horizontal de antes (EVT-80). */}
+                        {!bannerNaColuna && <CampoBannerCompacto {...propsDoBanner} />}
+
+                        {/* Sobre o evento como as outras linhas: ícone ao lado, rótulo do mesmo tamanho e a formatação dentro da caixa (EVT-86). */}
+                        <div id="campo-sobre" className="flex gap-4" data-erro={erros.descricao ? "" : undefined}>
+                            <FeaturedIcon icon={AlignLeft} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
+                            <TextEditor.Root
+                                content={f.descricao}
+                                onUpdate={({ editor }) => {
+                                    const html = editor.getHTML();
+                                    set("descricao", html === "<p></p>" ? "" : html);
+                                }}
+                                placeholder="Conte o que vai acontecer, a programação e o que está incluso."
+                                className="flex min-w-0 flex-1 flex-col gap-1.5"
+                                inputClassName="min-h-40 resize-y rounded-none rounded-b-lg bg-transparent px-3.5 pt-2 pb-3 shadow-none ring-0 focus:ring-0"
+                            >
+                                <TextEditor.Label isRequired>Sobre o evento</TextEditor.Label>
+                                <div className={cx("flex flex-col overflow-hidden rounded-lg bg-primary shadow-xs ring-1 ring-primary transition duration-100 ease-linear ring-inset focus-within:ring-2 focus-within:ring-brand", erros.descricao && "ring-error_subtle focus-within:ring-error")}>
+                                    <div className="border-b border-secondary px-2 py-1.5">
+                                        <BarraDaDescricao />
+                                    </div>
+                                    <TextEditor.Content />
+                                </div>
+                                {erros.descricao && <p className="text-sm text-error-primary">{erros.descricao}</p>}
+                            </TextEditor.Root>
+                        </div>
+                    </div>
+                </article>
+
+                {/* O que não aparece na página, mas define como o evento vende (EVT-85). */}
+                <section aria-labelledby="detalhes-do-evento" className="flex flex-col gap-6 border-t border-secondary pt-8 pb-6">
+                    <div className="flex flex-col gap-1">
+                        <h2 id="detalhes-do-evento" className="text-lg font-semibold text-primary">
+                            Detalhes do evento
+                        </h2>
+                        <p className="max-w-[65ch] text-md text-tertiary">Não aparecem na página do evento, mas definem como ele vende.</p>
+                    </div>
+
+                    {/* Empilhados, um embaixo do outro. */}
+                    <div className="flex flex-col gap-6">
+                        {/* Só com o evento em mais de um dia (EVT-88): um cartão por dia, horário embaixo da data (EVT-89). */}
+                        {temCronograma(f.inicio, f.fim) && (
+                            <Secao
+                                titulo={voc.cronograma}
+                                descricao={`Opcional. Cada ${itemDoCronograma} tem dia, horário de início e de fim; um dia pode ter mais de uma. Sem nenhuma, o evento tem uma ${itemDoCronograma} só, no início.`}
+                            >
+                                <div data-erro={erros.sessoes ? "" : undefined} className="flex flex-col gap-3">
+                                    <CronogramaDeSessoes
+                                        inicio={f.inicio}
+                                        fim={f.fim}
+                                        sessoes={f.sessoesExtras}
+                                        onChange={(sessoesExtras) => set("sessoesExtras", sessoesExtras)}
+                                        item={itemDoCronograma}
+                                    />
+                                    {erros.sessoes && <p className="text-sm text-error-primary">{erros.sessoes}</p>}
                                 </div>
                             </Secao>
+                        )}
 
-                            <Secao titulo="Divulgação">
-                                <TextArea
-                                    label="Descrição"
-                                    placeholder="Conte o que vai acontecer, a programação e o que está incluso."
-                                    rows={5}
-                                    value={f.descricao}
-                                    onChange={(v) => set("descricao", v)}
+                        <Secao titulo="Venda">
+                            <Grade>
+                                <CampoSelect
+                                    label="Moeda"
+                                    isRequired
+                                    opcoes={opcoes.dados?.moedas ?? []}
+                                    valor={f.moeda}
+                                    onChange={(v) => set("moeda", v)}
+                                    placeholder={listaVazia}
+                                    isDisabled={carregando}
                                 />
-                                <div className="flex flex-col gap-3" data-erro={erros.mapa ? "" : undefined}>
-                                    <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <span className="text-sm font-medium text-secondary">Mapa</span>
-                                        <Escolha
-                                            rotulo="Origem do mapa"
-                                            valor={f.mapaTipo}
-                                            opcoes={[
-                                                { id: "imagem", label: "Enviar imagem" },
-                                                { id: "assentos", label: "Mapa de assentos" },
-                                            ]}
-                                            onChange={(v) => set("mapaTipo", v as Formulario["mapaTipo"])}
-                                        />
-                                    </div>
-                                    {/* Troca deslizando: um encolhe enquanto o outro cresce (UI-VIS-008). */}
-                                    <div className="flex flex-col">
-                                        <Surgir visivel={f.mapaTipo === "imagem"}>
-                                            <CampoImagem
+                                <CampoSelect label="Idade mínima" opcoes={IDADES} valor={f.idadeMinima} onChange={(v) => set("idadeMinima", v)} />
+                            </Grade>
+                            {/* Das configurações avançadas, só a política fica na criação; o resto está em Itens › Configurações de ingressos (EVT-84). */}
+                            <CampoSelect
+                                label="Política"
+                                opcoes={opcoes.dados?.politicas ?? []}
+                                valor={f.avancado.politicaId ?? ""}
+                                onChange={(v) => setAvancado("politicaId", v)}
+                                placeholder={listaVazia}
+                                isDisabled={carregando}
+                            />
+                        </Secao>
+
+                        <Secao titulo="Mapa">
+                            <div className="flex flex-col gap-3" data-erro={erros.mapa ? "" : undefined}>
+                                <Escolha
+                                    rotulo="Origem do mapa"
+                                    valor={f.mapaTipo}
+                                    opcoes={[
+                                        { id: "imagem", label: "Enviar imagem" },
+                                        { id: "assentos", label: "Mapa de assentos" },
+                                    ]}
+                                    onChange={(v) => set("mapaTipo", v as Formulario["mapaTipo"])}
+                                />
+                                {/* Troca deslizando: um encolhe enquanto o outro cresce (UI-VIS-008). */}
+                                <div className="flex flex-col">
+                                    <Surgir visivel={f.mapaTipo === "imagem"}>
+                                        <CampoImagem
                                             rotulo="Mapa"
                                             hint="PNG ou JPG até 400 KB, com setores e acessos."
                                             arquivo={f.mapaImagem}
                                             onEscolher={(img) => set("mapaImagem", img)}
                                             onRemover={() => set("mapaImagem", null)}
                                         />
-                                        </Surgir>
-                                        <Surgir visivel={f.mapaTipo === "assentos"}>
-                                            <CampoSelect
+                                    </Surgir>
+                                    <Surgir visivel={f.mapaTipo === "assentos"}>
+                                        <CampoSelect
                                             label="Mapa de assentos"
                                             isRequired
                                             hint="Mapas cadastrados para a organização."
@@ -563,111 +574,30 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                                             isDisabled={carregando}
                                             erro={erros.mapa}
                                         />
-                                        </Surgir>
-                                    </div>
+                                    </Surgir>
                                 </div>
-                            </Secao>
+                            </div>
+                        </Secao>
+                    </div>
+                </section>
 
-                            <Accordion>
-                                <Accordion.Item
-                                    value="avancado"
-                                    className="rounded-2xl bg-primary"
-                                    trigger={
-                                        <span className="flex flex-col gap-0.5 py-1">
-                                            <span className="text-lg font-semibold text-primary">Configurações avançadas</span>
-                                            <span className="text-sm text-tertiary">Já vêm preenchidas. Mude só se precisar.</span>
-                                        </span>
-                                    }
-                                >
-                                    <div className="flex flex-col divide-y divide-secondary">
-                                        <LinhaAvancada titulo="Compras em diferentes grupos de ingressos">
-                                            <Escolha
-                                                rotulo="Compras em diferentes grupos de ingressos"
-                                                valor={f.avancado.comprasEntreGrupos ? "sim" : "nao"}
-                                                opcoes={[
-                                                    { id: "sim", label: "Permitir" },
-                                                    { id: "nao", label: "Proibir" },
-                                                ]}
-                                                onChange={(v) => setAvancado("comprasEntreGrupos", v === "sim")}
-                                            />
-                                        </LinhaAvancada>
-                                        <LinhaAvancada
-                                            titulo="Estoque devolvido de lotes esgotados"
-                                            descricao="Quando um pedido não pago libera estoque de um lote já esgotado. Realocar soma a quantidade ao lote ativo, vendida pelo preço atual; o lote de origem continua esgotado."
-                                        >
-                                            <Escolha
-                                                rotulo="Estoque devolvido de lotes esgotados"
-                                                valor={f.avancado.estoqueDevolvido}
-                                                opcoes={[
-                                                    { id: "lote-origem", label: "Manter no lote de origem" },
-                                                    { id: "lote-ativo", label: "Realocar para o lote ativo" },
-                                                ]}
-                                                onChange={(v) => setAvancado("estoqueDevolvido", v as ConfiguracoesAvancadas["estoqueDevolvido"])}
-                                            />
-                                        </LinhaAvancada>
-                                        <LinhaAvancada titulo="Permitir troca de setor">
-                                            <Toggle aria-label="Permitir troca de setor" isSelected={f.avancado.trocaDeSetor} onChange={(v) => setAvancado("trocaDeSetor", v)} />
-                                        </LinhaAvancada>
-                                        <LinhaAvancada titulo="Reserva de ingressos na compra">
-                                            <Toggle aria-label="Reserva de ingressos na compra" isSelected={f.avancado.reservaNaCompra} onChange={(v) => setAvancado("reservaNaCompra", v)} />
-                                        </LinhaAvancada>
-                                        <LinhaAvancada titulo="Limite por comprador na Bilheteria online">
-                                            <Escolha
-                                                rotulo="Limite por comprador na Bilheteria online"
-                                                valor={f.avancado.limiteBilheteriaOnline}
-                                                opcoes={[
-                                                    { id: "sem-limite", label: "Sem limite" },
-                                                    { id: "aplicar", label: "Aplicar limites" },
-                                                ]}
-                                                onChange={(v) => setAvancado("limiteBilheteriaOnline", v as ConfiguracoesAvancadas["limiteBilheteriaOnline"])}
-                                            />
-                                        </LinhaAvancada>
-                                        <LinhaAvancada titulo="Políticas">
-                                            <CampoSelect
-                                                label="Políticas"
-                                                ocultarLabel
-                                                opcoes={opcoes.dados?.politicas ?? []}
-                                                valor={f.avancado.politicaId ?? ""}
-                                                onChange={(v) => setAvancado("politicaId", v)}
-                                                placeholder={listaVazia}
-                                                isDisabled={carregando}
-                                                className="w-full md:w-72"
-                                            />
-                                        </LinhaAvancada>
-                                        <LinhaAvancada titulo="Acesso por face" descricao="Serviço de gestão facial.">
-                                            <CampoSelect
-                                                label="Acesso por face"
-                                                ocultarLabel
-                                                opcoes={opcoes.dados?.acessoFacial ?? []}
-                                                valor={f.avancado.acessoFacialId ?? ""}
-                                                onChange={(v) => setAvancado("acessoFacialId", v)}
-                                                placeholder={listaVazia}
-                                                isDisabled={carregando}
-                                                className="w-full md:w-72"
-                                            />
-                                        </LinhaAvancada>
-                                        <LinhaAvancada titulo="QR code no e-mail de confirmação">
-                                            <Escolha
-                                                rotulo="QR code no e-mail de confirmação"
-                                                valor={f.avancado.qrCodeNoEmail ? "sim" : "nao"}
-                                                opcoes={[
-                                                    { id: "sim", label: "Incluir" },
-                                                    { id: "nao", label: "Não incluir" },
-                                                ]}
-                                                onChange={(v) => setAvancado("qrCodeNoEmail", v === "sim")}
-                                            />
-                                        </LinhaAvancada>
-                                    </div>
-                                </Accordion.Item>
-                            </Accordion>
-                    </>
-                </div>
-
-                </div>
-                {/* Presa ao fim da coluna de conteúdo, fora do limite de 732 px do formulário (UI-VIS-009): ocupa a largura da página, sem cobrir o rail nem o Remix. */}
                 {/* Mesmo fundo da página (UI-VIS-013); a borda separa do conteúdo que rola por baixo. */}
                 <footer className="sticky bottom-0 z-20 mt-auto border-t border-secondary bg-primary_alt">
-                    <div className="flex items-center justify-end gap-3 py-3">
+                    <div className="flex flex-wrap items-center justify-end gap-3 py-3">
+                        {/* Uma instrução por vez: o próximo campo obrigatório que falta, na ordem da tela (EVT-93). */}
+                        <p aria-live="polite" className="mr-auto min-w-0 text-sm text-tertiary">
+                            {proximaPendencia ? (
+                                <button
+                                    type="button"
+                                    onClick={() => irParaCampo(proximaPendencia.campo)}
+                                    className="cursor-pointer text-left font-medium text-secondary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                                >
+                                    {proximaPendencia.texto}
+                                </button>
+                            ) : (
+                                "Tudo pronto para criar o evento."
+                            )}
+                        </p>
                         <Button color="secondary" size="md" onClick={sair}>
                             Cancelar
                         </Button>
@@ -703,6 +633,62 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
 }
 
 /* ---------------- peças ---------------- */
+
+/** Parágrafos em texto puro de um HTML do editor (blocos e itens de lista viram um parágrafo cada). */
+function paragrafosDoHtml(html: string): string[] {
+    if (!html) return [];
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const blocos = doc.body.querySelectorAll("p, li, h1, h2, h3, h4, blockquote");
+    const textos = blocos.length ? [...blocos].map((b) => b.textContent ?? "") : [doc.body.textContent ?? ""];
+    return textos.map((t) => t.trim()).filter(Boolean);
+}
+
+/**
+ * Barra do "Sobre o evento" montada com as peças do editor do DS, sem escolha de cor nem fonte:
+ * a página do evento usa as cores e a tipografia da Ingresse (EVT-86). Sem link, porque o editor
+ * pede a URL num prompt em inglês.
+ */
+const Separador = () => (
+    <div className="p-1.5" aria-hidden="true">
+        <div className="h-full w-px rounded-full bg-border-primary" />
+    </div>
+);
+const BarraDaDescricao = () => (
+    <div role="toolbar" aria-label="Formatação da descrição" className="flex w-max flex-wrap gap-0.5">
+        <Tooltip title="Negrito ⌘B">
+            <TextEditorBold />
+        </Tooltip>
+        <Tooltip title="Itálico ⌘I">
+            <TextEditorItalic />
+        </Tooltip>
+        <Tooltip title="Sublinhado ⌘U">
+            <TextEditorUnderline />
+        </Tooltip>
+        <Separador />
+        <Tooltip title="Alinhar à esquerda">
+            <TextEditorAlignLeft />
+        </Tooltip>
+        <Tooltip title="Centralizar">
+            <TextEditorAlignCenter />
+        </Tooltip>
+        <Separador />
+        <Tooltip title="Lista">
+            <TextEditorBulletList />
+        </Tooltip>
+    </div>
+);
+
+/** Linha de informação da página do evento: ícone, título curto e o campo que edita a informação. */
+/* O título fica só para leitor de tela: o rótulo do campo já diz o que é, e o ícone desce até a altura do campo (abaixo do rótulo). */
+const LinhaDaPagina = ({ icone, titulo, children }: { icone: FC<{ className?: string }>; titulo: string; children: ReactNode }) => (
+    <div className="flex gap-4">
+        <FeaturedIcon icon={icone} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
+        <div className="min-w-0 flex-1">
+            <dt className="sr-only">{titulo}</dt>
+            <dd className="min-w-0">{children}</dd>
+        </div>
+    </div>
+);
 
 /** Data e hora por extenso no idioma da pessoa. */
 const formatarDataHora = (v: string, locale: string) => {
@@ -809,16 +795,22 @@ const CampoLocal = ({ valor, onChange, erro }: { valor: LocalEncontrado | null; 
             defaultFilter={() => true}
             inputValue={texto}
             onInputChange={(v) => {
+                // Ao escolher, o ComboBox escreve o nome do item no campo: isso não desfaz a escolha (EVT-83).
+                if (valor && (v === valor.nome || v === textoDe(valor))) return setTexto(textoDe(valor));
                 setTexto(v);
-                if (valor && v !== textoDe(valor)) onChange(null);
+                if (valor) onChange(null);
             }}
             selectedKey={valor?.id ?? null}
             onSelectionChange={(k) => {
-                const l = resultados.find((r) => r.id === k) ?? null;
+                // `null` vem do próprio ComboBox quando a lista muda; limpar é só apagando o texto.
+                if (k == null) return;
+                const l = resultados.find((r) => r.id === k) ?? (valor?.id === k ? valor : null);
+                if (!l) return;
                 onChange(l);
-                if (l) setTexto(textoDe(l));
+                setTexto(textoDe(l));
             }}
-            items={escolhido ? [] : resultados.map((r) => ({ id: r.id, label: r.nome, supportingText: r.cidade }))}
+            // O local escolhido continua na lista: tirar o item selecionado da coleção fazia o ComboBox apagar a escolha (EVT-83).
+            items={(escolhido && valor ? [valor] : resultados).map((r) => ({ id: r.id, label: r.nome, supportingText: r.cidade }))}
             status={
                 buscando ? (
                     <>
@@ -833,7 +825,7 @@ const CampoLocal = ({ valor, onChange, erro }: { valor: LocalEncontrado | null; 
             hint={erro}
         >
             {(item) => (
-                <Select.Item id={item.id} supportingText={item.supportingText}>
+                <Select.Item id={item.id} supportingText={item.supportingText} icon={item.icon}>
                     {item.label}
                 </Select.Item>
             )}
@@ -874,7 +866,7 @@ const CampoSelect = ({ label, opcoes, valor, onChange, placeholder, hint, erro, 
             hint={erro ?? hint}
         >
             {(item) => (
-                <Select.Item id={item.id} supportingText={item.supportingText}>
+                <Select.Item id={item.id} supportingText={item.supportingText} icon={item.icon}>
                     {item.label}
                 </Select.Item>
             )}
@@ -898,50 +890,7 @@ const CampoSelect = ({ label, opcoes, valor, onChange, placeholder, hint, erro, 
     );
 };
 
-/** Limite com "Ilimitado" ligado por padrão. Desligar pede a quantidade, sem valor sugerido (EVT-57). */
-const CampoLimite = ({ titulo, valor, onChange, invalido, compacto }: { titulo: string; valor: Limite; onChange: (v: Limite) => void; invalido?: boolean; compacto?: boolean }) => {
-    const ilimitado = valor === null;
-    const transicao = useTransicao();
-    const { t } = useTextos();
-    return (
-        <div className={cx("flex flex-col gap-3 md:flex-row md:items-center md:justify-between", compacto && "md:gap-6")}>
-            <span className={cx("text-sm", compacto ? "font-medium text-secondary" : "font-semibold text-primary")}>{titulo}</span>
-            <div className="flex items-center gap-4">
-                <Toggle label="Ilimitado" isSelected={ilimitado} onChange={(v) => onChange(v ? null : 0)} />
-                {/* Espaço reservado: o campo aparece sem empurrar o toggle (UI-VIS-008). */}
-                <div className="w-24">
-                    <AnimatePresence initial={false}>
-                        {!ilimitado && (
-                            <motion.div key="qtd" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} transition={transicao}>
-                    <Input
-                        aria-label={formatar(t.quantidadeMaxima, { limite: titulo })}
-                        type="number"
-                        inputMode="numeric"
-                        placeholder="Qtd."
-                        value={valor ? String(valor) : ""}
-                        onChange={(v) => onChange(Math.max(0, Math.floor(Number(v) || 0)))}
-                        isInvalid={invalido}
-                        className="w-24"
-                    />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const LinhaAvancada = ({ titulo, descricao, children }: { titulo: string; descricao?: string; children: ReactNode }) => (
-    <div className="flex flex-col gap-3 py-4 first:pt-1 last:pb-1 md:flex-row md:items-center md:justify-between md:gap-8">
-        <div className="flex min-w-0 flex-col gap-0.5 md:max-w-md">
-            <span className="text-sm font-semibold text-primary">{titulo}</span>
-            {descricao && <span className="text-sm text-tertiary">{descricao}</span>}
-        </div>
-        <div className="shrink-0">{children}</div>
-    </div>
-);
-
+/** Escolha entre poucas opções (ButtonGroup do DS). */
 const Escolha = ({ rotulo, valor, opcoes, onChange }: { rotulo: string; valor: string; opcoes: Opcao[]; onChange: (v: string) => void }) => (
     <ButtonGroup
         size="sm"

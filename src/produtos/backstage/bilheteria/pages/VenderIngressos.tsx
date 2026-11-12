@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+
 import { toast } from "sonner";
 import { ArrowLeft, ChevronDown, InfoCircle } from "@untitledui/icons";
 import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
@@ -8,6 +8,7 @@ import type { ProgressIconType } from "@/components/application/progress-steps/p
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { cx } from "@/utils/cx";
+import { useNavegarNoPainel } from "../../components/painel";
 import { BackstageLayout } from "../../components/Backstage";
 import { BuyerStep, type BuyerSearch } from "../components/BuyerStep";
 import { ItemsStep } from "../components/ItemsStep";
@@ -31,7 +32,7 @@ const EMISSOR = "operacao@exemplo.com";
 const STEP_TITLES = ["Comprador", "Itens", "Meio de pagamento"];
 
 export function VenderIngressos() {
-    const navigate = useNavigate();
+    const navigate = useNavegarNoPainel();
     // Ingressos à venda vêm do catálogo do evento em contexto (banco unificado).
     const { evento, sessoes } = useCatalogoDoBanco();
     const [phase, setPhase] = useState<Phase>("flow");

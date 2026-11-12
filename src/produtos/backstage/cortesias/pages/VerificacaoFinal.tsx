@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, type Key } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation } from "react-router";
 import {
     ArrowLeft,
     CheckCircle,
@@ -17,6 +17,10 @@ import { Select } from "@/components/base/select/select";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
+import { useNavegarNoPainel, usePainel } from "../../components/painel";
+import { useEventoAtual } from "../../eventos/data/eventos";
+import { useAcessoNoEvento } from "../../freepass/data/minhas-vendas";
+import { registrarCortesias } from "@/plataforma/comissarios";
 import { BackstageLayout } from "../../components/Backstage";
 import {
     ConfirmRemoveEmailModal,
@@ -93,7 +97,7 @@ function emailHasCadastro(email: string): boolean {
 
 
 export function VerificacaoFinal() {
-    const navigate = useNavigate();
+    const navigate = useNavegarNoPainel();
     const location = useLocation();
     const routeState = (location.state as RouteState | null) ?? {};
 
@@ -125,6 +129,13 @@ export function VerificacaoFinal() {
     }, [itemIds]);
 
     const itemsPerRecipient = itemIds.length;
+
+    // Freepass: a cota de cortesias que a produtora deu para a pessoa neste evento (COR-94).
+    const freepass = usePainel() === "freepass";
+    const acesso = useAcessoNoEvento(useEventoAtual().id, freepass);
+    const totalCortesias = emails.length * itemsPerRecipient;
+    const saldo = acesso?.saldoCortesias ?? null;
+    const passouDaCota = saldo !== null && totalCortesias > saldo;
 
     const emailOccurrences = useMemo(() => {
         const map = new Map<string, number>();
@@ -200,17 +211,37 @@ export function VerificacaoFinal() {
     const { addPedido } = useCortesiasStore();
 
     const handleSubmit = useCallback(() => {
-        if (activeEmails.length === 0) return;
+        if (activeEmails.length === 0 || passouDaCota) return;
         setShowSendConfirm(true);
-    }, [activeEmails]);
+    }, [activeEmails, passouDaCota]);
 
     const handleConfirmSend = useCallback(
         ({ orderName }: ConfirmSendCortesiasResult) => {
-            addPedido({
+            const pedido = addPedido({
                 nome: orderName,
                 emails,
                 itemIds,
             });
+            // Emitida pelo Freepass, a cortesia conta nas vendas do comissário, sem comissão (FCO-72).
+            if (acesso) {
+                const itens = itemIds.map(getItemDetails).filter((d): d is NonNullable<typeof d> => !!d);
+                registrarCortesias(
+                    emails.flatMap((email) =>
+                        itens.map((d) => ({
+                            comissarioId: acesso.comissario.id,
+                            eventoId: acesso.vinculo.eventoId,
+                            pedido: pedido.id,
+                            comprador: email,
+                            vendedor: acesso.pessoa.nome,
+                            ingresso: d.name,
+                            setor: d.kind === "ticket" ? d.groupName : "",
+                            quantidade: 1,
+                            // Soma no uso do canal Cortesia do grupo dele, quando o item está no canal (ECO-81).
+                            itemId: d.id,
+                        })),
+                    ),
+                );
+            }
             showSuccessToast(
                 "Pedido enviado",
                 `${activeEmails.length} ${
@@ -222,7 +253,7 @@ export function VerificacaoFinal() {
             setShowSendConfirm(false);
             navigate("/backstage/cortesias");
         },
-        [emails, activeEmails, itemIds, addPedido, navigate],
+        [emails, activeEmails, itemIds, addPedido, navigate, acesso],
     );
 
     const handleBack = useCallback(() => {
@@ -232,7 +263,20 @@ export function VerificacaoFinal() {
     return (
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <PageHeader onBack={handleBack} onSubmit={handleSubmit} />
+                <PageHeader onBack={handleBack} onSubmit={handleSubmit} isDisabled={passouDaCota} />
+                {saldo !== null && (
+                    <p
+                        role="status"
+                        className={cx(
+                            "rounded-xl px-4 py-3 text-sm",
+                            passouDaCota ? "bg-error-primary text-error-primary ring-1 ring-error_subtle" : "bg-secondary text-secondary",
+                        )}
+                    >
+                        {passouDaCota
+                            ? `Este envio tem ${totalCortesias} cortesias e você só pode enviar mais ${saldo} neste evento. Tire destinatários ou itens, ou peça mais ao organizador.`
+                            : `Este envio usa ${totalCortesias} das ${saldo} cortesias que você ainda pode enviar neste evento.`}
+                    </p>
+                )}
                 <main className="flex flex-1 flex-col gap-8">
                     <Progress.IconsWithText
                         items={steps}
@@ -352,9 +396,10 @@ export function VerificacaoFinal() {
 interface PageHeaderProps {
     onBack: () => void;
     onSubmit: () => void;
+    isDisabled?: boolean;
 }
 
-const PageHeader = ({ onBack, onSubmit }: PageHeaderProps) => (
+const PageHeader = ({ onBack, onSubmit, isDisabled }: PageHeaderProps) => (
     <header className="relative flex items-center justify-between gap-3 max-md:flex-wrap">
         <Button size="sm" color="secondary" iconLeading={ArrowLeft} onClick={onBack}>
             Destinatários
@@ -362,7 +407,7 @@ const PageHeader = ({ onBack, onSubmit }: PageHeaderProps) => (
         <h1 className={cx(TITULO_PAGINA, "pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2 md:whitespace-nowrap max-md:order-last max-md:w-full")}>
             Enviar cortesias
         </h1>
-        <Button size="md" color="primary" onClick={onSubmit}>
+        <Button size="md" color="primary" onClick={onSubmit} isDisabled={isDisabled}>
             Enviar cortesias
         </Button>
     </header>

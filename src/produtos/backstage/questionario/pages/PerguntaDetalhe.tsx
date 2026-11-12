@@ -83,7 +83,7 @@ export function PerguntaDetalhe() {
     const original = nova ? null : evento?.perguntas?.find((p) => p.id === id);
 
     return (
-        <BackstageLayout activeSection="itens" activeItem="catalogo-questionario">
+        <BackstageLayout activeSection="questionario" activeItem="catalogo-questionario">
             {carregando ? (
                 <div role="status" className="flex flex-col gap-3">
                     <span aria-hidden="true" className="h-10 w-64 animate-pulse rounded-lg bg-secondary motion-reduce:animate-none" />

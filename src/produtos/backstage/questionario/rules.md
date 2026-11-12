@@ -1,9 +1,11 @@
 # Questionário: regras
 
 > **Rotas:** `/backstage/catalogo/questionario` e `/backstage/catalogo/questionario/:id` (`nova` para criar)
-> **No menu:** Backstage › menu do evento › Itens › Questionário (desktop e mobile).
+> **No menu:** Backstage › menu do evento › Questionário (item próprio, abaixo de Itens; desktop e mobile).
 > **Versão em uso:** única (`questionario/`)
 > **Revisado em:** 2026-11-08 (primeira versão)
+
+> **Fora de Itens (12/11/2026):** o Questionário não é aba de Itens; tem item próprio no menu do evento, abaixo de Itens (`backstage/rules.md` BKS-18).
 
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
@@ -44,6 +46,7 @@ múltipla escolha, número, telefone e anexo.
 - **QST-10** Edição na carteira é geral do evento (`Evento.edicaoNaCarteira`: início, fim e perguntas), decisão do Victor em 08/11/2026. Cartão no topo da lista: desligada, "Desligada. Depois da compra, as respostas não mudam." com "Configurar"; ligada, estado (Aberta agora, Agendada, Encerrada, pela hora atual), "De <início> até <fim>" e "N perguntas podem mudar" (com os nomes até 3), com "Editar" e "Desligar" (grava na hora, toast com "Desfazer"). _(components/EdicaoNaCarteira.tsx, pages/Questionario.tsx)_
 - **QST-11** "Configurar" e "Editar" abrem um slideout (tela cheia no celular) com Começa em, Termina em e "Perguntas que podem mudar" marcadas ali mesmo, sem outro overlay (UI-NAV-002); acima de 8 perguntas, busca, "N de M" e "Marcar todas as N". Erros: "Escolha data e hora.", "Escolha um fim depois do começo.", "Marque pelo menos uma pergunta." Grava as perguntas na ordem do questionário. _(components/EdicaoNaCarteira.tsx)_
 - **QST-12** A linha da pergunta mostra "Editável na carteira" quando ela está na edição geral. Pergunta excluída sai da edição. _(pages/Questionario.tsx, components/EdicaoNaCarteira.tsx)_
+- **QST-14** Com perguntas, o topo tem "Ver respostas", que abre Relatórios › Respostas do questionário: perguntas e respostas ligadas. _(pages/Questionario.tsx)_
 - **QST-13** Formulário da pergunta sem accordion: três cartões abertos (UI-FRM-006); salvar com erro rola até o primeiro campo inválido. _(pages/PerguntaDetalhe.tsx, itens/components/comuns.tsx)_
 
 ## Depende de / afeta

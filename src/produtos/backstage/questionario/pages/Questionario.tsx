@@ -10,7 +10,6 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { InputBase } from "@/components/base/input/input";
 import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
 import type { Pergunta } from "@/plataforma";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 import { BackstageLayout } from "../../components/Backstage";
 import { useResumoDeIngressos } from "../../aberturas-de-vendas/components/SeletorDeIngressos";
 import { Alca, mover } from "../../itens/components/Alca";
@@ -19,6 +18,7 @@ import { novoId, salvarPerguntas, useCatalogo } from "../../itens/data/catalogo"
 import { formatar, useTextosItens } from "../../itens/data/textos-itens";
 import { NOME_DO_TIPO, setoresPorIngresso } from "../data/questionario";
 import { CartaoEdicaoNaCarteira, editaveisNaCarteira } from "../components/EdicaoNaCarteira";
+import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 
 /* ------------------------------------------------------------------ */
 /*  Questionário do evento (QST)                                       */
@@ -134,7 +134,7 @@ export function Questionario() {
     const naCarteira = editaveisNaCarteira(evento);
 
     return (
-        <BackstageLayout activeSection="itens" activeItem="catalogo-questionario">
+        <BackstageLayout activeSection="questionario" activeItem="catalogo-questionario">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
                 <header className="flex flex-wrap items-end justify-between gap-4">
                     <div className="flex min-w-0 flex-col gap-1">
@@ -142,9 +142,15 @@ export function Questionario() {
                         <p className="text-md text-tertiary">{T.subtitulo}</p>
                     </div>
                     {lista.length > 0 && (
-                        <Button color="primary" size="md" iconLeading={Plus} onClick={() => navigate("/backstage/catalogo/questionario/nova")}>
-                            {T.nova}
-                        </Button>
+                        <div className="flex flex-wrap gap-3">
+                            {/* Perguntas e respostas ligadas: as respostas ficam em Relatórios (QST-14). */}
+                            <Button color="secondary" size="md" onClick={() => navigate("/backstage/relatorios/questionarios")}>
+                                Ver respostas
+                            </Button>
+                            <Button color="primary" size="md" iconLeading={Plus} onClick={() => navigate("/backstage/catalogo/questionario/nova")}>
+                                {T.nova}
+                            </Button>
+                        </div>
                     )}
                 </header>
 

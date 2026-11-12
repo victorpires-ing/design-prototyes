@@ -12,6 +12,8 @@ export interface Opcao {
     id: string;
     label: string;
     supportingText?: string;
+    /** Ícone do item, mostrado na lista e no campo depois de escolher (ex.: classificação indicativa). */
+    icon?: import("react").FC;
 }
 
 export interface OpcoesEvento {

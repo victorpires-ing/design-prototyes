@@ -226,6 +226,9 @@ export function useEventoAtual(): Evento {
     return eventos.find((evento) => evento.id === id) ?? eventos[0];
 }
 
+/** Avisa quando o evento em contexto (ou a lista da organização) muda, para espelhos fora do React. */
+export const assinarEventoAtual = (fn: () => void) => subscribe(fn);
+
 /** Id do evento em contexto, sem assinar mudanças (para ações). */
 export const eventoAtualId = () => readId();
 

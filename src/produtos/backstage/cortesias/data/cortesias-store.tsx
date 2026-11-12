@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
 import { cancelarIngresso, cancelarPedido, emitirCortesias, novoId, renomearEnvio, useColecao, useDoc } from "@/plataforma";
 import { useEventoAtual } from "../../eventos/data/eventos";
+import { usePainel } from "../../components/painel";
+import { USUARIO as USUARIO_FREEPASS } from "../../freepass/data/minhas-vendas";
 import type { CortesiaItem, ItemStatus } from "./item-types";
 import { dataDaSessao, lerIdDoItem, useCatalogoDeCortesia } from "./plataforma";
 
@@ -65,10 +67,15 @@ export function CortesiasProvider({ children }: { children: ReactNode }) {
     const ingressosBanco = useColecao("ingressos");
     const usuarios = useColecao("usuarios");
     const eventoDoc = useDoc("eventos", evento.id);
+    // No Freepass a pessoa vê e emite só as próprias cortesias (COR-93).
+    const soDoEmissor = usePainel() === "freepass" ? USUARIO_FREEPASS.nome : null;
 
     const doEvento = useMemo(
-        () => pedidosBanco.filter((p) => p.canal === "cortesia" && p.eventoId === evento.id && p.envio).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)),
-        [pedidosBanco, evento.id],
+        () =>
+            pedidosBanco
+                .filter((p) => p.canal === "cortesia" && p.eventoId === evento.id && p.envio && (!soDoEmissor || p.envio.emissor === soDoEmissor))
+                .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)),
+        [pedidosBanco, evento.id, soDoEmissor],
     );
 
     const pedidos = useMemo<Pedido[]>(() => {
@@ -111,12 +118,12 @@ export function CortesiasProvider({ children }: { children: ReactNode }) {
 
     const addPedido = useCallback(
         (input: AddPedidoInput) => {
-            const envio = { id: novoId("env"), nome: input.nome.trim() || "Pedido sem nome", emissor: input.emissor ?? DEFAULT_EMISSOR };
+            const envio = { id: novoId("env"), nome: input.nome.trim() || "Pedido sem nome", emissor: input.emissor ?? soDoEmissor ?? DEFAULT_EMISSOR };
             const refs = input.itemIds.map(lerIdDoItem).filter((r): r is NonNullable<typeof r> => r !== null);
             void emitirCortesias({ eventoId: evento.id, envio, emails: input.emails, itens: refs });
             return { id: envio.id, nome: envio.nome, emissor: envio.emissor, status: "emitido" as const, dataEnvio: formatar(new Date().toISOString()) };
         },
-        [evento.id],
+        [evento.id, soDoEmissor],
     );
 
     const pedidosDoEnvio = useCallback((ids: Set<string>) => doEvento.filter((p) => ids.has(p.envio!.id)), [doEvento]);

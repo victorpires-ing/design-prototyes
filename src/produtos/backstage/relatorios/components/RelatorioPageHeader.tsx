@@ -180,7 +180,8 @@ export const RelatorioPageHeader = ({ title, actions, withFilters = true, filter
                     </div>
                 )}
             </div>
-            {withFilters && filter !== "period" && <FiltersStrip showMeta={showEventMeta} />}
+            {/* Fuso e moeda saíram daqui: ficam no topo de todos os relatórios, à direita (BKS-28). */}
+            {withFilters && filter !== "period" && <FiltersStrip showMeta={false} />}
             {toolbar && <div className="flex flex-wrap items-end gap-x-6 gap-y-3 overflow-x-auto">{toolbar}</div>}
         </div>
     );

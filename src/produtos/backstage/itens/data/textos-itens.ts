@@ -19,6 +19,7 @@ const PT_BR = {
         agendado: "Agendado",
         encerrado: "Vendas encerradas",
         "sem-estoque": "Sem estoque",
+        "sem-abertura": "Sem abertura de vendas",
     } satisfies Record<EstadoItem, string>,
     estadoLote: { "a-venda": "À venda", esgotado: "Esgotado", pausado: "Pausado", aguardando: "Aguardando", encerrado: "Encerrado" } satisfies Record<EstadoLote, string>,
     vendidosDe: "{vendidos} de {total} vendidos",

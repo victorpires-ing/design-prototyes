@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle, ShoppingCart01, Users01 } from "@untitledui/ico
 import { Button } from "@/components/base/buttons/button";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
+import { useRotaDoPainel } from "../../components/painel";
 import { BackstageLayout } from "../../components/Backstage";
 import { EmailListManager, type EmailListValidity } from "../components/EmailListManager";
 import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
@@ -37,6 +38,7 @@ interface RouteState {
 export function EmissaoCortesias() {
     const navigate = useNavigate();
     const location = useLocation();
+    const rota = useRotaDoPainel();
     const incomingItemIds = (location.state as RouteState | null)?.itemIds ?? [];
 
     const [validity, setValidity] = useState<EmailListValidity>({
@@ -50,18 +52,18 @@ export function EmissaoCortesias() {
     }, []);
 
     const handleBack = useCallback(() => {
-        navigate("/backstage/itens", { state: { itemIds: incomingItemIds } });
-    }, [navigate, incomingItemIds]);
+        navigate(rota("/backstage/itens"), { state: { itemIds: incomingItemIds } });
+    }, [navigate, incomingItemIds, rota]);
 
     const handleAdvance = useCallback(() => {
         if (!validity.canAdvance) return;
-        navigate("/backstage/verificacao", {
+        navigate(rota("/backstage/verificacao"), {
             state: {
                 itemIds: incomingItemIds,
                 emails: validity.validEmails,
             },
         });
-    }, [navigate, incomingItemIds, validity]);
+    }, [navigate, incomingItemIds, validity, rota]);
 
     return (
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">

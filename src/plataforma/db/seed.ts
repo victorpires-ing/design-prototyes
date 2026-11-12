@@ -25,6 +25,8 @@ export function catalogoPadrao(eventoId: string, inicios: string[], precoBase: n
                 id: `${s}-pista`,
                 nome: "Pista",
                 acesso: "Portão A",
+                tipoAcesso: "qr",
+                capacidade: 1120,
                 ingressos: [
                     {
                         id: `${s}-pista-inteira`,
@@ -53,6 +55,8 @@ export function catalogoPadrao(eventoId: string, inicios: string[], precoBase: n
                 id: `${s}-camarote`,
                 nome: "Camarote",
                 acesso: "Portão VIP",
+                tipoAcesso: "qr",
+                capacidade: 200,
                 ingressos: [
                     {
                         id: `${s}-camarote-inteira`,

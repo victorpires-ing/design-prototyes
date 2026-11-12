@@ -458,7 +458,27 @@ const JANELA_LABEL = "no período total de vendas";
 /*  Page                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Comparativos só tem séries de exemplo para alguns eventos. Numa organização sem nenhum deles, a
+ * tela mostra o vazio em vez de quebrar (REL, Em aberto).
+ */
 export function Comparativos() {
+  const temEventos = useMemo(() => construirCatalogo().length > 0, []);
+  if (!temEventos)
+    return (
+      <BackstageLayout activeSection="relatorios" activeItem="comparativos">
+        <div className="flex min-w-0 flex-1 flex-col gap-6">
+          <RelatorioPageHeader title="Comparativos" withFilters={false} />
+          <p className="rounded-xl bg-secondary px-6 py-12 text-center text-sm text-tertiary">
+            Ainda não há outros eventos desta organização com vendas para comparar.
+          </p>
+        </div>
+      </BackstageLayout>
+    );
+  return <ComparativosConteudo />;
+}
+
+function ComparativosConteudo() {
   // O evento em contexto no Backstage é a âncora: tudo é lido contra ele.
   const atualId = useEventoAtual().id;
   const catalogo = useMemo(() => construirCatalogo(), []);

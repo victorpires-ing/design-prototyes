@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { CalendarDate, getLocalTimeZone } from "@internationalized/date";
 import { useBanco, useDoc, type Evento, type HistoricoVendas, type Pedido } from "@/plataforma";
 import { agregar, type ContextoDataset, type FatoVenda, type PeriodoSelecionado } from "@/reports/event-dataset";
-import { useEventoAtual } from "../../eventos/data/eventos";
+import { eventos as eventosEspelho, useEventoAtual, useEventosVersao } from "../../eventos/data/eventos";
+import { useTodosOsEventos } from "../../components/escopo-dos-relatorios";
 
 /* ------------------------------------------------------------------ */
 /*  Dataset de vendas do evento em contexto, lido do banco unificado.  */
@@ -26,7 +27,7 @@ const calendario = (s: string) => {
 };
 
 /** Grupo (setor) de cada lote do evento, com capacidade e preço médio por nome de grupo. */
-function mapaDoCatalogo(evento: Evento) {
+function mapaDoCatalogo(evento: Evento, nomeDoGrupo: (g: string) => string = (g) => g) {
     const grupoDoLote = new Map<string, string>();
     const precoDoLote = new Map<string, number>();
     const grupos = new Map<string, { capacidade: number; somaPreco: number; lotes: number }>();
@@ -34,13 +35,14 @@ function mapaDoCatalogo(evento: Evento) {
         for (const g of s.grupos)
             for (const t of g.ingressos)
                 for (const l of t.lotes) {
-                    grupoDoLote.set(l.id, g.nome);
+                    grupoDoLote.set(l.id, nomeDoGrupo(g.nome));
                     precoDoLote.set(l.id, l.preco);
-                    const atual = grupos.get(g.nome) ?? { capacidade: 0, somaPreco: 0, lotes: 0 };
+                    const nome = nomeDoGrupo(g.nome);
+                    const atual = grupos.get(nome) ?? { capacidade: 0, somaPreco: 0, lotes: 0 };
                     atual.capacidade += l.quantidade;
                     atual.somaPreco += l.preco;
                     atual.lotes += 1;
-                    grupos.set(g.nome, atual);
+                    grupos.set(nome, atual);
                 }
     return { grupoDoLote, precoDoLote, grupos };
 }
@@ -52,9 +54,9 @@ export interface DatasetDoEvento {
     vazio: boolean;
 }
 
-export function montarDataset(evento: Evento, historico: HistoricoVendas | undefined, pedidos: Pedido[]): DatasetDoEvento {
-    const { grupoDoLote, precoDoLote, grupos } = mapaDoCatalogo(evento);
-    const linhas = new Map<string, FatoVenda>();
+/** Fatos (dia × grupo) e grupos de um evento. `nomeDoGrupo` identifica o setor quando vários eventos são somados. */
+function fatosDoEvento(evento: Evento, historico: HistoricoVendas | undefined, pedidos: Pedido[], nomeDoGrupo?: (g: string) => string, linhas = new Map<string, FatoVenda>()) {
+    const { grupoDoLote, precoDoLote, grupos } = mapaDoCatalogo(evento, nomeDoGrupo);
     const somar = (dia: string, grupo: string, categoria: string, itens: number, receita: number) => {
         if (itens <= 0 && receita <= 0) return;
         const chave = `${dia}|${categoria}|${grupo}`;
@@ -90,10 +92,30 @@ export function montarDataset(evento: Evento, historico: HistoricoVendas | undef
         const dia = iso(new Date(p.pagamento?.pagoEm ?? p.atualizadoEm));
         for (const item of p.itens) {
             if (item.tipo === "ingresso" && item.loteId) somar(dia, grupoDoLote.get(item.loteId) ?? item.nome, "Ingressos", item.quantidade, item.face * item.quantidade);
-            else somar(dia, item.nome, "Produtos", item.quantidade, item.face * item.quantidade);
+            else somar(dia, nomeDoGrupo ? nomeDoGrupo(item.nome) : item.nome, "Produtos", item.quantidade, item.face * item.quantidade);
         }
     }
+    return { linhas, grupos };
+}
 
+export function montarDataset(evento: Evento, historico: HistoricoVendas | undefined, pedidos: Pedido[]): DatasetDoEvento {
+    const { linhas, grupos } = fatosDoEvento(evento, historico, pedidos);
+    return datasetDe(linhas, grupos, evento.data.slice(0, 10));
+}
+
+/** Todos os eventos da organização somados (BKS-27): cada setor leva o nome do evento entre parênteses. */
+export function montarDatasetDeVarios(eventos: Evento[], historicos: Record<string, HistoricoVendas | undefined>, pedidos: Pedido[]): DatasetDoEvento {
+    const linhas = new Map<string, FatoVenda>();
+    const grupos = new Map<string, { capacidade: number; somaPreco: number; lotes: number }>();
+    for (const e of eventos) {
+        const r = fatosDoEvento(e, historicos[e.id], pedidos, (g) => `${g} (${e.nome})`, linhas);
+        for (const [nome, g] of r.grupos) grupos.set(nome, g);
+    }
+    const ultimoDia = eventos.map((e) => e.data.slice(0, 10)).sort().pop() ?? iso(new Date());
+    return datasetDe(linhas, grupos, ultimoDia);
+}
+
+function datasetDe(linhas: Map<string, FatoVenda>, grupos: Map<string, { capacidade: number; somaPreco: number; lotes: number }>, fimEvento: string): DatasetDoEvento {
     const fatos = [...linhas.values()].sort((a, b) => a.ms - b.ms);
     const ctx: ContextoDataset = {
         grupos: [
@@ -103,11 +125,10 @@ export function montarDataset(evento: Evento, historico: HistoricoVendas | undef
         capacidade: [...grupos.values()].reduce((t, g) => t + g.capacidade, 0),
         itensTotal: fatos.reduce((t, f) => t + f.itens, 0),
         vendasInicio: fatos[0] ? isoParaBr(fatos[0].iso) : isoParaBr(iso(new Date())),
-        vendasFim: isoParaBr(evento.data.slice(0, 10)),
+        vendasFim: isoParaBr(fimEvento),
     };
 
     const inicio = fatos[0]?.iso ?? iso(new Date());
-    const fimEvento = evento.data.slice(0, 10);
     const hoje = iso(new Date());
     const fim = [fimEvento, hoje, fatos[fatos.length - 1]?.iso ?? hoje].sort().pop()!;
 
@@ -127,13 +148,19 @@ export function montarDataset(evento: Evento, historico: HistoricoVendas | undef
     };
 }
 
-/** Dataset do evento em contexto, refeito quando o banco muda. */
+/** Dataset do evento em contexto, ou de todos os eventos da organização (BKS-27), refeito quando o banco muda. */
 export function useDatasetDoEvento(): DatasetDoEvento {
     const ctx = useEventoAtual();
     const evento = useDoc("eventos", ctx.id);
     const { tabelas } = useBanco();
+    const todos = useTodosOsEventos();
+    useEventosVersao();
     return useMemo(() => {
+        if (todos) {
+            const daOrganizacao = eventosEspelho.map((e) => tabelas.eventos?.[e.id]).filter((e): e is Evento => !!e);
+            return montarDatasetDeVarios(daOrganizacao, tabelas.historico ?? {}, Object.values(tabelas.pedidos));
+        }
         if (!evento) return montarDataset({ ...ctx, slug: ctx.id, produtora: ctx.produtor, sessoes: [], taxaServico: 0.1, criadoEm: ctx.data, atualizadoEm: ctx.data }, undefined, []);
         return montarDataset(evento, tabelas.historico[evento.id], Object.values(tabelas.pedidos));
-    }, [evento, tabelas, ctx]);
+    }, [evento, tabelas, ctx, todos]);
 }

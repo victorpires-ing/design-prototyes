@@ -1,9 +1,9 @@
 # Bilheteria online: regras
 
-> **Rotas:** `/backstage/bilheteria`, `/backstage/bilheteria/vender`, `/backstage/bilheteria/ingresso-pdf`
-> **No menu:** Backstage › menu do evento › Emissão de ingressos › Bilheteria online
+> **Rotas:** `/backstage/bilheteria`, `/backstage/bilheteria/vender`, `/backstage/bilheteria/ingresso-pdf`; as mesmas telas em `/freepass/bilheteria...` no painel Freepass (BKS-60)
+> **No menu:** Backstage › menu do evento › Emissão de ingressos › Bilheteria online; Freepass › menu do evento, quando a produtora libera a bilheteria para o comissário
 > **Versão em uso:** única, pasta `bilheteria` (a pasta `bilheteria-online` está vazia)
-> **Revisado em:** 2026-11-07
+> **Revisado em:** 2026-11-11
 
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**

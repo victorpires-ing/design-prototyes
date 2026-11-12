@@ -6,6 +6,7 @@ import sacola from "@/assets/iconly/bag.json";
 import grupo from "@/assets/iconly/users-group.json";
 import engrenagem from "@/assets/iconly/setting.json";
 import adicionarPessoa from "@/assets/iconly/add-user.json";
+import documento from "@/assets/iconly/dollar-document.json";
 import { iconeAnimado } from "@/components/foundations/icone-animado";
 
 /* ------------------------------------------------------------------ */
@@ -13,7 +14,8 @@ import { iconeAnimado } from "@/components/foundations/icone-animado";
 /*                                                                     */
 /*  Iconly Pro, animações em traço (estilo Light): Calendar (3133),    */
 /*  users (3892), Wallet (2370), Shopping Cart (4040), bag (4088),     */
-/*  users group (3996), Setting (2066), Add user (3894). Tocam uma     */
+/*  users group (3996), Setting (2066), Add user (3894), Dollar        */
+/*  document (4607, Relatórios). Tocam uma                            */
 /*  vez no hover ou foco do item; com reduzir movimento, ficam parados.*/
 /* ------------------------------------------------------------------ */
 
@@ -26,4 +28,5 @@ export const ICONES_ORGANIZACAO = {
     publico: iconeAnimado(grupo),
     ajustes: iconeAnimado(engrenagem),
     permissao: iconeAnimado(adicionarPessoa),
+    relatorios: iconeAnimado(documento),
 };

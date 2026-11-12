@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Reorder, useDragControls, useReducedMotion } from "motion/react";
 import { useNavigate, useSearchParams } from "react-router";
+import { Heading as AriaHeading } from "react-aria-components";
 import { toast } from "sonner";
 import { ChevronDown, Edit01, Plus, SearchLg, Ticket01 } from "@untitledui/icons";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
@@ -13,7 +14,6 @@ import { Toggle } from "@/components/base/toggle/toggle";
 import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
 import type { Evento, Grupo, Sessao, TipoIngresso } from "@/plataforma";
 import { loteAtual } from "@/plataforma";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 import { cx } from "@/utils/cx";
 import { AlertaDoGuia, BackstageLayout, PARAMETRO_NOVO_SETOR } from "../../components/Backstage";
 import { CamposDeVendas, EstadoBadge, useResumoDasVendas } from "../components/comuns";
@@ -26,7 +26,8 @@ import type { RegrasDeVenda } from "@/plataforma";
 import {
     comIngresso,
     comSetor,
-    estadoDoIngresso,
+    estadoComAbertura,
+    janelaDoIngresso,
     faixaDePreco,
     ofertaDoSetor,
     quantidadeDoIngresso,
@@ -39,6 +40,7 @@ import {
     vendidosDoSetor,
 } from "../data/catalogo";
 import { formatar, useTextosItens } from "../data/textos-itens";
+import { AbasDeItens } from "../../components/abas-de-itens";
 
 /* ------------------------------------------------------------------ */
 /*  Ingressos (ITM-01 a ITM-19)                                        */
@@ -59,21 +61,17 @@ const T = {
     editarSetor: "Editar setor {setor}",
     sessao: "Sessão de {data}",
     capacidade: "Capacidade de {n}",
-    semCapacidade: "Sem capacidade definida",
     vendidosDoSetor: "{vendidos} de {oferta} vendidos",
     vendidosCurto: "{vendidos} de {total}",
     setorCriado: "Setor {setor} criado. Agora crie os ingressos dele.",
     setorRemovido: "Setor {setor} removido.",
     acimaDaCapacidade: "Os lotes somam {oferta}, acima da capacidade de {capacidade}. Ajuste os lotes ou a capacidade.",
-    acesso: "Entrada: {acesso}",
     acessoComTipo: "Entrada: {acesso}, {tipo}",
     tipoAcesso: { qr: "com código QR", facial: "com reconhecimento facial" },
     tipoAcessoRotulo: "Como as pessoas entram",
     tipoAcessoDica: "Vale para todos os ingressos deste setor.",
     tipoAcessoOpcoes: { qr: "Código QR", facial: "Reconhecimento facial" },
     tipoAcessoErro: "Escolha como as pessoas entram neste setor.",
-    tipoAcessoPendente: "Entrada sem tipo definido",
-    editarSetorPendente: "Editar {setor} e definir a entrada",
     loteAVenda: "{lote} à venda",
     semLoteAVenda: "Nenhum lote à venda",
     vender: "Vender {ingresso}",
@@ -91,6 +89,11 @@ const T = {
     todosSetores: "Todos os setores",
     nadaNoFiltro: "Nenhum ingresso encontrado",
     nadaNoFiltroDica: "Tente outro nome ou limpe os filtros.",
+    limparFiltros: "Limpar filtros",
+    abreEm: "Abre em {quando}",
+    pausarTitulo: { one: "Pausar {n} ingresso?", other: "Pausar {n} ingressos?" },
+    pausarDescricao: "Eles param de vender na hora, em todas as aberturas. Dá para desfazer logo depois.",
+    pausarConfirmar: { one: "Pausar {n} ingresso", other: "Pausar {n} ingressos" },
     sessaoTitulo: { one: "Sessão de {data}, {n} ingresso", other: "Sessão de {data}, {n} ingressos" },
     pausar: "Pausar",
     retomar: "Voltar a vender",
@@ -103,7 +106,8 @@ const T = {
 };
 
 
-const ESTADOS: EstadoItem[] = ["a-venda", "agendado", "pausado", "esgotado", "encerrado", "sem-estoque"];
+/** Estados que a lista pode mostrar, na ordem do filtro (ITM-10, ITM-12). */
+const ESTADOS: EstadoItem[] = ["a-venda", "agendado", "sem-abertura", "encerrado", "pausado", "esgotado", "sem-estoque"];
 
 export function Ingressos() {
     const navigate = useNavigate();
@@ -114,7 +118,7 @@ export function Ingressos() {
     const [estado, setEstado] = useState("todos");
     const [sessaoId, setSessaoId] = useState("todos");
     const [setorNome, setSetorNome] = useState("todos");
-    const [modalLote, setModalLote] = useState<"preco" | "regras" | null>(null);
+    const [modalLote, setModalLote] = useState<"preco" | "regras" | "pausar" | null>(null);
     // Cópia local para arrastar sem esperar o banco; grava ao soltar (ITM-08).
     const [local, setLocal] = useState<Sessao[]>([]);
     const localRef = useRef<Sessao[]>([]);
@@ -153,13 +157,13 @@ export function Ingressos() {
                         .map((g) => ({
                             setor: g,
                             ingressos: g.ingressos.filter(
-                                (tp) => (!termo || paraBusca(`${tp.nome} ${g.nome}`).includes(termo)) && (estado === "todos" || estadoDoIngresso(tp, vendidos) === estado),
+                                (tp) => (!termo || paraBusca(`${tp.nome} ${g.nome}`).includes(termo)) && (estado === "todos" || estadoComAbertura(tp, vendidos, evento?.aberturas) === estado),
                             ),
                         }))
                         .filter((x) => !filtrando || x.ingressos.length > 0),
                 }))
                 .filter((x) => !filtrando || x.setores.length > 0),
-        [sessoes, sessaoId, setorNome, termo, estado, vendidos, filtrando],
+        [sessoes, sessaoId, setorNome, termo, estado, vendidos, filtrando, evento?.aberturas],
     );
     const filtrados = arvore.flatMap((a) => a.setores.flatMap((x) => x.ingressos));
     const comSelecao = totalIngressos > 1;
@@ -207,10 +211,12 @@ export function Ingressos() {
     const emLote = async (fn: (tp: TipoIngresso) => TipoIngresso, mensagem: { one: string; other: string }) => {
         if (!evento) return;
         const n = selecao.tamanho;
+        const antes = evento.sessoes;
         const prox = evento.sessoes.map((s) => ({ ...s, grupos: s.grupos.map((g) => ({ ...g, ingressos: g.ingressos.map((tp) => (selecao.tem(tp.id) ? fn(tp) : tp)) })) }));
         try {
             await salvarSessoes(evento, prox);
-            toast.success(plural(mensagem, n));
+            // Toda ação em lote pode voltar atrás: com milhares de ingressos, um clique errado custa caro (ITM-82).
+            toast.success(plural(mensagem, n), { action: { label: T.desfazer, onClick: () => salvarSessoes(evento, antes) } });
             selecao.limpar();
             setModalLote(null);
         } catch {
@@ -223,9 +229,10 @@ export function Ingressos() {
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-ingressos">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <AbasDeItens ativa="ingressos" />
                 <header className="flex flex-wrap items-end justify-between gap-4">
                     <div className="flex flex-col gap-1">
-                        <h1 className={TITULO_PAGINA}>{T.titulo}</h1>
+                        <h2 className="sr-only">{T.titulo}</h2>
                         {carregando ? (
                             <span aria-hidden="true" className="h-4 w-48 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
                         ) : (
@@ -233,11 +240,9 @@ export function Ingressos() {
                         )}
                     </div>
                     <div className="flex flex-wrap gap-3">
-                        <Button color="secondary" size="md" iconLeading={Plus} isDisabled={carregando || !sessoes.length} onClick={() => setModalSetor({ sessaoId: sessoes[0]?.id ?? "" })}>
+                        {/* Ingresso nasce dentro de um setor ("Novo ingresso no setor"), então o topo só cria setor (ITM-68). */}
+                        <Button color="primary" size="md" iconLeading={Plus} isDisabled={carregando || !sessoes.length} onClick={() => setModalSetor({ sessaoId: sessoes[0]?.id ?? "" })}>
                             {T.novoSetor}
-                        </Button>
-                        <Button color="primary" size="md" iconLeading={Plus} isDisabled={carregando} onClick={() => navigate("/backstage/catalogo/ingressos/novo")}>
-                            {T.criarIngresso}
                         </Button>
                     </div>
                 </header>
@@ -295,6 +300,11 @@ export function Ingressos() {
                                 <EmptyState.Title>{T.nadaNoFiltro}</EmptyState.Title>
                                 <EmptyState.Description>{T.nadaNoFiltroDica}</EmptyState.Description>
                             </EmptyState.Content>
+                            <EmptyState.Footer>
+                                <Button color="secondary" size="md" onClick={limparFiltros}>
+                                    {T.limparFiltros}
+                                </Button>
+                            </EmptyState.Footer>
                         </EmptyState>
                     </div>
                 ) : (
@@ -349,7 +359,7 @@ export function Ingressos() {
 
                 {comSelecao && (
                     <AcoesEmLote selecionados={selecao.tamanho} totalDoFiltro={filtrados.length} onSelecionarTodos={() => selecao.definir(filtrados.map((x) => x.id))} onLimpar={selecao.limpar}>
-                        <Button color="secondary" size="sm" onClick={() => emLote((tp) => ({ ...tp, ativo: false }), T.pausadosLote)}>
+                        <Button color="secondary" size="sm" onClick={() => setModalLote("pausar")}>
                             {T.pausar}
                         </Button>
                         <Button color="secondary" size="sm" onClick={() => emLote((tp) => ({ ...tp, ativo: true }), T.retomadosLote)}>
@@ -374,6 +384,7 @@ export function Ingressos() {
                     onAplicar={(fn) => emLote(fn, T.precoAjustado)}
                 />
             )}
+            {modalLote === "pausar" && <ModalPausarEmLote quantidade={selecao.tamanho} onFechar={() => setModalLote(null)} onPausar={() => emLote((tp) => ({ ...tp, ativo: false }), T.pausadosLote)} />}
             {modalLote === "regras" && <ModalRegrasEmLote quantidade={selecao.tamanho} onFechar={() => setModalLote(null)} onAplicar={(vendas) => emLote((tp) => ({ ...tp, vendas }), T.regrasAplicadas)} />}
         </BackstageLayout>
     );
@@ -474,31 +485,21 @@ function CartaoDoSetor({
                         </div>
                         <div>
                             <dt className="sr-only">Capacidade</dt>
-                            <dd>{setor.capacidade != null ? formatar(T.capacidade, { n: numero(setor.capacidade) }) : T.semCapacidade}</dd>
+                            <dd>{formatar(T.capacidade, { n: numero(setor.capacidade ?? oferta) })}</dd>
                         </div>
-                        {(setor.acesso || setor.tipoAcesso) && (
-                            <div>
-                                <dt className="sr-only">Acesso</dt>
-                                <dd>
-                                    {setor.acesso && setor.tipoAcesso
-                                        ? formatar(T.acessoComTipo, { acesso: setor.acesso, tipo: T.tipoAcesso[setor.tipoAcesso] })
-                                        : setor.acesso
-                                          ? formatar(T.acesso, { acesso: setor.acesso })
-                                          : T.tipoAcessoOpcoes[setor.tipoAcesso!]}
-                                </dd>
-                            </div>
-                        )}
-                        {!setor.tipoAcesso && (
-                            <div>
-                                <dt className="sr-only">{T.tipoAcessoRotulo}</dt>
-                                {/* Setor anterior à regra: a pendência é texto; quem resolve é o lápis (UI-VIS-016). */}
-                                <dd className="text-warning-primary">{T.tipoAcessoPendente}</dd>
-                            </div>
-                        )}
+                        {/* Tipo de acesso é obrigatório no setor (ITM-04): sempre há o que mostrar. */}
+                        <div>
+                            <dt className="sr-only">Acesso</dt>
+                            <dd>
+                                {setor.acesso
+                                    ? formatar(T.acessoComTipo, { acesso: setor.acesso, tipo: T.tipoAcesso[setor.tipoAcesso ?? "qr"] })
+                                    : T.tipoAcessoOpcoes[setor.tipoAcesso ?? "qr"]}
+                            </dd>
+                        </div>
                     </dl>
                 </div>
                 </div>
-                <ButtonUtility icon={Edit01} color="tertiary" tooltip={formatar(setor.tipoAcesso ? T.editarSetor : T.editarSetorPendente, { setor: setor.nome })} onClick={onEditar} />
+                <ButtonUtility icon={Edit01} color="tertiary" tooltip={formatar(T.editarSetor, { setor: setor.nome })} onClick={onEditar} />
             </header>
 
             {/* Estoque conferido contra a capacidade (ITM-05). */}
@@ -520,7 +521,8 @@ function CartaoDoSetor({
                 <ul className="flex flex-col border-t border-secondary">
                     {visiveis.map((tp) => (
                         <li key={tp.id} className="border-b border-secondary last:border-b-0">
-                            <LinhaDoIngresso evento={evento} tipo={tp} selecao={selecao} />
+                            {/* Sem alça (um ingresso só), o espaço dela fica: a caixa e o nome alinham com os outros setores. */}
+                            <LinhaDoIngresso evento={evento} tipo={tp} selecao={selecao} alca={arrastavel ? <span aria-hidden="true" className="block size-8 shrink-0" /> : undefined} />
                         </li>
                     ))}
                     {ingressos.length === 0 && <li className="px-5 py-4 text-sm text-tertiary md:px-6">{T.setorVazio}</li>}
@@ -544,59 +546,72 @@ function CartaoDoSetor({
 function LinhaDoIngresso({ evento, tipo, selecao, alca }: { evento: Evento; tipo: TipoIngresso; selecao: ReturnType<typeof useSelecao> | null; alca?: ReactNode }) {
     const navigate = useNavigate();
     const { vendidos, pendentes } = useCatalogo();
-    const { t, preco, numero } = useTextosItens();
+    const { t, preco, numero, quando } = useTextosItens();
     const resumoVendas = useResumoDasVendas();
-    const estado = estadoDoIngresso(tipo, vendidos);
+    const estado = estadoComAbertura(tipo, vendidos, evento.aberturas);
+    const janela = estado === "agendado" ? janelaDoIngresso(tipo.id, evento.aberturas) : null;
     const faixa = faixaDePreco(tipo);
     const atual = loteAtual(tipo, vendidos);
 
     const alternar = async (ativo: boolean) => {
+        const antes = evento.sessoes;
         try {
             await salvarSessoes(evento, comIngresso(evento, { ...tipo, ativo }));
-            toast.success(formatar(ativo ? T.voltou : T.pausado, { ingresso: tipo.nome }));
+            // Mesmo comportamento do toggle do detalhe: grava na hora e dá para desfazer (ITM-03, ITM-32).
+            toast.success(formatar(ativo ? T.voltou : T.pausado, { ingresso: tipo.nome }), { action: { label: T.desfazer, onClick: () => salvarSessoes(evento, antes) } });
         } catch {
             toast.error(t.erroAoSalvar);
         }
     };
 
     return (
-        <div className="relative flex flex-wrap gap-3 px-5 py-4 transition duration-100 ease-linear outline-focus-ring hover:bg-primary_hover has-[[data-linha]:focus-visible]:outline-2 has-[[data-linha]:focus-visible]:-outline-offset-2 md:flex-row md:items-center md:gap-6 md:px-6">
-            {alca && <div className="-ml-3 flex items-center md:-ml-4">{alca}</div>}
-            {selecao && <CaixaDeSelecao rotulo={tipo.nome} marcado={selecao.tem(tipo.id)} onChange={(on) => selecao.alternar(tipo.id, on)} />}
-            {/* O botão do nome cobre a linha (after:inset-0); toggle e chaves ficam por cima (z-10) sem abrir o item. */}
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <button
-                    type="button"
-                    data-linha
-                    onClick={() => navigate(`/backstage/catalogo/ingressos/${tipo.id}`)}
-                    className="flex flex-wrap items-center gap-2 text-left outline-hidden after:absolute after:inset-0"
-                >
-                    <span className="text-md font-semibold text-primary">{tipo.nome}</span>
-                    <EstadoBadge estado={estado} />
-                </button>
-                <span className="text-sm text-tertiary">{atual ? formatar(T.loteAVenda, { lote: atual.nome }) : T.semLoteAVenda}</span>
-                {resumoVendas(tipo.vendas) && <span className="truncate text-sm text-tertiary">{resumoVendas(tipo.vendas)}</span>}
-                <BotaoChaves tipo={tipo} onEditar={() => navigate(`/backstage/catalogo/ingressos/${tipo.id}`)} />
-            </div>
-            <div className="flex w-full items-center justify-between gap-6 md:w-auto md:justify-end">
-                <dl className="flex gap-6 text-sm">
-                    <div className="flex flex-col md:items-end">
-                        <dt className="text-tertiary">Preço</dt>
-                        <dd className="font-medium text-primary tabular-nums">{faixa.min === faixa.max ? preco(faixa.min) : formatar(t.precoFaixa, { min: preco(faixa.min), max: preco(faixa.max) })}</dd>
+        <div className="relative flex items-start gap-3 px-5 py-4 transition duration-100 ease-linear outline-focus-ring hover:bg-primary_hover has-[[data-linha]:focus-visible]:outline-2 has-[[data-linha]:focus-visible]:-outline-offset-2 md:items-center md:px-6">
+            {alca && <div className="-mt-1 -ml-3 flex items-center md:mt-0 md:-ml-4">{alca}</div>}
+            {selecao && (
+                <div className="mt-1 md:mt-0">
+                    <CaixaDeSelecao rotulo={tipo.nome} marcado={selecao.tem(tipo.id)} onChange={(on) => selecao.alternar(tipo.id, on)} />
+                </div>
+            )}
+            {/* Nome e dados numa coluna só: no celular os dados descem alinhados ao nome, não à borda da linha. */}
+            <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center md:gap-6">
+                {/* O botão do nome cobre a linha (after:inset-0); toggle e chaves ficam por cima (z-10) sem abrir o item. */}
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <button
+                        type="button"
+                        data-linha
+                        onClick={() => navigate(`/backstage/catalogo/ingressos/${tipo.id}`)}
+                        className="flex flex-wrap items-center gap-2 text-left outline-hidden after:absolute after:inset-0"
+                    >
+                        <span className="text-md font-semibold text-primary">{tipo.nome}</span>
+                        {/* Badge só quando foge do normal: À venda e Pausado o toggle já diz (ITM-10). */}
+                        {estado !== "a-venda" && estado !== "pausado" && <EstadoBadge estado={estado} />}
+                    </button>
+                    <span className="text-sm text-tertiary">{atual ? formatar(T.loteAVenda, { lote: atual.nome }) : T.semLoteAVenda}</span>
+                    {janela?.janela === "agendado" && <span className="text-sm text-tertiary">{formatar(T.abreEm, { quando: quando(janela.inicio) })}</span>}
+                    {resumoVendas(tipo.vendas) && <span className="truncate text-sm text-tertiary">{resumoVendas(tipo.vendas)}</span>}
+                    <BotaoChaves tipo={tipo} onEditar={() => navigate(`/backstage/catalogo/ingressos/${tipo.id}`)} />
+                </div>
+                <div className="flex items-center justify-between gap-6 md:justify-end">
+                    <dl className="flex gap-6 text-sm">
+                        <div className="flex flex-col md:items-end">
+                            <dt className="text-tertiary">Preço</dt>
+                            <dd className="font-medium text-primary tabular-nums">{faixa.min === faixa.max ? preco(faixa.min) : formatar(t.precoFaixa, { min: preco(faixa.min), max: preco(faixa.max) })}</dd>
+                        </div>
+                        <div className="flex flex-col md:items-end">
+                            <dt className="text-tertiary">Vendidos</dt>
+                            <dd className="font-medium text-primary tabular-nums">
+                                {formatar(T.vendidosCurto, { vendidos: numero(vendidosDoIngresso(tipo, vendidos) - pendentesDoIngresso(tipo, pendentes)), total: numero(quantidadeDoIngresso(tipo)) })}
+                            </dd>
+                        </div>
+                    </dl>
+                    {/* Rótulo visível acima do toggle, como Preço e Vendidos ao lado (UI-FRM-005). */}
+                    <div className="relative z-10 flex flex-col gap-1 text-sm md:items-end">
+                        <span className="text-tertiary" aria-hidden="true">
+                            {T.aVenda}
+                        </span>
+                        {/* Área de toque de 44 px em volta do toggle (WCAG 2.5.8), sem mudar o desenho. */}
+                        <Toggle aria-label={formatar(T.vender, { ingresso: tipo.nome })} isSelected={tipo.ativo} onChange={alternar} className="relative before:absolute before:-inset-x-3 before:-inset-y-3 before:content-['']" />
                     </div>
-                    <div className="flex flex-col md:items-end">
-                        <dt className="text-tertiary">Vendidos</dt>
-                        <dd className="font-medium text-primary tabular-nums">
-                            {formatar(T.vendidosCurto, { vendidos: numero(vendidosDoIngresso(tipo, vendidos) - pendentesDoIngresso(tipo, pendentes)), total: numero(quantidadeDoIngresso(tipo)) })}
-                        </dd>
-                    </div>
-                </dl>
-                {/* Rótulo visível acima do toggle, como Preço e Vendidos ao lado (UI-FRM-005). */}
-                <div className="relative z-10 flex flex-col gap-1 text-sm md:items-end">
-                    <span className="text-tertiary" aria-hidden="true">
-                        {T.aVenda}
-                    </span>
-                    <Toggle aria-label={formatar(T.vender, { ingresso: tipo.nome })} isSelected={tipo.ativo} onChange={alternar} />
                 </div>
             </div>
         </div>
@@ -616,13 +631,16 @@ function ModalSetor({ evento, sessaoId: sessaoInicial, setor, onFechar }: { even
     const sessao = evento.sessoes.find((s) => s.id === sessaoId);
     const repetido = !!sessao?.grupos.some((g) => g.id !== setor?.id && g.nome.trim().toLowerCase() === nome.trim().toLowerCase());
     const erroNome = !nome.trim() ? "Dê um nome ao setor." : repetido ? "Escolha outro nome: já existe um setor com esse nome nesta sessão." : undefined;
+    // Capacidade é obrigatória (ITM-04): número inteiro maior que zero.
+    const capacidadeNum = Math.round(Number(capacidade));
+    const erroCapacidade = !capacidade.trim() || !(capacidadeNum > 0) ? "Informe a lotação do setor." : undefined;
 
     const salvar = async () => {
         setTentou(true);
-        if (erroNome || !tipoAcesso) return;
+        if (erroNome || erroCapacidade || !tipoAcesso) return;
         setSalvando(true);
         const base = setor ?? setorNovo(nome);
-        const prox: Grupo = { ...base, nome: nome.trim(), tipoAcesso, acesso: acesso.trim() || undefined, capacidade: capacidade ? Math.max(0, Math.round(Number(capacidade))) : undefined };
+        const prox: Grupo = { ...base, nome: nome.trim(), tipoAcesso, acesso: acesso.trim() || undefined, capacidade: capacidadeNum };
         try {
             await salvarSessoes(evento, comSetor(evento, sessaoId, prox));
             toast.success(setor ? t.salvo : formatar(T.setorCriado, { setor: prox.nome }));
@@ -636,8 +654,9 @@ function ModalSetor({ evento, sessaoId: sessaoInicial, setor, onFechar }: { even
     const remover = async () => {
         if (!setor) return;
         try {
+            const antes = evento.sessoes;
             await salvarSessoes(evento, semSetor(evento, setor.id));
-            toast.success(formatar(T.setorRemovido, { setor: setor.nome }));
+            toast.success(formatar(T.setorRemovido, { setor: setor.nome }), { action: { label: T.desfazer, onClick: () => salvarSessoes(evento, antes) } });
             onFechar();
         } catch {
             toast.error(t.erroAoSalvar);
@@ -650,7 +669,7 @@ function ModalSetor({ evento, sessaoId: sessaoInicial, setor, onFechar }: { even
                 <Dialog>
                     <div className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-semibold text-primary">{setor ? "Editar setor" : "Novo setor"}</h2>
+                            <AriaHeading slot="title" className="text-lg font-semibold text-primary">{setor ? "Editar setor" : "Novo setor"}</AriaHeading>
                             <p className="text-sm text-tertiary">Setor é a área do evento com entrada e lotação próprias, como Pista ou Camarote.</p>
                         </div>
                         {evento.sessoes.length > 1 && !setor && (
@@ -676,10 +695,12 @@ function ModalSetor({ evento, sessaoId: sessaoInicial, setor, onFechar }: { even
                             label="Capacidade"
                             type="number"
                             inputMode="numeric"
+                            isRequired
                             value={capacidade}
                             onChange={setCapacidade}
                             placeholder="Ex.: 1200"
-                            hint="Lotação do setor. A soma dos lotes é conferida contra ela. Opcional."
+                            isInvalid={tentou && !!erroCapacidade}
+                            hint={tentou && erroCapacidade ? erroCapacidade : "Lotação do setor. A soma dos lotes é conferida contra ela."}
                         />
                         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                             {setor ? (
@@ -746,7 +767,7 @@ function ModalAjustarPreco({
     const { preco, plural } = useTextosItens();
     const [modo, setModo] = useState<ModoPreco>("percentual");
     const [direcao, setDirecao] = useState<"aumentar" | "diminuir">("aumentar");
-    const [quanto, setQuanto] = useState("10");
+    const [quanto, setQuanto] = useState("");
     const [alvo, setAlvo] = useState<"atual" | "todos">("atual");
     const n = Number(quanto.replace(",", ".")) || 0;
     const ajustar = (v: number) => {
@@ -768,7 +789,7 @@ function ModalAjustarPreco({
                 <Dialog>
                     <div className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-semibold text-primary">{plural({ one: "Ajustar preço de {n} ingresso", other: "Ajustar preço de {n} ingressos" }, selecionados.length)}</h2>
+                            <AriaHeading slot="title" className="text-lg font-semibold text-primary">{plural({ one: "Ajustar preço de {n} ingresso", other: "Ajustar preço de {n} ingressos" }, selecionados.length)}</AriaHeading>
                             <p className="text-sm text-tertiary">As mudanças valem para as próximas vendas.</p>
                         </div>
                         <RadioGroup aria-label="Direção" value={direcao} onChange={(v) => setDirecao(v as "aumentar" | "diminuir")}>
@@ -776,10 +797,10 @@ function ModalAjustarPreco({
                             <RadioButton value="diminuir" label="Diminuir" />
                         </RadioGroup>
                         <div className="grid grid-cols-2 gap-3">
-                            <Select aria-label="Como ajustar" selectedKey={modo} onSelectionChange={(k) => k && setModo(k as ModoPreco)} items={[{ id: "percentual", label: "Em porcentagem" }, { id: "valor", label: "Em reais" }]}>
+                            <Select label="Como ajustar" selectedKey={modo} onSelectionChange={(k) => k && setModo(k as ModoPreco)} items={[{ id: "percentual", label: "Em porcentagem" }, { id: "valor", label: "Em reais" }]}>
                                 {(i) => <Select.Item id={i.id}>{i.label}</Select.Item>}
                             </Select>
-                            <Input aria-label={modo === "percentual" ? "Porcentagem" : "Valor em reais"} inputMode="decimal" value={quanto} onChange={setQuanto} />
+                            <Input label={modo === "percentual" ? "Porcentagem" : "Valor em reais"} inputMode="decimal" value={quanto} onChange={setQuanto} placeholder={modo === "percentual" ? "Ex.: 10" : "Ex.: 20"} />
                         </div>
                         <RadioGroup aria-label="Quais lotes" value={alvo} onChange={(v) => setAlvo(v as "atual" | "todos")}>
                             <RadioButton value="atual" label="Só o lote à venda de cada ingresso" />
@@ -816,22 +837,59 @@ function ModalAjustarPreco({
 function ModalRegrasEmLote({ quantidade, onFechar, onAplicar }: { quantidade: number; onFechar: () => void; onAplicar: (v: RegrasDeVenda | undefined) => void }) {
     const { plural } = useTextosItens();
     const [vendas, setVendas] = useState<RegrasDeVenda | undefined>(undefined);
+    // Aplicar sem mexer apagaria os limites de todos os selecionados sem a pessoa perceber.
+    const [mexeu, setMexeu] = useState(false);
     return (
         <ModalOverlay isOpen onOpenChange={(v) => !v && onFechar()} isDismissable>
             <Modal className="sm:max-w-[560px]">
                 <Dialog>
                     <div className="flex max-h-[85dvh] w-full flex-col gap-5 overflow-y-auto rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-semibold text-primary">{plural({ one: "Regras de venda de {n} ingresso", other: "Regras de venda de {n} ingressos" }, quantidade)}</h2>
+                            <AriaHeading slot="title" className="text-lg font-semibold text-primary">{plural({ one: "Regras de venda de {n} ingresso", other: "Regras de venda de {n} ingressos" }, quantidade)}</AriaHeading>
                             <p className="text-sm text-tertiary">Estas regras substituem as que cada ingresso tem hoje.</p>
                         </div>
-                        <CamposDeVendas valor={vendas} onChange={setVendas} />
+                        <CamposDeVendas
+                            valor={vendas}
+                            onChange={(v) => {
+                                setVendas(v);
+                                setMexeu(true);
+                            }}
+                        />
                         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                             <Button color="secondary" size="md" onClick={onFechar}>
                                 Cancelar
                             </Button>
-                            <Button color="primary" size="md" onClick={() => onAplicar(vendas)}>
+                            <Button color="primary" size="md" isDisabled={!mexeu} onClick={() => onAplicar(vendas)}>
                                 Aplicar regras
+                            </Button>
+                        </div>
+                    </div>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
+    );
+}
+
+/** Pausar em lote para a venda de muitos ingressos de uma vez: confirma com o número e o efeito (ITM-82). */
+function ModalPausarEmLote({ quantidade, onFechar, onPausar }: { quantidade: number; onFechar: () => void; onPausar: () => void }) {
+    const { plural } = useTextosItens();
+    return (
+        <ModalOverlay isOpen onOpenChange={(v) => !v && onFechar()} isDismissable>
+            <Modal className="sm:max-w-[440px]">
+                <Dialog>
+                    <div className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
+                        <div className="flex flex-col gap-1">
+                            <AriaHeading slot="title" className="text-lg font-semibold text-primary">
+                                {plural(T.pausarTitulo, quantidade)}
+                            </AriaHeading>
+                            <p className="text-sm text-tertiary">{T.pausarDescricao}</p>
+                        </div>
+                        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <Button color="secondary" size="md" onClick={onFechar}>
+                                Cancelar
+                            </Button>
+                            <Button color="primary" size="md" onClick={onPausar}>
+                                {plural(T.pausarConfirmar, quantidade)}
                             </Button>
                         </div>
                     </div>

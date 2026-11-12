@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation } from "react-router";
 import {
     Calendar,
     CheckCircle,
@@ -18,6 +18,7 @@ import { Input } from "@/components/base/input/input";
 import { Progress } from "@/components/application/progress-steps/progress-steps";
 import type { ProgressFeaturedIconType } from "@/components/application/progress-steps/progress-types";
 import { cx } from "@/utils/cx";
+import { useNavegarNoPainel } from "../../components/painel";
 import { BackstageLayout } from "../../components/Backstage";
 import { CortesiaSelectionPanel } from  "../components/CortesiaSelectionPanel";
 import {
@@ -54,7 +55,7 @@ const steps: ProgressFeaturedIconType[] = [
 ];
 
 export function SelecaoItens() {
-    const navigate = useNavigate();
+    const navigate = useNavegarNoPainel();
     const location = useLocation();
     const initialSelection = (location.state as { itemIds?: string[] } | null)?.itemIds ?? [];
 
@@ -149,7 +150,7 @@ export function SelecaoItens() {
                 <PageHeader
                     canAdvance={canAdvance}
                     onAdvance={handleAdvance}
-                    onBack={() => navigate("/")}
+                    onBack={() => navigate("/backstage/cortesias")}
                 />
                 <main className="flex flex-1 flex-col gap-8">
                     <Progress.IconsWithText

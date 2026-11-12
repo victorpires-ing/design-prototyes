@@ -12,7 +12,6 @@ import { Input, InputBase } from "@/components/base/input/input";
 import { Surgir } from "@/components/foundations/transicao";
 import type { AberturaDeVendas, Evento, ItemDaAbertura, ProdutoDaOrganizacao } from "@/plataforma";
 import { itensDaAbertura } from "@/plataforma";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 import { BackstageLayout } from "../../components/Backstage";
 import { EscolhaEmLista, ListaDeEscolhas } from "../../itens/components/comuns";
 import { BotaoMostrarMais, LIMIAR_FERRAMENTAS, paraBusca, useMostrarMais } from "../../itens/components/escala";
@@ -20,6 +19,7 @@ import { SeletorDeLista, type OpcaoDeLista } from "../../itens/components/Seleto
 import { SeletorDeIngressos, useResumoDeIngressos } from "../components/SeletorDeIngressos";
 import { novoId, produtosDo, salvarAberturas, useCatalogo } from "../../itens/data/catalogo";
 import { formatar, useTextosItens } from "../../itens/data/textos-itens";
+import { AbasDeItens } from "../../components/abas-de-itens";
 
 /* ------------------------------------------------------------------ */
 /*  Aberturas de vendas (ABV)                                          */
@@ -172,17 +172,15 @@ export function AberturasDeVendas() {
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-aberturas">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <header className="flex flex-wrap items-end justify-between gap-4">
-                    <div className="flex min-w-0 flex-col gap-1">
-                        <h1 className={TITULO_PAGINA}>{T.titulo}</h1>
-                        <p className="text-md text-tertiary">{T.subtitulo}</p>
-                    </div>
-                    {aberturas.length > 0 && (
+                <AbasDeItens ativa="aberturas" />
+                {/* Título e subtítulo vêm do topo de Itens (página própria, BKS-17); aqui só a ação. */}
+                {aberturas.length > 0 && (
+                    <div className="flex justify-end">
                         <Button color="primary" size="md" iconLeading={Plus} onClick={() => setModal({})}>
                             {T.nova}
                         </Button>
-                    )}
-                </header>
+                    </div>
+                )}
 
                 {carregando ? (
                     <div role="status" aria-label={T.carregando} className="flex flex-col gap-3">

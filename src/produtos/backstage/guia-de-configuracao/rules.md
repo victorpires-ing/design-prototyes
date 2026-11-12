@@ -41,6 +41,7 @@ criação de evento (`eventos/`, `/backstage/eventos/novo`): entra logo depois d
 - **GDC-12** A faixa do título tem um campo de partículas (figura de Chladni em canvas 2D nativo) que some à esquerda, onde fica o título. No escuro as partículas são brancas; no claro, pretas, translúcidas. _(backstage/components/campo-de-particulas.tsx, compartilhado com o banner da criação de evento; utils/cor-das-particulas.ts)_
 - **GDC-13** Com o painel na tela, os toasts do canto inferior direito sobem para cima dele (a partir de 640px). _(components/guia-de-configuracao.tsx)_
 - **GDC-14** Holofote de apresentação: só logo depois de criar o evento em "Criar evento" (a criação marca o evento novo). A tela escurece a partir do canto do painel, acende com partículas e mostra "Evento criado! Agora, configure as vendas" e "Siga as etapas do guia para criar os ingressos, programar as vendas e publicar o evento.". Some em 9 s ou ao clicar no painel, e não volta. Não bloqueia cliques e não é lido por leitor de tela. Nas outras visitas, e em eventos que não acabaram de ser criados, aparece só o painel. Substitui o toast de evento criado (EVT-10). _(components/holofote-do-guia.tsx, data/memoria.ts, eventos/pages/CriarEvento.tsx)_
+- **GDC-15** No celular (abaixo de 640 px) o painel começa recolhido na faixa do título, porque aberto cobre boa parte da tela; expandir fica gravado por evento. Logo depois de criar o evento ele abre, também no celular, e não recolhe quando o holofote acaba. No desktop nada muda. _(data/use-guia.ts, data/memoria.ts)_
 
 ### Estados
 - **GDC-40** Carregando: sem painel, sem alerta, sem holofote (GDC-04).
@@ -57,7 +58,6 @@ criação de evento (`eventos/`, `/backstage/eventos/novo`): entra logo depois d
 - Vocabulário: a branch diz "grupos de ingressos"; o protótipo chama de setor ("Novo setor"), então o passo diz "Crie os setores do evento".
 - Evento esportivo: o guia diz "ingressos" mesmo quando o catálogo fala em inscrições (o toast antigo trocava a palavra).
 - Qualquer evento incompleto mostra o painel, não só o recém-criado (igual à branch). O holofote, ao contrário da branch, toca só na criação (decisão Victor, 12/11/2026).
-- O catálogo mostra o ingresso como "À venda" mesmo sem abertura de vendas; o alerta GDC-10 diz o contrário. Divergência de `itens/`, não do guia.
 - O cadeado do passo bloqueado não diz o motivo na tela, só para leitor de tela (igual à branch).
 - Partículas e textos do holofote usam cor fixa (branco e preto translúcidos, `#fff`): canvas não lê token, e `text-white` do AFTER DS v8 inverte no escuro.
 - Fora do porte: transição de tela em cortejo e entrada do rail do evento da mesma branch.

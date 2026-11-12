@@ -1,9 +1,11 @@
 # Relatórios: regras
 
-> **Rotas:** `/backstage/relatorios/vendas-por-grupo`, `/backstage/relatorios/transacoes`, `/backstage/relatorios/transacoes2`, `/backstage/relatorios/transacoes3`, `/backstage/relatorios/acesso`, `/backstage/relatorios/bordero`, `/backstage/relatorios/transferencias`, `/backstage/relatorios/comparativos`, `/backstage/relatorios/questionarios`, `/backstage/relatorios/relatorio-personalizado`
-> **No menu:** Backstage › menu do evento › Relatórios › Vendas, Transações, Acesso, Borderô, Transferências, Comparativos (selo "Novo"), Respostas do questionário, Relatório personalizado (selo "IA"). O mesmo grupo aparece no menu da variante Equipe de operação, sem o selo "Novo".
+> **Rotas:** `/backstage/relatorios/vendas-por-grupo`, `/backstage/relatorios/transacoes`, `/backstage/relatorios/transacoes2`, `/backstage/relatorios/transacoes3`, `/backstage/relatorios/acesso`, `/backstage/relatorios/bordero`, `/backstage/relatorios/transferencias`, `/backstage/relatorios/comparativos`, `/backstage/relatorios/questionarios`, `/backstage/relatorios/comissarios`, `/backstage/relatorios/relatorio-personalizado`
+> **No menu:** Backstage › menu da organização › Relatórios (e, pelo menu do evento, com "Voltar para o evento"); dentro, a lista Vendas, Transações, Acesso, Borderô, Transferências, Comparativos, Respostas do questionário, Comissários (selo "Novo"), Relatório personalizado (selo "IA").
 > **Versão em uso:** Transações tem três versões. O menu aponta para `/backstage/relatorios/transacoes` (`pages/Transacoes.tsx`, v1). `transacoes2` (`pages/Transacoes2.tsx`) e `transacoes3` (`pages/Transacoes3.tsx`) só abrem pela URL e destacam o mesmo item "Transações" no menu. Os demais relatórios têm versão única.
 > **Revisado em:** 2026-11-08
+
+> **Na organização (12/11/2026):** Relatórios saiu do menu do evento para o da organização, com a lista empilhada à esquerda, o evento selecionado no topo e "Todos os eventos" (`backstage/rules.md` BKS-26 e BKS-27). Em Vendas, os cartões de métrica deixaram de ter largura mínima de 320 px para caber ao lado da lista.
 
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
@@ -44,7 +46,7 @@ Só Vendas e Borderô leem `@/plataforma`. O resto ainda é mock.
 - **REL-06** Filtros de lista fechada são multisseleção: a linha passa se bater com qualquer valor marcado. _(components/RelatorioFilterSlideout.tsx, components/relatorio-filters.tsx)_
 - **REL-07** Filtro de texto usa "contém", sem diferenciar maiúsculas. _(components/RelatorioFilterSlideout.tsx, components/relatorio-filters.tsx)_
 - **REL-08** Período inclui o dia final inteiro (até 23:59:59). _(components/relatorio-filters.tsx)_
-- **REL-09** Abaixo do título, uma faixa mostra "Horário de Brasília (GMT-3)", "Moeda: BRL (R$)" e um chip removível por filtro aplicado, mais "Limpar tudo". _(components/RelatorioPageHeader.tsx)_
+- **REL-09** ~~Abaixo do título, uma faixa mostra "Horário de Brasília (GMT-3)", "Moeda: BRL (R$)" e os filtros.~~ Fuso e moeda foram para o topo de todos os relatórios (`backstage/rules.md` BKS-28); abaixo do título fica só um chip removível por filtro aplicado, mais "Limpar tudo". _(components/RelatorioPageHeader.tsx)_
 - **REL-10** Relatórios com só o botão de período (Vendas, Relatório personalizado) aplicam a data na hora e não mostram a faixa de chips. _(components/RelatorioPageHeader.tsx, components/RelatorioFilterSlideout.tsx)_
 - **REL-11** O menu "Exportar" lista "Arquivo Excel", "Arquivo .CSV" e "Arquivo PDF", ou o subconjunto que o relatório passar. _(components/RelatorioPageHeader.tsx)_
 - **REL-12** Exportar não gera arquivo: só mostra um toast "Exportando {FORMATO}". _(pages/Acesso.tsx, pages/Bordero.tsx, pages/Transacoes*.tsx)_
@@ -174,7 +176,7 @@ Só Vendas e Borderô leem `@/plataforma`. O resto ainda é mock.
 - **REL-135** Clicar num card abre Identificação, Comprador original (CPF formatado) e Histórico de transferência. _(pages/Transferencias.tsx)_
 
 ### Comparativos
-- **REL-140** Título "Comparativos", sem filtros nem exportação. _(pages/Comparativos.tsx)_
+- **REL-140** Título "Comparativos", sem filtros nem exportação; no menu, marca Comparativos. Organização sem eventos com perfil de venda mostra "Ainda não há outros eventos desta organização com vendas para comparar." em vez de quebrar. _(pages/Comparativos.tsx)_
 - **REL-141** O evento em contexto é a âncora: primeiro slot, primeira cor, sem opção de remover, base de todas as variações. _(pages/Comparativos.tsx)_
 - **REL-142** Abre já comparando com o primeiro outro evento do catálogo. _(pages/Comparativos.tsx)_
 - **REL-143** No máximo 4 eventos ao mesmo tempo, contando a âncora. _(pages/Comparativos.tsx)_
@@ -198,6 +200,9 @@ Só Vendas e Borderô leem `@/plataforma`. O resto ainda é mock.
 - **REL-166** O painel do participante mostra Portador e, por ingresso, Comprador e respostas; um ingresso aberto por vez. _(pages/Questionarios.tsx)_
 - **REL-167** Resposta existente pode ser editada, menos anexo; pergunta sem resposta não. "Editar" pede "Confirmar alteração desta resposta?" e mostra o toast "Resposta alterada". _(pages/Questionarios.tsx)_
 - **REL-168** Sem resposta: "Não respondeu". Anexo tem botão de baixar que só mostra o toast "Baixando {arquivo}". _(pages/Questionarios.tsx)_
+
+### Comissários
+- **REL-188** O relatório Comissários está na lista e soma todos os eventos (escopo "Todos os eventos", sem o aviso de BKS-27). As regras dele ficam em `../comissarios/rules.md` (COM-110 a COM-115). _(../components/navegacao-de-secao.tsx, ../comissarios/pages/relatorio-comissarios.tsx)_
 
 ### Relatório personalizado (IA)
 - **REL-170** Sem conteúdo, a tela mostra "O que você quer descobrir?", o campo de pedido e sugestões. _(pages/RelatorioPersonalizado.tsx, components/RelatorioIAChat.tsx)_

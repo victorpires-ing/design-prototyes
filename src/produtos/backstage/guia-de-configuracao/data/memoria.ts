@@ -4,12 +4,13 @@ import { useSyncExternalStore } from "react";
  * Decisões do produtor sobre o guia, por evento, em localStorage (sobrevivem ao F5):
  * - fechado: o painel não volta; sobra o alerta do que trava a venda (GDC-10).
  * - minimizado: "agora não"; o painel vira só a faixa (GDC-08).
+ * - expandido: o produtor abriu o painel de propósito; no celular ele começa recolhido (GDC-15).
  * - holofote-pendente: marcado só na criação do evento; a apresentação toca uma vez e se apaga (GDC-14).
  *
  * Estado no módulo + useSyncExternalStore: o painel (no layout) e o alerta (em Itens › Ingressos)
  * leem a mesma memória sem precisar de provider.
  */
-type Marca = "fechado" | "minimizado" | "holofote-pendente";
+type Marca = "fechado" | "minimizado" | "expandido" | "holofote-pendente";
 
 const PREFIXO = "backstage-guia-configuracao:";
 const chave = (marca: Marca, eventoId: string) => `${PREFIXO}${marca}:${eventoId}`;
@@ -53,15 +54,17 @@ export function marcar(marca: Marca, eventoId: string, valor: boolean) {
 export interface MemoriaDoGuia {
     fechado: boolean;
     minimizado: boolean;
+    expandido: boolean;
     holofotePendente: boolean;
 }
 
 export function useMemoriaDoGuia(eventoId: string | undefined): MemoriaDoGuia {
     useSyncExternalStore(assinar, () => versao, () => 0);
-    if (!eventoId) return { fechado: false, minimizado: false, holofotePendente: false };
+    if (!eventoId) return { fechado: false, minimizado: false, expandido: false, holofotePendente: false };
     return {
         fechado: ler("fechado", eventoId),
         minimizado: ler("minimizado", eventoId),
+        expandido: ler("expandido", eventoId),
         holofotePendente: ler("holofote-pendente", eventoId),
     };
 }
@@ -70,5 +73,7 @@ export function useMemoriaDoGuia(eventoId: string | undefined): MemoriaDoGuia {
 export function prepararGuiaDoEventoNovo(eventoId: string) {
     marcar("fechado", eventoId, false);
     marcar("minimizado", eventoId, false);
+    // Recém-criado, o guia abre também no celular, e não recolhe quando o holofote acaba (GDC-15).
+    marcar("expandido", eventoId, true);
     marcar("holofote-pendente", eventoId, true);
 }

@@ -1,3 +1,4 @@
+import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { useCallback, useMemo } from "react";
 import { itensDaAbertura, useBanco, useDoc, type Evento } from "@/plataforma";
 import { marcar, useMemoriaDoGuia } from "./memoria";
@@ -38,19 +39,26 @@ export function useGuiaDeConfiguracao(eventoId: string | undefined): Guia {
     const { modo } = useBanco();
     const evento = useDoc("eventos", eventoId ?? null);
     const memoria = useMemoriaDoGuia(eventoId);
+    // No celular o painel aberto cobre boa parte da tela: começa recolhido, até o produtor abrir (GDC-15).
+    const celular = !useBreakpoint("sm");
+    const minimizado = memoria.minimizado || (celular && !memoria.expandido);
     const estado = estadoDoEvento(evento, modo === "carregando");
     const guia = useMemo(() => resolverGuia(estado, memoria.fechado), [estado.setores, estado.ingressos, estado.abertura, estado.publicacao, memoria.fechado]);
 
     const fechar = useCallback(() => eventoId && marcar("fechado", eventoId, true), [eventoId]);
-    const alternarMinimizado = useCallback(() => eventoId && marcar("minimizado", eventoId, !memoria.minimizado), [eventoId, memoria.minimizado]);
+    const alternarMinimizado = useCallback(() => {
+        if (!eventoId) return;
+        marcar("expandido", eventoId, minimizado);
+        marcar("minimizado", eventoId, !minimizado);
+    }, [eventoId, minimizado]);
     const concluirHolofote = useCallback(() => eventoId && marcar("holofote-pendente", eventoId, false), [eventoId]);
 
     if (!eventoId) return { ...guia, superficie: "nenhuma", minimizado: false, holofotePendente: false, fechar, alternarMinimizado, concluirHolofote };
     return {
         ...guia,
-        minimizado: memoria.minimizado,
+        minimizado,
         // Só depois de criar o evento, e junto com o painel aberto (GDC-14).
-        holofotePendente: memoria.holofotePendente && !memoria.minimizado && guia.superficie === "painel",
+        holofotePendente: memoria.holofotePendente && !minimizado && guia.superficie === "painel",
         fechar,
         alternarMinimizado,
         concluirHolofote,

@@ -32,6 +32,7 @@ import { Tabs } from "@/components/application/tabs/tabs";
 import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
 import { cx } from "@/utils/cx";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
+import { useRotaDoPainel } from "../../components/painel";
 import { BackstageLayout } from "../../components/Backstage";
 import { CancelConfirmModal } from "../components/CancelConfirmModal";
 import { ItemDetailsSlideOut } from "../components/ItemDetailsSlideOut";
@@ -47,7 +48,7 @@ import {
     type PedidoStatus,
 } from "../data/cortesias-store";
 import { showSuccessToast } from "../utils/toast";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
+import { TituloDaEmissao } from "@/produtos/backstage/components/navegacao-de-secao";
 
 
 /* ------------------------------------------------------------------ */
@@ -78,7 +79,8 @@ export function RelatorioPedidos() {
     const { pedidos } = useCortesiasStore();
     const [activeTab, setActiveTab] = useState<"pedidos" | "itens">("pedidos");
 
-    const handleEmitir = useCallback(() => navigate("/backstage/itens"), [navigate]);
+    const rota = useRotaDoPainel();
+    const handleEmitir = useCallback(() => navigate(rota("/backstage/itens")), [navigate, rota]);
     const handleExport = useCallback(() => console.log("Exportar relatório"), []);
 
     const isEmpty = pedidos.length === 0;
@@ -87,7 +89,13 @@ export function RelatorioPedidos() {
         <BackstageLayout activeSection="cortesias" activeItem="emissao-cortesias">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
                 {isEmpty ? (
-                    <EmptyState onEmitir={handleEmitir} />
+                    <>
+                        {/* O título fica também no vazio (COR-01): a ação mora no próprio vazio, então o topo não repete o botão. */}
+                        <header>
+                            <TituloDaEmissao>Cortesias</TituloDaEmissao>
+                        </header>
+                        <EmptyState onEmitir={handleEmitir} />
+                    </>
                 ) : (
                     <>
                         <PageHeader onEmitir={handleEmitir} />
@@ -182,8 +190,8 @@ interface PageHeaderProps {
 
 const PageHeader = ({ onEmitir }: PageHeaderProps) => (
     <header className="flex items-center justify-between gap-3">
-        <h1 className={TITULO_PAGINA}>Cortesias</h1>
-        <Button size="md" color="primary" onClick={onEmitir}>
+        <TituloDaEmissao>Cortesias</TituloDaEmissao>
+        <Button size="md" color="primary" onClick={onEmitir} className="ml-auto">
             Emitir cortesia
         </Button>
     </header>

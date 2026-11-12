@@ -1,7 +1,7 @@
 # Membros: regras
 
 > **Rotas:** `/backstage/membros`, `/backstage/membros/criar-cargo`, `/backstage/membros/cargos/:id/editar`
-> **No menu:** Backstage › barra da organização › Membros (rail lateral e barra do topo apontam para `/backstage/membros`)
+> **No menu:** Backstage › barra da organização › Membros (rail lateral e barra do topo apontam para `/backstage/membros`). Até 12/11/2026 era "Membros e Comissários", com abas (BKS-34); Comissários virou relatório (COM-110).
 > **Versão em uso:** esta pasta (`membros`, rota `/backstage/membros`). `membros-v2` e `equipe-e-permissoes` são explorações fora do menu.
 > **Revisado em:** 2026-11-07
 
@@ -19,7 +19,7 @@ matriz de permissões.
 
 | Dado | De onde vem | Grava? |
 | --- | --- | --- |
-| Membros, grupos, cargos customizados | `../components/membros-store.ts` (mock local, compartilhado com Cortesias) | só em memória |
+| Membros, grupos, cargos customizados | `../components/membros-store.ts` (mock local, compartilhado com Cortesias e com a Equipe de operação, que usa os grupos como origem de operadores) | só em memória |
 | Cargos padrão (7) | `CARGOS` em `../components/membros-store.ts` | não |
 | Eventos dos selects (6) | `EVENTOS` em `../components/membros-store.ts` (mock) | não |
 | Catálogo de permissões dos cargos | `data/permissoes-catalogo.ts` ("lista de 06/10/2026") | não |
@@ -62,7 +62,7 @@ Nada vem de `@/plataforma`. Eventos são uma lista fixa local, não os eventos d
 - **MEM-35** Cargo pode ser salvo sem nenhuma permissão; o resumo avisa "Este cargo está sem permissões" (ou "vai ficar sem permissões" na edição). _(components/resumo-cargo-modal.tsx)_
 
 ### Estados
-- **MEM-40** Inicial: 1 membro (`admin@ingresse.com`, Administrador), 1 grupo ("Todos os eventos", padrão) e 7 cargos padrão. _(../components/membros-store.ts)_
+- **MEM-40** Inicial: 1 membro (`admin@ingresse.com`, Administrador), 1 grupo ("Todos os eventos", padrão) e 8 cargos padrão. _(../components/membros-store.ts)_
 - **MEM-41** Busca sem resultado: "Nenhum resultado" com "Não encontramos membros/grupos/cargos para essa busca." _(pages/Membros.tsx)_
 - **MEM-42** Recarregar a página volta ao estado inicial (store em memória). _(../components/membros-store.ts)_
 - **MEM-43** Editar cargo inexistente ou padrão pela URL redireciona para `/backstage/membros`. _(pages/CriarCargo.tsx)_
@@ -70,7 +70,7 @@ Nada vem de `@/plataforma`. Eventos são uma lista fixa local, não os eventos d
 
 ### Permissões
 - **MEM-60** Um membro pode ter vários cargos e vários grupos. Cargo define o que faz; grupo define em quais eventos. _(../components/membros-store.ts, ../components/CriarMembroModal.tsx)_
-- **MEM-61** Cargos padrão: Administrador, Editor de eventos, Financeiro, Financeiro (conta padrão), Marketing, Visualizador e Parceiro. Não podem ser editados nem excluídos (ícone de cadeado com tooltip "Cargo padrão"). _(../components/membros-store.ts, pages/Membros.tsx)_
+- **MEM-61** Cargos padrão: Administrador, Editor de eventos, Financeiro, Financeiro (conta padrão), Marketing, Visualizador, Parceiro e Comissário (aplicado às pessoas dos grupos-comissário de Equipe e Comissários, ECO-24). Não podem ser editados nem excluídos (ícone de cadeado com tooltip "Cargo padrão"). _(../components/membros-store.ts, pages/Membros.tsx)_
 - **MEM-62** Cargo "Parceiro" não tem permissão explícita; os limites são configurados por feature (ex.: Cortesias). _(../components/membros-store.ts)_
 - **MEM-63** Cargos criados pela organização guardam ações no formato `recurso:acao` (ex.: `events.courtesies:emit`). _(pages/CriarCargo.tsx, data/permissoes-catalogo.ts)_
 - **MEM-64** O grupo padrão "Todos os eventos" cobre todos os eventos, tem badge "Padrão" e não pode ser selecionado para exclusão. _(pages/Membros.tsx, ../components/membros-store.ts)_

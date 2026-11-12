@@ -1,11 +1,13 @@
 # Aberturas de vendas: regras
 
 > **Rotas:** `/backstage/catalogo/aberturas-de-vendas`
-> **No menu:** Backstage › menu do evento › Itens › Aberturas de vendas (desktop e mobile).
+> **No menu:** Backstage › menu do evento › Itens › botão "Aberturas de vendas" no topo (página própria, com "Itens" para voltar; `backstage/rules.md` BKS-17).
 > **Versão em uso:** única (`aberturas-de-vendas/`)
 > **Revisado em:** 2026-11-08 (ligada ao catálogo)
 
 > **De volta ao menu em 08/11/2026:** os itens não têm mais datas de venda próprias, então a abertura de vendas e o lote ligado decidem quando cada item vende (`itens/rules.md` ITM-11 e ITM-30). Substitui a Agenda de vendas; `/backstage/catalogo/agenda` e `/backstage/catalogo-anterior/aberturas-de-vendas` redirecionam para cá.
+
+> **Página única (12/11/2026):** Aberturas de vendas é uma aba da página Itens (`backstage/rules.md` BKS-17); o título próprio virou `h2` só para leitor de tela.
 
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**

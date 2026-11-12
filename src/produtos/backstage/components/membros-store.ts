@@ -65,6 +65,14 @@ export const CARGOS: Cargo[] = [
         descricao: "Não possui nenhuma permissão explícita. As permissões específicas (ex.: limites e itens de cortesias) devem ser configuradas por feature.",
         porFeature: true,
     },
+    {
+        // O cadastro de comissários saiu da organização em 12/11/2026: o grupo de Equipe e Comissários com o
+        // canal Comissário é o comissário, e as pessoas dele recebem este cargo (ECO-24).
+        id: "comissario",
+        nome: "Comissário",
+        descricao: "Aplicado às pessoas dos grupos com o canal Comissário, em Equipe e Comissários. Vendem pelo link e pelo cupom do grupo e acompanham as vendas no Freepass; o resto vem do grupo.",
+        porFeature: true,
+    },
 ];
 
 export function cargoById(id: string) {
@@ -152,12 +160,45 @@ export const FEATURES: { id: string; nome: string; subitens: { id: string; nome:
 /*  Store reativo                                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Grupos de exemplo com quem opera no evento (bilheteria, promoters, camarote). São os grupos que a
+ * Equipe de operação oferece como origem de operadores (EO3-09): um cadastro só de Membros.
+ */
+const GRUPOS_DE_EXEMPLO: Array<{ id: string; nome: string; emails: string[] }> = [
+    { id: "m-bilheteria", nome: "Equipe de bilheteria", emails: ["ana.lima@casamarceneiro.com.br", "bruno.costa@casamarceneiro.com.br", "carla.mendes@casamarceneiro.com.br", "diego.rocha@casamarceneiro.com.br", "elisa.prado@casamarceneiro.com.br", "felipe.nunes@casamarceneiro.com.br"] },
+    { id: "m-promoters", nome: "Promoters", emails: ["gabi.promo@gmail.com", "henrique.eventos@gmail.com", "isa.noite@gmail.com", "joao.vip@gmail.com", "karen.lista@gmail.com", "leo.festas@gmail.com", "marina.rp@gmail.com", "nando.promo@gmail.com"] },
+    { id: "m-camarote", nome: "Atendimento Camarote", emails: ["otavio.reis@casamarceneiro.com.br", "paula.santos@casamarceneiro.com.br", "rafael.dias@casamarceneiro.com.br", "sofia.alves@casamarceneiro.com.br"] },
+    { id: "m-producao", nome: "Produção", emails: ["tiago.moura@producao.com.br", "ursula.melo@producao.com.br", "vitor.lopes@producao.com.br", "wanda.ribeiro@producao.com.br", "yuri.campos@producao.com.br"] },
+    { id: "m-pdv", nome: "PDV Portaria", emails: ["adriana.pdv@casamarceneiro.com.br", "beto.pdv@casamarceneiro.com.br", "cris.pdv@casamarceneiro.com.br", "davi.pdv@casamarceneiro.com.br", "edu.pdv@casamarceneiro.com.br", "fabi.pdv@casamarceneiro.com.br", "gui.pdv@casamarceneiro.com.br"] },
+    { id: "m-hostess", nome: "Hostess", emails: ["helena.host@gmail.com", "iara.host@gmail.com", "julia.host@gmail.com"] },
+    { id: "m-bar", nome: "Bar Central", emails: ["kleber.bar@casamarceneiro.com.br", "luana.bar@casamarceneiro.com.br", "mateus.bar@casamarceneiro.com.br", "nina.bar@casamarceneiro.com.br", "orlando.bar@casamarceneiro.com.br"] },
+    { id: "m-seguranca", nome: "Segurança", emails: ["pedro.seg@seguranca.com.br", "quiteria.seg@seguranca.com.br", "renan.seg@seguranca.com.br", "silvia.seg@seguranca.com.br", "tadeu.seg@seguranca.com.br", "valeria.seg@seguranca.com.br", "wesley.seg@seguranca.com.br", "xavier.seg@seguranca.com.br", "yara.seg@seguranca.com.br"] },
+    { id: "m-credenciamento", nome: "Credenciamento", emails: ["amanda.cred@producao.com.br", "breno.cred@producao.com.br", "caio.cred@producao.com.br", "daniela.cred@producao.com.br"] },
+    { id: "m-influenciadores", nome: "Influenciadores", emails: ["bia.vibes@gmail.com", "duda.roles@gmail.com", "enzo.night@gmail.com", "fefe.agenda@gmail.com", "gui.festeiro@gmail.com", "lari.eventos@gmail.com"] },
+    { id: "m-imprensa", nome: "Imprensa", emails: ["carlos.jornal@redacao.com.br", "denise.revista@redacao.com.br", "erick.portal@redacao.com.br"] },
+    { id: "m-patrocinadores", nome: "Patrocinadores", emails: ["fabio.marca@parceiros.com.br", "gisele.marca@parceiros.com.br", "heitor.marca@parceiros.com.br", "ingrid.marca@parceiros.com.br", "jonas.marca@parceiros.com.br", "kelly.marca@parceiros.com.br", "lucas.marca@parceiros.com.br"] },
+    { id: "m-artistas", nome: "Artistas e banda", emails: ["mano.vocal@producao.com.br", "nara.guitarra@producao.com.br", "otto.bateria@producao.com.br", "priscila.baixo@producao.com.br"] },
+    { id: "m-backstage", nome: "Backstage", emails: ["rodrigo.palco@producao.com.br", "samara.palco@producao.com.br", "tulio.palco@producao.com.br", "vanessa.palco@producao.com.br", "william.palco@producao.com.br", "zeca.palco@producao.com.br"] },
+    { id: "m-vip", nome: "Lista VIP", emails: ["alice.vip@gmail.com", "bernardo.vip@gmail.com", "cecilia.vip@gmail.com", "davi.vip@gmail.com", "eloisa.vip@gmail.com", "fabricio.vip@gmail.com", "giovana.vip@gmail.com", "hugo.vip@gmail.com", "isis.vip@gmail.com", "joaquim.vip@gmail.com"] },
+    { id: "m-staff-extra", nome: "Staff extra", emails: ["kaio.staff@gmail.com", "lia.staff@gmail.com"] }
+];
+
+const membroId = (email: string) => `m-${email.replace(/[^a-z0-9]/gi, "-")}`;
+
 let _membros: Membro[] = [
     { id: "m-admin", email: "admin@ingresse.com", cargoIds: ["administrador"], grupoIds: [], eventosCount: EVENTOS.length },
+    ...[...new Set(GRUPOS_DE_EXEMPLO.flatMap((g) => g.emails))].map((email) => ({
+        id: membroId(email),
+        email,
+        cargoIds: ["visualizador"],
+        grupoIds: GRUPOS_DE_EXEMPLO.filter((g) => g.emails.includes(email)).map((g) => g.id),
+        eventosCount: EVENTOS.length,
+    })),
 ];
 
 let _grupos: Grupo[] = [
     { id: "g-todos", nome: "Todos os eventos", eventoIds: EVENTOS.map((e) => e.id), membroIds: [], sistema: true },
+    ...GRUPOS_DE_EXEMPLO.map((g) => ({ id: g.id, nome: g.nome, eventoIds: EVENTOS.map((e) => e.id), membroIds: g.emails.map(membroId) })),
 ];
 
 const listeners = new Set<() => void>();
@@ -168,6 +209,10 @@ const subscribe = (fn: () => void) => {
         listeners.delete(fn);
     };
 };
+
+/** Para leitores fora do React (espelhos): assinar e ler grupos e membros como estão agora. */
+export const assinarMembros = subscribe;
+export const lerMembros = () => ({ membros: _membros, grupos: _grupos });
 
 /* ---- membros ---- */
 const membrosSnap = () => _membros;

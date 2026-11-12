@@ -42,7 +42,7 @@ de qualquer tela.
 
 ### Escolha
 - **ORG-10** Escolher uma organização: ela vira a escolhida (sessão, última e recentes) e a pessoa vai para Eventos. _(components/BuscaOrganizacaoEvento.tsx)_
-- **ORG-11** Escolher um evento: a organização dele vira a escolhida, ele vira o evento em contexto e a pessoa vai para Relatórios › Vendas (mesmo destino do cartão em Eventos, EVT-07). _(components/BuscaOrganizacaoEvento.tsx)_
+- **ORG-11** Escolher um evento: a organização dele vira a escolhida, ele vira o evento em contexto e a pessoa vai para Itens › Ingressos (mesmo destino do cartão em Eventos, EVT-07). _(components/BuscaOrganizacaoEvento.tsx)_
 - **ORG-12** Trocar de organização troca o que o Backstage mostra: Eventos, métricas e Pedidos passam a ser os dela. Se o evento em contexto não é dela, vale o primeiro evento dela. _(eventos/data/eventos.ts)_
 
 ### Troca (modal)

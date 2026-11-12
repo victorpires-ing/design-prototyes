@@ -609,7 +609,7 @@ const MetricsRow = ({
     const ticketMedio = totalItens === 0 ? 0 : valorTotal / totalItens;
     const totalEstoque = setoresView.reduce((s, x) => s + x.estoque, 0);
     const totalVendido = setoresView.reduce((s, x) => s + x.vendido, 0);
-    const cardClass = "flex-1 md:min-w-[320px] [&_p+div]:hidden";
+    const cardClass = "min-w-0 flex-1 [&_p+div]:hidden";
     return (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <MetricsIcon03 icon={CurrencyDollarCircle} title={currencyFormatter.format(valorTotal)} subtitle="Valor total" change={null} changeTrend="positive" actions={false} className={cardClass} />
@@ -624,7 +624,7 @@ const MetricsRow = ({
 
 const OcupacaoMetric = ({ totalEstoque, totalVendido }: { totalEstoque: number; totalVendido: number }) => (
     <div className="rounded-xl bg-primary shadow-xs ring-1 ring-secondary ring-inset">
-        <div className="flex h-full items-center gap-8 px-4 py-5 md:px-5">
+        <div className="flex h-full items-center gap-4 px-4 py-5 md:px-5">
             <div className="relative flex flex-col gap-2 shrink-0 items-center justify-center">
                 <ProgressBarHalfCircle size="xs" min={0} label="Ocupação" max={totalEstoque || 1} value={totalVendido} valueFormatter={(_value: number, pct: number) => `${pct}%`} />
             </div>

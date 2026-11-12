@@ -1,0 +1,70 @@
+/* ------------------------------------------------------------------ */
+/*  Transição entre telas do Backstage e do Freepass (BKS-15).         */
+/*                                                                     */
+/*  A tela nova desliza de leve da direita; os blocos sobem um depois  */
+/*  do outro, de cima para baixo da página; o título aparece com       */
+/*  escala, desfoque e opacidade. Tudo termina em `none`, para não     */
+/*  deixar transform ou filter prendendo elementos fixos e sticky.     */
+/* ------------------------------------------------------------------ */
+
+@keyframes bs-tela-deslizar {
+    from {
+        opacity: 0;
+        transform: translateX(24px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes bs-tela-subir {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes bs-tela-titulo {
+    from {
+        opacity: 0;
+        transform: scale(0.94);
+        filter: blur(8px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+        filter: none;
+    }
+}
+
+.bs-tela {
+    --bs-tela-curva: cubic-bezier(0.22, 1, 0.36, 1);
+    animation: bs-tela-deslizar 360ms var(--bs-tela-curva) both;
+}
+
+/* Blocos da página: o conteúdo de cada tela é um contêiner com cabeçalho, seções e listas. */
+.bs-tela > * > * {
+    animation: bs-tela-subir 480ms var(--bs-tela-curva) both;
+}
+.bs-tela > * > :nth-child(2) { animation-delay: 60ms; }
+.bs-tela > * > :nth-child(3) { animation-delay: 120ms; }
+.bs-tela > * > :nth-child(4) { animation-delay: 180ms; }
+.bs-tela > * > :nth-child(5) { animation-delay: 240ms; }
+.bs-tela > * > :nth-child(n + 6) { animation-delay: 300ms; }
+
+.bs-tela h1 {
+    animation: bs-tela-titulo 560ms var(--bs-tela-curva) 40ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bs-tela,
+    .bs-tela > * > *,
+    .bs-tela h1 {
+        animation: none;
+    }
+}

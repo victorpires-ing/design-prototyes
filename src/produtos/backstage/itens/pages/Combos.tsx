@@ -8,12 +8,12 @@ import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/mod
 import { Button } from "@/components/base/buttons/button";
 import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
 import type { Combo, Evento, ItemDoCombo, ProdutoDaOrganizacao, Sessao } from "@/plataforma";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 import { BackstageLayout } from "../../components/Backstage";
 import { EstadoBadge } from "../components/comuns";
 import { AcoesEmLote, AvisoDeEscala, BarraDeFiltros, BotaoMostrarMais, CaixaDeSelecao, paraBusca, useMostrarMais, useSelecao } from "../components/escala";
 import { acharIngresso, disponivelDoCombo, estadoDoCombo, ingressosDo, nomeDoItem, produtosDo, salvarCombos, somaAvulsa, useCatalogo, type EstadoItem } from "../data/catalogo";
 import { formatar, useTextosItens } from "../data/textos-itens";
+import { AbasDeItens } from "../../components/abas-de-itens";
 
 /* ------------------------------------------------------------------ */
 /*  Combos do evento: pacotes de ingressos e produtos já existentes,   */
@@ -230,9 +230,10 @@ export function Combos() {
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-combos">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <AbasDeItens ativa="combos" />
                 <header className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex min-w-0 flex-col gap-0.5">
-                        <h1 className={TITULO_PAGINA}>{TEXTOS.titulo}</h1>
+                        <h2 className="sr-only">{TEXTOS.titulo}</h2>
                         {carregando ? (
                             <span aria-hidden="true" className="mt-1 h-4 w-40 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
                         ) : (

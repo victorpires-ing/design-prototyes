@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import type { AberturaDeVendas, Combo, EdicaoNaCarteira, Pergunta, Evento, Grupo, Lote, Organizacao, ProdutoDaOrganizacao, ProdutoNoEvento, Sessao, TipoIngresso } from "@/plataforma";
-import { atualizarEvento, loteAtual, novoId, organizacaoDoEvento, salvar, somarPorLote, useBanco, useDoc, usePendentes, useVendidos } from "@/plataforma";
+import type { AberturaDeVendas, Combo, ConfiguracoesAvancadas, EdicaoNaCarteira, LimitesPorUsuario, Pergunta, Evento, Grupo, Lote, Organizacao, ProdutoDaOrganizacao, ProdutoNoEvento, Sessao, TipoIngresso } from "@/plataforma";
+import { atualizarEvento, itensDaAbertura, loteAtual, novoId, organizacaoDoEvento, salvar, somarPorLote, useBanco, useDoc, usePendentes, useVendidos } from "@/plataforma";
 import { useEventoAtual } from "../../eventos/data/eventos";
 import { CHAVES_DE_EXEMPLO } from "./exemplos";
 import camisa from "@/assets/products/camisa_oficial/1.webp";
@@ -50,7 +50,22 @@ export function useCatalogo(): Catalogo {
     const escala = escalaSimulada();
     const simulado = useMemo(() => (escala && evento ? catalogoSimulado(evento, escala) : null), [escala, evento?.id]);
     if (simulado) return { carregando: false, simulado: escala, evento: simulado.evento, organizacao, biblioteca: simulado.biblioteca, vendidos: simulado.vendidos, pendentes: simulado.pendentes };
-    return { carregando: modo === "carregando" || !evento, simulado: null, evento, organizacao, biblioteca, vendidos, pendentes };
+    return { carregando: modo === "carregando" || !evento, simulado: null, evento: comTipoDeAcesso(evento), organizacao, biblioteca, vendidos, pendentes };
+}
+
+/**
+ * Todo setor tem tipo de acesso e capacidade: os dois são obrigatórios ao criar (ITM-04). Setores
+ * gravados antes da regra (os de exemplo, sem os campos) valem como código QR, o padrão do ingresso,
+ * e com a capacidade igual à soma dos lotes; a próxima gravação já salva os campos.
+ */
+const comTipoDeAcessoCache = new WeakMap<Evento, Evento>();
+function comTipoDeAcesso(evento: Evento | undefined): Evento | undefined {
+    if (!evento || evento.sessoes.every((s) => s.grupos.every((g) => g.tipoAcesso && g.capacidade != null))) return evento;
+    const pronto = comTipoDeAcessoCache.get(evento);
+    if (pronto) return pronto;
+    const novo = { ...evento, sessoes: evento.sessoes.map((s) => ({ ...s, grupos: s.grupos.map((g) => (g.tipoAcesso && g.capacidade != null ? g : { ...g, tipoAcesso: g.tipoAcesso ?? ("qr" as const), capacidade: g.capacidade ?? ofertaDoSetor(g) })) })) };
+    comTipoDeAcessoCache.set(evento, novo);
+    return novo;
 }
 
 /* ---------------- simulação de escala (UI-LST-001) ---------------- */
@@ -209,7 +224,7 @@ export const bibliotecaDe = (org: Organizacao | undefined, orgId: string) => org
 
 /* ---------------- ingressos ---------------- */
 
-export type EstadoItem = "a-venda" | "esgotado" | "pausado" | "agendado" | "encerrado" | "sem-estoque";
+export type EstadoItem = "a-venda" | "esgotado" | "pausado" | "agendado" | "encerrado" | "sem-estoque" | "sem-abertura";
 export type EstadoLote = "a-venda" | "esgotado" | "pausado" | "aguardando" | "encerrado";
 
 export interface IngressoNoCatalogo {
@@ -250,6 +265,36 @@ export function estadoDoIngresso(t: TipoIngresso, vendidos: Map<string, number>)
     if (loteAtual(t, vendidos)) return "a-venda";
     const restantes = t.lotes.filter((l) => vendidosDoLote(l, vendidos) < l.quantidade);
     return restantes.length === 0 ? "esgotado" : "pausado";
+}
+
+/** "AAAA-MM-DDTHH:mm" local de agora, para comparar com início e fim das aberturas. */
+const agoraLocal = () => {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
+/**
+ * Quando o ingresso vende, pelas aberturas de vendas que o incluem (ITM-12): agora, mais tarde, já
+ * acabou ou nenhuma. A primeira abertura futura vem junto, para dizer quando abre.
+ */
+export function janelaDoIngresso(tipoId: string, aberturas: AberturaDeVendas[] | undefined, agora = agoraLocal()) {
+    const dele = (aberturas ?? []).filter((a) => itensDaAbertura(a).some((i) => i.tipo === "ingresso" && i.id === tipoId));
+    if (dele.length === 0) return { janela: "sem-abertura" as const };
+    if (dele.some((a) => a.inicio <= agora && agora < a.fim)) return { janela: "aberta" as const };
+    const proxima = dele.filter((a) => a.inicio > agora).sort((a, b) => a.inicio.localeCompare(b.inicio))[0];
+    return proxima ? { janela: "agendado" as const, inicio: proxima.inicio } : { janela: "encerrado" as const };
+}
+
+/**
+ * Estado do ingresso com a abertura de vendas (ITM-10, ITM-12): ligado e com lote à venda só fica
+ * "À venda" dentro de uma abertura; fora dela, "Agendado", "Vendas encerradas" ou "Sem abertura de vendas".
+ */
+export function estadoComAbertura(t: TipoIngresso, vendidos: Map<string, number>, aberturas: AberturaDeVendas[] | undefined): EstadoItem {
+    const base = estadoDoIngresso(t, vendidos);
+    if (base !== "a-venda") return base;
+    const { janela } = janelaDoIngresso(t.id, aberturas);
+    return janela === "aberta" ? "a-venda" : janela;
 }
 
 /** Faixa de preço do ingresso (menor e maior entre os lotes). */
@@ -368,6 +413,8 @@ export const salvarProdutosDoEvento = gravar((ev: Evento, produtos: ProdutoNoEve
 export const salvarCombos = gravar((ev: Evento, combos: Combo[]) => atualizarEvento(ev.id, { combos }));
 export const salvarAberturas = gravar((ev: Evento, aberturas: AberturaDeVendas[]) => atualizarEvento(ev.id, { aberturas }));
 export const salvarPerguntas = gravar((ev: Evento, perguntas: Pergunta[]) => atualizarEvento(ev.id, { perguntas }));
+export const salvarConfiguracoes = gravar((ev: Evento, avancado: ConfiguracoesAvancadas) => atualizarEvento(ev.id, { avancado }));
+export const salvarLimites = gravar((ev: Evento, limites: LimitesPorUsuario) => atualizarEvento(ev.id, { limites }));
 export const salvarEdicaoNaCarteira = gravar((ev: Evento, edicaoNaCarteira: EdicaoNaCarteira | null) => atualizarEvento(ev.id, { edicaoNaCarteira }));
 
 /** Grava a biblioteca na organização (a primeira gravação materializa a inicial). */

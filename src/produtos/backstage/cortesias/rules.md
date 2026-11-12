@@ -1,9 +1,9 @@
 # Cortesias: regras
 
-> **Rotas:** `/backstage/cortesias` (relatório), `/backstage/itens` (passo 1), `/backstage/destinatarios` (passo 2), `/backstage/verificacao` (passo 3)
-> **No menu:** Backstage › menu do evento › Emissão de ingressos › Cortesia
+> **Rotas:** `/backstage/cortesias` (relatório), `/backstage/itens` (passo 1), `/backstage/destinatarios` (passo 2), `/backstage/verificacao` (passo 3); as mesmas telas em `/freepass/...` no painel Freepass
+> **No menu:** Backstage › menu do evento › Emissão de ingressos › Cortesia; Freepass › menu do evento › Emissão de ingressos › Cortesia (quando liberado)
 > **Versão em uso:** única, pasta `cortesias`
-> **Revisado em:** 2026-11-07
+> **Revisado em:** 2026-11-11
 
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
 aqui no mesmo commit. Achou divergência entre código e este arquivo, registre em **Em aberto**
@@ -34,8 +34,13 @@ A tela mostra só as cortesias do evento em contexto.
 - **COR-91** Item Aceito = destinatário com conta (usuário no banco); Pendente de cadastro = sem conta. Cancelado = ingresso cancelado. _(data/cortesias-store.tsx)_
 - **COR-92** Cancelar o pedido cancela os pedidos de todos os destinatários do envio; cancelar um item cancela só aquele ingresso. Renomear muda o envio em todos. _(data/cortesias-store.tsx)_
 
+### Freepass
+- **COR-93** No Freepass, o relatório mostra só as cortesias que a pessoa emitiu, e o emissor do envio é ela. _(data/cortesias-store.tsx)_
+- **COR-94** No Freepass, a verificação mostra quantas cortesias o envio usa da cota da pessoa no evento; passou da cota, "Enviar cortesias" fica desativado, com o aviso de tirar destinatários ou itens, ou pedir mais ao organizador. Sem cota, não há limite. _(pages/VerificacaoFinal.tsx)_
+- **COR-95** O envio feito pelo Freepass conta nas vendas do comissário como cortesia, sem comissão (FCO-72). _(pages/VerificacaoFinal.tsx, @/plataforma/comissarios)_
+
 ### Relatório (`/backstage/cortesias`)
-- **COR-01** Sem pedidos: "Distribua itens para convidados especiais" e botão "Emitir cortesias". _(pages/RelatorioPedidos.tsx)_
+- **COR-01** Sem pedidos: título "Cortesias" (sem botão no topo) e, embaixo, "Distribua itens para convidados especiais" com o botão "Emitir cortesias". _(pages/RelatorioPedidos.tsx)_
 - **COR-02** Com pedidos: título "Cortesias", botão "Emitir cortesia" e abas Pedidos e Itens. _(pages/RelatorioPedidos.tsx)_
 - **COR-03** Aba Pedidos: uma linha por destinatário de cada pedido (pedido + e-mail), com métricas "Pedidos emitidos" e "Pedidos cancelados". _(pages/RelatorioPedidos.tsx)_
 - **COR-04** Aba Pedidos: busca por ID ou nome do pedido, e-mail ou documento; filtros Status (Emitido, Cancelado) e Emissor responsável. _(pages/RelatorioPedidos.tsx)_
@@ -55,6 +60,7 @@ A tela mostra só as cortesias do evento em contexto.
 - **COR-21** Máximo de 10 itens selecionados; ao atingir, os demais ficam desabilitados. Painel mostra "N de 10 cortesias selecionadas". _(data/cortesia-items.ts, pages/SelecaoItens.tsx, components/CortesiaSelectionPanel.tsx)_
 - **COR-22** Seções Combos e Produtos só aparecem quando há itens; hoje os dois catálogos estão vazios. _(pages/SelecaoItens.tsx, data/cortesia-items.ts)_
 - **COR-23** "Avançar" exige ao menos um item. Busca sem resultado: "Nenhum item corresponde à busca." _(pages/SelecaoItens.tsx)_
+- **COR-24** Voltar do passo 1 leva ao relatório de cortesias. _(pages/SelecaoItens.tsx)_
 
 ### Emissão, passo 2: Destinatários (`/backstage/destinatarios`)
 - **COR-30** E-mails digitados ou colados, separados por espaço, vírgula, ponto e vírgula ou Enter. _(components/EmailListManager.tsx)_
@@ -90,10 +96,11 @@ A tela mostra só as cortesias do evento em contexto.
 - "Exportar em CSV" só escreve no console.
 - "Reenviar" fica ativo em item cancelado na tabela (no detalhe, fica desabilitado).
 - "Enviar QR Code por e-mail" não é gravado nem muda nada.
-- Voltar da verificação para destinatários perde a lista de e-mails; voltar do passo 1 leva para `/`, a home do protótipo.
+- Voltar da verificação para destinatários perde a lista de e-mails.
 - Editar e-mail não valida formato.
 - Importar aceita .xlsx, mas o arquivo é lido como texto.
 - `pages/GruposParceiros.tsx` (grupos parceiros e cotas) não tem rota: está órfã.
+- Freepass: cancelar uma cortesia no relatório não devolve a cota nem tira a cortesia das vendas do comissário.
 
 ## Fontes
 

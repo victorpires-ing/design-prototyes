@@ -162,6 +162,8 @@ export interface Vitrine {
     categoria?: string;
     tags?: string[];
     descricao?: string[];
+    /** A mesma descrição em rich text (HTML do editor do DS), escrita na criação do evento. `descricao` segue em texto puro para quem só lê parágrafos. */
+    descricaoHtml?: string;
 }
 
 /** Tipo escolhido ao criar o evento. Muda os campos e o vocabulário (esportivo: inscrição, largada). */

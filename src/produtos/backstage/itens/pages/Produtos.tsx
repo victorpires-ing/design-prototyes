@@ -11,12 +11,12 @@ import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { InputBase } from "@/components/base/input/input";
 import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
 import type { ProdutoDaOrganizacao, ProdutoNoEvento } from "@/plataforma";
-import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 import { BackstageLayout } from "../../components/Backstage";
 import { estadoDoProduto, precoDoProduto, produtosDo, salvarProdutosDoEvento, useCatalogo, type EstadoItem, type ProdutoNoCatalogo } from "../data/catalogo";
 import { formatar, useTextosItens } from "../data/textos-itens";
 import { EstadoBadge } from "../components/comuns";
 import { AcoesEmLote, AvisoDeEscala, BarraDeFiltros, BotaoMostrarMais, CaixaDeSelecao, LIMIAR_FERRAMENTAS, paraBusca, useMostrarMais, useSelecao } from "../components/escala";
+import { AbasDeItens } from "../../components/abas-de-itens";
 
 /* ------------------------------------------------------------------ */
 /*  Produtos do evento (ITM)                                           */
@@ -152,9 +152,10 @@ export function Produtos() {
     return (
         <BackstageLayout activeSection="itens" activeItem="catalogo-produtos">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <AbasDeItens ativa="produtos" />
                 <header className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex min-w-0 flex-col gap-0.5">
-                        <h1 className={TITULO_PAGINA}>{TEXTOS.titulo}</h1>
+                        <h2 className="sr-only">{TEXTOS.titulo}</h2>
                         {carregando ? (
                             <span aria-hidden="true" className="mt-1 h-4 w-40 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
                         ) : (

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
+import { FundoDoBody } from './components/fundo-do-body';
 import { Toaster } from 'sonner';
 import { useTheme } from '../providers/theme-provider';
 import { ScenarioControls } from '../app/components/ui/ScenarioControls';
@@ -35,20 +36,10 @@ import { MembrosV2 } from '../produtos/backstage/membros-v2/pages/MembrosV2';
 import { NovoGrupoV2 } from '../produtos/backstage/membros-v2/pages/NovoGrupoV2';
 import { Membros } from '../produtos/backstage/membros/pages/Membros';
 import { CriarCargo } from '../produtos/backstage/membros/pages/CriarCargo';
-import { EquipeProvider } from '../produtos/backstage/equipe-de-operacao/data/equipe-store';
-import { EquipeDeOperacao } from '../produtos/backstage/equipe-de-operacao/pages/EquipeDeOperacao';
-import { CriarGrupo as CriarGrupoOperacao } from '../produtos/backstage/equipe-de-operacao/pages/CriarGrupo';
-import { DetalheGrupo as DetalheGrupoOperacao } from '../produtos/backstage/equipe-de-operacao/pages/DetalheGrupo';
-import { EditarItensCotas } from '../produtos/backstage/equipe-de-operacao/pages/EditarItensCotas';
-import { EditarOperadores } from '../produtos/backstage/equipe-de-operacao/pages/EditarOperadores';
-import { EquipeV2Provider } from '../produtos/backstage/equipe-de-operacao-v2/data/equipe-v2-store';
-import { EquipeDeOperacaoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/EquipeDeOperacaoV2';
-import { CriarGrupoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/CriarGrupoV2';
-import { DetalheGrupoV2 } from '../produtos/backstage/equipe-de-operacao-v2/pages/DetalheGrupoV2';
-import { EquipeV3Provider } from '../produtos/backstage/equipe-de-operacao-v3/data/equipe-v3-store';
-import { EquipeDeOperacaoV3 } from '../produtos/backstage/equipe-de-operacao-v3/pages/EquipeDeOperacaoV3';
-import { CriarGrupoV3 } from '../produtos/backstage/equipe-de-operacao-v3/pages/CriarGrupoV3';
-import { DetalheGrupoV3 } from '../produtos/backstage/equipe-de-operacao-v3/pages/DetalheGrupoV3';
+import { EquipeEComissarios } from '../produtos/backstage/equipe-e-comissarios/pages/equipe-e-comissarios';
+import { GrupoDaEquipe } from '../produtos/backstage/equipe-e-comissarios/pages/grupo';
+import { RedirecionarComissario } from '../produtos/backstage/equipe-e-comissarios/pages/redirecionar-comissario';
+import { RelatorioComissarios } from '../produtos/backstage/comissarios/pages/relatorio-comissarios';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
 import { VenderIngressos } from '../produtos/backstage/bilheteria/pages/VenderIngressos';
 import { IngressoPdf } from '../produtos/backstage/bilheteria/pages/IngressoPdf';
@@ -78,6 +69,7 @@ import { ProdutosDaOrganizacao } from '../produtos/backstage/produtos-organizaca
 import { ProdutoDaOrganizacaoDetalhe } from '../produtos/backstage/produtos-organizacao/pages/ProdutoDaOrganizacaoDetalhe';
 import { Combos as ItensCombos } from '../produtos/backstage/itens/pages/Combos';
 import { ComboDetalhe as ItensComboDetalhe } from '../produtos/backstage/itens/pages/ComboDetalhe';
+import { Configuracoes as ItensConfiguracoes } from '../produtos/backstage/itens/pages/Configuracoes';
 import { PerguntasProvider } from '../produtos/backstage/perguntas/data/perguntas-store';
 import { Perguntas } from '../produtos/backstage/perguntas/pages/Perguntas';
 import { PerguntaForm } from '../produtos/backstage/perguntas/pages/PerguntaForm';
@@ -191,10 +183,9 @@ import { AlterarPedido } from '../produtos/backstage/alteracoes-pos-compra/pages
 import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
 import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
 import { PreVenda } from '../produtos/backstage/marketing/pages/PreVenda';
-import { DistribuicaoCortesias } from '../produtos/freepass/distribuicao-cortesias/pages/distribuicao-cortesias';
-import { CortesiasDoEvento } from '../produtos/freepass/distribuicao-cortesias/pages/cortesias-do-evento';
-import { DetalhesCortesia } from '../produtos/freepass/distribuicao-cortesias/pages/detalhes-cortesia';
-import { EnviarCortesiasFlow, ResgatarCortesiasFlow } from '../produtos/freepass/distribuicao-cortesias/pages/distribuir-cortesias';
+import { EventosFreepass, InicioFreepass } from '../produtos/backstage/freepass/pages/eventos';
+import { VendasNoEvento as FreepassVendasNoEvento } from '../produtos/backstage/freepass/pages/vendas-no-evento';
+import { Recebimentos as FreepassRecebimentos } from '../produtos/backstage/freepass/pages/recebimentos';
 import { Reanalise } from '../produtos/payin/suspensao-de-conta/pages/Reanalise';
 import { SuspenderUsuario } from '../produtos/payin/suspensao-de-conta/pages/SuspenderUsuario';
 import { HistoricoSuspensao } from '../produtos/payin/suspensao-de-conta/pages/HistoricoSuspensao';
@@ -238,9 +229,6 @@ export default function App() {
     <CortesiasProvider>
       <PerguntasProvider>
       <PesquisasProvider>
-      <EquipeProvider>
-      <EquipeV2Provider>
-      <EquipeV3Provider>
       <Routes>
         <Route path="/" element={<ProductSelection />} />
         <Route path="/loading" element={<CymaticsShowcase />} />
@@ -259,21 +247,10 @@ export default function App() {
         <Route path="/backstage/membros/cargos/:id/editar" element={<CriarCargo />} />
         <Route path="/backstage/membros-v2" element={<MembrosV2 />} />
         <Route path="/backstage/membros-v2/grupos/novo" element={<NovoGrupoV2 />} />
-        <Route path="/backstage/equipe-de-operacao" element={<EquipeDeOperacao />} />
-        {/* v2: o grupo ganha permissões de cortesia, PDV e bilheteria, cada uma com sua cota. */}
-        <Route path="/backstage/equipe-de-operacao/v2" element={<EquipeDeOperacaoV2 />} />
-        <Route path="/backstage/equipe-de-operacao/v2/criar" element={<CriarGrupoV2 />} />
-        <Route path="/backstage/equipe-de-operacao/v2/:grupoId" element={<DetalheGrupoV2 />} />
-        <Route path="/backstage/equipe-de-operacao/v2/:grupoId/editar" element={<CriarGrupoV2 />} />
-        {/* v3: variação sobre a v2. */}
-        <Route path="/backstage/equipe-de-operacao/v3" element={<EquipeDeOperacaoV3 />} />
-        <Route path="/backstage/equipe-de-operacao/v3/criar" element={<CriarGrupoV3 />} />
-        <Route path="/backstage/equipe-de-operacao/v3/:grupoId" element={<DetalheGrupoV3 />} />
-        <Route path="/backstage/equipe-de-operacao/v3/:grupoId/editar" element={<CriarGrupoV3 />} />
-        <Route path="/backstage/equipe-de-operacao/criar" element={<CriarGrupoOperacao />} />
-        <Route path="/backstage/equipe-de-operacao/:grupoId" element={<DetalheGrupoOperacao />} />
-        <Route path="/backstage/equipe-de-operacao/:grupoId/editar-itens" element={<EditarItensCotas />} />
-        <Route path="/backstage/equipe-de-operacao/:grupoId/editar-operadores" element={<EditarOperadores />} />
+        {/* Equipe e Comissários (ECO): Equipe de operação e Comissários do evento num destino só. */}
+        <Route path="/backstage/evento/equipe" element={<EquipeEComissarios />} />
+        <Route path="/backstage/evento/equipe/:grupoId" element={<GrupoDaEquipe />} />
+        <Route path="/backstage/equipe-de-operacao/*" element={<Navigate to="/backstage/evento/equipe" replace />} />
         <Route path="/backstage/bilheteria" element={<PedidosBilheteria />} />
         <Route path="/backstage/bilheteria/vender" element={<VenderIngressos />} />
         <Route path="/backstage/bilheteria/ingresso-pdf" element={<IngressoPdf />} />
@@ -311,6 +288,8 @@ export default function App() {
         <Route path="/backstage/catalogo/ingressos/editar-grupos" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
         <Route path="/backstage/catalogo/ingressos/formulario" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
         <Route path="/backstage/catalogo/aberturas-de-vendas" element={<AberturasDeVendas />} />
+        <Route path="/backstage/catalogo/configuracoes" element={<ItensConfiguracoes />} />
+        <Route path="/backstage/catalogo" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
         <Route path="/backstage/catalogo/questionario" element={<Questionario />} />
         <Route path="/backstage/catalogo/questionario/:id" element={<PerguntaDetalhe />} />
         <Route path="/backstage/catalogo/itens" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />
@@ -439,15 +418,35 @@ export default function App() {
         <Route path="/aprovacoes/solicitacoes" element={<SolicitacoesInbox />} />
         <Route path="/backstage/publico" element={<Publico />} />
         <Route path="/backstage/produtos" element={<ProdutosDaOrganizacao />} />
+        {/* Não há mais cadastro de comissário na organização: o grupo é o comissário (ECO-09); o painel virou relatório (ECO-26). */}
+        <Route path="/backstage/relatorios/comissarios" element={<RelatorioComissarios />} />
+        <Route path="/backstage/comissarios/*" element={<Navigate to="/backstage/relatorios/comissarios" replace />} />
+        <Route path="/backstage/evento/comissarios" element={<Navigate to="/backstage/evento/equipe" replace />} />
+        <Route path="/backstage/evento/comissarios/:id" element={<RedirecionarComissario />} />
+        <Route path="/backstage/suas-vendas" element={<Navigate to="/freepass/eventos" replace />} />
         <Route path="/backstage/produtos/:id" element={<ProdutoDaOrganizacaoDetalhe />} />
         <Route path="/backstage/publico/formularios" element={<FormulariosParticipacao />} />
         <Route path="/backstage/publico/solicitacoes" element={<SolicitacoesParticipacao />} />
         <Route path="/backstage/marketing/pre-venda" element={<PreVenda />} />
-        <Route path="/freepass/distribuicao-cortesias" element={<DistribuicaoCortesias />} />
-        <Route path="/freepass/distribuicao-cortesias/:eventoId" element={<CortesiasDoEvento />} />
-        <Route path="/freepass/distribuicao-cortesias/:eventoId/enviar" element={<EnviarCortesiasFlow />} />
-        <Route path="/freepass/distribuicao-cortesias/:eventoId/resgatar" element={<ResgatarCortesiasFlow />} />
-        <Route path="/freepass/distribuicao-cortesias/:eventoId/:itemId" element={<DetalhesCortesia />} />
+        {/* Freepass: o Backstage com acessos a menos. Mesma shell e mesmas telas de cortesia e bilheteria (BKS-60). */}
+        <Route path="/freepass" element={<InicioFreepass />} />
+        <Route path="/freepass/eventos" element={<EventosFreepass />} />
+        {/* Visualização por funcionalidade (FCO-85): a lista de eventos de cada funcionalidade. */}
+        <Route path="/freepass/vendas" element={<EventosFreepass funcao="vendas" />} />
+        <Route path="/freepass/cortesias/eventos" element={<EventosFreepass funcao="cortesia" />} />
+        <Route path="/freepass/bilheteria/eventos" element={<EventosFreepass funcao="bilheteria" />} />
+        <Route path="/freepass/recebimentos" element={<FreepassRecebimentos />} />
+        <Route path="/freepass/evento/vendas" element={<FreepassVendasNoEvento />} />
+        <Route path="/freepass/cortesias" element={<RelatorioPedidos />} />
+        <Route path="/freepass/itens" element={<SelecaoItens />} />
+        <Route path="/freepass/destinatarios" element={<EmissaoCortesias />} />
+        <Route path="/freepass/verificacao" element={<VerificacaoFinal />} />
+        <Route path="/freepass/bilheteria" element={<PedidosBilheteria />} />
+        <Route path="/freepass/bilheteria/vender" element={<VenderIngressos />} />
+        <Route path="/freepass/bilheteria/ingresso-pdf" element={<IngressoPdf />} />
+        {/* Endereços antigos do Freepass (cabeçalho próprio e envio de cortesia próprio). */}
+        <Route path="/freepass/distribuicao-cortesias/*" element={<Navigate to="/freepass/eventos" replace />} />
+        <Route path="/freepass/comissarios/*" element={<Navigate to="/freepass/eventos" replace />} />
         <Route path="/payin" element={<PayInMenu />} />
         <Route path="/payin/checkout" element={<PayInCheckout />} />
         <Route path="/payin/checkout/analise" element={<PayInAnaliseFeedback />} />
@@ -467,9 +466,7 @@ export default function App() {
         <Route path="/checkout/protecao-de-compra" element={<ProtecaoDeCompra />} />
       </Routes>
       <Toaster position="bottom-right" theme={theme} />
-      </EquipeV3Provider>
-      </EquipeV2Provider>
-      </EquipeProvider>
+      <FundoDoBody />
       </PesquisasProvider>
       </PerguntasProvider>
     </CortesiasProvider>

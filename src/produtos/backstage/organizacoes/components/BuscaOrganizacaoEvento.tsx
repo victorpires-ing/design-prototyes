@@ -98,7 +98,8 @@ export function useEscolherResultado(aoEscolher?: () => void) {
         } else {
             setOrganizacaoAtual(organizacaoDoEvento(item.evento));
             setEventoAtual(item.evento.id);
-            navigate("/backstage/relatorios/vendas-por-grupo");
+            // Entrar no evento abre Itens › Ingressos (EVT-07).
+            navigate("/backstage/catalogo/ingressos");
         }
         aoEscolher?.();
     };

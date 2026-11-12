@@ -19,9 +19,10 @@ import { Toggle } from "@/components/base/toggle/toggle";
 import { Surgir, useTransicao } from "@/components/foundations/transicao";
 import type { CategoriaLimite, ConfiguracoesAvancadas, Modalidade, TipoEvento } from "@/plataforma";
 import { cx } from "@/utils/cx";
-import { BackstageLayout } from "../../components/Backstage";
+import { BackstageLayout, prepararGuiaDoEventoNovo } from "../../components/Backstage";
 import { useOrganizacaoAtual } from "../../organizacoes/data/organizacao-atual";
 import { criarEvento } from "../data/eventos";
+import { CampoBanner, CampoBannerCompacto, exportarRecorte, useBannerNaColuna, type ImagemDoBanner, type Recorte } from "../components/campo-banner";
 import { buscarLocais, useOpcoesEvento, type LocalEncontrado, type Opcao } from "../data/opcoes-evento";
 import { tipoDeEvento } from "../data/tipos-evento";
 import { formatar, useTextos, vocabularioDe } from "../data/textos-criar-evento";
@@ -109,7 +110,9 @@ interface Formulario {
     limiteGeral: Limite;
     limites: Partial<Record<CategoriaLimite, Limite>>;
     descricao: string;
-    banner: Imagem | null;
+    banner: ImagemDoBanner | null;
+    /** Parte da imagem que vira o banner (EVT-81). */
+    recorteBanner: Recorte | null;
     mapaTipo: "imagem" | "assentos";
     mapaImagem: Imagem | null;
     mapaId: string;
@@ -135,6 +138,7 @@ const INICIAL: Omit<Formulario, "tipo"> = {
     limites: {},
     descricao: "",
     banner: null,
+    recorteBanner: null,
     mapaTipo: "imagem",
     mapaImagem: null,
     mapaId: "",
@@ -232,7 +236,21 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
     // EVT-64: com algo preenchido, sair pede confirmação.
     const sair = () => (preenchido ? setConfirmarSaida(true) : navigate("/backstage/eventos"));
 
-    const criar = () => {
+    // Banner: sem limite de tamanho (o que vai para o evento é o recorte em 1080 × 1350, EVT-81). O recorte se faz no modal do DS.
+    const bannerNaColuna = useBannerNaColuna();
+    const propsDoBanner = {
+        imagem: f.banner,
+        recorte: f.recorteBanner,
+        validar: (file: File) => {
+            const ok = ["image/png", "image/jpeg"].includes(file.type);
+            if (!ok) toast.error("Escolha uma imagem PNG ou JPG para o banner.");
+            return ok;
+        },
+        onAplicar: (banner: ImagemDoBanner, recorteBanner: Recorte) => setF((a) => ({ ...a, banner, recorteBanner })),
+        onRemover: () => setF((a) => ({ ...a, banner: null, recorteBanner: null })),
+    };
+
+    const criar = async () => {
         setTentou(true);
         const e = validar(f);
         if (Object.keys(e).length > 0) {
@@ -240,7 +258,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
             requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-erro]")?.scrollIntoView({ behavior: "smooth", block: "center" }));
             return;
         }
-        criarEvento({
+        const novo = criarEvento({
             nome: f.nome.trim(),
             data: new Date(f.inicio).toISOString(),
             sessoes: [f.inicio, ...f.sessoesExtras.map((s) => s.valor)].map((s) => new Date(s).toISOString()),
@@ -248,7 +266,8 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
             cidade: f.local!.cidade,
             produtor: organizacao?.nome ?? "",
             descricao: f.descricao.trim() || undefined,
-            capa: f.banner?.dataUrl,
+            // A capa é o recorte, não a imagem enviada (EVT-81).
+            capa: f.banner && f.recorteBanner ? await exportarRecorte(f.banner, f.recorteBanner) : undefined,
             extras: {
                 tipo: f.tipo,
                 modalidade: f.tipo === "esportivo" ? (f.modalidade as Modalidade) : undefined,
@@ -264,7 +283,8 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                 avancado: f.avancado,
             },
         });
-        toast.success(f.tipo === "esportivo" ? "Evento criado como rascunho. Agora crie as inscrições em Ingressos." : "Evento criado como rascunho. Agora crie os ingressos.");
+        // Sem toast: quem anuncia o evento criado é o holofote do guia de configuração, que só toca aqui (EVT-10, GDC-14).
+        prepararGuiaDoEventoNovo(novo.id);
         navigate("/backstage/catalogo/ingressos");
     };
 
@@ -288,9 +308,14 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                         </div>
                     </div>
                 </header>
-                {/* Formulário centralizado, até 732 px, com a barra de ações (UI-VIS-009). */}
-                <div className="mx-auto flex w-full max-w-[732px] min-w-0 flex-1 flex-col">
-                <div className="flex w-full flex-col gap-6 px-1 pb-6 md:px-0">
+                {/* Formulário centralizado, até 732 px, com a barra de ações (UI-VIS-009). No desktop o banner fica à direita, por fora (EVT-79). */}
+                <div className={cx("mx-auto flex w-full min-w-0 flex-1", bannerNaColuna ? "max-w-[1036px] items-start gap-6" : "max-w-[732px] flex-col")}>
+                {bannerNaColuna && (
+                    <aside aria-label="Banner do evento" className="sticky top-6 order-last w-[280px] shrink-0">
+                        <CampoBanner {...propsDoBanner} />
+                    </aside>
+                )}
+                <div className="flex w-full max-w-[732px] min-w-0 flex-1 flex-col gap-6 px-1 pb-6 md:px-0">
 
                     <Surgir visivel={opcoes.status === "erro"} gap={24}>
                         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-error-primary px-4 py-3 ring-1 ring-error_subtle">
@@ -377,6 +402,8 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                                         <CampoLocal valor={f.local} onChange={(v) => set("local", v)} erro={erros.local} />
                                     </div>
                                 </Grade>
+                                {/* Abaixo do desktop, o banner fica aqui no formato horizontal de antes (EVT-80). */}
+                                {!bannerNaColuna && <CampoBannerCompacto {...propsDoBanner} />}
                             </Secao>
 
                             <Secao titulo="Datas">
@@ -500,7 +527,6 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                                     value={f.descricao}
                                     onChange={(v) => set("descricao", v)}
                                 />
-                                <CampoImagem label="Banner" hint="PNG ou JPG até 400 KB, de preferência 1080 × 1350 px." arquivo={f.banner} onEscolher={(img) => set("banner", img)} onRemover={() => set("banner", null)} />
                                 <div className="flex flex-col gap-3" data-erro={erros.mapa ? "" : undefined}>
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <span className="text-sm font-medium text-secondary">Mapa</span>

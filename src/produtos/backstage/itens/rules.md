@@ -101,6 +101,7 @@ Decisões de produto (Victor, 08/11/2026):
 - **ITM-62** Combos disponíveis = o menor entre (disponível de cada item ÷ quantidade no combo) e o limite do combo. Item pausado ou esgotado zera o combo. _(data/catalogo.ts)_
 - **ITM-63** Validação: nome obrigatório, pelo menos um item e preço ≥ 0; ao salvar com erro, a seção com erro abre e aparece "Revise os campos destacados para salvar o combo." _(pages/ComboDetalhe.tsx)_
 - **ITM-64** Vazio: "Nenhum combo ainda"; se o evento não tem ingresso nem produto, o vazio pede para criar ingressos ou adicionar produtos primeiro, e "Criar combo" some. _(pages/Combos.tsx)_
+- **ITM-65** Ingressos recebe do Guia de configuração: o alerta "Nada programado para entrar à venda" abaixo do cabeçalho e `?novoSetor=1`, que abre o modal "Novo setor" ao chegar (`guia-de-configuracao/rules.md` GDC-10 e GDC-11). _(pages/Ingressos.tsx)_
 
 
 ## Depende de / afeta

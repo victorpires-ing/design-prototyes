@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Reorder, useDragControls, useReducedMotion } from "motion/react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { ChevronDown, Edit01, Plus, SearchLg, Ticket01 } from "@untitledui/icons";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
@@ -15,7 +15,7 @@ import type { Evento, Grupo, Sessao, TipoIngresso } from "@/plataforma";
 import { loteAtual } from "@/plataforma";
 import { TITULO_PAGINA } from "@/produtos/backstage/components/titulo-pagina";
 import { cx } from "@/utils/cx";
-import { BackstageLayout } from "../../components/Backstage";
+import { AlertaDoGuia, BackstageLayout, PARAMETRO_NOVO_SETOR } from "../../components/Backstage";
 import { CamposDeVendas, EstadoBadge, useResumoDasVendas } from "../components/comuns";
 import { BotaoChaves } from "../components/VerChaves";
 import { Alca, mover } from "../components/Alca";
@@ -128,6 +128,17 @@ export function Ingressos() {
     const totalIngressos = todosIngressos.length;
     const nomesDeSetor = [...new Set(setores.map((g) => g.nome))];
 
+    // "Criar" no passo de setores do guia de configuração chega com ?novoSetor=1 e abre o modal (GDC-11).
+    const [parametros, setParametros] = useSearchParams();
+    useEffect(() => {
+        if (carregando || !parametros.has(PARAMETRO_NOVO_SETOR) || !sessoes.length) return;
+        setModalSetor({ sessaoId: sessoes[0].id });
+        setParametros((p) => {
+            p.delete(PARAMETRO_NOVO_SETOR);
+            return p;
+        }, { replace: true });
+    }, [carregando, parametros, sessoes.length]);
+
     // Filtro aplicado à árvore sessão > setor > ingressos (UI-LST-001).
     const termo = paraBusca(busca.trim());
     const filtrando = !!termo || estado !== "todos" || sessaoId !== "todos" || setorNome !== "todos";
@@ -230,6 +241,8 @@ export function Ingressos() {
                         </Button>
                     </div>
                 </header>
+
+                <AlertaDoGuia eventoId={evento?.id} />
 
                 <AvisoDeEscala />
 

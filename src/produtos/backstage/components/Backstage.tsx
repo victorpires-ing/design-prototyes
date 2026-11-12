@@ -61,6 +61,10 @@ import { useOrganizacaoAtual } from "../organizacoes/data/organizacao-atual";
 import { useTheme } from "@/providers/theme-provider";
 import { ThemeToggle } from "./ThemeToggle";
 import { RemixDock } from "./remix/RemixShell";
+import { GuiaDeConfiguracao } from "../guia-de-configuracao/components/guia-de-configuracao";
+/** Telas do evento usam o alerta do guia por aqui, sem importar de outro projeto. */
+export { AlertaDoGuia, PARAMETRO_NOVO_SETOR } from "../guia-de-configuracao/components/guia-de-configuracao";
+export { prepararGuiaDoEventoNovo } from "../guia-de-configuracao/data/memoria";
 
 export type BackstageSection =
     | "equipe-e-permissoes"
@@ -249,6 +253,9 @@ export function BackstageLayout({
         />
     );
 
+    // Guia de configuração do evento (guia-de-configuracao/rules.md): segue o produtor pelas telas do evento.
+    const guiaDeConfiguracao = showEventContext && <GuiaDeConfiguracao eventoId={eventoAtual.id} abrirModalDeStatus={abrirModalDeStatus} />;
+
     if (variant === "topbar") {
         return (
             <EventStatusModalContext.Provider value={abrirModalDeStatus}>
@@ -267,6 +274,7 @@ export function BackstageLayout({
                     </div>
                     {showLayoutSwitcher && mostrarSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
                     {statusModal}
+                    {guiaDeConfiguracao}
                     <SeletorOrganizacaoModal />
                 </div>
             </EventStatusModalContext.Provider>
@@ -285,6 +293,7 @@ export function BackstageLayout({
                 </div>
                 {showLayoutSwitcher && mostrarSwitcher && <LayoutSwitcher variant={variant} onChange={setVariant} />}
                 {statusModal}
+                {guiaDeConfiguracao}
                 <SeletorOrganizacaoModal />
             </div>
         </EventStatusModalContext.Provider>

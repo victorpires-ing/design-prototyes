@@ -85,6 +85,7 @@ mostram.
 | --- | --- |
 | `organizacoes/` | Seleção e troca de organização, busca de organização ou evento |
 | `eventos/` | Lista de eventos, visão geral, informações do evento e status |
+| `guia-de-configuracao/` | Guia de configuração do evento: painel com o que falta para vender, holofote pós-criação e alerta de abertura |
 | `ingressos/`, `catalogo/`, `aberturas-de-vendas/` | Itens: ingressos, catálogo e aberturas de vendas |
 | `perguntas/`, `pesquisas/` | Perguntas e pesquisas do formulário |
 | `alteracoes-pos-compra/` | Pedidos e alterações depois da compra |

@@ -44,6 +44,17 @@ import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/Chave
 import { VenderIngressos } from '../produtos/backstage/bilheteria/pages/VenderIngressos';
 import { IngressoPdf } from '../produtos/backstage/bilheteria/pages/IngressoPdf';
 import { PedidosBilheteria } from '../produtos/backstage/bilheteria/pages/Pedidos';
+import { Pedidos as PedidosOrg } from '../produtos/backstage/pedidos/pages/pedidos';
+import { Pedido as PedidoOrg } from '../produtos/backstage/pedidos/pages/pedido';
+import { RevisarAlteracoes } from '../produtos/backstage/pedidos/pages/revisar-alteracoes';
+import { EditarEvento } from '../produtos/backstage/pedidos/pages/editar-evento';
+import { LinkPagamento } from '../produtos/backstage/pedidos/pages/link-pagamento';
+import { BorderoTroca, TransacoesTroca } from '../produtos/backstage/pedidos/pages/relatorios-troca';
+import { Emails as EmailsTroca } from '../produtos/backstage/pedidos/pages/emails';
+import { Inscricoes as CarteiraInscricoes } from '../produtos/carteira-web/troca-de-inscricao/pages/inscricoes';
+import { Trocar as CarteiraTrocar } from '../produtos/carteira-web/troca-de-inscricao/pages/trocar';
+import { Perguntas as CarteiraPerguntas } from '../produtos/carteira-web/troca-de-inscricao/pages/perguntas';
+import { Pagamento as CarteiraPagamento, TrocaConfirmada as CarteiraTrocaConfirmada } from '../produtos/carteira-web/troca-de-inscricao/pages/pagamento';
 import { VincularItens } from '../produtos/backstage/chave-de-acesso/pages/VincularItens';
 import { ListaChaves } from '../produtos/backstage/chave-de-acesso/pages/ListaChaves';
 import { SeletorTimes } from '../produtos/futebol/landing-pages/pages/SeletorTimes';
@@ -210,6 +221,19 @@ export default function App() {
         <Route path="/backstage/equipe-de-operacao/:grupoId" element={<DetalheGrupoOperacao />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId/editar-itens" element={<EditarItensCotas />} />
         <Route path="/backstage/equipe-de-operacao/:grupoId/editar-operadores" element={<EditarOperadores />} />
+        <Route path="/backstage/pedidos" element={<PedidosOrg />} />
+        <Route path="/backstage/pedidos/:id" element={<PedidoOrg />} />
+        <Route path="/backstage/pedidos/:id/revisar" element={<RevisarAlteracoes />} />
+        <Route path="/backstage/evento/editar" element={<EditarEvento />} />
+        <Route path="/troca/link/:id" element={<LinkPagamento />} />
+        <Route path="/backstage/pedidos/relatorios/transacoes" element={<TransacoesTroca />} />
+        <Route path="/backstage/pedidos/relatorios/bordero" element={<BorderoTroca />} />
+        <Route path="/backstage/pedidos/emails" element={<EmailsTroca />} />
+        <Route path="/carteira-web/inscricoes" element={<CarteiraInscricoes />} />
+        <Route path="/carteira-web/inscricoes/:itemId/trocar" element={<CarteiraTrocar />} />
+        <Route path="/carteira-web/inscricoes/:itemId/trocar/perguntas" element={<CarteiraPerguntas />} />
+        <Route path="/carteira-web/troca/:solId/pagamento" element={<CarteiraPagamento />} />
+        <Route path="/carteira-web/troca/:solId/confirmada" element={<CarteiraTrocaConfirmada />} />
         <Route path="/backstage/bilheteria" element={<PedidosBilheteria />} />
         <Route path="/backstage/bilheteria/vender" element={<VenderIngressos />} />
         <Route path="/backstage/bilheteria/ingresso-pdf" element={<IngressoPdf />} />

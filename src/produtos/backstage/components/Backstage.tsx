@@ -96,7 +96,7 @@ export type BackstageItem =
     | "chave-de-acesso"
     | "formularios-compra";
 
-const DISABLED_KEYS: Key[] = ["informacoes-evento", "catalogo-combos", "catalogo-produtos"];
+const DISABLED_KEYS: Key[] = ["catalogo-combos", "catalogo-produtos"];
 
 interface BackstageLayoutProps {
     activeSection?: BackstageSection;
@@ -328,6 +328,7 @@ const ORG_SECTIONS: OrgSection[] = [
     { id: "membros", icon: UserSquare, label: "Membros" },
     { id: "financas", icon: Bank, label: "Finanças" },
     { id: "produtos", icon: ShoppingBag03, label: "Produtos" },
+    { id: "pedidos", icon: ShoppingCart01, label: "Pedidos", href: "/backstage/pedidos" },
     { id: "publico", icon: Users01, label: "Público", href: "/backstage/publico" },
     { id: "ajustes", icon: Settings01, label: "Ajustes" },
 ];
@@ -460,6 +461,7 @@ const PRODUCER_NAV: Array<{
     { id: "eventos", icon: Calendar, label: "Eventos", href: "/backstage/eventos" },
     { id: "permissao", icon: UsersPlus, label: "Permissão", href: "/backstage/permissao-envio" },
     { id: "produtos", icon: Package, label: "Produtos" },
+    { id: "pedidos", icon: ShoppingCart01, label: "Pedidos", href: "/backstage/pedidos" },
     {
         id: "publico",
         icon: Users01,
@@ -883,7 +885,7 @@ const EventFunctionalitiesList = ({ activeSection, activeItem, size = "sm" }: Ev
                 </TreeView.ItemContent>
             </TreeView.Item>
 
-            <TreeView.Item id="informacoes-evento" textValue="Informações do evento">
+            <TreeView.Item id="informacoes-evento" textValue="Informações do evento" href="/backstage/evento/editar">
                 <TreeView.ItemContent icon={InfoCircle}>Informações do evento</TreeView.ItemContent>
             </TreeView.Item>
 

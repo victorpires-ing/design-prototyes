@@ -132,14 +132,3 @@ html.tema-backstage.dark-mode {
   --color-bg-brand-solid: var(--color-brand-50);
   --color-bg-brand-solid_hover: var(--color-brand-200);
 }
-
-/* No Backstage, só o botão primário é vermelho, com texto branco.
-   Só o Button do DS combina bg-brand-solid com a sombra skeuomórfica: as variáveis que as
-   utilidades leem são trocadas no próprio botão, sem mexer no componente. Vermelho do AFTER DS
-   (bg-brand-solid #ff271a, hover no brand-700 do vermelho). */
-html.tema-backstage .bg-brand-solid.shadow-xs-skeuomorphic {
-  --background-color-brand-solid: rgb(255 39 26);
-  --background-color-brand-solid_hover: rgb(200 31 20);
-  --text-color-white: rgb(255 255 255);
-  --color-text-white: rgb(255 255 255);
-}

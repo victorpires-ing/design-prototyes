@@ -86,7 +86,7 @@ mostram.
 - **BKS-67** Todo toast tem o botão de fechar ("Fechar aviso"), além de sumir sozinho. _(app/App.tsx)_
 - **BKS-68** O rail da organização não tem o botão de tema: o tema se troca em Ajustes, Tema da interface (ORG-45). _(components/Backstage.tsx)_
 - **BKS-69** No rail da organização, o nome da organização aparece abaixo do avatar, em até duas linhas; o avatar e o nome juntos abrem a troca de organização. _(components/Backstage.tsx)_
-- **BKS-70** Backstage e Freepass usam a marca neutra (monocromática): nas rotas `/backstage` e `/freepass`, o `<html>` ganha a classe `tema-backstage`, que troca a escala brand e o sólido de marca. Só o botão primário fica vermelho (#ff271a) com texto branco. Os outros produtos seguem o vermelho do tema. _(app/App.tsx, styles/index.css)_
+- **BKS-70** Backstage e Freepass usam a marca neutra (monocromática): nas rotas `/backstage` e `/freepass`, o `<html>` ganha a classe `tema-backstage`, que troca a escala brand e o sólido de marca. O botão primário também é neutro, como o resto. Os outros produtos seguem o vermelho do tema. _(app/App.tsx, styles/index.css)_
 
 ### Remix
 - **BKS-50** O assistente Remix vive na shell: abre de qualquer tela do Backstage (não no Freepass, BKS-64) e sabe se o contexto é a organização ou o evento em contexto. _(components/remix/remix-context.tsx)_

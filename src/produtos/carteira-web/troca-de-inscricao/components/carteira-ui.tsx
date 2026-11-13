@@ -40,6 +40,7 @@ const Bandeira = () => (
 /** Topo da carteira (lista de inscrições). */
 export function TopoCarteira() {
     useTroca();
+    useTemaClaro();
     return (
         <div className="flex items-center justify-between border-b border-secondary bg-primary px-3 py-3.5">
             <LogoTs />
@@ -55,6 +56,7 @@ export function TopoCarteira() {
 /** Topo das telas de compra (Trocar ingresso, Finalizar pedido), com a faixa do evento. */
 export function TopoCompra() {
     useTroca();
+    useTemaClaro();
     return (
         <div className="flex items-center justify-between px-6 py-5 md:px-10" style={{ background: "linear-gradient(90deg,#1e3a8a 0%,#334155 35%,#7c2d12 70%,#1e293b 100%)" }}>
             <LogoTs claro />
@@ -185,4 +187,33 @@ export function useTopoAoEntrar(chave?: string) {
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
     }, [chave]);
+}
+
+/**
+ * A carteira é sempre clara, como em produção: enquanto a tela está aberta, tira o tema escuro
+ * da página e devolve o tema escolhido ao sair (o Backstage continua seguindo o seletor de tema).
+ */
+let telasClaras = 0;
+export function useTemaClaro() {
+    useEffect(() => {
+        const raiz = document.documentElement;
+        telasClaras++;
+        raiz.classList.remove("dark-mode");
+        // O seletor de tema pode reaplicar a classe; enquanto a carteira estiver aberta, ela sai de novo.
+        const obs = new MutationObserver(() => {
+            if (raiz.classList.contains("dark-mode")) raiz.classList.remove("dark-mode");
+        });
+        obs.observe(raiz, { attributes: true, attributeFilter: ["class"] });
+        return () => {
+            obs.disconnect();
+            telasClaras--;
+            // Só devolve o tema quando nenhuma tela da carteira está aberta (evita piscar entre telas).
+            setTimeout(() => {
+                if (telasClaras > 0) return;
+                const tema = window.localStorage.getItem("ui-theme");
+                const escuro = tema === "dark" || ((!tema || tema === "system") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+                raiz.classList.toggle("dark-mode", escuro);
+            }, 0);
+        };
+    }, []);
 }

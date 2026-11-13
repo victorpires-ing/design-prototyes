@@ -105,3 +105,15 @@ button {
 .ghost-buttom:active {
   background: #D2D2D2;
 }
+
+/* Botão primário vermelho com texto branco; o resto da marca continua neutro (monocromático).
+   Só o Button do DS combina bg-brand-solid com a sombra skeuomórfica: os tokens são trocados no
+   próprio botão, sem mexer no componente nem na escala brand. Vermelho do AFTER DS
+   (bg-brand-solid #ff271a, hover no brand-700 do vermelho). */
+.bg-brand-solid.shadow-xs-skeuomorphic {
+  /* As utilidades leem estas variáveis, resolvidas na raiz: por isso são redefinidas aqui, no botão. */
+  --background-color-brand-solid: rgb(255 39 26);
+  --background-color-brand-solid_hover: rgb(200 31 20);
+  --text-color-white: rgb(255 255 255);
+  --color-text-white: rgb(255 255 255);
+}

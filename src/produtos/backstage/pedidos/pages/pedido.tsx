@@ -56,6 +56,11 @@ export function Pedido() {
     const [confirmaSair, setConfirmaSair] = useState(false);
     const [confirmaCancelar, setConfirmaCancelar] = useState(false);
 
+    // Abre no topo: a lista de pedidos pode estar rolada.
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+    }, [id]);
+
     // Libera reservas e expira links enquanto a tela está aberta.
     useEffect(() => {
         tick();
@@ -90,7 +95,14 @@ export function Pedido() {
         descartarRascunho(p.id);
         navigate("/backstage/pedidos");
     };
-    const rolarAte = (itId: string) => setTimeout(() => document.getElementById(`item-${itId}`)?.scrollIntoView({ block: "start", behavior: "smooth" }), 60);
+    // Só rola se o cartão saiu da vista; se a pessoa já está nele, a tela fica onde está.
+    const rolarAte = (itId: string) =>
+        setTimeout(() => {
+            const el = document.getElementById(`item-${itId}`);
+            if (!el) return;
+            const r = el.getBoundingClientRect();
+            if (r.top < 0 || r.top > window.innerHeight - 120) el.scrollIntoView({ block: "start", behavior: "smooth" });
+        }, 60);
 
     const revisar = () => {
         D.tentou = true;
@@ -361,7 +373,7 @@ function Historico({ p }: { p: TPedido }) {
                 <ChevronDown className={cx("size-5 text-fg-quaternary transition-transform", aberto && "rotate-180")} aria-hidden="true" />
             </button>
             {aberto && (
-                <ol className="mt-4 flex animate-in flex-col gap-4 duration-200 fade-in">
+                <ol className="mt-4 flex motion-safe:animate-in flex-col gap-4 duration-200 motion-safe:fade-in">
                     {linhas.map(([t, x], i) => (
                         <li key={i} className="flex gap-3">
                             <span className="mt-1.5 size-2 shrink-0 rounded-full bg-fg-quaternary" aria-hidden="true" />

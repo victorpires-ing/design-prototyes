@@ -268,7 +268,7 @@ function Email({ tipo, s, para }: { tipo: string; s: Solicitacao; para: { nome: 
     const [assunto, corpo] = M[tipo];
 
     return (
-        <div className="flex animate-in flex-col gap-3 duration-200 fade-in">
+        <div className="flex motion-safe:animate-in flex-col gap-3 duration-200 motion-safe:fade-in">
             <p className="text-sm text-tertiary">
                 De: Ticket Sports, no-reply@ticketsports.com.br
                 <br />

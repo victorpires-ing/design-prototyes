@@ -53,7 +53,7 @@ export function ModalTrocarInscricao({ item, selecionado, onClose, onEscolher }:
                                 <ButtonUtility size="xs" color="tertiary" icon={XClose} tooltip="Fechar" onClick={onClose} />
                             </div>
 
-                            <div className="flex flex-col gap-3 overflow-y-auto px-6 pb-4">
+                            <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-6 pb-4 *:shrink-0">
                                 {ops.length > 8 && <InputBase size="sm" icon={SearchLg} aria-label="Buscar modalidade" placeholder="Buscar modalidade" value={busca} onChange={(e) => setBusca(e.target.value)} />}
 
                                 <div className="flex items-start justify-between gap-4 rounded-xl bg-secondary p-4">
@@ -84,13 +84,13 @@ export function ModalTrocarInscricao({ item, selecionado, onClose, onEscolher }:
 
                                 <p className="text-sm text-tertiary">Só o lote ativo de cada inscrição pode ser escolhido. Lotes esgotados aparecem para consulta.</p>
                                 <AriaRadioGroup aria-label="Nova inscrição" value={sel} onChange={setSel} className="flex flex-col overflow-hidden rounded-xl ring-1 ring-border-secondary">
-                                    <div className="flex items-center justify-between gap-3 border-b border-secondary bg-secondary px-4 py-3">
+                                    <div className="flex items-center justify-between gap-3 bg-secondary px-4 py-3">
                                         <span className="text-sm font-semibold text-primary">{EVENTO.sessao}</span>
                                         <span className="text-xs text-tertiary">Sessão</span>
                                     </div>
                                     {grupos.map((g) => (
                                         <div key={g} role="group" aria-label={`Grupo ${g}`}>
-                                            <div className="flex items-center justify-between gap-3 border-b border-secondary bg-secondary_subtle px-4 py-2.5 pl-6">
+                                            <div className="flex items-center justify-between gap-3 border-y border-secondary bg-secondary_subtle px-4 py-2.5 pl-6">
                                                 <span className="text-sm font-semibold text-primary">{g}</span>
                                                 <span className="text-xs text-tertiary">Grupo</span>
                                             </div>
@@ -189,7 +189,7 @@ function Inscricao({ o, item }: { o: Opcao; item: Item }) {
                                 isDisabled={o.off}
                                 className={({ isSelected, isDisabled, isFocusVisible }) =>
                                     cx(
-                                        "flex cursor-pointer items-center gap-3 border-t border-secondary py-3 pr-4 pl-16 transition duration-100 ease-linear hover:bg-primary_hover",
+                                        "relative flex cursor-pointer items-center gap-3 border-t border-secondary py-3 pr-4 pl-16 transition duration-100 ease-linear hover:bg-primary_hover",
                                         isSelected && "bg-brand-primary_alt",
                                         isFocusVisible && "outline-2 -outline-offset-2 outline-focus-ring",
                                         isDisabled && "cursor-not-allowed hover:bg-transparent",

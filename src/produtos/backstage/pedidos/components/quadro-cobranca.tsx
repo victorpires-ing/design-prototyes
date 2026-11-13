@@ -21,7 +21,7 @@ export function QuadroCobranca({ nomeAtual, pago, taxa, lote, f, titulo, rotuloT
         ["Taxa de troca", brl(f.tt)],
     ];
     return (
-        <div className="flex animate-in flex-col rounded-lg bg-secondary p-4 duration-200 fade-in" aria-label={titulo ?? "Detalhes da cobrança"}>
+        <div className="flex motion-safe:animate-in flex-col rounded-lg bg-secondary p-4 duration-200 motion-safe:fade-in" aria-label={titulo ?? "Detalhes da cobrança"}>
             {titulo && <h3 className="mb-2 text-md font-semibold text-primary">{titulo}</h3>}
             {linhas.map(([a, b]) => (
                 <Linha key={a} rotulo={a} valor={b} />

@@ -127,7 +127,7 @@ export function LinkPagamento() {
                                     <AriaRadio
                                         key={o}
                                         value={o}
-                                        className={({ isSelected }) => cx("flex cursor-pointer items-center gap-3 rounded-xl p-4 ring-1 ring-border-secondary ring-inset", isSelected && "ring-2 ring-brand")}
+                                        className={({ isSelected }) => cx("relative flex cursor-pointer items-center gap-3 rounded-xl p-4 ring-1 ring-border-secondary ring-inset", isSelected && "ring-2 ring-brand")}
                                     >
                                         {({ isSelected, isFocusVisible }) => (
                                             <>
@@ -182,7 +182,7 @@ export function LinkPagamento() {
 
 function Cartao({ titulo, texto, carregando, children }: { titulo: string; texto: string; carregando?: boolean; children?: React.ReactNode }) {
     return (
-        <section className="mx-auto flex max-w-lg animate-in flex-col items-center rounded-xl bg-primary px-6 py-10 text-center ring-1 ring-border-secondary duration-200 fade-in" aria-busy={carregando}>
+        <section className="mx-auto flex max-w-lg motion-safe:animate-in flex-col items-center rounded-xl bg-primary px-6 py-10 text-center ring-1 ring-border-secondary duration-200 motion-safe:fade-in" aria-busy={carregando}>
             <h1 className="text-display-xs font-bold text-primary">{titulo}</h1>
             <p className="mt-2 text-md text-tertiary">{texto}</p>
             {carregando && <div className="mt-5 h-2 w-60 animate-pulse rounded-full bg-tertiary" />}

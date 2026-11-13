@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router";
 import { CheckCircle, Clock } from "@untitledui/icons";
 import { Radio as AriaRadio, RadioGroup as AriaRadioGroup } from "react-aria-components";
@@ -7,11 +7,10 @@ import { Button } from "@/components/base/buttons/button";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { cx } from "@/utils/cx";
-import { BarraVoltar, ControlesCarteira, TopoCompra } from "../components/carteira-ui";
+import { BarraVoltar, ControlesCarteira, Etapas, TopoCompra, brlc, useTopoAoEntrar } from "../components/carteira-ui";
 import { ResumoTroca } from "../components/resumo-troca";
 import { ate, itemPorId, lote, mod, nomeItem, nomes, pagarNaCarteira, ped, sol, tempoAcabouCarteira, tick, useTroca } from "../data/troca-store";
 
-const brlc = (v = 0) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const mmss = (ms: number) => {
     const t = Math.max(0, ms);
     return `${String(Math.floor(t / 60000)).padStart(2, "0")}:${String(Math.floor(t / 1000) % 60).padStart(2, "0")}`;
@@ -21,10 +20,21 @@ const mmss = (ms: number) => {
 export function Pagamento() {
     useTroca();
     const { solId } = useParams();
+    useTopoAoEntrar(solId);
     const navigate = useNavigate();
     const [agora, setAgora] = useState(Date.now());
     const [forma, setForma] = useState("Pix");
     const s = sol(solId);
+    const avisou = useRef(false);
+
+    // Avisa antes da reserva acabar (UI-A11Y-003).
+    useEffect(() => {
+        if (!s?.reservaAte || avisou.current) return;
+        if (s.reservaAte - agora <= 60_000 && s.reservaAte - agora > 0) {
+            avisou.current = true;
+            toast.warning("Falta 1 minuto para a vaga ser liberada", { description: "Conclua o pagamento para garantir a troca." });
+        }
+    }, [agora, s?.reservaAte]);
 
     useEffect(() => {
         const t = setInterval(() => {
@@ -59,13 +69,16 @@ export function Pagamento() {
                 }
             />
             <div className="px-5 pt-6 pb-24">
+                <div className="mx-auto mb-6 max-w-7xl">
+                    <Etapas atual={3} />
+                </div>
                 <div className="mx-auto grid max-w-7xl items-start gap-6 min-[1000px]:grid-cols-[1fr_450px]">
                     <section className="overflow-hidden rounded-2xl border border-secondary bg-primary">
                         <div className="border-b border-secondary px-5 py-4 font-semibold">Escolha como pagar</div>
                         <div className="flex flex-col gap-2.5 px-5 py-4">
                             <AriaRadioGroup aria-label="Forma de pagamento" value={forma} onChange={setForma} className="flex flex-col gap-2.5">
                                 {["Pix", "Cartão de crédito"].map((o) => (
-                                    <AriaRadio key={o} value={o} className={({ isSelected }) => cx("flex cursor-pointer items-center justify-between rounded-xl p-3.5 ring-1 ring-border-secondary ring-inset", isSelected && "bg-secondary ring-2 ring-brand")}>
+                                    <AriaRadio key={o} value={o} className={({ isSelected }) => cx("relative flex cursor-pointer items-center justify-between rounded-xl p-3.5 ring-1 ring-border-secondary ring-inset", isSelected && "bg-secondary ring-2 ring-brand")}>
                                         {({ isSelected, isFocusVisible }) => (
                                             <>
                                                 <b className="font-semibold">{o}</b>
@@ -117,6 +130,7 @@ export function Pagamento() {
 export function TrocaConfirmada() {
     useTroca();
     const { solId } = useParams();
+    useTopoAoEntrar(solId);
     const navigate = useNavigate();
     const s = sol(solId);
     if (!s || s.status !== "CONCLUIDA") return <Navigate to="/carteira-web/inscricoes" replace />;
@@ -125,7 +139,7 @@ export function TrocaConfirmada() {
         <div className="min-h-dvh bg-secondary text-primary">
             <TopoCompra />
             <div className="px-5 py-10">
-                <section className="mx-auto flex max-w-[732px] animate-in flex-col items-center rounded-2xl border border-secondary bg-primary px-6 py-10 text-center duration-200 fade-in zoom-in-95">
+                <section className="mx-auto flex max-w-[732px] motion-safe:animate-in flex-col items-center rounded-2xl border border-secondary bg-primary px-6 py-10 text-center duration-200 motion-safe:fade-in motion-safe:zoom-in-95">
                     <FeaturedIcon icon={CheckCircle} color="success" theme="light" size="lg" />
                     <h1 className="mt-4 text-display-xs font-bold">Troca confirmada!</h1>
                     <p className="mt-2 max-w-md text-md text-tertiary">

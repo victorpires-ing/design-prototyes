@@ -76,7 +76,7 @@ export function CampoDataHora({ label, value, onChange, erro, hint, max }: Campo
                 offset={8}
                 placement="bottom end"
                 className={({ isEntering, isExiting }) =>
-                    cx(isEntering && "duration-150 ease-out animate-in fade-in slide-in-from-top-0.5", isExiting && "duration-100 ease-in animate-out fade-out")
+                    cx(isEntering && "duration-150 ease-out motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-0.5", isExiting && "duration-100 ease-in animate-out fade-out")
                 }
             >
                 <AriaDialog aria-label={`Calendário de ${label}`} className="rounded-2xl bg-primary shadow-xl ring ring-secondary_alt outline-hidden">

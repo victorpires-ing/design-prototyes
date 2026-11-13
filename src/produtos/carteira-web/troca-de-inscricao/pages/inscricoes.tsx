@@ -169,7 +169,7 @@ function CartaoInscricao({ p, it, aberto, onToggle }: { p: Pedido; it: Item; abe
             </button>
 
             {aberto && (
-                <div className="animate-in border-t border-secondary px-4 pb-5 duration-200 fade-in">
+                <div className="motion-safe:animate-in border-t border-secondary px-4 pb-5 duration-200 motion-safe:fade-in">
                     <span className="mt-2.5 mb-3.5 block text-[11px] text-tertiary">{m.grupo.toUpperCase()}</span>
                     <div className="mb-4.5 flex items-center gap-3 rounded-xl border border-utility-yellow-200 bg-warning-primary p-3.5 text-xs">
                         <AlertCircle className="size-5 shrink-0 text-fg-warning-primary" aria-hidden="true" />

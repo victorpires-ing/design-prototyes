@@ -262,7 +262,7 @@ export function CartaoItem({ p, it, ed, onTrocar, onDesfazer, onRefazer }: Carta
                         <ChevronDown className={cx("size-5 text-fg-quaternary transition-transform duration-200", questionarioAberto && "rotate-180")} aria-hidden="true" />
                     </button>
                     {questionarioAberto && (
-                        <div id={`q-${it.id}`} className="mt-4 flex animate-in flex-col gap-4 duration-200 fade-in slide-in-from-top-1">
+                        <div id={`q-${it.id}`} className="mt-4 flex motion-safe:animate-in flex-col gap-4 duration-200 motion-safe:fade-in motion-safe:slide-in-from-top-1">
                             {it.ps.map((pid, i) => (
                                 <div key={pid} className="flex flex-col gap-3">
                                     {it.ps.length > 1 && <p className="text-sm font-semibold text-primary">{pessoa(pid).nome}</p>}
@@ -347,7 +347,7 @@ function CampoLeitura({ rotulo, valor }: { rotulo: string; valor: React.ReactNod
 function CampoTotal({ rotulo, valor, apoio, nomeAtual, it, l, f }: { rotulo: string; valor: React.ReactNode; apoio?: string; nomeAtual: string; it: Item; l: Lote; f: Valores }) {
     const [aberto, setAberto] = useState(false);
     return (
-        <div className="flex animate-in flex-col gap-1.5 duration-200 fade-in">
+        <div className="flex motion-safe:animate-in flex-col gap-1.5 duration-200 motion-safe:fade-in">
             <span className="text-sm font-medium text-secondary">{rotulo}</span>
             <div className="flex min-h-11 items-center justify-between gap-3 rounded-lg bg-secondary_subtle px-3.5 py-2.5 ring-1 ring-border-secondary ring-inset">
                 <span className="text-md font-semibold text-primary">{valor}</span>

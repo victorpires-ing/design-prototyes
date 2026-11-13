@@ -36,7 +36,7 @@ export function ControlesPrototipo({ extras }: { extras?: React.ReactNode }) {
     return (
         <div className="fixed bottom-4 left-4 z-50 flex flex-col items-start gap-2">
             {aberto && (
-                <div className="flex w-72 animate-in flex-col gap-4 rounded-xl bg-primary p-4 shadow-lg ring-1 ring-border-secondary duration-150 fade-in slide-in-from-bottom-1">
+                <div className="flex w-72 motion-safe:animate-in flex-col gap-4 rounded-xl bg-primary p-4 shadow-lg ring-1 ring-border-secondary duration-150 motion-safe:fade-in motion-safe:slide-in-from-bottom-1">
                     <div>
                         <p className="text-sm font-semibold text-primary">Controles do protótipo</p>
                         <p className="text-xs text-tertiary">Shift+P esconde este botão.</p>

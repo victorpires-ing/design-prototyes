@@ -1,7 +1,7 @@
 import { cx } from "@/utils/cx";
 import { TAXA, r2, type Lote, type Valores } from "../data/troca-store";
+import { brlc } from "./carteira-ui";
 
-const brlc = (v = 0) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 /** Valores da troca na carteira, com os mesmos rótulos do Backstage e do e-mail. */
 export function ResumoTroca({ pago, taxa, lote, f }: { pago: number; taxa: number; lote: Lote; f: Valores }) {

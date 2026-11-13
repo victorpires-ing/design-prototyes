@@ -86,7 +86,7 @@ export function ConfiguracoesAvancadas({ aberto, onClose }: { aberto: boolean; o
                 <Bloco titulo="Permitir trocas pós-compra" texto="Quando habilitado, o comprador pode trocar os itens comprados pela carteira dentro do período definido.">
                     <Segmentado valor={trocas} onChange={setTrocas} opcoes={[["sim", "Sim"], ["nao", "Não"]]} />
                     {trocas === "sim" && (
-                        <div className="mt-2 flex animate-in flex-col gap-4 duration-200 fade-in slide-in-from-top-1">
+                        <div className="mt-2 flex motion-safe:animate-in flex-col gap-4 duration-200 motion-safe:fade-in motion-safe:slide-in-from-top-1">
                             <h4 className="text-md font-semibold text-primary">Período de trocas</h4>
                             <div className="grid gap-4">
                                 <CampoDataHora

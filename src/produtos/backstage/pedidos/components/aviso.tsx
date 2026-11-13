@@ -16,7 +16,7 @@ export function Aviso({ cor = "gray", titulo, children, acoes, className }: { co
         <div
             role={cor === "error" ? "alert" : "status"}
             className={cx(
-                "flex animate-in flex-col gap-4 rounded-xl border bg-primary_alt p-4 shadow-xs duration-200 fade-in slide-in-from-top-1 md:flex-row",
+                "flex motion-safe:animate-in flex-col gap-4 rounded-xl border bg-primary_alt p-4 shadow-xs duration-200 motion-safe:fade-in motion-safe:slide-in-from-top-1 md:flex-row",
                 cor === "error" ? "border-error_subtle" : "border-primary",
                 className,
             )}

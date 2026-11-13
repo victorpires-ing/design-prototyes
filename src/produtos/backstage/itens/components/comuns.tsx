@@ -110,7 +110,7 @@ export function BarraDeSalvar({ visivel, salvando, onSalvar, onDescartar, desabi
     return (
         <div className="sticky bottom-0 z-20 mt-auto">
             <Surgir visivel={visivel}>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary bg-primary_alt py-3">
+                <div data-barra-fixa className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary bg-primary_alt py-3">
                     <span className="text-sm text-tertiary" role="status">
                         {t.alteracoesNaoSalvas}
                     </span>
@@ -306,11 +306,14 @@ type CampoPrecoProps = {
 /** Campo de preço em reais, o único do catálogo (UI-DS-003): prefixo "R$" do DS, aceita vírgula, grava número. */
 export function CampoPreco(props: CampoPrecoProps) {
     const { label, isRequired, hint, ocultarLabel, isInvalid, placeholder = "0" } = props;
-    const paraTexto = (v: number | undefined) => (v || (props.opcional && v === 0) ? String(v).replace(".", ",") : "");
+    // Máscara de preço (ITM-90): os dígitos entram pelos centavos, como em maquininha ("1234" vira "12,34"),
+    // com separador de milhar. O valor vai em reais.
+    const formatar = (v: number) => new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    const paraTexto = (v: number | undefined) => (v || (props.opcional && v === 0) ? formatar(v ?? 0) : "");
     const [texto, setTexto] = useState(paraTexto(props.valor));
     // Acompanha mudanças de fora (descartar, trocar de item) sem atrapalhar a digitação.
     useEffect(() => {
-        const atual = texto ? Number(texto.replace(",", ".")) || 0 : props.opcional ? undefined : 0;
+        const atual = texto ? Number(texto.replace(/\D/g, "")) / 100 : props.opcional ? undefined : 0;
         if (atual !== props.valor) setTexto(paraTexto(props.valor));
     }, [props.valor]);
     return (
@@ -323,13 +326,15 @@ export function CampoPreco(props: CampoPrecoProps) {
             prefix="R$"
             value={texto}
             onChange={(v: string) => {
-                const limpo = v.replace(/[^\d,]/g, "");
-                setTexto(limpo);
-                if (props.opcional) props.onChange(limpo ? Number(limpo.replace(",", ".")) || 0 : undefined);
-                else props.onChange(Number(limpo.replace(",", ".")) || 0);
+                // Só dígitos, até 9 (R$ 9.999.999,99); apagar tudo volta ao vazio.
+                const digitos = v.replace(/\D/g, "").replace(/^0+/, "").slice(0, 9);
+                const reais = digitos ? Number(digitos) / 100 : 0;
+                setTexto(digitos ? formatar(reais) : "");
+                if (props.opcional) props.onChange(digitos ? reais : undefined);
+                else props.onChange(reais);
             }}
         >
-            <InputBase inputMode="decimal" placeholder={placeholder} />
+            <InputBase inputMode="numeric" placeholder={placeholder === "0" ? "0,00" : placeholder} />
         </InputGroup>
     );
 }

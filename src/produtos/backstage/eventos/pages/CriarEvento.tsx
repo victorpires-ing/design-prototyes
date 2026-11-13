@@ -662,7 +662,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                 </div>
 
                 {/* Mesmo fundo da página (UI-VIS-013); a borda separa do conteúdo que rola por baixo. */}
-                <footer className="sticky bottom-0 z-20 mt-auto border-t border-secondary bg-primary_alt">
+                <footer data-barra-fixa className="sticky bottom-0 z-20 mt-auto border-t border-secondary bg-primary_alt">
                     <div className="flex flex-wrap items-center justify-end gap-3 py-3">
                         {/* Uma instrução por vez: o próximo campo obrigatório que falta, na ordem da tela (EVT-93). */}
                         <p aria-live="polite" className="mr-auto min-w-0 text-sm text-tertiary">

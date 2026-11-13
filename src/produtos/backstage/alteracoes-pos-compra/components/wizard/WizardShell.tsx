@@ -223,6 +223,7 @@ export function WizardShell({
                            fileira única o botão não encolhe nem quebra, e um rótulo como "Enviar cobrança
                            de R$ 120,00 para a***@email.com" passava da largura da tela e levava a ação
                            principal para fora dela, com rolagem lateral na barra colada no rodapé. */
+                        data-barra-fixa
                         className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-secondary bg-primary_alt px-4 py-4 max-md:flex-col max-md:items-stretch max-md:gap-2 md:px-6"
                     >
                         {/* Só existe quando tem o que dizer: empilhada, a div vazia abria um vão acima do botão. */}

@@ -160,7 +160,7 @@ export function AcoesEmLote({
     return (
         <div className="sticky bottom-0 z-20 mt-auto">
             <Surgir visivel={selecionados > 0}>
-                <div className="flex flex-col gap-3 border-t border-secondary bg-primary_alt py-3 md:flex-row md:items-center md:justify-between">
+                <div data-barra-fixa className="flex flex-col gap-3 border-t border-secondary bg-primary_alt py-3 md:flex-row md:items-center md:justify-between">
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                         <span role="status" className="text-sm font-semibold text-primary">
                             {plural(T.selecionados, selecionados)}

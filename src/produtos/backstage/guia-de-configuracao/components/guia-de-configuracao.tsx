@@ -34,6 +34,7 @@ export function GuiaDeConfiguracao({ eventoId, abrirModalDeStatus, recolher = fa
     const alternarMinimizado = recolher ? () => setAbertoAqui((a) => !a) : guia.alternarMinimizado;
 
     useReservarEspacoDosToasts(painel);
+    useSubirAcimaDaBarraFixa(guia.superficie === "painel");
 
     // Mexeu no painel, o holofote sai de cena (GDC-14).
     const { holofotePendente, concluirHolofote } = guia;
@@ -97,14 +98,9 @@ function useReservarEspacoDosToasts(painel: HTMLElement | null) {
             const altura = Math.round(painel.getBoundingClientRect().height);
             estilo.textContent = `@media (min-width: 640px) { [data-sonner-toaster][data-y-position="bottom"][data-x-position="right"] { --offset-bottom: ${altura + 24 + 12}px !important; } }`;
             // Espaço que a página reserva no fim e que a barra de salvar fixa sobe, para o painel não cobrir ação (GDC-43).
-            // No celular o painel ocupa a largura: a barra sobe acima dele. No desktop ele fica no canto: a barra abre espaço à direita.
+            // Espaço que a página reserva no fim, para o painel não cobrir o último conteúdo (GDC-43).
             const desktop = window.matchMedia("(min-width: 640px)").matches;
-            const raiz = document.documentElement.style;
-            raiz.setProperty("--altura-do-guia", `${altura + (desktop ? 24 : 16) + 12}px`);
-            // Recolhido (só a faixa) a barra sobe acima dele; aberto no desktop, alto demais, ela abre espaço à direita.
-            const aoLado = desktop && altura > 120;
-            raiz.setProperty("--guia-rodape-baixo", aoLado ? "0px" : `${altura + (desktop ? 24 : 16) + 12}px`);
-            raiz.setProperty("--guia-rodape-direita", aoLado ? `${Math.round(painel.getBoundingClientRect().width) + 24}px` : "0px");
+            document.documentElement.style.setProperty("--altura-do-guia", `${altura + (desktop ? 24 : 16) + 12}px`);
         };
         atualizar();
         document.head.appendChild(estilo);
@@ -115,7 +111,46 @@ function useReservarEspacoDosToasts(painel: HTMLElement | null) {
             observador.disconnect();
             window.removeEventListener("resize", atualizar);
             estilo.remove();
-            for (const v of ["--altura-do-guia", "--guia-rodape-baixo", "--guia-rodape-direita"]) document.documentElement.style.removeProperty(v);
+            document.documentElement.style.removeProperty("--altura-do-guia");
         };
     }, [painel]);
+}
+
+/**
+ * Barra fixa de salvar, cancelar ou seleção (`data-barra-fixa`) no pé da tela: o painel sobe junto,
+ * para não ficar na frente dos botões (GDC-43). Mede a barra visível que chega perto do pé da tela e
+ * guarda a altura em `--altura-barra-fixa`, que o painel soma à margem de baixo.
+ */
+function useSubirAcimaDaBarraFixa(ativo: boolean) {
+    useEffect(() => {
+        if (!ativo) return;
+        const raiz = document.documentElement;
+        let quadro = 0;
+        const medir = () => {
+            quadro = 0;
+            let altura = 0;
+            for (const barra of document.querySelectorAll<HTMLElement>("[data-barra-fixa]")) {
+                const r = barra.getBoundingClientRect();
+                // Visível e encostada no pé da tela (presa pelo sticky ou terminando nele).
+                if (r.height > 0 && r.top < window.innerHeight && r.bottom >= window.innerHeight - 4) altura = Math.max(altura, window.innerHeight - r.top);
+            }
+            raiz.style.setProperty("--altura-barra-fixa", `${Math.round(altura)}px`);
+        };
+        const agendar = () => {
+            if (!quadro) quadro = requestAnimationFrame(medir);
+        };
+        medir();
+        // A barra aparece, some e muda de altura (Surgir), e a página rola: mede de novo a cada mudança.
+        const observador = new MutationObserver(agendar);
+        observador.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class"] });
+        window.addEventListener("scroll", agendar, { passive: true, capture: true });
+        window.addEventListener("resize", agendar);
+        return () => {
+            observador.disconnect();
+            window.removeEventListener("scroll", agendar, { capture: true });
+            window.removeEventListener("resize", agendar);
+            if (quadro) cancelAnimationFrame(quadro);
+            raiz.style.removeProperty("--altura-barra-fixa");
+        };
+    }, [ativo]);
 }

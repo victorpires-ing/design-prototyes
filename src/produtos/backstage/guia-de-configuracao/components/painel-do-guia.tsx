@@ -53,7 +53,7 @@ export function PainelDoGuia({ passos, minimizado, onIrParaPasso, onAlternarMini
         <motion.aside
             ref={painelRef}
             aria-label={TITULO_DO_GUIA}
-            className="fixed inset-x-4 bottom-4 z-30 overflow-hidden rounded-2xl border border-secondary bg-primary shadow-lg sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-full sm:max-w-sm"
+            className="fixed inset-x-4 bottom-[calc(1rem+var(--altura-barra-fixa,0px))] z-30 overflow-hidden rounded-2xl border border-secondary bg-primary shadow-lg transition-[bottom] duration-200 ease-out motion-reduce:transition-none sm:inset-x-auto sm:right-6 sm:bottom-[calc(1.5rem+var(--altura-barra-fixa,0px))] sm:w-full sm:max-w-sm"
             {...(reduzir ? {} : PAINEL)}
         >
             {/* Faixa: tem área para as partículas e é o que sobra quando o painel é recolhido. */}

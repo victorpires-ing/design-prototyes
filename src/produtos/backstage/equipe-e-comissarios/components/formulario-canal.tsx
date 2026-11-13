@@ -329,8 +329,8 @@ export function FormularioCanal({
                 )}
             </div>
 
-            {/* Mesmo padrão do Criar evento; não fica sob o Guia de configuração (GDC-43). */}
-            <footer className="sticky bottom-(--guia-rodape-baixo,0px) z-20 mt-6 border-t border-secondary bg-primary_alt pr-(--guia-rodape-direita,0px)">
+            {/* Mesmo padrão do Criar evento; o Guia de configuração sobe acima dela (GDC-43). */}
+            <footer data-barra-fixa className="sticky bottom-0 z-20 mt-6 border-t border-secondary bg-primary_alt">
                 <div className="flex flex-wrap items-center justify-end gap-3 py-3">
                     <Button size="md" color="secondary" onClick={sair}>
                         Cancelar

@@ -47,7 +47,7 @@ criação de evento (`eventos/`, `/backstage/eventos/novo`): entra logo depois d
 - **GDC-40** Carregando: sem painel, sem alerta, sem holofote (GDC-04).
 - **GDC-41** Tudo feito: sem painel e sem alerta.
 - **GDC-42** Celular: o painel ocupa a largura, 16 px das bordas.
-- **GDC-43** O painel não cobre ação: com ele na tela, a página reserva no fim a altura dele (variável `--altura-do-guia`) e as barras de salvar fixas não ficam sob ele: acima do painel no celular e com ele recolhido; com ele aberto no desktop, abrem espaço à direita (`--guia-rodape-baixo`, `--guia-rodape-direita`). _(components/guia-de-configuracao.tsx, backstage/components/Backstage.tsx)_
+- **GDC-43** O painel não cobre ação: com uma barra fixa de salvar, cancelar ou seleção no pé da tela (marcada com `data-barra-fixa`: Itens, seleção em massa, canal de Equipe e Comissários, Criar evento, assistente de alterações, Criar cargo, Bilheteria), o painel sobe junto, deslizando, e volta quando ela some. A página também reserva no fim a altura do painel (`--altura-do-guia`), para o último conteúdo não ficar embaixo dele. _(components/guia-de-configuracao.tsx, components/painel-do-guia.tsx)_
 - **GDC-44** Em tela de formulário com barra de salvar (configurar canal em Equipe e Comissários), o painel começa recolhido na faixa do título, para não cobrir campos. Expandir vale só para aquela visita e não muda a escolha gravada do evento (GDC-08). _(components/guia-de-configuracao.tsx, `recolherGuia` do BackstageLayout)_
 
 ## Depende de / afeta

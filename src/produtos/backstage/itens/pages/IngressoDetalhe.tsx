@@ -300,7 +300,8 @@ export function IngressoDetalhe() {
         try {
             await salvarSessoes(evento, comIngresso(evento, { ...tipo, nome: tipo.nome.trim(), transferencia: transferenciaForcada ?? tipo.transferencia }, rascunho.setorId));
             toast.success(novo ? formatar(T.criado, { ingresso: tipo.nome.trim() }) : t.salvo);
-            if (novo) navigate(`/backstage/catalogo/ingressos/${tipo.id}`, { replace: true });
+            // Salvou, volta para a lista de itens (ITM-91).
+            navigate("/backstage/catalogo/ingressos");
         } catch {
             toast.error(t.erroAoSalvar);
         } finally {

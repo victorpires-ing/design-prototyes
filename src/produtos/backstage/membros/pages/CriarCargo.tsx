@@ -118,7 +118,7 @@ export function CriarCargo() {
                     </div>
                 </main>
 
-                <footer className="sticky bottom-0 z-10 flex items-center bg-primary_alt justify-between gap-3 border-t border-secondary py-4">
+                <footer data-barra-fixa className="sticky bottom-0 z-10 flex items-center bg-primary_alt justify-between gap-3 border-t border-secondary py-4">
                     <span className="text-sm text-tertiary">
                         {selecionadas.size} {selecionadas.size === 1 ? "permissão selecionada" : "permissões selecionadas"}
                     </span>

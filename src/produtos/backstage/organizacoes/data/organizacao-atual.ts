@@ -39,6 +39,9 @@ const gravar = (storage: "local" | "session", chave: string, valor: string) => {
     }
 };
 
+/** Organização de quem nunca escolheu uma neste navegador (ORG-04). */
+export const ORGANIZACAO_PADRAO = "org_ingresse";
+
 /** Organização escolhida (memória → última salva). `null` se nunca escolheu neste navegador. */
 export function organizacaoAtualId(): string | null {
     if (atual) return atual;
@@ -127,7 +130,7 @@ export function useOrganizacaoAtual(): OrganizacaoComEventos | undefined {
     useOrganizacaoVersao();
     const todas = useOrganizacoes();
     const id = organizacaoAtualId();
-    return todas.find((o) => o.id === id) ?? todas[0];
+    return todas.find((o) => o.id === id) ?? todas.find((o) => o.id === ORGANIZACAO_PADRAO) ?? todas[0];
 }
 
 /** Para código fora do React: organizações agora. */

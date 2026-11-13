@@ -797,12 +797,16 @@ const OrganizacaoRail = () => {
             onClick={abrirSeletorDeOrganizacao}
             aria-label={org ? `Organização: ${org.nome}. Trocar organização` : "Trocar organização"}
             title={org?.nome}
-            className="relative rounded-full outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="flex w-full flex-col items-center gap-1.5 rounded-lg px-1 py-1 outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
         >
-            <Avatar size="md" initials={org?.sigla ?? "?"} alt="" />
-            <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-primary ring-1 ring-secondary">
-                <ChevronDown className="size-3 text-fg-quaternary" />
+            <span className="relative">
+                <Avatar size="md" initials={org?.sigla ?? "?"} alt="" />
+                <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-primary ring-1 ring-secondary">
+                    <ChevronDown className="size-3 text-fg-quaternary" />
+                </span>
             </span>
+            {/* Nome da organização abaixo do avatar, em até duas linhas (BKS-69). */}
+            {org && <span className="line-clamp-2 w-full text-center text-sm leading-tight font-medium text-secondary break-words">{org.nome}</span>}
         </button>
     );
 };
@@ -853,7 +857,7 @@ const ProducerRail = ({ activeProducer }: { activeProducer?: string }) => {
                 ))}
             </nav>
         </div>
-        <ThemeToggle />
+        {/* O tema saiu do rail: fica em Ajustes, Tema da interface (ORG-45, BKS-68). */}
     </aside>
     );
 };
@@ -890,7 +894,8 @@ const RailDoEvento = ({ activeSection, activeItem, className }: EventRailProps &
         return () => window.clearTimeout(id);
     }, [activeSection, activeItem]);
     return (
-        <aside ref={ref} className={cx("hidden w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex", SOFT_SCROLLBAR, className)}>
+        <aside ref={ref} className={cx("hidden w-[280px] shrink-0 flex-col gap-3 overflow-y-auto rounded-2xl bg-primary p-3 md:flex [&>*]:shrink-0", SOFT_SCROLLBAR, className)}>
+            {/* Filhos sem encolher: em tela baixa o rail rola, em vez de espremer e cortar o cartão do evento (BKS-66). */}
             <EventDetailsCard />
             <EventFunctionalitiesList activeSection={activeSection} activeItem={activeItem} />
         </aside>
@@ -957,7 +962,7 @@ const ORG_NAV: Array<{ id: string; icon: ComponentType<{ className?: string }>; 
     { id: "pedidos", icon: ICONES_ORGANIZACAO.pedidos, label: "Pedidos", href: "/backstage/pedidos" },
     { id: "produtos", icon: ICONES_ORGANIZACAO.produtos, label: "Produtos", href: "/backstage/produtos" },
     { id: "publico", icon: ICONES_ORGANIZACAO.publico, label: "Público", href: "/backstage/publico" },
-    { id: "ajustes", icon: ICONES_ORGANIZACAO.ajustes, label: "Ajustes" },
+    { id: "ajustes", icon: ICONES_ORGANIZACAO.ajustes, label: "Ajustes", href: "/backstage/ajustes" },
 ];
 
 /**

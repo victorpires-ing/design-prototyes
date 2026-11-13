@@ -69,6 +69,9 @@ export function Eventos() {
         navigate("/backstage/informacoes-evento");
     };
 
+    // Organização sem evento: só o vazio com "Criar evento"; números, busca e ordem não têm o que mostrar (EVT-100).
+    const semEventos = !carregando && todos.length === 0;
+
     return (
         <BackstageLayout activeProducer="eventos" showEventContext={false}>
             <div className="flex min-w-0 flex-1 flex-col gap-6">
@@ -77,7 +80,7 @@ export function Eventos() {
                         <h1 className={TITULO_PAGINA}>{t.titulo}</h1>
                         <Subtitulo carregando={carregando} ativos={ativos.length} />
                     </div>
-                    <CriarEventoMenu />
+                    {!semEventos && <CriarEventoMenu />}
                 </header>
 
                 {/* Sincronização falhou depois de carregar: os dados ficam, com o aviso (UI-EST-007). */}
@@ -87,12 +90,15 @@ export function Eventos() {
                     </p>
                 </Surgir>
 
-                <ResumoDaOrganizacao ritmo={ritmo} carregando={carregando} />
+                <Surgir visivel={!semEventos} gap={24}>
+                    <ResumoDaOrganizacao ritmo={ritmo} carregando={carregando} />
+                </Surgir>
 
                 <section aria-labelledby="titulo-lista-eventos" className="mt-4 flex flex-col gap-4">
                     <h2 id="titulo-lista-eventos" className="sr-only">
                         {t.listaDeEventos}
                     </h2>
+                    <Surgir visivel={!semEventos} gap={16}>
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         {/* Largura em que o placeholder cabe inteiro. */}
                         <div className="md:w-80">
@@ -117,6 +123,7 @@ export function Eventos() {
                             </Select>
                         </div>
                     </div>
+                    </Surgir>
 
                     {/* Listagem. Buscar e reordenar fazem os cartões deslizarem até o novo lugar; o vazio
                         entra e sai deslizando (UI-VIS-008). Com movimento reduzido, só troca. */}

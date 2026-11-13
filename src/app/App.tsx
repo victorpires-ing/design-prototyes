@@ -1,3 +1,4 @@
+import { Ajustes as AjustesDaOrganizacao } from '../produtos/backstage/organizacoes/pages/ajustes';
 import { useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import { FundoDoBody } from './components/fundo-do-body';
@@ -436,6 +437,7 @@ export default function App() {
         <Route path="/revenda/*" element={<RedirecionaRevenda />} />
         <Route path="/aprovacoes/solicitacoes" element={<SolicitacoesInbox />} />
         <Route path="/backstage/publico" element={<Publico />} />
+        <Route path="/backstage/ajustes" element={<AjustesDaOrganizacao />} />
         <Route path="/backstage/produtos" element={<ProdutosDaOrganizacao />} />
         {/* Não há mais cadastro de comissário na organização: o grupo é o comissário (ECO-09); o painel virou relatório (ECO-26). */}
         <Route path="/backstage/relatorios/comissarios" element={<RelatorioComissarios />} />
@@ -484,7 +486,8 @@ export default function App() {
         <Route path="/e/:slug" element={<CompraDoEvento />} />
         <Route path="/checkout/protecao-de-compra" element={<ProtecaoDeCompra />} />
       </Routes>
-      <Toaster position="bottom-right" theme={theme} />
+      {/* Todo toast pode ser fechado na hora (BKS-67). */}
+      <Toaster position="bottom-right" theme={theme} closeButton toastOptions={{ closeButtonAriaLabel: "Fechar aviso" }} />
       <FundoDoBody />
       </PesquisasProvider>
       </PerguntasProvider>

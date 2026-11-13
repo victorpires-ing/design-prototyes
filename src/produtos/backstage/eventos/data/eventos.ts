@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import eventCover from "@/assets/event-cover.png";
 import { alterarStatusEvento, montarEvento, organizacaoDoEvento, type Evento as EventoBanco, type NovoEvento } from "@/plataforma";
 import { assinarBanco, lerBanco, salvar } from "@/plataforma/db";
-import { assinarOrganizacao, definirPadrao, organizacaoAtualId } from "../../organizacoes/data/organizacao-atual";
+import { assinarOrganizacao, definirPadrao, ORGANIZACAO_PADRAO, organizacaoAtualId } from "../../organizacoes/data/organizacao-atual";
 
 /**
  * Eventos da organização.
@@ -157,6 +157,9 @@ const avisar = () => {
 };
 
 let espelhado: unknown = null;
+/** A organização em contexto não tem evento: a lista fica com o último evento só para o contexto não quebrar, mas a tela de Eventos mostra o vazio (EVT-99). */
+let organizacaoSemEventos = false;
+export const semEventosNaOrganizacao = () => organizacaoSemEventos;
 function espelhar() {
     const { modo, tabelas } = lerBanco();
     if (modo === "carregando" || tabelas.eventos === espelhado) return;
@@ -168,12 +171,17 @@ function espelhar() {
     // organização do evento salvo ou do mais recente.
     let orgId = organizacaoAtualId();
     if (!orgId) {
+        // Sem escolha, vale a Ingresse (ORG-04); sem ela no banco, a do evento salvo ou do mais recente.
         const salvo = ler(STORAGE_KEY);
-        orgId = organizacaoDoEvento(todos.find((e) => e.id === salvo) ?? todos[0]);
+        orgId = tabelas.organizacoes[ORGANIZACAO_PADRAO] ? ORGANIZACAO_PADRAO : organizacaoDoEvento(todos.find((e) => e.id === salvo) ?? todos[0]);
         definirPadrao(orgId);
     }
     const lista = todos.filter((e) => organizacaoDoEvento(e) === orgId).map(doBanco);
-    if (lista.length === 0) return;
+    organizacaoSemEventos = lista.length === 0;
+    if (lista.length === 0) {
+        avisar();
+        return;
+    }
     eventos.splice(0, eventos.length, ...lista);
     avisar();
 }

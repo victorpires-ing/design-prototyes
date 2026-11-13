@@ -31,7 +31,7 @@ de qualquer tela.
 - **ORG-01** Entrar pelo `/backstage` mostra a tela "Escolha onde trabalhar". _(pages/SelecaoOrganizacao.tsx)_
 - **ORG-02** Já escolheu nesta sessão do navegador: `/backstage` vai direto para Eventos, sem perguntar. Sessão nova (outra aba depois de fechar, outro navegador) pergunta de novo. _(pages/SelecaoOrganizacao.tsx, data/organizacao-atual.ts)_
 - **ORG-03** Com uma organização só, a tela é pulada: ela vira a escolhida e a pessoa vai para Eventos. _(pages/SelecaoOrganizacao.tsx)_
-- **ORG-04** Link direto (ex.: `/backstage/eventos`) usa a última organização escolhida. Sem nenhuma, vale a do evento em contexto salvo ou a do evento mais recente, sem contar como escolha. _(eventos/data/eventos.ts)_
+- **ORG-04** Link direto (ex.: `/backstage/eventos`) usa a última organização escolhida. Sem nenhuma, vale a Ingresse (`org_ingresse`, sem eventos), sem contar como escolha; só sem a Ingresse no banco vale a do evento em contexto salvo ou a do evento mais recente. _(eventos/data/eventos.ts)_
 
 ### Busca
 - **ORG-05** Sem texto, a lista mostra, nesta ordem: Organização selecionada (só no modal), Recentes (até 4, sem repetir a selecionada), Todas as organizações (A–Z) e Todos os eventos. _(components/BuscaOrganizacaoEvento.tsx)_
@@ -55,6 +55,11 @@ de qualquer tela.
 - **ORG-40** Carregando o banco: linhas em esqueleto. _(components/BuscaOrganizacaoEvento.tsx)_
 - **ORG-41** Busca sem resultado: "Nenhuma organização ou evento com “<termo>”." e o botão "Limpar busca". _(components/BuscaOrganizacaoEvento.tsx)_
 - **ORG-42** Erro ao ler o banco sem nada em cache: "Não foi possível carregar as organizações." e "Tentar de novo". _(components/BuscaOrganizacaoEvento.tsx)_
+
+### Ajustes (`/backstage/ajustes`)
+- **ORG-43** Ajustes da organização, pelo item Ajustes do rail da organização, com os mesmos ajustes do Backstage em produção: Regras de compra (Termos de uso; Atribuição de ingressos a documentos) e Personalização (Mapas interativos), mais o tema da interface. Cada seção é um cartão com uma linha por ajuste: título e descrição à esquerda, controle à direita. Sem o rail do evento. _(pages/ajustes.tsx)_
+- **ORG-44** Atribuição de ingressos a documentos: toggle gravado na organização (`atribuicaoADocumentos`), com toast de ligada ou desligada. Termos de uso e Mapas interativos ainda não têm tela no protótipo e dizem isso ("Ainda não está no protótipo"), sem levar a lugar nenhum. _(pages/ajustes.tsx, @/plataforma `Organizacao`)_
+- **ORG-45** Tema da interface: Claro, Escuro ou Sistema (controle segmentado do DS). Vale para a pessoa neste navegador, não para a organização. É o único lugar do tema no rail clássico (BKS-68). _(pages/ajustes.tsx, @/providers/theme-provider)_
 
 ## Depende de / afeta
 

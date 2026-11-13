@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { lerColecao, useBanco, type HistoricoVendas, type Pedido, type Evento as EventoBanco } from "@/plataforma";
-import { eventos, useEventosVersao, type Evento } from "./eventos";
+import { eventos, semEventosNaOrganizacao, useEventosVersao, type Evento } from "./eventos";
 
 /**
  * Métricas de venda por evento, lidas do banco unificado (src/plataforma).
@@ -271,7 +271,7 @@ export function resumoDoEvento(evento: Evento): ResumoEvento {
     };
 }
 
-export const resumos = () => eventos.map(resumoDoEvento);
+export const resumos = () => (semEventosNaOrganizacao() ? [] : eventos.map(resumoDoEvento));
 
 /** Resumos de todos os eventos, atualizados quando o banco muda. */
 export function useResumos(): ResumoEvento[] {

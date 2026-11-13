@@ -209,6 +209,8 @@ export interface Organizacao {
     criadoEm: string;
     /** Biblioteca de produtos. Ausente: a organização ainda não salvou a sua (usa a inicial). */
     produtos?: ProdutoDaOrganizacao[];
+    /** Ajustes: ingressos dos eventos podem ser atribuídos direto a um CPF ou passaporte, sem conta (ORG-43). */
+    atribuicaoADocumentos?: boolean;
 }
 
 /** Item vendido numa abertura: ingresso, produto do evento ou combo. */

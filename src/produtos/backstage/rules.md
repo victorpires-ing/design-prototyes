@@ -82,6 +82,10 @@ mostram.
 - **BKS-63** No Freepass não há troca de organização nem ⌘K: no lugar da organização fica a pessoa logada, e a lista de eventos junta todas as organizações que a liberaram. Abrir um evento põe a organização e o evento em contexto. _(components/Backstage.tsx, freepass/data/minhas-vendas.ts)_
 - **BKS-64** No Freepass o status do evento é só leitura (selo no card) e o Remix não aparece. _(components/Backstage.tsx)_
 - **BKS-65** Menu do evento no Freepass (visualização por evento): Minhas vendas, quando tem link de venda, e, em Emissão de ingressos, só os canais que a produtora liberou (Cortesia, Bilheteria online). Pausado, só Minhas vendas. Na visualização por funcionalidade não há menu do evento. _(components/Backstage.tsx, `navDoFreepass`)_
+- **BKS-66** O rail do evento rola quando não cabe na altura da tela: o cartão do evento (banner e informações) e a lista de funcionalidades mantêm a altura, sem ser espremidos nem cortados. _(components/Backstage.tsx)_
+- **BKS-67** Todo toast tem o botão de fechar ("Fechar aviso"), além de sumir sozinho. _(app/App.tsx)_
+- **BKS-68** O rail da organização não tem o botão de tema: o tema se troca em Ajustes, Tema da interface (ORG-45). _(components/Backstage.tsx)_
+- **BKS-69** No rail da organização, o nome da organização aparece abaixo do avatar, em até duas linhas; o avatar e o nome juntos abrem a troca de organização. _(components/Backstage.tsx)_
 
 ### Remix
 - **BKS-50** O assistente Remix vive na shell: abre de qualquer tela do Backstage (não no Freepass, BKS-64) e sabe se o contexto é a organização ou o evento em contexto. _(components/remix/remix-context.tsx)_

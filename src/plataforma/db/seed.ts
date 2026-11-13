@@ -11,7 +11,7 @@ import { idDaOrganizacao, siglaDe, slugificar } from "../regras";
 /*  existem, então nada criado por alguém é sobrescrito.               */
 /* ------------------------------------------------------------------ */
 
-export const SEED_VERSAO = "2026-11-07.3";
+export const SEED_VERSAO = "2026-11-13.1";
 
 const CRIADO = "2026-11-07T12:00:00.000Z";
 
@@ -246,6 +246,8 @@ const organizacoes: Organizacao[] = [
     ...new Map(
         [...eventosBackstage, ...eventosSite].map((e) => [e.organizacaoId!, { id: e.organizacaoId!, nome: e.produtora, sigla: siglaDe(e.produtora), criadoEm: CRIADO }] as const).reverse(),
     ).values(),
+    // Organização sem evento: para começar do zero (criar o primeiro evento, o estado vazio de Eventos).
+    { id: idDaOrganizacao("Ingresse"), nome: "Ingresse", sigla: siglaDe("Ingresse"), criadoEm: "2026-11-13T12:00:00.000Z" },
 ];
 
 export const SEED = {

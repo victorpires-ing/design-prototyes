@@ -1,53 +1,66 @@
-import { useState } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Tab, TabList, Tabs } from "@/components/application/tabs/tabs";
+import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { cx } from "@/utils/cx";
 import { BackstageLayout } from "../../components/Backstage";
 import { ControlesPrototipo } from "../components/controles-prototipo";
-import { EVENTO, ate, brl, calc, hora, lote, mod, nomes, ped, pessoa, sol, useTroca, type Solicitacao } from "../data/troca-store";
+import { EVENTO, PERG, ate, brl, calc, hora, lote, mod, ped, pessoa, sol, useTroca, type Item, type Solicitacao } from "../data/troca-store";
 
+/** Os 6 e-mails da troca (TS-1818). */
 const MODELOS: Record<string, string> = {
-    criada: "Solicitação criada, com link de pagamento",
-    pago: "Pagamento recebido",
+    criada: "Link de pagamento da troca",
     concluida: "Troca confirmada, para o comprador",
     portador: "Inscrição alterada, para o atleta",
     expirada: "Prazo de pagamento terminou",
     cancelada: "Troca cancelada",
     reprovada: "Troca não concluída, com estorno",
-    falha: "Alerta interno de falha",
 };
 
-/** Os 8 e-mails transacionais da troca (TS-1818): modelos e os enviados nesta sessão. */
+/**
+ * Prévia dos e-mails. O e-mail segue o padrão da Ticket Sports (tema claro, logo e botão azul),
+ * por isso usa cores fixas: o cliente de e-mail não tem o tema do Backstage.
+ */
 export function Emails() {
     const S = useTroca();
     const [aba, setAba] = useState("modelos");
     const [sel, setSel] = useState<string>("criada");
-    const enviados = S.emails.slice().reverse();
+    const [compradorAtleta, setCompradorAtleta] = useState("nao");
+    const enviados = S.emails.filter((e) => MODELOS[e.tipo]).slice().reverse();
 
-    let previa: React.ReactNode = null;
+    let previa: ReactNode = null;
     if (aba === "modelos") {
+        // Exemplo: Marcos comprou e troca a 10 km dele, ou a 21 km da Helena, para outra modalidade.
+        const daHelena = sel === "portador" || (sel === "concluida" && compradorAtleta === "nao");
+        const itemId = daHelena ? "i31" : "i30";
+        const p = ped("48330")!;
+        const it = p.itens.find((i) => i.id === itemId)!;
+        const destino = daHelena ? "m42" : "m21";
+        const l = mod(destino)!.lotes.find((x) => x.ativo && x.vendidos < x.estoque) ?? mod(destino)!.lotes[0];
+        const resp = it.resp.map((r) => ({ ...r, tempo: r.tempo || "2h15 a 2h45", pelotao: r.pelotao || "A" }));
         const exemplo: Solicitacao = {
             id: "TR-1001",
             grupo: "G",
             pedido: "48330",
-            itemId: "i30",
-            destino: "m21",
-            lote: "l3",
-            resp: [{ camiseta: "GG" }],
-            val: calc(140, 14, 180),
+            itemId,
+            destino,
+            lote: l.id,
+            resp,
+            val: calc(it.pago, it.taxa, l.valor),
             canal: "Backstage",
             autor: "Atendimento",
             criada: Date.now(),
             expira: Date.now() + 24 * 36e5,
             status: "AGUARDANDO",
-            motivoFim: "Na verificação final, um dos atletas passou a ter outra inscrição na mesma sessão.",
-            motivoTipo: "atendimento",
+            motivoFim: "Na verificação final, a atleta já tinha outra inscrição no mesmo evento, data e hora.",
+            motivoTipo: "vagas",
         };
-        const para = sel === "portador" ? pessoa("helena") : sel === "falha" ? { nome: "Operação Ingresse", email: "operacao@ingresse.com" } : pessoa("marcos");
-        previa = <Email tipo={sel} s={exemplo} para={para} />;
+        const para = sel === "portador" ? pessoa("helena") : pessoa("marcos");
+        previa = <Email tipo={sel} s={exemplo} para={para} item={it} />;
     } else {
         const e = enviados[Number(sel)];
         const s = e && sol(e.solId);
-        if (e && s) previa = <Email tipo={e.tipo} s={s} para={{ nome: e.para, email: e.mail }} />;
+        const it = s && ped(s.pedido)?.itens.find((i) => i.id === s.itemId);
+        if (e && s && it) previa = <Email tipo={e.tipo} s={s} para={{ nome: e.para, email: e.mail }} item={it} />;
     }
 
     const itens =
@@ -60,7 +73,7 @@ export function Emails() {
             <div className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-6">
                 <header>
                     <h1 className="text-display-xs font-bold text-primary">E-mails da troca</h1>
-                    <p className="text-md text-tertiary">O link e os avisos de pagamento vão sempre para o comprador. O atleta inscrito que não comprou recebe o novo comprovante.</p>
+                    <p className="text-md text-tertiary">O link e os avisos de pagamento vão sempre para o comprador. O atleta inscrito que não comprou é avisado quando a inscrição muda.</p>
                 </header>
                 <Tabs
                     selectedKey={aba}
@@ -72,15 +85,21 @@ export function Emails() {
                     <TabList
                         type="underline"
                         items={[
-                            { id: "modelos", label: "Todos os modelos (8)" },
-                            { id: "enviados", label: `Enviados nesta sessão (${S.emails.length})` },
+                            { id: "modelos", label: `Todos os modelos (${Object.keys(MODELOS).length})` },
+                            { id: "enviados", label: `Enviados nesta sessão (${enviados.length})` },
                         ]}
                     >
                         {(item) => <Tab {...item} />}
                     </TabList>
                 </Tabs>
                 <div className="grid items-start gap-6 lg:grid-cols-[1fr_320px]">
-                    <div className="min-w-0">
+                    <div className="flex min-w-0 flex-col gap-4">
+                        {aba === "modelos" && sel === "concluida" && (
+                            <ButtonGroup size="sm" selectedKeys={new Set([compradorAtleta])} disallowEmptySelection onSelectionChange={(k) => setCompradorAtleta(String([...k][0]))}>
+                                <ButtonGroupItem id="nao">Comprador não é o atleta</ButtonGroupItem>
+                                <ButtonGroupItem id="sim">Comprador é o atleta</ButtonGroupItem>
+                            </ButtonGroup>
+                        )}
                         {previa ?? (
                             <div className="rounded-xl bg-primary p-10 text-center ring-1 ring-border-secondary">
                                 <p className="text-sm font-semibold text-primary">Nenhum e-mail enviado ainda</p>
@@ -88,7 +107,7 @@ export function Emails() {
                             </div>
                         )}
                     </div>
-                    <nav aria-label="E-mails" className="flex flex-col overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary lg:order-last">
+                    <nav aria-label="E-mails" className="flex flex-col overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
                         {itens.map((i) => (
                             <button
                                 key={i.k}
@@ -109,163 +128,218 @@ export function Emails() {
     );
 }
 
-/** Prévia do e-mail como chega na caixa de entrada (layout de e-mail, fora do DS do app). */
-function Email({ tipo, s, para }: { tipo: string; s: Solicitacao; para: { nome: string; email: string } }) {
+/* ------------------------------------------------------------------ */
+/*  E-mail no padrão Ticket Sports                                     */
+/* ------------------------------------------------------------------ */
+
+const C = {
+    texto: "#18181b",
+    apoio: "#52525b",
+    claro: "#71717a",
+    linha: "#e4e4e7",
+    caixa: "#f4f4f5",
+    azul: "#4391f0",
+    fundo: "#ffffff",
+};
+
+function LogoTicketSports() {
+    return (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: C.texto }}>
+            <svg viewBox="0 0 28 20" width="34" height="24" aria-hidden="true">
+                <path d="M2 14 C7 3 17 1 26 2 C19 5 15 9 13 18 L9 18 C10 13 12 10 15 7 C10 8 6 11 4 15 Z" fill={C.azul} />
+            </svg>
+            <span style={{ lineHeight: 1 }}>
+                <span style={{ display: "block", fontSize: 18, letterSpacing: 0.2 }}>
+                    TICKET<b style={{ fontWeight: 800 }}>SPORTS</b>
+                </span>
+                <span style={{ display: "block", fontSize: 11, paddingLeft: 2, marginTop: 2 }}>
+                    By <b style={{ fontWeight: 800 }}>INGRESSE</b>
+                </span>
+            </span>
+        </span>
+    );
+}
+
+/** Inscrição no resumo: data da sessão, grupo, modalidade e lote, e o valor. */
+function BlocoInscricao({ rotulo, it, modId, loteId, valor, apagado }: { rotulo: string; it: Item; modId: string; loteId: string; valor: string; apagado?: boolean }) {
+    const m = mod(modId)!;
+    const l = lote(m, loteId);
+    return (
+        <div style={{ padding: "14px 0", borderTop: `1px solid ${C.linha}` }}>
+            <div style={{ fontSize: 13, color: C.claro, marginBottom: 4 }}>{rotulo}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "baseline" }}>
+                <div style={{ color: apagado ? C.claro : C.texto }}>
+                    <div style={{ fontSize: 16, fontWeight: 600 }}>
+                        {m.nome}, {l?.nome}
+                    </div>
+                    <div style={{ fontSize: 14, color: C.apoio }}>{m.grupo}</div>
+                    <div style={{ fontSize: 14, color: C.apoio }}>{EVENTO.sessao}</div>
+                </div>
+                <div style={{ fontSize: 14, color: C.apoio, whiteSpace: "nowrap" }}>{valor}</div>
+            </div>
+            {it.ps.length > 1 && <div style={{ fontSize: 13, color: C.claro, marginTop: 4 }}>Combo para {it.ps.map((id) => pessoa(id).nome).join(" e ")}</div>}
+        </div>
+    );
+}
+
+function Email({ tipo, s, para, item: it }: { tipo: string; s: Solicitacao; para: { nome: string; email: string }; item: Item }) {
     const p = ped(s.pedido)!;
-    const it = p.itens.find((i) => i.id === s.itemId)!;
     const de = mod(it.mod)!;
     const pa = mod(s.destino)!;
     const l = lote(pa, s.lote)!;
     const f = s.val;
     const n = para.nome.split(" ")[0];
+    const comprador = pessoa(p.comprador);
+    const atletas = it.ps.map((id) => pessoa(id).nome).join(" e ");
+    const compradorEhAtleta = it.ps.includes(p.comprador);
+    const daInscricao = compradorEhAtleta ? "sua inscrição" : `a inscrição de ${atletas}`;
 
-    const Caixa = ({ children }: { children: React.ReactNode }) => <div className="my-3 flex flex-col gap-1.5 rounded-lg bg-secondary p-4 text-sm">{children}</div>;
-    const L = ({ a, b, forte }: { a: string; b: React.ReactNode; forte?: boolean }) => (
-        <div className={cx("flex justify-between gap-4", forte && "font-semibold text-primary")}>
-            <span className={forte ? "" : "text-tertiary"}>{a}</span>
+    const h1: CSSProperties = { fontSize: 24, fontWeight: 700, color: C.texto, margin: "0 0 12px" };
+    const pTxt: CSSProperties = { fontSize: 16, lineHeight: "24px", color: C.apoio, margin: "0 0 12px" };
+    const h2: CSSProperties = { fontSize: 17, fontWeight: 700, color: C.texto, margin: "24px 0 4px" };
+    const Botao = ({ children }: { children: ReactNode }) => (
+        <span style={{ display: "block", background: C.azul, color: "#fff", textAlign: "center", fontWeight: 700, fontSize: 15, padding: "14px 16px", borderRadius: 8, margin: "20px 0 8px" }}>{children}</span>
+    );
+    const Linha = ({ a, b, forte }: { a: string; b: string; forte?: boolean }) => (
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: forte ? "14px 0 0" : "6px 0", borderTop: forte ? `1px solid ${C.linha}` : undefined, marginTop: forte ? 8 : 0, fontSize: forte ? 17 : 15, fontWeight: forte ? 700 : 400, color: forte ? C.texto : C.apoio }}>
+            <span>{a}</span>
             <span>{b}</span>
         </div>
     );
-    const comp = (
-        <Caixa>
-            <L a="Inscrição atual" b={<b>{de.nome}</b>} />
-            <L a="Nova inscrição" b={<b>{`${pa.nome}, ${l.nome}`}</b>} />
-            <L a="Atleta" b={nomes(it)} />
-        </Caixa>
+    const atual = <BlocoInscricao rotulo="Inscrição atual" it={it} modId={it.mod!} loteId={it.lote!} valor={`${brl(it.pago)} pagos`} />;
+    const anterior = <BlocoInscricao rotulo="Inscrição anterior (não vale mais)" it={it} modId={it.mod!} loteId={it.lote!} valor={`${brl(it.pago)} pagos`} apagado />;
+    const nova = <BlocoInscricao rotulo="Nova inscrição" it={it} modId={pa.id} loteId={l.id} valor={brl(l.valor)} />;
+    const respostas = (
+        <>
+            <div style={h2}>Respostas do formulário</div>
+            {it.ps.map((pid, i) => (
+                <div key={pid}>
+                    {it.ps.length > 1 && <div style={{ fontSize: 14, fontWeight: 600, color: C.texto, marginTop: 8 }}>{pessoa(pid).nome}</div>}
+                    {pa.perguntas
+                        .filter((k) => s.resp[i]?.[k] || it.resp[i]?.[k])
+                        .map((k) => (
+                            <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: "6px 0", fontSize: 14, color: C.apoio }}>
+                                <span>{PERG[k].label}</span>
+                                <span style={{ color: C.texto, textAlign: "right" }}>{s.resp[i]?.[k] || it.resp[i]?.[k]}</span>
+                            </div>
+                        ))}
+                </div>
+            ))}
+        </>
     );
-    const vals = (
-        <Caixa>
-            <L a="Diferença da inscrição" b={f.dif < 0 ? `menos ${brl(-f.dif)} (não devolvida)` : brl(f.dif)} />
-            <L a="Diferença da taxa de serviço" b={brl(f.dt)} />
-            <L a="Taxa de troca" b={brl(f.tt)} />
-            <L a="Total a pagar" b={brl(f.total)} forte />
-        </Caixa>
-    );
-    const Qr = () => <div className="mx-auto my-3 size-28 rounded-md" style={{ background: "repeating-conic-gradient(#18181b 0 25%, #fff 0 50%) 0 0/14px 14px" }} aria-hidden="true" />;
     const motivoCancel =
-        s.motivoTipo === "vagas" ? "porque as vagas esgotaram antes do pagamento" : s.motivoTipo === "pergunta" ? `porque o tamanho ${s.tam} da camiseta esgotou antes do pagamento` : s.motivoTipo === "comprador" ? "a seu pedido, na carteira" : "pelo atendimento";
+        s.motivoTipo === "vagas"
+            ? `as vagas da ${pa.nome} acabaram antes do pagamento`
+            : s.motivoTipo === "pergunta"
+              ? `o tamanho ${s.tam} da camiseta acabou antes do pagamento`
+              : s.motivoTipo === "comprador"
+                ? "você cancelou pela carteira"
+                : "o atendimento cancelou a pedido da organização";
 
-    const M: Record<string, [string, React.ReactNode]> = {
+    const M: Record<string, [string, ReactNode]> = {
         criada: [
-            `Pague até ${ate(s.expira)} para concluir a troca da sua inscrição`,
+            `Falta só o pagamento para trocar ${daInscricao} na ${EVENTO.nome}`,
             <>
-                <h4>Falta só o pagamento para trocar sua inscrição</h4>
-                <p>
-                    Olá, {n}! Recebemos o pedido de troca no evento <b>{EVENTO.nome}</b>.
+                <h1 style={h1}>Falta só o pagamento para trocar {compradorEhAtleta ? "sua inscrição" : "a inscrição"}</h1>
+                <p style={pTxt}>
+                    Olá, {n}! Recebemos o pedido para trocar {daInscricao} na <b style={{ color: C.texto }}>{EVENTO.nome}</b>. Confira a troca e pague para garantir a nova inscrição.
                 </p>
-                {comp}
-                {vals}
-                {f.down && <p>A nova modalidade custa menos que o valor pago. A diferença não é devolvida, conforme combinado no atendimento.</p>}
-                <span className="my-3 block rounded-lg bg-brand-solid px-4 py-3 text-center font-semibold text-white">Pagar {brl(f.total)}</span>
-                <p className="text-center text-xs text-tertiary">O link vale até {ate(s.expira)} (24 horas). Ao abrir, sua vaga fica reservada por 15 minutos para você pagar. Pix ou cartão.</p>
-                <p>
-                    <b>Importante:</b> a troca só acontece depois do pagamento e depende de haver vagas. Se o prazo passar, nada muda na sua inscrição.
+                <div style={h2}>Resumo da troca</div>
+                {atual}
+                {nova}
+                <div style={h2}>Valores</div>
+                <Linha a="Diferença da inscrição" b={f.dif < 0 ? `menos ${brl(-f.dif)} (não devolvida)` : brl(f.dif)} />
+                <Linha a="Diferença da taxa de serviço" b={brl(f.dt)} />
+                <Linha a="Taxa de troca" b={brl(f.tt)} />
+                <Linha a="Total a pagar" b={brl(f.total)} forte />
+                {f.down && <p style={{ ...pTxt, marginTop: 12 }}>A nova inscrição custa menos que a atual. A diferença não é devolvida, como combinado no atendimento.</p>}
+                <Botao>Pagar {brl(f.total)}</Botao>
+                <p style={{ ...pTxt, fontSize: 14, textAlign: "center", color: C.claro }}>
+                    O link vale até {ate(s.expira)}. Quando você abrir, a vaga na {pa.nome} fica reservada por 15 minutos para concluir o pagamento.
                 </p>
-                <p>Não pediu esta troca? É só ignorar este e-mail ou falar com a gente.</p>
-            </>,
-        ],
-        pago: [
-            "Recebemos o pagamento da sua troca",
-            <>
-                <h4>Pagamento recebido</h4>
-                <p>
-                    Olá, {n}! Recebemos {brl(f.total)} pela troca para a <b>{pa.nome}</b>. Estamos processando, e você recebe a confirmação em instantes.
+                <p style={pTxt}>
+                    <b style={{ color: C.texto }}>Importante:</b> a troca só vale depois do pagamento. Se o prazo passar, a inscrição continua como está.
                 </p>
-                {comp}
-                <p>Não é preciso fazer mais nada.</p>
+                <p style={pTxt}>Não pediu essa troca? É só ignorar este e-mail.</p>
             </>,
         ],
         concluida: [
-            `Troca confirmada: ${nomes(it).split(" e ")[0]} está na ${pa.nome}`,
+            compradorEhAtleta ? `Troca confirmada: agora você está na ${pa.nome}` : `A inscrição de ${atletas} foi alterada`,
             <>
-                <h4>Troca confirmada!</h4>
-                <p>
-                    Olá, {n}! A troca no evento <b>{EVENTO.nome}</b> foi concluída.
-                </p>
-                {comp}
-                <Caixa>
-                    <b className="text-center">Novo comprovante</b>
-                    <Qr />
-                </Caixa>
-                <p>O comprovante anterior ({de.nome}) não vale mais. Use só o novo, que também está na sua carteira.</p>
-                <p>
-                    {f.total ? (
+                <h1 style={h1}>{compradorEhAtleta ? "Troca confirmada 🎉" : `A inscrição de ${atletas} foi alterada`}</h1>
+                <p style={pTxt}>
+                    {compradorEhAtleta ? (
                         <>
-                            Valor pago na troca: <b>{brl(f.total)}</b>.
+                            Olá, {n}! Sua inscrição na <b style={{ color: C.texto }}>{EVENTO.nome}</b> agora é a <b style={{ color: C.texto }}>{pa.nome}</b>. Bons treinos!
                         </>
                     ) : (
-                        `Esta troca não teve pagamento. A diferença de ${brl(f.nd ?? 0)} não é devolvida, conforme aceite registrado.`
+                        <>
+                            Olá, {n}! A troca que você pediu foi concluída. {atletas} agora {it.ps.length > 1 ? "estão inscritos" : "está inscrita"} na <b style={{ color: C.texto }}>{pa.nome}</b> da{" "}
+                            <b style={{ color: C.texto }}>{EVENTO.nome}</b>. Também avisamos {it.ps.length > 1 ? "os atletas" : "a atleta"} por e-mail.
+                        </>
                     )}
                 </p>
+                {compradorEhAtleta && <Botao>Ver minha inscrição</Botao>}
+                <div style={h2}>O que mudou</div>
+                {anterior}
+                {nova}
+                {respostas}
+                <div style={h2}>Pagamento da troca</div>
+                <Linha a="Valor pago na troca" b={brl(f.total)} forte />
+                {!f.total && f.nd > 0 && <p style={{ ...pTxt, marginTop: 12 }}>Esta troca não teve cobrança. A diferença de {brl(f.nd)} não é devolvida, como combinado.</p>}
+                <p style={{ ...pTxt, marginTop: 16 }}>O QR Code da inscrição anterior não vale mais. Use o novo, que já está na carteira.</p>
             </>,
         ],
         portador: [
-            `Sua inscrição no evento ${EVENTO.nome} foi alterada`,
+            `Sua inscrição na ${EVENTO.nome} mudou para ${pa.nome}`,
             <>
-                <h4>Sua inscrição mudou</h4>
-                <p>
-                    Olá, {n}! A pedido de {pessoa(p.comprador).nome}, sua inscrição foi trocada.
+                <h1 style={h1}>Sua inscrição mudou</h1>
+                <p style={pTxt}>
+                    Olá, {n}! {comprador.nome} trocou a sua inscrição na <b style={{ color: C.texto }}>{EVENTO.nome}</b>. Agora você está na <b style={{ color: C.texto }}>{pa.nome}</b>.
                 </p>
-                {comp}
-                <Caixa>
-                    <b className="text-center">Seu novo comprovante</b>
-                    <Qr />
-                </Caixa>
-                <p>O comprovante anterior não vale mais.</p>
+                <Botao>Ver minha inscrição</Botao>
+                <div style={h2}>O que mudou</div>
+                {anterior}
+                {nova}
+                {respostas}
+                <p style={{ ...pTxt, marginTop: 16 }}>O QR Code da inscrição anterior não vale mais. Use o novo, que já está na sua carteira. Alguma resposta errada? Fale com a gente.</p>
             </>,
         ],
         expirada: [
-            "O prazo para pagar a troca terminou",
+            `O prazo para pagar a troca terminou`,
             <>
-                <h4>A troca não foi concluída</h4>
-                <p>Olá, {n}! O link expirou depois de 24 horas sem pagamento.</p>
-                <p>
-                    <b>Nada mudou na sua inscrição</b> ({de.nome}). Se ainda quiser trocar, fale com o atendimento. Os valores e as vagas podem ter mudado.
+                <h1 style={h1}>O prazo para pagar a troca terminou</h1>
+                <p style={pTxt}>
+                    Olá, {n}! O link para trocar {daInscricao} na <b style={{ color: C.texto }}>{EVENTO.nome}</b> expirou sem pagamento. Nada mudou: a inscrição continua a mesma.
                 </p>
+                {atual}
+                <p style={{ ...pTxt, marginTop: 16 }}>Ainda quer trocar? Fale com a gente. Os valores e as vagas podem ter mudado.</p>
             </>,
         ],
         cancelada: [
-            "A troca da sua inscrição foi cancelada",
+            `A troca da inscrição foi cancelada`,
             <>
-                <h4>Troca cancelada</h4>
-                <p>
-                    Olá, {n}! A troca para a <b>{pa.nome}</b> foi cancelada {motivoCancel}.
+                <h1 style={h1}>A troca foi cancelada</h1>
+                <p style={pTxt}>
+                    Olá, {n}! A troca para a <b style={{ color: C.texto }}>{pa.nome}</b> foi cancelada porque {motivoCancel}. Nada foi cobrado e a inscrição continua a mesma.
                 </p>
-                <p>
-                    <b>Nada foi cobrado e nada mudou</b> na sua inscrição ({de.nome}).
-                </p>
+                {atual}
             </>,
         ],
         reprovada: [
-            "Não conseguimos concluir a troca, estorno a caminho",
+            "Não conseguimos concluir a troca e vamos devolver o valor",
             <>
-                <h4>Não foi possível concluir a troca</h4>
-                <p>
-                    Olá, {n}! Recebemos o pagamento, mas na verificação final não foi possível trocar para a <b>{pa.nome}</b>. {s.motivoFim}
+                <h1 style={h1}>Não conseguimos concluir a troca</h1>
+                <p style={pTxt}>
+                    Olá, {n}! Recebemos o pagamento, mas não foi possível trocar para a <b style={{ color: C.texto }}>{pa.nome}</b>. {s.motivoFim}
                 </p>
-                <Caixa>
-                    <L a="Estorno integral" b={<b>{brl(f.total)}</b>} />
-                    <L a="Prazo" b="até 7 dias úteis, no mesmo meio de pagamento" />
-                </Caixa>
-                <p>Sua inscrição continua como estava ({de.nome}).</p>
-            </>,
-        ],
-        falha: [
-            `[Operação] Falha de processamento na troca ${s.id}`,
-            <>
-                <h4>Ação necessária: reprocessar a troca</h4>
-                <p>
-                    A troca <b>{s.id}</b> teve o pagamento aprovado ({brl(f.total)}), mas a efetivação falhou.
-                </p>
-                <Caixa>
-                    <L a="Reserva" b="mantida" />
-                    <L a="Nova cobrança" b="não" />
-                </Caixa>
-                <p>Um Admin Ingresse deve reprocessar pelo pedido no Backstage. Não peça ao atleta para pagar de novo.</p>
+                <Linha a="Valor devolvido" b={brl(f.total)} forte />
+                <p style={{ ...pTxt, marginTop: 12 }}>O valor volta no mesmo meio de pagamento em até 7 dias úteis.</p>
+                {atual}
             </>,
         ],
     };
-    const [assunto, corpo] = M[tipo];
+    const [assunto, corpo] = M[tipo] ?? M.criada;
 
     return (
         <div className="flex motion-safe:animate-in flex-col gap-3 duration-200 motion-safe:fade-in">
@@ -276,10 +350,21 @@ function Email({ tipo, s, para }: { tipo: string; s: Solicitacao; para: { nome: 
                 <br />
                 Assunto: <b className="text-primary">{assunto}</b>
             </p>
-            <div className="mx-auto w-full max-w-[600px] overflow-hidden rounded-xl bg-primary ring-1 ring-border-secondary">
-                <div className="bg-brand-solid px-6 py-4 text-center text-sm font-extrabold tracking-wide text-white">TICKET SPORTS</div>
-                <div className="flex flex-col gap-3 px-6 py-6 text-md text-secondary [&_h4]:text-lg [&_h4]:font-semibold [&_h4]:text-primary">{corpo}</div>
-                <div className="border-t border-secondary px-6 py-4 text-xs text-tertiary">Precisa de ajuda? Fale com a gente. Este é um e-mail automático, não é necessário responder.</div>
+            <div style={{ background: C.fundo, color: C.texto, borderRadius: 12, border: `1px solid ${C.linha}`, maxWidth: 600, width: "100%", margin: "0 auto", padding: "28px 28px 24px", fontFamily: "Inter, Arial, sans-serif" }}>
+                <LogoTicketSports />
+                <div style={{ marginTop: 28 }}>{corpo}</div>
+                <div style={{ background: C.caixa, borderRadius: 12, padding: 18, marginTop: 24 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 17, fontWeight: 700, color: C.texto }}>
+                        <span aria-hidden="true" style={{ display: "inline-grid", placeItems: "center", width: 24, height: 24, borderRadius: 999, border: `1.5px solid ${C.texto}`, fontSize: 13 }}>
+                            ?
+                        </span>
+                        Precisa de ajuda?
+                    </div>
+                    <p style={{ fontSize: 15, color: C.apoio, margin: "8px 0 0" }}>
+                        Fale com a gente <span style={{ color: C.azul, textDecoration: "underline" }}>por aqui</span>.
+                    </p>
+                </div>
+                <p style={{ fontSize: 14, color: C.apoio, margin: "20px 0 0" }}>Este é um e-mail automático, não é necessário responder.</p>
             </div>
         </div>
     );

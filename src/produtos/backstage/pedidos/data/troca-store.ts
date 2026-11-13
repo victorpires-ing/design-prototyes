@@ -1158,7 +1158,6 @@ export function pagarLink(id: string, forma: string) {
         x.pagamento = forma;
     });
     hist(s.pedido, `Pagamento da troca ${g.map((x) => x.id).join(", ")} confirmado (${forma}, ${brl(g.reduce((a, x) => a + x.val.total, 0))}).`);
-    email("pago", s, pessoa(ped(s.pedido)!.comprador));
     commit();
     setTimeout(() => {
         g.forEach((x) => efetivar(x));

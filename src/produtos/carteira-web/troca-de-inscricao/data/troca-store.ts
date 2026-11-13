@@ -1165,7 +1165,6 @@ export function pagarLink(id: string, forma: string) {
         x.pagamento = forma;
     });
     hist(s.pedido, `Pagamento da troca ${g.map((x) => x.id).join(", ")} confirmado (${forma}, ${brl(g.reduce((a, x) => a + x.val.total, 0))}).`);
-    email("pago", s, pessoa(ped(s.pedido)!.comprador));
     commit();
     setTimeout(() => {
         g.forEach((x) => efetivar(x));
@@ -1333,7 +1332,6 @@ export function pagarNaCarteira(id: string) {
     const s = sol(id)!;
     s.status = "PROCESSANDO";
     hist(s.pedido, `Pagamento da troca ${s.id} confirmado na carteira (${brl(s.val.total)}).`);
-    email("pago", s, pessoa(ped(s.pedido)!.comprador));
     efetivar(s);
     commit();
 }

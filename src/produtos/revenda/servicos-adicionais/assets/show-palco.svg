@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 700" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="ceu" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#12081f"/>
+      <stop offset="0.55" stop-color="#3a0f2e"/>
+      <stop offset="1" stop-color="#7a1f1a"/>
+    </linearGradient>
+    <radialGradient id="brilho" cx="0.5" cy="0.62" r="0.55">
+      <stop offset="0" stop-color="#ffb347" stop-opacity="0.85"/>
+      <stop offset="0.35" stop-color="#ff4d2e" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ff4d2e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="feixe" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff3d6" stop-opacity="0"/>
+      <stop offset="1" stop-color="#fff3d6" stop-opacity="0.32"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="700" fill="url(#ceu)"/>
+  <rect width="1600" height="700" fill="url(#brilho)"/>
+  <g fill="url(#feixe)">
+    <polygon points="560,0 620,0 820,470 740,470"/>
+    <polygon points="1040,0 980,0 860,470 940,470"/>
+    <polygon points="250,0 300,0 760,470 700,470"/>
+    <polygon points="1350,0 1300,0 900,470 960,470"/>
+  </g>
+  <g fill="#0b0509">
+    <path d="M0 700V560c40-18 70-6 95-30 18 22 40 26 62 8 14-40 34-52 52-46 10 30 2 52 22 60 26-20 48-12 64 4 20-8 26-40 44-52 16 8 18 40 30 52 22-6 36-26 58-22 8 28 30 36 50 30 18-34 36-70 54-64 14 10 6 48 20 58 26 2 34-22 56-18 12 20 26 32 48 22 14-30 32-44 50-36 8 22 4 44 24 52 30-6 40-30 64-26 12 24 24 34 46 24 16-44 36-80 52-72 12 12 4 50 22 60 24-2 36-24 58-20 10 26 28 34 50 26 14-26 30-38 48-30 10 22 8 42 28 50 26-4 38-28 62-24 12 22 30 30 50 22 16-40 34-60 52-52 12 14 4 44 22 54 26 0 38-22 60-16 8 22 26 30 46 24V700Z"/>
+    
+  </g>
+</svg>

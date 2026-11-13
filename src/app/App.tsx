@@ -177,6 +177,10 @@ import { MeusDependentes as CarteiraWebDependentes } from '../produtos/carteira-
 import { SelecionarPerfil as CarteiraWebSelecionarPerfil } from '../produtos/carteira-web/pages/selecionar-perfil';
 import { Home as RevendaHome } from '../produtos/revenda/home/pages/Home';
 import { Evento as RevendaEvento } from '../produtos/revenda/evento/pages/Evento';
+import { ServicosAdicionais } from '../produtos/revenda/servicos-adicionais/pages/servicos-adicionais';
+import { Oferta as ServicoOferta } from '../produtos/revenda/servicos-adicionais/pages/oferta';
+import { CheckoutServico } from '../produtos/revenda/servicos-adicionais/pages/checkout';
+import { ConfirmacaoServico } from '../produtos/revenda/servicos-adicionais/pages/confirmacao';
 import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/SolicitacoesInbox';
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
 import { Pedidos as PedidosPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/Pedidos';
@@ -421,6 +425,10 @@ export default function App() {
         <Route path="/carteira-web/selecionar" element={<CarteiraWebSelecionarPerfil />} />
         <Route path="/revenda" element={<RevendaHome />} />
         <Route path="/revenda/:slug" element={<RevendaEvento />} />
+        <Route path="/revenda/servicos-adicionais" element={<ServicosAdicionais />} />
+        <Route path="/revenda/servicos-adicionais/:servico" element={<ServicoOferta />} />
+        <Route path="/revenda/servicos-adicionais/:servico/checkout" element={<CheckoutServico />} />
+        <Route path="/revenda/servicos-adicionais/:servico/confirmacao" element={<ConfirmacaoServico />} />
         <Route path="/aprovacoes/solicitacoes" element={<SolicitacoesInbox />} />
         <Route path="/backstage/publico" element={<Publico />} />
         <Route path="/backstage/produtos" element={<ProdutosDaOrganizacao />} />

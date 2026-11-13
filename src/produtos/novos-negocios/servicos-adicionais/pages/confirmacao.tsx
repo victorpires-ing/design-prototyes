@@ -7,28 +7,30 @@ import { cx } from "@/utils/cx";
 import { useForceLightTheme } from "../../utils/use-force-light-theme";
 import { FundoPagina } from "../components/fundo-pagina";
 import { Topo } from "../components/topo";
-import { SERVICOS, brl, valorFinal, type Servico, type ServicoId } from "../data/servicos";
+import { brl, type Servico } from "../data/servicos";
+import { lerPedido, nomeItem, totalPedido, type ItemPedido } from "../utils/pedido";
 
 /**
  * Confirmação da compra. Sem vínculo com evento: nada de card do evento nem sugestão de
  * outro serviço (não há garantia de que a pessoa tenha ingresso).
  * Quando o serviço tem resgate (Uber), mostra o código para copiar e o CTA que abre o app
- * do parceiro — duas alternativas na mesma tela, não etapas.
+ * do parceiro — duas alternativas na mesma tela, não etapas. Os outros mostram os passos.
  */
 export function ConfirmacaoServico() {
     useForceLightTheme();
     const navigate = useNavigate();
     const { servico: id } = useParams();
     const [params] = useSearchParams();
-    const servico = SERVICOS[id as ServicoId];
-    const valor = Number(params.get("valor"));
+    const pedido = lerPedido(id, params);
     const forma = params.get("forma") === "cartao" ? "Cartão de crédito" : "Pix";
 
     useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
 
-    if (!servico || !valor) return <Navigate to="/novos-negocios/servicos-adicionais" replace />;
+    if (!pedido) return <Navigate to="/novos-negocios/servicos-adicionais" replace />;
+
+    const { servico } = pedido;
 
     return (
         <FundoPagina>
@@ -43,34 +45,19 @@ export function ConfirmacaoServico() {
 
                     <dl className="flex w-full flex-col gap-2 rounded-xl bg-secondary p-4 text-left text-md">
                         <div className="flex justify-between gap-3">
-                            <dt className="text-tertiary">{servico.item}</dt>
-                            <dd className="text-secondary tabular-nums">{brl(valor)}</dd>
+                            <dt className="text-tertiary">{nomeItem(pedido)}</dt>
+                            <dd className="text-secondary tabular-nums">{brl(pedido.valor)}</dd>
                         </div>
                         <div className="flex justify-between gap-3">
                             <dt className="text-tertiary">Pago com {forma}</dt>
-                            <dd className="font-semibold text-primary tabular-nums">{brl(valorFinal(servico, valor))}</dd>
+                            <dd className="font-semibold text-primary tabular-nums">{brl(totalPedido(pedido))}</dd>
                         </div>
                     </dl>
 
-                    {servico.resgate ? (
-                        <Resgate servico={servico} resgate={servico.resgate} codigo={codigoResgate(valor, forma)} />
-                    ) : (
-                        servico.confirmacao.passos && (
-                            <ol className="flex w-full flex-col gap-3 text-left">
-                                {servico.confirmacao.passos.map((p, i) => (
-                                    <li key={p} className="flex gap-3">
-                                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-primary text-xs font-semibold text-brand-secondary">
-                                            {i + 1}
-                                        </span>
-                                        <span className="text-md text-secondary">{p}</span>
-                                    </li>
-                                ))}
-                            </ol>
-                        )
-                    )}
+                    <ComoUsar item={pedido} forma={forma} />
                 </section>
 
-                {/* Serviços sem resgate (Meep) seguem com o "Concluir" */}
+                {/* Serviços sem resgate (Meep, fotos, seguro) seguem com o "Concluir" */}
                 {!servico.resgate && (
                     <Button size="lg" color="primary" className="w-full" onClick={() => navigate("/novos-negocios/servicos-adicionais")}>
                         Concluir
@@ -78,6 +65,23 @@ export function ConfirmacaoServico() {
                 )}
             </main>
         </FundoPagina>
+    );
+}
+
+/** Como usar um item: resgate (código + app do parceiro) ou passos numerados. */
+function ComoUsar({ item, forma }: { item: ItemPedido; forma: string }) {
+    const { servico, valor } = item;
+    if (servico.resgate) return <Resgate servico={servico} resgate={servico.resgate} codigo={codigoResgate(valor, forma)} />;
+    if (!servico.confirmacao.passos) return null;
+    return (
+        <ol className="flex w-full flex-col gap-3 text-left">
+            {servico.confirmacao.passos.map((p, i) => (
+                <li key={p} className="flex gap-3">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-primary text-xs font-semibold text-brand-secondary">{i + 1}</span>
+                    <span className="text-md text-secondary">{p}</span>
+                </li>
+            ))}
+        </ol>
     );
 }
 

@@ -36,7 +36,7 @@ export function SeletorValor({ servico, selecao }: { servico: Servico; selecao: 
                 className="flex flex-col gap-4"
             >
                 <AriaLabel className="text-lg font-semibold text-primary">{servico.pergunta}</AriaLabel>
-                <div className={cx("grid gap-2", servico.outroValor ? "grid-cols-4" : "grid-cols-3")}>
+                <div className="grid grid-cols-3 gap-2">
                     {servico.valores.map((v) => (
                         <AriaRadio
                             key={v}
@@ -47,23 +47,32 @@ export function SeletorValor({ servico, selecao }: { servico: Servico; selecao: 
                                 <>
                                     <span
                                         className={cx(
-                                            "text-lg font-bold tabular-nums sm:text-xl lg:text-display-xs",
+                                            servico.pacotes ? "text-md leading-tight font-bold sm:text-lg" : "text-lg font-bold tabular-nums sm:text-xl lg:text-display-xs",
                                             isSelected ? "text-brand-secondary" : "text-primary",
                                         )}
                                     >
-                                        {inteiro(v)}
+                                        {servico.pacotes?.[v] ?? inteiro(v)}
                                     </span>
-                                    {temDesconto && (
-                                        <span className="text-xs whitespace-nowrap text-tertiary tabular-nums sm:text-sm lg:text-md">por {brl(valorFinal(servico, v))}</span>
+                                    {/* Pacote (fotos, seguro): nome em destaque e o preço embaixo */}
+                                    {servico.pacotes ? (
+                                        <span className="text-xs whitespace-nowrap text-tertiary tabular-nums sm:text-sm lg:text-md">{brl(v)}</span>
+                                    ) : (
+                                        temDesconto && (
+                                            <span className="text-xs whitespace-nowrap text-tertiary tabular-nums sm:text-sm lg:text-md">por {brl(valorFinal(servico, v))}</span>
+                                        )
                                     )}
                                 </>
                             )}
                         </AriaRadio>
                     ))}
-                    {servico.outroValor && (
+                    {/* "Outro valor" em largura total, abaixo dos valores sugeridos. Escolhido, dá lugar ao
+                        campo (logo abaixo, no mesmo lugar); tocar num valor sugerido traz o botão de volta */}
+                    {servico.outroValor && selecao.opcao !== "outro" && (
                         <AriaRadio
                             value="outro"
-                            className={({ isSelected, isFocusVisible }) => opcao(isSelected, isFocusVisible ? "outline-2 outline-offset-2" : "")}
+                            className={({ isSelected, isFocusVisible }) =>
+                                opcao(isSelected, cx("col-span-3 min-h-12 py-2", isFocusVisible && "outline-2 outline-offset-2"))
+                            }
                         >
                             {({ isSelected }) => (
                                 <span className={cx("text-sm font-semibold", isSelected ? "text-brand-secondary" : "text-secondary")}>Outro valor</span>
@@ -77,18 +86,28 @@ export function SeletorValor({ servico, selecao }: { servico: Servico; selecao: 
             {selecao.opcao == null && selecao.erroVisivel && <p className="-mt-2 text-sm text-error-primary">{selecao.erroVisivel}</p>}
 
             {selecao.opcao === "outro" && (
-                // autoFocus: ao escolher "Outro valor", o cursor já vai para o campo
+                // Ocupa o lugar do botão "Outro valor"; autoFocus leva o cursor direto para o campo.
+                // O CTA principal só habilita com um valor válido digitado
                 <Input
                     autoFocus
-                    label={temDesconto ? "Valor do crédito" : "Valor da recarga"}
+                    size="lg"
                     icon={Prefixo}
                     inputMode="numeric"
-                    placeholder="0"
+                    placeholder={temDesconto ? "Digite o valor do crédito" : "Digite o valor da recarga"}
                     value={selecao.outro}
                     onChange={selecao.setOutro}
                     onBlur={selecao.marcarTocado}
                     isInvalid={!!selecao.erroVisivel}
-                    hint={selecao.erroVisivel ?? `De ${brl(servico.minimo)} a ${brl(servico.maximo)}.`}
+                    // Sem desconto (recarga, ex.: Meep) não há legenda embaixo do campo; só o erro, se houver.
+                    // Com desconto (crédito Uber) mostra a faixa e, com valor válido, quanto a pessoa paga
+                    hint={
+                        selecao.erroVisivel ??
+                        (!temDesconto
+                            ? undefined
+                            : selecao.valor != null
+                              ? `Você paga ${brl(valorFinal(servico, selecao.valor))} com ${Math.round(servico.desconto * 100)}% de desconto.`
+                              : `De ${brl(servico.minimo)} a ${brl(servico.maximo)}.`)
+                    }
                 />
             )}
         </div>

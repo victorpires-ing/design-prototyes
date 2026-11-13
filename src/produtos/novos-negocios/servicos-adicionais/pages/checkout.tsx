@@ -5,7 +5,9 @@ import { Button } from "@/components/base/buttons/button";
 import { useForceLightTheme } from "../../utils/use-force-light-theme";
 import { IconeCartao, IconeClickToPay, IconeGoogle, IconePix, MetodoPagamento } from "../components/metodos-pagamento";
 import { Topo } from "../components/topo";
-import { SERVICOS, brl, valorFinal, type ServicoId } from "../data/servicos";
+import { SeloServico } from "../components/selo-servico";
+import { brl, valorFinal } from "../data/servicos";
+import { lerPedido, nomeItem, totalPedido } from "../utils/pedido";
 
 /**
  * Checkout do crédito no formato do checkout em produção: header, barra com voltar, nome do
@@ -19,8 +21,7 @@ export function CheckoutServico() {
     const navigate = useNavigate();
     const { servico: id } = useParams();
     const [params] = useSearchParams();
-    const servico = SERVICOS[id as ServicoId];
-    const valor = Number(params.get("valor"));
+    const pedido = lerPedido(id, params);
 
     // Tempo restante do pedido, como em produção
     const [restante, setRestante] = useState(10 * 60);
@@ -31,14 +32,15 @@ export function CheckoutServico() {
     }, []);
     const tempo = `${String(Math.floor(restante / 60)).padStart(2, "0")}:${String(restante % 60).padStart(2, "0")}`;
 
-    if (!servico) return <Navigate to="/novos-negocios/servicos-adicionais" replace />;
-    if (!valor || valor < servico.minimo || valor > servico.maximo) return <Navigate to={`/novos-negocios/servicos-adicionais/${servico.id}`} replace />;
+    // Pedido inválido (serviço, valor ou pacote) volta para a oferta, ou para a lista
+    if (!pedido) return <Navigate to={id ? `/novos-negocios/servicos-adicionais/${id}` : "/novos-negocios/servicos-adicionais"} replace />;
 
-    const final = valorFinal(servico, valor);
-    const desconto = valor - final;
-    const pct = Math.round(servico.desconto * 100);
-    const voltar = () => navigate(`/novos-negocios/servicos-adicionais/${servico.id}`);
-    const pagar = (forma: "pix" | "cartao") => navigate(`/novos-negocios/servicos-adicionais/${servico.id}/confirmacao?valor=${valor}&forma=${forma}`);
+    const { servico } = pedido;
+    const titulo = servico.item;
+    const total = totalPedido(pedido);
+    // Volta para a oferta mantendo a marcação de quem veio do Checklist do rolê
+    const voltar = () => navigate(`/novos-negocios/servicos-adicionais/${servico.id}${params.get("de") === "checklist" ? "?de=checklist" : ""}`);
+    const pagar = (forma: "pix" | "cartao") => navigate(`/novos-negocios/servicos-adicionais/${servico.id}/confirmacao?valor=${pedido.valor}&forma=${forma}`);
 
     return (
         <div className="min-h-screen bg-secondary text-primary">
@@ -56,7 +58,7 @@ export function CheckoutServico() {
                         >
                             <ChevronLeft className="size-5" aria-hidden="true" />
                         </button>
-                        <p className="truncate text-md font-bold text-primary uppercase">{servico.item}</p>
+                        <p className="truncate text-md font-bold text-primary uppercase">{titulo}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                         <Button size="md" color="secondary" iconTrailing={Share06} className="hidden sm:flex">
@@ -89,39 +91,35 @@ export function CheckoutServico() {
                     {/* Resumo do pedido: à direita no desktop, antes dos métodos no mobile */}
                     <aside aria-label="Resumo do pedido" className="order-first rounded-2xl bg-primary p-4 shadow-xs ring-1 ring-secondary lg:sticky lg:top-6 lg:order-none">
                         <div className="flex items-center gap-4">
-                            {/* Logo do parceiro no lugar da capa do evento: o crédito não fica preso a um evento */}
-                            <span className="flex size-[72px] shrink-0 items-center justify-center rounded-xl bg-black">
-                                {servico.logo ? (
-                                    <img src={servico.logo} alt={servico.parceiro} className="h-5 w-auto invert" />
-                                ) : (
-                                    <span className="text-sm font-bold text-white">{servico.parceiro}</span>
-                                )}
-                            </span>
-                            <p className="text-md font-bold text-primary uppercase">{servico.item}</p>
+                            {/* Selo do serviço no lugar da capa do evento: o serviço não fica preso a um evento */}
+                            <SeloServico servico={servico} tamanho="lg" />
+                            <p className="text-md font-bold text-primary uppercase">{titulo}</p>
                         </div>
 
                         <div className="my-4 border-t border-secondary" />
 
                         <p className="text-md font-bold text-primary">Itens</p>
-                        <div className="mt-3 flex items-start justify-between gap-3 text-sm">
-                            <p className="flex gap-2 text-secondary">
-                                <span className="font-semibold text-primary">1</span>
-                                <span>{servico.item}</span>
-                            </p>
-                            <span className="font-semibold text-primary tabular-nums">{brl(valor)}</span>
-                        </div>
-                        {servico.desconto > 0 && (
-                            <div className="mt-2 flex items-baseline justify-between gap-3 pl-4 text-sm">
-                                <span className="text-secondary">Desconto de {pct}%</span>
-                                <span className="font-semibold text-success-primary tabular-nums">− {brl(desconto)}</span>
+                        <div className="mt-3 flex flex-col gap-2 text-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <p className="flex gap-2 text-secondary">
+                                    <span className="font-semibold text-primary">1</span>
+                                    <span>{nomeItem(pedido)}</span>
+                                </p>
+                                <span className="font-semibold text-primary tabular-nums">{brl(pedido.valor)}</span>
                             </div>
-                        )}
+                            {servico.desconto > 0 && (
+                                <div className="flex items-baseline justify-between gap-3 pl-4">
+                                    <span className="text-secondary">Desconto de {Math.round(servico.desconto * 100)}%</span>
+                                    <span className="font-semibold text-success-primary tabular-nums">− {brl(pedido.valor - valorFinal(servico, pedido.valor))}</span>
+                                </div>
+                            )}
+                        </div>
 
                         <div className="my-4 border-t border-secondary" />
 
                         <div className="flex items-baseline justify-between gap-3">
                             <span className="text-md font-bold text-primary">Total a pagar</span>
-                            <span className="text-lg font-bold text-primary tabular-nums">{brl(final)}</span>
+                            <span className="text-lg font-bold text-primary tabular-nums">{brl(total)}</span>
                         </div>
                     </aside>
                 </div>

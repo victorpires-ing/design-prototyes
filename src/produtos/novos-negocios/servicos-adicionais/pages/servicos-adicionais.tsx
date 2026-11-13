@@ -1,8 +1,10 @@
+import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, ChevronRight } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { MarcaParceiro } from "../components/marca-parceiro";
-import { EVENTO, SERVICOS } from "../data/servicos";
+import { SeloServico } from "../components/selo-servico";
+import { CHECKLIST, EVENTO, INDIVIDUAIS, SERVICOS } from "../data/servicos";
 
 /**
  * Entrada do protótipo de Serviços adicionais (nome interno).
@@ -21,32 +23,55 @@ export function ServicosAdicionais() {
                 <h1 className="mt-5 text-3xl font-bold text-primary">Serviços adicionais</h1>
 
                 <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    {Object.values(SERVICOS).map((s) => (
-                        <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => navigate(`/novos-negocios/servicos-adicionais/${s.id}`)}
-                            className="group flex flex-col overflow-hidden rounded-2xl text-left ring-1 ring-border-secondary outline-focus-ring transition duration-150 ease-linear hover:-translate-y-1 hover:ring-brand focus-visible:outline-2 focus-visible:outline-offset-2"
-                        >
-                            <div className="relative flex h-36 items-end overflow-hidden p-4">
-                                <img src={EVENTO.cover} alt="" aria-hidden="true" className="absolute inset-0 size-full object-cover" />
-                                <span className="relative">
-                                    <MarcaParceiro id={s.id} nome={s.parceiro} />
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between gap-2 border-t border-secondary bg-secondary/60 px-4 py-4">
-                                <div className="min-w-0">
-                                    <p className="text-md font-semibold text-primary">
-                                        {s.parceiro} · {s.categoria}
-                                    </p>
-                                    <p className="truncate text-sm text-tertiary">{s.descricao}</p>
-                                </div>
-                                <ChevronRight className="size-5 shrink-0 text-fg-quaternary transition group-hover:text-fg-secondary" aria-hidden="true" />
-                            </div>
-                        </button>
-                    ))}
+                    {INDIVIDUAIS.map((id) => {
+                        const s = SERVICOS[id];
+                        return (
+                            <CartaoEntrada
+                                key={id}
+                                onPress={() => navigate(`/novos-negocios/servicos-adicionais/${id}`)}
+                                selos={<MarcaParceiro id={s.id} nome={s.parceiro} />}
+                                titulo={`${s.parceiro} · ${s.categoria}`}
+                                descricao={s.descricao}
+                            />
+                        );
+                    })}
+                    {/* Página com vários serviços */}
+                    <CartaoEntrada
+                        onPress={() => navigate("/novos-negocios/servicos-adicionais/checklist")}
+                        selos={
+                            <span className="flex items-center">
+                                {CHECKLIST.map((id, n) => (
+                                    <SeloServico key={id} servico={SERVICOS[id]} tamanho="md" className={n > 0 ? "-ml-3 ring-2 ring-white" : undefined} />
+                                ))}
+                            </span>
+                        }
+                        titulo="Checklist do rolê · Vários serviços"
+                        descricao="Uber, Meep, fotos e seguro de celular numa página só."
+                    />
                 </div>
             </div>
         </div>
+    );
+}
+
+function CartaoEntrada({ onPress, selos, titulo, descricao }: { onPress: () => void; selos: ReactNode; titulo: string; descricao: string }) {
+    return (
+        <button
+            type="button"
+            onClick={onPress}
+            className="group flex flex-col overflow-hidden rounded-2xl text-left ring-1 ring-border-secondary outline-focus-ring transition duration-150 ease-linear hover:-translate-y-1 hover:ring-brand focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+            <div className="relative flex h-36 items-end overflow-hidden p-4">
+                <img src={EVENTO.cover} alt="" aria-hidden="true" className="absolute inset-0 size-full object-cover" />
+                <span className="relative">{selos}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 border-t border-secondary bg-secondary/60 px-4 py-4">
+                <div className="min-w-0">
+                    <p className="text-md font-semibold text-primary">{titulo}</p>
+                    <p className="truncate text-sm text-tertiary">{descricao}</p>
+                </div>
+                <ChevronRight className="size-5 shrink-0 text-fg-quaternary transition group-hover:text-fg-secondary" aria-hidden="true" />
+            </div>
+        </button>
     );
 }

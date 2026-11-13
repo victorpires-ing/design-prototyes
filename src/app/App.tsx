@@ -180,6 +180,7 @@ import { Home as RevendaHome } from '../produtos/novos-negocios/home/pages/Home'
 import { Evento as RevendaEvento } from '../produtos/novos-negocios/evento/pages/Evento';
 import { Inicio as RevendaInicio } from '../produtos/novos-negocios/inicio/pages/inicio';
 import { ServicosAdicionais } from '../produtos/novos-negocios/servicos-adicionais/pages/servicos-adicionais';
+import { Checklist as ServicosChecklist } from '../produtos/novos-negocios/servicos-adicionais/pages/checklist';
 import { Oferta as ServicoOferta } from '../produtos/novos-negocios/servicos-adicionais/pages/oferta';
 import { CheckoutServico } from '../produtos/novos-negocios/servicos-adicionais/pages/checkout';
 import { ConfirmacaoServico } from '../produtos/novos-negocios/servicos-adicionais/pages/confirmacao';
@@ -436,6 +437,7 @@ export default function App() {
         <Route path="/novos-negocios/marketplace" element={<RevendaHome />} />
         <Route path="/novos-negocios/:slug" element={<RevendaEvento />} />
         <Route path="/novos-negocios/servicos-adicionais" element={<ServicosAdicionais />} />
+        <Route path="/novos-negocios/servicos-adicionais/checklist" element={<ServicosChecklist />} />
         <Route path="/novos-negocios/servicos-adicionais/:servico" element={<ServicoOferta />} />
         <Route path="/novos-negocios/servicos-adicionais/:servico/checkout" element={<CheckoutServico />} />
         <Route path="/novos-negocios/servicos-adicionais/:servico/confirmacao" element={<ConfirmacaoServico />} />

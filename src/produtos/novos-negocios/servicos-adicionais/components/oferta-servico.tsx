@@ -1,8 +1,10 @@
-import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router";
+import { useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router";
+import { ArrowLeft } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import type { Servico } from "../data/servicos";
+import { useCantosDoCard } from "../utils/use-cantos-do-card";
 import { useSelecaoValor } from "../utils/use-selecao-valor";
 import { ApresentacaoServico, MarcaServico } from "./apresentacao-servico";
 import { AvisoServico } from "./condicoes";
@@ -16,38 +18,18 @@ import { SeletorValor } from "./seletor-valor";
  */
 export function OfertaServico({ servico }: { servico: Servico }) {
     const navigate = useNavigate();
+    // Veio da vitrine (Checklist do rolê)? Mostra o voltar e leva a marcação adiante
+    const [params] = useSearchParams();
+    const doChecklist = params.get("de") === "checklist";
     const selecao = useSelecaoValor(servico);
     const escolheu = selecao.valor != null;
     const card = useRef<HTMLElement>(null);
 
-    // Mobile: os cantos de cima do card vão endireitando nos últimos 24px antes de encostar
-    // na barra do topo (72px), para não sobrar uma curva sob o header ao rolar
-    useEffect(() => {
-        const el = card.current;
-        if (!el) return;
-        const desktop = window.matchMedia("(min-width: 1024px)");
-        const BARRA = 72;
-        const RAIO = 24;
-        const atualizar = () => {
-            if (desktop.matches) {
-                el.style.borderTopLeftRadius = el.style.borderTopRightRadius = "";
-                return;
-            }
-            const raio = Math.max(0, Math.min(RAIO, el.getBoundingClientRect().top - BARRA));
-            el.style.borderTopLeftRadius = el.style.borderTopRightRadius = `${raio}px`;
-        };
-        atualizar();
-        window.addEventListener("scroll", atualizar, { passive: true });
-        desktop.addEventListener("change", atualizar);
-        return () => {
-            window.removeEventListener("scroll", atualizar);
-            desktop.removeEventListener("change", atualizar);
-        };
-    }, []);
+    useCantosDoCard(card);
 
     const contratar = () => {
         if (selecao.valor == null) return;
-        navigate(`/novos-negocios/servicos-adicionais/${servico.id}/checkout?valor=${selecao.valor}`);
+        navigate(`/novos-negocios/servicos-adicionais/${servico.id}/checkout?valor=${selecao.valor}${doChecklist ? "&de=checklist" : ""}`);
     };
 
     return (
@@ -60,6 +42,18 @@ export function OfertaServico({ servico }: { servico: Servico }) {
                     "pb-28 lg:pb-0",
                 )}
             >
+                {doChecklist && (
+                    <Button
+                        size="sm"
+                        color="link-gray"
+                        iconLeading={ArrowLeft}
+                        // Mobile: no topo do card; no desktop o voltar fica acima do mosaico (pages/oferta.tsx)
+                        className="-mb-4 self-start lg:hidden"
+                        onClick={() => navigate("/novos-negocios/servicos-adicionais/checklist")}
+                    >
+                        Voltar
+                    </Button>
+                )}
                 <div className="-mb-2">
                     <MarcaServico servico={servico} />
                 </div>

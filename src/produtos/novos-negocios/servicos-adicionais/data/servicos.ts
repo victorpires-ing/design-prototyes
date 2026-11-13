@@ -2,7 +2,7 @@ import type { FC } from "react";
 import festivalAurora from "../assets/festival-aurora.svg";
 import showPalco from "../assets/show-palco.svg";
 import uberLogo from "../assets/uber-logo.svg";
-import { IconlyCarro, IconlyCarteira, IconlyCartao, IconlyComida, IconlyDesconto, IconlyRaio } from "../components/icones-iconly";
+import { IconlyCalendario, IconlyCamera, IconlyCarro, IconlyCarteira, IconlyCartao, IconlyComida, IconlyDesconto, IconlyEnviar, IconlyEscudo, IconlyImagem, IconlyRaio } from "../components/icones-iconly";
 
 /**
  * Serviços adicionais — configuração das ofertas.
@@ -16,7 +16,7 @@ import { IconlyCarro, IconlyCarteira, IconlyCartao, IconlyComida, IconlyDesconto
  * confirmadas com os parceiros.
  */
 
-export type ServicoId = "uber" | "meep";
+export type ServicoId = "uber" | "meep" | "fotos" | "seguro";
 
 export interface Beneficio {
     icone: FC<{ className?: string }>;
@@ -28,6 +28,10 @@ export interface Servico {
     parceiro: string;
     /** Logo oficial do parceiro; sem ela, a página usa o selo provisório com o nome. */
     logo?: string;
+    /** Sem logo de parceiro: ícone no selo, no lugar do nome (ex.: câmera nas fotos). */
+    iconeSelo?: FC<{ className?: string }>;
+    /** Cor de fundo do selo com ícone (classe de token). */
+    corSelo?: string;
     categoria: string;
     /** Título da oferta. `chamada` vem na linha de baixo e termina no `destaque`, em cor de marca. */
     titulo: string;
@@ -39,9 +43,11 @@ export interface Servico {
     /** Nome do que se compra, usado no resumo ("Crédito Uber", "Saldo Meep"). */
     item: string;
     valores: number[];
+    /** Nome de cada opção quando não é crédito, e sim um pacote (ex.: 49 → "15 fotos"). */
+    pacotes?: Record<number, string>;
     /** Fração de desconto sobre o valor (0.05 = 5%). 0 = sem desconto. */
     desconto: number;
-    /** Mostra a opção "Outro valor" (desligada por enquanto nas duas ofertas). */
+    /** Mostra a opção "Outro valor" (serviços de crédito ou recarga: Uber e Meep; pacotes não têm). */
     outroValor: boolean;
     minimo: number;
     maximo: number;
@@ -91,7 +97,7 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         item: "Crédito Uber",
         valores: [50, 100, 150],
         desconto: 0.05,
-        outroValor: false,
+        outroValor: true,
         minimo: 20,
         maximo: 500,
         cta: "Comprar crédito Uber",
@@ -128,7 +134,7 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         item: "Saldo Meep",
         valores: [50, 100, 150],
         desconto: 0,
-        outroValor: false,
+        outroValor: true,
         minimo: 10,
         maximo: 1000,
         cta: "Recarregar agora",
@@ -145,7 +151,86 @@ export const SERVICOS: Record<ServicoId, Servico> = {
             passos: ["No evento, use o seu CPF para pagar nos bares, comidas e lojas.", "Acompanhe o saldo pelo app da Meep."],
         },
     },
+    fotos: {
+        id: "fotos",
+        parceiro: "Fotos do rolê",
+        iconeSelo: IconlyCamera,
+        corSelo: "bg-utility-purple-600",
+        categoria: "Fotografia",
+        titulo: "Suas fotos do rolê, feitas por fotógrafos profissionais",
+        descricao: "Garanta as fotos que os fotógrafos fizerem de você durante o evento.",
+        beneficios: [
+            { icone: IconlyCamera, texto: "Fotógrafos profissionais circulando no evento" },
+            { icone: IconlyImagem, texto: "Fotos em alta, sem marca d'água" },
+            { icone: IconlyEnviar, texto: "Receba por e-mail em até 48 horas" },
+        ],
+        pergunta: "Escolha o pacote",
+        item: "Fotos do rolê",
+        valores: [29, 49, 79],
+        pacotes: { 29: "5 fotos", 49: "15 fotos", 79: "Todas as suas" },
+        desconto: 0,
+        outroValor: false,
+        minimo: 29,
+        maximo: 79,
+        cta: "Garantir minhas fotos",
+        condicoes: [
+            "As fotos são encontradas por reconhecimento facial a partir da selfie enviada depois da compra.",
+            "Se nenhuma foto sua for encontrada, o valor é devolvido.",
+        ],
+        destino: { rotulo: "E-mail que recebe as fotos", valor: USUARIO.email },
+        confirmacao: {
+            titulo: "Fotos garantidas",
+            descricao: "Depois do evento, enviamos suas fotos por e-mail.",
+            passos: ["Envie uma selfie pelo link que mandamos por e-mail para encontrarmos suas fotos.", "Em até 48 horas depois do evento, as fotos chegam no seu e-mail."],
+        },
+    },
+    seguro: {
+        id: "seguro",
+        parceiro: "Seguro de celular",
+        iconeSelo: IconlyEscudo,
+        corSelo: "bg-utility-blue-600",
+        categoria: "Proteção",
+        titulo: "Curta o rolê sem medo de perder o celular",
+        descricao: "Proteja seu celular contra roubo e quebra durante o evento.",
+        beneficios: [
+            { icone: IconlyEscudo, texto: "Cobertura contra roubo e furto" },
+            { icone: IconlyCalendario, texto: "Proteção do dia do evento até 7 dias depois" },
+            { icone: IconlyRaio, texto: "Contratação na hora, sem vistoria" },
+        ],
+        pergunta: "Escolha a proteção",
+        item: "Seguro de celular",
+        valores: [19, 29, 39],
+        pacotes: { 19: "Roubo", 29: "Roubo e furto", 39: "Completo" },
+        desconto: 0,
+        outroValor: false,
+        minimo: 19,
+        maximo: 39,
+        cta: "Proteger meu celular",
+        condicoes: [
+            "O plano Completo também cobre quebra acidental da tela.",
+            "Em caso de sinistro, abra o pedido em até 48 horas pelo e-mail que enviamos.",
+        ],
+        destino: { rotulo: "E-mail da apólice", valor: USUARIO.email },
+        confirmacao: {
+            titulo: "Celular protegido",
+            descricao: "Enviamos a apólice para o seu e-mail.",
+            passos: ["Guarde o e-mail com a apólice: ele traz o número do seguro.", "Se algo acontecer, abra o pedido em até 48 horas pelo link do e-mail."],
+        },
+    },
 };
+
+/** Ofertas com página própria (cada uma aberta pelo link de uma comunicação). */
+export const INDIVIDUAIS: ServicoId[] = ["uber", "meep"];
+
+/** Momentos do Checklist do rolê: a vitrine organiza os serviços pela hora em que a pessoa precisa deles. */
+export const MOMENTOS: { id: string; titulo: string; servicos: ServicoId[] }[] = [
+    { id: "antes", titulo: "Antes de sair", servicos: ["seguro"] },
+    { id: "caminho", titulo: "Ida e volta", servicos: ["uber"] },
+    { id: "evento", titulo: "No evento", servicos: ["meep", "fotos"] },
+];
+
+/** Serviços do Checklist do rolê, na ordem dos momentos. Cada um abre a própria página de contratação. */
+export const CHECKLIST: ServicoId[] = MOMENTOS.flatMap((m) => m.servicos);
 
 export const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Link } from "react-router";
 import { ChevronDown } from "@untitledui/icons";
 import heroEvento from "../assets/hero-evento.jpg";
@@ -62,58 +62,75 @@ export function Topo({ comEvento = true }: { comEvento?: boolean }) {
     );
 }
 
-/** Altura total do topo do mobile (barra + imagem); fixa para alinhar o recorte da foto nas duas camadas. */
-const ALTURA_TOPO_MOBILE = "h-[280px]";
+/**
+ * Medidas do topo do mobile. O card da página começa 24px sobre a imagem e desliza por cima
+ * dela até encostar na barra (72px). Nesse percurso a imagem e a barra ficam paradas; depois
+ * tudo rola junto, e nada passa por baixo da barra. Com a foto padrão (280px) são 184px de
+ * percurso e o card sobe 208px (RECUO_CARD_MOBILE).
+ */
+const FOTO = 280;
+const BARRA = 72;
+const SOBREPOSICAO = 24;
+const percurso = (altura: number) => altura - SOBREPOSICAO - BARRA;
 
-/** Foto do topo do mobile, sem desfoque; o véu escurece só o alto para o logo e o idioma lerem bem. */
+/** Quanto o card sobe sobre o topo do mobile, para uma altura de imagem. */
+export const recuoCardMobile = (altura: number) => percurso(altura) + SOBREPOSICAO;
+
+/** Recuo com a foto padrão (usado em pages/oferta.tsx como -mt-[208px]). */
+export const RECUO_CARD_MOBILE = recuoCardMobile(FOTO); // 208
+
+/** Foto padrão do topo do mobile, sem desfoque. */
 function FotoTopo() {
-    return (
-        <>
-            <img src={heroEvento} alt="" aria-hidden="true" className="absolute inset-0 -z-10 size-full object-cover object-[center_40%]" />
-            <div aria-hidden="true" className="absolute inset-x-0 top-0 -z-10 h-28 bg-gradient-to-b from-black/60 to-transparent" />
-        </>
-    );
+    return <img src={heroEvento} alt="" aria-hidden="true" className="absolute inset-0 -z-10 size-full object-cover object-[center_40%]" />;
 }
 
 /**
- * Topo do mobile na oferta: header vazado sobre uma foto com clima de evento, sem amarrar a
- * comunicação a um evento específico. Duas camadas presas ao topo: a da foto fica atrás do
- * card (que desliza por cima dela) e a barra com logo e idioma fica na frente, sempre
- * visível. A barra usa o mesmo recorte da foto, então não aparece emenda entre as duas.
- * Precisa ser filho direto da página (sem wrapper) para o sticky valer na rolagem toda.
+ * Topo do mobile: header da Ingresse fixo no alto da tela, sempre vazado sobre a imagem do topo
+ * — a foto padrão das ofertas ou outro conteúdo (ex.: o banner rotativo do Checklist), com a
+ * altura que ele precisar. O card da página sobe por cima da imagem até encostar no header;
+ * daí em diante a rolagem segue por baixo do header, que continua mostrando a faixa de cima da
+ * imagem (uma cópia alinhada, `faixa`), então o conteúdo nunca aparece através dele.
  */
-export function TopoComImagem() {
-    const foto = useRef<HTMLDivElement>(null);
+export function TopoComImagem({ altura = FOTO, children, faixa }: { altura?: number; children?: ReactNode; faixa?: ReactNode }) {
+    const imagens = useRef<HTMLDivElement[]>([]);
+    const trecho = percurso(altura);
 
-    // Conforme o card sobe por cima, a foto recua: escurece de leve
+    // Conforme o card sobe por cima, a imagem recua: escurece de leve (na imagem e na faixa do header)
     useEffect(() => {
-        const el = foto.current;
-        if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
         const aoRolar = () => {
-            const p = Math.min(window.scrollY / 200, 1);
-            el.style.opacity = String(1 - p * 0.5);
+            const opacidade = String(1 - Math.min(window.scrollY / trecho, 1) * 0.5);
+            imagens.current.forEach((el) => el && (el.style.opacity = opacidade));
         };
         aoRolar();
         window.addEventListener("scroll", aoRolar, { passive: true });
         return () => window.removeEventListener("scroll", aoRolar);
-    }, []);
+    }, [trecho]);
+
+    const Veu = () => <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent" />;
 
     return (
         <>
-            {/* Frente: barra com logo e idioma */}
-            <div className="sticky top-0 z-20 isolate h-[72px] overflow-hidden bg-black lg:hidden">
-                <div className={`absolute inset-x-0 top-0 -z-10 ${ALTURA_TOPO_MOBILE}`}>
-                    <FotoTopo />
+            {/* Header fixo: mostra a faixa de cima da imagem (mesmo recorte), sempre vazado */}
+            <div className="fixed inset-x-0 top-0 z-30 isolate overflow-hidden bg-black lg:hidden" style={{ height: BARRA }}>
+                <div aria-hidden="true" className="absolute inset-x-0 top-0 -z-10" style={{ height: altura }}>
+                    <div ref={(el) => void (el && (imagens.current[0] = el))} className="absolute inset-0 isolate">
+                        {faixa ?? children ?? <FotoTopo />}
+                    </div>
+                    <Veu />
                 </div>
                 <BarraTopo />
             </div>
 
-            {/* Atrás: a foto, que o card cobre ao rolar */}
-            <header className={`sticky top-0 z-0 -mt-[72px] overflow-hidden bg-black lg:hidden ${ALTURA_TOPO_MOBILE}`}>
-                <div ref={foto} className="relative isolate size-full">
-                    <FotoTopo />
-                </div>
-            </header>
+            {/* A altura extra (percurso) é o trecho em que a imagem fica presa; o card sobe por cima dela */}
+            <div className="lg:hidden" style={{ height: altura + trecho }}>
+                <header className="sticky top-0 isolate overflow-hidden bg-black" style={{ height: altura }}>
+                    <div ref={(el) => void (el && (imagens.current[1] = el))} className="absolute inset-0 isolate">
+                        {children ?? <FotoTopo />}
+                    </div>
+                    <Veu />
+                </header>
+            </div>
         </>
     );
 }

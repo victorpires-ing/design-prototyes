@@ -106,12 +106,38 @@ button {
   background: #D2D2D2;
 }
 
-/* Botão primário vermelho com texto branco; o resto da marca continua neutro (monocromático).
-   Só o Button do DS combina bg-brand-solid com a sombra skeuomórfica: os tokens são trocados no
-   próprio botão, sem mexer no componente nem na escala brand. Vermelho do AFTER DS
+/* Backstage (e Freepass): marca neutra, monocromática, como no Figma do Backstage. O resto do app
+   segue o vermelho do tema (uui-theme.css). A classe vai no <html> nas rotas do Backstage (App.tsx):
+   os tokens semânticos são resolvidos no próprio <html>, então trocar a escala ali basta (BKS-70). */
+html.tema-backstage {
+  --color-brand-25: rgb(252 252 252);
+  --color-brand-50: rgb(250 250 250);
+  --color-brand-100: rgb(245 245 245);
+  --color-brand-200: rgb(229 229 229);
+  --color-brand-300: rgb(212 212 212);
+  --color-brand-400: rgb(163 163 163);
+  --color-brand-500: rgb(115 115 115);
+  --color-brand-600: rgb(82 82 82);
+  --color-brand-700: rgb(64 64 64);
+  --color-brand-800: rgb(38 38 38);
+  --color-brand-900: rgb(23 23 23);
+  --color-brand-950: rgb(10 10 10);
+  --color-bg-brand-solid: var(--color-brand-950);
+  --color-bg-brand-solid_hover: var(--color-brand-800);
+}
+html.tema-backstage.dark-mode {
+  /* No escuro, o sólido de marca é claro e o texto sobre ele, escuro. */
+  --color-text-white: var(--color-black);
+  --color-fg-white: var(--color-neutral-900);
+  --color-bg-brand-solid: var(--color-brand-50);
+  --color-bg-brand-solid_hover: var(--color-brand-200);
+}
+
+/* No Backstage, só o botão primário é vermelho, com texto branco.
+   Só o Button do DS combina bg-brand-solid com a sombra skeuomórfica: as variáveis que as
+   utilidades leem são trocadas no próprio botão, sem mexer no componente. Vermelho do AFTER DS
    (bg-brand-solid #ff271a, hover no brand-700 do vermelho). */
-.bg-brand-solid.shadow-xs-skeuomorphic {
-  /* As utilidades leem estas variáveis, resolvidas na raiz: por isso são redefinidas aqui, no botão. */
+html.tema-backstage .bg-brand-solid.shadow-xs-skeuomorphic {
   --background-color-brand-solid: rgb(255 39 26);
   --background-color-brand-solid_hover: rgb(200 31 20);
   --text-color-white: rgb(255 255 255);

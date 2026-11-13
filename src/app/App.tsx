@@ -1,6 +1,6 @@
 import { Ajustes as AjustesDaOrganizacao } from '../produtos/backstage/organizacoes/pages/ajustes';
-import { useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router';
+import { useLayoutEffect, useState } from 'react';
+import { Navigate, Route, Routes, useLocation } from 'react-router';
 import { FundoDoBody } from './components/fundo-do-body';
 import { Toaster } from 'sonner';
 import { useTheme } from '../providers/theme-provider';
@@ -233,6 +233,12 @@ function HomeScreen() {
 
 export default function App() {
   const { theme } = useTheme();
+  // Backstage e Freepass usam a marca neutra; os outros produtos seguem o vermelho do tema (BKS-70).
+  const { pathname } = useLocation();
+  useLayoutEffect(() => {
+    const backstage = pathname.startsWith('/backstage') || pathname.startsWith('/freepass');
+    document.documentElement.classList.toggle('tema-backstage', backstage);
+  }, [pathname]);
   return (
     <RemixProvider>
     <CortesiasProvider>

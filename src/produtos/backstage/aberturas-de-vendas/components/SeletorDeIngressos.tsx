@@ -27,25 +27,25 @@ import { formatar, useTextosItens } from "../../itens/data/textos-itens";
 /* ------------------------------------------------------------------ */
 
 const T = {
-    descricao: "Marque a sessão ou o setor para incluir todos os ingressos dele. Ingressos criados depois não entram sozinhos.",
-    buscar: "Buscar setor ou ingresso",
+    descricao: "Marque a sessão ou o grupo para incluir todos os ingressos dele. Ingressos criados depois não entram sozinhos.",
+    buscar: "Buscar grupo ou ingresso",
     todos: "Todos",
     selecionados: "Selecionados",
     filtro: "Mostrar",
     sessao: "Sessão de {data}",
     parcial: "{item}, parte marcada",
-    sessaoContagem: { one: "{n} setor", other: "{n} setores" },
+    sessaoContagem: { one: "{n} grupo", other: "{n} grupos" },
     setorContagem: { one: "{n} ingresso", other: "{n} ingressos" },
     setorParcial: "{n} de {total}",
-    mostrarSetores: { one: "Mostrar mais {n} setor", other: "Mostrar mais {n} setores" },
+    mostrarSetores: { one: "Mostrar mais {n} grupo", other: "Mostrar mais {n} grupos" },
     mostrarIngressos: { one: "Mostrar mais {n} ingresso", other: "Mostrar mais {n} ingressos" },
     nada: "Nada encontrado. Tente outro termo.",
-    nadaSelecionado: "Nenhum setor ou ingresso selecionado.",
+    nadaSelecionado: "Nenhum grupo ou ingresso selecionado.",
     semIngressos: "O evento ainda não tem ingressos.",
     resumo: {
         nada: "Nenhum ingresso selecionado",
         ingressos: { one: "{n} ingresso", other: "{n} ingressos" },
-        emSetores: { one: "{ingressos} em {n} setor", other: "{ingressos} em {n} setores" },
+        emSetores: { one: "{ingressos} em {n} grupo", other: "{ingressos} em {n} grupos" },
     },
     cancelar: "Cancelar",
     confirmar: "Confirmar",
@@ -86,9 +86,16 @@ export function SeletorDeIngressos({
     onConfirmar: (itens: ItemDaAbertura[]) => void;
     onFechar: () => void;
 }) {
-    const { dataCurta, numero, plural } = useTextosItens();
+    const { dataCurta, numero, plural, locale } = useTextosItens();
     const resumir = useResumoDeIngressos();
     const variasSessoes = evento.sessoes.length > 1;
+    // Duas sessões no mesmo dia teriam o mesmo rótulo: a hora entra para separar (UI-LST-001).
+    const rotuloDaSessao = (sessao: { inicio: string }) => {
+        const data = dataCurta(sessao.inicio);
+        const mesmoDia = evento.sessoes.filter((s) => dataCurta(s.inicio) === data).length > 1;
+        const hora = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(new Date(sessao.inicio));
+        return formatar(T.sessao, { data: mesmoDia ? `${data}, ${hora}` : data });
+    };
 
     // Por dentro, setor com todos os ingressos marcados vira um marcador só (não percorre 300 a cada clique).
     const [inicial] = useState(() => {
@@ -375,11 +382,11 @@ export function SeletorDeIngressos({
                                           const marcadosNaSessao = doGrupo.filter((i) => estadoDoSetor(i.setor) !== "nenhum").length;
                                           const inteira = doGrupo.length > 0 && sessao.grupos.every((g) => setores.has(g.id));
                                           return (
-                                              <TreeView.Item key={sessao.id} id={`s:${sessao.id}`} textValue={formatar(T.sessao, { data: dataCurta(sessao.inicio) })}>
+                                              <TreeView.Item key={sessao.id} id={`s:${sessao.id}`} textValue={rotuloDaSessao(sessao)}>
                                                   <TreeView.ItemContent
                                                       icon={
                                                           <Caixa
-                                                              rotulo={formatar(T.sessao, { data: dataCurta(sessao.inicio) })}
+                                                              rotulo={rotuloDaSessao(sessao)}
                                                               marcado={inteira}
                                                               parcial={!inteira && marcadosNaSessao > 0}
                                                               onChange={(on) => alternarSessao(sessao.id, on)}
@@ -387,7 +394,7 @@ export function SeletorDeIngressos({
                                                       }
                                                       action={<Contagem>{plural(T.sessaoContagem, sessao.grupos.length)}</Contagem>}
                                                   >
-                                                      {formatar(T.sessao, { data: dataCurta(sessao.inicio) })}
+                                                      {rotuloDaSessao(sessao)}
                                                   </TreeView.ItemContent>
                                                   {abertos.has(`s:${sessao.id}`) ? (
                                                       renderSetores(doGrupo, `s:${sessao.id}`)

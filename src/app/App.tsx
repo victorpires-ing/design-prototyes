@@ -38,6 +38,7 @@ import { Membros } from '../produtos/backstage/membros/pages/Membros';
 import { CriarCargo } from '../produtos/backstage/membros/pages/CriarCargo';
 import { EquipeEComissarios } from '../produtos/backstage/equipe-e-comissarios/pages/equipe-e-comissarios';
 import { GrupoDaEquipe } from '../produtos/backstage/equipe-e-comissarios/pages/grupo';
+import { CanalDoGrupo } from '../produtos/backstage/equipe-e-comissarios/pages/canal-do-grupo';
 import { RedirecionarComissario } from '../produtos/backstage/equipe-e-comissarios/pages/redirecionar-comissario';
 import { RelatorioComissarios } from '../produtos/backstage/comissarios/pages/relatorio-comissarios';
 import { ChaveDeAcesso } from '../produtos/backstage/chave-de-acesso/pages/ChaveDeAcesso';
@@ -67,6 +68,7 @@ import { Produtos as ItensProdutos } from '../produtos/backstage/itens/pages/Pro
 import { ProdutoDetalhe as ItensProdutoDetalhe } from '../produtos/backstage/itens/pages/ProdutoDetalhe';
 import { ProdutosDaOrganizacao } from '../produtos/backstage/produtos-organizacao/pages/ProdutosDaOrganizacao';
 import { ProdutoDaOrganizacaoDetalhe } from '../produtos/backstage/produtos-organizacao/pages/ProdutoDaOrganizacaoDetalhe';
+import { LayoutDeItens } from '../produtos/backstage/itens/pages/layout-de-itens';
 import { Combos as ItensCombos } from '../produtos/backstage/itens/pages/Combos';
 import { ComboDetalhe as ItensComboDetalhe } from '../produtos/backstage/itens/pages/ComboDetalhe';
 import { Configuracoes as ItensConfiguracoes } from '../produtos/backstage/itens/pages/Configuracoes';
@@ -250,6 +252,7 @@ export default function App() {
         {/* Equipe e Comissários (ECO): Equipe de operação e Comissários do evento num destino só. */}
         <Route path="/backstage/evento/equipe" element={<EquipeEComissarios />} />
         <Route path="/backstage/evento/equipe/:grupoId" element={<GrupoDaEquipe />} />
+        <Route path="/backstage/evento/equipe/:grupoId/canal/:canal" element={<CanalDoGrupo />} />
         <Route path="/backstage/equipe-de-operacao/*" element={<Navigate to="/backstage/evento/equipe" replace />} />
         <Route path="/backstage/bilheteria" element={<PedidosBilheteria />} />
         <Route path="/backstage/bilheteria/vender" element={<VenderIngressos />} />
@@ -278,11 +281,14 @@ export default function App() {
         <Route path="/backstage/marketing/chave-de-acesso/vincular-itens" element={<VincularItens />} />
         <Route path="/backstage/marketing/chave-de-acesso/lista" element={<ListaChaves />} />
         {/* Menu Itens novo (itens/): o item é o centro. As telas anteriores ficam em /backstage/catalogo-anterior/*. */}
-        <Route path="/backstage/catalogo/ingressos" element={<ItensIngressos />} />
+        {/* Abas de Itens numa rota-pai: rail, menu, título e abas ficam montados; só o conteúdo da aba troca. */}
+        <Route element={<LayoutDeItens />}>
+            <Route path="/backstage/catalogo/ingressos" element={<ItensIngressos />} />
+            <Route path="/backstage/catalogo/produtos" element={<ItensProdutos />} />
+            <Route path="/backstage/catalogo/combos" element={<ItensCombos />} />
+        </Route>
         <Route path="/backstage/catalogo/ingressos/:id" element={<ItensIngressoDetalhe />} />
-        <Route path="/backstage/catalogo/produtos" element={<ItensProdutos />} />
         <Route path="/backstage/catalogo/produtos/:id" element={<ItensProdutoDetalhe />} />
-        <Route path="/backstage/catalogo/combos" element={<ItensCombos />} />
         <Route path="/backstage/catalogo/combos/:id" element={<ItensComboDetalhe />} />
         <Route path="/backstage/catalogo/agenda" element={<Navigate to="/backstage/catalogo/aberturas-de-vendas" replace />} />
         <Route path="/backstage/catalogo/ingressos/editar-grupos" element={<Navigate to="/backstage/catalogo/ingressos" replace />} />

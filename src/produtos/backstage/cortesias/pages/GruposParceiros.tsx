@@ -416,7 +416,7 @@ function StepIngressos({
             {/* Busca + tabs de categoria */}
             <div className="flex flex-col gap-3 md:flex-row md:items-center">
                 <div className="min-w-0 flex-1">
-                    <Input icon={SearchLg} aria-label="Buscar itens" placeholder="Busque por setor, item ou lote" value={busca} onChange={setBusca} />
+                    <Input icon={SearchLg} aria-label="Buscar itens" placeholder="Busque por grupo, item ou lote" value={busca} onChange={setBusca} />
                 </div>
                 <Tabs selectedKey={categoria} onSelectionChange={(k) => setCategoria(k as Categoria)} className="w-fit!">
                     <Tabs.List type="button-border" size="sm">

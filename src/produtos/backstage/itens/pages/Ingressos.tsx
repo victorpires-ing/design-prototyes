@@ -15,7 +15,7 @@ import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
 import type { Evento, Grupo, Sessao, TipoIngresso } from "@/plataforma";
 import { loteAtual } from "@/plataforma";
 import { cx } from "@/utils/cx";
-import { AlertaDoGuia, BackstageLayout, PARAMETRO_NOVO_SETOR } from "../../components/Backstage";
+import { AlertaDoGuia, PARAMETRO_NOVO_SETOR } from "../../components/Backstage";
 import { CamposDeVendas, EstadoBadge, useResumoDasVendas } from "../components/comuns";
 import { BotaoChaves } from "../components/VerChaves";
 import { Alca, mover } from "../components/Alca";
@@ -40,7 +40,6 @@ import {
     vendidosDoSetor,
 } from "../data/catalogo";
 import { formatar, useTextosItens } from "../data/textos-itens";
-import { AbasDeItens } from "../../components/abas-de-itens";
 
 /* ------------------------------------------------------------------ */
 /*  Ingressos (ITM-01 a ITM-19)                                        */
@@ -54,24 +53,24 @@ import { AbasDeItens } from "../../components/abas-de-itens";
 const T = {
     titulo: "Ingressos",
     subtitulo: { one: "{n} ingresso em {setores}", other: "{n} ingressos em {setores}" },
-    setores: { one: "{n} setor", other: "{n} setores" },
-    novoSetor: "Novo setor",
+    setores: { one: "{n} grupo", other: "{n} grupos" },
+    novoSetor: "Novo grupo",
     criarIngresso: "Criar ingresso",
-    novoIngresso: "Novo ingresso no setor",
-    editarSetor: "Editar setor {setor}",
+    novoIngresso: "Novo ingresso no grupo",
+    editarSetor: "Editar grupo {setor}",
     sessao: "Sessão de {data}",
     capacidade: "Capacidade de {n}",
     vendidosDoSetor: "{vendidos} de {oferta} vendidos",
     vendidosCurto: "{vendidos} de {total}",
-    setorCriado: "Setor {setor} criado. Agora crie os ingressos dele.",
-    setorRemovido: "Setor {setor} removido.",
+    setorCriado: "Grupo {setor} criado. Agora crie os ingressos dele.",
+    setorRemovido: "Grupo {setor} removido.",
     acimaDaCapacidade: "Os lotes somam {oferta}, acima da capacidade de {capacidade}. Ajuste os lotes ou a capacidade.",
     acessoComTipo: "Entrada: {acesso}, {tipo}",
     tipoAcesso: { qr: "com código QR", facial: "com reconhecimento facial" },
     tipoAcessoRotulo: "Como as pessoas entram",
-    tipoAcessoDica: "Vale para todos os ingressos deste setor.",
+    tipoAcessoDica: "Vale para todos os ingressos deste grupo.",
     tipoAcessoOpcoes: { qr: "Código QR", facial: "Reconhecimento facial" },
-    tipoAcessoErro: "Escolha como as pessoas entram neste setor.",
+    tipoAcessoErro: "Escolha como as pessoas entram neste grupo.",
     loteAVenda: "{lote} à venda",
     semLoteAVenda: "Nenhum lote à venda",
     vender: "Vender {ingresso}",
@@ -80,13 +79,13 @@ const T = {
     desfazer: "Desfazer",
     pausado: "{ingresso} pausado. Ele para de vender na hora.",
     voltou: "{ingresso} voltou a vender.",
-    setorVazio: "Nenhum ingresso neste setor.",
+    setorVazio: "Nenhum ingresso neste grupo.",
     vazioTitulo: "Crie o primeiro ingresso",
-    vazioDica: "Comece por um setor (Pista, Camarote) e os ingressos dele. Sem ingresso, o evento não tem o que vender.",
-    buscar: "Buscar ingresso ou setor",
+    vazioDica: "Comece por um grupo (Pista, Camarote) e os ingressos dele. Sem ingresso, o evento não tem o que vender.",
+    buscar: "Buscar ingresso ou grupo",
     todosEstados: "Todos os estados",
     todasSessoes: "Todas as sessões",
-    todosSetores: "Todos os setores",
+    todosSetores: "Todos os grupos",
     nadaNoFiltro: "Nenhum ingresso encontrado",
     nadaNoFiltroDica: "Tente outro nome ou limpe os filtros.",
     limparFiltros: "Limpar filtros",
@@ -227,9 +226,9 @@ export function Ingressos() {
     const selecionados = todosIngressos.filter((tp) => selecao.tem(tp.id));
 
     return (
-        <BackstageLayout activeSection="itens" activeItem="catalogo-ingressos">
+        // Rail, menu, título e abas ficam no LayoutDeItens: trocar de aba troca só este conteúdo.
+        <>
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <AbasDeItens ativa="ingressos" />
                 <header className="flex flex-wrap items-end justify-between gap-4">
                     <div className="flex flex-col gap-1">
                         <h2 className="sr-only">{T.titulo}</h2>
@@ -240,7 +239,7 @@ export function Ingressos() {
                         )}
                     </div>
                     <div className="flex flex-wrap gap-3">
-                        {/* Ingresso nasce dentro de um setor ("Novo ingresso no setor"), então o topo só cria setor (ITM-68). */}
+                        {/* Ingresso nasce dentro de um setor ("Novo ingresso no grupo"), então o topo só cria setor (ITM-68). */}
                         <Button color="primary" size="md" iconLeading={Plus} isDisabled={carregando || !sessoes.length} onClick={() => setModalSetor({ sessaoId: sessoes[0]?.id ?? "" })}>
                             {T.novoSetor}
                         </Button>
@@ -265,7 +264,7 @@ export function Ingressos() {
                                 ? [{ id: "sessao", rotulo: "Sessão", valor: sessaoId, onChange: setSessaoId, opcoes: [{ id: "todos", label: T.todasSessoes }, ...sessoes.map((s) => ({ id: s.id, label: quando(s.inicio) }))] }]
                                 : []),
                             ...(nomesDeSetor.length > 1
-                                ? [{ id: "setor", rotulo: "Setor", valor: setorNome, onChange: setSetorNome, opcoes: [{ id: "todos", label: T.todosSetores }, ...nomesDeSetor.map((n) => ({ id: n, label: n }))] }]
+                                ? [{ id: "setor", rotulo: "Grupo", valor: setorNome, onChange: setSetorNome, opcoes: [{ id: "todos", label: T.todosSetores }, ...nomesDeSetor.map((n) => ({ id: n, label: n }))] }]
                                 : []),
                         ]}
                     />
@@ -386,7 +385,7 @@ export function Ingressos() {
             )}
             {modalLote === "pausar" && <ModalPausarEmLote quantidade={selecao.tamanho} onFechar={() => setModalLote(null)} onPausar={() => emLote((tp) => ({ ...tp, ativo: false }), T.pausadosLote)} />}
             {modalLote === "regras" && <ModalRegrasEmLote quantidade={selecao.tamanho} onFechar={() => setModalLote(null)} onAplicar={(vendas) => emLote((tp) => ({ ...tp, vendas }), T.regrasAplicadas)} />}
-        </BackstageLayout>
+        </>
     );
 }
 
@@ -625,15 +624,17 @@ function ModalSetor({ evento, sessaoId: sessaoInicial, setor, onFechar }: { even
     const [nome, setNome] = useState(setor?.nome ?? "");
     const [acesso, setAcesso] = useState(setor?.acesso ?? "");
     const [capacidade, setCapacidade] = useState(setor?.capacidade != null ? String(setor.capacidade) : "");
-    const [tipoAcesso, setTipoAcesso] = useState<Grupo["tipoAcesso"]>(setor?.tipoAcesso);
+    // Reconhecimento facial só existe no futebol: nos outros eventos o grupo entra por código QR, sem escolha (ITM-89).
+    const futebol = evento.tipo === "futebol";
+    const [tipoAcesso, setTipoAcesso] = useState<Grupo["tipoAcesso"]>(futebol ? setor?.tipoAcesso : "qr");
     const [tentou, setTentou] = useState(false);
     const [salvando, setSalvando] = useState(false);
     const sessao = evento.sessoes.find((s) => s.id === sessaoId);
     const repetido = !!sessao?.grupos.some((g) => g.id !== setor?.id && g.nome.trim().toLowerCase() === nome.trim().toLowerCase());
-    const erroNome = !nome.trim() ? "Dê um nome ao setor." : repetido ? "Escolha outro nome: já existe um setor com esse nome nesta sessão." : undefined;
+    const erroNome = !nome.trim() ? "Dê um nome ao grupo." : repetido ? "Escolha outro nome: já existe um grupo com esse nome nesta sessão." : undefined;
     // Capacidade é obrigatória (ITM-04): número inteiro maior que zero.
     const capacidadeNum = Math.round(Number(capacidade));
-    const erroCapacidade = !capacidade.trim() || !(capacidadeNum > 0) ? "Informe a lotação do setor." : undefined;
+    const erroCapacidade = !capacidade.trim() || !(capacidadeNum > 0) ? "Informe a lotação do grupo." : undefined;
 
     const salvar = async () => {
         setTentou(true);
@@ -669,16 +670,17 @@ function ModalSetor({ evento, sessaoId: sessaoInicial, setor, onFechar }: { even
                 <Dialog>
                     <div className="flex w-full flex-col gap-5 rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-border-secondary">
                         <div className="flex flex-col gap-1">
-                            <AriaHeading slot="title" className="text-lg font-semibold text-primary">{setor ? "Editar setor" : "Novo setor"}</AriaHeading>
-                            <p className="text-sm text-tertiary">Setor é a área do evento com entrada e lotação próprias, como Pista ou Camarote.</p>
+                            <AriaHeading slot="title" className="text-lg font-semibold text-primary">{setor ? "Editar grupo" : "Novo grupo"}</AriaHeading>
+                            <p className="text-sm text-tertiary">Grupo reúne ingressos com entrada e lotação próprias, como Pista ou Camarote.</p>
                         </div>
                         {evento.sessoes.length > 1 && !setor && (
                             <Select label="Sessão" selectedKey={sessaoId} onSelectionChange={(k) => k && setSessaoId(String(k))} items={evento.sessoes.map((s) => ({ id: s.id, label: dataLonga(s.inicio) }))}>
                                 {(i) => <Select.Item id={i.id}>{i.label}</Select.Item>}
                             </Select>
                         )}
-                        <Input label="Nome do setor" isRequired value={nome} onChange={setNome} placeholder="Ex.: Pista" isInvalid={tentou && !!erroNome} hint={tentou ? erroNome : undefined} />
-                        {/* Obrigatório: o tipo de acesso define como a portaria valida os ingressos do setor. */}
+                        <Input label="Nome do grupo" isRequired value={nome} onChange={setNome} placeholder="Ex.: Pista" isInvalid={tentou && !!erroNome} hint={tentou ? erroNome : undefined} />
+                        {/* Obrigatório no futebol: o tipo de acesso define como a portaria valida os ingressos do grupo. */}
+                        {futebol && (
                         <div className="flex flex-col gap-2">
                             <RadioGroup aria-label={T.tipoAcessoRotulo} value={tipoAcesso ?? null} onChange={(v) => setTipoAcesso(v as Grupo["tipoAcesso"])}>
                                 <span className="text-sm font-medium text-secondary">
@@ -690,6 +692,7 @@ function ModalSetor({ evento, sessaoId: sessaoInicial, setor, onFechar }: { even
                             </RadioGroup>
                             <span className={cx("text-sm", tentou && !tipoAcesso ? "text-error-primary" : "text-tertiary")}>{tentou && !tipoAcesso ? T.tipoAcessoErro : T.tipoAcessoDica}</span>
                         </div>
+                        )}
                         <Input label="Acesso na portaria" value={acesso} onChange={setAcesso} placeholder="Ex.: Portão A" hint="Aparece no ingresso. Opcional." />
                         <Input
                             label="Capacidade"
@@ -700,16 +703,16 @@ function ModalSetor({ evento, sessaoId: sessaoInicial, setor, onFechar }: { even
                             onChange={setCapacidade}
                             placeholder="Ex.: 1200"
                             isInvalid={tentou && !!erroCapacidade}
-                            hint={tentou && erroCapacidade ? erroCapacidade : "Lotação do setor. A soma dos lotes é conferida contra ela."}
+                            hint={tentou && erroCapacidade ? erroCapacidade : "Lotação do grupo. A soma dos lotes é conferida contra ela."}
                         />
                         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                             {setor ? (
                                 setor.ingressos.length === 0 ? (
                                     <Button color="tertiary-destructive" size="md" onClick={remover}>
-                                        Remover setor
+                                        Remover grupo
                                     </Button>
                                 ) : (
-                                    <span className="text-sm text-tertiary">Para remover o setor, remova antes os ingressos dele.</span>
+                                    <span className="text-sm text-tertiary">Para remover o grupo, remova antes os ingressos dele.</span>
                                 )
                             ) : (
                                 <span />
@@ -719,7 +722,7 @@ function ModalSetor({ evento, sessaoId: sessaoInicial, setor, onFechar }: { even
                                     Cancelar
                                 </Button>
                                 <Button color="primary" size="md" onClick={salvar} isLoading={salvando}>
-                                    {setor ? "Salvar setor" : "Criar setor"}
+                                    {setor ? "Salvar grupo" : "Criar grupo"}
                                 </Button>
                             </div>
                         </div>

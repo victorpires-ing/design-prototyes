@@ -135,6 +135,10 @@ interface BackstageLayoutProps {
     showEventContext?: boolean;
     /** Mostra o switch flutuante de variante de layout (clássico/topbar). Default: true. */
     showLayoutSwitcher?: boolean;
+    /** Telas com a mesma chave contam como uma tela só: trocar entre elas não remonta nem anima a moldura (ex.: abas de Itens). Default: a rota. */
+    chaveDaTela?: string;
+    /** Tela de formulário com barra de salvar: o Guia de configuração começa recolhido para não cobrir campos (GDC-44). */
+    recolherGuia?: boolean;
     children: ReactNode;
 }
 
@@ -201,6 +205,8 @@ export function BackstageLayout({
     activeProducer,
     showEventContext = true,
     showLayoutSwitcher = true,
+    chaveDaTela,
+    recolherGuia = false,
     children,
 }: BackstageLayoutProps) {
     const [menuMobile, setMenuMobile] = useState<MenuMobile>(null);
@@ -297,7 +303,7 @@ export function BackstageLayout({
 
     // Seções que viraram um item só no menu (BKS-25): Relatórios com o menu empilhado; Emissão com abas nas listas.
     // A navegação fica fora da transição de tela, para não piscar ao trocar de relatório ou de aba.
-    const tela = <TransicaoDeTela>{children}</TransicaoDeTela>;
+    const tela = <TransicaoDeTela chave={chaveDaTela}>{children}</TransicaoDeTela>;
     const abaDeEmissao = !freepass ? ROTAS_COM_ABAS_DE_EMISSAO[pathname] : undefined;
     const corpo =
         relatoriosNaOrganizacao ? (
@@ -311,7 +317,7 @@ export function BackstageLayout({
         );
 
     // Guia de configuração do evento (guia-de-configuracao/rules.md): segue o produtor pelas telas do evento.
-    const guiaDeConfiguracao = showEventContext && !freepass && <GuiaDeConfiguracao eventoId={eventoAtual.id} abrirModalDeStatus={abrirModalDeStatus} />;
+    const guiaDeConfiguracao = showEventContext && !freepass && <GuiaDeConfiguracao eventoId={eventoAtual.id} abrirModalDeStatus={abrirModalDeStatus} recolher={recolherGuia} />;
 
     if (variant === "topbar") {
         return (
@@ -329,6 +335,8 @@ export function BackstageLayout({
                             <div className={cx("mx-auto flex w-full max-w-[1088px] flex-1 flex-col", RESPIRO_DO_CONTEUDO)}>
                                 {barraDoFreepass}
                                 {corpo}
+                                {/* Fim da página livre do Guia de configuração, que é fixo no canto (GDC-43). */}
+                                <div aria-hidden="true" className="h-(--altura-do-guia,0px) shrink-0" />
                             </div>
                         </main>
                         {!freepass && <RemixDock />}
@@ -353,6 +361,8 @@ export function BackstageLayout({
                     <main className={cx("flex min-w-0 flex-1 flex-col overflow-x-clip", RESPIRO_DO_CONTEUDO)}>
                         {barraDoFreepass}
                         {corpo}
+                        {/* Fim da página livre do Guia de configuração, que é fixo no canto (GDC-43). */}
+                        <div aria-hidden="true" className="h-(--altura-do-guia,0px) shrink-0" />
                     </main>
                     {!freepass && <RemixDock />}
                 </div>
@@ -366,11 +376,11 @@ export function BackstageLayout({
 }
 
 /** Remonta a cada troca de tela para a entrada animar (BKS-15, transicao-de-tela.css). */
-const TransicaoDeTela = ({ children }: { children: ReactNode }) => {
+const TransicaoDeTela = ({ chave, children }: { chave?: string; children: ReactNode }) => {
     const { pathname } = useLocation();
     const eventoId = useEventoAtual().id;
     return (
-        <div key={`${pathname}:${eventoId}`} className="bs-tela flex min-w-0 flex-1 flex-col">
+        <div key={`${chave ?? pathname}:${eventoId}`} className="bs-tela flex min-w-0 flex-1 flex-col">
             {children}
         </div>
     );

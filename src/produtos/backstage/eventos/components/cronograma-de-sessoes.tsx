@@ -148,7 +148,9 @@ function NovaSessao({
     onCancelar: () => void;
     onAdicionar: (s: SessaoExtra) => void;
 }) {
-    const [dia, setDia] = useState<string | null>(null);
+    // Evento de um dia: o dia já vem escolhido e a escolha some (EVT-89).
+    const umDia = dias.length === 1;
+    const [dia, setDia] = useState<string | null>(umDia ? dias[0] : null);
     const [comeca, setComeca] = useState(horaPadrao || "20:00");
     const [termina, setTermina] = useState("");
     const [tentou, setTentou] = useState(false);
@@ -173,10 +175,12 @@ function NovaSessao({
                                 <AriaHeading slot="title" className="text-lg font-semibold text-primary">
                                     {`Nova ${item}`}
                                 </AriaHeading>
-                                <p className="text-sm text-tertiary">Escolha o dia e os horários de início e de fim.</p>
+                                <p className="text-sm text-tertiary">
+                                    {umDia ? `${semana(dias[0]).charAt(0).toUpperCase()}${semana(dias[0]).slice(1)}, ${diaMes(dias[0])}. Escolha os horários de início e de fim.` : "Escolha o dia e os horários de início e de fim."}
+                                </p>
                             </div>
                         </div>
-                        <div className="flex flex-col gap-2">
+                        <div className={cx("flex flex-col gap-2", umDia && "hidden")}>
                             <span className="text-sm font-medium text-secondary" id="nova-sessao-dia">
                                 Dia
                             </span>

@@ -10,6 +10,7 @@ import { Select } from "@/components/base/select/select";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { BackstageLayout } from "../../components/Backstage";
 import { FaixaDeMetricas, Metrica, moeda, numero } from "../../comissarios/components/comuns";
+import { CAMINHO_CRIAR_INGRESSOS, eventoSemItens } from "../components/formulario-canal";
 import { ModalCriarGrupo } from "../components/modal-criar-grupo";
 import { ModalDesativar } from "../components/modal-desativar";
 import { BadgeInativo, CabecalhoCotas, TemaCotas } from "../components/ui-cotas";
@@ -107,9 +108,18 @@ export function EquipeEComissarios() {
                             </EmptyState.Header>
                             <EmptyState.Content>
                                 <EmptyState.Title>Nenhum grupo neste evento</EmptyState.Title>
-                                <EmptyState.Description>Crie um grupo para quem emite cortesias, vende no PDV e na bilheteria ou vende pelo link como comissário.</EmptyState.Description>
+                                <EmptyState.Description>
+                                    Crie um grupo para quem emite cortesias, vende no PDV e na bilheteria ou vende pelo link como comissário.
+                                    {/* Os canais precisam de itens: avisa antes de criar o grupo (ECO-37). */}
+                                    {eventoSemItens() && " O evento ainda não tem ingressos: crie antes, para os canais terem o que vender."}
+                                </EmptyState.Description>
                             </EmptyState.Content>
                             <EmptyState.Footer>
+                                {eventoSemItens() && (
+                                    <Button color="secondary" size="md" onClick={() => navigate(CAMINHO_CRIAR_INGRESSOS)}>
+                                        Criar ingressos
+                                    </Button>
+                                )}
                                 <Button color="primary" size="md" iconLeading={Plus} onClick={() => setCriando(true)}>
                                     Criar grupo
                                 </Button>

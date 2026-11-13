@@ -3,11 +3,10 @@ import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { parseDateTime } from "@internationalized/date";
 import { AnimatePresence, motion } from "motion/react";
-import { AlignLeft, ArrowLeft, Calendar, Image01, MarkerPin01, Plus, Shield01, Tag01, Trash01, Trophy01, Type01, UserCheck01, XClose } from "@untitledui/icons";
+import { ArrowLeft, Image01, Plus, RefreshCw01, Tag01, Trash01, XClose } from "@untitledui/icons";
 import { FileUploadDropZone } from "@/components/application/file-upload/file-upload-base";
 import { DateTimePicker } from "@/components/application/date-picker/date-time-picker";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -94,6 +93,8 @@ interface Formulario {
     /** Sessões além da primeira (a primeira é o início). O id dá a cada linha uma chave estável para animar a saída. */
     /** Sessões criadas pela pessoa (dia, início e fim); vazio = uma sessão só, no início do evento (EVT-89). */
     sessoesExtras: SessaoExtra[];
+    /** Com mais de um dia: direto, com início e fim gerais, ou em sessões, só com os horários delas (EVT-98). */
+    formato: "continuo" | "sessoes";
     moeda: string;
     idadeMinima: string;
     descricao: string;
@@ -120,6 +121,7 @@ const INICIAL: Omit<Formulario, "tipo"> = {
     fim: "",
     fimSugerido: false,
     sessoesExtras: [],
+    formato: "continuo",
     moeda: "BRL",
     idadeMinima: "0",
     descricao: "",
@@ -131,8 +133,6 @@ const INICIAL: Omit<Formulario, "tipo"> = {
     avancado: AVANCADO_PADRAO,
 };
 
-/** Imagens são gravadas no banco como data URL: acima disso o envio é recusado (EVT-63). */
-const MAX_IMAGEM = 400 * 1024;
 
 const lerComoDataUrl = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -144,9 +144,25 @@ const lerComoDataUrl = (file: File) =>
 
 type Erros = Partial<Record<"mandante" | "visitante" | "modalidade" | "categoria" | "nome" | "local" | "inicio" | "fim" | "descricao" | "sessoes" | "mapa", string>>;
 
-/** Índices das sessões extras com problema (vazia ou fora do período). */
+/** Evento em sessões (num dia só ou em vários): vale o horário das sessões, não o geral (EVT-98). */
+const emSessoes = (f: Formulario) => !!f.inicio && !!f.fim && f.formato === "sessoes";
+
+/** Índices das sessões com problema (vazia ou fora dos dias do evento). */
 const sessoesInvalidas = (f: Formulario) =>
-    new Set(f.sessoesExtras.flatMap(({ valor: s }, i) => (!s || (f.inicio && s < f.inicio) || (f.fim && s > f.fim) ? [i] : [])));
+    new Set(
+        emSessoes(f)
+            ? f.sessoesExtras.flatMap(({ valor: s }, i) => (!s || s.slice(0, 10) < f.inicio.slice(0, 10) || s.slice(0, 10) > f.fim.slice(0, 10) ? [i] : []))
+            : [],
+    );
+
+/** Fim de uma sessão em ISO local: no mesmo dia, ou no seguinte se o horário de fim é antes do início. */
+const fimDaSessao = (s: SessaoExtra) => {
+    if (!s.fim) return s.valor;
+    if (s.fim > s.valor.slice(11, 16)) return `${s.valor.slice(0, 10)}T${s.fim}`;
+    const d = new Date(`${s.valor.slice(0, 10)}T12:00`);
+    d.setDate(d.getDate() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${s.fim}`;
+};
 
 function validar(f: Formulario): Erros {
     const e: Erros = {};
@@ -160,11 +176,15 @@ function validar(f: Formulario): Erros {
     if (!f.nome.trim()) e.nome = "Dê um nome ao evento.";
     if (!f.local) e.local = "Busque e escolha o local do evento.";
     if (!paragrafosDoHtml(f.descricao).length) e.descricao = "Conte o que vai acontecer no evento.";
-    if (!f.inicio) e.inicio = "Escolha os dias do evento.";
-    if (!f.fim) e.fim = "Informe quando o evento termina.";
-    else if (f.inicio && f.fim <= f.inicio) e.fim = "Escolha um fim depois do início.";
+    if (!f.inicio) e.inicio = "Escolha quando o evento acontece.";
+    // Em sessões não há horário geral: o que vale é ter ao menos uma sessão (EVT-98).
+    if (!emSessoes(f)) {
+        if (!f.fim) e.fim = "Informe quando o evento termina.";
+        else if (f.inicio && f.fim <= f.inicio) e.fim = "Escolha um fim depois do início.";
+    }
     const ruins = sessoesInvalidas(f);
-    if (ruins.size > 0) {
+    if (emSessoes(f) && f.sessoesExtras.length === 0) e.sessoes = f.tipo === "esportivo" ? "Adicione ao menos uma largada." : "Adicione ao menos uma sessão.";
+    else if (ruins.size > 0) {
         e.sessoes = f.sessoesExtras.some((s) => !s.valor)
             ? "Preencha a data das sessões destacadas ou remova as vazias."
             : "Mova as sessões destacadas para dentro do período do evento.";
@@ -214,7 +234,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
 
     // Próximo obrigatório que falta, na ordem em que aparece na tela (EVT-93). Calculado sempre, sem esperar o clique em Criar.
     const pendencias = validar(f);
-    const ORDEM: (keyof Erros)[] = ["nome", "mandante", "visitante", "modalidade", "categoria", "inicio", "fim", "local", "descricao", "sessoes", "mapa"];
+    const ORDEM: (keyof Erros)[] = ["nome", "mandante", "visitante", "modalidade", "categoria", "inicio", "fim", "sessoes", "local", "descricao", "mapa"];
     const campoPendente = ORDEM.find((k) => pendencias[k]);
     const proximaPendencia = campoPendente ? { campo: campoPendente, texto: pendencias[campoPendente]! } : null;
     const irParaCampo = (campo: keyof Erros) => {
@@ -259,11 +279,14 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
             requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-erro]")?.scrollIntoView({ behavior: "smooth", block: "center" }));
             return;
         }
+        // Em sessões, o evento começa na primeira e termina no fim da última; direto, uma sessão só, no início (EVT-89, EVT-98).
+        const ordenadas = emSessoes(f) ? [...f.sessoesExtras].sort((a, b) => a.valor.localeCompare(b.valor)) : [];
+        const inicioDoEvento = ordenadas[0]?.valor ?? f.inicio;
+        const fimDoEvento = ordenadas.length ? ordenadas.map(fimDaSessao).sort().at(-1)! : f.fim;
         const novo = criarEvento({
             nome: f.nome.trim(),
-            data: new Date(f.inicio).toISOString(),
-            // Com sessões criadas, elas são as sessões do evento (o fim de cada uma ainda não é gravado); sem nenhuma, uma só, no início (EVT-89).
-            sessoes: (temCronograma(f.inicio, f.fim) && f.sessoesExtras.length ? [...f.sessoesExtras].sort((a, b) => a.valor.localeCompare(b.valor)).map((s) => s.valor) : [f.inicio]).map((v) => new Date(v).toISOString()),
+            data: new Date(inicioDoEvento).toISOString(),
+            sessoes: (ordenadas.length ? ordenadas.map((s) => s.valor) : [f.inicio]).map((v) => new Date(v).toISOString()),
             local: f.local!.nome,
             cidade: f.local!.cidade,
             produtor: organizacao?.nome ?? "",
@@ -275,7 +298,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                 tipo: f.tipo,
                 modalidade: f.tipo === "esportivo" ? (f.modalidade as Modalidade) : undefined,
                 categoria: f.tipo === "show" ? f.categoriaId : undefined,
-                fim: f.fim,
+                fim: fimDoEvento,
                 moeda: f.moeda,
                 // Limites não se definem na criação: nasce ilimitado e se ajusta em Itens › Configurações de ingressos (EVT-57).
                 limites: { geral: null, porCategoria: {} },
@@ -317,19 +340,25 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                     </div>
                 </Surgir>
 
-                {/* A página do evento, editável no lugar: banner à esquerda, informações à direita, descrição abaixo (EVT-85). */}
-                <article aria-label="Página do evento" className="grid items-start gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10">
+                {/* Banner à esquerda, fixo ao rolar; à direita, os blocos do formulário empilhados em cartões (EVT-85). */}
+                <div className="grid items-start gap-8 lg:max-w-[1736px] lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-9">
                     {bannerNaColuna && (
-                        <div className="lg:sticky lg:top-6 lg:max-w-[min(100%,calc((100dvh-14rem)*0.8))]">
-                            {/* Banner um pouco menor que a coluna: a altura cabe na tela sem encostar na barra de Criar evento. */}
+                        <div className="lg:sticky lg:top-6 lg:w-[min(34vw,calc((100dvh-19rem)*0.8))]">
+                            {/* A largura sai da altura: banner e as opções embaixo dele cabem na tela, acima da barra de Criar evento.
+                                O formulário estica até 1920 px de tela e fica à mesma distância do banner que a margem da direita. */}
                             <CampoBanner {...propsDoBanner} />
                         </div>
                     )}
 
+                    <div className="flex min-w-0 flex-col gap-6">
+                    {/* Abaixo do desktop, o banner vem antes, como no desktop, numa caixa enxuta (EVT-80). */}
+                    {!bannerNaColuna && <CampoBannerCompacto {...propsDoBanner} />}
+
+                    {/* O que aparece na página do evento, num cartão só (EVT-85). */}
+                    <Secao titulo="Informações do evento">
                     <div className="flex min-w-0 flex-col gap-8">
-                        {/* Nome num campo do DS, com o ícone ao lado como as outras linhas. */}
+                        {/* Nome num campo do DS. */}
                         <div className="flex gap-4" data-erro={erros.nome ? "" : undefined}>
-                            <FeaturedIcon icon={Type01} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
                             <div className="min-w-0 flex-1">
                                 <Input
                                     id="nome-do-evento"
@@ -346,11 +375,10 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                             </div>
                         </div>
 
-                        {/* Futebol: a partida vem depois do nome, uma linha por campo com o ícone ao lado; mandante e visitante lado a lado. */}
+                        {/* Futebol: a partida vem depois do nome, uma linha por campo; mandante e visitante lado a lado. */}
                         {f.tipo === "futebol" && (
                             <>
                                 <div className="flex gap-4">
-                                    <FeaturedIcon icon={Shield01} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
                                     <div className="min-w-0 flex-1">
                                         <Grade>
                                             <CampoSelect
@@ -377,7 +405,6 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                                     </div>
                                 </div>
                                 <div className="flex gap-4">
-                                    <FeaturedIcon icon={Trophy01} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
                                     <div className="min-w-0 flex-1 sm:max-w-xs">
                                         <CampoSelect
                                             label="Campeonato"
@@ -392,7 +419,6 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                                     </div>
                                 </div>
                                 <div className="flex gap-4">
-                                    <FeaturedIcon icon={UserCheck01} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
                                     <div className="min-w-0 flex-1 sm:max-w-xs">
                                         <CampoSelect
                                             label="Programa de membros"
@@ -409,10 +435,9 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                             </>
                         )}
 
-                        {/* Esportivo: modalidade logo depois do nome, como as outras linhas (ícone ao lado). */}
+                        {/* Esportivo: modalidade logo depois do nome, como as outras linhas. */}
                         {f.tipo === "esportivo" && (
                             <div className="flex gap-4">
-                                <FeaturedIcon icon={Trophy01} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
                                 <div className="min-w-0 flex-1 sm:max-w-xs">
                                     <CampoSelect
                                         label="Modalidade"
@@ -430,10 +455,10 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                         {/* Show ou festa: categoria logo depois do nome, como a modalidade do esportivo (EVT-97). */}
                         {f.tipo === "show" && (
                             <div className="flex gap-4">
-                                <FeaturedIcon icon={Tag01} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
                                 <div id="campo-categoria" className="min-w-0 flex-1 sm:max-w-xs">
                                     <CampoSelect
                                         label="Categoria"
+                                        icone={Tag01}
                                         isRequired
                                         opcoes={opcoes.dados?.categorias ?? []}
                                         valor={f.categoriaId}
@@ -448,9 +473,9 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
 
                         {/* Quando e onde, como na página: ícone e informação. */}
                         <dl className="flex flex-col gap-5">
-                            <LinhaDaPagina icone={Calendar} titulo="Quando">
+                            <LinhaDaPagina titulo="Quando">
                                 {/* Dias como passagem de ida e volta, depois os horários (EVT-88). */}
-                                <div id="campo-quando" data-erro={erros.inicio || erros.fim ? "" : undefined}>
+                                <div id="campo-quando" data-erro={erros.inicio || erros.fim || erros.sessoes ? "" : undefined}>
                                     <PeriodoDoEvento
                                         inicio={f.inicio}
                                         fim={f.fim}
@@ -460,31 +485,91 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                                         }
                                         erroInicio={erros.inicio}
                                         erroFim={erros.fim}
+                                        semHorarios={emSessoes(f)}
+                                        avisoAoAplicar={(d1, d2) => {
+                                            // Encurtar os dias tira as sessões que ficam fora: avisa antes do Aplicar.
+                                            if (f.formato !== "sessoes") return null;
+                                            const fora = f.sessoesExtras.filter((x) => x.valor.slice(0, 10) < d1 || x.valor.slice(0, 10) > d2).length;
+                                            if (!fora) return null;
+                                            const nome = f.tipo === "esportivo" ? (fora === 1 ? "largada fica" : "largadas ficam") : fora === 1 ? "sessão fica" : "sessões ficam";
+                                            return `${fora} ${nome} fora destes dias e ${fora === 1 ? "sai" : "saem"} ao aplicar.`;
+                                        }}
+                                        escolhaDeFormato={
+                                            // Com os dias escolhidos (um ou vários): um horário geral ou sessões, cada um com os horários que fazem sentido (EVT-98).
+                                            !!f.inicio && (
+                                                <div className="flex flex-col gap-1.5">
+                                                    <span className="text-sm font-medium text-secondary">Como o evento acontece</span>
+                                                    <Escolha
+                                                        rotulo="Como o evento acontece"
+                                                        valor={f.formato}
+                                                        opcoes={[
+                                                            { id: "continuo", label: temCronograma(f.inicio, f.fim) ? "Direto, do início ao fim" : "Um horário" },
+                                                            { id: "sessoes", label: f.tipo === "esportivo" ? "Em largadas" : "Em sessões" },
+                                                        ]}
+                                                        onChange={(v) => set("formato", v as Formulario["formato"])}
+                                                    />
+                                                </div>
+                                            )
+                                        }
+                                        complemento={
+                                        <Surgir visivel={emSessoes(f)} gap={16}>
+                                            <div className="flex flex-col gap-3">
+                                                <CronogramaDeSessoes
+                                                    inicio={f.inicio}
+                                                    fim={f.fim}
+                                                    sessoes={f.sessoesExtras}
+                                                    onChange={(sessoesExtras) => set("sessoesExtras", sessoesExtras)}
+                                                    item={itemDoCronograma}
+                                                />
+                                                {erros.sessoes && <p className="text-sm text-error-primary">{erros.sessoes}</p>}
+                                            </div>
+                                        </Surgir>
+                                        }
                                     />
                                 </div>
                             </LinhaDaPagina>
-                            <LinhaDaPagina icone={MarkerPin01} titulo="Onde">
+                            <LinhaDaPagina titulo="Onde">
                                 <div id="campo-local" data-erro={erros.local ? "" : undefined}>
                                     <CampoLocal valor={f.local} onChange={(v) => set("local", v)} erro={erros.local} />
                                 </div>
                             </LinhaDaPagina>
                         </dl>
 
-                        {/* Abaixo do desktop, o banner fica aqui no formato horizontal de antes (EVT-80). */}
-                        {!bannerNaColuna && <CampoBannerCompacto {...propsDoBanner} />}
 
-                        {/* Sobre o evento como as outras linhas: ícone ao lado, rótulo do mesmo tamanho e a formatação dentro da caixa (EVT-86). */}
+                        {/* Sobre o evento: rótulo do mesmo tamanho e a formatação dentro da caixa (EVT-86). */}
                         <div id="campo-sobre" className="flex gap-4" data-erro={erros.descricao ? "" : undefined}>
-                            <FeaturedIcon icon={AlignLeft} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
                             <TextEditor.Root
                                 content={f.descricao}
                                 onUpdate={({ editor }) => {
                                     const html = editor.getHTML();
                                     set("descricao", html === "<p></p>" ? "" : html);
                                 }}
+                                // Imagem redimensionável pelos cantos, mantendo a proporção (EVT-86). O editor do DS não expõe a
+                                // opção; ela é ligada antes de o editor montar, quando as visualizações dos nós ainda não existem.
+                                onBeforeCreate={({ editor }) => {
+                                    // As opções são recalculadas a cada leitura (addOptions): troca a função, não o objeto.
+                                    const imagem = editor.extensionManager.extensions.find((e) => e.name === "image");
+                                    if (!imagem) return;
+                                    const anteriores = imagem.options;
+                                    imagem.config.addOptions = () => ({
+                                        ...anteriores,
+                                        resize: { enabled: true, alwaysPreserveAspectRatio: true, minWidth: 80, minHeight: 40, directions: ["top-left", "top-right", "bottom-left", "bottom-right"] },
+                                    });
+                                }}
                                 placeholder="Conte o que vai acontecer, a programação e o que está incluso."
                                 className="flex min-w-0 flex-1 flex-col gap-1.5"
-                                inputClassName="min-h-40 resize-y rounded-none rounded-b-lg bg-transparent px-3.5 pt-2 pb-3 shadow-none ring-0 focus:ring-0"
+                                inputClassName={cx(
+                                    "min-h-40 resize-y rounded-none rounded-b-lg bg-transparent px-3.5 pt-2 pb-3 shadow-none ring-0 focus:ring-0",
+                                    // Mesmo visual do recorte do banner (Cropper do DS): contorno de 2 px em utility-brand-600 e alças
+                                    // quadradas brancas de 12 px com borda de 2 px. Aparecem ao passar o mouse ou com a imagem selecionada.
+                                    "[&_[data-resize-container]]:my-3 [&_[data-resize-wrapper]]:max-w-full [&_[data-resize-wrapper]_img]:h-auto! [&_[data-resize-wrapper]_img]:max-w-full",
+                                    "[&_[data-resize-wrapper]]:outline-2 [&_[data-resize-wrapper]]:-outline-offset-2 [&_[data-resize-wrapper]]:outline-transparent [&_[data-resize-wrapper]]:transition-[outline-color] [&_[data-resize-wrapper]]:duration-100",
+                                    "[&_[data-resize-container]:hover_[data-resize-wrapper]]:outline-utility-brand-600 [&_.ProseMirror-selectednode_[data-resize-wrapper]]:outline-utility-brand-600 [&_[data-resize-state=true]_[data-resize-wrapper]]:outline-utility-brand-600",
+                                    "[&_[data-resize-handle]]:z-10 [&_[data-resize-handle]]:size-3 [&_[data-resize-handle]]:border-2 [&_[data-resize-handle]]:border-utility-brand-600 [&_[data-resize-handle]]:bg-white [&_[data-resize-handle]]:opacity-0 [&_[data-resize-handle]]:transition-opacity [&_[data-resize-handle]]:duration-100",
+                                    "[&_[data-resize-container]:hover_[data-resize-handle]]:opacity-100 [&_.ProseMirror-selectednode_[data-resize-handle]]:opacity-100 [&_[data-resize-state=true]_[data-resize-handle]]:opacity-100",
+                                    "[&_[data-resize-handle=top-left]]:-translate-1/2 [&_[data-resize-handle=top-left]]:cursor-nwse-resize [&_[data-resize-handle=bottom-right]]:translate-1/2 [&_[data-resize-handle=bottom-right]]:cursor-nwse-resize",
+                                    "[&_[data-resize-handle=top-right]]:translate-x-1/2 [&_[data-resize-handle=top-right]]:-translate-y-1/2 [&_[data-resize-handle=top-right]]:cursor-nesw-resize [&_[data-resize-handle=bottom-left]]:-translate-x-1/2 [&_[data-resize-handle=bottom-left]]:translate-y-1/2 [&_[data-resize-handle=bottom-left]]:cursor-nesw-resize",
+                                )}
                             >
                                 <TextEditor.Label isRequired>Sobre o evento</TextEditor.Label>
                                 <div className={cx("flex flex-col overflow-hidden rounded-lg bg-primary shadow-xs ring-1 ring-primary transition duration-100 ease-linear ring-inset focus-within:ring-2 focus-within:ring-brand", erros.descricao && "ring-error_subtle focus-within:ring-error")}>
@@ -497,38 +582,18 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                             </TextEditor.Root>
                         </div>
                     </div>
-                </article>
+                    </Secao>
 
                 {/* O que não aparece na página, mas define como o evento vende (EVT-85). */}
-                <section aria-labelledby="detalhes-do-evento" className="flex flex-col gap-6 border-t border-secondary pt-8 pb-6">
+                <section aria-labelledby="detalhes-do-evento" className="flex flex-col gap-6 pt-4 pb-6">
                     <div className="flex flex-col gap-1">
                         <h2 id="detalhes-do-evento" className="text-lg font-semibold text-primary">
                             Detalhes do evento
                         </h2>
-                        <p className="max-w-[65ch] text-md text-tertiary">Não aparecem na página do evento, mas definem como ele vende.</p>
                     </div>
 
                     {/* Empilhados, um embaixo do outro. */}
                     <div className="flex flex-col gap-6">
-                        {/* Só com o evento em mais de um dia (EVT-88): um cartão por dia, horário embaixo da data (EVT-89). */}
-                        {temCronograma(f.inicio, f.fim) && (
-                            <Secao
-                                titulo={voc.cronograma}
-                                descricao={`Opcional. Cada ${itemDoCronograma} tem dia, horário de início e de fim; um dia pode ter mais de uma. Sem nenhuma, o evento tem uma ${itemDoCronograma} só, no início.`}
-                            >
-                                <div data-erro={erros.sessoes ? "" : undefined} className="flex flex-col gap-3">
-                                    <CronogramaDeSessoes
-                                        inicio={f.inicio}
-                                        fim={f.fim}
-                                        sessoes={f.sessoesExtras}
-                                        onChange={(sessoesExtras) => set("sessoesExtras", sessoesExtras)}
-                                        item={itemDoCronograma}
-                                    />
-                                    {erros.sessoes && <p className="text-sm text-error-primary">{erros.sessoes}</p>}
-                                </div>
-                            </Secao>
-                        )}
-
                         <Secao titulo="Venda">
                             <Grade>
                                 <CampoSelect
@@ -569,7 +634,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                                     <Surgir visivel={f.mapaTipo === "imagem"}>
                                         <CampoImagem
                                             rotulo="Mapa"
-                                            hint="PNG ou JPG até 400 KB, com setores e acessos."
+                                            hint="PNG ou JPG, com setores e acessos."
                                             arquivo={f.mapaImagem}
                                             onEscolher={(img) => set("mapaImagem", img)}
                                             onRemover={() => set("mapaImagem", null)}
@@ -593,6 +658,8 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                         </Secao>
                     </div>
                 </section>
+                    </div>
+                </div>
 
                 {/* Mesmo fundo da página (UI-VIS-013); a borda separa do conteúdo que rola por baixo. */}
                 <footer className="sticky bottom-0 z-20 mt-auto border-t border-secondary bg-primary_alt">
@@ -697,13 +764,12 @@ const BarraDaDescricao = () => (
 
 /**
  * Imagem no meio da descrição. O botão do DS grava um endereço temporário do navegador, que some ao
- * recarregar; aqui a imagem entra como data URL, como as outras imagens do evento, e com o mesmo
- * limite de tamanho (EVT-63, EVT-86).
+ * recarregar; aqui a imagem entra como data URL, como as outras imagens do evento, sem limite de
+ * tamanho (EVT-86).
  */
 const InserirImagem = () => {
     const { editor, isDisabled } = useEditorContext();
     const arquivo = useRef<HTMLInputElement>(null);
-    const { t } = useTextos();
     return (
         <>
             <input
@@ -715,10 +781,7 @@ const InserirImagem = () => {
                     const file = e.target.files?.[0];
                     e.target.value = "";
                     if (!file) return;
-                    if (file.size > MAX_IMAGEM) {
-                        toast.error(formatar(t.imagemGrande, { maximo: Math.round(MAX_IMAGEM / 1024), campo: "a descrição", tamanho: Math.round(file.size / 1024) }));
-                        return;
-                    }
+                    // Sem limite de tamanho na imagem da descrição (EVT-86).
                     editor.chain().focus().setImage({ src: await lerComoDataUrl(file), alt: "" }).run();
                 }}
             />
@@ -733,7 +796,6 @@ const InserirImagem = () => {
 /* O título fica só para leitor de tela: o rótulo do campo já diz o que é, e o ícone desce até a altura do campo (abaixo do rótulo). */
 const LinhaDaPagina = ({ icone, titulo, children }: { icone: FC<{ className?: string }>; titulo: string; children: ReactNode }) => (
     <div className="flex gap-4">
-        <FeaturedIcon icon={icone} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
         <div className="min-w-0 flex-1">
             <dt className="sr-only">{titulo}</dt>
             <dd className="min-w-0">{children}</dd>
@@ -897,10 +959,12 @@ interface CampoSelectProps {
     ocultarLabel?: boolean;
     /** Campo opcional: mostra o × para voltar ao vazio (UI-FRM-003). */
     limpavel?: boolean;
+    /** Ícone dentro do campo, à esquerda (o do Select do DS). */
+    icone?: FC;
     className?: string;
 }
 
-const CampoSelect = ({ label, opcoes, valor, onChange, placeholder, hint, erro, isRequired, isDisabled, ocultarLabel, limpavel, className }: CampoSelectProps) => {
+const CampoSelect = ({ label, opcoes, valor, onChange, placeholder, hint, erro, isRequired, isDisabled, ocultarLabel, limpavel, icone, className }: CampoSelectProps) => {
     const { t } = useTextos();
     return (
     <div data-erro={erro ? "" : undefined} className={cx("relative", className)}>
@@ -908,6 +972,7 @@ const CampoSelect = ({ label, opcoes, valor, onChange, placeholder, hint, erro, 
             label={ocultarLabel ? undefined : label}
             aria-label={ocultarLabel ? label : undefined}
             placeholder={placeholder}
+            icon={icone}
             items={opcoes}
             selectedKey={valor || null}
             onSelectionChange={(k) => k != null && onChange(String(k))}
@@ -961,7 +1026,10 @@ const Escolha = ({ rotulo, valor, opcoes, onChange }: { rotulo: string; valor: s
     </ButtonGroup>
 );
 
-/** Envio de imagem com prévia. Recusa acima de MAX_IMAGEM, com o motivo (EVT-63). */
+/**
+ * Envio de imagem com pré-visualização, como o banner: a imagem inteira, sem corte, e embaixo o nome,
+ * trocar e remover. Sem limite de tamanho (EVT-63).
+ */
 const CampoImagem = ({
     label,
     rotulo,
@@ -980,21 +1048,39 @@ const CampoImagem = ({
 }) => {
     const { t } = useTextos();
     const nome = label ?? rotulo ?? "";
+    const entrada = useRef<HTMLInputElement>(null);
     const escolher = async (file: File) => {
-        if (file.size > MAX_IMAGEM) {
-            toast.error(formatar(t.imagemGrande, { maximo: Math.round(MAX_IMAGEM / 1024), campo: nome, tamanho: Math.round(file.size / 1024) }));
-            return;
-        }
         onEscolher({ nome: file.name, url: URL.createObjectURL(file), dataUrl: await lerComoDataUrl(file) });
     };
     return (
         <div className="flex flex-col gap-1.5">
             {label && <span className="text-sm font-medium text-secondary">{label}</span>}
+            <input
+                ref={entrada}
+                type="file"
+                accept="image/png,image/jpeg"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
+                onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void escolher(file);
+                }}
+            />
             <Surgir visivel={!!arquivo}>
-                <div className="flex items-center gap-3 rounded-xl p-3 ring-1 ring-secondary">
-                    <img src={arquivo?.url} alt="" className="size-16 shrink-0 rounded-lg object-cover" />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary">{arquivo?.nome}</span>
-                    <ButtonUtility icon={Trash01} color="tertiary" tooltip={formatar(t.removerCampo, { campo: nome })} onClick={onRemover} className="size-11" />
+                <div className="flex flex-col gap-3">
+                    {/* A imagem inteira, sem corte: o mapa precisa mostrar todos os setores. */}
+                    <div className="flex justify-center overflow-hidden rounded-2xl bg-primary_alt ring-1 ring-secondary ring-inset">
+                        <img src={arquivo?.url} alt={nome ? `Pré-visualização: ${nome}` : ""} className="max-h-96 w-auto max-w-full object-contain" />
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 truncate text-sm text-tertiary">{arquivo?.nome}</span>
+                        <div className="flex shrink-0 items-center gap-1">
+                            <ButtonUtility icon={RefreshCw01} color="tertiary" size="sm" tooltip="Trocar imagem" onClick={() => entrada.current?.click()} />
+                            <ButtonUtility icon={Trash01} color="tertiary" size="sm" tooltip={formatar(t.removerCampo, { campo: nome })} onClick={onRemover} />
+                        </div>
+                    </div>
                 </div>
             </Surgir>
             <Surgir visivel={!arquivo}>

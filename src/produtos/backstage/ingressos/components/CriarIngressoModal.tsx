@@ -60,7 +60,7 @@ export function CriarIngressoModal({ isOpen, onClose, sessoes, gruposExistentes,
                             {sessoes.length > 1 && (
                                 <NativeSelect label="Sessão" value={sessaoId} onChange={(e) => setSessaoId(e.target.value)} options={sessoes.map((s) => ({ label: s.label, value: s.id }))} />
                             )}
-                            <Input label="Grupo" hint="Setor do evento. Se o nome já existir, o ingresso entra nele." placeholder="Ex: Pista, Camarote" value={grupo} onChange={setGrupo} isRequired />
+                            <Input label="Grupo" hint="Grupo do evento. Se o nome já existir, o ingresso entra nele." placeholder="Ex: Pista, Camarote" value={grupo} onChange={setGrupo} isRequired />
                             <Input label="Nome do ingresso" placeholder="Ex: Inteira" value={nome} onChange={setNome} isRequired />
                             <div className="grid grid-cols-2 gap-4">
                                 <Input label="Preço (R$)" type="number" inputMode="decimal" placeholder="0,00" value={preco} onChange={setPreco} isRequired />

@@ -197,7 +197,7 @@ export const products: ProductItem[] = [
     },
 ];
 
-const COMBO_DESC = "Os ingressos do combo são emitidos juntos e valem para as datas e os setores da composição.";
+const COMBO_DESC = "Os ingressos do combo são emitidos juntos e valem para as datas e os grupos da composição.";
 
 const combo = (
     id: string,

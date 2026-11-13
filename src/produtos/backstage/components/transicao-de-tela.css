@@ -61,7 +61,13 @@
     animation: bs-tela-titulo 560ms var(--bs-tela-curva) 40ms both;
 }
 
+/* Troca de aba dentro da mesma tela (ex.: Itens): só o conteúdo da aba sobe; moldura, título e abas ficam. */
+.bs-aba > * {
+    animation: bs-tela-subir 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+    .bs-aba > *,
     .bs-tela,
     .bs-tela > * > *,
     .bs-tela h1 {

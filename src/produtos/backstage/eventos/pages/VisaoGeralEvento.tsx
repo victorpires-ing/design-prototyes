@@ -109,9 +109,9 @@ export function VisaoGeralEvento() {
                 {/* Capacidade por setor */}
                 <section className="flex flex-col rounded-xl bg-primary ring-1 ring-border-secondary">
                     <header className="flex flex-col gap-0.5 border-b border-secondary px-5 py-4">
-                        <h2 className="text-md font-semibold text-primary">Capacidade por setor</h2>
+                        <h2 className="text-md font-semibold text-primary">Capacidade por grupo</h2>
                         <p className="text-sm text-tertiary">
-                            {vendas.sessoes.length} {vendas.sessoes.length === 1 ? "setor" : "setores"} em{" "}
+                            {vendas.sessoes.length} {vendas.sessoes.length === 1 ? "grupo" : "grupos"} em{" "}
                             {ambientes.length === 1 ? ambientes[0] : `${ambientes.length} sessões`}. A barra divide a venda por canal.
                         </p>
                     </header>

@@ -2,7 +2,6 @@ import { useRef, useState, useSyncExternalStore, type SyntheticEvent } from "rea
 import { Crop01, ImageUp, RefreshCw01, Trash01 } from "@untitledui/icons";
 import { Heading as AriaHeading } from "react-aria-components";
 import { centerCrop, makeAspectCrop, type PercentCrop } from "react-image-crop";
-import { FileUploadDropZone } from "@/components/application/file-upload/file-upload-base";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -226,34 +225,103 @@ function AreaDeEnvio({ onClique, onSoltar }: { onClique: () => void; onSoltar: (
 }
 
 /**
- * Celular e telas médias: o formato horizontal de antes (EVT-80). Área de envio do DS e, depois do
- * envio, uma linha com a miniatura recortada, o nome, ajustar recorte e remover.
+ * Celular e telas médias (EVT-80): a versão do desktop, enxuta. Uma caixa sem padding, com o banner
+ * pequeno (4:5) à esquerda e o texto à direita, centralizado na altura. Vazia, a caixa inteira é o
+ * botão de envio, sobre o mesmo campo de partículas do desktop.
  */
 export function CampoBannerCompacto(props: CampoBannerProps) {
     const { imagem, recorte, onRemover } = props;
     const { escolher, ajustar, modal } = useEdicaoDoBanner(props);
+    const entrada = useRef<HTMLInputElement>(null);
+    const abrirSeletor = () => entrada.current?.click();
+    const [sobre, setSobre] = useState(false);
+    const [emFoco, setEmFoco] = useState(false);
+    const corPadrao = useCorDeParticulas({ escuro: 0.132, claro: 0.12 });
+    const cor = emFoco || sobre ? "#ff271a" : corPadrao;
+    const caixa = "relative isolate flex w-full items-stretch overflow-hidden rounded-2xl bg-primary_alt ring-1 ring-secondary ring-inset";
+
     return (
-        <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-secondary">Banner</span>
+        <div className="flex flex-col">
+            <span className="sr-only" id="banner-rotulo-compacto">
+                Banner
+            </span>
+            <input
+                ref={entrada}
+                type="file"
+                accept="image/png,image/jpeg"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
+                onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) escolher(file);
+                    e.target.value = "";
+                }}
+            />
             {imagem && recorte ? (
-                <div className="flex items-center gap-3 rounded-xl p-3 ring-1 ring-secondary">
-                    <ImagemRecortada imagem={imagem} recorte={recorte} className="h-16 shrink-0 rounded-lg" />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary">{imagem.nome}</span>
-                    <ButtonUtility icon={Crop01} color="tertiary" tooltip="Ajustar recorte" onClick={ajustar} className="size-11" />
-                    <ButtonUtility icon={Trash01} color="tertiary" tooltip="Remover banner" onClick={onRemover} className="size-11" />
+                <div className={caixa}>
+                    <button
+                        type="button"
+                        onClick={ajustar}
+                        aria-label="Ajustar recorte do banner"
+                        className="w-24 shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring"
+                    >
+                        <ImagemRecortada imagem={imagem} recorte={recorte} />
+                    </button>
+                    <div className="flex min-w-0 flex-1 items-center gap-1 px-4">
+                        <span className="flex min-w-0 flex-1 flex-col">
+                            <span className="text-sm font-semibold text-primary">Banner</span>
+                            <span className="truncate text-sm text-tertiary">{imagem.nome}</span>
+                        </span>
+                        <ButtonUtility icon={Crop01} color="tertiary" size="sm" tooltip="Ajustar recorte" onClick={ajustar} />
+                        <ButtonUtility icon={RefreshCw01} color="tertiary" size="sm" tooltip="Trocar imagem" onClick={abrirSeletor} />
+                        <ButtonUtility icon={Trash01} color="tertiary" size="sm" tooltip="Remover banner" onClick={onRemover} />
+                    </div>
                 </div>
             ) : (
-                <FileUploadDropZone
-                    // "ou arraste o arquivo" alinhado ao meio do botão de 44 px.
-                    className="[&_label+span]:self-center"
-                    accept="image/png,image/jpeg"
-                    allowsMultiple={false}
-                    hint="PNG ou JPG, de preferência 1080 × 1350 px."
-                    onDropFiles={(files) => {
-                        const file = files[0];
+                <button
+                    type="button"
+                    onClick={abrirSeletor}
+                    onPointerEnter={() => setEmFoco(true)}
+                    onPointerLeave={() => setEmFoco(false)}
+                    onDragOver={(e) => {
+                        e.preventDefault();
+                        setSobre(true);
+                    }}
+                    onDragLeave={() => setSobre(false)}
+                    onDrop={(e) => {
+                        e.preventDefault();
+                        setSobre(false);
+                        const file = e.dataTransfer.files[0];
                         if (file) escolher(file);
                     }}
-                />
+                    aria-labelledby="banner-rotulo-compacto"
+                    aria-describedby="banner-dica-compacto"
+                    className={cx(
+                        caixa,
+                        "cursor-pointer text-left transition-colors duration-250 ease-out hover:bg-primary_hover/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring motion-reduce:transition-none",
+                        sobre && "bg-primary_hover/10 ring-2 ring-brand",
+                    )}
+                >
+                    {/* Partículas na caixa toda, sumindo para a direita, onde fica o texto. */}
+                    <CampoDeParticulas
+                        cor={cor}
+                        densidade={1.5}
+                        escala={2}
+                        className="absolute inset-0 -z-10 size-full [mask-image:linear-gradient(to_right,black_0%,black_25%,transparent_80%)]"
+                    />
+                    <span className="flex aspect-[4/5] w-24 shrink-0 items-center justify-center">
+                        <span className="flex size-10 items-center justify-center rounded-full bg-primary shadow-xs ring-1 ring-secondary ring-inset">
+                            <ImageUp className="size-5 text-fg-secondary" aria-hidden="true" />
+                        </span>
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-4">
+                        <span className="text-sm font-semibold text-primary">Enviar o banner</span>
+                        <span id="banner-dica-compacto" className="text-sm text-tertiary">
+                            PNG ou JPG, 1080 × 1350 px
+                        </span>
+                    </span>
+                </button>
             )}
             {modal}
         </div>

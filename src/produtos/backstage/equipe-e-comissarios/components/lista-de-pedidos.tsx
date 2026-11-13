@@ -156,7 +156,8 @@ export function ListaDePedidos({
                                             {variosVendedores && <td className={TD}>{p.vendedor}</td>}
                                             <td className={cx(TD, "text-right tabular-nums")}>
                                                 {p.status === "cancelado" ? (
-                                                    <Badge size="sm" type="pill-color" color="error">
+                                                    // O Badge do DS é flex (bloco): ml-auto o encosta na borda da coluna, alinhado com os valores (ECO-75).
+                                                    <Badge size="sm" type="pill-color" color="error" className="ml-auto">
                                                         Cancelado
                                                     </Badge>
                                                 ) : (

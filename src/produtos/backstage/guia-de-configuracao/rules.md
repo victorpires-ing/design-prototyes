@@ -28,7 +28,7 @@ criação de evento (`eventos/`, `/backstage/eventos/novo`): entra logo depois d
 
 ### Comportamento
 - **GDC-01** O guia monta no `BackstageLayout` (as duas shells, clássica e topo) e acompanha o produtor por todas as telas do evento. No Freepass não aparece. _(components/Backstage.tsx, components/guia-de-configuracao.tsx)_
-- **GDC-02** Passos, nesta ordem: "Crie os setores do evento" (Criar), "Crie ingressos com preço e lote" (Criar), "Programe o início das vendas" (Programar), "Publique o evento" (Publicar). A lista vai até publicar porque o guia some quando acaba, e sumir com o evento em rascunho diria que está tudo certo. _(data/passos.ts)_
+- **GDC-02** Passos, nesta ordem: "Crie os grupos do evento" (Criar), "Crie ingressos com preço e lote" (Criar), "Programe o início das vendas" (Programar), "Publique o evento" (Publicar). A lista vai até publicar porque o guia some quando acaba, e sumir com o evento em rascunho diria que está tudo certo. _(data/passos.ts)_
 - **GDC-03** Cada passo é feito pelo estado real do evento, sem contador guardado: setores = existe setor em alguma sessão; ingressos = existe ingresso em algum setor; abertura = existe abertura de vendas com ao menos um ingresso do evento (abertura vazia não vende nada); publicar = status privado, publicado ou encerrado (só rascunho fica pendente). Desfazer reabre o passo sozinho. _(data/passos.ts, data/use-guia.ts)_
 - **GDC-04** Enquanto o banco carrega, o guia não aparece. Melhor calar do que cobrar um passo talvez já feito. _(data/passos.ts)_
 - **GDC-05** Dependências declaradas: ingressos precisa de setor; abertura precisa de setor e ingresso; publicar precisa de setor e ingresso. A abertura não bloqueia publicar (evento publicado antes da abertura é a página "em breve"). Passo feito nunca é bloqueado. _(data/passos.ts)_
@@ -37,7 +37,7 @@ criação de evento (`eventos/`, `/backstage/eventos/novo`): entra logo depois d
 - **GDC-08** Minimizar recolhe o painel à faixa do título (o corpo fica inerte para o Tab); expandir reabre. A escolha fica gravada por evento. _(components/painel-do-guia.tsx, data/memoria.ts)_
 - **GDC-09** O painel sobe de fora da tela ao aparecer e desce ao ser fechado; o título entra palavra a palavra e os passos em cascata. Com reduzir movimento, tudo nasce no lugar. _(components/painel-do-guia.tsx)_
 - **GDC-10** Fechar (X) é definitivo para o evento: o painel não volta. Se o passo atual trava a venda (só a abertura de vendas), Itens › Ingressos mostra o alerta "Nada programado para entrar à venda" com "Programar abertura de vendas", que leva a Aberturas de vendas. O alerta não tem X; some quando a abertura existe. Faltando ingresso ou só publicar, nada fica na tela (o rascunho já aparece no selo do evento). _(components/guia-de-configuracao.tsx, itens/pages/Ingressos.tsx)_
-- **GDC-11** Ações: setores abre Itens › Ingressos com o modal "Novo setor" aberto (`?novoSetor=1`, consumido ao abrir); ingressos abre Criar ingresso (`/backstage/catalogo/ingressos/novo`); abertura abre Aberturas de vendas; publicar abre o modal de status já em Publicado ("Abrir para todo mundo"). _(components/guia-de-configuracao.tsx, itens/pages/Ingressos.tsx)_
+- **GDC-11** Ações: setores abre Itens › Ingressos com o modal "Novo grupo" aberto (`?novoSetor=1`, consumido ao abrir); ingressos abre Criar ingresso (`/backstage/catalogo/ingressos/novo`); abertura abre Aberturas de vendas; publicar abre o modal de status já em Publicado ("Abrir para todo mundo"). _(components/guia-de-configuracao.tsx, itens/pages/Ingressos.tsx)_
 - **GDC-12** A faixa do título tem um campo de partículas (figura de Chladni em canvas 2D nativo) que some à esquerda, onde fica o título. No escuro as partículas são brancas; no claro, pretas, translúcidas. _(backstage/components/campo-de-particulas.tsx, compartilhado com o banner da criação de evento; utils/cor-das-particulas.ts)_
 - **GDC-13** Com o painel na tela, os toasts do canto inferior direito sobem para cima dele (a partir de 640px). _(components/guia-de-configuracao.tsx)_
 - **GDC-14** Holofote de apresentação: só logo depois de criar o evento em "Criar evento" (a criação marca o evento novo). A tela escurece a partir do canto do painel, acende com partículas e mostra "Evento criado! Agora, configure as vendas" e "Siga as etapas do guia para criar os ingressos, programar as vendas e publicar o evento.". Some em 9 s ou ao clicar no painel, e não volta. Não bloqueia cliques e não é lido por leitor de tela. Nas outras visitas, e em eventos que não acabaram de ser criados, aparece só o painel. Substitui o toast de evento criado (EVT-10). _(components/holofote-do-guia.tsx, data/memoria.ts, eventos/pages/CriarEvento.tsx)_
@@ -47,6 +47,8 @@ criação de evento (`eventos/`, `/backstage/eventos/novo`): entra logo depois d
 - **GDC-40** Carregando: sem painel, sem alerta, sem holofote (GDC-04).
 - **GDC-41** Tudo feito: sem painel e sem alerta.
 - **GDC-42** Celular: o painel ocupa a largura, 16 px das bordas.
+- **GDC-43** O painel não cobre ação: com ele na tela, a página reserva no fim a altura dele (variável `--altura-do-guia`) e as barras de salvar fixas não ficam sob ele: acima do painel no celular e com ele recolhido; com ele aberto no desktop, abrem espaço à direita (`--guia-rodape-baixo`, `--guia-rodape-direita`). _(components/guia-de-configuracao.tsx, backstage/components/Backstage.tsx)_
+- **GDC-44** Em tela de formulário com barra de salvar (configurar canal em Equipe e Comissários), o painel começa recolhido na faixa do título, para não cobrir campos. Expandir vale só para aquela visita e não muda a escolha gravada do evento (GDC-08). _(components/guia-de-configuracao.tsx, `recolherGuia` do BackstageLayout)_
 
 ## Depende de / afeta
 
@@ -55,7 +57,7 @@ criação de evento (`eventos/`, `/backstage/eventos/novo`): entra logo depois d
 
 ## Em aberto
 
-- Vocabulário: a branch diz "grupos de ingressos"; o protótipo chama de setor ("Novo setor"), então o passo diz "Crie os setores do evento".
+- ~~Vocabulário: o protótipo chamava de setor.~~ Resolvido em 13/11/2026: o passo diz "Crie os grupos do evento", como a branch (ITM-89).
 - Evento esportivo: o guia diz "ingressos" mesmo quando o catálogo fala em inscrições (o toast antigo trocava a palavra).
 - Qualquer evento incompleto mostra o painel, não só o recém-criado (igual à branch). O holofote, ao contrário da branch, toca só na criação (decisão Victor, 12/11/2026).
 - O cadeado do passo bloqueado não diz o motivo na tela, só para leitor de tela (igual à branch).

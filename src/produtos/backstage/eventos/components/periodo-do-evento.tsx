@@ -1,10 +1,12 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { getLocalTimeZone, parseDate, today, type CalendarDate } from "@internationalized/date";
 import type { DateValue, RangeValue } from "react-aria-components";
 import { DateRangePicker as AriaDateRangePicker, Dialog as AriaDialog, Group as AriaGroup, Popover as AriaPopover } from "react-aria-components";
+import { Calendar } from "@untitledui/icons";
 import { RangeCalendar } from "@/components/application/date-picker/range-calendar";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
+import { Surgir } from "@/components/foundations/transicao";
 import { cx } from "@/utils/cx";
 
 /*
@@ -55,9 +57,17 @@ interface PeriodoDoEventoProps {
     onChange: (inicio: string, fim: string) => void;
     erroInicio?: string;
     erroFim?: string;
+    /** Entre os dias e os horários: a escolha entre evento direto e em sessões, quando há mais de um dia (EVT-98). */
+    escolhaDeFormato?: ReactNode;
+    /** Evento em sessões: sem horário geral, só os das sessões (EVT-98). */
+    semHorarios?: boolean;
+    /** Depois dos horários, no mesmo fundo: as sessões, no evento em sessões (EVT-98). */
+    complemento?: ReactNode;
+    /** Aviso antes de aplicar outros dias: o que fica fora deles e sai (ex.: sessões). */
+    avisoAoAplicar?: (primeiroDia: string, ultimoDia: string) => string | null;
 }
 
-export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim }: PeriodoDoEventoProps) {
+export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim, escolhaDeFormato, semHorarios = false, avisoAoAplicar, complemento }: PeriodoDoEventoProps) {
     const valor: RangeValue<DateValue> | null = inicio && fim ? { start: parseDate(dia(inicio)), end: parseDate(dia(fim)) } : null;
     // Rascunho do calendário: só vale ao aplicar, como na escolha de ida e volta.
     const [rascunho, setRascunho] = useState<RangeValue<DateValue> | null>(valor);
@@ -98,6 +108,10 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim }: 
         onChange(juntar(d1, h1), juntar(d2, h2));
         setAberto(false);
     };
+
+    // Os dias que o Aplicar vai gravar, para avisar antes o que fica fora deles.
+    const intervaloAplicavel = diaUnico ? { start: diaUnico, end: diaUnico } : rascunho;
+    const aviso = intervaloAplicavel && avisoAoAplicar ? avisoAoAplicar(intervaloAplicavel.start.toString(), intervaloAplicavel.end.toString()) : null;
 
     const resumo = valor ? (dia(inicio) === dia(fim) ? formatarDia(dia(inicio)) : `${formatarDia(dia(inicio))} até ${formatarDia(dia(fim))}`) : null;
     const instrucao = diaUnico
@@ -145,6 +159,7 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim }: 
                     <Button
                         size="md"
                         color="secondary"
+                        iconLeading={Calendar}
                         className={cx("w-full justify-start", !!erroInicio && !inicio && "ring-error_subtle")}
                     >
                         {resumo ? <span className="inline-block first-letter:uppercase">{resumo}</span> : <span className="text-placeholder">Escolha o primeiro e o último dia</span>}
@@ -167,8 +182,8 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim }: 
                         <RangeCalendar />
                         {/* Sem quebra de linha: o texto muda a cada clique e não pode empurrar os botões (o clique em Aplicar se perdia). */}
                         <div className="flex items-center gap-3 border-t border-secondary p-4">
-                            <p className="min-w-0 flex-1 text-sm text-secondary first-letter:uppercase" aria-live="polite">
-                                {instrucao}
+                            <p className={cx("min-w-0 flex-1 text-sm first-letter:uppercase", aviso ? "text-warning-primary" : "text-secondary")} aria-live="polite">
+                                {aviso ?? instrucao}
                             </p>
                             <div className="flex shrink-0 gap-3">
                                 <Button size="sm" color="secondary" onClick={() => setAberto(false)}>
@@ -183,11 +198,16 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim }: 
                 </AriaPopover>
             </AriaDateRangePicker>
 
-            {/* Os horários vêm depois dos dias, como na passagem: escolhe o dia, depois a hora. */}
-            {valor && (
+            {/* Escolhidos os dias, o resto do período fica num fundo próprio: formato, horários ou sessões (EVT-98). */}
+            <Surgir visivel={!!valor} gap={16}>
+            <div className="flex flex-col gap-4 rounded-xl bg-secondary p-4">
+            {escolhaDeFormato}
+
+            {/* Os horários vêm depois dos dias, como na passagem; em sessões, saem deslizando (UI-VIS-008). */}
+            <Surgir visivel={!!valor && !semHorarios} gap={16}>
                 <div className="grid gap-4 sm:grid-cols-2">
                     <Input
-                        label={`Começa às (${formatarDia(dia(inicio))})`}
+                        label={inicio ? `Começa às (${formatarDia(dia(inicio))})` : "Começa às"}
                         type="time"
                         inputClassName={HORA_COM_CONTRASTE}
                         isRequired
@@ -197,7 +217,7 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim }: 
                         hint={inicio ? erroInicio : undefined}
                     />
                     <Input
-                        label={`Termina às (${formatarDia(dia(fim))})`}
+                        label={fim ? `Termina às (${formatarDia(dia(fim))})` : "Termina às"}
                         type="time"
                         inputClassName={HORA_COM_CONTRASTE}
                         isRequired
@@ -207,7 +227,10 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim }: 
                         hint={erroFim}
                     />
                 </div>
-            )}
+            </Surgir>
+            {complemento}
+            </div>
+            </Surgir>
         </div>
     );
 }

@@ -11,12 +11,10 @@ import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { InputBase } from "@/components/base/input/input";
 import { DURACAO_TRANSICAO, Surgir } from "@/components/foundations/transicao";
 import type { ProdutoDaOrganizacao, ProdutoNoEvento } from "@/plataforma";
-import { BackstageLayout } from "../../components/Backstage";
 import { estadoDoProduto, precoDoProduto, produtosDo, salvarProdutosDoEvento, useCatalogo, type EstadoItem, type ProdutoNoCatalogo } from "../data/catalogo";
 import { formatar, useTextosItens } from "../data/textos-itens";
 import { EstadoBadge } from "../components/comuns";
 import { AcoesEmLote, AvisoDeEscala, BarraDeFiltros, BotaoMostrarMais, CaixaDeSelecao, LIMIAR_FERRAMENTAS, paraBusca, useMostrarMais, useSelecao } from "../components/escala";
-import { AbasDeItens } from "../../components/abas-de-itens";
 
 /* ------------------------------------------------------------------ */
 /*  Produtos do evento (ITM)                                           */
@@ -150,9 +148,9 @@ export function Produtos() {
     );
 
     return (
-        <BackstageLayout activeSection="itens" activeItem="catalogo-produtos">
+        // Rail, menu, título e abas ficam no LayoutDeItens: trocar de aba troca só este conteúdo.
+        <>
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <AbasDeItens ativa="produtos" />
                 <header className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex min-w-0 flex-col gap-0.5">
                         <h2 className="sr-only">{TEXTOS.titulo}</h2>
@@ -284,7 +282,7 @@ export function Produtos() {
             </ModalOverlay>
 
             <AdicionarProdutos aberto={adicionando} onFechar={() => setAdicionando(false)} />
-        </BackstageLayout>
+        </>
     );
 }
 

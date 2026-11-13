@@ -57,9 +57,9 @@ export const CotasPorItem = ({ itens, valores, onValores, mostrarErros }: { iten
                     </Button>
                 </div>
             </div>
-            <Input aria-label="Buscar item" icon={SearchLg} placeholder="Buscar por nome, setor ou sessão" value={busca} onChange={setBusca} />
+            <Input aria-label="Buscar item" icon={SearchLg} placeholder="Buscar por nome, grupo ou sessão" value={busca} onChange={setBusca} />
             {filtrados.length === 0 ? (
-                <p className="text-sm text-tertiary">Nenhum item com esse nome, setor ou sessão.</p>
+                <p className="text-sm text-tertiary">Nenhum item com esse nome, grupo ou sessão.</p>
             ) : (
                 <ul className="flex flex-col divide-y divide-secondary rounded-xl ring-1 ring-secondary ring-inset">
                     {visiveis.map((item) => (

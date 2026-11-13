@@ -16,7 +16,7 @@ import { ListaDePedidos } from "../components/lista-de-pedidos";
 import { pedidosDoGrupo } from "../data/pedidos";
 import { CartaoCanal } from "../components/cartao-canal";
 import { CodigoVendedor } from "../components/codigo-vendedor";
-import { ModalCanal } from "../components/modal-canal";
+import { CAMINHO_CRIAR_INGRESSOS, eventoSemItens } from "../components/formulario-canal";
 import { ModalDesativar } from "../components/modal-desativar";
 import { ModalEditarOperadores } from "../components/modal-editar-operadores";
 import { BadgeInativo, CabecalhoCotas, TemaCotas } from "../components/ui-cotas";
@@ -136,14 +136,7 @@ export function GrupoDaEquipe() {
                         )}
                     </TabList>
                     <TabPanel id="configuracao">
-                        <AbaConfiguracao
-                            key={grupo.id}
-                            dados={dados}
-                            codigos={[...codigosEmUso(grupos.map((x) => x.grupo), evento.id, { grupoId: grupo.id })]}
-                            criado={criado}
-                            // Ao configurar o canal Comissário, Pedidos vira o padrão: fica na Configuração até trocar de aba.
-                            onModalFechado={() => !pedida && setParams({ aba: "configuracao" }, { replace: true })}
-                        />
+                        <AbaConfiguracao key={grupo.id} dados={dados} criado={criado} />
                     </TabPanel>
                     <TabPanel id="pessoas">
                         <AbaPessoas dados={dados} />
@@ -181,18 +174,31 @@ export function GrupoDaEquipe() {
 /*  Aba Configuração                                                   */
 /* ------------------------------------------------------------------ */
 
-function AbaConfiguracao({ dados, codigos, criado, onModalFechado }: { dados: DadosDoGrupo; codigos: string[]; criado: boolean; onModalFechado: () => void }) {
-    const { grupo, comissario, vendas } = dados;
-    const [configurando, setConfigurando] = useState<CanalGrupo | null>(null);
+function AbaConfiguracao({ dados, criado }: { dados: DadosDoGrupo; criado: boolean }) {
+    const { grupo, comissario } = dados;
+    const navigate = useNavigate();
     const semCanal = Object.keys(grupo.canais).length === 0;
+    const semItens = eventoSemItens();
+    // Configurar e editar abrem a página do canal (ECO-14).
+    const configurar = (c: CanalGrupo) => navigate(`${BASE}/${grupo.id}/canal/${c}`);
     return (
         <div className="flex flex-col gap-6">
-            <Surgir visivel={criado}>
+            <Surgir visivel={criado && !semItens}>
                 <p role="status" className="rounded-xl bg-secondary px-4 py-3 text-sm text-secondary">
                     Grupo criado. Agora configure os canais que ele vai operar. Para o grupo vender pelo link e ganhar comissão, configure o canal Comissário.
                 </p>
             </Surgir>
-
+            {/* Sem itens no evento, avisa antes de a pessoa abrir um canal sem nada para vender (ECO-37). */}
+            {semItens && (
+                <div role="status" className="flex flex-col items-start gap-3 rounded-xl bg-secondary px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-secondary">
+                        {criado ? "Grupo criado. " : ""}O evento ainda não tem ingressos, produtos nem combos. Crie os ingressos para configurar PDV, Bilheteria online e Cortesia. O canal Comissário já pode vender todos os ingressos que forem criados.
+                    </p>
+                    <Button size="sm" color="secondary" className="shrink-0" onClick={() => navigate(CAMINHO_CRIAR_INGRESSOS)}>
+                        Criar ingressos
+                    </Button>
+                </div>
+            )}
 
             <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-0.5">
@@ -203,12 +209,9 @@ function AbaConfiguracao({ dados, codigos, criado, onModalFechado }: { dados: Da
                 </div>
                 {/* O comissário é um canal como os outros (ECO-12): sem ele, o cartão diz o que faz e "Configurar". */}
                 {CANAIS_GRUPO.map((c) => (
-                    <CartaoCanal key={c} grupo={grupo} canal={c} comissario={comissario} onConfigurar={() => setConfigurando(c)} />
+                    <CartaoCanal key={c} grupo={grupo} canal={c} comissario={comissario} onConfigurar={() => configurar(c)} />
                 ))}
             </div>
-            {configurando && (
-                <ModalCanal grupo={grupo} canal={configurando} comissario={comissario} codigosDoEvento={codigos} temVendas={vendas.length > 0} onFechar={() => (setConfigurando(null), onModalFechado())} />
-            )}
         </div>
     );
 }

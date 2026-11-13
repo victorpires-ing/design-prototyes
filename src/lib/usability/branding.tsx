@@ -10,7 +10,7 @@ const INGRESSE_LOGO = ingresseLogo;
  */
 export function LogoTopo({ logoParceira, fixo = true }: { logoParceira?: string; fixo?: boolean }) {
     return (
-        <div className={cx("flex justify-center bg-primary-solid py-3", fixo && "fixed inset-x-0 top-0 z-[10000]")}>
+        <div className={cx("flex justify-center bg-primary-solid py-3 dark:bg-primary", fixo && "fixed inset-x-0 top-0 z-[10000]")}>
             <div className="flex items-center gap-4">
                 <img src={INGRESSE_LOGO} alt="Ingresse" className="h-6 w-auto" />
                 {logoParceira && (

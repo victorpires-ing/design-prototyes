@@ -32,7 +32,16 @@ import type { Bloco, BlocoAtividade, BlocoComunicacao, BlocoExposicao, BlocoPerg
 
 const ATRASO_SUCESSO_MS = 5000;
 
+/** Dentro de um iframe (a tela do teste de N segundos), a camada não roda: o iframe lê o mesmo
+ *  run da janela principal e, sem isso, desenharia a própria exposição por cima da tela. */
+const EM_IFRAME = typeof window !== "undefined" && window.self !== window.top;
+
 export function TestRunnerLayer() {
+    if (EM_IFRAME) return null;
+    return <CamadaDoTeste />;
+}
+
+function CamadaDoTeste() {
     const [run, setRun] = useState<RunAtivo | null>(() => lerRun());
     const [mostrandoSucesso, setMostrandoSucesso] = useState(false);
     // Conclusão automática (rota/clique) já registrada, aguardando o atraso para mostrar o sucesso.
@@ -425,9 +434,9 @@ function BarraTarefa({ enunciado, onConcluir }: { enunciado: string; onConcluir:
             exit={{ y: -BARRA_H }}
             transition={{ type: "spring", stiffness: 460, damping: 40 }}
             style={{ height: BARRA_H }}
-            className="fixed inset-x-0 top-0 z-[10000] flex items-center justify-between gap-3 bg-blue-800 px-4 text-white shadow-lg"
+            className="fixed inset-x-0 top-0 z-[10000] flex items-center justify-between gap-3 bg-blue-800 px-4 text-base-white shadow-lg"
         >
-            <span className="truncate text-sm font-medium text-white">{enunciado}</span>
+            <span className="truncate text-sm font-medium text-base-white">{enunciado}</span>
             <button
                 type="button"
                 onClick={onConcluir}

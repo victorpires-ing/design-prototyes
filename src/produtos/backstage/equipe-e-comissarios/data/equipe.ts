@@ -23,6 +23,8 @@ export {
     criarGrupo,
     salvarCanal,
     tornarComissario,
+    definirCodigoVendedor,
+    lerEstadoComissarios,
     totais,
     comissaoDaVenda,
     normalizarCodigo,

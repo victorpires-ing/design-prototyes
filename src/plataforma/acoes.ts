@@ -19,7 +19,7 @@ export interface NovoEvento {
     /** Início de cada sessão (ISO local). Sem lista, uma sessão em `data`. */
     sessoes?: string[];
     descricao?: string;
-    extras?: Pick<Evento, "tipo" | "modalidade" | "fim" | "moeda" | "limites" | "idadeMinima" | "mapa" | "partida" | "avancado" | "vitrine">;
+    extras?: Pick<Evento, "tipo" | "modalidade" | "categoria" | "fim" | "moeda" | "limites" | "idadeMinima" | "mapa" | "partida" | "avancado" | "vitrine">;
 }
 
 const slugLivre = (base: string, id: string) => {

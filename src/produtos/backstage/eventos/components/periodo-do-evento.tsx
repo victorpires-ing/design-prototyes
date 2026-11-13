@@ -33,6 +33,17 @@ function horaFimSugerida(inicioDia: string, fimDia: string, horaInicio: string) 
     return `${String(Math.floor(minutos / 60)).padStart(2, "0")}:${String(minutos % 60).padStart(2, "0")}`;
 }
 
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+/** Data de um dia do calendário: o número vem da célula e o mês e o ano, do rótulo da grade ("novembro de 2026"). */
+function dataDaCelula(celula: Element): CalendarDate | null {
+    const [mes, , ano] = (celula.closest('[role="grid"]')?.getAttribute("aria-label") ?? "").toLowerCase().split(" ");
+    const m = MESES.indexOf(mes) + 1;
+    const d = Number(celula.textContent?.trim());
+    if (!m || !d || !Number(ano)) return null;
+    return parseDate(`${ano}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+}
+
 const formatarDia = (d: CalendarDate | string) => {
     const data = typeof d === "string" ? new Date(`${d}T12:00`) : d.toDate(getLocalTimeZone());
     return new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "numeric", month: "short" }).format(data).replace(/\./g, "");
@@ -53,7 +64,27 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim }: 
     // Primeiro clique sem o segundo: o calendário de intervalo não confirma nada sozinho, então guardamos
     // o dia clicado. Aplicar só com ele vale como evento de um dia (EVT-88).
     const [diaUnico, setDiaUnico] = useState<DateValue | null>(null);
-    const clicou = useRef(false);
+    // Já houve o primeiro clique e falta o segundo.
+    const ancorado = useRef(false);
+    // O último toque foi num dia do calendário. Com o primeiro dia marcado, o calendário fecha o
+    // intervalo até o dia sob o cursor quando se toca fora dele (no Aplicar, por exemplo): esse
+    // fechamento não é escolha da pessoa e é ignorado, e Aplicar vale como um dia só.
+    const tocouNoDia = useRef(false);
+
+    /** Toque (ou Enter/Espaço) num dia: o primeiro marca o dia único; o segundo fecha o intervalo. */
+    const marcarDia = (alvo: EventTarget) => {
+        const celula = (alvo as HTMLElement).closest?.('[role="gridcell"]');
+        tocouNoDia.current = !!celula;
+        if (!celula || celula.getAttribute("aria-disabled") === "true") return;
+        if (ancorado.current) {
+            ancorado.current = false;
+            return;
+        }
+        const data = dataDaCelula(celula);
+        if (!data) return;
+        ancorado.current = true;
+        setDiaUnico(data);
+    };
     const [aberto, setAberto] = useState(false);
 
     const aplicar = () => {
@@ -85,7 +116,13 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim }: 
                 minValue={today(getLocalTimeZone())}
                 value={rascunho}
                 onChange={(v) => {
-                    // Segundo clique: o intervalo está completo.
+                    // Fechado por um toque fora dos dias: não é o segundo dia, fica o dia único.
+                    if (!tocouNoDia.current) {
+                        // O calendário soltou o primeiro dia: o próximo toque num dia recomeça.
+                        ancorado.current = false;
+                        return;
+                    }
+                    // Segundo clique num dia: o intervalo está completo.
                     setRascunho(v);
                     setDiaUnico(null);
                 }}
@@ -95,6 +132,7 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim }: 
                     if (a) {
                         setRascunho(valor);
                         setDiaUnico(null);
+                        ancorado.current = false;
                     }
                 }}
                 isInvalid={!!erroInicio && !inicio}
@@ -120,18 +158,13 @@ export function PeriodoDoEvento({ inicio, fim, onChange, erroInicio, erroFim }: 
                         cx("z-50 will-change-transform", isEntering && "duration-150 ease-out animate-in fade-in", isExiting && "duration-100 ease-in animate-out fade-out")
                     }
                 >
-                    <AriaDialog aria-label="Escolher os dias do evento" className="flex max-w-[calc(100vw-1rem)] flex-col overflow-auto rounded-2xl bg-primary shadow-xl ring ring-secondary_alt focus:outline-hidden">
+                    <AriaDialog
+                        aria-label="Escolher os dias do evento"
+                        onPointerDownCapture={(e) => marcarDia(e.target)}
+                        onKeyDownCapture={(e) => (e.key === "Enter" || e.key === " " ? marcarDia(e.target) : undefined)} className="flex max-w-[calc(100vw-1rem)] flex-col overflow-auto rounded-2xl bg-primary shadow-xl ring ring-secondary_alt focus:outline-hidden">
                         {/* Primeiro clique marca a ida; o segundo, a volta. Valor e mínimo vêm do picker. */}
-                        <div onPointerDownCapture={() => (clicou.current = true)} onKeyDownCapture={(e) => e.key === "Enter" || e.key === " " ? (clicou.current = true) : undefined}>
-                            <RangeCalendar
-                                onFocusChange={(d) => {
-                                    // Só o foco que vem de um clique (ou Enter/Espaço) num dia marca o primeiro dia; navegar não.
-                                    if (!clicou.current) return;
-                                    clicou.current = false;
-                                    setDiaUnico((atual) => (atual ? null : d));
-                                }}
-                            />
-                        </div>
+                        {/* Toques capturados no diálogo: o dia do calendário para a propagação (usePress). */}
+                        <RangeCalendar />
                         {/* Sem quebra de linha: o texto muda a cada clique e não pode empurrar os botões (o clique em Aplicar se perdia). */}
                         <div className="flex items-center gap-3 border-t border-secondary p-4">
                             <p className="min-w-0 flex-1 text-sm text-secondary first-letter:uppercase" aria-live="polite">

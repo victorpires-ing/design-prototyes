@@ -100,6 +100,11 @@ export interface GrupoEquipe {
     responsavel?: string;
     /** Nome de cada pessoa, quando se sabe (o resto aparece pelo e-mail). */
     nomes?: Record<string, string>;
+    /**
+     * Código próprio de cada vendedor (e-mail: código), único no evento. O código do grupo é do
+     * responsável. Vira link e cupom do vendedor e só atribui a venda: comissão e condições são do grupo.
+     */
+    codigosVendedores?: Record<string, string>;
     /** Canal ausente: ainda não configurado. */
     canais: Partial<Record<CanalGrupo, CanalDoGrupo>>;
 }
@@ -207,8 +212,8 @@ export function pessoasDoGrupo(g: GrupoEquipe): PessoaDoComissario[] {
     const nome = (email: string) => g.nomes?.[email] ?? email;
     const responsavel = g.responsavel && g.operadores.includes(g.responsavel) ? g.responsavel : g.operadores[0];
     return [
-        ...(responsavel ? [{ nome: nome(responsavel), email: responsavel, papel: "responsavel" as const }] : []),
-        ...g.operadores.filter((e) => e !== responsavel).map((e) => ({ nome: nome(e), email: e, papel: "vendedor" as const })),
+        ...(responsavel ? [{ nome: nome(responsavel), email: responsavel, papel: "responsavel" as const, codigo: g.codigo }] : []),
+        ...g.operadores.filter((e) => e !== responsavel).map((e) => ({ nome: nome(e), email: e, papel: "vendedor" as const, codigo: g.codigosVendedores?.[e] })),
     ];
 }
 
@@ -236,3 +241,74 @@ export const codigoSugerido = (nome: string) =>
         .toUpperCase()
         .replace(/[^A-Z0-9]/g, "")
         .slice(0, 20);
+
+/** Só letras e números, em maiúsculas, até 20 (o formato de todo código de link e cupom). */
+export const formatarCodigo = (t: string) =>
+    t
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 20);
+
+/** Códigos em uso no evento: os dos grupos-comissário (do responsável) e os dos vendedores. */
+export function codigosEmUso(grupos: GrupoEquipe[], eventoId: string, exceto?: { grupoId: string; email?: string }) {
+    const usados = new Set<string>();
+    for (const g of grupos) {
+        if (g.eventoId !== eventoId || !g.comissarioId) continue;
+        if (g.codigo && !(exceto && exceto.grupoId === g.id && !exceto.email)) usados.add(g.codigo);
+        for (const [email, c] of Object.entries(g.codigosVendedores ?? {})) if (!(exceto && exceto.grupoId === g.id && exceto.email === email)) usados.add(c);
+    }
+    return usados;
+}
+
+/**
+ * Dá código a quem vende no grupo-comissário e ainda não tem, e tira o de quem saiu (ou virou o
+ * responsável). Sugestão: o primeiro nome ("CAIO"); ocupado no evento, o código do grupo junto
+ * ("ENGENHARIACAIO", até 20); ainda ocupado, um número no fim.
+ */
+export function atribuirCodigos(g: GrupoEquipe, usados: Set<string>): GrupoEquipe {
+    if (!g.comissarioId) return g.codigosVendedores ? { ...g, codigosVendedores: undefined } : g;
+    const responsavel = pessoasDoGrupo(g)[0]?.email;
+    const atuais = g.codigosVendedores ?? {};
+    const codigos: Record<string, string> = {};
+    for (const email of g.operadores) {
+        if (email === responsavel) continue;
+        if (atuais[email]) {
+            codigos[email] = atuais[email];
+            continue;
+        }
+        const nome = g.nomes?.[email] ?? email.split("@")[0].replace(/[._-]+/g, " ");
+        const primeiro = formatarCodigo(nome.split(" ")[0]);
+        const base = primeiro.length >= 3 ? primeiro : formatarCodigo(`${g.codigo ?? ""}${primeiro}`);
+        let codigo = base;
+        if (usados.has(codigo)) codigo = formatarCodigo(`${g.codigo ?? ""}${primeiro}`);
+        const raiz = codigo;
+        for (let n = 2; usados.has(codigo); n++) codigo = `${raiz.slice(0, 20 - String(n).length)}${n}`;
+        usados.add(codigo);
+        codigos[email] = codigo;
+    }
+    const mudou = JSON.stringify(codigos) !== JSON.stringify(atuais);
+    return mudou ? { ...g, codigosVendedores: codigos } : g;
+}
+
+/** Completa os códigos de vendedor de todos os grupos-comissário, evento a evento. */
+export function completarCodigos(grupos: GrupoEquipe[]): GrupoEquipe[] {
+    const porEvento = new Map<string, Set<string>>();
+    // Primeiro reserva o que já existe; depois atribui o que falta, sem repetir no evento.
+    for (const g of grupos) {
+        if (!g.comissarioId) continue;
+        const usados = porEvento.get(g.eventoId) ?? new Set<string>();
+        if (g.codigo) usados.add(g.codigo);
+        const responsavel = pessoasDoGrupo(g)[0]?.email;
+        for (const [email, c] of Object.entries(g.codigosVendedores ?? {})) if (g.operadores.includes(email) && email !== responsavel) usados.add(c);
+        porEvento.set(g.eventoId, usados);
+    }
+    let mudou = false;
+    const novos = grupos.map((g) => {
+        const r = atribuirCodigos(g, porEvento.get(g.eventoId) ?? new Set());
+        if (r !== g) mudou = true;
+        return r;
+    });
+    return mudou ? novos : grupos;
+}

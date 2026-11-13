@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useLocation, useNavigate } from "react-router";
 import { Button as AriaButton, MenuItem as AriaMenuItem, type Key } from "react-aria-components";
 import {
+    LinkExternal01,
     Announcement01,
     UsersPlus,
     Calendar,
@@ -36,6 +37,7 @@ import { NavButton } from "@/components/application/app-navigation/base-componen
 import { TreeView } from "@/components/application/tree-view/tree-view";
 import { Dot } from "@/components/foundations/dot-icon";
 import { cx } from "@/utils/cx";
+import { useDoc } from "@/plataforma";
 import LogoBlack from "../../../assets/Company logo_black.svg";
 import LogoWhite from "../../../assets/Company logo_white.svg";
 import { AlterarStatusModal, ORDEM_STATUS } from "../eventos/components/AlterarStatusModal";
@@ -1188,6 +1190,8 @@ const EventDetailsCard = () => {
     const evento = useEventoAtual();
     const freepass = usePainel() === "freepass";
     const encerrado = evento.status === "encerrado";
+    // O espelho do evento em contexto não traz o slug: o link usa o do banco.
+    const slug = useDoc("eventos", evento.id)?.slug ?? evento.id;
 
     return (
         <div className="flex flex-col gap-3 overflow-hidden rounded-2xl bg-secondary pb-3">
@@ -1198,8 +1202,9 @@ const EventDetailsCard = () => {
                     <h3 className="line-clamp-2 text-sm font-bold text-primary" title={evento.nome}>
                         {evento.nome}
                     </h3>
-                    <p className="truncate text-sm text-tertiary">{evento.produtor}</p>
                 </div>
+                {/* Abre a página do evento no site, em outra aba (BKS-24). */}
+                <ButtonUtility size="sm" color="tertiary" icon={LinkExternal01} tooltip="Abrir página do evento" href={`/e/${slug}`} target="_blank" className="shrink-0" />
             </div>
             <p className="px-4 text-sm text-secondary">{evento.dataLabel}</p>
             {/* No Freepass o status é só leitura: quem muda é a produtora (BKS-64). */}

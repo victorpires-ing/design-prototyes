@@ -12,7 +12,7 @@ import { BackstageLayout } from "../../components/Backstage";
 import { FaixaDeMetricas, Metrica, moeda, numero } from "../../comissarios/components/comuns";
 import { ModalCriarGrupo } from "../components/modal-criar-grupo";
 import { ModalDesativar } from "../components/modal-desativar";
-import { BadgeInativo, BarraUso, CabecalhoCotas, TemaCotas } from "../components/ui-cotas";
+import { BadgeInativo, CabecalhoCotas, TemaCotas } from "../components/ui-cotas";
 import { ITEM_POR_ID } from "../data/catalogo-evento";
 import {
     alterarGrupo,
@@ -22,7 +22,6 @@ import {
     ROTULO_CANAL,
     totais,
     useEquipeDoEvento,
-    usoNoCatalogo,
     type CanalGrupo,
     type DadosDoGrupo,
     type GrupoEquipe,
@@ -208,13 +207,11 @@ export function EquipeEComissarios() {
 /* ------------------------------ Linha ------------------------------- */
 
 function LinhaGrupo({ dados, onToggle, onAbrir }: { dados: DadosDoGrupo; onToggle: () => void; onAbrir: () => void }) {
-    const { grupo, comissario, vendas, repasses } = dados;
-    const { usadas, limite } = usoNoCatalogo(grupo);
+    // Sem cota, uso e valores na lista: ficam no detalhe do grupo (ECO-14).
+    const { grupo, comissario } = dados;
     // Inativo mostra os canais que voltam ao reativar.
     const ligados = canaisLigados({ ...grupo, ativo: true });
-    const t = comissario ? totais(vendas, repasses) : null;
     const canais = ligados.length ? ligados.map((c) => ROTULO_CANAL[c]).join(", ") : "Nenhum canal ligado";
-    const uso = ligados.length === 0 ? null : limite === null ? `Sem limite, ${plural(usadas, "emissão", "emissões")}` : `${usadas.toLocaleString("pt-BR")} de ${limite.toLocaleString("pt-BR")} usadas`;
 
     return (
         <div
@@ -241,35 +238,7 @@ function LinhaGrupo({ dados, onToggle, onAbrir }: { dados: DadosDoGrupo; onToggl
                     <span className="truncate text-sm text-tertiary">
                         {canais}, {plural(grupo.operadores.length, "pessoa", "pessoas")}
                     </span>
-                    {uso && <span className="truncate text-sm text-tertiary lg:hidden">{uso}</span>}
-                    {t && (
-                        <span className="truncate text-sm text-tertiary md:hidden">
-                            {moeda(t.receita)} vendidos, {moeda(t.comissao)} de comissão
-                        </span>
-                    )}
                 </div>
-            </div>
-
-            {t && (
-                <div className="flex w-44 shrink-0 flex-col items-end px-4 py-4 max-md:hidden">
-                    <span className="text-sm font-medium text-primary tabular-nums">{moeda(t.receita)} vendidos</span>
-                    <span className="text-sm text-tertiary tabular-nums">{moeda(t.comissao)} de comissão</span>
-                </div>
-            )}
-
-            <div className="flex w-[260px] shrink-0 items-center justify-end gap-3 px-4 py-4 max-lg:hidden">
-                {ligados.length === 0 ? (
-                    <span className="text-sm text-tertiary">{grupo.ativo ? "Configure os canais" : "Sem canal ligado"}</span>
-                ) : limite === null ? (
-                    <span className="text-sm font-medium text-secondary">Sem limite: {plural(usadas, "emissão", "emissões")}</span>
-                ) : (
-                    <>
-                        <BarraUso usadas={usadas} total={limite} className="w-[130px]" />
-                        <span className="min-w-[70px] text-sm font-medium whitespace-nowrap text-secondary tabular-nums">
-                            {usadas.toLocaleString("pt-BR")} de {limite.toLocaleString("pt-BR")}
-                        </span>
-                    </>
-                )}
             </div>
 
             <div className="flex w-12 shrink-0 justify-center p-4">

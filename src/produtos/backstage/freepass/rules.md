@@ -63,6 +63,7 @@ cortesias, reenvio e resgate), removido em 2026-11-11.
 - **FCO-15** Vendas, da mais nova para a mais antiga, com filtro por canal quando há mais de um: ingresso, quem comprou (nome curto, "Ana R."), canal, data e a comissão de cada pedido. Mostra 15 por vez. _(pages/vendas-no-evento.tsx)_
 - **FCO-16** Pedido cancelado aparece como "Cancelado", com a comissão estornada; cortesia aparece sem comissão. _(pages/vendas-no-evento.tsx)_
 - **FCO-17** Com o canal cortesia liberado, evento à venda e sem pausa, o resultado tem o atalho "Enviar cortesias". _(pages/vendas-no-evento.tsx)_
+- **FCO-18** O link e o cupom do topo são os da pessoa: o vendedor vê o próprio código; o responsável, o código do grupo (ECO-27). O subtítulo diz "por <grupo>, seu código <X>" quando o grupo tem mais de uma pessoa. O cartão do evento copia o link da pessoa. _(pages/vendas-no-evento.tsx, pages/eventos.tsx, data/minhas-vendas.ts)_
 
 ### Cortesia e bilheteria
 - **FCO-70** Cortesia e Bilheteria online são as telas do Backstage, sem mudança de fluxo (COR-*, regras da bilheteria). _(../cortesias/, ../bilheteria/)_

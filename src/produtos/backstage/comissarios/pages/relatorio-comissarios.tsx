@@ -72,7 +72,7 @@ export function RelatorioComissarios() {
 
     const abrir = (l: Linha) => {
         setEventoAtual(l.eventoId);
-        navigate(`/backstage/evento/equipe/${l.c.id}?aba=vendas`);
+        navigate(`/backstage/evento/equipe/${l.c.id}?aba=pedidos`);
     };
 
     return (

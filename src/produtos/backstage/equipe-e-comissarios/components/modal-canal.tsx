@@ -96,7 +96,7 @@ export function ModalCanal({
             : codigo.length < 3
               ? "Use de 3 a 20 letras ou números."
               : codigoRepetido
-                ? `${codigo} já é de outro grupo neste evento. Escolha outro código.`
+                ? `${codigo} já é usado neste evento. Escolha outro código.`
                 : undefined,
         responsavel: ehLink && !responsavel ? "Escolha quem responde pelo comissário." : undefined,
         condicoes: ehLink && (errosCond.comissao || errosCond.desconto) ? "Revise as condições." : undefined,

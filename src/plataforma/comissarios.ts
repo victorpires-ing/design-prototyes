@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { Evento } from "./modelo";
-import { canalNovo, comissarioDoGrupo, cotaSemLimite, vinculoDoGrupo, type CanalDoGrupo, type CanalGrupo, type GrupoEquipe } from "./equipe";
+import { atribuirCodigos, canalNovo, comissarioDoGrupo, completarCodigos, cotaSemLimite, vinculoDoGrupo, type CanalDoGrupo, type CanalGrupo, type GrupoEquipe } from "./equipe";
 
 /* ------------------------------------------------------------------ */
 /*  Comissários (COM): store compartilhado por Backstage e Freepass    */
@@ -70,6 +70,8 @@ export interface PessoaDoComissario {
     nome: string;
     email: string;
     papel: "responsavel" | "vendedor";
+    /** Código de link e cupom da pessoa: o do grupo para o responsável, o próprio para o vendedor (único no evento). */
+    codigo?: string;
 }
 
 export const PAPEL_LABEL: Record<PessoaDoComissario["papel"], string> = { responsavel: "Responsável", vendedor: "Vendedor" };
@@ -123,6 +125,8 @@ export interface VendaAtribuida {
     comprador: string;
     /** Pessoa do comissário que fez a venda. */
     vendedor: string;
+    /** Código usado na venda (o do grupo é do responsável; o do vendedor atribui a ele). */
+    codigo?: string;
     ingresso: string;
     setor: string;
     quantidade: number;
@@ -168,8 +172,8 @@ export interface Estado extends EstadoGravado {
     vinculos: ComissarioNoEvento[];
 }
 
-// v11: o grupo virou o comissário (sem cadastro na organização). Dados anteriores ficam para trás e semeiam de novo.
-const CHAVE = "backstage-comissarios-v11";
+// v12: vendedores com código próprio (v11: o grupo virou o comissário). Dados anteriores ficam para trás e semeiam de novo.
+const CHAVE = "backstage-comissarios-v12";
 
 const vazio = (): EstadoGravado => ({ grupos: [], vendas: [], repasses: [], semeadas: [], eventosComExemplos: [] });
 
@@ -181,7 +185,7 @@ const comVinculos = (e: EstadoGravado): Estado => {
 let gravado: EstadoGravado = (() => {
     if (typeof window === "undefined") return vazio();
     try {
-        ["backstage-comissarios-v9", "backstage-comissarios-v10"].forEach((k) => window.localStorage.removeItem(k));
+        ["backstage-comissarios-v9", "backstage-comissarios-v10", "backstage-comissarios-v11"].forEach((k) => window.localStorage.removeItem(k));
         const salvo = JSON.parse(window.localStorage.getItem(CHAVE) ?? "null");
         return salvo && Array.isArray(salvo.grupos) ? { ...vazio(), ...salvo } : vazio();
     } catch {
@@ -194,6 +198,9 @@ const ouvintes = new Set<() => void>();
 
 function mudar(fn: (e: EstadoGravado) => EstadoGravado) {
     gravado = fn(gravado);
+    // Todo vendedor de grupo-comissário tem código; quem sai do grupo perde o dele (ECO-27).
+    const grupos = completarCodigos(gravado.grupos);
+    if (grupos !== gravado.grupos) gravado = { ...gravado, grupos };
     estado = comVinculos(gravado);
     try {
         window.localStorage.setItem(CHAVE, JSON.stringify(gravado));
@@ -317,7 +324,11 @@ function gerarVendas(c: Comissario, v: ComissarioNoEvento, evento: Evento, r: ()
             pedido: uuidDe(r),
             canal,
             comprador: COMPRADORES[Math.floor(r() * COMPRADORES.length)],
-            vendedor: c.pessoas[Math.floor(r() * c.pessoas.length)]?.nome ?? c.nome,
+            // Atribuída pelo código usado: o do grupo vai para o responsável; o de cada vendedor, para ele (ECO-28).
+            ...(() => {
+                const p = c.pessoas[Math.floor(r() * c.pessoas.length)];
+                return { vendedor: p?.nome ?? c.nome, codigo: canal === "cortesia" ? undefined : (p?.codigo ?? c.codigo) };
+            })(),
             ingresso: ing.nome,
             setor: ing.setor,
             quantidade: canal === "cortesia" ? 1 : 1 + Math.floor(r() * 3),
@@ -369,6 +380,8 @@ export function semear(organizacaoId: string, eventos: Evento[]) {
     const comEventos = [...vendendo, ...outros].slice(0, 3);
     comEventos.forEach((evento, ei) => {
         const quantos = ei === 0 ? 6 : 3;
+        // Códigos em uso neste evento: os dos grupos primeiro; os dos vendedores entram ao atribuir.
+        const usados = new Set(comissarios.slice(0, quantos).map((c) => c.codigo));
         comissarios.slice(0, quantos).forEach((c, ci) => {
             const personalizado = ci === 0 && ei === 0;
             // No Freepass há quem só emite: nos outros eventos, o primeiro exemplo (o Vitor) só tem
@@ -417,6 +430,7 @@ export function semear(organizacaoId: string, eventos: Evento[]) {
                 nomes: Object.fromEntries(c.pessoas.map((p) => [p.email, p.nome])),
                 canais,
             };
+            Object.assign(grupo, atribuirCodigos(grupo, usados));
             const daquiNoGrupo = comissarioDoGrupo(grupo);
             const v = vinculoDoGrupo(grupo);
             const geradas = c.ativo && !soEmite ? gerarVendas(daquiNoGrupo, v, evento, r) : [];
@@ -623,4 +637,9 @@ export function tornarComissario(id: string, dados: { codigo: string; responsave
         for (const c of ["pdv", "bilheteria"] as const) if (canais[c]) canais[c] = { ...canais[c]!, comissao: false };
         return { ...g, comissarioId: null, condicoes: null, codigo: undefined, responsavel: undefined, canais };
     });
+}
+
+/** Troca o código de um vendedor do grupo-comissário (quem chama valida: 3 a 20, único no evento). */
+export function definirCodigoVendedor(grupoId: string, email: string, codigo: string) {
+    alterarGrupo(grupoId, (g) => ({ ...g, codigosVendedores: { ...(g.codigosVendedores ?? {}), [email]: codigo } }));
 }

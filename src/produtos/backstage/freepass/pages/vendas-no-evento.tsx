@@ -54,7 +54,7 @@ export function VendasNoEvento() {
             </BackstageLayout>
         );
 
-    const link = linkDeVenda(p.evento.slug, p.comissario.codigo);
+    const link = linkDeVenda(p.evento.slug, p.codigo);
     const vendeOnline = p.vinculo.canais.includes("online");
     const responsavel = p.papel === "responsavel";
     const canais = (["online", "bilheteria", "cortesia"] as CanalComissario[]).filter((c) => p.vinculo.canais.includes(c) || p.vendas.some((v) => v.canal === c));
@@ -67,7 +67,7 @@ export function VendasNoEvento() {
                     <h1 className={TITULO_PAGINA}>Minhas vendas</h1>
                     <p className="text-md text-tertiary">
                         {p.organizacao}
-                        {p.comissario.pessoas.length > 1 ? `, por ${p.comissario.nome}` : `, código ${p.comissario.codigo}`}
+                        {p.comissario.pessoas.length > 1 ? `, por ${p.comissario.nome}, seu código ${p.codigo}` : `, código ${p.codigo}`}
                     </p>
                 </header>
 
@@ -108,7 +108,7 @@ export function VendasNoEvento() {
                             <CopiarLink link={link} size="md" className="w-full sm:w-auto" />
                         </div>
                         <p className="border-t border-secondary pt-4 text-sm text-tertiary">
-                            Sem o link, a pessoa pode digitar o cupom <span className="font-semibold text-primary">{p.comissario.codigo}</span> no pagamento. Se ela abrir o link de outro comissário depois do seu, a compra conta para o último.
+                            Sem o link, a pessoa pode digitar o cupom <span className="font-semibold text-primary">{p.codigo}</span> no pagamento. Se ela abrir o link de outro comissário depois do seu, a compra conta para o último.
                         </p>
                     </section>
                 ) : (

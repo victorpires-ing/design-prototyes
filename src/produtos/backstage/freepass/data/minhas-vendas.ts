@@ -33,6 +33,8 @@ export { USUARIO } from "./usuario";
 export interface Participacao {
     comissario: Comissario;
     papel: PessoaDoComissario["papel"];
+    /** Código de link e cupom da pessoa: o do grupo para o responsável, o próprio para o vendedor (FCO-18). */
+    codigo: string;
     organizacao: string;
     evento: Evento;
     vinculo: ComissarioNoEvento;
@@ -90,6 +92,7 @@ export function useMinhasVendas() {
                 lista.push({
                     comissario: c,
                     papel: pessoa.papel,
+                    codigo: pessoa.codigo ?? c.codigo,
                     organizacao: organizacoes.find((o) => o.id === organizacaoDoEvento(evento))?.nome ?? evento.produtora,
                     evento,
                     vinculo: v,

@@ -241,7 +241,7 @@ function CartaoDoEvento({ p, funcao }: { p: Participacao; funcao?: Funcao }) {
                 ) : p.passou ? (
                     <span className="text-sm text-tertiary">Vendas encerradas</span>
                 ) : funcao ? (
-                    <span className="text-sm text-tertiary">{p.pausado ? "Pausado pelo organizador" : foco === "vendas" ? `Código ${p.comissario.codigo}` : "Abrir"}</span>
+                    <span className="text-sm text-tertiary">{p.pausado ? "Pausado pelo organizador" : foco === "vendas" ? `Código ${p.codigo}` : "Abrir"}</span>
                 ) : (
                     // Visão por evento: o que dá para fazer aqui, como rótulo (não abre nada sozinho).
                     <span className="flex flex-wrap gap-1.5">
@@ -254,7 +254,7 @@ function CartaoDoEvento({ p, funcao }: { p: Participacao; funcao?: Funcao }) {
                 )}
                 {podeCompartilhar && (
                     <span onClick={(e) => e.stopPropagation()}>
-                        <CopiarLink link={linkDeVenda(p.evento.slug, p.comissario.codigo)} />
+                        <CopiarLink link={linkDeVenda(p.evento.slug, p.codigo)} />
                     </span>
                 )}
             </div>

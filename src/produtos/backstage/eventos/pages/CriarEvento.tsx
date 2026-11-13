@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, type FC, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { parseDateTime } from "@internationalized/date";
 import { AnimatePresence, motion } from "motion/react";
-import { AlignLeft, ArrowLeft, Calendar, MarkerPin01, Plus, Shield01, Trash01, Trophy01, UserCheck01, XClose } from "@untitledui/icons";
+import { AlignLeft, ArrowLeft, Calendar, Image01, MarkerPin01, Plus, Shield01, Tag01, Trash01, Trophy01, Type01, UserCheck01, XClose } from "@untitledui/icons";
 import { FileUploadDropZone } from "@/components/application/file-upload/file-upload-base";
 import { DateTimePicker } from "@/components/application/date-picker/date-time-picker";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
@@ -23,6 +23,8 @@ import {
     TextEditorItalic,
     TextEditorUnderline,
 } from "@/components/base/text-editor/text-editor-extensions";
+import { EditorButton } from "@/components/base/text-editor/text-editor-button";
+import { useEditorContext } from "@/components/base/text-editor/text-editor";
 import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { Toggle } from "@/components/base/toggle/toggle";
 import { Surgir, useTransicao } from "@/components/foundations/transicao";
@@ -77,6 +79,8 @@ interface Formulario {
     visitanteId: string;
     programaMembrosId: string;
     modalidade: Modalidade | "";
+    /** Categoria do show ou festa (EVT-97). */
+    categoriaId: string;
     nome: string;
     /** O nome foi digitado: para de seguir a sugestão "Mandante x Visitante". */
     nomeEditado: boolean;
@@ -108,6 +112,7 @@ const INICIAL: Omit<Formulario, "tipo"> = {
     visitanteId: "",
     programaMembrosId: "",
     modalidade: "",
+    categoriaId: "",
     nome: "",
     nomeEditado: false,
     local: null,
@@ -137,7 +142,7 @@ const lerComoDataUrl = (file: File) =>
         r.readAsDataURL(file);
     });
 
-type Erros = Partial<Record<"mandante" | "visitante" | "modalidade" | "nome" | "local" | "inicio" | "fim" | "descricao" | "sessoes" | "mapa", string>>;
+type Erros = Partial<Record<"mandante" | "visitante" | "modalidade" | "categoria" | "nome" | "local" | "inicio" | "fim" | "descricao" | "sessoes" | "mapa", string>>;
 
 /** Índices das sessões extras com problema (vazia ou fora do período). */
 const sessoesInvalidas = (f: Formulario) =>
@@ -151,6 +156,7 @@ function validar(f: Formulario): Erros {
         else if (f.visitanteId === f.mandanteId) e.visitante = "Escolha outro time: o visitante não pode ser o mandante.";
     }
     if (f.tipo === "esportivo" && !f.modalidade) e.modalidade = "Escolha a modalidade.";
+    if (f.tipo === "show" && !f.categoriaId) e.categoria = "Escolha a categoria do evento.";
     if (!f.nome.trim()) e.nome = "Dê um nome ao evento.";
     if (!f.local) e.local = "Busque e escolha o local do evento.";
     if (!paragrafosDoHtml(f.descricao).length) e.descricao = "Conte o que vai acontecer no evento.";
@@ -208,11 +214,11 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
 
     // Próximo obrigatório que falta, na ordem em que aparece na tela (EVT-93). Calculado sempre, sem esperar o clique em Criar.
     const pendencias = validar(f);
-    const ORDEM: (keyof Erros)[] = ["nome", "mandante", "visitante", "modalidade", "inicio", "fim", "local", "descricao", "sessoes", "mapa"];
+    const ORDEM: (keyof Erros)[] = ["nome", "mandante", "visitante", "modalidade", "categoria", "inicio", "fim", "local", "descricao", "sessoes", "mapa"];
     const campoPendente = ORDEM.find((k) => pendencias[k]);
     const proximaPendencia = campoPendente ? { campo: campoPendente, texto: pendencias[campoPendente]! } : null;
     const irParaCampo = (campo: keyof Erros) => {
-        const alvo: Partial<Record<keyof Erros, string>> = { nome: "nome-do-evento", inicio: "campo-quando", fim: "campo-quando", local: "campo-local", descricao: "campo-sobre", sessoes: "campo-quando" };
+        const alvo: Partial<Record<keyof Erros, string>> = { nome: "nome-do-evento", categoria: "campo-categoria", inicio: "campo-quando", fim: "campo-quando", local: "campo-local", descricao: "campo-sobre", sessoes: "campo-quando" };
         const el = alvo[campo] ? document.getElementById(alvo[campo]!) : null;
         el?.scrollIntoView({ behavior: "smooth", block: "center" });
         (el?.matches("input, textarea, button") ? el : el?.querySelector<HTMLElement>("input, button"))?.focus({ preventScroll: true });
@@ -249,7 +255,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
         setTentou(true);
         const e = validar(f);
         if (Object.keys(e).length > 0) {
-            toast.error("Revise os campos destacados para criar o evento.");
+            // Sem toast: os campos marcados e a instrução da barra já dizem o que falta (EVT-60, EVT-93).
             requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-erro]")?.scrollIntoView({ behavior: "smooth", block: "center" }));
             return;
         }
@@ -268,6 +274,7 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
             extras: {
                 tipo: f.tipo,
                 modalidade: f.tipo === "esportivo" ? (f.modalidade as Modalidade) : undefined,
+                categoria: f.tipo === "show" ? f.categoriaId : undefined,
                 fim: f.fim,
                 moeda: f.moeda,
                 // Limites não se definem na criação: nasce ilimitado e se ajusta em Itens › Configurações de ingressos (EVT-57).
@@ -313,43 +320,30 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                 {/* A página do evento, editável no lugar: banner à esquerda, informações à direita, descrição abaixo (EVT-85). */}
                 <article aria-label="Página do evento" className="grid items-start gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10">
                     {bannerNaColuna && (
-                        <div className="lg:sticky lg:top-6">
+                        <div className="lg:sticky lg:top-6 lg:max-w-[min(100%,calc((100dvh-14rem)*0.8))]">
+                            {/* Banner um pouco menor que a coluna: a altura cabe na tela sem encostar na barra de Criar evento. */}
                             <CampoBanner {...propsDoBanner} />
                         </div>
                     )}
 
                     <div className="flex min-w-0 flex-col gap-8">
-                        {/* Nome como título da página: escreve-se onde ele vai aparecer. */}
-                        <div className="flex flex-col gap-1.5" data-erro={erros.nome ? "" : undefined}>
-                            <label htmlFor="nome-do-evento" className="sr-only">
-                                Nome do evento
-                            </label>
-                            <textarea
-                                id="nome-do-evento"
-                                // Ao abrir a tela, o cursor já está no nome (EVT-87).
-                                autoFocus
-                                rows={1}
-                                required
-                                value={f.nome}
-                                onChange={(e) => {
-                                    const v = e.target.value.replace(/\n/g, " ");
-                                    setF((a) => ({ ...a, nome: v, nomeEditado: v.length > 0 }));
-                                }}
-                                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-                                placeholder={f.tipo === "futebol" ? "Mandante x Visitante" : f.tipo === "esportivo" ? "Ex.: Corrida Noturna 10K" : "Nome do evento"}
-                                aria-invalid={!!erros.nome}
-                                aria-describedby={erros.nome || (f.tipo === "futebol" && !f.nomeEditado) ? "nome-do-evento-dica" : undefined}
-                                className={cx(
-                                    "-mx-3 field-sizing-content resize-none rounded-lg bg-transparent px-3 py-1 text-display-sm font-semibold text-primary transition duration-100 ease-linear placeholder:text-placeholder",
-                                    "hover:bg-primary_hover focus:bg-primary focus:ring-2 focus:ring-brand focus:outline-hidden",
-                                    erros.nome && "ring-2 ring-error_subtle",
-                                )}
-                            />
-                            {(erros.nome || (f.tipo === "futebol" && !f.nomeEditado)) && (
-                                <p id="nome-do-evento-dica" className={cx("text-sm", erros.nome ? "text-error-primary" : "text-tertiary")}>
-                                    {erros.nome ?? "Preenchido com os times; dá para editar."}
-                                </p>
-                            )}
+                        {/* Nome num campo do DS, com o ícone ao lado como as outras linhas. */}
+                        <div className="flex gap-4" data-erro={erros.nome ? "" : undefined}>
+                            <FeaturedIcon icon={Type01} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                                <Input
+                                    id="nome-do-evento"
+                                    label="Nome do evento"
+                                    isRequired
+                                    // Ao abrir a tela, o cursor já está no nome (EVT-87).
+                                    autoFocus
+                                    value={f.nome}
+                                    onChange={(v) => setF((a) => ({ ...a, nome: v, nomeEditado: v.length > 0 }))}
+                                    placeholder={f.tipo === "futebol" ? "Mandante x Visitante" : f.tipo === "esportivo" ? "Ex.: Corrida Noturna 10K" : "Ex.: Festa de Réveillon"}
+                                    isInvalid={!!erros.nome}
+                                    hint={erros.nome ?? (f.tipo === "futebol" && !f.nomeEditado ? "Preenchido com os times; dá para editar." : undefined)}
+                                />
+                            </div>
                         </div>
 
                         {/* Futebol: a partida vem depois do nome, uma linha por campo com o ícone ao lado; mandante e visitante lado a lado. */}
@@ -428,6 +422,25 @@ function FormularioDeEvento({ tipo, titulo }: { tipo: TipoEvento; titulo: string
                                         onChange={(v) => set("modalidade", v as Modalidade)}
                                         placeholder="Selecione"
                                         erro={erros.modalidade}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Show ou festa: categoria logo depois do nome, como a modalidade do esportivo (EVT-97). */}
+                        {f.tipo === "show" && (
+                            <div className="flex gap-4">
+                                <FeaturedIcon icon={Tag01} color="gray" theme="modern" size="md" className="mt-7 shrink-0" />
+                                <div id="campo-categoria" className="min-w-0 flex-1 sm:max-w-xs">
+                                    <CampoSelect
+                                        label="Categoria"
+                                        isRequired
+                                        opcoes={opcoes.dados?.categorias ?? []}
+                                        valor={f.categoriaId}
+                                        onChange={(v) => set("categoriaId", v)}
+                                        placeholder={listaVazia}
+                                        isDisabled={carregando}
+                                        erro={erros.categoria}
                                     />
                                 </div>
                             </div>
@@ -675,8 +688,46 @@ const BarraDaDescricao = () => (
         <Tooltip title="Lista">
             <TextEditorBulletList />
         </Tooltip>
+        <Separador />
+        <Tooltip title="Inserir imagem">
+            <InserirImagem />
+        </Tooltip>
     </div>
 );
+
+/**
+ * Imagem no meio da descrição. O botão do DS grava um endereço temporário do navegador, que some ao
+ * recarregar; aqui a imagem entra como data URL, como as outras imagens do evento, e com o mesmo
+ * limite de tamanho (EVT-63, EVT-86).
+ */
+const InserirImagem = () => {
+    const { editor, isDisabled } = useEditorContext();
+    const arquivo = useRef<HTMLInputElement>(null);
+    const { t } = useTextos();
+    return (
+        <>
+            <input
+                ref={arquivo}
+                type="file"
+                accept="image/png,image/jpeg"
+                className="hidden"
+                onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    if (file.size > MAX_IMAGEM) {
+                        toast.error(formatar(t.imagemGrande, { maximo: Math.round(MAX_IMAGEM / 1024), campo: "a descrição", tamanho: Math.round(file.size / 1024) }));
+                        return;
+                    }
+                    editor.chain().focus().setImage({ src: await lerComoDataUrl(file), alt: "" }).run();
+                }}
+            />
+            <EditorButton aria-label="Inserir imagem" isDisabled={isDisabled} onClick={() => arquivo.current?.click()}>
+                <Image01 className="size-5" />
+            </EditorButton>
+        </>
+    );
+};
 
 /** Linha de informação da página do evento: ícone, título curto e o campo que edita a informação. */
 /* O título fica só para leitor de tela: o rótulo do campo já diz o que é, e o ícone desce até a altura do campo (abaixo do rótulo). */

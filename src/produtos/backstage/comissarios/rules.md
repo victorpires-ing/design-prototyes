@@ -30,7 +30,7 @@ Viviane, 09/11/2026).
 | --- | --- | --- |
 | Organização e eventos | `@/plataforma` (`useOrganizacaoAtual`, `useEventoAtual`) | não |
 | Ingressos e setores do evento | `@/plataforma` (`useDoc("eventos", id)`: o espelho de `useEventoAtual` não traz o catálogo) | não |
-| Grupos do evento, vendas atribuídas e repasses; comissário e vínculo são leituras do grupo com o canal Comissário | `@/plataforma/comissarios` (store único com Equipe e Comissários, semeado por organização, lido também pelo Freepass); `data/comissarios.ts` é o adaptador | sim, `localStorage` `backstage-comissarios-v11` |
+| Grupos do evento, vendas atribuídas e repasses; comissário e vínculo são leituras do grupo com o canal Comissário | `@/plataforma/comissarios` (store único com Equipe e Comissários, semeado por organização, lido também pelo Freepass); `data/comissarios.ts` é o adaptador | sim, `localStorage` `backstage-comissarios-v12` |
 
 Vendas atribuídas são mock: a plataforma ainda não tem comissário nem `comissario_id` no pedido.
 
@@ -54,7 +54,7 @@ Vendas atribuídas são mock: a plataforma ainda não tem comissário nem `comis
 - **COM-07** ~~Link direto para um comissário (detalhe ou edição) de outra organização troca a organização em contexto para a dele.~~ substituída por ECO-25.
 - **COM-10** ~~Cadastro: nome, e-mail do responsável e telefone; código; condições padrão; vendedores.~~ substituída por ECO-09.
 - **COM-11** ~~O código nasce da última palavra do nome e pode ser editado. Só letras e números, em maiúsculas, de 3 a 20, único na organização.~~ substituída por ECO-36.
-- **COM-12** O código vira o link de venda (`ingresse.com/e/<evento>?ref=<CODIGO>`) e funciona como cupom no checkout. _(components/comuns.tsx)_
+- **COM-12** O código vira o link de venda (`ingresse.com/e/<evento>?ref=<CODIGO>`) e funciona como cupom no checkout. Cada vendedor do grupo tem o próprio código, que atribui a venda a ele; o do grupo é do responsável (ECO-27, ECO-28). _(components/comuns.tsx)_
 - **COM-13** O comissário ganha de um de três jeitos: porcentagem do ingresso (sobre o valor pago já com desconto, sem a taxa de serviço), valor fixo por ingresso ou valor a mais no ingresso. _(components/condicoes.tsx, @/plataforma/comissarios)_
 - **COM-16** Valor a mais no ingresso: quem compra com o código paga o preço do ingresso mais esse valor (ex.: R$ 100,00 com R$ 20,00 a mais sai por R$ 120,00), e a diferença é a comissão dele. Vale no link, no cupom e na bilheteria dele. Com valor a mais não há desconto. _(components/condicoes.tsx, @/plataforma/comissarios)_
 - **COM-14** Desconto é opcional, em %, e vale no link e no cupom, só nos ingressos que o comissário pode vender. _(components/condicoes.tsx)_
@@ -118,7 +118,7 @@ Vendas atribuídas são mock: a plataforma ainda não tem comissário nem `comis
 - **COM-102** Comissário sem vendas no evento: "Nenhuma venda ainda." _(pages/ComissarioNoEvento.tsx)_
 - **COM-103** Comissário inexistente ou fora do evento em contexto: mensagem e volta para a lista. _(pages/ComissarioDetalhe.tsx, pages/ComissarioNoEvento.tsx)_
 - **COM-104** ~~Carregando: esqueleto enquanto a organização é semeada.~~ substituída por ECO-42.
-- **COM-107** A primeira visita de cada organização (no Backstage ou no Freepass) cria, em até 3 eventos (primeiro os que estão vendendo), grupos-comissário de exemplo com os canais, código, responsável, pessoas, vendas e repasses; o Vitor Almeida (persona do Freepass) está na Anitta e em algumas outras, e nos eventos além do principal só emite (canal Comissário desligado). _(@/plataforma/comissarios `semear`)_
+- **COM-107** A primeira visita de cada organização (no Backstage ou no Freepass) cria, em até 3 eventos (primeiro os que estão vendendo), grupos-comissário de exemplo com os canais, código, responsável, pessoas, vendas e repasses; o Vitor Almeida (persona do Freepass) está na Anitta e em algumas outras, e nos eventos além do principal só emite (canal Comissário desligado). Cada venda semeada é atribuída pelo código usado: a do código do grupo vai para o responsável; a do código de um vendedor, para ele. _(@/plataforma/comissarios `semear`)_
 - **COM-106** ~~Na semente, cada comissário de um evento vira um grupo de Equipe e Comissários com ele, com os canais que ele tinha (link em todos os ingressos, bilheteria com comissão nos ingressos do evento, cortesia nos 3 primeiros com cota 20 ou sem limite) e o uso tirado das vendas semeadas.~~ substituída por COM-107.
 - **COM-105** ~~A primeira visita de cada organização (no Backstage ou no Freepass) cria 7 comissários de exemplo (1 pausado), com vendas em até 3 eventos, primeiro os que estão vendendo. O Vitor Almeida (persona do Freepass) está na Anitta e em algumas outras; nas demais, o primeiro exemplo é Lucas Mendes. Nos eventos além do principal, o primeiro exemplo só emite (bilheteria e cortesia, ou só cortesia), sem link e sem vendas.~~ substituída por COM-107.
 

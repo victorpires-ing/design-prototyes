@@ -12,7 +12,10 @@ import { BackstageLayout } from "../../components/Backstage";
 import { CopiarLink, Secao, TD, TH, dataCurta, linkDeVenda, moeda } from "../../comissarios/components/comuns";
 import { RegistrarRepasseModal } from "../../comissarios/components/RegistrarRepasseModal";
 import { AbaVendas } from "../components/aba-vendas";
+import { ListaDePedidos } from "../components/lista-de-pedidos";
+import { pedidosDoGrupo } from "../data/pedidos";
 import { CartaoCanal } from "../components/cartao-canal";
+import { CodigoVendedor } from "../components/codigo-vendedor";
 import { ModalCanal } from "../components/modal-canal";
 import { ModalDesativar } from "../components/modal-desativar";
 import { ModalEditarOperadores } from "../components/modal-editar-operadores";
@@ -23,6 +26,9 @@ import {
     BASE,
     canaisLigados,
     CANAIS_GRUPO,
+    codigosEmUso,
+    definirCodigoVendedor,
+    lerEstadoComissarios,
     operadorAtivo,
     operadoresDe,
     plural,
@@ -33,9 +39,9 @@ import {
     type DadosDoGrupo,
 } from "../data/equipe";
 
-type Aba = "configuracao" | "pessoas" | "vendas" | "repasses";
+type Aba = "configuracao" | "pessoas" | "pedidos" | "repasses";
 
-/** Configuração do grupo (ECO-11 a ECO-22): abas Configuração e Pessoas; com comissário, Vendas e Repasses. */
+/** Grupo (ECO-11 a ECO-22): abas Pedidos, Configuração e Pessoas; com comissário, também Repasses. */
 export function GrupoDaEquipe() {
     const { grupoId = "" } = useParams();
     const navigate = useNavigate();
@@ -75,9 +81,15 @@ export function GrupoDaEquipe() {
         );
 
     const { grupo, comissario, vendas, repasses } = dados;
-    const abasValidas: Aba[] = comissario ? ["configuracao", "pessoas", "vendas", "repasses"] : ["configuracao", "pessoas"];
-    const pedida = params.get("aba") as Aba | null;
-    const aba: Aba = pedida && abasValidas.includes(pedida) ? pedida : "configuracao";
+    // Pedidos de todos os canais do grupo (ECO-74).
+    const pedidos = pedidosDoGrupo(grupo, vendas);
+    // Pedidos vem primeiro; abre por padrão com comissário ou com pedidos, senão abre a Configuração (ECO-11).
+    const abasValidas: Aba[] = comissario ? ["pedidos", "configuracao", "pessoas", "repasses"] : ["pedidos", "configuracao", "pessoas"];
+    const padrao: Aba = comissario || pedidos.length > 0 ? "pedidos" : "configuracao";
+    // "vendas" era o nome antigo da aba Pedidos.
+    const pedidaNaUrl = params.get("aba");
+    const pedida = (pedidaNaUrl === "vendas" ? "pedidos" : pedidaNaUrl) as Aba | null;
+    const aba: Aba = pedida && abasValidas.includes(pedida) ? pedida : padrao;
     const t = totais(vendas, repasses);
     const ligados = canaisLigados(grupo);
     const link = comissario ? linkDeVenda(slug, comissario.codigo) : "";
@@ -108,19 +120,17 @@ export function GrupoDaEquipe() {
                     </div>
                 </div>
 
-                <Tabs selectedKey={aba} onSelectionChange={(k) => setParams(k === "configuracao" ? {} : { aba: String(k) }, { replace: true })} className="gap-6">
+                <Tabs selectedKey={aba} onSelectionChange={(k) => setParams(k === padrao ? {} : { aba: String(k) }, { replace: true })} className="gap-6">
                     <TabList type="underline" size="sm" aria-label="Seções do grupo">
+                        <Tab id="pedidos" badge={String(pedidos.length)}>
+                            Pedidos
+                        </Tab>
                         <Tab id="configuracao">Configuração</Tab>
-                        <Tab id="pessoas" badge={grupo.operadores.length}>
+                        <Tab id="pessoas" badge={String(grupo.operadores.length)}>
                             Pessoas
                         </Tab>
                         {comissario && (
-                            <Tab id="vendas" badge={vendas.length}>
-                                Vendas
-                            </Tab>
-                        )}
-                        {comissario && (
-                            <Tab id="repasses" badge={repasses.length}>
+                            <Tab id="repasses" badge={String(repasses.length)}>
                                 Repasses
                             </Tab>
                         )}
@@ -129,18 +139,22 @@ export function GrupoDaEquipe() {
                         <AbaConfiguracao
                             key={grupo.id}
                             dados={dados}
-                            codigos={grupos.filter((x) => x.grupo.id !== grupo.id && x.grupo.comissarioId && x.grupo.codigo).map((x) => x.grupo.codigo!)}
+                            codigos={[...codigosEmUso(grupos.map((x) => x.grupo), evento.id, { grupoId: grupo.id })]}
                             criado={criado}
+                            // Ao configurar o canal Comissário, Pedidos vira o padrão: fica na Configuração até trocar de aba.
+                            onModalFechado={() => !pedida && setParams({ aba: "configuracao" }, { replace: true })}
                         />
                     </TabPanel>
                     <TabPanel id="pessoas">
                         <AbaPessoas dados={dados} />
                     </TabPanel>
-                    {comissario && (
-                        <TabPanel id="vendas" className="flex flex-col gap-6">
-                            <AbaVendas vendas={vendas} t={t} grupo={grupo} variosVendedores={comissario.pessoas.length > 1} link={link} codigo={comissario.codigo} />
-                        </TabPanel>
-                    )}
+                    <TabPanel id="pedidos" className="flex flex-col gap-6">
+                        {comissario ? (
+                            <AbaVendas vendas={vendas} pedidos={pedidos} t={t} grupo={grupo} variosVendedores={comissario.pessoas.length > 1} pessoas={comissario.pessoas} link={link} codigo={comissario.codigo} />
+                        ) : (
+                            <ListaDePedidos pedidos={pedidos} vendedores={grupo.operadores.map((e) => grupo.nomes?.[e] ?? e.split("@")[0])} comComissao={false} />
+                        )}
+                    </TabPanel>
                     {comissario && (
                         <TabPanel id="repasses">
                             <AbaRepasses dados={dados} aRepassar={t.aRepassar} repassado={t.repassado} onRegistrar={() => setRepasse(true)} />
@@ -167,7 +181,7 @@ export function GrupoDaEquipe() {
 /*  Aba Configuração                                                   */
 /* ------------------------------------------------------------------ */
 
-function AbaConfiguracao({ dados, codigos, criado }: { dados: DadosDoGrupo; codigos: string[]; criado: boolean }) {
+function AbaConfiguracao({ dados, codigos, criado, onModalFechado }: { dados: DadosDoGrupo; codigos: string[]; criado: boolean; onModalFechado: () => void }) {
     const { grupo, comissario, vendas } = dados;
     const [configurando, setConfigurando] = useState<CanalGrupo | null>(null);
     const semCanal = Object.keys(grupo.canais).length === 0;
@@ -193,7 +207,7 @@ function AbaConfiguracao({ dados, codigos, criado }: { dados: DadosDoGrupo; codi
                 ))}
             </div>
             {configurando && (
-                <ModalCanal grupo={grupo} canal={configurando} comissario={comissario} codigosDoEvento={codigos} temVendas={vendas.length > 0} onFechar={() => setConfigurando(null)} />
+                <ModalCanal grupo={grupo} canal={configurando} comissario={comissario} codigosDoEvento={codigos} temVendas={vendas.length > 0} onFechar={() => (setConfigurando(null), onModalFechado())} />
             )}
         </div>
     );
@@ -218,6 +232,19 @@ function AbaPessoas({ dados }: { dados: DadosDoGrupo }) {
     // Em grupo-comissário, toda pessoa tem o cargo Comissário; o responsável aparece como tal (ECO-24).
     const responsavel = comissario?.pessoas.find((p) => p.papel === "responsavel")?.email;
     const cargo = (email: string) => (!comissario ? undefined : email === responsavel ? "Comissário, responsável" : "Comissário");
+    // Código de cada pessoa (ECO-27): o do grupo para o responsável, o próprio para o vendedor.
+    const codigoDe = (email: string) => comissario?.pessoas.find((p) => p.email === email)?.codigo;
+    const validarCodigo = (email: string) => (c: string) => {
+        if (c.length < 3) return "Use de 3 a 20 letras ou números.";
+        if (codigosEmUso(lerEstadoComissarios().grupos, grupo.eventoId, { grupoId: grupo.id, email }).has(c)) return `${c} já é usado neste evento.`;
+        return undefined;
+    };
+    const propsDoCodigo = (email: string) => ({
+        codigo: codigoDe(email),
+        codigoEditavel: email !== responsavel,
+        validarCodigo: validarCodigo(email),
+        onCodigo: (c: string) => definirCodigoVendedor(grupo.id, email, c),
+    });
 
     const linhaAvulsa = (email: string) => {
         const ativo = operadorAtivo(grupo, email);
@@ -227,6 +254,7 @@ function AbaPessoas({ dados }: { dados: DadosDoGrupo }) {
                 email={email}
                 rotulo={grupo.nomes?.[email]}
                 cargo={cargo(email)}
+                {...propsDoCodigo(email)}
                 emitidos={grupo.emitidosPorOperador[email] ?? 0}
                 ativo={ativo}
                 onChange={() => (ativo ? setDesligando({ tipo: "operador", id: email }) : toggleOperador(email))}
@@ -261,6 +289,7 @@ function AbaPessoas({ dados }: { dados: DadosDoGrupo }) {
                                         key={email}
                                         email={email}
                                         cargo={cargo(email)}
+                                        {...propsDoCodigo(email)}
                                         emitidos={grupo.emitidosPorOperador[email] ?? 0}
                                         ativo={ligado && operadorAtivo(grupo, email)}
                                         bloqueado={!ligado}
@@ -340,6 +369,10 @@ const LinhaPessoa = ({
     email,
     rotulo,
     cargo,
+    codigo,
+    codigoEditavel = false,
+    validarCodigo,
+    onCodigo,
     emitidos,
     ativo,
     bloqueado = false,
@@ -349,6 +382,10 @@ const LinhaPessoa = ({
     rotulo?: string;
     /** Cargo da pessoa no grupo-comissário ("Comissário"). */
     cargo?: string;
+    codigo?: string;
+    codigoEditavel?: boolean;
+    validarCodigo?: (c: string) => string | undefined;
+    onCodigo?: (c: string) => void;
     emitidos: number;
     ativo: boolean;
     bloqueado?: boolean;
@@ -367,7 +404,9 @@ const LinhaPessoa = ({
                 </Badge>
             )}
         </span>
-        <span className="shrink-0 text-sm font-medium text-secondary tabular-nums">{plural(emitidos, "emitido", "emitidos")}</span>
+        {codigo && validarCodigo && onCodigo && <CodigoVendedor codigo={codigo} editavel={codigoEditavel} validar={validarCodigo} onSalvar={onCodigo} />}
+        {/* Sem emissão, a linha não diz "0 emitidos". */}
+        {emitidos > 0 && <span className="shrink-0 text-sm font-medium text-secondary tabular-nums">{plural(emitidos, "emitido", "emitidos")}</span>}
     </li>
 );
 

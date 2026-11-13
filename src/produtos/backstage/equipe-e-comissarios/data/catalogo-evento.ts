@@ -30,6 +30,8 @@ export interface Ingresso {
     sessaoId: string;
     /** Soma dos lotes: o teto quando o grupo não tem cota. */
     estoque: number;
+    /** Preço do primeiro lote (pedidos do grupo). */
+    preco?: number;
 }
 
 export interface Produto {
@@ -39,6 +41,7 @@ export interface Produto {
     descricao: string;
     imagem: string;
     estoque: number;
+    preco?: number;
 }
 
 export interface ComponenteCombo {
@@ -57,6 +60,7 @@ export interface Combo {
     sessaoId: string;
     componentes: ComponenteCombo[];
     estoque: number;
+    preco?: number;
 }
 
 export type ItemCatalogo = Ingresso | Produto | Combo;
@@ -114,6 +118,7 @@ function espelhar() {
                     grupo: g.nome,
                     sessaoId: s.id,
                     estoque: (t.lotes ?? []).reduce((soma, l) => soma + (l.quantidade ?? 0), 0),
+                    preco: t.lotes?.[0]?.preco,
                 });
             }
     }
@@ -122,7 +127,7 @@ function espelhar() {
         .filter((p) => p.ativo !== false)
         .map((p) => {
             const b = biblioteca.find((x) => x.id === p.produtoId);
-            return { id: p.produtoId, tipo: "produto" as const, nome: b?.nome ?? "Produto", descricao: b?.descricao ?? "", imagem: b?.imagem ?? "", estoque: p.estoque };
+            return { id: p.produtoId, tipo: "produto" as const, nome: b?.nome ?? "Produto", descricao: b?.descricao ?? "", imagem: b?.imagem ?? "", estoque: p.estoque, preco: p.preco ?? b?.precoBase };
         });
     const porId = new Map<string, Ingresso | Produto>([...ingressos.map((i) => [i.id, i] as const), ...produtos.map((p) => [p.id, p] as const)]);
     const combos: Combo[] = (evento?.combos ?? [])
@@ -149,6 +154,7 @@ function espelhar() {
                 sessaoId: primeiroIngresso?.sessaoId ?? sessoes[0]?.id ?? "",
                 componentes,
                 estoque: c.limite ?? (Number.isFinite(pelosItens) ? pelosItens : 0),
+                preco: c.preco,
             };
         });
 

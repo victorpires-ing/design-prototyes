@@ -18,5 +18,5 @@ export function RedirecionarComissario() {
         );
     const grupo = grupos.find((x) => x.grupo.comissarioId === id)?.grupo;
     if (!grupo) return <Navigate to={BASE} replace />;
-    return <Navigate to={`${BASE}/${grupo.id}${params.get("aba") === "configuracao" ? "" : "?aba=vendas"}`} replace />;
+    return <Navigate to={`${BASE}/${grupo.id}${params.get("aba") === "configuracao" ? "" : "?aba=pedidos"}`} replace />;
 }

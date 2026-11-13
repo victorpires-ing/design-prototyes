@@ -17,6 +17,8 @@ export interface Opcao {
 }
 
 export interface OpcoesEvento {
+    /** Categorias de show ou festa (EVT-97). */
+    categorias: Opcao[];
     campeonatos: Opcao[];
     times: Opcao[];
     programasMembros: Opcao[];
@@ -27,6 +29,16 @@ export interface OpcoesEvento {
 }
 
 const SIMULADO: OpcoesEvento = {
+    categorias: [
+        { id: "show", label: "Show" },
+        { id: "festa", label: "Festa" },
+        { id: "festival", label: "Festival" },
+        { id: "balada", label: "Balada" },
+        { id: "teatro", label: "Teatro" },
+        { id: "stand-up", label: "Stand-up" },
+        { id: "infantil", label: "Infantil" },
+        { id: "gastronomia", label: "Gastronomia" },
+    ],
     campeonatos: [
         { id: "brasileirao-2026", label: "Brasileirão 2026" },
         { id: "copa-do-brasil-2026", label: "Copa do Brasil 2026" },

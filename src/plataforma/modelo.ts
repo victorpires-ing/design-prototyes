@@ -308,6 +308,8 @@ export interface Evento {
     /* Campos da criação por tipo. Opcionais: eventos antigos e da seed não têm. */
     tipo?: TipoEvento;
     modalidade?: Modalidade;
+    /** Categoria do show ou festa (id da lista da criação). */
+    categoria?: string;
     /** Fim do evento (ISO local). */
     fim?: string;
     /** Código ISO da moeda (ex.: BRL). */

@@ -63,10 +63,10 @@ const PRODUCTS: ProductCardData[] = [
         ],
     },
     {
-        id: "revenda",
-        name: "Revenda",
-        description: "Canal oficial de revenda: compre de quem não vai mais, mesmo após o sold out",
-        to: "/revenda",
+        id: "novos-negocios",
+        name: "Novos negócios",
+        description: "Revenda de ingressos e serviços de parceiros, como crédito Uber",
+        to: "/novos-negocios",
         illustration: "revenda",
     },
     {

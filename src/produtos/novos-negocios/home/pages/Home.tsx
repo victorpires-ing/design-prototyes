@@ -42,7 +42,7 @@ export function Home() {
     }, []);
 
     const navigate = useNavigate();
-    const abrirEvento = (evento: EventoRevenda) => navigate(`/revenda/${evento.id}`);
+    const abrirEvento = (evento: EventoRevenda) => navigate(`/novos-negocios/${evento.id}`);
 
     return (
         <div className="min-h-screen bg-white font-['Elza'] text-[#374151]">

@@ -175,12 +175,14 @@ import { TransferirInscricao as CarteiraWebTransferir } from '../produtos/cartei
 import { TrocaOnboardingWeb as CarteiraWebTrocaOnboarding } from '../produtos/carteira-web/pages/TrocaOnboardingWeb';
 import { MeusDependentes as CarteiraWebDependentes } from '../produtos/carteira-web/pages/meus-dependentes';
 import { SelecionarPerfil as CarteiraWebSelecionarPerfil } from '../produtos/carteira-web/pages/selecionar-perfil';
-import { Home as RevendaHome } from '../produtos/revenda/home/pages/Home';
-import { Evento as RevendaEvento } from '../produtos/revenda/evento/pages/Evento';
-import { ServicosAdicionais } from '../produtos/revenda/servicos-adicionais/pages/servicos-adicionais';
-import { Oferta as ServicoOferta } from '../produtos/revenda/servicos-adicionais/pages/oferta';
-import { CheckoutServico } from '../produtos/revenda/servicos-adicionais/pages/checkout';
-import { ConfirmacaoServico } from '../produtos/revenda/servicos-adicionais/pages/confirmacao';
+import { Home as RevendaHome } from '../produtos/novos-negocios/home/pages/Home';
+import { Evento as RevendaEvento } from '../produtos/novos-negocios/evento/pages/Evento';
+import { Inicio as RevendaInicio } from '../produtos/novos-negocios/inicio/pages/inicio';
+import { ServicosAdicionais } from '../produtos/novos-negocios/servicos-adicionais/pages/servicos-adicionais';
+import { Oferta as ServicoOferta } from '../produtos/novos-negocios/servicos-adicionais/pages/oferta';
+import { CheckoutServico } from '../produtos/novos-negocios/servicos-adicionais/pages/checkout';
+import { ConfirmacaoServico } from '../produtos/novos-negocios/servicos-adicionais/pages/confirmacao';
+import { RedirecionaRevenda } from '../produtos/novos-negocios/utils/redireciona-revenda';
 import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/SolicitacoesInbox';
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
 import { Pedidos as PedidosPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/Pedidos';
@@ -448,12 +450,15 @@ export default function App() {
         <Route path="/carteira-web/dependentes/onboarding" element={<CarteiraWeb />} />
         <Route path="/carteira-web/dependentes" element={<CarteiraWebDependentes />} />
         <Route path="/carteira-web/selecionar" element={<CarteiraWebSelecionarPerfil />} />
-        <Route path="/revenda" element={<RevendaHome />} />
-        <Route path="/revenda/:slug" element={<RevendaEvento />} />
-        <Route path="/revenda/servicos-adicionais" element={<ServicosAdicionais />} />
-        <Route path="/revenda/servicos-adicionais/:servico" element={<ServicoOferta />} />
-        <Route path="/revenda/servicos-adicionais/:servico/checkout" element={<CheckoutServico />} />
-        <Route path="/revenda/servicos-adicionais/:servico/confirmacao" element={<ConfirmacaoServico />} />
+        <Route path="/novos-negocios" element={<RevendaInicio />} />
+        <Route path="/novos-negocios/marketplace" element={<RevendaHome />} />
+        <Route path="/novos-negocios/:slug" element={<RevendaEvento />} />
+        <Route path="/novos-negocios/servicos-adicionais" element={<ServicosAdicionais />} />
+        <Route path="/novos-negocios/servicos-adicionais/:servico" element={<ServicoOferta />} />
+        <Route path="/novos-negocios/servicos-adicionais/:servico/checkout" element={<CheckoutServico />} />
+        <Route path="/novos-negocios/servicos-adicionais/:servico/confirmacao" element={<ConfirmacaoServico />} />
+        {/* Rotas antigas do produto (Revenda) */}
+        <Route path="/revenda/*" element={<RedirecionaRevenda />} />
         <Route path="/aprovacoes/solicitacoes" element={<SolicitacoesInbox />} />
         <Route path="/backstage/publico" element={<Publico />} />
         <Route path="/backstage/produtos" element={<ProdutosDaOrganizacao />} />

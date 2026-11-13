@@ -105,7 +105,7 @@ function Controles({ vista }: { vista: Vista }) {
             <div className="flex items-center gap-1 rounded-xl bg-primary p-1 shadow-lg ring-1 ring-border-secondary">
                 <button
                     type="button"
-                    onClick={() => navigate("/revenda/servicos-adicionais")}
+                    onClick={() => navigate("/novos-negocios/servicos-adicionais")}
                     className="flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium text-tertiary transition duration-100 ease-linear hover:bg-secondary hover:text-secondary"
                 >
                     <ArrowLeft className="size-4" />

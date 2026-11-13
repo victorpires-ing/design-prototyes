@@ -47,7 +47,7 @@ export function OfertaServico({ servico }: { servico: Servico }) {
 
     const contratar = () => {
         if (selecao.valor == null) return;
-        navigate(`/revenda/servicos-adicionais/${servico.id}/checkout?valor=${selecao.valor}`);
+        navigate(`/novos-negocios/servicos-adicionais/${servico.id}/checkout?valor=${selecao.valor}`);
     };
 
     return (

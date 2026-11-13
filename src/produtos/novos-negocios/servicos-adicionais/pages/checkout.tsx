@@ -31,14 +31,14 @@ export function CheckoutServico() {
     }, []);
     const tempo = `${String(Math.floor(restante / 60)).padStart(2, "0")}:${String(restante % 60).padStart(2, "0")}`;
 
-    if (!servico) return <Navigate to="/revenda/servicos-adicionais" replace />;
-    if (!valor || valor < servico.minimo || valor > servico.maximo) return <Navigate to={`/revenda/servicos-adicionais/${servico.id}`} replace />;
+    if (!servico) return <Navigate to="/novos-negocios/servicos-adicionais" replace />;
+    if (!valor || valor < servico.minimo || valor > servico.maximo) return <Navigate to={`/novos-negocios/servicos-adicionais/${servico.id}`} replace />;
 
     const final = valorFinal(servico, valor);
     const desconto = valor - final;
     const pct = Math.round(servico.desconto * 100);
-    const voltar = () => navigate(`/revenda/servicos-adicionais/${servico.id}`);
-    const pagar = (forma: "pix" | "cartao") => navigate(`/revenda/servicos-adicionais/${servico.id}/confirmacao?valor=${valor}&forma=${forma}`);
+    const voltar = () => navigate(`/novos-negocios/servicos-adicionais/${servico.id}`);
+    const pagar = (forma: "pix" | "cartao") => navigate(`/novos-negocios/servicos-adicionais/${servico.id}/confirmacao?valor=${valor}&forma=${forma}`);
 
     return (
         <div className="min-h-screen bg-secondary text-primary">

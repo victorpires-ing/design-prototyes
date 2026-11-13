@@ -1,7 +1,7 @@
 # Serviços adicionais: regras
 
-> **Rotas:** `/revenda/servicos-adicionais`, `/revenda/servicos-adicionais/:servico`, `/revenda/servicos-adicionais/:servico/checkout`, `/revenda/servicos-adicionais/:servico/confirmacao`
-> **No menu:** fora do menu; cada oferta abre pelo link de uma comunicação (push, WhatsApp, e-mail). A lista em `/revenda/servicos-adicionais` é só a entrada do protótipo.
+> **Rotas:** `/novos-negocios/servicos-adicionais`, `/novos-negocios/servicos-adicionais/:servico`, `/novos-negocios/servicos-adicionais/:servico/checkout`, `/novos-negocios/servicos-adicionais/:servico/confirmacao`
+> **No menu:** fora do menu; cada oferta abre pelo link de uma comunicação (push, WhatsApp, e-mail). A lista em `/novos-negocios/servicos-adicionais` é só a entrada do protótipo.
 > **Revisado em:** 2026-11-13
 
 Este arquivo é a fonte da verdade do comportamento da feature. Mudou uma regra no código, mude
@@ -52,14 +52,14 @@ Valores, descontos e condições são ilustrativos, não condições comerciais 
 
 ## Depende de / afeta
 
-- **Depende de:** `revenda/utils/use-force-light-theme` (todas as telas ficam em tema claro).
-- **Afeta:** nada fora da pasta; as rotas estão em `src/app/App.tsx`.
+- **Depende de:** `novos-negocios/utils/use-force-light-theme` (todas as telas ficam em tema claro).
+- **Afeta:** nada fora da pasta; as rotas estão em `src/app/App.tsx` (as antigas `/revenda/...` redirecionam para `/novos-negocios/...`).
 
 ## Em aberto
 
 - Ativação pelo app é simulada; o link de resgate em `data/servicos.ts` é placeholder. Falta definir o comportamento quando o app da Uber não está instalado.
 - Resgate pelo código no app da Uber não é detectado pela tela (depende da integração).
 - Checkout sem seção de taxas: confirmar se a compra de crédito tem taxa de serviço/processamento.
-- A lista `/revenda/servicos-adicionais` ainda usa a capa e o nome do Festival Aurora e diz que as ofertas são "para quem tem ingresso", o que diverge de SAD-01.
+- A lista `/novos-negocios/servicos-adicionais` ainda usa a capa e o nome do Festival Aurora e diz que as ofertas são "para quem tem ingresso", o que diverge de SAD-01.
 - A oferta da Meep é de consumo no evento e usa a mesma página sem evento (mosaico e textos de rolê).
 - Direito de imagem das fotos do mosaico e do topo do mobile.

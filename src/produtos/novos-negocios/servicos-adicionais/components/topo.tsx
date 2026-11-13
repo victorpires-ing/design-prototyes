@@ -21,7 +21,7 @@ function BarraTopo() {
         <div className="mx-auto flex h-[72px] w-full max-w-[1264px] items-center justify-between gap-4 px-4 lg:px-6">
             {/* No protótipo a marca volta para a lista de ofertas */}
             <Link
-                to="/revenda/servicos-adicionais"
+                to="/novos-negocios/servicos-adicionais"
                 aria-label="Ingresse — Serviços adicionais"
                 className="rounded-sm outline-focus-ring focus-visible:outline-2"
             >

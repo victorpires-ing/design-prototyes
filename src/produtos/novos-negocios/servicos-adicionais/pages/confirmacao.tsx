@@ -28,7 +28,7 @@ export function ConfirmacaoServico() {
         window.scrollTo(0, 0);
     }, []);
 
-    if (!servico || !valor) return <Navigate to="/revenda/servicos-adicionais" replace />;
+    if (!servico || !valor) return <Navigate to="/novos-negocios/servicos-adicionais" replace />;
 
     return (
         <FundoPagina>
@@ -72,7 +72,7 @@ export function ConfirmacaoServico() {
 
                 {/* Serviços sem resgate (Meep) seguem com o "Concluir" */}
                 {!servico.resgate && (
-                    <Button size="lg" color="primary" className="w-full" onClick={() => navigate("/revenda/servicos-adicionais")}>
+                    <Button size="lg" color="primary" className="w-full" onClick={() => navigate("/novos-negocios/servicos-adicionais")}>
                         Concluir
                     </Button>
                 )}

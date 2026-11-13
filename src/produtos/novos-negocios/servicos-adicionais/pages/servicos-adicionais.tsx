@@ -14,8 +14,8 @@ export function ServicosAdicionais() {
     return (
         <div className="min-h-screen bg-primary px-4 py-12 md:px-6">
             <div className="mx-auto w-full max-w-3xl">
-                <Button size="sm" color="link-gray" iconLeading={ArrowLeft} onClick={() => navigate("/revenda")}>
-                    Revenda
+                <Button size="sm" color="link-gray" iconLeading={ArrowLeft} onClick={() => navigate("/novos-negocios")}>
+                    Novos negócios
                 </Button>
 
                 <h1 className="mt-5 text-3xl font-bold text-primary">Serviços adicionais</h1>
@@ -28,7 +28,7 @@ export function ServicosAdicionais() {
                         <button
                             key={s.id}
                             type="button"
-                            onClick={() => navigate(`/revenda/servicos-adicionais/${s.id}`)}
+                            onClick={() => navigate(`/novos-negocios/servicos-adicionais/${s.id}`)}
                             className="group flex flex-col overflow-hidden rounded-2xl text-left ring-1 ring-border-secondary outline-focus-ring transition duration-150 ease-linear hover:-translate-y-1 hover:ring-brand focus-visible:outline-2 focus-visible:outline-offset-2"
                         >
                             <div className="relative flex h-36 items-end overflow-hidden p-4">

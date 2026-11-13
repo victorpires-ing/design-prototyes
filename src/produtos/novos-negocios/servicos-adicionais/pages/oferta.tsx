@@ -9,7 +9,7 @@ import { SERVICOS, type ServicoId } from "../data/servicos";
 
 /**
  * Página de oferta individual — destino do link enviado por push, WhatsApp ou e-mail.
- * /revenda/servicos-adicionais/uber · /revenda/servicos-adicionais/meep
+ * /novos-negocios/servicos-adicionais/uber · /novos-negocios/servicos-adicionais/meep
  */
 export function Oferta() {
     useForceLightTheme();
@@ -20,7 +20,7 @@ export function Oferta() {
         window.scrollTo(0, 0);
     }, [id]);
 
-    if (!servico) return <Navigate to="/revenda/servicos-adicionais" replace />;
+    if (!servico) return <Navigate to="/novos-negocios/servicos-adicionais" replace />;
 
     return (
         <FundoPagina className="lg:bg-primary lg:pb-16">

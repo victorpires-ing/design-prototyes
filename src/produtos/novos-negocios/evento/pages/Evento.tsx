@@ -8,7 +8,7 @@ import { LoteCard } from "../components/LoteCard";
 import { ModalTaxas } from "../components/ModalTaxas";
 
 /**
- * Página de um evento do canal de Revenda — /revenda/:slug.
+ * Página de um evento do canal de Revenda — /novos-negocios/:slug.
  *
  * Estrutura e comportamento conferidos no site em produção
  * (revenda.ingresse.com/retronejo-bauru: container de 1024px, breakpoint em 640px,
@@ -38,7 +38,7 @@ export function Evento() {
                     <p className="text-base leading-6 text-[#454f5b]">Esse evento saiu do ar ou o endereço está errado.</p>
                     <button
                         type="button"
-                        onClick={() => navigate("/revenda")}
+                        onClick={() => navigate("/novos-negocios/marketplace")}
                         className="mt-2 inline-flex h-11 items-center justify-center rounded-lg bg-[#ff271a] px-5 text-base leading-none font-bold text-white uppercase transition duration-100 ease-linear hover:bg-[#e11b10]"
                     >
                         Ver eventos em revenda
@@ -69,7 +69,7 @@ export function Evento() {
                     {/* Volta para a home — no mobile vira a barra preta no fim da página */}
                     <button
                         type="button"
-                        onClick={() => navigate("/revenda")}
+                        onClick={() => navigate("/novos-negocios/marketplace")}
                         className="hidden w-full items-center gap-2 pb-1 text-sm leading-[17px] font-semibold text-[#454f5b] transition duration-100 ease-linear hover:text-[#ff271a] sm:flex"
                     >
                         <span aria-hidden="true">←</span>
@@ -146,7 +146,7 @@ export function Evento() {
             {/* Único rodapé desta página — a home tem o footer grande */}
             <button
                 type="button"
-                onClick={() => navigate("/revenda")}
+                onClick={() => navigate("/novos-negocios/marketplace")}
                 className="flex w-full items-center gap-2.5 bg-black pt-3 pr-2 pb-6 pl-3 text-sm leading-[17px] font-semibold text-white"
             >
                 <span aria-hidden="true">←</span>

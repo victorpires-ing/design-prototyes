@@ -46,7 +46,6 @@ export function Inicio() {
                 </Button>
 
                 <h1 className="mt-5 text-3xl font-bold text-primary">Novos negócios</h1>
-                <p className="mt-1 text-md text-tertiary">Escolha uma experiência para abrir.</p>
 
                 <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
                     {EXPERIENCIAS.map(({ id, nome, descricao, to, icone: Icone, gradiente }) => (

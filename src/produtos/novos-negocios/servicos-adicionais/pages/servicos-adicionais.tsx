@@ -2,7 +2,7 @@ import { useNavigate } from "react-router";
 import { ArrowLeft, ChevronRight } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { MarcaParceiro } from "../components/marca-parceiro";
-import { EM_BREVE, EVENTO, SERVICOS } from "../data/servicos";
+import { EVENTO, SERVICOS } from "../data/servicos";
 
 /**
  * Entrada do protótipo de Serviços adicionais (nome interno).
@@ -19,9 +19,6 @@ export function ServicosAdicionais() {
                 </Button>
 
                 <h1 className="mt-5 text-3xl font-bold text-primary">Serviços adicionais</h1>
-                <p className="mt-1 text-md text-tertiary">
-                    Ofertas individuais para quem tem ingresso do {EVENTO.nome}. Cada uma abre como abriria pelo link de uma comunicação.
-                </p>
 
                 <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
                     {Object.values(SERVICOS).map((s) => (
@@ -49,10 +46,6 @@ export function ServicosAdicionais() {
                         </button>
                     ))}
                 </div>
-
-                <p className="mt-8 text-sm text-tertiary">
-                    Próximos serviços previstos: {EM_BREVE.map((e) => e.nome).join(", ")}, seguro de celular e upgrade de ingresso.
-                </p>
             </div>
         </div>
     );

@@ -1,5 +1,4 @@
 import type { FC } from "react";
-import { Car01, Clock } from "@untitledui/icons";
 import festivalAurora from "../assets/festival-aurora.svg";
 import showPalco from "../assets/show-palco.svg";
 import uberLogo from "../assets/uber-logo.svg";
@@ -147,12 +146,6 @@ export const SERVICOS: Record<ServicoId, Servico> = {
         },
     },
 };
-
-/** Próximos serviços previstos para a página com vários serviços (ainda não construída). */
-export const EM_BREVE: { nome: string; icone: FC<{ className?: string }> }[] = [
-    { nome: "Estacionamento", icone: Car01 },
-    { nome: "Entrada expressa", icone: Clock },
-];
 
 export const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 

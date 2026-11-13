@@ -60,6 +60,6 @@ Valores, descontos e condições são ilustrativos, não condições comerciais 
 - Ativação pelo app é simulada; o link de resgate em `data/servicos.ts` é placeholder. Falta definir o comportamento quando o app da Uber não está instalado.
 - Resgate pelo código no app da Uber não é detectado pela tela (depende da integração).
 - Checkout sem seção de taxas: confirmar se a compra de crédito tem taxa de serviço/processamento.
-- A lista `/novos-negocios/servicos-adicionais` ainda usa a capa e o nome do Festival Aurora e diz que as ofertas são "para quem tem ingresso", o que diverge de SAD-01.
+- A lista `/novos-negocios/servicos-adicionais` ainda usa a capa do Festival Aurora nos cards, o que diverge de SAD-01.
 - A oferta da Meep é de consumo no evento e usa a mesma página sem evento (mosaico e textos de rolê).
 - Direito de imagem das fotos do mosaico e do topo do mobile.

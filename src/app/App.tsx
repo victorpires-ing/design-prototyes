@@ -187,17 +187,6 @@ import { SolicitacoesInbox } from '../produtos/aprovacoes/solicitacoes/pages/Sol
 import { Publico } from '../produtos/backstage/publico/pages/Publico';
 import { Pedidos as PedidosPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/Pedidos';
 import { DetalhePedido as DetalhePedidoPosCompra } from '../produtos/backstage/alteracoes-pos-compra/pages/DetalhePedido';
-import { Pedidos as TrocaPedidos } from '../produtos/backstage/troca-de-inscricao/pages/pedidos';
-import { Pedido as TrocaPedido } from '../produtos/backstage/troca-de-inscricao/pages/pedido';
-import { RevisarAlteracoes as TrocaRevisar } from '../produtos/backstage/troca-de-inscricao/pages/revisar-alteracoes';
-import { EditarEvento as TrocaEditarEvento } from '../produtos/backstage/troca-de-inscricao/pages/editar-evento';
-import { LinkPagamento as TrocaLinkPagamento } from '../produtos/backstage/troca-de-inscricao/pages/link-pagamento';
-import { BorderoTroca, TransacoesTroca } from '../produtos/backstage/troca-de-inscricao/pages/relatorios-troca';
-import { Emails as TrocaEmails } from '../produtos/backstage/troca-de-inscricao/pages/emails';
-import { Inscricoes as CarteiraTrocaInscricoes } from '../produtos/carteira-web/troca-de-inscricao/pages/inscricoes';
-import { Trocar as CarteiraTrocaTrocar } from '../produtos/carteira-web/troca-de-inscricao/pages/trocar';
-import { Perguntas as CarteiraTrocaPerguntas } from '../produtos/carteira-web/troca-de-inscricao/pages/perguntas';
-import { Pagamento as CarteiraTrocaPagamento, TrocaConfirmada as CarteiraTrocaConfirmada } from '../produtos/carteira-web/troca-de-inscricao/pages/pagamento';
 import { AlterarPedido } from '../produtos/backstage/alteracoes-pos-compra/pages/AlterarPedido';
 import { FormulariosParticipacao } from '../produtos/backstage/publico/pages/FormulariosParticipacao';
 import { SolicitacoesParticipacao } from '../produtos/backstage/publico/pages/SolicitacoesParticipacao';
@@ -256,20 +245,6 @@ export default function App() {
         <Route path="/backstage/eventos/novo" element={<BackstageCriarEvento />} />
         <Route path="/backstage/evento/visao-geral" element={<VisaoGeralEvento />} />
         <Route path="/backstage/informacoes-evento" element={<InformacoesEvento />} />
-        {/* Troca de inscrição (TS-1812): protótipo próprio, separado de Pedidos pós-compra */}
-        <Route path="/backstage/troca-de-inscricao" element={<TrocaPedidos />} />
-        <Route path="/backstage/troca-de-inscricao/emails" element={<TrocaEmails />} />
-        <Route path="/backstage/troca-de-inscricao/relatorios/transacoes" element={<TransacoesTroca />} />
-        <Route path="/backstage/troca-de-inscricao/relatorios/bordero" element={<BorderoTroca />} />
-        <Route path="/backstage/troca-de-inscricao/:id" element={<TrocaPedido />} />
-        <Route path="/backstage/troca-de-inscricao/:id/revisar" element={<TrocaRevisar />} />
-        <Route path="/backstage/evento/editar" element={<TrocaEditarEvento />} />
-        <Route path="/troca/link/:id" element={<TrocaLinkPagamento />} />
-        <Route path="/carteira-web/inscricoes" element={<CarteiraTrocaInscricoes />} />
-        <Route path="/carteira-web/inscricoes/:itemId/trocar" element={<CarteiraTrocaTrocar />} />
-        <Route path="/carteira-web/inscricoes/:itemId/trocar/perguntas" element={<CarteiraTrocaPerguntas />} />
-        <Route path="/carteira-web/troca/:solId/pagamento" element={<CarteiraTrocaPagamento />} />
-        <Route path="/carteira-web/troca/:solId/confirmada" element={<CarteiraTrocaConfirmada />} />
         <Route path="/backstage/pedidos" element={<PedidosPosCompra />} />
         <Route path="/backstage/pedidos/:pedidoId" element={<DetalhePedidoPosCompra />} />
         <Route path="/backstage/pedidos/:pedidoId/transferir" element={<AlterarPedido verbo="transferir" />} />

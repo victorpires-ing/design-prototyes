@@ -264,13 +264,13 @@ export function Pedidos() {
                         </div>
                     ) : (
                         <>
-                            {/* Tabela — desktop */}
-                            <div className="overflow-x-auto max-lg:hidden">
-                                <table className="w-full border-collapse whitespace-nowrap">
+                            {/* Tabela — telas largas; abaixo de 1280 px as colunas não cabem sem rolagem lateral */}
+                            <div className="max-xl:hidden">
+                                <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="border-y border-secondary bg-secondary_subtle text-left">
                                             <Th>ID do pedido</Th>
-                                            <th className="px-4 py-3">
+                                            <th className="px-3 py-3">
                                                 <button
                                                     type="button"
                                                     onClick={() => setAsc((a) => !a)}
@@ -282,14 +282,13 @@ export function Pedidos() {
                                                 </button>
                                             </th>
                                             <Th>Comprador</Th>
-                                            <Th>Atleta inscrito</Th>
                                             <Th>Evento</Th>
                                             <Th>Taxa</Th>
                                             <Th>Valor</Th>
                                             <Th>Pagamento</Th>
                                             <Th>Status</Th>
                                             <Th>Troca</Th>
-                                            <th className="w-12 px-4 py-3">
+                                            <th className="w-12 px-3 py-3">
                                                 <span className="sr-only">Abrir</span>
                                             </th>
                                         </tr>
@@ -298,46 +297,37 @@ export function Pedidos() {
                                         {pagina.map((p) => {
                                             const c = pessoa(p.comprador);
                                             const e = evDoPed(p);
-                                            const atletas = p.itens.filter((i) => i.status !== "trocado").flatMap((i) => i.ps.map((id) => pessoa(id).nome));
                                             return (
                                                 <tr
                                                     key={p.id}
                                                     onClick={() => abrir(p)}
                                                     className="cursor-pointer border-b border-secondary transition duration-100 ease-linear hover:bg-primary_hover"
                                                 >
-                                                    <td className="max-w-[130px] truncate px-4 py-4 font-mono text-xs text-tertiary" title={uuid(p.id)}>
+                                                    <td className="max-w-[104px] truncate px-3 py-4 font-mono text-xs text-tertiary" title={uuid(p.id)}>
                                                         {uuid(p.id)}
                                                     </td>
-                                                    <td className="px-4 py-4 text-sm whitespace-nowrap text-secondary">
+                                                    <td className="px-3 py-4 text-sm whitespace-nowrap text-secondary">
                                                         {p.data.slice(0, 10)}
                                                         <span className="block text-tertiary">{p.data.slice(11)}</span>
                                                     </td>
-                                                    <td className="px-4 py-4 text-sm">
+                                                    <td className="px-3 py-4 text-sm">
                                                         <span className="block font-medium text-primary">{c.nome}</span>
                                                         <span className="text-tertiary">{c.cpf}</span>
                                                     </td>
-                                                    <td className="px-4 py-4 text-sm text-secondary">
-                                                        {atletas.slice(0, 2).map((n) => (
-                                                            <span key={n} className="block">
-                                                                {n}
-                                                            </span>
-                                                        ))}
-                                                        {atletas.length > 2 && <span className="text-tertiary">e mais {atletas.length - 2}</span>}
-                                                    </td>
-                                                    <td className="max-w-[200px] px-4 py-4 text-sm">
+                                                    <td className="max-w-[150px] px-3 py-4 text-sm">
                                                         <span className="block truncate text-secondary" title={e.nome}>{e.nome}</span>
                                                         <span className="text-tertiary">ID {e.id.slice(0, 8)}</span>
                                                     </td>
-                                                    <td className="px-4 py-4 text-sm whitespace-nowrap text-tertiary">{brl(taxaPed(p))}</td>
-                                                    <td className="px-4 py-4 text-sm font-medium whitespace-nowrap text-primary">{brl(valorPed(p))}</td>
-                                                    <td className="px-4 py-4 text-sm text-tertiary">{p.pagamento}</td>
-                                                    <td className="px-4 py-4">
+                                                    <td className="px-3 py-4 text-sm whitespace-nowrap text-tertiary">{brl(taxaPed(p))}</td>
+                                                    <td className="px-3 py-4 text-sm font-medium whitespace-nowrap text-primary">{brl(valorPed(p))}</td>
+                                                    <td className="px-3 py-4 text-sm text-tertiary">{p.pagamento}</td>
+                                                    <td className="px-3 py-4">
                                                         <StatusBadge p={p} />
                                                     </td>
-                                                    <td className="px-4 py-4">
+                                                    <td className="px-3 py-4">
                                                         <TrocaBadge p={p} />
                                                     </td>
-                                                    <td className="px-4 py-4">
+                                                    <td className="px-3 py-4">
                                                         <ButtonUtility
                                                             size="xs"
                                                             color="tertiary"
@@ -353,8 +343,8 @@ export function Pedidos() {
                                 </table>
                             </div>
 
-                            {/* Tabela-lista — celular (UI-MOB-005) */}
-                            <ul className="flex flex-col border-t border-secondary lg:hidden">
+                            {/* Tabela-lista — celular e telas médias (UI-MOB-005) */}
+                            <ul className="flex flex-col border-t border-secondary xl:hidden">
                                 {pagina.map((p) => {
                                     const c = pessoa(p.comprador);
                                     return (
@@ -396,7 +386,7 @@ export function Pedidos() {
     );
 }
 
-const Th = ({ children }: { children: React.ReactNode }) => <th className="px-4 py-3 text-xs font-medium whitespace-nowrap text-tertiary">{children}</th>;
+const Th = ({ children }: { children: React.ReactNode }) => <th className="px-3 py-3 text-xs font-medium whitespace-nowrap text-tertiary">{children}</th>;
 
 export const StatusBadge = ({ p }: { p: Pedido }) => (
     <BadgeWithDot size="sm" type="pill-color" color={STATUS_PEDIDO[p.status].color}>

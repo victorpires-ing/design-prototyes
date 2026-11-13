@@ -9,7 +9,7 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { InputBase } from "@/components/base/input/input";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { cx } from "@/utils/cx";
-import { brl, mod, nomeItem, nomes, norm, opcoes, r2, TAXA, vagas, type Item, type Opcao } from "../data/troca-store";
+import { EVENTO, brl, mod, nomeItem, nomes, norm, opcoes, r2, TAXA, vagas, type Item, type Opcao } from "../data/troca-store";
 
 interface ModalTrocarInscricaoProps {
     item: Item | null;
@@ -34,8 +34,7 @@ export function ModalTrocarInscricao({ item, selecionado, onClose, onEscolher }:
     const ops = item ? opcoes(item) : [];
     const nq = norm(busca);
     const vis = ops.filter((o) => !nq || norm(o.m.nome).includes(nq));
-    const ok = vis.filter((o) => !o.off);
-    const nao = vis.filter((o) => o.off);
+    const grupos = [...new Set(vis.map((o) => o.m.grupo))];
     const atual = item ? mod(item.mod) : undefined;
 
     return (
@@ -83,14 +82,24 @@ export function ModalTrocarInscricao({ item, selecionado, onClose, onEscolher }:
 
                                 {atual.n && <p className="text-sm text-tertiary">Combo trocado por inteiro. Só aparecem combos com {atual.n} inscrições, e as regras valem para todos os atletas.</p>}
 
-                                <AriaRadioGroup aria-label="Nova inscrição" value={sel} onChange={setSel} className="flex flex-col gap-3">
-                                    {ok.map((o) => (
-                                        <Opcao key={o.m.id} o={o} item={item} />
-                                    ))}
-                                    {!ok.length && nao.length > 0 && <p className="text-sm text-tertiary">Nenhuma modalidade pode ser escolhida agora. Veja os motivos abaixo.</p>}
-                                    {nao.length > 0 && <p className="pt-2 text-xs font-semibold text-tertiary">Indisponíveis</p>}
-                                    {nao.map((o) => (
-                                        <Opcao key={o.m.id} o={o} item={item} />
+                                <p className="text-sm text-tertiary">Só o lote ativo de cada inscrição pode ser escolhido. Lotes esgotados aparecem para consulta.</p>
+                                <AriaRadioGroup aria-label="Nova inscrição" value={sel} onChange={setSel} className="flex flex-col overflow-hidden rounded-xl ring-1 ring-border-secondary">
+                                    <div className="flex items-center justify-between gap-3 border-b border-secondary bg-secondary px-4 py-3">
+                                        <span className="text-sm font-semibold text-primary">{EVENTO.sessao}</span>
+                                        <span className="text-xs text-tertiary">Sessão</span>
+                                    </div>
+                                    {grupos.map((g) => (
+                                        <div key={g} role="group" aria-label={`Grupo ${g}`}>
+                                            <div className="flex items-center justify-between gap-3 border-b border-secondary bg-secondary_subtle px-4 py-2.5 pl-6">
+                                                <span className="text-sm font-semibold text-primary">{g}</span>
+                                                <span className="text-xs text-tertiary">Grupo</span>
+                                            </div>
+                                            {vis
+                                                .filter((o) => o.m.grupo === g)
+                                                .map((o) => (
+                                                    <Inscricao key={o.m.id} o={o} item={item} />
+                                                ))}
+                                        </div>
                                     ))}
                                 </AriaRadioGroup>
 
@@ -120,74 +129,112 @@ export function ModalTrocarInscricao({ item, selecionado, onClose, onEscolher }:
     );
 }
 
-function Opcao({ o, item }: { o: Opcao; item: Item }) {
+/** Inscrição na árvore: nome, tags e motivo do bloqueio; abaixo, todos os lotes. */
+function Inscricao({ o, item }: { o: Opcao; item: Item }) {
     const seg = o.e?.find((x) => x.seg);
-    const motivo = o.motivo ?? (o.e ?? []).filter((x) => !x.seg).map((x) => x.curto).join(". ");
+    const outros = (o.e ?? []).filter((x) => !x.seg).map((x) => x.curto);
+    const esgotada = !!o.motivo;
     const preco = o.l.valor > item.pago ? "Mais caro" : o.l.valor < item.pago ? "Mais barato" : "Mesmo valor";
+    const avisar = () => o.off && toast.error(esgotada ? "Inscrição esgotada" : "Troca não permitida", { description: esgotada ? `${o.m.nome} não tem mais vagas.` : (o.e ?? []).map((x) => x.msg).join(" ") });
 
     return (
-        <div
-            onClick={() => {
-                if (o.off) toast.error("Troca não permitida", { description: o.motivo ?? (o.e ?? []).map((x) => x.msg).join(" ") });
-            }}
-        >
-            <AriaRadio
-                value={o.m.id}
-                isDisabled={o.off}
-                className={({ isSelected, isDisabled, isFocusVisible }) =>
-                    cx(
-                        "flex cursor-pointer items-start gap-3 rounded-xl p-4 ring-1 ring-border-secondary transition duration-100 ease-linear ring-inset",
-                        isSelected && "ring-2 ring-brand",
-                        isFocusVisible && "outline-2 outline-offset-2 outline-focus-ring",
-                        isDisabled && "cursor-not-allowed bg-secondary_subtle",
-                        seg && "ring-border-error_subtle",
-                    )
-                }
-            >
-                {({ isSelected, isDisabled, isFocusVisible }) => (
-                    <>
-                        <RadioButtonBase isSelected={isSelected} isDisabled={isDisabled} isFocusVisible={isFocusVisible} className="mt-0.5" />
-                        <span className="flex min-w-0 flex-1 flex-col gap-1">
-                            <span className={cx("flex flex-wrap items-center gap-1.5 text-sm font-semibold", isDisabled ? "text-tertiary" : "text-primary")}>
-                                {o.m.nome}
-                                {!o.off && (
-                                    <Badge size="sm" type="color" color={preco === "Mais caro" ? "warning" : preco === "Mais barato" ? "success" : "gray"}>
-                                        {preco}
-                                    </Badge>
-                                )}
-                                {o.m.seg && (
-                                    <Badge size="sm" type="color" color="gray">
-                                        Segmentação: {o.m.seg.tipo === "idade" ? `${o.m.seg.min} anos ou mais` : "lista de CPF"}
-                                    </Badge>
-                                )}
-                                {o.m.passkey && (
-                                    <Badge size="sm" type="color" color="gray">
-                                        Oculta por passkey
-                                    </Badge>
-                                )}
+        <div className="border-b border-secondary last:border-b-0">
+            <div className="flex items-start justify-between gap-3 py-3 pr-4 pl-10">
+                <div className="flex min-w-0 flex-col gap-1">
+                    <span className={cx("flex flex-wrap items-center gap-1.5 text-sm font-semibold", o.off ? "text-tertiary" : "text-primary")}>
+                        {o.m.nome}
+                        {esgotada ? (
+                            <Badge size="sm" type="color" color="gray">
+                                Esgotada
+                            </Badge>
+                        ) : (
+                            !o.off && (
+                                <Badge size="sm" type="color" color={preco === "Mais caro" ? "warning" : preco === "Mais barato" ? "success" : "gray"}>
+                                    {preco}
+                                </Badge>
+                            )
+                        )}
+                        {o.m.seg && (
+                            <Badge size="sm" type="color" color="gray">
+                                Segmentação: {o.m.seg.tipo === "idade" ? `${o.m.seg.min} anos ou mais` : "lista de CPF"}
+                            </Badge>
+                        )}
+                        {o.m.passkey && (
+                            <Badge size="sm" type="color" color="gray">
+                                Oculta por passkey
+                            </Badge>
+                        )}
+                    </span>
+                    {seg && (
+                        <span className="flex gap-1.5 text-sm text-error-primary">
+                            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                            <span>
+                                <b className="font-semibold">Troca não permitida.</b> {seg.msg}
                             </span>
-                            {seg ? (
-                                <span className="flex gap-1.5 text-sm text-error-primary">
-                                    <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                                    <span>
-                                        <b className="font-semibold">Troca não permitida.</b> {seg.msg}
-                                    </span>
-                                </span>
-                            ) : o.off ? (
-                                <span className="text-sm text-tertiary">{motivo}</span>
-                            ) : (
-                                <span className="text-sm text-tertiary">
-                                    {o.l.nome}, {vagas(o.l).toLocaleString("pt-BR")} vagas
-                                </span>
-                            )}
                         </span>
-                        <span className={cx("text-right text-sm font-semibold", isDisabled ? "text-tertiary" : "text-primary")}>
-                            {brl(o.l.valor)} <span className="font-normal text-tertiary">e taxa de {brl(r2(o.l.valor * TAXA))}</span>
-                            {!o.off && o.f && <span className="block font-normal text-tertiary">{o.f.total ? `${brl(o.f.total)} a cobrar` : "Sem cobrança"}</span>}
+                    )}
+                    {outros.length > 0 && <span className="text-sm text-tertiary">{outros.join(". ")}</span>}
+                </div>
+                <span className="shrink-0 text-xs text-tertiary">Inscrição</span>
+            </div>
+            {o.m.lotes.map((l) => {
+                const ativo = !o.motivo && l.id === o.l.id;
+                const esgotado = vagas(l) <= 0;
+                const estado = ativo ? null : esgotado ? "Esgotado" : !l.ativo ? "Encerrado" : "Indisponível para troca";
+                if (ativo)
+                    return (
+                        <div key={l.id} onClick={avisar}>
+                            <AriaRadio
+                                value={o.m.id}
+                                isDisabled={o.off}
+                                className={({ isSelected, isDisabled, isFocusVisible }) =>
+                                    cx(
+                                        "flex cursor-pointer items-center gap-3 border-t border-secondary py-3 pr-4 pl-16 transition duration-100 ease-linear hover:bg-primary_hover",
+                                        isSelected && "bg-brand-primary_alt",
+                                        isFocusVisible && "outline-2 -outline-offset-2 outline-focus-ring",
+                                        isDisabled && "cursor-not-allowed hover:bg-transparent",
+                                    )
+                                }
+                            >
+                                {({ isSelected, isDisabled, isFocusVisible }) => (
+                                    <>
+                                        <RadioButtonBase isSelected={isSelected} isDisabled={isDisabled} isFocusVisible={isFocusVisible} />
+                                        <span className="flex min-w-0 flex-1 flex-col">
+                                            <span className={cx("flex items-center gap-1.5 text-sm font-medium", isDisabled ? "text-tertiary" : "text-primary")}>
+                                                {l.nome}
+                                                <Badge size="sm" type="color" color="success">
+                                                    Ativo
+                                                </Badge>
+                                            </span>
+                                            <span className="text-xs text-tertiary">{vagas(l).toLocaleString("pt-BR")} vagas</span>
+                                        </span>
+                                        <span className={cx("text-right text-sm font-semibold", isDisabled ? "text-tertiary" : "text-primary")}>
+                                            {brl(l.valor)} <span className="font-normal text-tertiary">e taxa de {brl(r2(l.valor * TAXA))}</span>
+                                            {!o.off && o.f && <span className="block font-normal text-tertiary">{o.f.total ? `${brl(o.f.total)} a cobrar` : "Sem cobrança"}</span>}
+                                        </span>
+                                    </>
+                                )}
+                            </AriaRadio>
+                        </div>
+                    );
+                return (
+                    <div
+                        key={l.id}
+                        aria-disabled="true"
+                        onClick={() => toast.error("Lote não disponível", { description: `${l.nome} da ${o.m.nome}: ${estado!.toLowerCase()}. Só o lote ativo pode ser escolhido.` })}
+                        className="flex cursor-not-allowed items-center gap-3 border-t border-secondary py-3 pr-4 pl-16"
+                    >
+                        <RadioButtonBase isDisabled />
+                        <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm text-tertiary">
+                            {l.nome}
+                            <Badge size="sm" type="color" color="gray">
+                                {estado}
+                            </Badge>
                         </span>
-                    </>
-                )}
-            </AriaRadio>
+                        <span className="text-right text-sm text-tertiary">{brl(l.valor)}</span>
+                    </div>
+                );
+            })}
         </div>
     );
 }

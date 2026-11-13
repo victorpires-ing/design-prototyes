@@ -22,6 +22,7 @@ export const SESSAO_MIN = 15;
 export const LINK_H = 24;
 
 export const EVENTO = {
+    sessao: "Domingo, 14/03/2027 às 06:00",
     id: "8c1f2a90-77de-4b1e-9a10-3f6c2d1e5b7a",
     nome: "Corrida Rio das Pedras 2027",
     org: "Pedras Eventos Esportivos",
@@ -307,8 +308,9 @@ function seed(): Estado {
             grupo: "Corrida",
             sync: true,
             perguntas: ["camiseta", "contatoNome", "emergencia", "categoria", "cidade", "equipe", "saude", "tempo"],
-            lotes: [L("l1", "Lote 1", 160, 200, 200, false), L("l2", "Lote 2", 170, 250, 240, true), L("l3", "Lote 3", 180, 300, 12, true)],
+            lotes: [L("l1", "Lote 1", 160, 200, 200, false), L("l2", "Lote 2", 170, 250, 250, false), L("l3", "Lote 3", 180, 300, 12, true)],
         },
+        { id: "mpet", ativo: true, nome: "Corrida com Pet 5 km", grupo: "Corrida", perguntas: Q8, lotes: [L("l1", "Lote 1", 90, 150, 150, false), L("l2", "Lote 2", 100, 100, 100, true)] },
         { id: "m60", ativo: true, nome: "5 km 60+", grupo: "Corrida", seg: { tipo: "idade", min: 60 }, perguntas: Q8, lotes: [L("l1", "Lote 1", 55, 100, 31, true)] },
         {
             id: "mcol",
@@ -508,7 +510,7 @@ function seed(): Estado {
 /*  Persistência e assinatura                                          */
 /* ------------------------------------------------------------------ */
 
-const STORAGE_KEY = "backstage-troca-de-inscricao.v1";
+const STORAGE_KEY = "backstage-troca-de-inscricao.v2";
 let S: Estado = load();
 let versao = 0;
 const listeners = new Set<() => void>();

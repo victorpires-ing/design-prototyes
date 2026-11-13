@@ -39,8 +39,8 @@ const gravar = (storage: "local" | "session", chave: string, valor: string) => {
     }
 };
 
-/** Organização de quem nunca escolheu uma neste navegador (ORG-04). */
-export const ORGANIZACAO_PADRAO = "org_ingresse";
+/** Organização de quem nunca escolheu uma neste navegador (ORG-04): a D-EDGE, usada no teste de usabilidade. */
+export const ORGANIZACAO_PADRAO = "org_d-edge";
 
 /** Organização escolhida (memória → última salva). `null` se nunca escolheu neste navegador. */
 export function organizacaoAtualId(): string | null {

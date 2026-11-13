@@ -171,7 +171,7 @@ function espelhar() {
     // organização do evento salvo ou do mais recente.
     let orgId = organizacaoAtualId();
     if (!orgId) {
-        // Sem escolha, vale a Ingresse (ORG-04); sem ela no banco, a do evento salvo ou do mais recente.
+        // Sem escolha, vale a organização padrão (ORG-04); sem ela no banco, a do evento salvo ou do mais recente.
         const salvo = ler(STORAGE_KEY);
         orgId = tabelas.organizacoes[ORGANIZACAO_PADRAO] ? ORGANIZACAO_PADRAO : organizacaoDoEvento(todos.find((e) => e.id === salvo) ?? todos[0]);
         definirPadrao(orgId);

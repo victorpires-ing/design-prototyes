@@ -31,7 +31,7 @@ de qualquer tela.
 - **ORG-01** Entrar pelo `/backstage` mostra a tela "Escolha onde trabalhar". _(pages/SelecaoOrganizacao.tsx)_
 - **ORG-02** Já escolheu nesta sessão do navegador: `/backstage` vai direto para Eventos, sem perguntar. Sessão nova (outra aba depois de fechar, outro navegador) pergunta de novo. _(pages/SelecaoOrganizacao.tsx, data/organizacao-atual.ts)_
 - **ORG-03** Com uma organização só, a tela é pulada: ela vira a escolhida e a pessoa vai para Eventos. _(pages/SelecaoOrganizacao.tsx)_
-- **ORG-04** Link direto (ex.: `/backstage/eventos`) usa a última organização escolhida. Sem nenhuma, vale a Ingresse (`org_ingresse`, sem eventos), sem contar como escolha; só sem a Ingresse no banco vale a do evento em contexto salvo ou a do evento mais recente. _(eventos/data/eventos.ts)_
+- **ORG-04** Link direto (ex.: `/backstage/eventos`) usa a última organização escolhida. Sem nenhuma, vale a D-EDGE (`org_d-edge`, padrão para o teste de usabilidade), sem contar como escolha; só sem ela no banco vale a do evento em contexto salvo ou a do evento mais recente. _(eventos/data/eventos.ts)_
 
 ### Busca
 - **ORG-05** Sem texto, a lista mostra, nesta ordem: Organização selecionada (só no modal), Recentes (até 4, sem repetir a selecionada), Todas as organizações (A–Z) e Todos os eventos. _(components/BuscaOrganizacaoEvento.tsx)_
